@@ -243,7 +243,9 @@ description = "Upcoming events where you'll participate.") -}}
                   <div class="ms-8">
                     <textarea class="input-primary min-h-24 text-stone-500"
                               data-question-answer
-                              {% if question.required %}required{% endif %}>{% if let Some(answer) = question.free_text_answer(item.registration_answers.as_ref()) %}{{ answer }}{% endif %}</textarea>
+                              {% if question.required %}
+                                required
+                              {% endif %}>{% if let Some(answer) = question.free_text_answer(item.registration_answers.as_ref()) %}{{ answer }}{% endif %}</textarea>
                   </div>
                 {% else if question.kind.to_string() == "single-select" -%}
                   <div class="ms-8 space-y-2">

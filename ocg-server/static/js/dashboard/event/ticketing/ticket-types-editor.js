@@ -388,6 +388,7 @@ class TicketTypesEditor extends TicketingEditorBase {
 
     this._syncPriceWindowAmountValidity();
 
+    // Native validation catches both ticket fields and nested price-window fields.
     const invalidField = Array.from(this.querySelectorAll("[data-ticket-modal-field]")).find(
       (field) => typeof field.checkValidity === "function" && !field.checkValidity(),
     );
@@ -397,6 +398,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       return;
     }
 
+    // Normalize string fields before persisting the draft back into the table rows.
     const rowToSave = {
       ...this._draftRow,
       description: String(this._draftRow.description || ""),
@@ -408,6 +410,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       return;
     }
 
+    // Save keeps the row id stable so hidden fields and Lit repeats stay aligned.
     if (this._isNewRow) {
       this._rows = [...this._rows, rowToSave];
     } else {
@@ -572,6 +575,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       return null;
     }
 
+    // Stable row ids keep each price-window input state intact while editing.
     return repeat(
       this._draftRow.price_windows,
       (windowRow) => windowRow._row_id,

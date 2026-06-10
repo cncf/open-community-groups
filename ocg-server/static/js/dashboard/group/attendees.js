@@ -1,5 +1,5 @@
 import { createNotificationModal } from "/static/js/dashboard/group/notification-modal.js";
-import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
+import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code/modal.js";
 import "/static/js/common/users/user-search-field.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import {
@@ -753,6 +753,7 @@ const initializeInvitationModal = (root = document) => {
 
   root.addEventListener("click", (event) => {
     if (closestElementWithinRoot(event.target, "#open-attendee-invitation-modal", root)) {
+      // Opening the modal always starts from a clean search and selection state.
       event.stopPropagation();
       resetInvitationForm(root);
       setScopedModalVisibility(root, invitationModalId, true);
@@ -779,6 +780,7 @@ const initializeInvitationModal = (root = document) => {
     );
   });
 
+  // User search is a custom element, so selection and query changes are events.
   root.addEventListener("user-selected", (event) => {
     const user = event.detail?.user;
     const { userInput, emailInput, selectedUser } = getInvitationControls(root);
@@ -829,6 +831,7 @@ const initializeInvitationModal = (root = document) => {
       errorMessage: "Something went wrong sending this invitation. Please try again later.",
     });
     if (ok) {
+      // The attendee list refreshes through HTMX; reset local modal state now.
       closeInvitationModal(root);
       resetInvitationForm(root);
     }

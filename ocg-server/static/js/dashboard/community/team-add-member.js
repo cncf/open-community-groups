@@ -56,14 +56,14 @@ export class TeamAddMember extends LitWrapper {
     this._isOpen = false;
     this._selectedRole = "";
     this._selectedUser = null;
-    this._onKeydown = this._onKeydown.bind(this);
+    this._handleKeydown = this._handleKeydown.bind(this);
     this._removeDismissListeners = null;
   }
 
   connectedCallback() {
     // Add ESC key listener to close the modal
     super.connectedCallback();
-    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._onKeydown });
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._handleKeydown });
 
     if (this.hasAttribute("can-manage-team")) {
       this.canManageTeam = this.getAttribute("can-manage-team") !== "false";
@@ -102,11 +102,11 @@ export class TeamAddMember extends LitWrapper {
 
   /**
    * Handles ESC key to close the modal.
-   * @param {KeyboardEvent} e - Keyboard event
+   * @param {KeyboardEvent} event - Keyboard event
    * @private
    */
-  _onKeydown(e) {
-    if (isEscapeEvent(e) && this._isOpen) {
+  _handleKeydown(event) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this._close();
     }
   }
@@ -142,11 +142,11 @@ export class TeamAddMember extends LitWrapper {
 
   /**
    * Receives selected user and updates hidden input + submit button state.
-   * @param {CustomEvent} e - Event with detail.user
+   * @param {CustomEvent} event - Event with detail.user
    * @private
    */
-  _onUserSelected(e) {
-    const user = e.detail?.user;
+  _onUserSelected(event) {
+    const user = event.detail?.user;
     if (!user) return;
     this._selectedUser = user;
     const userIdInput = getElementById(this, "team-add-user-id");
@@ -157,11 +157,11 @@ export class TeamAddMember extends LitWrapper {
 
   /**
    * Handles role selection changes and updates button state.
-   * @param {Event} e - Change event
+   * @param {Event} event - Change event
    * @private
    */
-  _onRoleChanged(e) {
-    this._selectedRole = e.target?.value || "";
+  _onRoleChanged(event) {
+    this._selectedRole = event.target?.value || "";
     const submitBtn = getElementById(this, "team-add-submit");
     if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
   }
@@ -186,8 +186,8 @@ export class TeamAddMember extends LitWrapper {
         if (this._afterRequestHandler) {
           form.removeEventListener("htmx:afterRequest", this._afterRequestHandler);
         }
-        this._afterRequestHandler = (e) => {
-          const xhr = e.detail?.xhr;
+        this._afterRequestHandler = (event) => {
+          const xhr = event.detail?.xhr;
           const ok = handleHtmxResponse({
             xhr,
             successMessage: "Invitation sent to the selected user.",
@@ -246,6 +246,11 @@ export class TeamAddMember extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the add-member modal and wires its form to the selected user state.
+   * @returns {TemplateResult} Modal template or empty template when closed
+   * @private
+   */
   _renderModal() {
     if (!this._isOpen) return html``;
     return html`
@@ -281,7 +286,7 @@ export class TeamAddMember extends LitWrapper {
                     label="team member"
                     legend="Search for users by their name or username"
                     .disabledUserIds=${this.disabledUserIds || []}
-                    @user-selected=${(e) => this._onUserSelected(e)}
+                    @user-selected=${(event) => this._onUserSelected(event)}
                   ></user-search-field>
                   <input type="hidden" name="user_id" id="team-add-user-id" />
                 </div>
@@ -292,7 +297,7 @@ export class TeamAddMember extends LitWrapper {
                     name="role"
                     class="input-primary"
                     required
-                    @change=${(e) => this._onRoleChanged(e)}
+                    @change=${(event) => this._onRoleChanged(event)}
                   >
                     <option value="" selected disabled>Select a role</option>
                     ${this.roleOptions.map((o) => html`<option value=${o.value}>${o.label}</option>`)}

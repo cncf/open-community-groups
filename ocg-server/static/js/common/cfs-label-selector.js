@@ -53,20 +53,20 @@ export class CfsLabelSelector extends LitWrapper {
     this._query = "";
 
     this._documentClickHandler = null;
-    this._keydownHandler = (event) => this._handleKeydown(event);
+    this._handleKeydown = this._handleKeydown.bind(this);
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._normalizeLabels();
     this._normalizeSelected();
-    this.addEventListener("keydown", this._keydownHandler);
+    this.addEventListener("keydown", this._handleKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._removeDocumentListener();
-    this.removeEventListener("keydown", this._keydownHandler);
+    this.removeEventListener("keydown", this._handleKeydown);
   }
 
   updated(changedProperties) {

@@ -111,6 +111,12 @@ export class BreadcrumbNav extends LitWrapper {
     return this.items.find((item) => item.current) || this.items[this.items.length - 1];
   }
 
+  /**
+   * Renders one mobile dropdown row, preserving links only for navigable items.
+   * @param {object} item - Breadcrumb item to render
+   * @returns {TemplateResult} Dropdown row template
+   * @private
+   */
   _renderMobileDropdownItem(item) {
     const isCurrent = item.current;
 
@@ -152,6 +158,13 @@ export class BreadcrumbNav extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders one desktop breadcrumb item with its leading separator.
+   * @param {object} item - Breadcrumb item to render
+   * @param {number} index - Item position in the breadcrumb trail
+   * @returns {TemplateResult} Desktop breadcrumb item template
+   * @private
+   */
   _renderDesktopItem(item, index) {
     const isHome = item.icon === "home";
     const isLast = index === this.items.length - 1;

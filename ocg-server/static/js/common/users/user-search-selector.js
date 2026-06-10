@@ -149,9 +149,9 @@ export class UserSearchSelector extends LitWrapper {
     `;
   }
 
-  _handleUserSelected(e) {
+  _handleUserSelected(event) {
     if (this.disabled) return;
-    const user = e.detail?.user;
+    const user = event.detail?.user;
     if (!user) return;
     this._addUser(user);
   }
@@ -171,7 +171,7 @@ export class UserSearchSelector extends LitWrapper {
           legend=${this.legend || ""}
           input-class="input-primary"
           wrapper-class="w-full xl:w-1/2"
-          @user-selected=${(e) => this._handleUserSelected(e)}
+          @user-selected=${(event) => this._handleUserSelected(event)}
           ?disabled=${this.disabled}
         ></user-search-field>
       </div>

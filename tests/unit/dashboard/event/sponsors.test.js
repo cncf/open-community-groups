@@ -1,10 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/sponsors.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("sponsors-section", () => {
   const sponsors = [
@@ -55,13 +52,11 @@ describe("sponsors-section", () => {
 
     // Verify filters sponsors and opens the level modal from keyboard selection.
     expect(element.visibleDropdown).to.equal(true);
-    expect(element.visibleOptions.map((item) => item.name)).to.deep.equal([
-      "Beta Compute",
-    ]);
+    expect(element.visibleOptions.map((item) => item.name)).to.deep.equal(["Beta Compute"]);
     expect(element.activeIndex).to.equal(0);
 
     // Call handle key down.
-    element._handleKeyDown({
+    element._handleKeydown({
       key: "Enter",
       preventDefault() {},
     });
@@ -100,13 +95,8 @@ describe("sponsors-section", () => {
       },
     ]);
     expect(element.showLevelModal).to.equal(false);
-    expect(
-      element.querySelector('input[name="sponsors[0][group_sponsor_id]"]')
-        .value,
-    ).to.equal("sponsor-1");
-    expect(
-      element.querySelector('input[name="sponsors[0][level]"]').value,
-    ).to.equal("Gold");
+    expect(element.querySelector('input[name="sponsors[0][group_sponsor_id]"]').value).to.equal("sponsor-1");
+    expect(element.querySelector('input[name="sponsors[0][level]"]').value).to.equal("Gold");
   });
 
   it("blocks event submission when a selected sponsor is missing a level", async () => {

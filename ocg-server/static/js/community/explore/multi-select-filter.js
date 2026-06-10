@@ -32,7 +32,7 @@ export class MultiSelectFilter extends LitWrapper {
     this._query = "";
     this._activeIndex = null;
     this._documentClickHandler = null;
-    this._keydownHandler = (event) => this._handleKeydown(event);
+    this._handleKeydown = this._handleKeydown.bind(this);
   }
 
   /**
@@ -47,13 +47,13 @@ export class MultiSelectFilter extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
     this._prepareSelected();
-    this.addEventListener("keydown", this._keydownHandler);
+    this.addEventListener("keydown", this._handleKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     this._removeDocumentListener();
-    this.removeEventListener("keydown", this._keydownHandler);
+    this.removeEventListener("keydown", this._handleKeydown);
   }
 
   /**
@@ -296,7 +296,7 @@ export class MultiSelectFilter extends LitWrapper {
               placeholder="${this.placeholder}"
               autocomplete="off"
               .value=${this._query}
-              @input=${(e) => this._handleSearchInput(e)}
+              @input=${(event) => this._handleSearchInput(event)}
               @change=${(event) => event.stopPropagation()}
               @focus=${() => this._handleFocus()}
             />
@@ -375,7 +375,7 @@ export class MultiSelectFilter extends LitWrapper {
                       <button
                         type="button"
                         class="text-stone-400 hover:text-stone-700"
-                        @click=${(e) => this._removeOption(opt.value, e)}
+                        @click=${(event) => this._removeOption(opt.value, event)}
                       >
                         <div class="svg-icon size-3.5 icon-close bg-current shrink-0"></div>
                       </button>

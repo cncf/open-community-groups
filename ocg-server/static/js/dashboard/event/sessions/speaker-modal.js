@@ -1,0 +1,266 @@
+import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { focusUserSearchField } from "/static/js/common/users/user-search-field.js";
+import "/static/js/common/media/logo-image.js";
+import { computeUserInitials } from "/static/js/common/common.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  openModalBodyScroll,
+} from "/static/js/common/modals/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { speakerKey } from "/static/js/dashboard/event/sessions/speaker-utils.js";
+
+/**
+ * Modal component for selecting session speakers with featured flag support.
+ * Emits a "speaker-selected" event containing the chosen user and featured state.
+ * @extends LitWrapper
+ */
+export class SessionSpeakerModal extends LitWrapper {
+  /**
+   * Component properties definition.
+   * @property {string} dashboardType - Dashboard context type ("group" or similar)
+   * @property {Array} disabledUserIds - User IDs that should be disabled in the search
+   * @property {boolean} _isOpen - Internal modal visibility state
+   * @property {Object|null} _selectedUser - Currently selected user object
+   * @property {boolean} _featured - Featured speaker toggle state
+   */
+  static properties = {
+    dashboardType: { type: String, attribute: "dashboard-type" },
+    disabledUserIds: { type: Array, attribute: false },
+    disabled: { type: Boolean },
+    _isOpen: { type: Boolean },
+    _selectedUser: { type: Object },
+    _featured: { type: Boolean },
+  };
+
+  constructor() {
+    super();
+    this.dashboardType = "group";
+    this.disabledUserIds = [];
+    this.disabled = false;
+    this._isOpen = false;
+    this._selectedUser = null;
+    this._featured = false;
+    this._handleKeydown = this._handleKeydown.bind(this);
+    this._removeDismissListeners = null;
+  }
+
+  /**
+   * Registers keyboard listener for escape handling.
+   */
+  connectedCallback() {
+    super.connectedCallback();
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._handleKeydown });
+  }
+
+  /**
+   * Cleans listeners and restores body scroll when detached.
+   */
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
+  }
+
+  /**
+   * Opens modal, resets state, and focuses search field.
+   */
+  open() {
+    if (this.disabled) return;
+    this._resetState();
+    this._isOpen = openModalBodyScroll(this._isOpen);
+    this.updateComplete.then(() => {
+      focusUserSearchField(this);
+    });
+  }
+
+  /**
+   * Closes modal and clears selection state.
+   */
+  close() {
+    this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._resetState();
+  }
+
+  /**
+   * Resets selected user and featured toggle.
+   * @private
+   */
+  _resetState() {
+    this._selectedUser = null;
+    this._featured = false;
+  }
+
+  /**
+   * Handles escape key to close the modal.
+   * @param {KeyboardEvent} event
+   * @private
+   */
+  _handleKeydown(event) {
+    if (isEscapeEvent(event) && this._isOpen) {
+      this.close();
+    }
+  }
+
+  /**
+   * Sets selected user when emitted by search component.
+   * @param {CustomEvent} event
+   * @private
+   */
+  _handleUserSelected(event) {
+    if (this.disabled) return;
+    const user = event.detail?.user;
+    if (!user || this._isDisabled(user)) return;
+    this._selectedUser = user;
+  }
+
+  /**
+   * Checks if user is already disabled/selected.
+   * @param {Object} user
+   * @returns {boolean}
+   * @private
+   */
+  _isDisabled(user) {
+    const key = speakerKey(user);
+    if (!key.length) return false;
+    return (this.disabledUserIds || []).some((id) => speakerKey({ user_id: id }) === key);
+  }
+
+  /**
+   * Toggles featured flag for current selection.
+   * @param {Event} event
+   * @private
+   */
+  _toggleFeatured(event) {
+    if (this.disabled) return;
+    this._featured = !!event.target?.checked;
+  }
+
+  /**
+   * Confirms selection and emits speaker-selected event.
+   * @private
+   */
+  _confirmSelection() {
+    if (this.disabled || !this._selectedUser || this._isDisabled(this._selectedUser)) return;
+    this.dispatchEvent(
+      new CustomEvent("speaker-selected", {
+        detail: {
+          user: this._selectedUser,
+          featured: this._featured,
+        },
+        bubbles: true,
+      }),
+    );
+    this.close();
+  }
+
+  /**
+   * Renders badge for the currently selected user.
+   * @returns {import("lit").TemplateResult}
+   * @private
+   */
+  _renderSelectedBadge() {
+    const user = this._selectedUser;
+    if (!user) return html``;
+    const initials = computeUserInitials(user.name, user.username, 2);
+    return html`
+      <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
+        <logo-image
+          image-url=${user.photo_url || ""}
+          placeholder=${initials}
+          size="size-[24px]"
+          hide-border
+        ></logo-image>
+        ${this._featured ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>` : ""}
+        <span class="text-sm text-stone-700">${user.name || user.username}</span>
+      </div>
+    `;
+  }
+
+  /**
+   * Renders modal markup when open.
+   * @returns {import("lit").TemplateResult}
+   * @private
+   */
+  _renderModal() {
+    if (!this._isOpen) return html``;
+
+    return html`
+      <div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden">
+        <div
+          class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"
+          @click=${() => this.close()}
+        ></div>
+        <div class="modal-panel p-4 max-w-2xl">
+          <div class="modal-card rounded-lg">
+            <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+              <h3 class="text-xl font-semibold text-stone-900">Add speaker</h3>
+              <button
+                type="button"
+                class="group bg-transparent hover:bg-stone-200 rounded-full text-sm size-8 ms-auto inline-flex justify-center items-center cursor-pointer"
+                @click=${() => this.close()}
+                ?disabled=${this.disabled}
+              >
+                <div class="svg-icon size-5 bg-stone-400 group-hover:bg-stone-700 icon-close"></div>
+                <span class="sr-only">Close modal</span>
+              </button>
+            </div>
+            <div class="modal-body p-4 md:p-8 space-y-6">
+              <div>
+                <user-search-field
+                  dashboard-type=${this.dashboardType}
+                  label="speaker"
+                  legend="Search by name or username to add a speaker to this session."
+                  .disabledUserIds=${this.disabledUserIds || []}
+                  @user-selected=${(event) => this._handleUserSelected(event)}
+                  ?disabled=${this.disabled}
+                ></user-search-field>
+              </div>
+
+              <div class="flex items-center justify-between gap-4 flex-wrap">
+                <label class="inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    ?disabled=${!this._selectedUser || this.disabled}
+                    .checked=${this._featured}
+                    @change=${(event) => this._toggleFeatured(event)}
+                  />
+                  <div
+                    class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-0.5 after:bg-white after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                  ></div>
+                  <span class="ms-3 text-sm font-medium text-stone-900">Featured speaker</span>
+                </label>
+              </div>
+
+              <div class="flex justify-between items-center gap-3">
+                <div>${this._renderSelectedBadge()}</div>
+
+                <button
+                  type="button"
+                  class="btn-primary"
+                  ?disabled=${!this._selectedUser || this.disabled}
+                  @click=${() => this._confirmSelection()}
+                >
+                  Add speaker
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * Main render method required by Lit.
+   * @returns {import("lit").TemplateResult}
+   */
+  render() {
+    return html`${this._renderModal()}`;
+  }
+}
+
+customElements.define("session-speaker-modal", SessionSpeakerModal);

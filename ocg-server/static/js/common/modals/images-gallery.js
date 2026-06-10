@@ -72,22 +72,25 @@ export class ImagesGallery extends LitWrapper {
     }
   }
 
-  _handleKeydown(e) {
+  _handleKeydown(event) {
     if (!this._isModalOpen) return;
 
-    if (isEscapeEvent(e)) {
+    if (isEscapeEvent(event)) {
       this._closeModal();
-    } else if (e.key === "ArrowRight") {
+    } else if (event.key === "ArrowRight") {
       this._navigateCarousel("next");
-    } else if (e.key === "ArrowLeft") {
+    } else if (event.key === "ArrowLeft") {
       this._navigateCarousel("prev");
     }
   }
 
-  _handleModalBackgroundClick(e) {
+  _handleModalBackgroundClick(event) {
     if (!this._isModalOpen) return;
 
-    if (e.target.parentElement?.tagName !== "BUTTON" && !["IMG", "BUTTON"].includes(e.target.tagName)) {
+    if (
+      event.target.parentElement?.tagName !== "BUTTON" &&
+      !["IMG", "BUTTON"].includes(event.target.tagName)
+    ) {
       this._closeModal();
     }
   }

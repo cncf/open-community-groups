@@ -142,23 +142,23 @@ export class ShareModal extends LitWrapper {
 
   /**
    * Handles keydown events to close the modal on Escape key press.
-   * @param {KeyboardEvent} e - The keyboard event
+   * @param {KeyboardEvent} event - The keyboard event
    */
-  _handleKeydown(e) {
-    if (this._isOpen && isEscapeEvent(e)) {
-      e.preventDefault();
+  _handleKeydown(event) {
+    if (this._isOpen && isEscapeEvent(event)) {
+      event.preventDefault();
       this._closeModal();
     }
   }
 
   /**
    * Handles clicks outside the modal content to close the modal.
-   * @param {MouseEvent} e - The mouse event
+   * @param {MouseEvent} event - The mouse event
    */
-  _handleOutsideClick(e) {
+  _handleOutsideClick(event) {
     if (!this._isOpen) return;
 
-    if (isModalOverlayTarget(e.target)) {
+    if (isModalOverlayTarget(event.target)) {
       this._closeModal();
     }
   }
@@ -178,10 +178,10 @@ export class ShareModal extends LitWrapper {
   /**
    * Handles click on share platform buttons.
    * Uses sharer.js to open the share dialog.
-   * @param {Event} e - Click event
+   * @param {Event} event - Click event
    */
-  _handleShareClick(e) {
-    const button = e.currentTarget;
+  _handleShareClick(event) {
+    const button = event.currentTarget;
 
     if (window.Sharer) {
       const sharerInstance = new window.Sharer(button);

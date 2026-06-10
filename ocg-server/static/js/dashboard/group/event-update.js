@@ -64,6 +64,7 @@ export const initializeEventUpdatePage = (root = document) => {
   const canManageEvents = readBooleanDataAttribute(pageRoot, "canManageEvents");
   const initialWaitlistCount = Number.parseInt(updateEventButton?.dataset.waitlistCount || "0", 10);
 
+  // Sessions need the parent event date range before their own validation runs.
   const syncSessionsDateRange = createSessionsDateRangeSync({
     queryOne,
     startsAtInput,
@@ -104,6 +105,7 @@ export const initializeEventUpdatePage = (root = document) => {
     });
 
   if (pageRoot instanceof HTMLElement && markDatasetReady(pageRoot, "approvedSubmissionsSyncBound")) {
+    // CFS review updates happen in another section but must refresh session options.
     pageRoot.addEventListener(approvedSubmissionsEvent, (event) => {
       const sessionsSection = queryOne("sessions-section");
       if (!sessionsSection) {
@@ -135,6 +137,7 @@ export const initializeEventUpdatePage = (root = document) => {
   const { displayActiveSection } = initializeSectionTabs({
     root: pageRoot,
     onSectionChange: (sectionName) => {
+      // Maps need a visible container before Leaflet can size the preview.
       if (sectionName === "date-venue") {
         showLocationMapIfNeeded();
       }
@@ -143,6 +146,7 @@ export const initializeEventUpdatePage = (root = document) => {
         syncSessionsDateRange();
       }
 
+      // Canceled/read-only pages still allow specific review-only sections.
       if ((isCanceledEvent || !canManageEvents) && inertForm) {
         const canUseReadOnlyReviewSection =
           (isCanceledEvent && canManageEvents && canceledEventReviewSections.has(sectionName)) ||
@@ -187,6 +191,7 @@ export const initializeEventUpdatePage = (root = document) => {
   updateEventButton.addEventListener(
     "click",
     (event) => {
+      // Removing capacity can release the whole waitlist, so confirm first.
       if (!capacityInput || initialWaitlistCount <= 0) {
         return;
       }
@@ -208,6 +213,7 @@ export const initializeEventUpdatePage = (root = document) => {
     true,
   );
 
+  // Save handlers run in capture order: validate, normalize payload, then alert.
   attachEventSaveBeforeRequestValidation({
     saveButton: updateEventButton,
     saveButtonId: "update-event-button",

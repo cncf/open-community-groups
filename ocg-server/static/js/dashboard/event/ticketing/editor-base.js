@@ -40,7 +40,7 @@ export class TicketingEditorBase extends LitWrapper {
 
     this._boundHandleExternalAddClick = this._handleExternalAddClick.bind(this);
     this._boundHandleDependencyChange = this._handleDependencyChange.bind(this);
-    this._boundHandleKeydown = this._handleKeydown.bind(this);
+    this._handleKeydown = this._handleKeydown.bind(this);
     this._removeDismissListeners = null;
   }
 
@@ -50,7 +50,7 @@ export class TicketingEditorBase extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
     this._removeDismissListeners = bindModalDismissListeners({
-      onKeydown: this._boundHandleKeydown,
+      onKeydown: this._handleKeydown,
       target: this._resolveDocument(),
     });
     this.configure();

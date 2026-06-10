@@ -50,13 +50,9 @@
 
         {# Breadcrumb -#}
         <breadcrumb-nav class="[&>.container]:max-w-[90rem]"
-        {% if let Some(banner_url) = &event.banner_url -%}
-          banner-url="{{ banner_url }}"
-        {% endif -%}
+        {% if let Some(banner_url) = &event.banner_url -%} banner-url="{{ banner_url }}" {% endif -%}
         items='[ {"label": "Home", "icon": "home"},
-        {% if let Some(community_display_name) = &event.community_display_name -%}
-          {"label": {{ community_display_name|json }}, "icon": "community"},
-        {% endif -%}
+        {% if let Some(community_display_name) = &event.community_display_name -%} {"label": {{ community_display_name|json }}, "icon": "community"}, {% endif -%}
         {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
         {# End breadcrumb -#}
 

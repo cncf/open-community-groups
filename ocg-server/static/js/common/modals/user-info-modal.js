@@ -53,8 +53,8 @@ export class UserInfoModal extends LitWrapper {
     document.removeEventListener("open-user-modal", this._handleOpenModal);
   }
 
-  _handleOpenModal(e) {
-    this._userData = e.detail;
+  _handleOpenModal(event) {
+    this._userData = event.detail;
     this._isOpen = openModalBodyScroll(this._isOpen);
     this._removeEventListeners();
     this._removeDismissListeners = bindModalDismissListeners({
@@ -73,21 +73,26 @@ export class UserInfoModal extends LitWrapper {
     this._removeDismissListeners = null;
   }
 
-  _handleKeydown(e) {
-    if (this._isOpen && isEscapeEvent(e)) {
-      e.preventDefault();
+  _handleKeydown(event) {
+    if (this._isOpen && isEscapeEvent(event)) {
+      event.preventDefault();
       this._closeModal();
     }
   }
 
-  _handleOutsideClick(e) {
+  _handleOutsideClick(event) {
     if (!this._isOpen) return;
 
-    if (isModalOverlayTarget(e.target)) {
+    if (isModalOverlayTarget(event.target)) {
       this._closeModal();
     }
   }
 
+  /**
+   * Builds the ordered social links supported by the user info modal.
+   * @returns {Array<{url: string, icon: string, label: string}>} Social links
+   * @private
+   */
   _getSocialLinks() {
     if (!this._userData) return [];
 
@@ -143,6 +148,12 @@ export class UserInfoModal extends LitWrapper {
     return Boolean(bio) || socialLinks.length > 0;
   }
 
+  /**
+   * Renders profile social links as icon buttons.
+   * @param {Array<{url: string, icon: string, label: string}>} links - Links to render
+   * @returns {TemplateResult|string} Social links template or empty string
+   * @private
+   */
   _renderSocialLinks(links) {
     if (links.length === 0) return "";
 

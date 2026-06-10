@@ -163,6 +163,7 @@ export const initializeEventAddPage = (root = document) => {
   const recurrenceAdditionalOccurrencesInput = getElementById(pageRoot, "recurrence_additional_occurrences");
   const recurrencePatternSelect = getElementById(pageRoot, "recurrence_pattern");
 
+  // Sessions need the parent event date range before their own validation runs.
   const syncSessionsDateRange = createSessionsDateRangeSync({
     queryOne,
     startsAtInput,
@@ -178,6 +179,7 @@ export const initializeEventAddPage = (root = document) => {
     },
   });
 
+  // Shared setup binds CFS, online details, and cross-section validation rules.
   const { validateEventForms, validateSessionOnlineDetails, showSessionBoundsError } =
     initializeSharedEventPageControls({
       pageRoot,
@@ -213,6 +215,7 @@ export const initializeEventAddPage = (root = document) => {
     saveButton: addEventButton,
   });
 
+  // Save handlers run in capture order: validate, normalize payload, then alert.
   attachEventSaveBeforeRequestValidation({
     saveButton: addEventButton,
     saveButtonId: "add-event-button",

@@ -61,9 +61,7 @@
             <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
                 <logo-image
-                {% if let Some(photo_url) = &entry.photo_url -%}
-                  image-url="{{ photo_url }}"
-                {% endif -%}
+                {% if let Some(photo_url) = &entry.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(entry.name.as_deref() , entry.username.as_str()) }}">
                 </logo-image>
                 <div class="min-w-0">

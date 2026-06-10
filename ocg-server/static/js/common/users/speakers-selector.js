@@ -2,8 +2,12 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/media/logo-image.js";
-import "/static/js/dashboard/event/session-speaker-modal.js";
-import { normalizeSpeakers, speakerKey, hasSpeaker } from "/static/js/dashboard/event/speaker-utils.js";
+import "/static/js/dashboard/event/sessions/speaker-modal.js";
+import {
+  normalizeSpeakers,
+  speakerKey,
+  hasSpeaker,
+} from "/static/js/dashboard/event/sessions/speaker-utils.js";
 
 /**
  * Shared speakers selector with featured flag support.
@@ -39,6 +43,8 @@ export class SpeakersSelector extends LitWrapper {
     this.label = "Speakers";
     this.helpText = "Add speakers or presenters.";
     this.disabled = false;
+    this._openSpeakerModal = this._openSpeakerModal.bind(this);
+    this._handleSpeakerSelected = this._handleSpeakerSelected.bind(this);
   }
 
   connectedCallback() {
@@ -78,7 +84,7 @@ export class SpeakersSelector extends LitWrapper {
    * Opens the speaker modal with duplicate ids disabled.
    * @private
    */
-  _openSpeakerModal = () => {
+  _openSpeakerModal() {
     if (this.disabled) return;
     const modal = this.querySelector("session-speaker-modal");
     if (!modal) return;
@@ -86,33 +92,33 @@ export class SpeakersSelector extends LitWrapper {
     modal.dashboardType = this.dashboardType;
     modal.disabled = this.disabled;
     if (typeof modal.open === "function") modal.open();
-  };
+  }
 
   /**
    * Adds a selected speaker from modal if not duplicated.
    * @param {CustomEvent} event
    * @private
    */
-  _handleSpeakerSelected = (event) => {
+  _handleSpeakerSelected(event) {
     if (this.disabled) return;
     const user = event.detail?.user;
     if (!user || hasSpeaker(this._getSpeakers(), user)) return;
     const featured = !!event.detail?.featured;
     this._setSpeakers([...this._getSpeakers(), { ...user, featured }]);
-  };
+  }
 
   /**
    * Removes a speaker chip by matching key.
    * @param {Object} speaker
    * @private
    */
-  _removeSpeaker = (speaker) => {
+  _removeSpeaker(speaker) {
     if (this.disabled) return;
     if (!speaker) return;
     const target = speakerKey(speaker);
     const nextSpeakers = this._getSpeakers().filter((item) => speakerKey(item) !== target);
     this._setSpeakers(nextSpeakers);
-  };
+  }
 
   /**
    * Renders a chip with avatar, star, and remove action.

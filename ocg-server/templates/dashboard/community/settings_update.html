@@ -370,9 +370,7 @@
       <label for="new_group_details" class="form-label">New Group Details</label>
       <div class="mt-2">
         <markdown-editor id="new_group_details" name="new_group_details" mini
-        {% if let Some(new_group_details) = &community.new_group_details -%}
-          content="{{ new_group_details }}"
-        {% endif -%}
+        {% if let Some(new_group_details) = &community.new_group_details -%} content="{{ new_group_details }}" {% endif -%}
         ></markdown-editor>
       </div>
       <p class="form-legend">Instructions for creating new groups.</p>

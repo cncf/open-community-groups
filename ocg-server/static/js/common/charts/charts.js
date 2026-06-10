@@ -943,6 +943,7 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
   const { description = "" } = options;
   const tooltipColors = getChartTooltipColors();
   const uiColors = getChartUiColors();
+  // Small pies use fewer, higher-contrast colors; larger pies need the full ramp.
   const pieColors =
     data.length <= 6
       ? [palette[950], palette[800], palette[600], palette[400], palette[200], palette[50]]
@@ -962,6 +963,7 @@ export const createPieChart = (title, name, data, palette, options = {}) => {
 
   let chartData = data;
   if (data.length > 6) {
+    // Keep dense distributions legible by grouping the long tail as "Other".
     const sorted = [...data].sort((a, b) => b.value - a.value);
     const top6 = sorted.slice(0, 6);
     const otherValue = sorted.slice(6).reduce((sum, item) => sum + item.value, 0);

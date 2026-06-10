@@ -45,17 +45,17 @@ export class CommunitySelector extends LitWrapper {
     this._searchTimeoutId = 0;
     this._pendingQuery = "";
     this._documentClickHandler = null;
-    this._keydownHandler = (event) => this._handleKeydown(event);
+    this._handleKeydown = this._handleKeydown.bind(this);
   }
 
   connectedCallback() {
     super.connectedCallback();
-    this.addEventListener("keydown", this._keydownHandler);
+    this.addEventListener("keydown", this._handleKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.removeEventListener("keydown", this._keydownHandler);
+    this.removeEventListener("keydown", this._handleKeydown);
     this._removeDocumentListener();
     this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
   }

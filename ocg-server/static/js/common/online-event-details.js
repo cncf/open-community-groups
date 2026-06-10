@@ -522,20 +522,21 @@ export class OnlineEventDetails extends LitWrapper {
 
   /**
    * Handles radio button change for mode selection.
-   * @param {Event} e - Change event from radio input
+   * @param {Event} event - Change event from radio input
    */
-  async _handleModeChange(e) {
+  async _handleModeChange(event) {
     if (this.disabled) {
-      e.preventDefault();
+      event.preventDefault();
       return;
     }
-    const newMode = e.target.value;
+    const newMode = event.target.value;
 
     if (newMode === this._mode) {
       return;
     }
 
     if (newMode === "manual" && this._mode === "automatic") {
+      // Switching away from automatic can detach or discard provider-managed data.
       // Only ask for confirmation if meeting was actually synced (exists in Zoom)
       if (this.meetingInSync) {
         const confirmed = await this._confirmModeSwitch();
@@ -552,6 +553,7 @@ export class OnlineEventDetails extends LitWrapper {
       }
 
       this._mode = "manual";
+      // Restore the last manual values after automatic mode cleared the form fields.
       this._createMeeting = false;
       this._joinUrl = this._manualJoinUrl;
       this._automaticRecordingUrl = this._recordingUrl;
@@ -575,6 +577,7 @@ export class OnlineEventDetails extends LitWrapper {
         }
       }
       this._mode = "automatic";
+      // Preserve manual values so canceling automatic mode can restore them later.
       this._joinInstructions = "";
       this._manualJoinUrl = this._joinUrl;
       this._manualRecordingUrl = this._recordingUrl;
@@ -593,30 +596,30 @@ export class OnlineEventDetails extends LitWrapper {
 
   /**
    * Handles input change for meeting URL.
-   * @param {Event} e - Input event
+   * @param {Event} event - Input event
    */
-  _handleJoinUrlChange(e) {
+  _handleJoinUrlChange(event) {
     if (this.disabled) return;
-    this._joinUrl = e.target.value;
+    this._joinUrl = event.target.value;
     this._manualJoinUrl = this._joinUrl;
   }
 
   /**
    * Handles input change for meeting join instructions.
-   * @param {Event} e - Input event
+   * @param {Event} event - Input event
    */
-  _handleJoinInstructionsChange(e) {
+  _handleJoinInstructionsChange(event) {
     if (this.disabled) return;
-    this._joinInstructions = e.target.value;
+    this._joinInstructions = event.target.value;
   }
 
   /**
    * Handles input change for recording URL.
-   * @param {Event} e - Input event
+   * @param {Event} event - Input event
    */
-  _handleRecordingUrlChange(e) {
+  _handleRecordingUrlChange(event) {
     if (this.disabled) return;
-    this._recordingUrl = e.target.value;
+    this._recordingUrl = event.target.value;
     if (this._mode === "automatic") {
       this._automaticRecordingUrl = this._recordingUrl;
       this._automaticRecordingEdited = true;
@@ -650,22 +653,27 @@ export class OnlineEventDetails extends LitWrapper {
 
   /**
    * Handles the public recording visibility toggle.
-   * @param {Event} e - Change event
+   * @param {Event} event - Change event
    */
-  _handleRecordingPublishedChange(e) {
+  _handleRecordingPublishedChange(event) {
     if (this.disabled) return;
-    this._recordingPublished = e.target.checked;
+    this._recordingPublished = event.target.checked;
   }
 
   /**
    * Handles the automatic recording request toggle.
-   * @param {Event} e - Change event
+   * @param {Event} event - Change event
    */
-  _handleRecordingRequestedChange(e) {
+  _handleRecordingRequestedChange(event) {
     if (this.disabled) return;
-    this._recordingRequested = e.target.checked;
+    this._recordingRequested = event.target.checked;
   }
 
+  /**
+   * Evaluates whether an automatic meeting can be requested from current fields.
+   * @returns {{allowed: boolean, reasons: Array<string>}} Availability state
+   * @private
+   */
   _getAutomaticAvailability() {
     if (this.disabled) {
       return { allowed: false, reasons: [] };
@@ -673,11 +681,13 @@ export class OnlineEventDetails extends LitWrapper {
 
     const reasons = [];
 
+    // Automatic meetings are only valid for event types that can expose a join URL.
     const isVirtualOrHybrid = this.kind === "virtual" || this.kind === "hybrid";
     if (!isVirtualOrHybrid) {
       reasons.push("Event must be virtual or hybrid.");
     }
 
+    // Provider meetings need a bounded schedule before they can be requested.
     if (!this.startsAt || !this.endsAt) {
       reasons.push("Set start and end times.");
     } else {
@@ -696,6 +706,7 @@ export class OnlineEventDetails extends LitWrapper {
       }
     }
 
+    // New meetings must fit the provider capacity limit before creation.
     if (!this.meetingInSync) {
       const capacityValue = this._getCapacityValue();
       if (!Number.isFinite(capacityValue) || capacityValue <= 0) {
@@ -1151,8 +1162,8 @@ export class OnlineEventDetails extends LitWrapper {
                     class="input-primary ${this.disabled
                       ? "bg-stone-100 text-stone-500 cursor-not-allowed"
                       : ""}"
-                    @change="${(e) => {
-                      this._providerId = e.target.value || DEFAULT_MEETING_PROVIDER;
+                    @change="${(event) => {
+                      this._providerId = event.target.value || DEFAULT_MEETING_PROVIDER;
                       this._checkMeetingCapacity();
                     }}"
                     ?disabled=${this.disabled}

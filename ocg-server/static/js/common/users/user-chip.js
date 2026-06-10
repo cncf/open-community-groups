@@ -32,6 +32,8 @@ export class UserChip extends LitWrapper {
     this.displayModal = false;
     this.small = false;
     this.featured = false;
+    this._handleClick = this._handleClick.bind(this);
+    this._handleKeydown = this._handleKeydown.bind(this);
   }
 
   connectedCallback() {
@@ -41,12 +43,12 @@ export class UserChip extends LitWrapper {
     this.user = parseJsonAttribute(this.user, null);
   }
 
-  _handleClick = (e) => {
+  _handleClick(event) {
     if (!this.displayModal) {
       return;
     }
 
-    e.preventDefault();
+    event.preventDefault();
 
     this.dispatchEvent(
       new CustomEvent("open-user-modal", {
@@ -70,14 +72,14 @@ export class UserChip extends LitWrapper {
         composed: true,
       }),
     );
-  };
+  }
 
-  _handleKeydown = (e) => {
-    if (this.displayModal && (e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      this._handleClick(e);
+  _handleKeydown(event) {
+    if (this.displayModal && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      this._handleClick(event);
     }
-  };
+  }
 
   render() {
     if (!this.user) {

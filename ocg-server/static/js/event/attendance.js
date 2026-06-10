@@ -399,6 +399,7 @@ const reconcilePaymentReturn = async () => {
   try {
     const attendance = await fetchAttendanceStatus();
 
+    // Handle terminal return outcomes before polling for delayed webhook updates.
     if (paymentOutcome === "canceled") {
       if (attendance?.status === "pending-payment") {
         showInfoAlert(
@@ -422,6 +423,7 @@ const reconcilePaymentReturn = async () => {
 
     showInfoAlert("Confirming your payment. This can take a few seconds.");
 
+    // Stripe may redirect before the webhook has updated the attendee state.
     for (let attempt = 0; attempt < PAYMENT_RETURN_POLL_ATTEMPTS; attempt += 1) {
       await waitForPoll(PAYMENT_RETURN_POLL_INTERVAL_MS);
 
@@ -476,6 +478,7 @@ const renderAttendanceCheckResponse = (container, event) => {
     return;
   }
 
+  // Keep server status handling explicit so each state owns its renderer.
   if (response.status === "attendee") {
     showAttendeeState(container, meta, response);
     return;
@@ -804,6 +807,7 @@ const handleAttendanceClick = (event) => {
     return;
   }
 
+  // Signed-out actions do not submit; they show the login path for this page.
   const signinButton = closestElement(event.target, '[data-attendance-role="signin-btn"]');
   if (signinButton instanceof HTMLElement) {
     const path = signinButton.dataset.path || window.location.pathname;
@@ -828,6 +832,7 @@ const handleAttendanceClick = (event) => {
   const meta = getAttendanceMeta(container);
   const completingRegistrationQuestions = isCompletingRegistrationQuestions(attendButton);
 
+  // Ticketed attendance may need questions before opening the checkout modal.
   if (
     attendButton instanceof HTMLButtonElement &&
     shouldCollectQuestionAnswers(container) &&
@@ -856,6 +861,7 @@ const handleAttendanceClick = (event) => {
 
   const leaveButton = closestElement(event.target, '[data-attendance-role="leave-btn"]');
   if (leaveButton instanceof HTMLElement) {
+    // Destructive actions keep the real button id as the SweetAlert target.
     const label = getAttendanceControlLabel(leaveButton) || CANCEL_ATTENDANCE_LABEL;
     let message = "Are you sure you want to cancel your attendance?";
     if (label === LEAVE_WAITLIST_LABEL) {
