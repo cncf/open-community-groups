@@ -8,6 +8,13 @@ import {
   hasActiveCalendarFilters,
   updateDateInput,
 } from "/static/js/community/explore/filters.js";
+import {
+  cancelDelayedPopover,
+  getExploreItemUrl,
+  loadWidgetScripts,
+  renderPopoverCardShell,
+  scheduleDelayedPopover,
+} from "/static/js/community/explore/widgets.js";
 
 const FULLCALENDAR_SCRIPT_SRC = "/static/vendor/js/fullcalendar.v6.1.19.min.js";
 const MAIN_LOADING_CALENDAR_ID = "main-loading-calendar";
@@ -19,7 +26,6 @@ const DATE_TO_INPUT_SELECTOR = 'input[name="date_to"]';
 const NO_RESULTS_SELECTOR = ".no-results-default, .no-results-filtered";
 const DEFAULT_NO_RESULTS_SELECTOR = ".no-results-default";
 const FILTERED_NO_RESULTS_SELECTOR = ".no-results-filtered";
-const POPOVER_OPEN_DELAY_MS = 300;
 const RIGHT_ALIGNED_COLUMN_THRESHOLD = 3;
 const TOP_ALIGNED_ROW_THRESHOLD = 4;
 const PAST_EVENT_COLOR_ALPHA = 0.35;
@@ -42,15 +48,6 @@ const getInitialCalendarDate = () => {
 };
 
 /**
- * Shows or hides the main calendar loading state.
- * @param {boolean} visible - Whether the loading indicator should be visible
- */
-const setMainCalendarLoading = (visible) => {
-  const mainLoading = getElementById(document, MAIN_LOADING_CALENDAR_ID);
-  setElementHidden(mainLoading, !visible);
-};
-
-/**
  * Loads the FullCalendar script when needed.
  * @returns {Promise<void>} Promise resolved when FullCalendar is available
  */
@@ -58,19 +55,6 @@ const loadFullCalendarScript = () =>
   loadScriptOnce(FULLCALENDAR_SCRIPT_SRC, {
     isLoaded: () => typeof window.FullCalendar !== "undefined",
   });
-
-/**
- * Gets the URL for an event page.
- * @param {object} event - Explore event payload
- * @returns {string|undefined} Event URL when required slugs are present
- */
-const getEventUrl = (event) => {
-  if (!event.group_slug || !event.slug) {
-    return undefined;
-  }
-
-  return `/${event.community_name}/group/${event.group_slug_pretty || event.group_slug}/event/${event.slug}`;
-};
 
 /**
  * Builds popover alignment data from the FullCalendar segment.
@@ -250,9 +234,7 @@ const newEventPopover = (id, event, horizontalAlignment, verticalAlignment) => {
     data-popover="true"
     class="${alignmentClasses}"
   >
-    <div class="explore-popover-card-shell">
-      ${event.popover_html}
-    </div>
+    ${renderPopoverCardShell(event.popover_html)}
   </div>
   `;
 
@@ -308,11 +290,11 @@ export class Calendar {
 
     this.popoverTimers = new WeakMap();
 
-    setMainCalendarLoading(true);
-
-    loadFullCalendarScript()
-      .then(() => this.setup(data))
-      .catch(() => setMainCalendarLoading(false));
+    loadWidgetScripts({
+      mainLoadingId: MAIN_LOADING_CALENDAR_ID,
+      loadScripts: loadFullCalendarScript,
+      onReady: () => this.setup(data),
+    });
 
     // Save calendar instance
     Calendar._instance = this;
@@ -342,7 +324,7 @@ export class Calendar {
       // Handle event clicks to navigate to event page
       eventClick: (info) => {
         const event = info.event.extendedProps.event;
-        const url = getEventUrl(event);
+        const url = getExploreItemUrl("events", event);
         if (url) {
           navigateWithHtmx(url);
         }
@@ -362,31 +344,28 @@ export class Calendar {
         }
       },
 
-      // Start 300ms timer to show popover on mouse enter
+      // Start a delayed timer to show the popover on mouse enter
       eventMouseEnter: (info) => {
         const parent = info.el.parentNode;
         if (!parent || !parent.dataset.popoverAlign) return;
 
-        clearTimeout(this.popoverTimers.get(parent));
-        const timer = setTimeout(() => {
+        scheduleDelayedPopover(this.popoverTimers, parent, () => {
           createPopoverIfNeeded(parent, info.event.extendedProps.event);
-        }, POPOVER_OPEN_DELAY_MS);
-        this.popoverTimers.set(parent, timer);
+        });
       },
 
       // Cancel popover timer on mouse leave
       eventMouseLeave: (info) => {
         const parent = info.el.parentNode;
         if (!parent) return;
-        clearTimeout(this.popoverTimers.get(parent));
+        cancelDelayedPopover(this.popoverTimers, parent);
       },
 
       // Clean up timers when events are unmounted (e.g., month navigation)
       eventWillUnmount: (info) => {
         const parent = info.el.parentNode;
         if (!parent) return;
-        clearTimeout(this.popoverTimers.get(parent));
-        this.popoverTimers.delete(parent);
+        cancelDelayedPopover(this.popoverTimers, parent);
         clearPopover(parent);
       },
     });

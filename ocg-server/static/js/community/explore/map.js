@@ -1,6 +1,13 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
-import { getElementById, loadScriptOnce, setElementHidden } from "/static/js/common/dom.js";
+import { loadScriptOnce } from "/static/js/common/dom.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
+import {
+  cancelDelayedPopover,
+  getExploreItemUrl,
+  loadWidgetScripts,
+  renderPopoverCardShell,
+  scheduleDelayedPopover,
+} from "/static/js/community/explore/widgets.js";
 
 const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
 const MARKER_CLUSTER_SCRIPT_SRC = "/static/vendor/js/leaflet.markercluster.v1.5.3.min.js";
@@ -21,7 +28,6 @@ const TOOLTIP_OPTIONS = {
   offset: [0, -18],
   opacity: 1,
 };
-const TOOLTIP_OPEN_DELAY_MS = 300;
 
 /**
  * Gets the collection for the selected explore entity.
@@ -48,24 +54,6 @@ const getItemsForEntity = (entity, data) => {
  */
 const hasValidCoordinates = (item) =>
   item.latitude !== undefined && item.longitude !== undefined && item.latitude != 0 && item.longitude != 0;
-
-/**
- * Builds the destination URL for an explore map item.
- * @param {string} entity - Explore entity type
- * @param {object} item - Explore item
- * @returns {string|undefined} Destination URL when the entity is supported
- */
-const getItemUrl = (entity, item) => {
-  if (entity === "events") {
-    return `/${item.community_name}/group/${item.group_slug_pretty || item.group_slug}/event/${item.slug}`;
-  }
-
-  if (entity === "groups") {
-    return `/${item.community_name}/group/${item.slug_pretty || item.slug}`;
-  }
-
-  return undefined;
-};
 
 /**
  * Normalizes a latitude value to be within the -90 to 90 range.
@@ -126,13 +114,6 @@ const createMarkerIcon = (item) =>
   });
 
 /**
- * Builds HTML used by the delayed map tooltip.
- * @param {object} item - Explore item
- * @returns {string} Tooltip HTML
- */
-const getTooltipContent = (item) => `<div class="explore-popover-card-shell">${item.popover_html}</div>`;
-
-/**
  * Binds delayed tooltip behavior to a marker.
  * @param {object} marker - Leaflet marker instance
  * @param {object} item - Explore item
@@ -143,25 +124,17 @@ const bindMarkerTooltip = (marker, item, tooltipTimers) => {
     return;
   }
 
-  const startTooltipTimer = () => {
-    clearTimeout(tooltipTimers.get(marker));
-    const timer = setTimeout(() => {
+  marker.on("mouseover", () => {
+    scheduleDelayedPopover(tooltipTimers, marker, () => {
       if (!marker.getTooltip()) {
-        marker.bindTooltip(getTooltipContent(item), TOOLTIP_OPTIONS);
+        marker.bindTooltip(renderPopoverCardShell(item.popover_html), TOOLTIP_OPTIONS);
       }
       marker.openTooltip();
-    }, TOOLTIP_OPEN_DELAY_MS);
-    tooltipTimers.set(marker, timer);
-  };
+    });
+  });
 
-  const stopTooltipTimer = () => {
-    clearTimeout(tooltipTimers.get(marker));
-    tooltipTimers.delete(marker);
-  };
-
-  marker.on("mouseover", startTooltipTimer);
   marker.on("mouseout", () => {
-    stopTooltipTimer();
+    cancelDelayedPopover(tooltipTimers, marker);
     if (marker.getTooltip()) {
       marker.closeTooltip();
       marker.unbindTooltip();
@@ -169,7 +142,7 @@ const bindMarkerTooltip = (marker, item, tooltipTimers) => {
   });
 
   marker.on("remove", () => {
-    stopTooltipTimer();
+    cancelDelayedPopover(tooltipTimers, marker);
     if (marker.getTooltip()) {
       marker.unbindTooltip();
     }
@@ -195,19 +168,17 @@ export class Map {
       return Map._instance;
     }
 
-    // Display main loading spinner
-    const mainLoading = getElementById(document, MAIN_LOADING_MAP_ID);
-    setElementHidden(mainLoading, false);
-
     this.entity = entity;
     this.enabledMoveEnd = false;
     this.tooltipTimers = new WeakMap();
 
     // Save map instance
     Map._instance = this;
-    this.loadScripts()
-      .then(() => this.setup(data))
-      .catch(() => hideLoadingSpinner(MAIN_LOADING_MAP_ID));
+    loadWidgetScripts({
+      mainLoadingId: MAIN_LOADING_MAP_ID,
+      loadScripts: () => this.loadScripts(),
+      onReady: () => this.setup(data),
+    });
   }
 
   /**
@@ -388,7 +359,10 @@ export class Map {
 
       // Add click handler to navigate to item page
       marker.on("click", () => {
-        navigateWithHtmx(getItemUrl(this.entity, item));
+        const url = getExploreItemUrl(this.entity, item);
+        if (url) {
+          navigateWithHtmx(url);
+        }
       });
 
       // Add marker to the marker cluster group
