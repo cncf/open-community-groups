@@ -2,10 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/timezone-selector.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("timezone-selector", () => {
   useMountedElementsCleanup("timezone-selector");
@@ -57,7 +54,7 @@ describe("timezone-selector", () => {
     });
 
     // Search query filtering keeps only matching timezones.
-    element._query = "new";
+    element._combobox.setQuery("new");
     await element.updateComplete;
 
     // The filtered list contains the matching timezone.
@@ -95,7 +92,7 @@ describe("timezone-selector", () => {
     expect(prevented).to.equal(true);
     expect(changed).to.equal(1);
     expect(element.value).to.equal("Europe/Madrid");
-    expect(element._isOpen).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(false);
   });
 
   it("does not update when the timezone is already selected or disabled", async () => {

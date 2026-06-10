@@ -1,10 +1,9 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
+import { ComboboxController } from "/static/js/common/combobox.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
-import { bindOutsideClickListener, focusElementById } from "/static/js/common/dom.js";
-import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
+import { focusElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 
 /**
  * CommunitySelector renders a searchable dropdown to pick a single community.
@@ -27,10 +26,7 @@ export class CommunitySelector extends LitWrapper {
     },
     selectedCommunityId: { type: String, attribute: "selected-community-id" },
     selectEndpoint: { type: String, attribute: "select-endpoint" },
-    _isOpen: { state: true },
-    _query: { state: true },
     _isSubmitting: { state: true },
-    _activeIndex: { state: true },
   };
 
   constructor() {
@@ -38,26 +34,29 @@ export class CommunitySelector extends LitWrapper {
     this.communities = [];
     this.selectedCommunityId = "";
     this.selectEndpoint = "/dashboard/community";
-    this._isOpen = false;
-    this._query = "";
     this._isSubmitting = false;
-    this._activeIndex = null;
-    this._searchTimeoutId = 0;
     this._pendingQuery = "";
-    this._documentClickHandler = null;
-    this._handleKeydown = this._handleKeydown.bind(this);
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    this.addEventListener("keydown", this._handleKeydown);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this.removeEventListener("keydown", this._handleKeydown);
-    this._removeDocumentListener();
-    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
+    this._combobox = new ComboboxController(this, {
+      getItemCount: () => this._filteredCommunities.length,
+      isInteractionBlocked: () => this._isSubmitting,
+      canOpen: () => this.communities.length > 0,
+      resetQueryOnToggle: true,
+      onOpen: () => {
+        this._pendingQuery = "";
+        this.updateComplete.then(() => {
+          focusElementById(this, "community-search-input");
+        });
+      },
+      onClose: () => {
+        this._pendingQuery = "";
+      },
+      onSelect: (index, event) => {
+        const community = this._filteredCommunities[index];
+        if (community && !this._isSelected(community)) {
+          this._handleCommunityClick(event, community);
+        }
+      },
+    });
   }
 
   /**
@@ -65,24 +64,18 @@ export class CommunitySelector extends LitWrapper {
    * @param {InputEvent} event Native input event
    */
   _handleSearchInput(event) {
-    const value = event.target.value || "";
-    this._pendingQuery = value;
-    this._searchTimeoutId = replaceTimeout(
-      this._searchTimeoutId,
-      () => {
-        this._activeIndex = null;
-        this._query = this._pendingQuery;
-        this._searchTimeoutId = 0;
-      },
-      200,
-    );
+    this._pendingQuery = event.target.value || "";
+    this._combobox.scheduleSearchUpdate(() => {
+      this._combobox.setActiveIndex(null);
+      this._combobox.setQuery(this._pendingQuery);
+    }, 200);
   }
 
   /**
    * Gets filtered communities based on current query.
    */
   get _filteredCommunities() {
-    const normalized = (this._query || "").trim().toLowerCase();
+    const normalized = (this._combobox.query || "").trim().toLowerCase();
     if (!normalized) {
       return this.communities;
     }
@@ -114,123 +107,13 @@ export class CommunitySelector extends LitWrapper {
     }
     event.preventDefault();
     this._isSubmitting = true;
-    this._closeDropdown();
+    this._combobox.close();
     try {
       await this._selectDashboardCommunity(community.community_id);
     } catch (_) {
       showErrorAlert("Something went wrong selecting the community. Please try again later.");
     } finally {
       this._isSubmitting = false;
-    }
-  }
-
-  /**
-   * Toggles dropdown visibility.
-   */
-  _toggleDropdown() {
-    if (this._isSubmitting) {
-      return;
-    }
-    if (this._isOpen) {
-      this._closeDropdown();
-    } else {
-      this._openDropdown();
-    }
-  }
-
-  /**
-   * Opens the dropdown and resets search.
-   */
-  _openDropdown() {
-    if (this.communities.length === 0 || this._isSubmitting) {
-      return;
-    }
-    this._isOpen = true;
-    this._query = "";
-    this._pendingQuery = "";
-    this._activeIndex = null;
-    this._addDocumentListener();
-    this.updateComplete.then(() => {
-      focusElementById(this, "community-search-input");
-    });
-  }
-
-  /**
-   * Closes the dropdown and clears search state.
-   */
-  _closeDropdown() {
-    this._isOpen = false;
-    this._query = "";
-    this._pendingQuery = "";
-    this._activeIndex = null;
-    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
-    this._removeDocumentListener();
-  }
-
-  /**
-   * Registers a click listener on document to detect outside clicks.
-   */
-  _addDocumentListener() {
-    if (this._documentClickHandler) {
-      return;
-    }
-    this._documentClickHandler = bindOutsideClickListener(this, () => this._closeDropdown());
-  }
-
-  /**
-   * Removes the outside click listener if it exists.
-   */
-  _removeDocumentListener() {
-    if (!this._documentClickHandler) {
-      return;
-    }
-    this._documentClickHandler();
-    this._documentClickHandler = null;
-  }
-
-  /**
-   * Handles keyboard navigation and shortcuts.
-   * @param {KeyboardEvent} event Native keyboard event
-   */
-  _handleKeydown(event) {
-    if (event.defaultPrevented || this._isSubmitting) {
-      return;
-    }
-
-    if (!this._isOpen || this._filteredCommunities.length === 0) {
-      if (this._isOpen && isEscapeEvent(event)) {
-        event.preventDefault();
-        this._closeDropdown();
-      }
-      return;
-    }
-
-    if (isEscapeEvent(event)) {
-      event.preventDefault();
-      this._closeDropdown();
-      return;
-    }
-
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredCommunities.length, 1);
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        this._activeIndex = getNextLoopedIndex(this._activeIndex, this._filteredCommunities.length, -1);
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (this._activeIndex !== null) {
-          const community = this._filteredCommunities[this._activeIndex];
-          if (community && !this._isSelected(community)) {
-            this._handleCommunityClick(event, community);
-          }
-        }
-        break;
-      default:
-        break;
     }
   }
 
@@ -270,8 +153,8 @@ export class CommunitySelector extends LitWrapper {
             : "cursor-pointer"}"
           ?disabled=${isDisabled}
           aria-haspopup="listbox"
-          aria-expanded=${this._isOpen ? "true" : "false"}
-          @click=${() => this._toggleDropdown()}
+          aria-expanded=${this._combobox.isOpen ? "true" : "false"}
+          @click=${() => this._combobox.toggle()}
         >
           <div class="flex flex-col justify-center min-h-10">
             <div class="text-xs/4 text-stone-900 line-clamp-2">
@@ -287,7 +170,7 @@ export class CommunitySelector extends LitWrapper {
 
         <div
           class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
-            ._isOpen
+            ._combobox.isOpen
             ? ""
             : "hidden"}"
         >
@@ -305,7 +188,7 @@ export class CommunitySelector extends LitWrapper {
                 autocorrect="off"
                 autocapitalize="off"
                 spellcheck="false"
-                .value=${this._query}
+                .value=${this._combobox.query}
                 @input=${(event) => this._handleSearchInput(event)}
               />
             </div>
@@ -323,7 +206,7 @@ export class CommunitySelector extends LitWrapper {
                     (community) => community.community_id,
                     (community, index) => {
                       const isSelected = this._isSelected(community);
-                      const isActive = this._activeIndex === index;
+                      const isActive = this._combobox.activeIndex === index;
                       const isDisabled = isSelected || this._isSubmitting;
 
                       let statusClass = "";
@@ -345,7 +228,7 @@ export class CommunitySelector extends LitWrapper {
                             role="option"
                             ?disabled=${isDisabled}
                             @click=${(event) => this._handleCommunityClick(event, community)}
-                            @mouseover=${() => (this._activeIndex = index)}
+                            @mouseover=${() => this._combobox.setActiveIndex(index)}
                           >
                             <div class="text-xs/4 line-clamp-2">
                               ${community.display_name || community.name}

@@ -1,6 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import { bindOutsideClickListener } from "/static/js/common/dom.js";
-import { getNextLoopedIndex, isEscapeEvent } from "/static/js/common/keyboard.js";
+import { ComboboxController } from "/static/js/common/combobox.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 const DEFAULT_PLACEHOLDER = "Search labels";
@@ -29,10 +28,6 @@ export class CfsLabelSelector extends LitWrapper {
     placeholder: { type: String, attribute: "placeholder" },
     selected: { type: Array, attribute: "selected" },
     selectedInInput: { type: Boolean, attribute: "selected-in-input", reflect: true },
-
-    _activeIndex: { state: true },
-    _isOpen: { state: true },
-    _query: { state: true },
   };
 
   constructor() {
@@ -48,25 +43,23 @@ export class CfsLabelSelector extends LitWrapper {
     this.selected = [];
     this.selectedInInput = false;
 
-    this._activeIndex = null;
-    this._isOpen = false;
-    this._query = "";
-
-    this._documentClickHandler = null;
-    this._handleKeydown = this._handleKeydown.bind(this);
+    this._combobox = new ComboboxController(this, {
+      getItemCount: () => this._filteredLabels.length,
+      isInteractionBlocked: () => this.disabled,
+      canOpen: () => this.labels.length > 0,
+      onSelect: (index) => {
+        const label = this._filteredLabels[index];
+        if (label?.event_cfs_label_id) {
+          this._toggleSelection(String(label.event_cfs_label_id));
+        }
+      },
+    });
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._normalizeLabels();
     this._normalizeSelected();
-    this.addEventListener("keydown", this._handleKeydown);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._removeDocumentListener();
-    this.removeEventListener("keydown", this._handleKeydown);
   }
 
   updated(changedProperties) {
@@ -83,7 +76,7 @@ export class CfsLabelSelector extends LitWrapper {
     }
 
     if (changedProperties.has("disabled") && this.disabled) {
-      this._closeDropdown();
+      this._combobox.close();
     }
   }
 
@@ -109,7 +102,7 @@ export class CfsLabelSelector extends LitWrapper {
    * @returns {Array<Object>}
    */
   get _filteredLabels() {
-    const query = (this._query || "").trim().toLowerCase();
+    const query = (this._combobox.query || "").trim().toLowerCase();
     if (!query) {
       return this._sortedLabels;
     }
@@ -152,8 +145,8 @@ export class CfsLabelSelector extends LitWrapper {
    * Clears the search query.
    */
   _clearQuery() {
-    this._query = "";
-    this._activeIndex = null;
+    this._combobox.setQuery("");
+    this._combobox.setActiveIndex(null);
   }
 
   /**
@@ -161,53 +154,10 @@ export class CfsLabelSelector extends LitWrapper {
    * @param {InputEvent} event The input event
    */
   _handleSearchInput(event) {
-    this._query = event.target?.value || "";
-    this._activeIndex = null;
-    if (!this._isOpen && !this.disabled) {
-      this._openDropdown();
-    }
-  }
-
-  /**
-   * Handles keyboard navigation.
-   * @param {KeyboardEvent} event The keyboard event
-   */
-  _handleKeydown(event) {
-    if (event.defaultPrevented || this.disabled || !this._isOpen) {
-      return;
-    }
-
-    if (isEscapeEvent(event)) {
-      event.preventDefault();
-      this._closeDropdown();
-      return;
-    }
-
-    const filteredLabels = this._filteredLabels;
-    if (filteredLabels.length === 0) {
-      return;
-    }
-
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        this._activeIndex = getNextLoopedIndex(this._activeIndex, filteredLabels.length, 1);
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        this._activeIndex = getNextLoopedIndex(this._activeIndex, filteredLabels.length, -1);
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (this._activeIndex !== null) {
-          const label = filteredLabels[this._activeIndex];
-          if (label?.event_cfs_label_id) {
-            this._toggleSelection(String(label.event_cfs_label_id));
-          }
-        }
-        break;
-      default:
-        break;
+    this._combobox.setQuery(event.target?.value || "");
+    this._combobox.setActiveIndex(null);
+    if (!this._combobox.isOpen && !this.disabled) {
+      this._combobox.open();
     }
   }
 
@@ -215,7 +165,7 @@ export class CfsLabelSelector extends LitWrapper {
    * Handles input focus.
    */
   _handleFocus() {
-    this._openDropdown();
+    this._combobox.open();
   }
 
   /**
@@ -227,9 +177,9 @@ export class CfsLabelSelector extends LitWrapper {
       return;
     }
 
-    if (this._isOpen) {
+    if (this._combobox.isOpen) {
       event.preventDefault();
-      this._closeDropdown();
+      this._combobox.close();
     }
   }
 
@@ -326,19 +276,6 @@ export class CfsLabelSelector extends LitWrapper {
   }
 
   /**
-   * Opens the dropdown.
-   */
-  _openDropdown() {
-    if (this.disabled || this.labels.length === 0) {
-      return;
-    }
-
-    this._isOpen = true;
-    this._activeIndex = null;
-    this._addDocumentListener();
-  }
-
-  /**
    * Prunes selected values not present in labels.
    */
   _pruneSelected() {
@@ -396,7 +333,7 @@ export class CfsLabelSelector extends LitWrapper {
     }
 
     if (selectionChanged && this.closeOnSelect) {
-      this._closeDropdown();
+      this._combobox.close();
     }
   }
 
@@ -411,38 +348,6 @@ export class CfsLabelSelector extends LitWrapper {
     }
     this.selected = [];
     this._emitChange();
-  }
-
-  /**
-   * Closes the dropdown.
-   */
-  _closeDropdown() {
-    this._isOpen = false;
-    this._activeIndex = null;
-    this._removeDocumentListener();
-  }
-
-  /**
-   * Registers the outside click listener.
-   */
-  _addDocumentListener() {
-    if (this._documentClickHandler) {
-      return;
-    }
-
-    this._documentClickHandler = bindOutsideClickListener(this, () => this._closeDropdown());
-  }
-
-  /**
-   * Removes the outside click listener.
-   */
-  _removeDocumentListener() {
-    if (!this._documentClickHandler) {
-      return;
-    }
-
-    this._documentClickHandler();
-    this._documentClickHandler = null;
   }
 
   render() {
@@ -507,7 +412,7 @@ export class CfsLabelSelector extends LitWrapper {
                       autocorrect="off"
                       autocapitalize="off"
                       spellcheck="false"
-                      .value=${this._query}
+                      .value=${this._combobox.query}
                       ?disabled=${inputDisabled}
                       @pointerdown=${(event) => this._handleInputPointerDown(event)}
                       @focus=${() => this._handleFocus()}
@@ -538,14 +443,14 @@ export class CfsLabelSelector extends LitWrapper {
                     autocorrect="off"
                     autocapitalize="off"
                     spellcheck="false"
-                    .value=${this._query}
+                    .value=${this._combobox.query}
                     ?disabled=${inputDisabled}
                     @pointerdown=${(event) => this._handleInputPointerDown(event)}
                     @focus=${() => this._handleFocus()}
                     @input=${(event) => this._handleSearchInput(event)}
                   />
                 `}
-            ${this._query && !this.selectedInInput
+            ${this._combobox.query && !this.selectedInInput
               ? html`
                   <button
                     type="button"
@@ -556,7 +461,7 @@ export class CfsLabelSelector extends LitWrapper {
                   </button>
                 `
               : ""}
-            ${this._isOpen
+            ${this._combobox.isOpen
               ? html`
                   <ul
                     class="absolute top-full mt-1 left-0 right-0 z-20 max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white shadow-sm"
@@ -568,7 +473,7 @@ export class CfsLabelSelector extends LitWrapper {
                           (label) => label.event_cfs_label_id,
                           (label, index) => {
                             const eventCfsLabelId = String(label.event_cfs_label_id);
-                            const isActive = this._activeIndex === index;
+                            const isActive = this._combobox.activeIndex === index;
                             const isSelected = this.selected.includes(eventCfsLabelId);
                             const isDisabled = this.disabled || (selectionLimitReached && !isSelected);
 
@@ -585,7 +490,7 @@ export class CfsLabelSelector extends LitWrapper {
                                   aria-selected=${isSelected}
                                   ?disabled=${isDisabled}
                                   @click=${() => this._toggleSelection(eventCfsLabelId)}
-                                  @mouseover=${() => (this._activeIndex = index)}
+                                  @mouseover=${() => this._combobox.setActiveIndex(index)}
                                 >
                                   <span class="flex items-center gap-2 min-w-0">
                                     <span

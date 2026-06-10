@@ -67,7 +67,7 @@ describe("community-selector", () => {
     await new Promise((resolve) => setTimeout(resolve, 250));
 
     // Assert the element state.
-    expect(element._query).to.equal("open");
+    expect(element._combobox.query).to.equal("open");
     expect(element._filteredCommunities).to.deep.equal([
       { community_id: "2", display_name: "OpenSSF", name: "openssf" },
     ]);
@@ -87,43 +87,43 @@ describe("community-selector", () => {
     };
 
     // Open the selector with two keyboard options.
-    element._isOpen = true;
+    element._combobox.isOpen = true;
     element._handleCommunityClick = async (_event, community) => {
       handledSelections.push(community.community_id);
     };
 
     // Move to the first option.
     event.key = "ArrowDown";
-    element._handleKeydown(event);
-    expect(element._activeIndex).to.equal(0);
+    element._combobox._handleKeydown(event);
+    expect(element._combobox.activeIndex).to.equal(0);
 
     // Move to the next option.
     event.key = "ArrowDown";
-    element._handleKeydown(event);
-    expect(element._activeIndex).to.equal(1);
+    element._combobox._handleKeydown(event);
+    expect(element._combobox.activeIndex).to.equal(1);
 
     // Press ArrowUp.
     event.key = "ArrowUp";
-    element._handleKeydown(event);
-    expect(element._activeIndex).to.equal(0);
+    element._combobox._handleKeydown(event);
+    expect(element._combobox.activeIndex).to.equal(0);
 
     // Press Enter.
     event.key = "Enter";
-    element._handleKeydown(event);
+    element._combobox._handleKeydown(event);
     expect(handledSelections).to.deep.equal([]);
 
     // Select the highlighted community with Enter.
     element.selectedCommunityId = "3";
-    element._activeIndex = 1;
+    element._combobox.activeIndex = 1;
     event.key = "Enter";
-    element._handleKeydown(event);
+    element._combobox._handleKeydown(event);
     expect(handledSelections).to.deep.equal(["2"]);
 
     // Press Escape.
     event.key = "Escape";
-    element._handleKeydown(event);
-    expect(element._isOpen).to.equal(false);
-    expect(element._activeIndex).to.equal(null);
+    element._combobox._handleKeydown(event);
+    expect(element._combobox.isOpen).to.equal(false);
+    expect(element._combobox.activeIndex).to.equal(null);
     expect(event.preventDefaultCalls).to.equal(6);
   });
 
@@ -142,7 +142,7 @@ describe("community-selector", () => {
     };
 
     // Select a different community from the selector.
-    element._isOpen = true;
+    element._combobox.isOpen = true;
     await element._handleCommunityClick(event, {
       community_id: "2",
       display_name: "OpenSSF",
@@ -161,7 +161,7 @@ describe("community-selector", () => {
       ],
     ]);
     expect(event.prevented).to.equal(true);
-    expect(element._isOpen).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(false);
     expect(element._isSubmitting).to.equal(false);
   });
 
@@ -183,7 +183,7 @@ describe("community-selector", () => {
     };
 
     // Select a different community from the selector.
-    element._isOpen = true;
+    element._combobox.isOpen = true;
     await element._handleCommunityClick(event, {
       community_id: "2",
       display_name: "OpenSSF",
@@ -192,7 +192,7 @@ describe("community-selector", () => {
 
     // The failed selection leaves the selector usable and reports the error.
     expect(element._isSubmitting).to.equal(false);
-    expect(element._isOpen).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(false);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({
       text: "Something went wrong selecting the community. Please try again later.",

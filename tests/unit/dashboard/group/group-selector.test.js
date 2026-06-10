@@ -61,7 +61,7 @@ describe("group-selector", () => {
     });
 
     // Apply the group search query.
-    element._query = "cloud";
+    element._combobox.setQuery("cloud");
     await element.updateComplete;
 
     // Verify filters groups from the current query.
@@ -103,7 +103,7 @@ describe("group-selector", () => {
     ]);
     expect(prevented).to.equal(true);
     expect(element._isSubmitting).to.equal(false);
-    expect(element._isOpen).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(false);
   });
 
   it("shows an error and keeps the selector usable when selection fails", async () => {
@@ -135,7 +135,7 @@ describe("group-selector", () => {
 
     // The failed selection leaves the selector usable and reports the error.
     expect(element._isSubmitting).to.equal(false);
-    expect(element._isOpen).to.equal(false);
+    expect(element._combobox.isOpen).to.equal(false);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({
       text: "Something went wrong selecting the group. Please try again later.",
