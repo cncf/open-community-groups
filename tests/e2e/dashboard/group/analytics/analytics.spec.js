@@ -2,6 +2,18 @@ import { expect, test } from "../../../fixtures.js";
 
 import { navigateToPath } from "../../../utils.js";
 
+const expectChartSettled = async (page, selector) => {
+  const chart = page.locator(selector);
+
+  if ((await chart.count()) === 0) {
+    await expect(page.locator(".chart-empty-state").first()).toBeVisible();
+    return;
+  }
+
+  await expect(chart).toBeVisible();
+  await expect(chart.locator("svg-spinner")).toHaveCount(0);
+};
+
 test.describe("group dashboard analytics view", () => {
   test("organizer can view analytics summary cards and chart sections", async ({
     organizerGroupPage,
@@ -87,5 +99,10 @@ test.describe("group dashboard analytics view", () => {
         .locator(".chart-empty-state, #group-views-monthly-chart")
         .first(),
     ).toBeVisible();
+
+    // Verify representative charts finish rendering or show the empty state.
+    await expectChartSettled(organizerGroupPage, "#members-running-chart");
+    await expectChartSettled(organizerGroupPage, "#events-running-chart");
+    await expectChartSettled(organizerGroupPage, "#attendees-running-chart");
   });
 });

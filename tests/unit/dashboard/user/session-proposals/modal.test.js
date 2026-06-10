@@ -157,6 +157,25 @@ describe("session-proposal-modal", () => {
     });
   });
 
+  it("preserves soft line breaks when viewing a proposal description", async () => {
+    // Call mount lit component.
+    const element = await mountLitComponent("session-proposal-modal");
+
+    // Open the view modal with markdown HTML that contains soft line breaks.
+    element.openView({
+      title: "Line aware proposal",
+      description_html: "<p>First line\nSecond line\nThird line</p>",
+    });
+    await element.updateComplete;
+
+    // Verify the description block opts into preserving user-entered lines.
+    const description = element.querySelector(".markdown.whitespace-pre-line");
+    expect(description).to.exist;
+    expect(description.classList.contains("[&_p]:whitespace-pre-line")).to.equal(true);
+    expect(description.classList.contains("[&_li]:whitespace-pre-line")).to.equal(true);
+    expect(description.querySelector("p").textContent).to.equal("First line\nSecond line\nThird line");
+  });
+
   it("removes the document keydown listener when disconnected", async () => {
     // Prepare original remove event listener for removes the document keydown.
     const originalRemoveEventListener = document.removeEventListener.bind(document);

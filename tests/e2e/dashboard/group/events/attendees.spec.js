@@ -13,9 +13,14 @@ import {
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
   TEST_USER_IDS,
+  getAttendButton,
+  getLeaveButton,
   navigateToEvent,
   navigateToPath,
+  selectTimezone,
+  waitForAttendanceState,
 } from "../../../utils.js";
+import { fillMarkdownEditor } from "../../form-helpers.js";
 
 import {
   ATTENDEE_NOTIFICATION_BODY,
@@ -61,6 +66,140 @@ const openAttendeesTab = async (page, eventName, eventId) => {
   ).toBeVisible();
 
   return attendeesContent;
+};
+
+// Create a published event that requires organizer approval for attendees.
+const createApprovalRequiredEvent = async (page, eventName) => {
+  await navigateToPath(page, "/dashboard/group?tab=events");
+
+  const dashboardContent = page.locator("#dashboard-content");
+  await expect(
+    dashboardContent.getByText("Events", { exact: true }),
+  ).toBeVisible();
+  await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+  await expect(page.locator("#name")).toBeVisible();
+
+  await page.locator("#name").fill(eventName);
+  await page.locator("#kind_id").selectOption("virtual");
+  await page
+    .locator("#category_id")
+    .selectOption("33333333-3333-3333-3333-333333333331");
+  await page
+    .locator("#description_short")
+    .fill("A temporary approval-required event from the e2e suite.");
+  await fillMarkdownEditor(
+    page,
+    "description",
+    "A temporary approval-required event for invitation request coverage.",
+  );
+  await page.locator("#capacity").fill("25");
+  await page
+    .locator("#toggle_attendee_approval_required")
+    .check({ force: true });
+
+  await page.locator("button[data-section-next]").click();
+  await expect(
+    page.locator('button[data-section="date-venue"]'),
+  ).toHaveAttribute("data-active", "true");
+  await selectTimezone(page, "UTC");
+  await page.locator("#starts_at").fill("2030-06-20T10:00");
+  await page.locator("#ends_at").fill("2030-06-20T12:00");
+  await page
+    .locator("#meeting_join_url")
+    .fill("https://meet.example.com/e2e-invitation-requests");
+
+  const visibleAddEventButton = page.locator(
+    "#pending-changes-alert:not(.hidden) #add-event-button",
+  );
+  await expect(visibleAddEventButton).toBeVisible();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/dashboard/group/events/add") &&
+        response.status() === 201,
+    ),
+    visibleAddEventButton.click(),
+  ]);
+
+  const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+  await expect(eventRow).toBeVisible();
+
+  if ((await eventRow.innerText()).includes("Draft")) {
+    await eventRow.locator(".btn-actions").click();
+    const publishButton = eventRow.locator('button[id^="publish-event-"]');
+    await expect(publishButton).toBeVisible();
+    await publishButton.click();
+    await expect(page.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to publish this event?",
+    );
+
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/publish") &&
+          response.ok(),
+      ),
+      page.getByRole("button", { name: "Yes" }).click(),
+    ]);
+    await expect(eventRow).toContainText("Published");
+  }
+
+  const actionsButton = eventRow.locator(".btn-actions");
+  const eventId = await actionsButton.getAttribute("data-event-id");
+
+  expect(eventId).not.toBeNull();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes(`/dashboard/group/events/${eventId}/update`) &&
+        response.ok(),
+    ),
+    eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+  ]);
+  const viewEventHref = await page
+    .locator("#event-update-page")
+    .getAttribute("data-event-public-url");
+
+  expect(viewEventHref).not.toBeNull();
+
+  return {
+    eventId: eventId ?? "",
+    viewEventHref: viewEventHref ?? "",
+  };
+};
+
+// Delete an event row from the events list.
+const deleteEventFromList = async (page, eventName) => {
+  await navigateToPath(page, "/dashboard/group?tab=events");
+
+  const dashboardContent = page.locator("#dashboard-content");
+  const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+  await expect(eventRow).toBeVisible();
+  await eventRow.locator(".btn-actions").click();
+
+  const deleteButton = eventRow.locator('button[id^="delete-event-"]');
+  await expect(deleteButton).toBeVisible();
+  await deleteButton.click();
+  await expect(page.locator(".swal2-popup")).toContainText(
+    "Are you sure you wish to delete this event?",
+  );
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "DELETE" &&
+        response.url().includes("/dashboard/group/events/") &&
+        response.url().includes("/delete") &&
+        response.ok(),
+    ),
+    page.getByRole("button", { name: "Yes" }).click(),
+  ]);
 };
 
 test.describe("group dashboard attendees tab", () => {
@@ -743,6 +882,132 @@ test.describe("group dashboard attendees tab", () => {
         hasText: "No attendees found for this event.",
       }),
     ).toBeVisible();
+  });
+
+  test("organizer can accept and reject attendee invitation requests", async ({
+    organizerGroupPage,
+    pending1Page,
+    pending2Page,
+  }) => {
+    // Give the invitation request flow enough time on slower deep runs.
+    test.setTimeout(60_000);
+
+    // Create a temporary approval-required event.
+    const eventName = `E2E Invitation Requests ${Date.now()}`;
+    const { eventId, viewEventHref } = await createApprovalRequiredEvent(
+      organizerGroupPage,
+      eventName,
+    );
+
+    try {
+      // Request invitations from two users.
+      for (const requesterPage of [pending1Page, pending2Page]) {
+        await requesterPage.goto(buildE2eUrl(viewEventHref));
+        await waitForAttendanceState(requesterPage);
+        await expect(getAttendButton(requesterPage)).toContainText(
+          "Request invitation",
+        );
+
+        await Promise.all([
+          requesterPage.waitForResponse(
+            (response) =>
+              response.request().method() === "POST" &&
+              response.url().includes(`/event/${eventId}/attend`) &&
+              response.ok(),
+          ),
+          getAttendButton(requesterPage).click(),
+        ]);
+        await expect(getLeaveButton(requesterPage)).toContainText(
+          "Cancel request",
+        );
+      }
+
+      // Open the organizer Requests tab for the temporary event.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+      const eventRow = organizerGroupPage.locator("tr", { hasText: eventName });
+      await expect(eventRow).toBeVisible();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(`/dashboard/group/events/${eventId}/update`) &&
+            response.ok(),
+        ),
+        eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+      ]);
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests`,
+              ) &&
+            response.ok(),
+        ),
+        organizerGroupPage
+          .locator('button[data-section="invitation-requests"]')
+          .click(),
+      ]);
+
+      const requestsContent = organizerGroupPage.locator(
+        "#invitation-requests-content",
+      );
+      await expect(
+        requestsContent.getByRole("table", { name: "Invitation requests" }),
+      ).toBeVisible();
+
+      // Reject one invitation request.
+      const pendingOneRow = requestsContent.locator("tr", {
+        hasText: "E2E Pending One",
+      });
+      await expect(pendingOneRow).toContainText("Pending");
+      await pendingOneRow.getByLabel("Open actions menu").click();
+      await pendingOneRow.getByRole("menuitem", { name: "Reject" }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to reject this invitation request?",
+      );
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending1}/invitation-request/reject`,
+              ) &&
+            response.ok(),
+        ),
+        organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+      ]);
+      await expect(pendingOneRow).toContainText("Rejected");
+
+      // Accept the other invitation request.
+      const pendingTwoRow = requestsContent.locator("tr", {
+        hasText: "E2E Pending Two",
+      });
+      await expect(pendingTwoRow).toContainText("Pending");
+      await pendingTwoRow.getByLabel("Open actions menu").click();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending2}/invitation-request/accept`,
+              ) &&
+            response.ok(),
+        ),
+        pendingTwoRow.getByRole("menuitem", { name: "Accept" }).click(),
+      ]);
+      await expect(pendingTwoRow).toContainText("Accepted");
+    } finally {
+      await deleteEventFromList(organizerGroupPage, eventName);
+    }
   });
 
   test.describe("payment-enabled attendee refund flows", () => {

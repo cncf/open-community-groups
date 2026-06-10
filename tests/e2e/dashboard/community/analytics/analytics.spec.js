@@ -4,31 +4,48 @@ import { navigateToPath } from "../../../utils.js";
 
 const ANALYTICS_TABS = [
   {
+    chartId: "groups-running-chart",
     key: "groups",
     label: "Groups",
     representativeText: "Running total",
   },
   {
+    chartId: "members-running-chart",
     key: "members",
     label: "Members",
     representativeText: "Running total",
   },
   {
+    chartId: "events-running-chart",
     key: "events",
     label: "Events",
     representativeText: "Running total",
   },
   {
+    chartId: "attendees-running-chart",
     key: "attendees",
     label: "Attendees",
     representativeText: "Running total",
   },
   {
+    chartId: "total-views-monthly-chart",
     key: "page-views",
     label: "Page views",
     representativeText: "Community page",
   },
 ];
+
+const expectChartSettled = async (container, chartId) => {
+  const chart = container.locator(`#${chartId}`);
+
+  if ((await chart.count()) === 0) {
+    await expect(container.locator(".chart-empty-state").first()).toBeVisible();
+    return;
+  }
+
+  await expect(chart).toBeVisible();
+  await expect(chart.locator("svg-spinner")).toHaveCount(0);
+};
 
 test.describe("community dashboard analytics view", () => {
   test("admin can switch between analytics tabs and view each section", async ({
@@ -70,6 +87,7 @@ test.describe("community dashboard analytics view", () => {
       await expect(
         tabContent.getByText(analyticsTab.representativeText, { exact: true }),
       ).toBeVisible();
+      await expectChartSettled(tabContent, analyticsTab.chartId);
     }
   });
 });

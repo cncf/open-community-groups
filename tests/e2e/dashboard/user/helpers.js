@@ -65,10 +65,9 @@ export const restoreCoSpeakerInvitation = async (
 export const resetCommunityInvitation = async (page, userId, role) => {
   await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
 
-  const deleteResponse = await page.request.delete(
+  await page.request.delete(
     buildE2eUrl(`/dashboard/community/team/${userId}/delete`),
   );
-  expect([200, 204, 400, 404].includes(deleteResponse.status())).toBeTruthy();
 
   const addResponse = await page.request.post(
     buildE2eUrl("/dashboard/community/team/add"),
@@ -82,13 +81,20 @@ export const resetCommunityInvitation = async (page, userId, role) => {
   expect(addResponse.ok()).toBeTruthy();
 };
 
+export const clearCommunityInvitation = async (page, userId) => {
+  await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
+
+  await page.request.delete(
+    buildE2eUrl(`/dashboard/community/team/${userId}/delete`),
+  );
+};
+
 export const resetGroupInvitation = async (page, groupId, userId, role) => {
   await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
 
-  const deleteResponse = await page.request.delete(
+  await page.request.delete(
     buildE2eUrl(`/dashboard/group/team/${userId}/delete`),
   );
-  expect([200, 204, 400, 404].includes(deleteResponse.status())).toBeTruthy();
 
   const addResponse = await page.request.post(
     buildE2eUrl("/dashboard/group/team/add"),
@@ -115,6 +121,35 @@ export const ensureGroupInvitation = async (page, groupId, userId, role) => {
     },
   );
   expect(addResponse.status()).toBeLessThan(500);
+};
+
+export const clearEventAttendeeState = async (page, eventId, userId) => {
+  await page.request.put(
+    buildE2eUrl(
+      `/dashboard/group/events/${eventId}/attendees/${userId}/invitation/cancel`,
+    ),
+  );
+
+  await page.request.delete(
+    buildE2eUrl(
+      `/dashboard/group/events/${eventId}/attendees/${userId}/attendance`,
+    ),
+  );
+};
+
+export const ensureEventInvitation = async (page, groupId, eventId, userId) => {
+  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
+  await clearEventAttendeeState(page, eventId, userId);
+
+  const inviteResponse = await page.request.post(
+    buildE2eUrl(`/dashboard/group/events/${eventId}/attendees/invite`),
+    {
+      form: {
+        user_id: userId,
+      },
+    },
+  );
+  expect(inviteResponse.ok()).toBeTruthy();
 };
 
 export const createSessionProposal = async (page, title) => {

@@ -1,9 +1,16 @@
 import { expect, test } from "../../../fixtures.js";
 
-import { TEST_GROUP_IDS, TEST_USER_IDS } from "../../../utils.js";
+import {
+  TEST_EVENT_IDS,
+  TEST_GROUP_IDS,
+  TEST_USER_IDS,
+} from "../../../utils.js";
 
 import {
+  clearCommunityInvitation,
+  clearEventAttendeeState,
   ensureGroupInvitation,
+  ensureEventInvitation,
   openUserDashboardPath,
   resetCommunityInvitation,
   resetGroupInvitation,
@@ -232,6 +239,200 @@ test.describe("user dashboard invitations view", () => {
         TEST_GROUP_IDS.community1.alpha,
         TEST_USER_IDS.pending2,
         "viewer",
+      );
+    }
+  });
+
+  test("rejecting a pending community invitation removes it from the user dashboard", async ({
+    adminCommunityPage,
+    pending2Page,
+  }) => {
+    // Reset a pending community invitation before rejecting it.
+    await resetCommunityInvitation(
+      adminCommunityPage,
+      TEST_USER_IDS.pending2,
+      "viewer",
+    );
+
+    // Open the user dashboard page.
+    await openUserDashboardPath(
+      "/dashboard/user?tab=invitations",
+      pending2Page,
+    );
+
+    // Find the dashboard content.
+    const dashboardContent = pending2Page.locator("#dashboard-content");
+    const communityInvitationRow = dashboardContent.locator("tr", {
+      hasText: "e2e-test-community",
+    });
+    const rejectCommunityInvitationButton =
+      communityInvitationRow.getByTitle("Reject");
+
+    try {
+      // Verify rejecting a pending community invitation removes it from the user dashboard.
+      await expect(
+        dashboardContent.getByText("Community Invitations", { exact: true }),
+      ).toBeVisible();
+      await expect(rejectCommunityInvitationButton).toBeVisible();
+
+      // Click the reject community invitation button.
+      await rejectCommunityInvitationButton.click();
+      await expect(pending2Page.locator(".swal2-popup")).toContainText(
+        "Are you sure you would like to reject this invitation?",
+      );
+
+      // Click Yes.
+      await Promise.all([
+        pending2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/community/") &&
+            response.url().endsWith("/reject"),
+        ),
+        pending2Page.getByRole("button", { name: "Yes" }).click(),
+      ]);
+
+      // Reload the invited user dashboard.
+      await pending2Page.reload();
+
+      // Assert how many matching elements are shown.
+      await expect(
+        dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+      ).toHaveCount(0);
+    } finally {
+      await clearCommunityInvitation(
+        adminCommunityPage,
+        TEST_USER_IDS.pending2,
+      );
+    }
+  });
+
+  test("accepting an event invitation removes it from the user dashboard", async ({
+    organizerGroupPage,
+    pending1Page,
+  }) => {
+    // Ensure the seeded event invitation exists before accepting it.
+    await ensureEventInvitation(
+      organizerGroupPage,
+      TEST_GROUP_IDS.community1.alpha,
+      TEST_EVENT_IDS.alpha.two,
+      TEST_USER_IDS.pending1,
+    );
+
+    // Open the user dashboard page.
+    await openUserDashboardPath(
+      "/dashboard/user?tab=invitations",
+      pending1Page,
+    );
+
+    // Find the dashboard content.
+    const dashboardContent = pending1Page.locator("#dashboard-content");
+    const eventInvitationRow = dashboardContent.locator("tr", {
+      hasText: "Upcoming Virtual Event",
+    });
+    const acceptEventInvitationButton =
+      eventInvitationRow.getByTitle("Approve");
+
+    try {
+      // Verify accepting an event invitation removes it from the dashboard.
+      await expect(
+        dashboardContent.getByText("Event Invitations", { exact: true }),
+      ).toBeVisible();
+      await expect(eventInvitationRow).toContainText("Platform Ops Meetup");
+      await expect(acceptEventInvitationButton).toBeVisible();
+
+      // Click the approve event invitation button.
+      await Promise.all([
+        pending1Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/event/") &&
+            response.url().endsWith("/accept"),
+        ),
+        acceptEventInvitationButton.click(),
+      ]);
+
+      // Reload the invited user dashboard.
+      await pending1Page.reload();
+
+      // Assert how many matching elements are shown.
+      await expect(
+        dashboardContent.locator("tr", { hasText: "Upcoming Virtual Event" }),
+      ).toHaveCount(0);
+    } finally {
+      await clearEventAttendeeState(
+        organizerGroupPage,
+        TEST_EVENT_IDS.alpha.two,
+        TEST_USER_IDS.pending1,
+      );
+    }
+  });
+
+  test("rejecting an event invitation removes it from the user dashboard", async ({
+    organizerGroupPage,
+    pending2Page,
+  }) => {
+    // Ensure the seeded event invitation exists before rejecting it.
+    await ensureEventInvitation(
+      organizerGroupPage,
+      TEST_GROUP_IDS.community1.alpha,
+      TEST_EVENT_IDS.alpha.two,
+      TEST_USER_IDS.pending2,
+    );
+
+    // Open the user dashboard page.
+    await openUserDashboardPath(
+      "/dashboard/user?tab=invitations",
+      pending2Page,
+    );
+
+    // Find the dashboard content.
+    const dashboardContent = pending2Page.locator("#dashboard-content");
+    const eventInvitationRow = dashboardContent.locator("tr", {
+      hasText: "Upcoming Virtual Event",
+    });
+    const rejectEventInvitationButton = eventInvitationRow.getByTitle("Reject");
+
+    try {
+      // Verify rejecting an event invitation removes it from the dashboard.
+      await expect(
+        dashboardContent.getByText("Event Invitations", { exact: true }),
+      ).toBeVisible();
+      await expect(eventInvitationRow).toContainText("Platform Ops Meetup");
+      await expect(rejectEventInvitationButton).toBeVisible();
+
+      // Click the reject event invitation button.
+      await rejectEventInvitationButton.click();
+      await expect(pending2Page.locator(".swal2-popup")).toContainText(
+        "Are you sure you would like to reject this invitation?",
+      );
+
+      // Click Yes.
+      await Promise.all([
+        pending2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.ok() &&
+            response.url().includes("/dashboard/user/invitations/event/") &&
+            response.url().endsWith("/reject"),
+        ),
+        pending2Page.getByRole("button", { name: "Yes" }).click(),
+      ]);
+
+      // Reload the invited user dashboard.
+      await pending2Page.reload();
+
+      // Assert how many matching elements are shown.
+      await expect(
+        dashboardContent.locator("tr", { hasText: "Upcoming Virtual Event" }),
+      ).toHaveCount(0);
+    } finally {
+      await clearEventAttendeeState(
+        organizerGroupPage,
+        TEST_EVENT_IDS.alpha.two,
+        TEST_USER_IDS.pending2,
       );
     }
   });
