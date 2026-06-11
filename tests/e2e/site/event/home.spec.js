@@ -149,6 +149,38 @@ test.describe("event page", () => {
       await expect(page.getByText(/New York/).first()).toBeVisible();
     });
 
+    test("location map modal opens and closes", async ({ page }) => {
+      // Target the public location map and modal elements.
+      const locationSection = getEventInfoSection(page, "Location");
+      const mapButton = locationSection.getByRole("button", {
+        name: "Open full map view",
+      });
+      const mapModal = page.locator("#event-map-modal");
+      const modalMap = page.locator("#event-map-modal-map");
+
+      // Verify the seeded event renders the interactive map trigger.
+      await expect(mapButton).toBeVisible();
+      await expect(page.locator("#event-map")).toHaveAttribute(
+        "data-lat",
+        "40.7128",
+      );
+      await expect(page.locator("#event-map")).toHaveAttribute(
+        "data-lng",
+        "-74.006",
+      );
+
+      // Open the full map modal from the location preview.
+      await mapButton.click();
+
+      // Verify the modal opens and Leaflet initializes the modal map.
+      await expect(mapModal).toBeVisible();
+      await expect(modalMap).toHaveClass(/leaflet-container/);
+
+      // Close the map modal and verify it is hidden again.
+      await page.locator("#close-event-map-modal").click();
+      await expect(mapModal).toBeHidden();
+    });
+
     test("about section renders with heading and description", async ({
       page,
     }) => {

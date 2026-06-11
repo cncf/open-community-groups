@@ -10,7 +10,10 @@ import {
   initializeEventUpdatePage,
   initializeEventUpdatePageRoots,
 } from "/static/js/dashboard/group/event-update.js";
-import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
+import {
+  waitForAnimationFrames,
+  waitForMicrotask,
+} from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockHtmx, mockSwal } from "/tests/unit/test-utils/globals.js";
 import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
@@ -229,6 +232,53 @@ describe("event page modules", () => {
     expect(requestEvent.detail.parameters["sessions[0][starts_at]"]).to.equal(
       "2026-05-10T10:00:00",
     );
+  });
+
+  it("reports the first invalid add page select when saving", async () => {
+    mountAddPageShell();
+
+    document.getElementById("details-form").innerHTML = `
+      <select id="kind_id" name="kind_id" required>
+        <option value="">Select</option>
+        <option value="virtual">Virtual</option>
+      </select>
+      <select id="category_id" name="category_id" required>
+        <option value="">Select</option>
+        <option value="general">General</option>
+      </select>
+    `;
+
+    const reportCalls = [];
+    const kindSelect = document.querySelector("#details-form #kind_id");
+    const categorySelect = document.querySelector("#details-form #category_id");
+    kindSelect.setCustomValidity("Please select an item in the list.");
+    categorySelect.setCustomValidity("Please select an item in the list.");
+    kindSelect.reportValidity = () => {
+      reportCalls.push("kind_id");
+      return false;
+    };
+    categorySelect.reportValidity = () => {
+      reportCalls.push("category_id");
+      return false;
+    };
+
+    initializeEventAddPage();
+
+    const requestEvent = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        elt: document.getElementById("add-event-button"),
+      },
+    });
+
+    document.getElementById("add-event-button").dispatchEvent(requestEvent);
+    await waitForAnimationFrames(1);
+    await waitForMicrotask();
+
+    expect(requestEvent.defaultPrevented).to.equal(true);
+    expect(reportCalls).to.deep.equal(["kind_id"]);
+    expect(document.activeElement).to.equal(kindSelect);
   });
 
   it("updates add page recurrence labels and additional-occurrence controls", () => {

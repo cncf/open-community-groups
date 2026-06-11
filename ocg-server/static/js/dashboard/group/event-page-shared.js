@@ -236,10 +236,58 @@ export const createSessionsDateRangeSync =
   };
 
 /**
+ * Finds the first invalid form control.
+ * @param {HTMLFormElement} formElement Form to inspect.
+ * @returns {HTMLElement|null} Invalid form control, or null when all controls are valid.
+ */
+const findFirstInvalidFormControl = (formElement) => {
+  const controls = Array.from(formElement.elements || []);
+
+  return (
+    controls.find((control) => {
+      if (!(control instanceof HTMLElement) || typeof control.checkValidity !== "function") {
+        return false;
+      }
+
+      if ("validity" in control && control.validity) {
+        return !control.validity.valid;
+      }
+
+      return !control.checkValidity();
+    }) || null
+  );
+};
+
+/**
+ * Reports native validity on a field after its section has been made visible.
+ * @param {HTMLElement|HTMLFormElement} target Element that owns the validity UI.
+ * @returns {void}
+ */
+const reportInvalidTarget = (target) => {
+  const report = () => {
+    if (target instanceof HTMLElement && typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({ behavior: "auto", block: "center" });
+    }
+
+    if (target instanceof HTMLElement && typeof target.focus === "function") {
+      target.focus({ preventScroll: true });
+    }
+
+    target.reportValidity();
+  };
+
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => setTimeout(report, 0));
+  } else {
+    setTimeout(report, 0);
+  }
+};
+
+/**
  * Validates the common event forms and activates the first invalid section.
  * @param {Object} config Validation configuration.
  * @param {Document|Element} config.pageRoot Page root.
- * @param {string[]} config.formSections Form section names to validate.
+ * @param {string[]} config.formSections Form ids to validate.
  * @param {(sectionName: string) => void} config.displayActiveSection Section activation callback.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
@@ -260,12 +308,19 @@ export const validateEventFormsAcrossSections = ({
     sessionForm: getElementById(pageRoot, "sessions-form"),
   });
 
-  for (const formName of formSections) {
-    const formElement = getElementById(pageRoot, `${formName}-form`);
+  for (const formId of formSections) {
+    const formElement = getElementById(pageRoot, formId);
 
-    if (formElement && !formElement.checkValidity()) {
-      displayActiveSection(formName);
-      requestAnimationFrame(() => setTimeout(() => formElement.reportValidity(), 0));
+    if (formElement) {
+      const invalidControl = findFirstInvalidFormControl(formElement);
+      const invalidTarget = invalidControl || (!formElement.checkValidity() ? formElement : null);
+
+      if (!invalidTarget) {
+        continue;
+      }
+
+      displayActiveSection(formId.replace(/-form$/, ""));
+      reportInvalidTarget(invalidTarget);
       return false;
     }
   }

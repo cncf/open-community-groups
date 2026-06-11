@@ -17,7 +17,7 @@ import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js
 // -----------------------------------------------------------------------------
 
 const FIELD_SELECTOR =
-  'input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]), textarea';
+  'input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
 const GROUP_PRETTY_SLUG_PATTERN = /^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/;
 const GROUP_PRETTY_SLUG_MESSAGE =
   "Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number.";
@@ -37,7 +37,7 @@ const isPasswordField = (field) => field instanceof HTMLInputElement && field.ty
 /**
  * Normalizes a non-required field by trimming whitespace.
  * Skips password fields to preserve intentional spaces.
- * @param {HTMLInputElement|HTMLTextAreaElement} field - The form field
+ * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} field - The form field
  */
 const normalizeField = (field) => {
   if (isPasswordField(field)) return;
@@ -185,17 +185,19 @@ const handleInvalidEvent = (event) => {
 /**
  * Validates a required field is not empty or whitespace-only.
  * Also trims non-password fields on success.
- * @param {HTMLInputElement|HTMLTextAreaElement} field - The form field
+ * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} field - The form field
  * @returns {boolean} True if valid
  */
 const validateRequiredField = (field) => {
   field.setCustomValidity("");
 
-  const error = trimmedNonEmpty(field.value);
-  if (error) {
-    field.setCustomValidity(error);
-    field.reportValidity();
-    return false;
+  if (!(field instanceof HTMLSelectElement)) {
+    const error = trimmedNonEmpty(field.value);
+    if (error) {
+      field.setCustomValidity(error);
+      field.reportValidity();
+      return false;
+    }
   }
 
   if (!isPasswordField(field)) {
@@ -269,9 +271,11 @@ const wireRequiredInputs = (form) => {
 
   fields.forEach((field) => {
     if (!field.required) return;
-    field.addEventListener("input", () => {
+    const clearValidity = () => {
       field.setCustomValidity("");
-    });
+    };
+    field.addEventListener("input", clearValidity);
+    field.addEventListener("change", clearValidity);
   });
 };
 
