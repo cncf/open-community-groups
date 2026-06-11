@@ -4,9 +4,10 @@ returns void as $$
     -- Make sure only one batch of updates is processed at a time
     select pg_advisory_xact_lock(hashtextextended('ocg:update-group-views', 0));
 
-    -- Insert or update the corresponding views counters as needed
+    -- Insert or update the corresponding views counters as needed,
+    -- pre-aggregating duplicate (group_id, day) entries in the payload
     insert into group_views (group_id, day, total)
-    select views_batch.*
+    select views_batch.group_id, views_batch.day, sum(views_batch.total)::integer
     from (
         select
             (value->>0)::uuid as group_id,
@@ -17,6 +18,7 @@ returns void as $$
     join "group" g on g.group_id = views_batch.group_id
     where g.active = true
         and g.deleted = false
+    group by views_batch.group_id, views_batch.day
     on conflict (group_id, day) do
     update set total = group_views.total + excluded.total;
 $$ language sql;

@@ -15,8 +15,12 @@ select plan(4);
 \set audit2ID '00000000-0000-0000-0000-000000000102'
 \set audit3ID '00000000-0000-0000-0000-000000000103'
 \set audit4ID '00000000-0000-0000-0000-000000000104'
+\set audit5ID '00000000-0000-0000-0000-000000000106'
+\set audit6ID '00000000-0000-0000-0000-000000000107'
+\set audit7ID '00000000-0000-0000-0000-000000000108'
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set deletedRegionID '00000000-0000-0000-0000-000000000042'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set missingRegionID '00000000-0000-0000-0000-000000000041'
@@ -137,6 +141,39 @@ insert into audit_log (
         '{}'::jsonb,
         :'community1ID',
         'community'
+    ),
+    (
+        :'audit5ID',
+        'community_team_invitation_accepted',
+        :'actor1ID',
+        'alice',
+        :'community1ID',
+        '2024-02-06 10:00:00+00',
+        '{}'::jsonb,
+        :'actor1ID',
+        'user'
+    ),
+    (
+        :'audit6ID',
+        'community_team_invitation_rejected',
+        :'actor2ID',
+        'bob',
+        :'community1ID',
+        '2024-02-07 09:00:00+00',
+        '{}'::jsonb,
+        :'actor2ID',
+        'user'
+    ),
+    (
+        :'audit7ID',
+        'region_deleted',
+        :'actor1ID',
+        'alice',
+        :'community1ID',
+        '2024-02-07 10:00:00+00',
+        '{"name": "Atlantis"}'::jsonb,
+        :'deletedRegionID',
+        'region'
     );
 
 -- ============================================================================
@@ -152,6 +189,36 @@ select is(
     jsonb_build_object(
         'logs',
         '[
+            {
+                "action": "region_deleted",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000108",
+                "created_at": 1707300000,
+                "details": {"name": "Atlantis"},
+                "resource_id": "00000000-0000-0000-0000-000000000042",
+                "resource_name": "Atlantis",
+                "resource_type": "region"
+            },
+            {
+                "action": "community_team_invitation_rejected",
+                "actor_username": "bob",
+                "audit_log_id": "00000000-0000-0000-0000-000000000107",
+                "created_at": 1707296400,
+                "details": {},
+                "resource_id": "00000000-0000-0000-0000-000000000012",
+                "resource_name": "bob",
+                "resource_type": "user"
+            },
+            {
+                "action": "community_team_invitation_accepted",
+                "actor_username": "alice",
+                "audit_log_id": "00000000-0000-0000-0000-000000000106",
+                "created_at": 1707213600,
+                "details": {},
+                "resource_id": "00000000-0000-0000-0000-000000000011",
+                "resource_name": "alice",
+                "resource_type": "user"
+            },
             {
                 "action": "community_updated",
                 "actor_username": "userx1",
@@ -194,7 +261,7 @@ select is(
             }
         ]'::jsonb,
         'total',
-        4
+        7
     ),
     'Should return only community dashboard actions for the selected community'
 );

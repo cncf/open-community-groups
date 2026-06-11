@@ -12,7 +12,9 @@ returns json as $$
         select e.event_id, e.group_id, g.community_id, e.starts_at
         from event e
         join "group" g using (group_id)
-        where g.active = true
+        join community c on c.community_id = g.community_id
+        where c.active = true
+        and g.active = true
         and e.published = true
         and e.test_event = false
         and e.event_kind_id = any(p_event_kind_ids)

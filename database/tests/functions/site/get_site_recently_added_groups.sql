@@ -3,18 +3,21 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set category1ID '00000000-0000-0000-0000-000000000011'
+\set category2ID '00000000-0000-0000-0000-000000000012'
+\set community2ID '00000000-0000-0000-0000-000000000002'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
 \set group4ID '00000000-0000-0000-0000-000000000034'
+\set group5ID '00000000-0000-0000-0000-000000000035'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 \set region2ID '00000000-0000-0000-0000-000000000022'
 
@@ -41,9 +44,32 @@ insert into community (
     'https://example.com/banner.png'
 );
 
+-- Inactive community
+insert into community (
+    community_id,
+    active,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values (
+    :'community2ID',
+    false,
+    'inactive-community',
+    'Inactive Community',
+    'An inactive test community',
+    'https://example.com/logo2.png',
+    'https://example.com/banner_mobile2.png',
+    'https://example.com/banner2.png'
+);
+
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'communityID');
+values
+    (:'category1ID', 'Technology', :'communityID'),
+    (:'category2ID', 'Technology', :'community2ID');
 
 -- Region
 insert into region (region_id, name, community_id)
@@ -66,7 +92,10 @@ values
      'London', null, 'GB', 'United Kingdom', :'region2ID'),
     (:'group4ID', 'Test Group 4', 'jkl0def', :'communityID', :'category1ID',
      '2024-01-04 09:00:00+00', null, 'Fourth group (no logo)',
-     'Paris', null, 'FR', 'France', :'region2ID');
+     'Paris', null, 'FR', 'France', :'region2ID'),
+    (:'group5ID', 'Inactive Community Group', 'mno1ghi', :'community2ID', :'category2ID',
+     '2024-01-05 09:00:00+00', 'https://example.com/logo5.png', 'Group in inactive community',
+     'Denver', 'CO', 'US', 'United States', null);
 
 -- ============================================================================
 -- TESTS
@@ -82,6 +111,16 @@ select is(
         get_group_summary(:'communityID'::uuid, :'group1ID'::uuid)::jsonb
     ),
     'Should return groups ordered by creation date DESC'
+);
+
+-- Should not include groups from inactive communities
+select ok(
+    not exists (
+        select 1
+        from jsonb_array_elements(get_site_recently_added_groups()::jsonb) as g
+        where g->>'group_id' = :'group5ID'
+    ),
+    'Should not include groups from inactive communities'
 );
 
 -- Should return empty array when no groups exist

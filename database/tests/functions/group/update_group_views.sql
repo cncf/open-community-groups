@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -123,6 +123,25 @@ select is(
         )
     ),
     'Should increment existing counters on conflict'
+);
+
+-- Should aggregate duplicate entries for the same group and day
+select update_group_views(
+    jsonb_build_array(
+        jsonb_build_array(:'activeGroupID'::text, current_date::text, 1),
+        jsonb_build_array(:'activeGroupID'::text, current_date::text, 2)
+    )
+);
+
+select is(
+    (
+        select total
+        from group_views
+        where group_id = :'activeGroupID'
+        and day = current_date
+    ),
+    10,
+    'Should aggregate duplicate entries for the same group and day'
 );
 
 -- ============================================================================

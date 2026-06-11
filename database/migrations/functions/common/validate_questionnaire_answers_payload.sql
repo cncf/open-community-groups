@@ -51,6 +51,10 @@ begin
             raise exception 'questionnaire answer question_id must be a uuid';
         end;
 
+        if v_answer_question_id is null then
+            raise exception 'questionnaire answer question_id must be a uuid';
+        end if;
+
         if v_answer_question_id = any(v_answer_question_ids) then
             raise exception 'questionnaire answers must include each question at most once';
         end if;
@@ -93,7 +97,7 @@ begin
         -- Validate the answer value matches the question kind
         if v_question->>'kind' = 'free-text' then
             -- Validate free-text answer value
-            if jsonb_typeof(v_answer_value) <> 'string' then
+            if coalesce(jsonb_typeof(v_answer_value), '') <> 'string' then
                 raise exception 'free-text questionnaire answer must be a string';
             end if;
 
@@ -102,7 +106,7 @@ begin
             end if;
         elsif v_question->>'kind' = 'single-select' then
             -- Validate single-select answer value
-            if jsonb_typeof(v_answer_value) <> 'string' then
+            if coalesce(jsonb_typeof(v_answer_value), '') <> 'string' then
                 raise exception 'single-select questionnaire answer must be an option id';
             end if;
 
@@ -121,7 +125,7 @@ begin
             end if;
         else
             -- Validate multi-select answer value
-            if jsonb_typeof(v_answer_value) <> 'array' then
+            if coalesce(jsonb_typeof(v_answer_value), '') <> 'array' then
                 raise exception 'multi-select questionnaire answer must be an option id array';
             end if;
 

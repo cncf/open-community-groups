@@ -7,7 +7,9 @@ returns json as $$
     from (
         select g.community_id, g.group_id
         from "group" g
-        where g.active = true
+        join community c on c.community_id = g.community_id
+        where c.active = true
+        and g.active = true
         order by g.created_at desc
         limit 8
     ) g;

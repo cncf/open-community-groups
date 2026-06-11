@@ -15,23 +15,18 @@ begin
         raise exception 'session proposal invitation not found';
     end if;
 
-    -- Ensure invitation is still pending before accepting
-    perform 1
-    from session_proposal sp
-    where sp.session_proposal_id = p_session_proposal_id
-    and sp.co_speaker_user_id = p_actor_user_id
-    and sp.session_proposal_status_id = 'pending-co-speaker-response';
-
-    if not found then
-        raise exception 'session proposal is not awaiting co-speaker response';
-    end if;
-
-    -- Mark proposal as ready for submission after co-speaker acceptance
+    -- Mark proposal as ready for submission after co-speaker acceptance,
+    -- guarding on the pending status to avoid racing a concurrent response
     update session_proposal set
         session_proposal_status_id = 'ready-for-submission',
         updated_at = current_timestamp
     where session_proposal_id = p_session_proposal_id
-    and co_speaker_user_id = p_actor_user_id;
+    and co_speaker_user_id = p_actor_user_id
+    and session_proposal_status_id = 'pending-co-speaker-response';
+
+    if not found then
+        raise exception 'session proposal is not awaiting co-speaker response';
+    end if;
 
     -- Track the accepted invitation
     perform insert_audit_log(

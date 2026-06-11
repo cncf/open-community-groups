@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,8 +12,10 @@ select plan(14);
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
 \set category3ID '00000000-0000-0000-0000-000000000013'
+\set category4ID '00000000-0000-0000-0000-000000000014'
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set community3ID '00000000-0000-0000-0000-000000000003'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
@@ -21,6 +23,7 @@ select plan(14);
 \set group5ID '00000000-0000-0000-0000-000000000035'
 \set group6ID '00000000-0000-0000-0000-000000000036'
 \set group7ID '00000000-0000-0000-0000-000000000037'
+\set group8ID '00000000-0000-0000-0000-000000000038'
 \set nonExistentCommunityID '00000000-0000-0000-0000-999999999999'
 \set region1ID '00000000-0000-0000-0000-000000000021'
 
@@ -57,12 +60,34 @@ insert into community (
         'https://example.com/banner2.png'
     );
 
+-- Inactive community
+insert into community (
+    community_id,
+    active,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values (
+    :'community3ID',
+    false,
+    'inactive-community',
+    'Inactive Community',
+    'An inactive test community',
+    'https://example.com/logo3.png',
+    'https://example.com/banner_mobile3.png',
+    'https://example.com/banner3.png'
+);
+
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
 values
     (:'category1ID', 'Technology', :'community1ID'),
     (:'category2ID', 'Business', :'community1ID'),
-    (:'category3ID', 'Technology', :'community2ID');
+    (:'category3ID', 'Technology', :'community2ID'),
+    (:'category4ID', 'Technology', :'community3ID');
 
 -- Region
 insert into region (region_id, name, community_id)
@@ -115,7 +140,11 @@ insert into "group" (
     (:'group7ID', 'Deleted Group', 'stu5mno', :'community1ID', :'category2ID',
      array['deleted'], 'Seattle', 'WA', 'US', 'United States', :'region1ID',
      ST_GeogFromText('POINT(-122.3321 47.6062)'), 'This group is soft deleted.',
-     'https://example.com/deleted-logo.png', false, '2024-01-07 10:00:00+00', true);
+     'https://example.com/deleted-logo.png', false, '2024-01-07 10:00:00+00', true),
+    (:'group8ID', 'Inactive Community Group', 'vwx6pqr', :'community3ID', :'category4ID',
+     array['inactive-community'], 'Denver', 'CO', 'US', 'United States', null,
+     ST_GeogFromText('POINT(-104.9903 39.7392)'), 'This group belongs to an inactive community.',
+     'https://example.com/inactive-community-logo.png', true, '2024-01-08 10:00:00+00', false);
 
 -- ============================================================================
 -- TESTS
@@ -158,6 +187,18 @@ select ok(
         where g->>'group_id' = :'group7ID'
     ),
     'Should exclude soft-deleted groups when include_inactive is enabled'
+);
+
+-- Should exclude groups from inactive communities even when include_inactive is enabled
+select ok(
+    not exists (
+        select 1
+        from jsonb_array_elements(
+            search_groups(jsonb_build_object('include_inactive', true, 'limit', 10, 'offset', 0))::jsonb->'groups'
+        ) as g
+        where g->>'group_id' = :'group8ID'
+    ),
+    'Should exclude groups from inactive communities even when include_inactive is enabled'
 );
 
 -- Should filter groups by community

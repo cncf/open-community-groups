@@ -277,7 +277,7 @@ read-only activity stream for community dashboard operations.
 Coverage in this view includes:
 
 - Community settings updates.
-- Community team membership changes.
+- Community team membership changes, including invitation accept and reject outcomes.
 - Region, group category, and event category changes.
 - Group portfolio actions done from the community dashboard, including add, activate, deactivate,
   delete, and update.
@@ -294,7 +294,7 @@ Target display behavior:
 
 - OCG shows the resource type plus the current resource name.
 - If the current resource row no longer exists, the audit row still remains and falls back to the
-  stored resource identifier.
+  name snapshot stored with the entry when available, or to the stored resource identifier.
 
 Scope note:
 

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -246,6 +246,21 @@ select is(
         "youtube_url": null
     }'::jsonb,
     'Should persist nulls for empty-string nullable fields'
+);
+
+-- Should raise an error when the community does not exist
+select throws_ok(
+    $$select update_community(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{
+            "description": "Some description",
+            "display_name": "Some Community",
+            "logo_url": "https://some.com/logo.png"
+        }'::jsonb
+    )$$,
+    'community not found',
+    'Should raise an error when the community does not exist'
 );
 
 -- ============================================================================

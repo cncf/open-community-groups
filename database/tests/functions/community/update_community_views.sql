@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -100,6 +100,25 @@ select is(
         )
     ),
     'Should increment existing counters on conflict'
+);
+
+-- Should aggregate duplicate entries for the same community and day
+select update_community_views(
+    jsonb_build_array(
+        jsonb_build_array(:'activeCommunityID'::text, current_date::text, 1),
+        jsonb_build_array(:'activeCommunityID'::text, current_date::text, 2)
+    )
+);
+
+select is(
+    (
+        select total
+        from community_views
+        where community_id = :'activeCommunityID'
+        and day = current_date
+    ),
+    10,
+    'Should aggregate duplicate entries for the same community and day'
 );
 
 -- ============================================================================

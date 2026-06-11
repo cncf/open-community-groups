@@ -103,6 +103,7 @@ select results_eq(
             actor_user_id,
             actor_username,
             community_id,
+            details,
             resource_type,
             resource_id
         from audit_log
@@ -113,6 +114,7 @@ select results_eq(
             null::uuid,
             null::text,
             '00000000-0000-0000-0000-000000000001'::uuid,
+            '{"name": "Security"}'::jsonb,
             'group_category',
             '00000000-0000-0000-0000-000000000012'::uuid
         )

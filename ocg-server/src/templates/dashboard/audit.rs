@@ -99,6 +99,8 @@ impl ListPage {
 const COMMUNITY_SCOPES: &[AuditScope] = &[AuditScope::Community];
 /// Scopes for shared community and group audit actions.
 const COMMUNITY_GROUP_SCOPES: &[AuditScope] = &[AuditScope::Community, AuditScope::Group];
+/// Scopes for shared community and user audit actions.
+const COMMUNITY_USER_SCOPES: &[AuditScope] = &[AuditScope::Community, AuditScope::User];
 /// Scopes for group-only audit actions.
 const GROUP_SCOPES: &[AuditScope] = &[AuditScope::Group];
 /// Scopes for shared group and user audit actions.
@@ -115,12 +117,12 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
     },
     AuditActionDefinition {
         label: "Community team invitation accepted",
-        scopes: USER_SCOPES,
+        scopes: COMMUNITY_USER_SCOPES,
         value: "community_team_invitation_accepted",
     },
     AuditActionDefinition {
         label: "Community team invitation rejected",
-        scopes: USER_SCOPES,
+        scopes: COMMUNITY_USER_SCOPES,
         value: "community_team_invitation_rejected",
     },
     AuditActionDefinition {

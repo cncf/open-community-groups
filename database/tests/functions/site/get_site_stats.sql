@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,16 +11,21 @@ select plan(3);
 
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set community3ID '00000000-0000-0000-0000-000000000003'
 \set event1ID '00000000-0000-0000-0000-000000000101'
 \set event2ID '00000000-0000-0000-0000-000000000102'
 \set event3ID '00000000-0000-0000-0000-000000000103'
 \set event4ID '00000000-0000-0000-0000-000000000104'
+\set event5ID '00000000-0000-0000-0000-000000000105'
 \set eventCategory2ID '00000000-0000-0000-0000-000000000302'
+\set eventCategory3ID '00000000-0000-0000-0000-000000000303'
 \set eventCategoryID '00000000-0000-0000-0000-000000000301'
 \set group1ID '00000000-0000-0000-0000-000000000201'
 \set group2ID '00000000-0000-0000-0000-000000000202'
 \set group3ID '00000000-0000-0000-0000-000000000203'
+\set group4ID '00000000-0000-0000-0000-000000000204'
 \set groupCategory2ID '00000000-0000-0000-0000-000000000402'
+\set groupCategory3ID '00000000-0000-0000-0000-000000000403'
 \set groupCategoryID '00000000-0000-0000-0000-000000000401'
 \set user1ID '00000000-0000-0000-0000-000000000501'
 \set user2ID '00000000-0000-0000-0000-000000000502'
@@ -38,17 +43,24 @@ values
     (:'community1ID', 'community-one', 'Community One', 'Test community 1', 'https://example.com/logo1.png', 'https://example.com/banner_mobile1.png', 'https://example.com/banner1.png'),
     (:'community2ID', 'community-two', 'Community Two', 'Test community 2', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
+-- Inactive community
+insert into community (community_id, active, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values
+    (:'community3ID', false, 'community-three', 'Community Three', 'Inactive test community', 'https://example.com/logo3.png', 'https://example.com/banner_mobile3.png', 'https://example.com/banner3.png');
+
 -- Group Category
 insert into group_category (group_category_id, community_id, name)
 values
     (:'groupCategoryID', :'community1ID', 'General'),
-    (:'groupCategory2ID', :'community2ID', 'General');
+    (:'groupCategory2ID', :'community2ID', 'General'),
+    (:'groupCategory3ID', :'community3ID', 'General');
 
 -- Event Category
 insert into event_category (event_category_id, community_id, name)
 values
     (:'eventCategoryID', :'community1ID', 'Meetup'),
-    (:'eventCategory2ID', :'community2ID', 'Meetup');
+    (:'eventCategory2ID', :'community2ID', 'Meetup'),
+    (:'eventCategory3ID', :'community3ID', 'Meetup');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
@@ -63,6 +75,7 @@ values
 -- month_5: group1 (active)
 -- month_3: group2 (active)
 -- month_2: group3 (deleted)
+-- month_5: group4 (active, inactive community)
 insert into "group" (
     group_id,
     community_id,
@@ -81,25 +94,31 @@ insert into "group" (
         true, false),
     (:'group3ID', :'community1ID', :'groupCategoryID', 'Group Three', 'group-three',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '10 days',
-        false, true);
+        false, true),
+    (:'group4ID', :'community3ID', :'groupCategory3ID', 'Group Four', 'group-four',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '15 days',
+        true, false);
 
 -- Group Members
 -- month_4: user1 joins group1
 -- month_3: user2 joins group1
 -- month_2: user3 joins group2
 -- month_1: user4 joins group3 (deleted group)
+-- month_1: user5 joins group4 (inactive community)
 insert into group_member (group_id, user_id, created_at)
 values
     (:'group1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '5 days'),
     (:'group1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '5 days'),
     (:'group2ID', :'user3ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '5 days'),
-    (:'group3ID', :'user4ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '5 days');
+    (:'group3ID', :'user4ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '5 days'),
+    (:'group4ID', :'user5ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '8 days');
 
 -- Events
 -- month_4: event1 (published)
 -- month_1: event2 (published)
 -- null: event3 (published, no start)
 -- month_1: event4 (unpublished)
+-- month_1: event5 (published, inactive community)
 insert into event (
     event_id,
     group_id,
@@ -125,7 +144,10 @@ insert into event (
         null),
     (:'event4ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Four', 'event-four', 'Event 4', 'UTC',
         false, false, false,
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '6 days');
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '6 days'),
+    (:'event5ID', :'group4ID', :'eventCategory3ID', 'in-person', 'Event Five', 'event-five', 'Event 5', 'UTC',
+        true, false, false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '9 days');
 
 -- Event Attendees
 -- month_4: attendee1
@@ -133,13 +155,15 @@ insert into event (
 -- month_2: attendee3
 -- month_1: attendee4
 -- month_1: attendee5 (unpublished event)
+-- month_1: attendee6 (inactive community event)
 insert into event_attendee (event_id, user_id, created_at)
 values
     (:'event1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '1 day'),
     (:'event1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '1 day'),
     (:'event3ID', :'user3ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '1 day'),
     (:'event2ID', :'user4ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '1 day'),
-    (:'event4ID', :'user5ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '3 days');
+    (:'event4ID', :'user5ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '3 days'),
+    (:'event5ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '4 days');
 
 -- ============================================================================
 -- TESTS
@@ -225,6 +249,13 @@ select is(
     (get_site_stats()::jsonb->'events'->>'total')::int,
     3,
     'Should exclude unpublished events from totals'
+);
+
+-- Should exclude data from inactive communities
+select is(
+    (get_site_stats()::jsonb->'members'->>'total')::int,
+    3,
+    'Should exclude members of groups in inactive communities from totals'
 );
 
 -- ============================================================================

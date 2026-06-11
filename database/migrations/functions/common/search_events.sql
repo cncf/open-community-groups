@@ -96,10 +96,12 @@ begin
             end as distance
         from event e
         join "group" g using (group_id)
+        join community c on c.community_id = g.community_id
         join group_category gc using (group_category_id)
         join event_category ec using (event_category_id)
         left join region r using (region_id)
-        where g.active = true
+        where c.active = true
+        and g.active = true
         and e.published = true
         and e.canceled = false
         and e.test_event = false
