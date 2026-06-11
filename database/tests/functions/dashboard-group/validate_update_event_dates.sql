@@ -126,7 +126,7 @@ select lives_ok(
             'timezone', 'UTC',
             'sessions', jsonb_build_array(
                 jsonb_build_object(
-                    'session_id', '00000000-0000-0000-0000-000000000103',
+                    'session_id', '3a4a0000-0000-0000-0000-000000000001',
                     'starts_at', to_char(
                         current_timestamp at time zone 'UTC' - interval '45 minutes',
                         'YYYY-MM-DD"T"HH24:MI:SS'
@@ -145,7 +145,7 @@ select lives_ok(
                 to_char(current_timestamp at time zone 'UTC', 'YYYY-MM-DD'),
                 jsonb_build_array(
                     jsonb_build_object(
-                        'session_id', '00000000-0000-0000-0000-000000000103',
+                        'session_id', '3a4a0000-0000-0000-0000-000000000001',
                         'starts_at', floor(extract(epoch from current_timestamp - interval '45 minutes'))::bigint,
                         'ends_at', floor(extract(epoch from current_timestamp - interval '15 minutes'))::bigint
                     )

@@ -3,28 +3,45 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupAlreadyDeletedID '00000000-0000-0000-0000-000000000022'
-\set groupID '00000000-0000-0000-0000-000000000021'
+\set communityID '2c0a0000-0000-0000-0000-000000000001'
+\set groupAlreadyDeletedID '2c0a0000-0000-0000-0000-000000000002'
+\set groupCategoryID '2c0a0000-0000-0000-0000-000000000003'
+\set groupID '2c0a0000-0000-0000-0000-000000000004'
+\set groupWrongCommunityID '2c0a0000-0000-0000-0000-000000000005'
+\set unknownCommunityID '2c0a0000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'delete-group-community',
+    'Delete Group Community',
+    'Community for delete group tests',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Tech', :'communityID');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Active group
 insert into "group" (
@@ -36,9 +53,9 @@ insert into "group" (
 ) values (
     :'groupID',
     :'communityID',
-    :'categoryID',
-    'G1',
-    'g1'
+    :'groupCategoryID',
+    'Active Group',
+    'active-group'
 );
 
 -- Already deleted group
@@ -53,11 +70,26 @@ insert into "group" (
 ) values (
     :'groupAlreadyDeletedID',
     :'communityID',
-    :'categoryID',
-    'G2',
-    'g2',
+    :'groupCategoryID',
+    'Deleted Group',
+    'deleted-group',
     false,
     true
+);
+
+-- Active group used to exercise the cross-community guard
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug
+) values (
+    :'groupWrongCommunityID',
+    :'communityID',
+    :'groupCategoryID',
+    'Cross Community Guard Group',
+    'cross-community-guard-group'
 );
 
 -- ============================================================================
@@ -111,32 +143,52 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'group_deleted',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
+            %L::uuid,
             'group',
-            '00000000-0000-0000-0000-000000000021'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'communityID',
+        :'groupID',
+        :'groupID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should throw error for already deleted group
 select throws_ok(
-    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
+    format(
+        $$select delete_group(null::uuid, %L::uuid, %L::uuid)$$,
+        :'communityID',
+        :'groupAlreadyDeletedID'
+    ),
     'group not found or inactive',
     'Should throw error when trying to delete already deleted group'
 );
 
 -- Should throw error for wrong community_id
 select throws_ok(
-    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
+    format(
+        $$select delete_group(null::uuid, %L::uuid, %L::uuid)$$,
+        :'unknownCommunityID',
+        :'groupWrongCommunityID'
+    ),
     'group not found or inactive',
     'Should throw error when community_id does not match'
+);
+
+-- Should leave the group untouched when community_id does not match
+select is(
+    (select deleted from "group" where group_id = :'groupWrongCommunityID'::uuid),
+    false,
+    'Should leave the group untouched when community_id does not match'
 );
 
 -- ============================================================================

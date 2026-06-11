@@ -9,41 +9,44 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set nonExistentUserID '00000000-0000-0000-0000-000000009999'
-\set userPreRegisteredID '00000000-0000-0000-0000-000000000113'
-\set userUnverifiedID '00000000-0000-0000-0000-000000000111'
-\set userVerifiedID '00000000-0000-0000-0000-000000000112'
+\set nonExistentUserID '0a060000-0000-0000-0000-000000000001'
+\set userPreRegisteredID '0a060000-0000-0000-0000-000000000002'
+\set userUnverifiedID '0a060000-0000-0000-0000-000000000003'
+\set userVerifiedID '0a060000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Verified user
-insert into "user" (auth_hash, email, email_verified, user_id, username) values (
-    'verified_hash',
-    'verified@example.com',
-    true,
-    :'userVerifiedID',
-    'verified-user'
-);
-
--- Unverified user
-insert into "user" (auth_hash, email, email_verified, user_id, username) values (
-    'unverified_hash',
-    'unverified@example.com',
-    false,
-    :'userUnverifiedID',
-    'unverified-user'
-);
-
--- Pre-registered user
-insert into "user" (auth_hash, email, email_verified, registration_status, user_id, username) values (
-    'pre_registered_hash',
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    registration_status,
+    username
+) values (
+    :'userPreRegisteredID',
+    'pre-registered-hash',
     'pre-registered@example.com',
     true,
     'pre-registered',
-    :'userPreRegisteredID',
     'pre-registered-user'
+), (
+    :'userUnverifiedID',
+    'unverified-hash',
+    'unverified@example.com',
+    false,
+    'registered',
+    'unverified-user'
+), (
+    :'userVerifiedID',
+    'verified-hash',
+    'verified@example.com',
+    true,
+    'registered',
+    'verified-user'
 );
 
 -- ============================================================================

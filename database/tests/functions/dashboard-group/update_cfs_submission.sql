@@ -3,37 +3,52 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set event2ID '00000000-0000-0000-0000-000000000052'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set label1ID '00000000-0000-0000-0000-000000000101'
-\set label2ID '00000000-0000-0000-0000-000000000102'
-\set labelInvalidID '00000000-0000-0000-0000-000000000103'
-\set proposal2ID '00000000-0000-0000-0000-000000000062'
-\set proposal3ID '00000000-0000-0000-0000-000000000063'
-\set proposalID '00000000-0000-0000-0000-000000000061'
-\set reviewerID '00000000-0000-0000-0000-000000000081'
-\set submission2ID '00000000-0000-0000-0000-000000000072'
-\set submission3ID '00000000-0000-0000-0000-000000000073'
-\set submissionID '00000000-0000-0000-0000-000000000071'
-\set userID '00000000-0000-0000-0000-000000000091'
+\set communityID '3a380000-0000-0000-0000-000000000001'
+\set event2ID '3a380000-0000-0000-0000-000000000002'
+\set eventCategoryID '3a380000-0000-0000-0000-000000000003'
+\set eventID '3a380000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a380000-0000-0000-0000-000000000005'
+\set groupID '3a380000-0000-0000-0000-000000000006'
+\set label1ID '3a380000-0000-0000-0000-000000000007'
+\set label2ID '3a380000-0000-0000-0000-000000000008'
+\set labelInvalidID '3a380000-0000-0000-0000-000000000009'
+\set proposal2ID '3a380000-0000-0000-0000-000000000010'
+\set proposal3ID '3a380000-0000-0000-0000-000000000011'
+\set proposalID '3a380000-0000-0000-0000-000000000012'
+\set reviewerID '3a380000-0000-0000-0000-000000000013'
+\set submission2ID '3a380000-0000-0000-0000-000000000014'
+\set submission3ID '3a380000-0000-0000-0000-000000000015'
+\set submissionID '3a380000-0000-0000-0000-000000000016'
+\set userID '3a380000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'cfs-submission-community',
+    'CFS Submission Community',
+    'A test community for CFS submissions',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name) values
@@ -41,7 +56,7 @@ insert into group_category (group_category_id, community_id, name) values
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
+    (:'groupID', :'communityID', :'groupCategoryID', 'CFS Group', 'cfs-group');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name) values
@@ -223,18 +238,25 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'cfs_submission_updated',
-            '00000000-0000-0000-0000-000000000081'::uuid,
+            %L::uuid,
             'reviewer',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
-            '00000000-0000-0000-0000-000000000051'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'cfs_submission',
-            '00000000-0000-0000-0000-000000000071'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'reviewerID',
+        :'communityID',
+        :'groupID',
+        :'eventID',
+        :'submissionID'
+    ),
     'Should create the expected audit row'
 );
 
@@ -304,16 +326,24 @@ select is(
 );
 
 -- Should update reviewer rating without duplicating rows
-select update_cfs_submission(
-    :'reviewerID'::uuid,
-    :'eventID'::uuid,
-    :'submissionID'::uuid,
-    jsonb_build_object(
-        'action_required_message', 'Need more info',
-        'status_id', 'information-requested',
-        'rating_comment', 'Great improvements',
-        'rating_stars', 5
-    )
+select lives_ok(
+    format(
+        $$
+        select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            jsonb_build_object(
+                'action_required_message', 'Need more info',
+                'status_id', 'information-requested',
+                'rating_comment', 'Great improvements',
+                'rating_stars', 5
+            )
+        )
+        $$,
+        :'reviewerID', :'eventID', :'submissionID'
+    ),
+    'Should update an existing reviewer rating without error'
 );
 
 select is(
@@ -328,15 +358,23 @@ select is(
 );
 
 -- Should clear reviewer rating when stars are zero
-select update_cfs_submission(
-    :'reviewerID'::uuid,
-    :'eventID'::uuid,
-    :'submissionID'::uuid,
-    jsonb_build_object(
-        'action_required_message', 'Need more info',
-        'status_id', 'information-requested',
-        'rating_stars', 0
-    )
+select lives_ok(
+    format(
+        $$
+        select update_cfs_submission(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            jsonb_build_object(
+                'action_required_message', 'Need more info',
+                'status_id', 'information-requested',
+                'rating_stars', 0
+            )
+        )
+        $$,
+        :'reviewerID', :'eventID', :'submissionID'
+    ),
+    'Should accept a zero stars rating without error'
 );
 
 select is(

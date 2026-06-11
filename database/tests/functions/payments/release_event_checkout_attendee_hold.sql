@@ -9,29 +9,44 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
+\set activePurchaseID '79280000-0000-0000-0000-000000000009'
+\set activeUserID '79280000-0000-0000-0000-000000000012'
 \set communityID '79280000-0000-0000-0000-000000000001'
+\set completedPurchaseID '79280000-0000-0000-0000-000000000010'
+\set completedUserID '79280000-0000-0000-0000-000000000013'
 \set eventCategoryID '79280000-0000-0000-0000-000000000002'
-\set ticketedEventID '79280000-0000-0000-0000-000000000003'
-\set nonTicketedEventID '79280000-0000-0000-0000-000000000004'
-\set ticketTypeID '79280000-0000-0000-0000-000000000005'
-\set priceWindowID '79280000-0000-0000-0000-000000000006'
 \set groupCategoryID '79280000-0000-0000-0000-000000000007'
 \set groupID '79280000-0000-0000-0000-000000000008'
-\set activePurchaseID '79280000-0000-0000-0000-000000000009'
-\set completedPurchaseID '79280000-0000-0000-0000-000000000010'
-\set releasedUserID '79280000-0000-0000-0000-000000000011'
-\set activeUserID '79280000-0000-0000-0000-000000000012'
-\set completedUserID '79280000-0000-0000-0000-000000000013'
 \set manualUserID '79280000-0000-0000-0000-000000000014'
+\set nonTicketedEventID '79280000-0000-0000-0000-000000000004'
 \set nonTicketedUserID '79280000-0000-0000-0000-000000000015'
+\set priceWindowID '79280000-0000-0000-0000-000000000006'
+\set releasedUserID '79280000-0000-0000-0000-000000000011'
+\set ticketedEventID '79280000-0000-0000-0000-000000000003'
+\set ticketTypeID '79280000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'release-attendee-hold-community', 'Release Attendee Hold Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'release-attendee-hold-community',
+    'Release Attendee Hold Community',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -44,21 +59,58 @@ values (:'eventCategoryID', :'communityID', 'General');
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'releasedUserID', 'hash-1', 'released@example.com', true, 'released-user'),
-    (:'activeUserID', 'hash-2', 'active@example.com', true, 'active-user'),
-    (:'completedUserID', 'hash-3', 'completed@example.com', true, 'completed-user'),
-    (:'manualUserID', 'hash-4', 'manual@example.com', true, 'manual-user'),
-    (:'nonTicketedUserID', 'hash-5', 'non-ticketed@example.com', true, 'non-ticketed-user');
+    (
+        :'activeUserID',
+        'hash-2',
+        'active@example.com',
+        true,
+        'active-user'
+    ),
+    (
+        :'completedUserID',
+        'hash-3',
+        'completed@example.com',
+        true,
+        'completed-user'
+    ),
+    (
+        :'manualUserID',
+        'hash-4',
+        'manual@example.com',
+        true,
+        'manual-user'
+    ),
+    (
+        :'nonTicketedUserID',
+        'hash-5',
+        'non-ticketed@example.com',
+        true,
+        'non-ticketed-user'
+    ),
+    (
+        :'releasedUserID',
+        'hash-1',
+        'released@example.com',
+        true,
+        'released-user'
+    );
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient
+)
 values (
     :'groupID',
     :'communityID',
     :'groupCategoryID',
     'Release Attendee Hold Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_release_attendee_hold'),
-    'release-attendee-hold-group'
+    'release-attendee-hold-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_release_attendee_hold')
 );
 
 -- Events
@@ -104,8 +156,19 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'ticketedEventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    :'ticketedEventID',
+    1,
+    10,
+    'General admission'
+);
 
 -- Price window
 insert into event_ticket_price_window (
@@ -169,10 +232,10 @@ values
 
 -- Should release a checkout-created pending attendee row without an active purchase
 select lives_ok(
-    $$select release_event_checkout_attendee_hold(
-        '79280000-0000-0000-0000-000000000003'::uuid,
-        '79280000-0000-0000-0000-000000000011'::uuid
-    )$$,
+    format($$select release_event_checkout_attendee_hold(
+        %L::uuid,
+        %L::uuid
+    )$$, :'ticketedEventID', :'releasedUserID'),
     'Should release a checkout-created pending attendee row without an active purchase'
 );
 
@@ -190,67 +253,67 @@ select is(
 
 -- Should leave protected pending attendee rows alone
 select lives_ok(
-    $$
+    format($$
         select
             release_event_checkout_attendee_hold(
-                '79280000-0000-0000-0000-000000000003'::uuid,
-                '79280000-0000-0000-0000-000000000012'::uuid
+                %L::uuid,
+                %L::uuid
             ),
             release_event_checkout_attendee_hold(
-                '79280000-0000-0000-0000-000000000003'::uuid,
-                '79280000-0000-0000-0000-000000000013'::uuid
+                %L::uuid,
+                %L::uuid
             ),
             release_event_checkout_attendee_hold(
-                '79280000-0000-0000-0000-000000000003'::uuid,
-                '79280000-0000-0000-0000-000000000014'::uuid
+                %L::uuid,
+                %L::uuid
             ),
             release_event_checkout_attendee_hold(
-                '79280000-0000-0000-0000-000000000004'::uuid,
-                '79280000-0000-0000-0000-000000000015'::uuid
+                %L::uuid,
+                %L::uuid
             )
-    $$,
+    $$, :'ticketedEventID', :'activeUserID', :'ticketedEventID', :'completedUserID', :'ticketedEventID', :'manualUserID', :'nonTicketedEventID', :'nonTicketedUserID'),
     'Should leave protected pending attendee rows alone'
 );
 
 -- Should preserve rows protected by active purchases, completed purchases, invitations, or non-ticketed events
 select results_eq(
-    $$
+    format($$
         select
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '79280000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79280000-0000-0000-0000-000000000012'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             ),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '79280000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79280000-0000-0000-0000-000000000013'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             ),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '79280000-0000-0000-0000-000000000003'::uuid
-                and user_id = '79280000-0000-0000-0000-000000000014'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             ),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '79280000-0000-0000-0000-000000000004'::uuid
-                and user_id = '79280000-0000-0000-0000-000000000015'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             )
-    $$,
+    $$, :'ticketedEventID', :'activeUserID', :'ticketedEventID', :'completedUserID', :'ticketedEventID', :'manualUserID', :'nonTicketedEventID', :'nonTicketedUserID'),
     $$ values (1::int, 1::int, 1::int, 1::int) $$,
     'Should preserve rows protected by active purchases, completed purchases, invitations, or non-ticketed events'
 );
 
 -- Should be idempotent for already released rows
 select lives_ok(
-    $$select release_event_checkout_attendee_hold(
-        '79280000-0000-0000-0000-000000000003'::uuid,
-        '79280000-0000-0000-0000-000000000011'::uuid
-    )$$,
+    format($$select release_event_checkout_attendee_hold(
+        %L::uuid,
+        %L::uuid
+    )$$, :'ticketedEventID', :'releasedUserID'),
     'Should be idempotent for already released rows'
 );
 

@@ -9,19 +9,19 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set canceledEventID '00000000-0000-0000-0000-000000000033'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set deletedEventID '00000000-0000-0000-0000-000000000034'
-\set event1ID '00000000-0000-0000-0000-000000000031'
-\set event2ID '00000000-0000-0000-0000-000000000032'
-\set eventSeriesID '00000000-0000-0000-0000-000000000040'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set otherEventID '00000000-0000-0000-0000-000000000035'
-\set otherEventSeriesID '00000000-0000-0000-0000-000000000041'
-\set standaloneEventID '00000000-0000-0000-0000-000000000036'
-\set userID '00000000-0000-0000-0000-000000000020'
+\set canceledEventID '3a450000-0000-0000-0000-000000000001'
+\set communityID '3a450000-0000-0000-0000-000000000002'
+\set deletedEventID '3a450000-0000-0000-0000-000000000003'
+\set event1ID '3a450000-0000-0000-0000-000000000004'
+\set event2ID '3a450000-0000-0000-0000-000000000005'
+\set eventCategoryID '3a450000-0000-0000-0000-000000000006'
+\set eventSeriesID '3a450000-0000-0000-0000-000000000007'
+\set groupCategoryID '3a450000-0000-0000-0000-000000000008'
+\set groupID '3a450000-0000-0000-0000-000000000009'
+\set otherEventID '3a450000-0000-0000-0000-000000000010'
+\set otherEventSeriesID '3a450000-0000-0000-0000-000000000011'
+\set standaloneEventID '3a450000-0000-0000-0000-000000000012'
+\set userID '3a450000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
@@ -50,13 +50,13 @@ insert into community (
 insert into "user" (user_id, email, username, auth_hash)
 values (:'userID', 'organizer@example.com', 'organizer', 'hash');
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Meetup', :'communityID');
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Meetup');
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
 insert into "group" (
@@ -131,7 +131,7 @@ insert into event (
         'first-series-event',
         'First event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-07 10:00:00+00',
         '2030-01-07 11:00:00+00',
@@ -147,7 +147,7 @@ insert into event (
         'second-series-event',
         'Second event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-14 10:00:00+00',
         '2030-01-14 11:00:00+00',
@@ -163,7 +163,7 @@ insert into event (
         'canceled-series-event',
         'Canceled event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-21 10:00:00+00',
         '2030-01-21 11:00:00+00',
@@ -179,7 +179,7 @@ insert into event (
         'deleted-series-event',
         'Deleted event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-28 10:00:00+00',
         '2030-01-28 11:00:00+00',
@@ -195,7 +195,7 @@ insert into event (
         'other-series-event',
         'Other event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-02-04 10:00:00+00',
         '2030-02-04 11:00:00+00',
@@ -211,7 +211,7 @@ insert into event (
         'standalone-event',
         'Standalone event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-02-11 10:00:00+00',
         '2030-02-11 11:00:00+00',
@@ -227,47 +227,62 @@ insert into event (
 
 -- Should normalize and sort event ids from the same series
 select results_eq(
-    $$
+    format(
+        $$
         select unnest(validate_event_series_action_event_ids(
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
             array[
-                '00000000-0000-0000-0000-000000000032'::uuid,
-                '00000000-0000-0000-0000-000000000031'::uuid,
-                '00000000-0000-0000-0000-000000000031'::uuid
+                %L::uuid,
+                %L::uuid,
+                %L::uuid
             ]
         ))
-    $$,
-    $$
+        $$,
+        :'groupID',
+        :'event2ID',
+        :'event1ID',
+        :'event1ID'
+    ),
+    format(
+        $$
         values
-            ('00000000-0000-0000-0000-000000000031'::uuid),
-            ('00000000-0000-0000-0000-000000000032'::uuid)
-    $$,
+            (%L::uuid),
+            (%L::uuid)
+        $$,
+        :'event1ID',
+        :'event2ID'
+    ),
     'Should normalize and sort event ids from the same series'
 );
 
 -- Should allow canceled events when not required for publishing
 select results_eq(
-    $$
+    format(
+        $$
         select unnest(validate_event_series_action_event_ids(
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array['00000000-0000-0000-0000-000000000033'::uuid],
+            %L::uuid,
+            array[%L::uuid],
             false
         ))
-    $$,
-    $$
-        values ('00000000-0000-0000-0000-000000000033'::uuid)
-    $$,
+        $$,
+        :'groupID',
+        :'canceledEventID'
+    ),
+    format($$ values (%L::uuid) $$, :'canceledEventID'),
     'Should allow canceled events when not required for publishing'
 );
 
 -- Should reject empty event ids
 select throws_ok(
-    $$
+    format(
+        $$
         select validate_event_series_action_event_ids(
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
             '{}'::uuid[]
         )
-    $$,
+        $$,
+        :'groupID'
+    ),
     'P0001',
     'event_ids cannot be empty',
     'Should reject empty event ids'
@@ -275,12 +290,16 @@ select throws_ok(
 
 -- Should reject inactive event ids
 select throws_ok(
-    $$
+    format(
+        $$
         select validate_event_series_action_event_ids(
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array['00000000-0000-0000-0000-000000000034'::uuid]
+            %L::uuid,
+            array[%L::uuid]
         )
-    $$,
+        $$,
+        :'groupID',
+        :'deletedEventID'
+    ),
     'P0001',
     'one or more events were not found or inactive',
     'Should reject inactive event ids'
@@ -288,13 +307,17 @@ select throws_ok(
 
 -- Should reject canceled event ids when publishing
 select throws_ok(
-    $$
+    format(
+        $$
         select validate_event_series_action_event_ids(
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array['00000000-0000-0000-0000-000000000033'::uuid],
+            %L::uuid,
+            array[%L::uuid],
             true
         )
-    $$,
+        $$,
+        :'groupID',
+        :'canceledEventID'
+    ),
     'P0001',
     'one or more events were not found or inactive',
     'Should reject canceled event ids when publishing'
@@ -302,15 +325,20 @@ select throws_ok(
 
 -- Should reject events from different series
 select throws_ok(
-    $$
+    format(
+        $$
         select validate_event_series_action_event_ids(
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
             array[
-                '00000000-0000-0000-0000-000000000031'::uuid,
-                '00000000-0000-0000-0000-000000000035'::uuid
+                %L::uuid,
+                %L::uuid
             ]
         )
-    $$,
+        $$,
+        :'groupID',
+        :'event1ID',
+        :'otherEventID'
+    ),
     'P0001',
     'events must belong to the same series',
     'Should reject events from different series'
@@ -318,16 +346,24 @@ select throws_ok(
 
 -- Should reject standalone events
 select throws_ok(
-    $$
+    format(
+        $$
         select validate_event_series_action_event_ids(
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array['00000000-0000-0000-0000-000000000036'::uuid]
+            %L::uuid,
+            array[%L::uuid]
         )
-    $$,
+        $$,
+        :'groupID',
+        :'standaloneEventID'
+    ),
     'P0001',
     'events must belong to the same series',
     'Should reject standalone events'
 );
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
 
 select * from finish();
 rollback;

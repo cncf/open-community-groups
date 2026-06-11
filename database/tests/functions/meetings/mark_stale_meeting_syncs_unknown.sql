@@ -3,116 +3,144 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000001311'
-\set communityID '00000000-0000-0000-0000-000000001301'
-\set eventID '00000000-0000-0000-0000-000000001312'
-\set groupCategoryID '00000000-0000-0000-0000-000000001310'
-\set groupID '00000000-0000-0000-0000-000000001302'
-\set meetingID '00000000-0000-0000-0000-000000001314'
-\set sessionID '00000000-0000-0000-0000-000000001313'
+\set communityID '7a0a0000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a0a0000-0000-0000-0000-000000000002'
+\set eventID '7a0a0000-0000-0000-0000-000000000003'
+\set groupCategoryID '7a0a0000-0000-0000-0000-000000000004'
+\set groupID '7a0a0000-0000-0000-0000-000000000005'
+\set meetingID '7a0a0000-0000-0000-0000-000000000006'
+\set sessionID '7a0a0000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Conference');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, description)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    description
+) values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Test Group',
+    'test-group',
+    'A test group'
+);
 
 -- Stale claimed event meeting
 insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
     event_id,
+    event_category_id,
     event_kind_id,
     group_id,
+    name,
+    slug,
+    description,
+    capacity,
+    ends_at,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_provider_id,
     meeting_requested,
     meeting_sync_claimed_at,
-    name,
     published,
-    slug,
     starts_at,
     timezone
 ) values (
-    100,
-    'A test event',
-    '2026-06-01 11:00:00+00',
-    :'categoryID',
     :'eventID',
+    :'eventCategoryID',
     'virtual',
     :'groupID',
+    'Test Event',
+    'test-event',
+    'A test event',
+    100,
+    '2026-06-01 11:00:00+00',
     false,
     'host@example.com',
     'zoom',
     true,
     current_timestamp - interval '30 minutes',
-    'Test Event',
     true,
-    'test-event',
     '2026-06-01 10:00:00+00',
     'UTC'
 );
 
 -- Stale claimed session meeting
 insert into session (
-    ends_at,
+    session_id,
     event_id,
+    name,
+    session_kind_id,
+    ends_at,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_provider_id,
     meeting_requested,
     meeting_sync_claimed_at,
-    name,
-    session_id,
-    session_kind_id,
     starts_at
 ) values (
-    '2026-06-01 10:30:00+00',
+    :'sessionID',
     :'eventID',
+    'Test Session',
+    'virtual',
+    '2026-06-01 10:30:00+00',
     false,
     'session-host@example.com',
     'zoom',
     true,
     current_timestamp - interval '30 minutes',
-    'Test Session',
-    :'sessionID',
-    'virtual',
     '2026-06-01 10:00:00+00'
 );
 
 -- Stale claimed orphan meeting
 insert into meeting (
-    join_url,
     meeting_id,
+    join_url,
     meeting_provider_id,
     provider_meeting_id,
     sync_claimed_at
 ) values (
-    'https://zoom.us/j/orphan',
     :'meetingID',
+    'https://zoom.us/j/orphan',
     'zoom',
     'orphan',
     current_timestamp - interval '30 minutes'
@@ -121,6 +149,13 @@ insert into meeting (
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject non-positive processing timeouts
+select throws_ok(
+    $$select mark_stale_meeting_syncs_unknown(0)$$,
+    'processing timeout must be positive',
+    'Should reject non-positive processing timeouts'
+);
 
 -- Should mark stale sync claims unknown
 select is(

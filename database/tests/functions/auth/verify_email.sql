@@ -3,7 +3,13 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set invalidVerificationCodeID '0a0f0000-0000-0000-0000-000000000001'
 
 -- ============================================================================
 -- TESTS
@@ -52,7 +58,10 @@ with test_user as (
 select verification_code as "verificationCodeToDelete"
 from test_user \gset
 
-select verify_email(:'verificationCodeToDelete'::uuid);
+select lives_ok(
+    format('select verify_email(%L::uuid)', :'verificationCodeToDelete'),
+    'Should verify email for a code that is deleted after use'
+);
 
 select is(
     count(*)::integer,
@@ -63,7 +72,7 @@ where email_verification_code_id = :'verificationCodeToDelete'::uuid;
 
 -- Should raise exception for invalid verification code
 select throws_ok(
-    'select verify_email(''00000000-0000-0000-0000-000000000099''::uuid)',
+    format('select verify_email(%L::uuid)', :'invalidVerificationCodeID'),
     'email verification failed: invalid code',
     'Should raise exception for non-existent verification code'
 );
@@ -88,7 +97,7 @@ set created_at = current_timestamp - interval '25 hours'
 where email_verification_code_id = :'expiredVerificationCode'::uuid;
 
 select throws_ok(
-    format('select verify_email(''%s''::uuid)', :'expiredVerificationCode'),
+    format('select verify_email(%L::uuid)', :'expiredVerificationCode'),
     'email verification failed: invalid code',
     'Should raise exception for expired verification code'
 );
@@ -108,10 +117,13 @@ with test_user as (
 select verification_code as "usedVerificationCode"
 from test_user \gset
 
-select verify_email(:'usedVerificationCode'::uuid);
+select lives_ok(
+    format('select verify_email(%L::uuid)', :'usedVerificationCode'),
+    'Should verify email on first use of the verification code'
+);
 
 select throws_ok(
-    format('select verify_email(''%s''::uuid)', :'usedVerificationCode'),
+    format('select verify_email(%L::uuid)', :'usedVerificationCode'),
     'email verification failed: invalid code',
     'Should raise exception for already used verification code'
 );

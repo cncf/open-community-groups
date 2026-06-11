@@ -9,11 +9,11 @@ select plan(13);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set userID '00000000-0000-0000-0000-000000000020'
+\set communityID '3a030000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a030000-0000-0000-0000-000000000002'
+\set groupCategoryID '3a030000-0000-0000-0000-000000000003'
+\set groupID '3a030000-0000-0000-0000-000000000004'
+\set userID '3a030000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
@@ -44,7 +44,7 @@ values (:'userID', 'organizer@example.com', 'organizer', 'hash', 'Organizer');
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Meetup', :'communityID');
+values (:'eventCategoryID', 'Meetup', :'communityID');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -73,16 +73,17 @@ insert into "group" (
 
 -- Should create all recurring events in one linked series
 select lives_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-01-07T10:00:00",
                     "ends_at": "2030-01-07T11:00:00"
@@ -91,7 +92,7 @@ select lives_ok(
                     "name": "Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-01-14T10:00:00",
                     "ends_at": "2030-01-14T11:00:00"
@@ -99,7 +100,9 @@ select lives_ok(
             ]'::jsonb,
             '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
     'Should create all recurring events in one linked series'
 );
 
@@ -139,23 +142,26 @@ select results_eq(
 
 -- Should reject too few event payloads
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Invalid Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-02-07T10:00:00"
                 }
             ]'::jsonb,
             '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID'
+    ),
     'P0001',
     'events must include between 2 and 13 items',
     'Should reject too few event payloads'
@@ -163,25 +169,28 @@ select throws_ok(
 
 -- Should reject too many event payloads
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             (
                 select jsonb_agg(jsonb_build_object(
                     'name', 'Too Many Weekly Study Group',
                     'description', 'Base event',
                     'timezone', 'UTC',
-                    'category_id', '00000000-0000-0000-0000-000000000011',
+                    'category_id', %L,
                     'kind_id', 'virtual',
-                    'starts_at', format('2030-03-%sT10:00:00', lpad(day::text, 2, '0')),
-                    'ends_at', format('2030-03-%sT11:00:00', lpad(day::text, 2, '0'))
+                    'starts_at', format('2030-03-%%sT10:00:00', lpad(day::text, 2, '0')),
+                    'ends_at', format('2030-03-%%sT11:00:00', lpad(day::text, 2, '0'))
                 ))
                 from generate_series(1, 14) as days(day)
             ),
             '{"additional_occurrences": 13, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID'
+    ),
     'P0001',
     'events must include between 2 and 13 items',
     'Should reject too many event payloads'
@@ -189,16 +198,17 @@ select throws_ok(
 
 -- Should reject invalid additional occurrence count
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Invalid Count Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-04-07T10:00:00",
                     "ends_at": "2030-04-07T11:00:00"
@@ -207,7 +217,7 @@ select throws_ok(
                     "name": "Invalid Count Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-04-14T10:00:00",
                     "ends_at": "2030-04-14T11:00:00"
@@ -215,7 +225,9 @@ select throws_ok(
             ]'::jsonb,
             '{"additional_occurrences": 0, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
     'P0001',
     'additional_occurrences must be between 1 and 12',
     'Should reject invalid additional occurrence count'
@@ -223,16 +235,17 @@ select throws_ok(
 
 -- Should reject mismatched event and recurrence counts
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Mismatched Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-05-07T10:00:00",
                     "ends_at": "2030-05-07T11:00:00"
@@ -241,7 +254,7 @@ select throws_ok(
                     "name": "Mismatched Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-05-14T10:00:00",
                     "ends_at": "2030-05-14T11:00:00"
@@ -249,7 +262,9 @@ select throws_ok(
             ]'::jsonb,
             '{"additional_occurrences": 2, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
     'P0001',
     'events count must match additional_occurrences',
     'Should reject mismatched event and recurrence counts'
@@ -257,16 +272,17 @@ select throws_ok(
 
 -- Should reject unsupported recurrence pattern
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Unsupported Daily Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-06-07T10:00:00",
                     "ends_at": "2030-06-07T11:00:00"
@@ -275,7 +291,7 @@ select throws_ok(
                     "name": "Unsupported Daily Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-06-08T10:00:00",
                     "ends_at": "2030-06-08T11:00:00"
@@ -283,7 +299,9 @@ select throws_ok(
             ]'::jsonb,
             '{"additional_occurrences": 1, "pattern": "daily"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
     'P0001',
     'unsupported recurrence pattern',
     'Should reject unsupported recurrence pattern'
@@ -291,15 +309,16 @@ select throws_ok(
 
 -- Should reject missing timezone on the anchor event
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Missing Timezone Weekly Study Group",
                     "description": "Base event",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-07-07T10:00:00",
                     "ends_at": "2030-07-07T11:00:00"
@@ -308,7 +327,7 @@ select throws_ok(
                     "name": "Missing Timezone Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-07-14T10:00:00",
                     "ends_at": "2030-07-14T11:00:00"
@@ -316,7 +335,9 @@ select throws_ok(
             ]'::jsonb,
             '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
     'P0001',
     'recurring events require timezone',
     'Should reject missing timezone on the anchor event'
@@ -324,16 +345,17 @@ select throws_ok(
 
 -- Should reject missing start date on the anchor event
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Missing Start Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "ends_at": "2030-08-07T11:00:00"
                 },
@@ -341,7 +363,7 @@ select throws_ok(
                     "name": "Missing Start Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-08-14T10:00:00",
                     "ends_at": "2030-08-14T11:00:00"
@@ -349,7 +371,9 @@ select throws_ok(
             ]'::jsonb,
             '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
     'P0001',
     'recurring events require starts_at',
     'Should reject missing start date on the anchor event'
@@ -357,16 +381,17 @@ select throws_ok(
 
 -- Should roll back the whole series when one generated event fails
 select throws_ok(
-    $$
+    format(
+        $$
         select add_event_series(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[
                 {
                     "name": "Rollback Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2030-09-07T10:00:00",
                     "ends_at": "2030-09-07T11:00:00"
@@ -375,7 +400,7 @@ select throws_ok(
                     "name": "Rollback Weekly Study Group",
                     "description": "Base event",
                     "timezone": "UTC",
-                    "category_id": "00000000-0000-0000-0000-000000000011",
+                    "category_id": "%s",
                     "kind_id": "virtual",
                     "starts_at": "2020-09-14T10:00:00",
                     "ends_at": "2020-09-14T11:00:00"
@@ -383,7 +408,9 @@ select throws_ok(
             ]'::jsonb,
             '{"additional_occurrences": 1, "pattern": "weekly"}'::jsonb
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventCategoryID', :'eventCategoryID'
+    ),
     'P0001',
     'event starts_at cannot be in the past',
     'Should roll back the whole series when one generated event fails'
@@ -401,6 +428,10 @@ select results_eq(
     $$,
     'Should leave no partial rows after a generated event fails'
 );
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
 
 select * from finish();
 rollback;

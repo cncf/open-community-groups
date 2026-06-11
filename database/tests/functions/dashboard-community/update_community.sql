@@ -9,7 +9,8 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set communityID '2c140000-0000-0000-0000-000000000001'
+\set unknownCommunityID '2c140000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
@@ -18,17 +19,17 @@ select plan(8);
 -- Community
 insert into community (
     community_id,
-    active,
+    name,
+    display_name,
+    description,
     banner_mobile_url,
     banner_url,
-    community_site_layout_id,
-    description,
-    display_name,
     logo_url,
-    name,
-    ad_banner_url,
+    active,
     ad_banner_link_url,
+    ad_banner_url,
     bluesky_url,
+    community_site_layout_id,
     extra_links,
     facebook_url,
     flickr_url,
@@ -44,17 +45,17 @@ insert into community (
     youtube_url
 ) values (
     :'communityID',
-    true,
-    'https://original.com/community-banner_mobile.png',
-    'https://original.com/community-banner.png',
-    'default',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'Cloud Native Seattle',
-    'https://original.com/logo.png',
     'cloud-native-seattle',
-    'https://original.com/banner.png',
+    'Cloud Native Seattle',
+    'A vibrant community for cloud native technologies and practices in Seattle',
+    'https://original.com/community-banner-mobile.png',
+    'https://original.com/community-banner.png',
+    'https://original.com/logo.png',
+    true,
     'https://original.com/banner-link',
+    'https://original.com/banner.png',
     'https://bsky.app/profile/original',
+    'default',
     '{"docs": "https://docs.original.com"}'::jsonb,
     'https://facebook.com/original',
     'https://flickr.com/original',
@@ -76,23 +77,26 @@ insert into community (
 
 -- Should update required fields and set optional fields to null when not provided
 select lives_ok(
-    $$select update_community(
+    format(
+        $$select update_community(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         '{
             "description": "Updated description for Seattle cloud native community",
             "display_name": "Cloud Native Seattle Updated",
             "logo_url": "https://updated.com/logo.png"
         }'::jsonb
     )$$,
+        :'communityID'
+    ),
     'Should execute update with only required fields'
 );
 
 select is(
-    (select get_community_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
+    (select get_community_full(:'communityID'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
-        "banner_mobile_url": "https://original.com/community-banner_mobile.png",
+        "banner_mobile_url": "https://original.com/community-banner-mobile.png",
         "banner_url": "https://original.com/community-banner.png",
         "community_site_layout_id": "default",
         "description": "Updated description for Seattle cloud native community",
@@ -116,24 +120,29 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'community_updated',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'community',
-            '00000000-0000-0000-0000-000000000001'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'communityID',
+        :'communityID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should update all fields including optional ones
 select lives_ok(
-    $$select update_community(
+    format(
+        $$select update_community(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         '{
             "description": "Comprehensive cloud native community in Seattle",
             "display_name": "Cloud Native Seattle Complete",
@@ -160,11 +169,13 @@ select lives_ok(
             "youtube_url": "https://youtube.com/new"
         }'::jsonb
     )$$,
+        :'communityID'
+    ),
     'Should update all fields including optional ones'
 );
 
 select is(
-    (select get_community_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'community_id' - 'created_at'),
+    (select get_community_full(:'communityID'::uuid)::jsonb - 'community_id' - 'created_at'),
     '{
         "active": true,
         "ad_banner_link_url": "https://new.com/link",
@@ -198,9 +209,10 @@ select is(
 
 -- Should convert empty strings to null for nullable fields
 select lives_ok(
-    $$select update_community(
+    format(
+        $$select update_community(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         '{
             "ad_banner_url": "",
             "ad_banner_link_url": "",
@@ -219,13 +231,15 @@ select lives_ok(
             "youtube_url": ""
         }'::jsonb
     )$$,
+        :'communityID'
+    ),
     'Should execute update converting empty strings to null'
 );
 
 select is(
     (select row_to_json(t.*)::jsonb - 'community_id' - 'created_at' - 'active' - 'banner_mobile_url' - 'banner_url' - 'community_site_layout_id' - 'description' - 'display_name' - 'logo_url' - 'name' - 'extra_links' - 'photos_urls'
      from (
-        select * from community where community_id = '00000000-0000-0000-0000-000000000001'::uuid
+        select * from community where community_id = :'communityID'::uuid
      ) t),
     '{
         "ad_banner_url": null,
@@ -250,15 +264,18 @@ select is(
 
 -- Should raise an error when the community does not exist
 select throws_ok(
-    $$select update_community(
+    format(
+        $$select update_community(
         null::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        %L::uuid,
         '{
             "description": "Some description",
             "display_name": "Some Community",
             "logo_url": "https://some.com/logo.png"
         }'::jsonb
     )$$,
+        :'unknownCommunityID'
+    ),
     'community not found',
     'Should raise an error when the community does not exist'
 );

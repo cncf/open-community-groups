@@ -3,44 +3,82 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000072'
-\set userID '00000000-0000-0000-0000-000000000071'
+\set communityID '4a160000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a160000-0000-0000-0000-000000000002'
+\set eventID '4a160000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a160000-0000-0000-0000-000000000004'
+\set groupID '4a160000-0000-0000-0000-000000000005'
+\set linkedSubmissionID '4a160000-0000-0000-0000-000000000006'
+\set proposalID '4a160000-0000-0000-0000-000000000007'
+\set proposalRustID '4a160000-0000-0000-0000-000000000008'
+\set proposalWithSubmissionID '4a160000-0000-0000-0000-000000000009'
+\set user2ID '4a160000-0000-0000-0000-000000000010'
+\set userID '4a160000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice'),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true, 'Bob');
-
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'session-proposal-community',
+    'Session Proposal Community',
+    'Community for testing session proposal updates',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Meetup');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    'Bob'
+);
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'Session Proposal Group', 'proposal-group');
 
 -- Event
 insert into event (
@@ -87,15 +125,14 @@ insert into session_proposal (
     title,
     user_id
 ) values (
-    gen_random_uuid(),
+    :'proposalRustID',
     '2024-01-02 00:00:00+00',
     'Session about Rust',
     make_interval(mins => 45),
     'beginner',
     'Rust 101',
     :'userID'
-)
-returning session_proposal_id as "proposalRustID" \gset
+);
 
 -- Session proposal
 insert into session_proposal (
@@ -107,15 +144,14 @@ insert into session_proposal (
     title,
     user_id
 ) values (
-    gen_random_uuid(),
+    :'proposalID',
     '2024-01-03 00:00:00+00',
     'Session about Zig',
     make_interval(mins => 60),
     'intermediate',
     'Zig 201',
     :'userID'
-)
-returning session_proposal_id as "proposalID" \gset
+);
 
 -- Session proposal
 insert into session_proposal (
@@ -127,20 +163,18 @@ insert into session_proposal (
     title,
     user_id
 ) values (
-    gen_random_uuid(),
+    :'proposalWithSubmissionID',
     '2024-01-04 00:00:00+00',
     'Session about Python',
     make_interval(mins => 30),
     'beginner',
     'Python 101',
     :'userID'
-)
-returning session_proposal_id as "proposalWithSubmissionID" \gset
+);
 
 -- CFS submission
-insert into cfs_submission (event_id, session_proposal_id, status_id)
-values (:'eventID', :'proposalID'::uuid, 'approved')
-returning cfs_submission_id as "linkedSubmissionID" \gset
+insert into cfs_submission (cfs_submission_id, event_id, session_proposal_id, status_id)
+values (:'linkedSubmissionID', :'eventID', :'proposalID'::uuid, 'approved');
 
 -- CFS submission
 insert into cfs_submission (event_id, session_proposal_id, status_id)
@@ -220,17 +254,44 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
-        select
-            'session_proposal_updated',
-            '00000000-0000-0000-0000-000000000071'::uuid,
-            'alice',
-            'session_proposal',
-            session_proposal_id
-        from session_proposal
-        where title = 'Rust 102'
-    $$,
+    format(
+        $$
+            select
+                'session_proposal_updated',
+                %L::uuid,
+                'alice',
+                'session_proposal',
+                session_proposal_id
+            from session_proposal
+            where title = 'Rust 102'
+        $$,
+        :'userID'
+    ),
     'Should create the expected audit row'
+);
+
+-- Should clear co-speaker when updated to null
+select lives_ok(
+    format(
+        'select update_session_proposal(%L::uuid, %L::uuid, %L::jsonb)',
+        :'userID',
+        :'proposalRustID',
+        jsonb_build_object(
+            'co_speaker_user_id', null,
+            'description', 'Updated description',
+            'duration_minutes', 60,
+            'session_proposal_level_id', 'intermediate',
+            'title', 'Rust 102'
+        )::text
+    ),
+    'Should execute update_session_proposal with null co-speaker successfully'
+);
+
+-- Should clear co-speaker user id
+select is(
+    (select co_speaker_user_id from session_proposal where session_proposal_id = :'proposalRustID'::uuid),
+    null,
+    'Should clear co-speaker user id'
 );
 
 -- Should reject changing co-speaker for proposals with submissions

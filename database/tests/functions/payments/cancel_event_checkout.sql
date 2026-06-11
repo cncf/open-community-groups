@@ -27,7 +27,13 @@ select plan(4);
 
 -- Communities
 insert into community (
-    community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
 )
 values
     (
@@ -35,18 +41,18 @@ values
         'cancel-checkout-community',
         'Cancel Checkout Community',
         'Test',
-        'https://e/logo.png',
         'https://e/banner-mobile.png',
-        'https://e/banner.png'
+        'https://e/banner.png',
+        'https://e/logo.png'
     ),
     (
         :'otherCommunityID',
         'other-cancel-checkout-community',
         'Other Cancel Checkout Community',
         'Test',
-        'https://e/logo.png',
         'https://e/banner-mobile.png',
-        'https://e/banner.png'
+        'https://e/banner.png',
+        'https://e/logo.png'
     );
 
 -- Group category
@@ -62,14 +68,21 @@ insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'hash-1', 'buyer@example.com', true, 'buyer');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient
+)
 values (
     :'groupID',
     :'communityID',
     :'groupCategoryID',
     'Cancel Checkout Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_cancel_checkout'),
-    'cancel-checkout-group'
+    'cancel-checkout-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_cancel_checkout')
 );
 
 -- Event
@@ -102,8 +115,19 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventTicketTypeID',
+    :'eventID',
+    1,
+    10,
+    'General admission'
+);
 
 -- Price window
 insert into event_ticket_price_window (
@@ -174,7 +198,11 @@ insert into event_purchase (
 
 -- Pending attendee row with registration answers created during checkout
 insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'userID', 'registration-questions-pending');
+values (
+    :'eventID',
+    :'userID',
+    'registration-questions-pending'
+);
 
 -- ============================================================================
 -- TESTS
@@ -182,75 +210,75 @@ values (:'eventID', :'userID', 'registration-questions-pending');
 
 -- Should ignore checkouts outside the requested community
 select lives_ok(
-    $$select cancel_event_checkout(
-        '79310000-0000-0000-0000-000000000008'::uuid,
-        '79310000-0000-0000-0000-000000000004'::uuid,
-        '79310000-0000-0000-0000-000000000011'::uuid
-    )$$,
+    format($$select cancel_event_checkout(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid
+    )$$, :'otherCommunityID', :'eventID', :'userID'),
     'Should ignore checkouts outside the requested community'
 );
 
 -- Should leave unmatched community checkout state unchanged
 select results_eq(
-    $$
+    format($$
         select
             (
                 select available
                 from event_discount_code
-                where event_discount_code_id = '79310000-0000-0000-0000-000000000002'::uuid
+                where event_discount_code_id = %L::uuid
             ),
             (
                 select status
                 from event_purchase
-                where event_purchase_id = '79310000-0000-0000-0000-000000000009'::uuid
+                where event_purchase_id = %L::uuid
             ),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '79310000-0000-0000-0000-000000000004'::uuid
-                and user_id = '79310000-0000-0000-0000-000000000011'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             )
-    $$,
+    $$, :'discountCodeID', :'pendingPurchaseID', :'eventID', :'userID'),
     $$ values (0::int, 'pending'::text, 1::int) $$,
     'Should leave unmatched community checkout state unchanged'
 );
 
 -- Should cancel the attendee's active pending checkout
 select lives_ok(
-    $$select cancel_event_checkout(
-        '79310000-0000-0000-0000-000000000001'::uuid,
-        '79310000-0000-0000-0000-000000000004'::uuid,
-        '79310000-0000-0000-0000-000000000011'::uuid
-    )$$,
+    format($$select cancel_event_checkout(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid
+    )$$, :'communityID', :'eventID', :'userID'),
     'Should cancel the attendee active pending checkout'
 );
 
 -- Should expire the pending checkout and restore the reserved discount usage
 select results_eq(
-    $$
+    format($$
         select
             (
                 select available
                 from event_discount_code
-                where event_discount_code_id = '79310000-0000-0000-0000-000000000002'::uuid
+                where event_discount_code_id = %L::uuid
             ),
             (
                 select hold_expires_at <= current_timestamp
                 from event_purchase
-                where event_purchase_id = '79310000-0000-0000-0000-000000000009'::uuid
+                where event_purchase_id = %L::uuid
             ),
             (
                 select status
                 from event_purchase
-                where event_purchase_id = '79310000-0000-0000-0000-000000000009'::uuid
+                where event_purchase_id = %L::uuid
             ),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '79310000-0000-0000-0000-000000000004'::uuid
-                and user_id = '79310000-0000-0000-0000-000000000011'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             )
-    $$,
+    $$, :'discountCodeID', :'pendingPurchaseID', :'pendingPurchaseID', :'eventID', :'userID'),
     $$ values (1::int, true, 'expired'::text, 0::int) $$,
     'Should expire the pending checkout, release registration hold, and restore discount usage'
 );

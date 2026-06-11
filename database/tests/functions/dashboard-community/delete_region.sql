@@ -9,11 +9,12 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000011'
-\set inUseRegionID '00000000-0000-0000-0000-000000000012'
-\set unusedRegionID '00000000-0000-0000-0000-000000000013'
+\set communityID '2c0c0000-0000-0000-0000-000000000001'
+\set groupCategoryID '2c0c0000-0000-0000-0000-000000000002'
+\set groupID '2c0c0000-0000-0000-0000-000000000003'
+\set inUseRegionID '2c0c0000-0000-0000-0000-000000000004'
+\set unknownRegionID '2c0c0000-0000-0000-0000-000000000005'
+\set unusedRegionID '2c0c0000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
@@ -25,54 +26,54 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'cncf-seattle',
     'CNCF Seattle',
     'Community for region delete tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- Group category
 insert into group_category (
-    community_id,
     group_category_id,
+    community_id,
     name
 ) values (
-    :'communityID',
     :'groupCategoryID',
+    :'communityID',
     'Platform'
 );
 
 -- Regions
 insert into region (
-    community_id,
     region_id,
+    community_id,
     name
 ) values
-    (:'communityID', :'inUseRegionID', 'North America'),
-    (:'communityID', :'unusedRegionID', 'Europe');
+    (:'inUseRegionID', :'communityID', 'North America'),
+    (:'unusedRegionID', :'communityID', 'Europe');
 
 -- Group using the first region
 insert into "group" (
+    group_id,
     community_id,
     group_category_id,
-    group_id,
     name,
-    region_id,
-    slug
+    slug,
+    region_id
 ) values (
+    :'groupID',
     :'communityID',
     :'groupCategoryID',
-    :'groupID',
     'Seattle Platform',
-    :'inUseRegionID',
-    'seattle-platform'
+    'seattle-platform',
+    :'inUseRegionID'
 );
 
 -- ============================================================================
@@ -81,30 +82,41 @@ insert into "group" (
 
 -- Should block deleting region that is still referenced by groups
 select throws_ok(
-    $$ select delete_region(
+    format(
+        $$ select delete_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000012'::uuid
+        %L::uuid,
+        %L::uuid
     ) $$,
+        :'communityID',
+        :'inUseRegionID'
+    ),
     'cannot delete region in use by groups',
     'Should block deleting region referenced by groups'
 );
 
 -- Should delete region with no group references
 select lives_ok(
-    $$ select delete_region(
+    format(
+        $$ select delete_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000013'::uuid
+        %L::uuid,
+        %L::uuid
     ) $$,
+        :'communityID',
+        :'unusedRegionID'
+    ),
     'Should delete an unused region'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select count(*)::bigint
     from region r
-    where r.region_id = '00000000-0000-0000-0000-000000000013'::uuid
-    $$,
+    where r.region_id = %L::uuid
+        $$,
+        :'unusedRegionID'
+    ),
     $$ values (0::bigint) $$,
     'Unused region should be deleted'
 );
@@ -122,27 +134,35 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'region_deleted',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             '{"name": "Europe"}'::jsonb,
             'region',
-            '00000000-0000-0000-0000-000000000013'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'communityID',
+        :'unusedRegionID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should fail when target region does not exist
 select throws_ok(
-    $$ select delete_region(
+    format(
+        $$ select delete_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid
+        %L::uuid,
+        %L::uuid
     ) $$,
+        :'communityID',
+        :'unknownRegionID'
+    ),
     'region not found',
     'Should fail when deleting a non-existing region'
 );

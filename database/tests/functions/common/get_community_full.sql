@@ -9,9 +9,9 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
+\set community1ID '0c040000-0000-0000-0000-000000000001'
+\set community2ID '0c040000-0000-0000-0000-000000000002'
+\set nonExistentCommunityID '0c040000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
@@ -20,23 +20,23 @@ select plan(3);
 -- Community with all fields
 insert into community (
     community_id,
-    active,
+    name,
+    display_name,
+    description,
     banner_mobile_url,
     banner_url,
-    community_site_layout_id,
-    description,
-    display_name,
-    group_team_management_restricted,
     logo_url,
-    name,
 
+    active,
     ad_banner_link_url,
     ad_banner_url,
     bluesky_url,
+    community_site_layout_id,
     extra_links,
     facebook_url,
     flickr_url,
     github_url,
+    group_team_management_restricted,
     instagram_url,
     linkedin_url,
     new_group_details,
@@ -48,23 +48,23 @@ insert into community (
     youtube_url
 ) values (
     :'community1ID',
-    true,
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'A vibrant community for cloud native technologies and practices in Seattle',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
-    'default',
-    'A vibrant community for cloud native technologies and practices in Seattle',
-    'Cloud Native Seattle',
-    true,
     'https://example.com/logo.png',
-    'cloud-native-seattle',
 
+    true,
     'https://example.com/banner-link',
     'https://example.com/ad-banner.png',
     'https://bsky.app/profile/testcommunity',
+    'default',
     '{"docs": "https://docs.example.com", "blog": "https://blog.example.com"}'::jsonb,
     'https://facebook.com/testcommunity',
     'https://flickr.com/testcommunity',
     'https://github.com/testcommunity',
+    true,
     'https://instagram.com/testcommunity',
     'https://linkedin.com/company/testcommunity',
     'To create a new group, please contact team members',
@@ -82,17 +82,17 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'community2ID',
     'cloud-native-portland',
     'Cloud Native Portland',
     'A growing community for cloud native technologies in Portland',
-    'https://portland.cloudnative.org/logo.png',
     'https://portland.cloudnative.org/banner_mobile.png',
-    'https://portland.cloudnative.org/banner.png'
+    'https://portland.cloudnative.org/banner.png',
+    'https://portland.cloudnative.org/logo.png'
 );
 
 -- ============================================================================

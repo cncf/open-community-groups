@@ -3,15 +3,16 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set registeredUserID '00000000-0000-0000-0000-000000000102'
-\set takenUsernameUserID '00000000-0000-0000-0000-000000000103'
-\set userID '00000000-0000-0000-0000-000000000101'
+\set registeredUserID '0a020000-0000-0000-0000-000000000001'
+\set takenUsernameUserID '0a020000-0000-0000-0000-000000000002'
+\set unknownUserID '0a020000-0000-0000-0000-000000000003'
+\set userID '0a020000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
@@ -19,17 +20,38 @@ select plan(4);
 
 -- Users
 insert into "user" (
+    user_id,
+    name,
     auth_hash,
     email,
     email_verified,
-    name,
     registration_status,
-    user_id,
     username
-) values
-    ('pre-registered-hash', 'invited@example.com', false, null, 'pre-registered', :'userID', 'invited-user'),
-    ('registered-hash', 'registered@example.com', true, 'Registered User', 'registered', :'registeredUserID', 'registered-user'),
-    ('taken-hash', 'taken@example.com', true, 'Taken User', 'registered', :'takenUsernameUserID', 'alice');
+) values (
+    :'userID',
+    null,
+    'pre-registered-hash',
+    'invited@example.com',
+    false,
+    'pre-registered',
+    'invited-user'
+), (
+    :'registeredUserID',
+    'Registered User',
+    'registered-hash',
+    'registered@example.com',
+    true,
+    'registered',
+    'registered-user'
+), (
+    :'takenUsernameUserID',
+    'Taken User',
+    'taken-hash',
+    'taken@example.com',
+    true,
+    'registered',
+    'alice'
+);
 
 -- ============================================================================
 -- TESTS
@@ -51,7 +73,7 @@ select is(
 
 -- Should promote the placeholder row into a verified registered user.
 select results_eq(
-    $$
+    format($$
         select
             email_verified,
             name,
@@ -59,8 +81,8 @@ select results_eq(
             registration_status,
             username
         from "user"
-        where user_id = '00000000-0000-0000-0000-000000000101'::uuid
-    $$,
+        where user_id = %L::uuid
+    $$, :'userID'),
     $$
         values (
             true,
@@ -73,22 +95,32 @@ select results_eq(
     'Should promote the placeholder row into a verified registered user'
 );
 
+-- Should rotate the user's auth hash during activation.
+select ok(
+    (
+        select auth_hash <> 'pre-registered-hash'
+        from "user"
+        where user_id = :'userID'::uuid
+    ),
+    'Should rotate the user auth hash during activation'
+);
+
 -- Should reject users that are already registered.
 select throws_ok(
-    $$ select activate_pre_registered_user_external_provider(
-        '00000000-0000-0000-0000-000000000102'::uuid,
+    format($$ select activate_pre_registered_user_external_provider(
+        %L::uuid,
         '{"name": "Registered User", "provider": {}, "username": "registered-user"}'::jsonb
-    ) $$,
+    ) $$, :'registeredUserID'),
     'pre-registered user not found',
     'Should reject users that are already registered'
 );
 
 -- Should reject missing pre-registered users.
 select throws_ok(
-    $$ select activate_pre_registered_user_external_provider(
-        '00000000-0000-0000-0000-999999999999'::uuid,
+    format($$ select activate_pre_registered_user_external_provider(
+        %L::uuid,
         '{"name": "Missing User", "provider": {}, "username": "missing"}'::jsonb
-    ) $$,
+    ) $$, :'unknownUserID'),
     'pre-registered user not found',
     'Should reject missing pre-registered users'
 );

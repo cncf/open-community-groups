@@ -9,9 +9,9 @@ select plan(13);
 -- VARIABLES
 -- ============================================================================
 
-\set userID1 '00000000-0000-0000-0000-000000000801'
-\set userID2 '00000000-0000-0000-0000-000000000802'
-\set userID3 '00000000-0000-0000-0000-000000000803'
+\set userID1 '8a030000-0000-0000-0000-000000000001'
+\set userID2 '8a030000-0000-0000-0000-000000000002'
+\set userID3 '8a030000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
@@ -19,16 +19,16 @@ select plan(13);
 
 -- Users
 insert into "user" (
+    user_id,
     auth_hash,
     email,
     email_verified,
-    optional_notifications_enabled,
-    user_id,
-    username
+    username,
+    optional_notifications_enabled
 ) values
-    ('hash-1', 'user1@example.com', true, true, :'userID1', 'user-one'),
-    ('hash-2', 'user2@example.com', true, false, :'userID2', 'user-two'),
-    ('hash-3', 'user3@example.com', false, true, :'userID3', 'user-three');
+    (:'userID1', 'hash-1', 'user1@example.com', true, 'user-one', true),
+    (:'userID2', 'hash-2', 'user2@example.com', true, 'user-two', false),
+    (:'userID3', 'hash-3', 'user3@example.com', false, 'user-three', true);
 
 -- ============================================================================
 -- TESTS
@@ -59,10 +59,14 @@ select results_eq(
     where n.kind = 'event-canceled'
     order by n.user_id
     $$,
-    $$ values
-        ('00000000-0000-0000-0000-000000000801'::uuid, null::uuid),
-        ('00000000-0000-0000-0000-000000000802'::uuid, null::uuid)
-    $$,
+    format(
+        $$ values
+        (%L::uuid, null::uuid),
+        (%L::uuid, null::uuid)
+        $$,
+        :'userID1',
+        :'userID2'
+    ),
     'Should create event-canceled notifications for expected recipients'
 );
 
@@ -91,9 +95,10 @@ select results_eq(
     where n.kind = 'event-published'
     order by n.user_id
     $$,
-    $$ values
-        ('00000000-0000-0000-0000-000000000801'::uuid, null::uuid)
-    $$,
+    format(
+        $$ values (%L::uuid, null::uuid) $$,
+        :'userID1'
+    ),
     'Should create event-published notifications for optional notifications recipients only'
 );
 
@@ -139,10 +144,14 @@ select results_eq(
     where n.kind = 'group-welcome'
     order by n.user_id
     $$,
-    $$ values
-        ('00000000-0000-0000-0000-000000000801'::uuid, '{"group":"rust"}'::jsonb),
-        ('00000000-0000-0000-0000-000000000803'::uuid, '{"group":"rust"}'::jsonb)
-    $$,
+    format(
+        $$ values
+        (%L::uuid, '{"group":"rust"}'::jsonb),
+        (%L::uuid, '{"group":"rust"}'::jsonb)
+        $$,
+        :'userID1',
+        :'userID3'
+    ),
     'Should link group-welcome notifications to expected template data'
 );
 
@@ -171,20 +180,25 @@ select results_eq(
     where n.kind = 'group-welcome'
     order by n.user_id
     $$,
-    $$ values
+    format(
+        $$ values
         (
-            '00000000-0000-0000-0000-000000000801'::uuid,
+            %L::uuid,
             encode(digest(convert_to('{"group":"rust"}'::jsonb::text, 'utf8'), 'sha256'), 'hex')
         ),
         (
-            '00000000-0000-0000-0000-000000000802'::uuid,
+            %L::uuid,
             encode(digest(convert_to('{"group":"rust"}'::jsonb::text, 'utf8'), 'sha256'), 'hex')
         ),
         (
-            '00000000-0000-0000-0000-000000000803'::uuid,
+            %L::uuid,
             encode(digest(convert_to('{"group":"rust"}'::jsonb::text, 'utf8'), 'sha256'), 'hex')
         )
-    $$,
+        $$,
+        :'userID1',
+        :'userID2',
+        :'userID3'
+    ),
     'Should keep one template hash across group-welcome notifications'
 );
 
@@ -255,22 +269,26 @@ select results_eq(
     group by n.user_id
     order by n.user_id
     $$,
-    $$ values
+    format(
+        $$ values
         (
-            '00000000-0000-0000-0000-000000000801'::uuid,
+            %L::uuid,
             array[
                 '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
                 '3c41d3835155c97d51a836c887be9c0063b7b45f61e14017a9d653fa4c655802'
             ]::text[]
         ),
         (
-            '00000000-0000-0000-0000-000000000802'::uuid,
+            %L::uuid,
             array[
                 '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
                 '3c41d3835155c97d51a836c887be9c0063b7b45f61e14017a9d653fa4c655802'
             ]::text[]
         )
-    $$,
+        $$,
+        :'userID1',
+        :'userID2'
+    ),
     'Should link each event-welcome notification to both attachments'
 );
 
@@ -284,10 +302,14 @@ select results_eq(
     where n.kind = 'event-welcome'
     order by n.user_id
     $$,
-    $$ values
-        ('00000000-0000-0000-0000-000000000801'::uuid, null::uuid),
-        ('00000000-0000-0000-0000-000000000802'::uuid, null::uuid)
-    $$,
+    format(
+        $$ values
+        (%L::uuid, null::uuid),
+        (%L::uuid, null::uuid)
+        $$,
+        :'userID1',
+        :'userID2'
+    ),
     'Should keep template reference null for event-welcome notifications'
 );
 

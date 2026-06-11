@@ -9,32 +9,53 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set coSpeakerID '00000000-0000-0000-0000-000000000071'
-\set proposalOtherID '00000000-0000-0000-0000-000000000064'
-\set proposalPending1ID '00000000-0000-0000-0000-000000000061'
-\set proposalPending2ID '00000000-0000-0000-0000-000000000062'
-\set proposalReadyID '00000000-0000-0000-0000-000000000063'
-\set speakerID '00000000-0000-0000-0000-000000000070'
-\set userEmptyID '00000000-0000-0000-0000-000000000099'
-\set userOtherID '00000000-0000-0000-0000-000000000072'
+\set coSpeakerID '4a0e0000-0000-0000-0000-000000000001'
+\set proposalOtherID '4a0e0000-0000-0000-0000-000000000002'
+\set proposalPending1ID '4a0e0000-0000-0000-0000-000000000003'
+\set proposalPending2ID '4a0e0000-0000-0000-0000-000000000004'
+\set proposalReadyID '4a0e0000-0000-0000-0000-000000000005'
+\set speakerID '4a0e0000-0000-0000-0000-000000000006'
+\set userEmptyID '4a0e0000-0000-0000-0000-000000000007'
+\set userOtherID '4a0e0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name, photo_url) values
-    (:'coSpeakerID', gen_random_bytes(32), 'co-speaker@example.com', 'co-speaker', true, 'Co Speaker', null),
-    (
-        :'speakerID',
-        gen_random_bytes(32),
-        'speaker@example.com',
-        'speaker',
-        true,
-        'Speaker',
-        'https://example.test/speaker.png'
-    ),
-    (:'userOtherID', gen_random_bytes(32), 'other@example.com', 'other-user', true, 'Other User', null);
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name,
+    photo_url
+) values (
+    :'coSpeakerID',
+    gen_random_bytes(32),
+    'co-speaker@example.com',
+    true,
+    'co-speaker',
+    'Co Speaker',
+    null
+), (
+    :'speakerID',
+    gen_random_bytes(32),
+    'speaker@example.com',
+    true,
+    'speaker',
+    'Speaker',
+    'https://example.test/speaker.png'
+), (
+    :'userOtherID',
+    gen_random_bytes(32),
+    'other@example.com',
+    true,
+    'other-user',
+    'Other User',
+    null
+);
 
 -- Session proposals
 insert into session_proposal (

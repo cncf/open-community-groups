@@ -6,6 +6,14 @@ begin;
 select plan(3);
 
 -- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set ticketTypeAID '3a100000-0000-0000-0000-000000000001'
+\set ticketTypeBID '3a100000-0000-0000-0000-000000000002'
+\set ticketTypeCID '3a100000-0000-0000-0000-000000000003'
+
+-- ============================================================================
 -- TESTS
 -- ============================================================================
 
@@ -26,20 +34,23 @@ select is(
 -- Should sum only non-negative seats across ticket types
 select is(
     get_event_ticket_capacity(
-        '[
+        format(
+            '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "%s",
                 "seats_total": 50
             },
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000062",
+                "event_ticket_type_id": "%s",
                 "seats_total": -10
             },
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000063",
+                "event_ticket_type_id": "%s",
                 "seats_total": 25
             }
-        ]'::jsonb
+        ]',
+            :'ticketTypeAID', :'ticketTypeBID', :'ticketTypeCID'
+        )::jsonb
     ),
     75,
     'Should sum only non-negative seats across ticket types'

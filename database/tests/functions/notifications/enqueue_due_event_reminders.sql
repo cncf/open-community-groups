@@ -9,29 +9,30 @@ select plan(17);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000009901'
-\set categoryInactiveCommunityID '00000000-0000-0000-0000-000000009914'
-\set communityID '00000000-0000-0000-0000-000000009902'
-\set communityInactiveID '00000000-0000-0000-0000-000000009915'
-\set eventDeletedGroupID '00000000-0000-0000-0000-000000009916'
-\set eventDisabledID '00000000-0000-0000-0000-000000009903'
-\set eventDueID '00000000-0000-0000-0000-000000009904'
-\set eventInactiveCommunityID '00000000-0000-0000-0000-000000009917'
-\set eventInactiveGroupID '00000000-0000-0000-0000-000000009918'
-\set eventNoRecipientsID '00000000-0000-0000-0000-000000009905'
-\set eventNotDueID '00000000-0000-0000-0000-000000009906'
-\set eventSentID '00000000-0000-0000-0000-000000009907'
-\set groupCategoryID '00000000-0000-0000-0000-000000009908'
-\set groupCategoryInactiveCommunityID '00000000-0000-0000-0000-000000009919'
-\set groupDeletedID '00000000-0000-0000-0000-000000009920'
-\set groupID '00000000-0000-0000-0000-000000009909'
-\set groupInactiveCommunityID '00000000-0000-0000-0000-000000009921'
-\set groupInactiveID '00000000-0000-0000-0000-000000009922'
-\set userPreRegisteredInvitedID '00000000-0000-0000-0000-000000009923'
-\set userVerifiedAttendeeID '00000000-0000-0000-0000-000000009910'
-\set userVerifiedLateSignupID '00000000-0000-0000-0000-000000009911'
-\set userVerifiedSpeakerID '00000000-0000-0000-0000-000000009912'
-\set userUnverifiedID '00000000-0000-0000-0000-000000009913'
+\set communityID '8a020000-0000-0000-0000-000000000001'
+\set communityInactiveID '8a020000-0000-0000-0000-000000000002'
+\set eventCategoryID '8a020000-0000-0000-0000-000000000003'
+\set eventCategoryInactiveCommunityID '8a020000-0000-0000-0000-000000000004'
+\set eventDeletedGroupID '8a020000-0000-0000-0000-000000000005'
+\set eventDisabledID '8a020000-0000-0000-0000-000000000006'
+\set eventDueID '8a020000-0000-0000-0000-000000000007'
+\set eventInactiveCommunityID '8a020000-0000-0000-0000-000000000008'
+\set eventInactiveGroupID '8a020000-0000-0000-0000-000000000009'
+\set eventNoRecipientsID '8a020000-0000-0000-0000-000000000010'
+\set eventNotDueID '8a020000-0000-0000-0000-000000000011'
+\set eventSentID '8a020000-0000-0000-0000-000000000012'
+\set groupCategoryID '8a020000-0000-0000-0000-000000000013'
+\set groupCategoryInactiveCommunityID '8a020000-0000-0000-0000-000000000014'
+\set groupDeletedID '8a020000-0000-0000-0000-000000000015'
+\set groupID '8a020000-0000-0000-0000-000000000016'
+\set groupInactiveCommunityID '8a020000-0000-0000-0000-000000000017'
+\set groupInactiveID '8a020000-0000-0000-0000-000000000018'
+\set siteID '8a020000-0000-0000-0000-000000000019'
+\set userPreRegisteredInvitedID '8a020000-0000-0000-0000-000000000020'
+\set userUnverifiedID '8a020000-0000-0000-0000-000000000021'
+\set userVerifiedAttendeeID '8a020000-0000-0000-0000-000000000022'
+\set userVerifiedLateSignupID '8a020000-0000-0000-0000-000000000023'
+\set userVerifiedSpeakerID '8a020000-0000-0000-0000-000000000024'
 
 -- ============================================================================
 -- SEED DATA
@@ -39,7 +40,7 @@ select plan(17);
 
 -- Site settings
 insert into site (site_id, title, description, theme) values (
-    '00000000-0000-0000-0000-000000009900',
+    :'siteID',
     'Test Site',
     'Test Site Description',
     '{"primary_color": "#2563eb"}'::jsonb
@@ -51,109 +52,109 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
-    'test-community',
-    'Test Community',
+    'event-reminders-community',
+    'Event Reminders Community',
     'Reminder notification tests',
-    'https://example.com/community-logo.png',
     'https://example.com/community-banner-mobile.png',
-    'https://example.com/community-banner.png'
+    'https://example.com/community-banner.png',
+    'https://example.com/community-logo.png'
 );
 
 -- Inactive community
 insert into community (
     community_id,
-    active,
     name,
     display_name,
     description,
-    logo_url,
+    active,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityInactiveID',
-    false,
     'inactive-community',
     'Inactive Community',
     'Inactive community used for reminder tests',
-    'https://example.com/inactive-community-logo.png',
+    false,
     'https://example.com/inactive-community-banner-mobile.png',
-    'https://example.com/inactive-community-banner.png'
+    'https://example.com/inactive-community-banner.png',
+    'https://example.com/inactive-community-logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group category for inactive community
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryInactiveCommunityID', 'Design', :'communityInactiveID');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryInactiveCommunityID', :'communityInactiveID', 'Design');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'General', :'communityID');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'General');
 
 -- Event category for inactive community
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryInactiveCommunityID', 'Community', :'communityInactiveID');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryInactiveCommunityID', :'communityInactiveID', 'Community');
 
 -- Group
 insert into "group" (
     group_id,
     community_id,
+    group_category_id,
     name,
     slug,
     slug_pretty,
     description,
-    group_category_id,
     logo_url
 ) values (
     :'groupID',
     :'communityID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
     'test-group-pretty',
     'Group used for reminder tests',
-    :'groupCategoryID',
     'https://example.com/group-logo.png'
 );
 
 -- Inactive and deleted groups
 insert into "group" (
     group_id,
-    active,
     community_id,
+    group_category_id,
     name,
     slug,
-    description,
+    active,
     deleted,
-    group_category_id,
+    description,
     logo_url
 ) values
     (
         :'groupDeletedID',
-        false,
         :'communityID',
+        :'groupCategoryID',
         'Deleted Group',
         'deleted-group',
-        'Deleted group used for reminder tests',
+        false,
         true,
-        :'groupCategoryID',
+        'Deleted group used for reminder tests',
         'https://example.com/deleted-group-logo.png'
     ),
     (
         :'groupInactiveID',
-        false,
         :'communityID',
+        :'groupCategoryID',
         'Inactive Group',
         'inactive-group',
-        'Inactive group used for reminder tests',
         false,
-        :'groupCategoryID',
+        false,
+        'Inactive group used for reminder tests',
         'https://example.com/inactive-group-logo.png'
     );
 
@@ -161,28 +162,37 @@ insert into "group" (
 insert into "group" (
     group_id,
     community_id,
+    group_category_id,
     name,
     slug,
     description,
-    group_category_id,
     logo_url
 ) values (
     :'groupInactiveCommunityID',
     :'communityInactiveID',
+    :'groupCategoryInactiveCommunityID',
     'Inactive Community Group',
     'inactive-community-group',
     'Group in inactive community used for reminder tests',
-    :'groupCategoryInactiveCommunityID',
     'https://example.com/inactive-community-group-logo.png'
 );
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username, registration_status) values
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    registration_status
+) values
     (:'userVerifiedAttendeeID', 'hash-1', 'attendee@example.com', true, 'attendee', 'registered'),
-    (:'userVerifiedLateSignupID', 'hash-2', 'late-signup@example.com', true, 'late-signup', 'registered'),
+    (:'userVerifiedLateSignupID', 'hash-2', 'late-signup@example.com',
+        true, 'late-signup', 'registered'),
     (:'userVerifiedSpeakerID', 'hash-3', 'speaker@example.com', true, 'speaker', 'registered'),
     (:'userUnverifiedID', 'hash-4', 'unverified@example.com', false, 'unverified', 'registered'),
-    (:'userPreRegisteredInvitedID', 'hash-5', 'invited@example.com', false, 'invited', 'pre-registered');
+    (:'userPreRegisteredInvitedID', 'hash-5', 'invited@example.com',
+        false, 'invited', 'pre-registered');
 
 -- Events
 insert into event (
@@ -209,7 +219,7 @@ insert into event (
         'due-event',
         'Event that should trigger reminders',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'hybrid',
         current_timestamp + interval '23 hours',
         current_timestamp + interval '24 hours',
@@ -226,7 +236,7 @@ insert into event (
         'no-recipients-event',
         'Due event without verified recipients',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         current_timestamp + interval '20 hours',
         current_timestamp + interval '21 hours',
@@ -243,7 +253,7 @@ insert into event (
         'not-due-event',
         'Event outside reminder window',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'in-person',
         current_timestamp + interval '30 hours',
         current_timestamp + interval '31 hours',
@@ -260,7 +270,7 @@ insert into event (
         'deleted-group-event',
         'Due event from a deleted group',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         current_timestamp + interval '19 hours',
         current_timestamp + interval '20 hours',
@@ -277,7 +287,7 @@ insert into event (
         'inactive-community-event',
         'Due event from an inactive community',
         'UTC',
-        :'categoryInactiveCommunityID',
+        :'eventCategoryInactiveCommunityID',
         'virtual',
         current_timestamp + interval '18 hours',
         current_timestamp + interval '19 hours',
@@ -294,7 +304,7 @@ insert into event (
         'inactive-group-event',
         'Due event from an inactive group',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         current_timestamp + interval '17 hours',
         current_timestamp + interval '18 hours',
@@ -330,7 +340,7 @@ insert into event (
     'disabled-reminder-event',
     'Event with reminders disabled',
     'UTC',
-    :'categoryID',
+    :'eventCategoryID',
     'in-person',
     current_timestamp + interval '20 hours',
     current_timestamp + interval '21 hours',
@@ -367,7 +377,7 @@ insert into event (
     'already-sent-event',
     'Event with reminder already sent',
     'UTC',
-    :'categoryID',
+    :'eventCategoryID',
     'in-person',
     current_timestamp + interval '20 hours',
     current_timestamp + interval '21 hours',
@@ -406,18 +416,25 @@ select is(
 
 -- Should create one reminder notification per verified recipient for the due event
 select results_eq(
-    $$
+    format(
+        $$
     select n.user_id
     from notification n
     join notification_template_data ntd using (notification_template_data_id)
     where n.kind = 'event-reminder'
-    and ntd.data->'event'->>'event_id' = '00000000-0000-0000-0000-000000009904'
+    and ntd.data->'event'->>'event_id' = %L
     order by n.user_id
-    $$,
-    $$ values
-        ('00000000-0000-0000-0000-000000009910'::uuid),
-        ('00000000-0000-0000-0000-000000009912'::uuid)
-    $$,
+        $$,
+        :'eventDueID'
+    ),
+    format(
+        $$ values
+        (%L::uuid),
+        (%L::uuid)
+        $$,
+        :'userVerifiedAttendeeID',
+        :'userVerifiedSpeakerID'
+    ),
     'Should create one reminder notification per verified recipient for the due event'
 );
 
@@ -442,7 +459,7 @@ select is(
         where n.kind = 'event-reminder'
         limit 1
     ),
-    'https://example.test/test-community/group/test-group-pretty/event/due-event',
+    'https://example.test/event-reminders-community/group/test-group-pretty/event/due-event',
     'Should build reminder link using the provided base URL'
 );
 

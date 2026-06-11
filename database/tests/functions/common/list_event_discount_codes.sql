@@ -9,34 +9,55 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set discountCodeFixedID '00000000-0000-0000-0000-000000000051'
-\set discountCodePercentageID '00000000-0000-0000-0000-000000000052'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set eventID '00000000-0000-0000-0000-000000000021'
-\set eventNoDiscountCodesID '00000000-0000-0000-0000-000000000022'
-\set groupCategoryID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000041'
+\set communityID '0c110000-0000-0000-0000-000000000001'
+\set discountCodeFixedID '0c110000-0000-0000-0000-000000000002'
+\set discountCodePercentageID '0c110000-0000-0000-0000-000000000003'
+\set eventCategoryID '0c110000-0000-0000-0000-000000000004'
+\set eventID '0c110000-0000-0000-0000-000000000005'
+\set eventNoDiscountCodesID '0c110000-0000-0000-0000-000000000006'
+\set groupCategoryID '0c110000-0000-0000-0000-000000000007'
+\set groupID '0c110000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'community', 'Community', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'discount-code-community',
+    'Discount Code Community',
+    'Community for discount code tests',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name) values
     (:'groupCategoryID', :'communityID', 'Tech');
 
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
-
 -- Event category
 insert into event_category (event_category_id, community_id, name) values
     (:'eventCategoryID', :'communityID', 'Meetup');
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug) values
+    (
+        :'groupID',
+        :'communityID',
+        :'groupCategoryID',
+        'Discount Code Group',
+        'discount-code-group'
+    );
 
 -- Events
 insert into event (
@@ -49,9 +70,27 @@ insert into event (
     event_category_id,
     event_kind_id,
     published
-) values
-    (:'eventID', :'groupID', 'Event with discount codes', 'event-with-discount-codes', 'd', 'UTC', :'eventCategoryID', 'virtual', true),
-    (:'eventNoDiscountCodesID', :'groupID', 'Event without discount codes', 'event-without-discount-codes', 'd', 'UTC', :'eventCategoryID', 'virtual', true);
+) values (
+    :'eventID',
+    :'groupID',
+    'Event with discount codes',
+    'event-with-discount-codes',
+    'Event with discount codes',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    true
+), (
+    :'eventNoDiscountCodesID',
+    :'groupID',
+    'Event without discount codes',
+    'event-without-discount-codes',
+    'Event without discount codes',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    true
+);
 
 -- Event discount codes
 insert into event_discount_code (

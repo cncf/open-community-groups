@@ -13,11 +13,11 @@ select plan(2);
 \set discountCodeID '79210000-0000-0000-0000-000000000002'
 \set eventCategoryID '79210000-0000-0000-0000-000000000003'
 \set eventID '79210000-0000-0000-0000-000000000004'
-\set ticketTypeID '79210000-0000-0000-0000-000000000005'
 \set groupCategoryID '79210000-0000-0000-0000-000000000006'
 \set groupID '79210000-0000-0000-0000-000000000007'
 \set priceWindowID '79210000-0000-0000-0000-000000000008'
 \set purchaseID '79210000-0000-0000-0000-000000000009'
+\set ticketTypeID '79210000-0000-0000-0000-000000000005'
 \set userID '79210000-0000-0000-0000-000000000010'
 
 -- ============================================================================
@@ -25,8 +25,23 @@ select plan(2);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'expire-replaced-community', 'Expire Replaced Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'expire-replaced-community',
+    'Expire Replaced Community',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -41,14 +56,21 @@ insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'hash-1', 'buyer@example.com', true, 'buyer');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient
+)
 values (
     :'groupID',
     :'communityID',
     :'groupCategoryID',
     'Expire Replaced Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_expire_replaced'),
-    'expire-replaced-group'
+    'expire-replaced-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_expire_replaced')
 );
 
 -- Event
@@ -81,8 +103,19 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    :'eventID',
+    1,
+    10,
+    'General admission'
+);
 
 -- Price window
 insert into event_ticket_price_window (
@@ -149,7 +182,11 @@ insert into event_purchase (
 
 -- Pending attendee row with registration answers created during checkout
 insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'userID', 'registration-questions-pending');
+values (
+    :'eventID',
+    :'userID',
+    'registration-questions-pending'
+);
 
 -- ============================================================================
 -- TESTS
@@ -157,24 +194,24 @@ values (:'eventID', :'userID', 'registration-questions-pending');
 
 -- Should expire the replaced pending purchase
 select lives_ok(
-    $$select prepare_event_checkout_expire_previous_hold('79210000-0000-0000-0000-000000000009'::uuid)$$,
+    format($$select prepare_event_checkout_expire_previous_hold(%L::uuid)$$, :'purchaseID'),
     'Should expire the replaced pending purchase'
 );
 
 -- Should restore the reserved discount inventory
 select results_eq(
-    $$
+    format($$
         select
-            (select hold_expires_at <= current_timestamp from event_purchase where event_purchase_id = '79210000-0000-0000-0000-000000000009'::uuid),
-            (select status from event_purchase where event_purchase_id = '79210000-0000-0000-0000-000000000009'::uuid),
-            (select available::text from event_discount_code where event_discount_code_id = '79210000-0000-0000-0000-000000000002'::uuid),
+            (select hold_expires_at <= current_timestamp from event_purchase where event_purchase_id = %L::uuid),
+            (select status from event_purchase where event_purchase_id = %L::uuid),
+            (select available::text from event_discount_code where event_discount_code_id = %L::uuid),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '79210000-0000-0000-0000-000000000004'::uuid
-                and user_id = '79210000-0000-0000-0000-000000000010'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             )
-    $$,
+    $$, :'purchaseID', :'purchaseID', :'discountCodeID', :'eventID', :'userID'),
     $$ values (true, 'expired'::text, '1'::text, 0::int) $$,
     'Should restore the reserved discount inventory and release the registration hold'
 );

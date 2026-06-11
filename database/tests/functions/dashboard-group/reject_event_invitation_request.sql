@@ -9,39 +9,54 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set actorID '00000000-0000-0000-0000-000000000031'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventID '00000000-0000-0000-0000-000000000041'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set requesterID '00000000-0000-0000-0000-000000000032'
+\set actorID '3a2d0000-0000-0000-0000-000000000001'
+\set communityID '3a2d0000-0000-0000-0000-000000000002'
+\set eventCategoryID '3a2d0000-0000-0000-0000-000000000003'
+\set eventID '3a2d0000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a2d0000-0000-0000-0000-000000000005'
+\set groupID '3a2d0000-0000-0000-0000-000000000006'
+\set requesterID '3a2d0000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'invitation-community',
+    'Invitation Community',
+    'A test community for invitations',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
 values
-    (:'actorID', 'h', 'actor@test.com', 'actor'),
-    (:'requesterID', 'h', 'requester@test.com', 'requester');
+    (:'actorID', 'actor-hash', 'actor@test.com', 'actor'),
+    (:'requesterID', 'requester-hash', 'requester@test.com', 'requester');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'Group', 'group');
+values (:'groupID', :'communityID', :'groupCategoryID', 'Invite Group', 'invite-group');
 
 -- Event
 insert into event (
@@ -55,8 +70,18 @@ insert into event (
     group_id,
     published,
     attendee_approval_required
-)
-values (:'eventID', 'Invite Event', 'invite-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, true);
+) values (
+    :'eventID',
+    'Invite Event',
+    'invite-event',
+    'An event for invitation requests',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    true,
+    true
+);
 
 -- Invitation request
 insert into event_invitation_request (event_id, user_id)
@@ -83,14 +108,34 @@ select results_eq(
 );
 
 -- Should track the rejection in the audit log
-select ok(
-    exists(
-        select 1
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            community_id,
+            details,
+            event_id,
+            group_id,
+            resource_id,
+            resource_type
         from audit_log
         where action = 'event_invitation_request_rejected'
-        and actor_user_id = :'actorID'::uuid
-        and event_id = :'eventID'::uuid
-        and resource_id = :'requesterID'::uuid
+    $$,
+    format(
+        $$
+        values (
+            'event_invitation_request_rejected',
+            %L::uuid,
+            %L::uuid,
+            '{"event_id": "%s", "user_id": "%s"}'::jsonb,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'user'
+        )
+        $$,
+        :'actorID', :'communityID', :'eventID', :'requesterID', :'eventID', :'groupID', :'requesterID'
     ),
     'Should track the rejection in the audit log'
 );

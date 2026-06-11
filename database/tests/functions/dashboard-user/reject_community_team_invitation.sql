@@ -9,20 +9,48 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set userID '00000000-0000-0000-0000-000000000011'
+\set communityID '4a100000-0000-0000-0000-000000000001'
+\set userID '4a100000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'Seattle community for cloud native technologies', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'Seattle community for cloud native technologies',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- User
-insert into "user" (user_id, auth_hash, email, email_verified, name, username)
-values (:'userID', gen_random_bytes(32), 'user@example.com', true, 'User', 'user');
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'user@example.com',
+    true,
+    'user',
+    'User'
+);
 
 -- Pending invitation
 insert into community_team (
@@ -43,7 +71,13 @@ insert into community_team (
 
 -- Should remove the pending invitation
 select lives_ok(
-    $$ select reject_community_team_invitation('00000000-0000-0000-0000-000000000011'::uuid, '00000000-0000-0000-0000-000000000001'::uuid) $$,
+    format(
+        $$
+            select reject_community_team_invitation(%L::uuid, %L::uuid)
+        $$,
+        :'userID',
+        :'communityID'
+    ),
     'Should remove the pending invitation'
 );
 
@@ -71,22 +105,33 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
-        values (
-            'community_team_invitation_rejected',
-            '00000000-0000-0000-0000-000000000011'::uuid,
-            'user',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            'user',
-            '00000000-0000-0000-0000-000000000011'::uuid
-        )
-    $$,
+    format(
+        $$
+            values (
+                'community_team_invitation_rejected',
+                %L::uuid,
+                'user',
+                %L::uuid,
+                'user',
+                %L::uuid
+            )
+        $$,
+        :'userID',
+        :'communityID',
+        :'userID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should reject a second rejection when no pending invitation exists
 select throws_ok(
-    $$ select reject_community_team_invitation('00000000-0000-0000-0000-000000000011'::uuid, '00000000-0000-0000-0000-000000000001'::uuid) $$,
+    format(
+        $$
+            select reject_community_team_invitation(%L::uuid, %L::uuid)
+        $$,
+        :'userID',
+        :'communityID'
+    ),
     'no pending community invitation found',
     'Should reject a second rejection when no pending invitation exists'
 );

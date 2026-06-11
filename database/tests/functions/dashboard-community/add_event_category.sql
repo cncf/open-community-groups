@@ -9,7 +9,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set communityID '2c030000-0000-0000-0000-000000000001'
 
 -- ============================================================================
 -- SEED DATA
@@ -21,17 +21,17 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'cncf-seattle',
     'CNCF Seattle',
     'Community for event category tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- ============================================================================
@@ -40,21 +40,27 @@ insert into community (
 
 -- Should create a new event category and auto-generate slug
 select lives_ok(
-    $$ select add_event_category(
+    format(
+        $$ select add_event_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'Cloud Native Meetup')
     ) $$,
+        :'communityID'
+    ),
     'Should create an event category with generated slug'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select
         ec.name,
         ec.slug
     from event_category ec
-    where ec.community_id = '00000000-0000-0000-0000-000000000001'::uuid
-    $$,
+    where ec.community_id = %L::uuid
+        $$,
+        :'communityID'
+    ),
     $$ values ('Cloud Native Meetup'::text, 'cloud-native-meetup'::text) $$,
     'Should store category name and generated slug'
 );
@@ -71,38 +77,48 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         select
             'event_category_added',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'event_category',
             event_category_id
         from event_category
-        where community_id = '00000000-0000-0000-0000-000000000001'::uuid
-    $$,
+        where community_id = %L::uuid
+        $$,
+        :'communityID',
+        :'communityID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should not allow duplicate event category slug in same community
 select throws_ok(
-    $$ select add_event_category(
+    format(
+        $$ select add_event_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'cloud native meetup')
     ) $$,
+        :'communityID'
+    ),
     'event category already exists',
     'Should reject duplicate event category names'
 );
 
 -- Should reject names that generate an empty slug
 select throws_ok(
-    $$ select add_event_category(
+    format(
+        $$ select add_event_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         jsonb_build_object('name', '!!!')
     ) $$,
+        :'communityID'
+    ),
     'event category name is invalid',
     'Should reject event category names that generate empty slugs'
 );

@@ -3,53 +3,75 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set attendeeUserID '79260000-0000-0000-0000-000000000022'
 \set communityID '79260000-0000-0000-0000-000000000001'
 \set eventCategoryID '79260000-0000-0000-0000-000000000002'
-\set mainEventID '79260000-0000-0000-0000-000000000003'
-\set soldOutEventID '79260000-0000-0000-0000-000000000004'
-\set inactiveEventID '79260000-0000-0000-0000-000000000005'
-\set ticketTypeAID '79260000-0000-0000-0000-000000000006'
-\set ticketTypeBID '79260000-0000-0000-0000-000000000007'
-\set soldOutTicketTypeID '79260000-0000-0000-0000-000000000008'
-\set inactiveTicketTypeID '79260000-0000-0000-0000-000000000009'
+\set exhaustedDiscountUserID '79260000-0000-0000-0000-000000000025'
+\set expiredPriceWindowID '79260000-0000-0000-0000-000000000037'
+\set fixedDiscountUserID '79260000-0000-0000-0000-000000000026'
+\set freeDiscountID '79260000-0000-0000-0000-000000000016'
 \set groupCategoryID '79260000-0000-0000-0000-000000000010'
 \set groupID '79260000-0000-0000-0000-000000000011'
+\set inactiveDiscountID '79260000-0000-0000-0000-000000000017'
+\set inactiveEventID '79260000-0000-0000-0000-000000000005'
+\set inactivePriceWindowID '79260000-0000-0000-0000-000000000015'
+\set inactiveTicketTypeID '79260000-0000-0000-0000-000000000009'
+\set inactiveUserID '79260000-0000-0000-0000-000000000029'
+\set invalidDiscountUserID '79260000-0000-0000-0000-000000000023'
+\set invitedUserID '79260000-0000-0000-0000-000000000032'
+\set limitedDiscountID '79260000-0000-0000-0000-000000000018'
+\set mainEventID '79260000-0000-0000-0000-000000000003'
+\set missingTicketTypeID '79260000-0000-0000-0000-000000000034'
+\set noActivePriceTicketTypeID '79260000-0000-0000-0000-000000000035'
+\set percentageDiscountID '79260000-0000-0000-0000-000000000019'
+\set percentageDiscountUserID '79260000-0000-0000-0000-000000000027'
 \set priceWindowAID '79260000-0000-0000-0000-000000000012'
 \set priceWindowBID '79260000-0000-0000-0000-000000000013'
-\set soldOutPriceWindowID '79260000-0000-0000-0000-000000000014'
-\set inactivePriceWindowID '79260000-0000-0000-0000-000000000015'
-\set freeDiscountID '79260000-0000-0000-0000-000000000016'
-\set inactiveDiscountID '79260000-0000-0000-0000-000000000017'
-\set limitedDiscountID '79260000-0000-0000-0000-000000000018'
-\set percentageDiscountID '79260000-0000-0000-0000-000000000019'
 \set redeemedPurchaseID '79260000-0000-0000-0000-000000000020'
-\set soldOutPurchaseID '79260000-0000-0000-0000-000000000021'
-\set attendeeUserID '79260000-0000-0000-0000-000000000022'
-\set invalidDiscountUserID '79260000-0000-0000-0000-000000000023'
-\set unavailableDiscountUserID '79260000-0000-0000-0000-000000000024'
-\set exhaustedDiscountUserID '79260000-0000-0000-0000-000000000025'
-\set fixedDiscountUserID '79260000-0000-0000-0000-000000000026'
-\set percentageDiscountUserID '79260000-0000-0000-0000-000000000027'
-\set soldOutUserID '79260000-0000-0000-0000-000000000028'
-\set inactiveUserID '79260000-0000-0000-0000-000000000029'
 \set redeemedUserID '79260000-0000-0000-0000-000000000030'
-\set soldOutHolderUserID '79260000-0000-0000-0000-000000000031'
-\set invitedUserID '79260000-0000-0000-0000-000000000032'
 \set rejectedUserID '79260000-0000-0000-0000-000000000033'
+\set soldOutEventID '79260000-0000-0000-0000-000000000004'
+\set soldOutHolderUserID '79260000-0000-0000-0000-000000000031'
+\set soldOutPriceWindowID '79260000-0000-0000-0000-000000000014'
+\set soldOutPurchaseID '79260000-0000-0000-0000-000000000021'
+\set soldOutTicketTypeID '79260000-0000-0000-0000-000000000008'
+\set soldOutUserID '79260000-0000-0000-0000-000000000028'
+\set ticketTypeAID '79260000-0000-0000-0000-000000000006'
+\set ticketTypeBID '79260000-0000-0000-0000-000000000007'
+\set truncationDiscountID '79260000-0000-0000-0000-000000000039'
+\set truncationDiscountUserID '79260000-0000-0000-0000-000000000040'
+\set truncationPriceWindowID '79260000-0000-0000-0000-000000000038'
+\set truncationTicketTypeID '79260000-0000-0000-0000-000000000036'
+\set unavailableDiscountUserID '79260000-0000-0000-0000-000000000024'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'resolve-pricing-community', 'Resolve Pricing Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'resolve-pricing-community',
+    'Resolve Pricing Community',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -67,6 +89,7 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'exhaustedDiscountUserID', 'hash-4', 'exhausted@example.com', true, 'exhausted-user'),
     (:'fixedDiscountUserID', 'hash-5', 'fixed@example.com', true, 'fixed-user'),
     (:'percentageDiscountUserID', 'hash-6', 'percentage@example.com', true, 'percentage-user'),
+    (:'truncationDiscountUserID', 'hash-13', 'truncation@example.com', true, 'truncation-user'),
     (:'soldOutUserID', 'hash-7', 'soldout@example.com', true, 'soldout-user'),
     (:'inactiveUserID', 'hash-8', 'inactive@example.com', true, 'inactive-user'),
     (:'redeemedUserID', 'hash-9', 'redeemed@example.com', true, 'redeemed-user'),
@@ -75,14 +98,21 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'rejectedUserID', 'hash-12', 'rejected@example.com', true, 'rejected-user');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient
+)
 values (
     :'groupID',
     :'communityID',
     :'groupCategoryID',
     'Resolve Pricing Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_resolve_pricing'),
-    'resolve-pricing-group'
+    'resolve-pricing-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_resolve_pricing')
 );
 
 -- Events
@@ -145,6 +175,8 @@ insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", 
 values
     (:'ticketTypeAID', true, :'mainEventID', 1, 10, 'General admission'),
     (:'ticketTypeBID', true, :'mainEventID', 2, 10, 'VIP'),
+    (:'noActivePriceTicketTypeID', true, :'mainEventID', 3, 10, 'Expired price'),
+    (:'truncationTicketTypeID', true, :'mainEventID', 4, 10, 'Truncated percent'),
     (:'soldOutTicketTypeID', true, :'soldOutEventID', 1, 1, 'General admission'),
     (:'inactiveTicketTypeID', false, :'inactiveEventID', 1, 10, 'General admission');
 
@@ -158,6 +190,27 @@ insert into event_ticket_price_window (
     (:'priceWindowBID', 4000, :'ticketTypeBID'),
     (:'soldOutPriceWindowID', 2500, :'soldOutTicketTypeID'),
     (:'inactivePriceWindowID', 2500, :'inactiveTicketTypeID');
+
+-- Price windows for edge cases
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id,
+    ends_at,
+    starts_at
+) values (
+    :'expiredPriceWindowID',
+    2500,
+    :'noActivePriceTicketTypeID',
+    now() - interval '1 day',
+    now() - interval '2 days'
+), (
+    :'truncationPriceWindowID',
+    99,
+    :'truncationTicketTypeID',
+    null,
+    null
+);
 
 -- Discount codes
 insert into event_discount_code (
@@ -220,6 +273,18 @@ insert into event_discount_code (
     25,
     null,
     'VIP 25'
+), (
+    :'truncationDiscountID',
+    true,
+    null,
+    4,
+    true,
+    'PERCENT10',
+    :'mainEventID',
+    'percentage',
+    10,
+    null,
+    'Percent 10'
 );
 
 -- Existing attendee
@@ -323,6 +388,18 @@ select throws_ok(
     'Should reject sold out ticket types'
 );
 
+-- Should reject missing ticket types
+select throws_ok(
+    $$select prepare_event_checkout_validate_and_resolve_pricing(
+        '79260000-0000-0000-0000-000000000003'::uuid,
+        '79260000-0000-0000-0000-000000000034'::uuid,
+        '79260000-0000-0000-0000-000000000026'::uuid,
+        null
+    )$$,
+    'ticket type not found',
+    'Should reject missing ticket types'
+);
+
 -- Should reject inactive ticket types
 select throws_ok(
     $$select prepare_event_checkout_validate_and_resolve_pricing(
@@ -333,6 +410,18 @@ select throws_ok(
     )$$,
     'ticket type is not active',
     'Should reject inactive ticket types'
+);
+
+-- Should reject ticket types without an active price window
+select throws_ok(
+    $$select prepare_event_checkout_validate_and_resolve_pricing(
+        '79260000-0000-0000-0000-000000000003'::uuid,
+        '79260000-0000-0000-0000-000000000035'::uuid,
+        '79260000-0000-0000-0000-000000000040'::uuid,
+        null
+    )$$,
+    'ticket type does not have an active price window',
+    'Should reject ticket types without an active price window'
 );
 
 -- Should reject unknown discount codes
@@ -417,6 +506,30 @@ select results_eq(
         'VIP'::text
     ) $$,
     'Should compute pricing for a valid percentage discount'
+);
+
+-- Should truncate percentage discounts to integer minor units
+select results_eq(
+    $$
+        select
+            discount_amount_minor::text,
+            event_discount_code_id::text,
+            final_amount_minor::text,
+            ticket_title
+        from prepare_event_checkout_validate_and_resolve_pricing(
+            '79260000-0000-0000-0000-000000000003'::uuid,
+            '79260000-0000-0000-0000-000000000036'::uuid,
+            '79260000-0000-0000-0000-000000000040'::uuid,
+            'PERCENT10'
+        )
+    $$,
+    $$ values (
+        '9'::text,
+        '79260000-0000-0000-0000-000000000039'::text,
+        '90'::text,
+        'Truncated percent'::text
+    ) $$,
+    'Should truncate percentage discounts to integer minor units'
 );
 
 -- ============================================================================
