@@ -80,6 +80,9 @@ begin
            or v_existing_purchase_matches_selection then
             -- Refresh questionnaire answers before returning a reused pending checkout
             if v_existing_purchase_status = 'pending' then
+                -- Reject attendee states that checkout completion cannot confirm
+                perform prepare_event_checkout_validate_attendee_state(p_event_id, p_user_id);
+
                 perform upsert_pending_registration_answers(
                     p_event_id,
                     p_user_id,

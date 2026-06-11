@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- TESTS
@@ -152,6 +152,42 @@ select ok(
     (select "user"::jsonb->>'username' from duplicate_user_3) = 'duplicateuser3'
     and (select "user"::jsonb->>'username' from duplicate_user_4) = 'duplicateuser4',
     'Should increment suffix properly for multiple duplicate usernames (3, 4, etc)'
+);
+
+-- Should store the email lowercased
+with mixed_case_user_result as (
+    select * from sign_up_user(
+        jsonb_build_object(
+            'email', 'Mixed.Case@Example.COM',
+            'username', 'mixedcaseuser',
+            'name', 'Mixed Case User',
+            'password', 'hashedpassword555'
+        ),
+        true
+    )
+)
+select is(
+    (select "user"::jsonb->>'email' from mixed_case_user_result),
+    'mixed.case@example.com',
+    'Should store the email lowercased'
+);
+
+-- Should reject an email that differs only in case from an existing one
+select throws_ok(
+    $$
+        select * from sign_up_user(
+            jsonb_build_object(
+                'email', 'VERIFIED@example.com',
+                'username', 'anotheruser',
+                'name', 'Another User',
+                'password', 'hashedpassword666'
+            ),
+            true
+        )
+    $$,
+    '23505',
+    null,
+    'Should reject an email that differs only in case from an existing one'
 );
 
 -- ============================================================================

@@ -7,7 +7,7 @@ returns json as $$
         (
             select u.user_id
             from "user" u
-            where u.username = p_username
+            where lower(u.username) = lower(p_username)
             and u.email_verified = true
             and u.registration_status = 'registered'
             and u.password is not null

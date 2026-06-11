@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -40,6 +40,8 @@ select plan(8);
 \set inactiveUserID '79260000-0000-0000-0000-000000000029'
 \set redeemedUserID '79260000-0000-0000-0000-000000000030'
 \set soldOutHolderUserID '79260000-0000-0000-0000-000000000031'
+\set invitedUserID '79260000-0000-0000-0000-000000000032'
+\set rejectedUserID '79260000-0000-0000-0000-000000000033'
 
 -- ============================================================================
 -- SEED DATA
@@ -68,7 +70,9 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'soldOutUserID', 'hash-7', 'soldout@example.com', true, 'soldout-user'),
     (:'inactiveUserID', 'hash-8', 'inactive@example.com', true, 'inactive-user'),
     (:'redeemedUserID', 'hash-9', 'redeemed@example.com', true, 'redeemed-user'),
-    (:'soldOutHolderUserID', 'hash-10', 'holder@example.com', true, 'holder-user');
+    (:'soldOutHolderUserID', 'hash-10', 'holder@example.com', true, 'holder-user'),
+    (:'invitedUserID', 'hash-11', 'invited@example.com', true, 'invited-user'),
+    (:'rejectedUserID', 'hash-12', 'rejected@example.com', true, 'rejected-user');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
@@ -222,6 +226,12 @@ insert into event_discount_code (
 insert into event_attendee (event_id, user_id)
 values (:'mainEventID', :'attendeeUserID');
 
+-- Attendees with invitation lifecycle states checkout cannot confirm
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values
+    (:'mainEventID', :'invitedUserID', true, 'invitation-pending'),
+    (:'mainEventID', :'rejectedUserID', true, 'invitation-rejected');
+
 -- Existing purchases
 insert into event_purchase (
     event_purchase_id,
@@ -275,6 +285,30 @@ select throws_ok(
     )$$,
     'user is already attending this ticketed event',
     'Should reject attendees that already have a seat'
+);
+
+-- Should reject users with a pending invitation
+select throws_ok(
+    $$select prepare_event_checkout_validate_and_resolve_pricing(
+        '79260000-0000-0000-0000-000000000003'::uuid,
+        '79260000-0000-0000-0000-000000000006'::uuid,
+        '79260000-0000-0000-0000-000000000032'::uuid,
+        null
+    )$$,
+    'user has a pending or rejected invitation for this event',
+    'Should reject users with a pending invitation'
+);
+
+-- Should reject users with a rejected invitation
+select throws_ok(
+    $$select prepare_event_checkout_validate_and_resolve_pricing(
+        '79260000-0000-0000-0000-000000000003'::uuid,
+        '79260000-0000-0000-0000-000000000006'::uuid,
+        '79260000-0000-0000-0000-000000000033'::uuid,
+        null
+    )$$,
+    'user has a pending or rejected invitation for this event',
+    'Should reject users with a rejected invitation'
 );
 
 -- Should reject sold out ticket types

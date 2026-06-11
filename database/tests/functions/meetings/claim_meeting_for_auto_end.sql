@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -290,7 +290,7 @@ insert into meeting (
 
 -- Returns and claims most recently overdue eligible event meeting first
 select is(
-    claim_meeting_for_auto_end() - 'meeting_id',
+    claim_meeting_for_auto_end() - 'auto_end_check_claimed_at' - 'meeting_id',
     '{
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "event-recent-overdue"
@@ -314,10 +314,16 @@ set auto_end_check_at = current_timestamp,
     auto_end_check_claimed_at = null,
     auto_end_check_outcome = 'already_not_running'
 where provider_meeting_id = 'event-recent-overdue';
+select claim_meeting_for_auto_end() as next_event_claim \gset
 select is(
-    claim_meeting_for_auto_end()->>'provider_meeting_id',
+    (:'next_event_claim'::jsonb)->>'provider_meeting_id',
     'event-older-overdue',
     'Returns the next overdue event meeting after the first is checked'
+);
+select is(
+    ((:'next_event_claim'::jsonb)->>'auto_end_check_claimed_at')::timestamptz,
+    (select auto_end_check_claimed_at from meeting where provider_meeting_id = 'event-older-overdue'),
+    'Returns the claim token stored on the claimed meeting'
 );
 
 -- Mark second event result as checked and fall back to overdue sessions

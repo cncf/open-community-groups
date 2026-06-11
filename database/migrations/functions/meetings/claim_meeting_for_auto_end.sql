@@ -34,12 +34,14 @@ begin
         from next_meeting nm
         where m.meeting_id = nm.meeting_id
         returning
+            m.auto_end_check_claimed_at,
             m.meeting_id,
             m.meeting_provider_id,
             m.provider_meeting_id
     )
     select
         jsonb_build_object(
+            'auto_end_check_claimed_at', cm.auto_end_check_claimed_at,
             'meeting_id', cm.meeting_id,
             'meeting_provider_id', cm.meeting_provider_id,
             'provider_meeting_id', cm.provider_meeting_id
@@ -81,12 +83,14 @@ begin
         from next_meeting nm
         where m.meeting_id = nm.meeting_id
         returning
+            m.auto_end_check_claimed_at,
             m.meeting_id,
             m.meeting_provider_id,
             m.provider_meeting_id
     )
     select
         jsonb_build_object(
+            'auto_end_check_claimed_at', cm.auto_end_check_claimed_at,
             'meeting_id', cm.meeting_id,
             'meeting_provider_id', cm.meeting_provider_id,
             'provider_meeting_id', cm.provider_meeting_id

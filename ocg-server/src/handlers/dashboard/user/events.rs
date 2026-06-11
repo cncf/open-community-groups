@@ -79,12 +79,26 @@ pub(crate) async fn cancel_attendance(
         .await?
         .ok_or(HandlerError::NotFound)?;
 
-    // Validate the row still represents active attendee attendance
+    // Validate the row still represents cancelable attendance
     let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
-    if attendance.status != EventAttendanceStatus::Attendee {
-        return Err(
-            anyhow::anyhow!("only attendee attendance can be canceled from My Events").into(),
-        );
+    match attendance.status {
+        EventAttendanceStatus::Attendee => {}
+        EventAttendanceStatus::RegistrationQuestionsPending => {
+            // Pending registrations on ticketed events are owned by the checkout hold flow
+            let event = db.get_event_summary_by_id(community_id, event_id).await?;
+            if event.is_ticketed() {
+                return Err(anyhow::anyhow!(
+                    "pending registrations on ticketed events cannot be canceled from My Events"
+                )
+                .into());
+            }
+        }
+        _ => {
+            return Err(anyhow::anyhow!(
+                "only attendee or pending registration attendance can be canceled from My Events"
+            )
+            .into());
+        }
     }
 
     // Cancel the user's attendance and collect any waitlist promotions

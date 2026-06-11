@@ -73,65 +73,69 @@ begin
         return jsonb_build_object('outcome', 'noop');
     end if;
 
-    -- Refund purchases that cannot be completed or are awaiting refund retry
-    if v_status = 'refund-pending'
-       or v_hold_expired
-       or v_unfulfillable then
-        -- Require a provider payment reference before requesting a refund
-        if v_provider_payment_reference is null then
-            raise exception 'provider payment reference is required for refund';
-        end if;
+    -- Complete the purchase when it is still fulfillable and the attendee row
+    -- can be confirmed; otherwise fall through to the refund path below
+    if v_status <> 'refund-pending'
+       and not v_hold_expired
+       and not v_unfulfillable then
+        -- Add the attendee, reviving only checkout-compatible states
+        insert into event_attendee (event_id, user_id)
+        values (v_event_id, v_user_id)
+        on conflict (event_id, user_id) do update
+        set status = 'confirmed'
+        where event_attendee.status in ('confirmed', 'invitation-canceled', 'registration-questions-pending');
 
-        -- Persist the refund-pending state before the provider refund step
-        if v_status <> 'refund-pending' then
+        if found then
+            -- Persist the completed purchase state after the attendee is recorded
             update event_purchase
             set
+                completed_at = current_timestamp,
                 hold_expires_at = null,
                 provider_payment_reference = v_provider_payment_reference,
-                status = 'refund-pending',
+                status = 'completed',
                 updated_at = current_timestamp
             where event_purchase_id = v_purchase_id;
 
-            -- Release the discount reservation only when expiring a pending hold
-            if v_status = 'pending' and v_event_discount_code_id is not null then
-                perform release_event_discount_code_availability(v_event_discount_code_id);
-            end if;
-
-            -- Release the pending attendee row created for checkout answers
-            perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
+            -- Return the identifiers needed by downstream notification flows
+            return jsonb_build_object(
+                'community_id', v_community_id,
+                'event_id', v_event_id,
+                'outcome', 'completed',
+                'user_id', v_user_id
+            );
         end if;
-
-        return jsonb_build_object(
-            'amount_minor', v_amount_minor,
-            'event_purchase_id', v_purchase_id,
-            'outcome', 'refund_required',
-            'provider_payment_reference', v_provider_payment_reference
-        );
     end if;
 
-    -- Complete the purchase and add the attendee when it is still fulfillable
-    insert into event_attendee (event_id, user_id)
-    values (v_event_id, v_user_id)
-    on conflict (event_id, user_id) do update
-    set status = 'confirmed'
-    where event_attendee.status in ('invitation-canceled', 'registration-questions-pending');
+    -- Refund purchases that cannot be completed or are awaiting refund retry,
+    -- requiring a provider payment reference before the refund handoff
+    if v_provider_payment_reference is null then
+        raise exception 'provider payment reference is required for refund';
+    end if;
 
-    -- Persist the completed purchase state after the attendee is recorded
-    update event_purchase
-    set
-        completed_at = current_timestamp,
-        hold_expires_at = null,
-        provider_payment_reference = v_provider_payment_reference,
-        status = 'completed',
-        updated_at = current_timestamp
-    where event_purchase_id = v_purchase_id;
+    -- Persist the refund-pending state before the provider refund step
+    if v_status <> 'refund-pending' then
+        update event_purchase
+        set
+            hold_expires_at = null,
+            provider_payment_reference = v_provider_payment_reference,
+            status = 'refund-pending',
+            updated_at = current_timestamp
+        where event_purchase_id = v_purchase_id;
 
-    -- Return the identifiers needed by downstream notification flows
+        -- Release the discount reservation only when expiring a pending hold
+        if v_status = 'pending' and v_event_discount_code_id is not null then
+            perform release_event_discount_code_availability(v_event_discount_code_id);
+        end if;
+
+        -- Release the pending attendee row created for checkout answers
+        perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
+    end if;
+
     return jsonb_build_object(
-        'community_id', v_community_id,
-        'event_id', v_event_id,
-        'outcome', 'completed',
-        'user_id', v_user_id
+        'amount_minor', v_amount_minor,
+        'event_purchase_id', v_purchase_id,
+        'outcome', 'refund_required',
+        'provider_payment_reference', v_provider_payment_reference
     );
 end;
 $$ language plpgsql;

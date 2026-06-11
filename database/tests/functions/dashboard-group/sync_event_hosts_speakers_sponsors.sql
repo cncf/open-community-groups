@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,8 @@ select plan(8);
 \set eventID '00000000-0000-0000-0000-000000000021'
 \set groupCategoryID '00000000-0000-0000-0000-000000000031'
 \set groupID '00000000-0000-0000-0000-000000000041'
+\set otherGroupID '00000000-0000-0000-0000-000000000042'
+\set otherGroupSponsorID '00000000-0000-0000-0000-000000000054'
 \set sponsor1ID '00000000-0000-0000-0000-000000000051'
 \set sponsor2ID '00000000-0000-0000-0000-000000000052'
 \set sponsor3ID '00000000-0000-0000-0000-000000000053'
@@ -37,6 +39,10 @@ values (:'groupCategoryID', :'communityID', 'Technology');
 insert into "group" (group_id, community_id, group_category_id, name, slug)
 values (:'groupID', :'communityID', :'groupCategoryID', 'Group 1', 'group-1');
 
+-- Other group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'otherGroupID', :'communityID', :'groupCategoryID', 'Group 2', 'group-2');
+
 -- Event category
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'Meetup');
@@ -52,6 +58,10 @@ insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_u
     (:'sponsor1ID', :'groupID', 'Sponsor 1', 'https://e/sponsor-1.png', null),
     (:'sponsor2ID', :'groupID', 'Sponsor 2', 'https://e/sponsor-2.png', 'https://e/sponsor-2'),
     (:'sponsor3ID', :'groupID', 'Sponsor 3', 'https://e/sponsor-3.png', null);
+
+-- Other group sponsor
+insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
+values (:'otherGroupSponsorID', :'otherGroupID', 'Other Group Sponsor', 'https://e/sponsor-other.png', null);
 
 -- Event
 insert into event (
@@ -165,6 +175,20 @@ select is(
         jsonb_build_object('group_sponsor_id', :'sponsor3ID'::uuid, 'level', 'Bronze')
     ),
     'Should replace event sponsors'
+);
+
+-- Should reject sponsors that belong to a different group
+select throws_ok(
+    format(
+        $$select sync_event_hosts_speakers_sponsors(
+            '%s'::uuid,
+            '{"sponsors": [{"group_sponsor_id": "%s", "level": "Gold"}]}'::jsonb
+        )$$,
+        :'eventID',
+        :'otherGroupSponsorID'
+    ),
+    'sponsor does not belong to event group',
+    'Should reject sponsors that belong to a different group'
 );
 
 -- Should clear omitted association sections

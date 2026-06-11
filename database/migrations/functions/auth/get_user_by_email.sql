@@ -7,7 +7,7 @@ returns json as $$
         (
             select u.user_id
             from "user" u
-            where u.email = p_email
+            where lower(u.email) = lower(p_email)
             and u.email_verified = true
         ),
         false

@@ -44,9 +44,11 @@ begin
         where session_id = p_session_id
           and meeting_sync_claimed_at = p_sync_claimed_at;
     -- Orphan meeting case: no event/session to record error on, delete the row
+    -- only when the worker still holds the claim
     elsif p_meeting_id is not null then
         delete from meeting
-        where meeting_id = p_meeting_id;
+        where meeting_id = p_meeting_id
+          and sync_claimed_at = p_sync_claimed_at;
     end if;
 end;
 $$ language plpgsql;

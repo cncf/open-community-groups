@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,12 +29,16 @@ select plan(14);
 \set startedEventID '79000000-0000-0000-0000-000000000023'
 \set startedTicketTypeID '79000000-0000-0000-0000-000000000024'
 \set purchaseExpiredActiveHoldID '79000000-0000-0000-0000-000000000026'
+\set purchaseInvitedID '79000000-0000-0000-0000-000000000027'
+\set purchaseConfirmedID '79000000-0000-0000-0000-000000000028'
 \set user1ID '79000000-0000-0000-0000-000000000017'
 \set user2ID '79000000-0000-0000-0000-000000000018'
 \set user3ID '79000000-0000-0000-0000-000000000019'
 \set user4ID '79000000-0000-0000-0000-000000000020'
 \set user5ID '79000000-0000-0000-0000-000000000021'
 \set user6ID '79000000-0000-0000-0000-000000000025'
+\set user7ID '79000000-0000-0000-0000-000000000029'
+\set user8ID '79000000-0000-0000-0000-000000000030'
 
 -- ============================================================================
 -- SEED DATA
@@ -59,7 +63,9 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'user3ID', 'hash-3', 'user3@example.com', true, 'buyer-3'),
     (:'user4ID', 'hash-4', 'user4@example.com', true, 'buyer-4'),
     (:'user5ID', 'hash-5', 'user5@example.com', true, 'buyer-5'),
-    (:'user6ID', 'hash-6', 'user6@example.com', true, 'buyer-6');
+    (:'user6ID', 'hash-6', 'user6@example.com', true, 'buyer-6'),
+    (:'user7ID', 'hash-7', 'user7@example.com', true, 'buyer-7'),
+    (:'user8ID', 'hash-8', 'user8@example.com', true, 'buyer-8');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
@@ -276,6 +282,38 @@ insert into event_purchase (
     'General admission',
     :'user6ID'
 ), (
+    :'purchaseInvitedID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'activeEventID',
+    :'activeTicketTypeID',
+    now() + interval '15 minutes',
+    'stripe',
+    'cs_invited',
+    'pi_invited',
+    'pending',
+    'General admission',
+    :'user7ID'
+), (
+    :'purchaseConfirmedID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'activeEventID',
+    :'activeTicketTypeID',
+    now() + interval '15 minutes',
+    'stripe',
+    'cs_confirmed',
+    'pi_confirmed',
+    'pending',
+    'General admission',
+    :'user8ID'
+), (
     :'purchaseDoneID',
     2500,
     'USD',
@@ -320,6 +358,12 @@ values
         null,
         'registration-questions-pending'
     );
+
+-- Attendee lifecycle rows that exercise the completion confirmation guard
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values
+    (:'activeEventID', :'user7ID', true, 'invitation-pending'),
+    (:'activeEventID', :'user8ID', false, 'confirmed');
 
 -- ============================================================================
 -- TESTS
@@ -558,6 +602,55 @@ select throws_ok(
     $$select reconcile_event_purchase_for_checkout_session('stripe', 'cs_missing_ref', null)$$,
     'provider payment reference is required for refund',
     'Should reject refund-required paths without a provider payment reference'
+);
+
+-- Should require refund when the attendee row cannot be confirmed
+select is(
+    reconcile_event_purchase_for_checkout_session('stripe', 'cs_invited', null)::jsonb,
+    jsonb_build_object(
+        'amount_minor', 2500,
+        'event_purchase_id', :'purchaseInvitedID'::uuid,
+        'outcome', 'refund_required',
+        'provider_payment_reference', 'pi_invited'
+    ),
+    'Should require refund when the attendee row cannot be confirmed'
+);
+
+-- Should persist the refunding purchase fields and keep the invitation row
+select results_eq(
+    $$
+        select
+            (
+                select hold_expires_at is null
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000027'::uuid
+            ),
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000027'::uuid
+            ),
+            (
+                select status
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000004'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000029'::uuid
+            )
+    $$,
+    $$ values (true, 'refund-pending'::text, 'invitation-pending'::text) $$,
+    'Should persist the refunding purchase fields and keep the invitation row'
+);
+
+-- Should complete checkout sessions for already confirmed attendees
+select is(
+    reconcile_event_purchase_for_checkout_session('stripe', 'cs_confirmed', null)::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'activeEventID'::uuid,
+        'outcome', 'completed',
+        'user_id', :'user8ID'::uuid
+    ),
+    'Should complete checkout sessions for already confirmed attendees'
 );
 
 -- Should noop for already completed purchases

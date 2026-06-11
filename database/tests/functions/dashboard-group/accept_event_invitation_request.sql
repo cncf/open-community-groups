@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(16);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(16);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventApprovalDisabledID '00000000-0000-0000-0000-000000000046'
+\set eventAttendeeConflictID '00000000-0000-0000-0000-000000000043'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventFullID '00000000-0000-0000-0000-000000000042'
 \set eventID '00000000-0000-0000-0000-000000000041'
@@ -27,6 +28,8 @@ select plan(16);
 \set requesterID '00000000-0000-0000-0000-000000000032'
 \set requester2ID '00000000-0000-0000-0000-000000000033'
 \set requester3ID '00000000-0000-0000-0000-000000000034'
+\set requester4ID '00000000-0000-0000-0000-000000000035'
+\set requester5ID '00000000-0000-0000-0000-000000000036'
 
 -- ============================================================================
 -- SEED DATA
@@ -59,6 +62,8 @@ values
     (:'requesterID', 'h', 'requester@test.com', 'requester'),
     (:'requester2ID', 'h', 'requester2@test.com', 'requester2'),
     (:'requester3ID', 'h', 'requester3@test.com', 'requester3'),
+    (:'requester4ID', 'h', 'requester4@test.com', 'requester4'),
+    (:'requester5ID', 'h', 'requester5@test.com', 'requester5'),
     (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request');
 
 -- Groups
@@ -188,6 +193,21 @@ values
         true,
         null,
         null
+    ),
+    (
+        :'eventAttendeeConflictID',
+        'Attendee Conflict Event',
+        'attendee-conflict-event',
+        'd',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        null,
+        true,
+        null,
+        null
     );
 
 -- Event with registration questions used to verify answer copying on accept
@@ -229,7 +249,9 @@ values
     (:'eventInactiveGroupID', :'requesterID'),
     (:'eventApprovalDisabledID', :'requesterID'),
     (:'eventPastID', :'requesterID'),
-    (:'eventPendingInvitationID', :'requester3ID');
+    (:'eventPendingInvitationID', :'requester3ID'),
+    (:'eventAttendeeConflictID', :'requester4ID'),
+    (:'eventAttendeeConflictID', :'requester5ID');
 
 -- Invitation request with registration answers copied when accepted
 insert into event_invitation_request (event_id, user_id, registration_answers)
@@ -250,6 +272,12 @@ values (:'eventID', :'requester2ID', false, 'invitation-canceled');
 -- Existing pending manual invitation row for attendee upsert reuse
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values (:'eventPendingInvitationID', :'requester3ID', true, 'invitation-pending');
+
+-- Existing attendee rows that block accepting their pending requests
+insert into event_attendee (event_id, user_id, status)
+values
+    (:'eventAttendeeConflictID', :'requester4ID', 'confirmed'),
+    (:'eventAttendeeConflictID', :'requester5ID', 'invitation-rejected');
 
 -- ============================================================================
 -- TESTS
@@ -411,6 +439,46 @@ select throws_ok(
     ),
     'pending invitation request not found',
     'Should reject accepting an already reviewed request'
+);
+
+-- Should reject accepting when the requester is already attending
+select throws_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
+        :'actorID', :'groupID', :'eventAttendeeConflictID', :'requester4ID'
+    ),
+    'user is already attending this event',
+    'Should reject accepting when the requester is already attending'
+);
+
+-- Should reject accepting when the requester rejected an organizer invitation
+select throws_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
+        :'actorID', :'groupID', :'eventAttendeeConflictID', :'requester5ID'
+    ),
+    'user rejected an invitation for this event',
+    'Should reject accepting when the requester rejected an organizer invitation'
+);
+
+-- Should keep conflicting requests pending and attendee rows unchanged
+select is(
+    (
+        select jsonb_build_object(
+            'attendee_statuses', (
+                select jsonb_agg(status order by user_id)
+                from event_attendee
+                where event_id = :'eventAttendeeConflictID'::uuid
+            ),
+            'request_statuses', (
+                select jsonb_agg(status order by user_id)
+                from event_invitation_request
+                where event_id = :'eventAttendeeConflictID'::uuid
+            )
+        )
+    ),
+    '{"attendee_statuses": ["confirmed", "invitation-rejected"], "request_statuses": ["pending", "pending"]}'::jsonb,
+    'Should keep conflicting requests pending and attendee rows unchanged'
 );
 
 -- Should accept invitation requests that include registration answers

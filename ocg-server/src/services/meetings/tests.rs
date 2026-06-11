@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use anyhow::anyhow;
+use chrono::Utc;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -139,6 +140,7 @@ fn test_meeting_sync_action_update() {
 #[tokio::test]
 async fn test_worker_auto_end_meeting_auto_ended() {
     // Setup identifiers and data structures
+    let claimed_at = Utc::now();
     let meeting_id = Uuid::new_v4();
     let provider_meeting_id = "987654321".to_string();
 
@@ -146,6 +148,7 @@ async fn test_worker_auto_end_meeting_auto_ended() {
     let mut db = MockDB::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
+            auto_end_check_claimed_at: claimed_at,
             meeting_id,
             provider: MeetingProvider::Zoom,
             provider_meeting_id: provider_meeting_id.clone(),
@@ -153,8 +156,10 @@ async fn test_worker_auto_end_meeting_auto_ended() {
     });
     db.expect_set_meeting_auto_end_check_outcome()
         .times(1)
-        .withf(move |mid, outcome| {
-            *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::AutoEnded
+        .withf(move |candidate, outcome| {
+            candidate.auto_end_check_claimed_at == claimed_at
+                && candidate.meeting_id == meeting_id
+                && *outcome == MeetingAutoEndCheckOutcome::AutoEnded
         })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
@@ -177,6 +182,7 @@ async fn test_worker_auto_end_meeting_auto_ended() {
 #[tokio::test]
 async fn test_worker_auto_end_meeting_not_found_records_not_found_outcome() {
     // Setup identifiers and data structures
+    let claimed_at = Utc::now();
     let meeting_id = Uuid::new_v4();
     let provider_meeting_id = "404404404".to_string();
 
@@ -184,6 +190,7 @@ async fn test_worker_auto_end_meeting_not_found_records_not_found_outcome() {
     let mut db = MockDB::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
+            auto_end_check_claimed_at: claimed_at,
             meeting_id,
             provider: MeetingProvider::Zoom,
             provider_meeting_id: provider_meeting_id.clone(),
@@ -191,8 +198,10 @@ async fn test_worker_auto_end_meeting_not_found_records_not_found_outcome() {
     });
     db.expect_set_meeting_auto_end_check_outcome()
         .times(1)
-        .withf(move |mid, outcome| {
-            *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::NotFound
+        .withf(move |candidate, outcome| {
+            candidate.auto_end_check_claimed_at == claimed_at
+                && candidate.meeting_id == meeting_id
+                && *outcome == MeetingAutoEndCheckOutcome::NotFound
         })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
@@ -235,6 +244,7 @@ async fn test_worker_auto_end_meeting_no_pending_meeting() {
 #[tokio::test]
 async fn test_worker_auto_end_meeting_provider_not_configured_records_error_outcome() {
     // Setup identifiers and data structures
+    let claimed_at = Utc::now();
     let meeting_id = Uuid::new_v4();
     let provider_meeting_id = "777777777".to_string();
 
@@ -242,6 +252,7 @@ async fn test_worker_auto_end_meeting_provider_not_configured_records_error_outc
     let mut db = MockDB::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
+            auto_end_check_claimed_at: claimed_at,
             meeting_id,
             provider: MeetingProvider::Zoom,
             provider_meeting_id: provider_meeting_id.clone(),
@@ -249,8 +260,10 @@ async fn test_worker_auto_end_meeting_provider_not_configured_records_error_outc
     });
     db.expect_set_meeting_auto_end_check_outcome()
         .times(1)
-        .withf(move |mid, outcome| {
-            *mid == meeting_id && *outcome == MeetingAutoEndCheckOutcome::Error
+        .withf(move |candidate, outcome| {
+            candidate.auto_end_check_claimed_at == claimed_at
+                && candidate.meeting_id == meeting_id
+                && *outcome == MeetingAutoEndCheckOutcome::Error
         })
         .returning(|_, _| Ok(()));
     let db: DynDB = Arc::new(db);
@@ -266,6 +279,7 @@ async fn test_worker_auto_end_meeting_provider_not_configured_records_error_outc
 #[tokio::test]
 async fn test_worker_auto_end_meeting_retryable_error_releases_claim() {
     // Setup identifiers and data structures
+    let claimed_at = Utc::now();
     let meeting_id = Uuid::new_v4();
     let provider_meeting_id = "502502502".to_string();
 
@@ -273,6 +287,7 @@ async fn test_worker_auto_end_meeting_retryable_error_releases_claim() {
     let mut db = MockDB::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
+            auto_end_check_claimed_at: claimed_at,
             meeting_id,
             provider: MeetingProvider::Zoom,
             provider_meeting_id: provider_meeting_id.clone(),
@@ -281,7 +296,9 @@ async fn test_worker_auto_end_meeting_retryable_error_releases_claim() {
     db.expect_set_meeting_auto_end_check_outcome().never();
     db.expect_release_meeting_auto_end_check_claim()
         .times(1)
-        .withf(move |mid| *mid == meeting_id)
+        .withf(move |candidate| {
+            candidate.auto_end_check_claimed_at == claimed_at && candidate.meeting_id == meeting_id
+        })
         .returning(|_| Ok(()));
     let db: DynDB = Arc::new(db);
 

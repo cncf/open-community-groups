@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,6 +12,7 @@ select plan(14);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
+\set eventReassignedClaimID '00000000-0000-0000-0000-000000000104'
 \set eventStaleClaimID '00000000-0000-0000-0000-000000000103'
 \set eventWithErrorID '00000000-0000-0000-0000-000000000102'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
@@ -198,6 +199,45 @@ insert into event (
     current_timestamp
 );
 
+-- Event with reassigned claim: worker token no longer matches
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+
+    capacity,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_provider_host_user,
+    meeting_requested,
+    meeting_sync_claimed_at
+) values (
+    :'eventReassignedClaimID',
+    :'groupID',
+    'Event Reassigned Claim',
+    'event-reassigned-claim',
+    'Test event reclaimed by another worker',
+    'America/New_York',
+    :'categoryID',
+    'virtual',
+    '2025-06-04 10:00:00-04',
+    '2025-06-04 11:00:00-04',
+
+    100,
+    false,
+    'zoom',
+    'event-reassigned-claim-host@example.com',
+    true,
+    current_timestamp
+);
+
 -- Session with previous error: needs meeting
 insert into session (
     session_id,
@@ -369,6 +409,26 @@ select results_eq(
     'Event changed after claim remains out of sync'
 );
 
+-- Should not insert meeting when the worker no longer holds the claim
+select lives_ok(
+    format(
+        'select add_meeting(''zoom'', ''reassigned123'', ''host-reassigned@example.com'', ''https://zoom.us/j/reassigned123'', ''pass'', %L, null, current_timestamp - interval ''1 hour'', get_event_meeting_sync_state_hash(%L::uuid))',
+        :'eventReassignedClaimID',
+        :'eventReassignedClaimID'
+    ),
+    'Should accept add_meeting with a mismatched claim token'
+);
+select is(
+    (select count(*) from meeting where event_id = :'eventReassignedClaimID'),
+    0::bigint,
+    'Should not insert meeting when claim token does not match'
+);
+select isnt(
+    (select meeting_sync_claimed_at from event where event_id = :'eventReassignedClaimID'),
+    null,
+    'Should keep event claim when claim token does not match'
+);
+
 -- Should create meeting record when linked to session
 select lives_ok(
     format(
@@ -447,6 +507,12 @@ select results_eq(
     'Session marked as synced and claim cleared after adding meeting'
 );
 
+-- Reclaim event so the duplicate insert is attempted
+update event
+set meeting_in_sync = false,
+    meeting_sync_claimed_at = current_timestamp
+where event_id = :'eventID';
+
 -- Should fail with unique violation when adding duplicate meeting for same event
 select throws_ok(
     format(
@@ -459,6 +525,12 @@ select throws_ok(
     null,
     'Should fail with unique constraint violation for duplicate event meeting'
 );
+
+-- Reclaim session so the duplicate insert is attempted
+update session
+set meeting_in_sync = false,
+    meeting_sync_claimed_at = current_timestamp
+where session_id = :'sessionID';
 
 -- Should fail with unique violation when adding duplicate meeting for same session
 select throws_ok(

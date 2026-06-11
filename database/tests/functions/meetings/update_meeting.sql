@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(14);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,10 +12,12 @@ select plan(11);
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set communityID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
+\set eventReassignedClaimID '00000000-0000-0000-0000-000000000103'
 \set eventStaleClaimID '00000000-0000-0000-0000-000000000102'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
 \set groupID '00000000-0000-0000-0000-000000000002'
 \set meetingEventID '00000000-0000-0000-0000-000000000301'
+\set meetingEventReassignedID '00000000-0000-0000-0000-000000000304'
 \set meetingEventStaleClaimID '00000000-0000-0000-0000-000000000303'
 \set meetingSessionID '00000000-0000-0000-0000-000000000302'
 \set sessionID '00000000-0000-0000-0000-000000000201'
@@ -142,6 +144,49 @@ insert into event (
 -- Meeting linked to stale event claim
 insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url, password)
 values (:'meetingEventStaleClaimID', :'eventStaleClaimID', 'zoom', 'stale123', 'https://zoom.us/j/stale123', 'stale');
+
+-- Event with reassigned claim: worker token no longer matches
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+
+    capacity,
+    meeting_in_sync,
+    meeting_provider_id,
+    meeting_provider_host_user,
+    meeting_requested,
+    meeting_sync_claimed_at
+) values (
+    :'eventReassignedClaimID',
+    :'groupID',
+    'Event Reassigned Claim',
+    'event-reassigned-claim',
+    'Test event reclaimed by another worker',
+    'America/New_York',
+    :'categoryID',
+    'virtual',
+    '2025-06-03 10:00:00-04',
+    '2025-06-03 11:00:00-04',
+
+    100,
+    false,
+    'zoom',
+    'event-reassigned-claim-host@example.com',
+    true,
+    current_timestamp
+);
+
+-- Meeting linked to reassigned event claim
+insert into meeting (meeting_id, event_id, meeting_provider_id, provider_meeting_id, join_url, password)
+values (:'meetingEventReassignedID', :'eventReassignedClaimID', 'zoom', 'reassigned123', 'https://zoom.us/j/reassigned123', 'pass');
 
 -- Session: has meeting to update (with previous error)
 insert into session (
@@ -285,6 +330,27 @@ select results_eq(
     )
     $expected$,
     'Event changed after update claim remains out of sync'
+);
+
+-- Should not update meeting when the worker no longer holds the claim
+select lives_ok(
+    format(
+        'select update_meeting(%L, ''reassigned456'', ''https://zoom.us/j/reassigned456'', ''newpass'', %L, null, current_timestamp - interval ''1 hour'', get_event_meeting_sync_state_hash(%L::uuid))',
+        :'meetingEventReassignedID',
+        :'eventReassignedClaimID',
+        :'eventReassignedClaimID'
+    ),
+    'Should accept update_meeting with a mismatched claim token'
+);
+select is(
+    (select provider_meeting_id from meeting where meeting_id = :'meetingEventReassignedID'),
+    'reassigned123',
+    'Should keep meeting unchanged when claim token does not match'
+);
+select isnt(
+    (select meeting_sync_claimed_at from event where event_id = :'eventReassignedClaimID'),
+    null,
+    'Should keep event claim when claim token does not match'
 );
 
 -- Mark event as out of sync again for next test

@@ -72,10 +72,14 @@ impl UserEvent {
 
     /// Returns true when attendance can be canceled from the user dashboard.
     pub(crate) fn can_cancel_attendance(&self) -> bool {
-        matches!(
-            self.attendance_status.as_ref(),
-            Some(EventAttendanceStatus::Attendee)
-        ) && self.roles.as_slice() == [UserEventRole::Attendee]
+        // Pending registrations on ticketed events are owned by the checkout hold flow
+        let cancelable_status = match self.attendance_status.as_ref() {
+            Some(EventAttendanceStatus::Attendee) => true,
+            Some(EventAttendanceStatus::RegistrationQuestionsPending) => !self.event.is_ticketed(),
+            _ => false,
+        };
+        cancelable_status
+            && self.roles.as_slice() == [UserEventRole::Attendee]
             && !self.has_paid_purchase
     }
 
@@ -149,4 +153,63 @@ pub(crate) struct UserEventsOutput {
     pub events: Vec<UserEvent>,
     /// Total number of events before pagination.
     pub total: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use crate::{
+        handlers::tests::sample_event_summary,
+        types::{event::EventAttendanceStatus, payments::EventTicketType},
+    };
+
+    use super::{UserEvent, UserEventRole};
+
+    #[test]
+    fn can_cancel_attendance_allows_attendee_status() {
+        let user_event = sample_user_event();
+
+        assert!(user_event.can_cancel_attendance());
+    }
+
+    #[test]
+    fn can_cancel_attendance_allows_pending_registration_on_non_ticketed_event() {
+        let mut user_event = sample_user_event();
+        user_event.attendance_status = Some(EventAttendanceStatus::RegistrationQuestionsPending);
+
+        assert!(user_event.can_cancel_attendance());
+    }
+
+    #[test]
+    fn can_cancel_attendance_rejects_other_statuses() {
+        let mut user_event = sample_user_event();
+        user_event.attendance_status = Some(EventAttendanceStatus::Waitlisted);
+
+        assert!(!user_event.can_cancel_attendance());
+    }
+
+    #[test]
+    fn can_cancel_attendance_rejects_pending_registration_on_ticketed_event() {
+        let mut user_event = sample_user_event();
+        user_event.attendance_status = Some(EventAttendanceStatus::RegistrationQuestionsPending);
+        user_event.event.ticket_types = Some(vec![EventTicketType::default()]);
+
+        assert!(!user_event.can_cancel_attendance());
+    }
+
+    // Helpers.
+
+    /// Sample user event row with cancelable attendee attendance.
+    fn sample_user_event() -> UserEvent {
+        UserEvent {
+            event: sample_event_summary(Uuid::new_v4(), Uuid::new_v4()),
+            has_paid_purchase: false,
+            registration_questions: vec![],
+            roles: vec![UserEventRole::Attendee],
+            attendance_status: Some(EventAttendanceStatus::Attendee),
+            registration_answers: None,
+            resume_checkout_url: None,
+        }
+    }
 }

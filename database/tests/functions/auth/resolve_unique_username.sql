@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,6 +39,13 @@ select is(
     resolve_unique_username('taken'),
     'taken3',
     'Should append the first available numeric suffix'
+);
+
+-- Should treat usernames as taken regardless of case
+select is(
+    resolve_unique_username('TAKEN'),
+    'TAKEN3',
+    'Should treat usernames as taken regardless of case'
 );
 
 -- Should ignore the excluded user row when resolving a username

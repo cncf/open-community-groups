@@ -873,7 +873,7 @@ mock! {
         ) -> Result<usize>;
         async fn release_meeting_auto_end_check_claim(
             &self,
-            meeting_id: Uuid,
+            candidate: &crate::db::meetings::MeetingAutoEndCandidate,
         ) -> Result<()>;
         async fn release_meeting_sync_claim(
             &self,
@@ -881,7 +881,7 @@ mock! {
         ) -> Result<()>;
         async fn set_meeting_auto_end_check_outcome(
             &self,
-            meeting_id: Uuid,
+            candidate: &crate::db::meetings::MeetingAutoEndCandidate,
             outcome: crate::services::meetings::MeetingAutoEndCheckOutcome,
         ) -> Result<()>;
         async fn set_meeting_error(

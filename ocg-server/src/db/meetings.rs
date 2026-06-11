@@ -54,7 +54,10 @@ pub(crate) trait DBMeetings {
     async fn mark_stale_meeting_syncs_unknown(&self, timeout: Duration) -> Result<usize>;
 
     /// Releases a retryable auto-end check claim.
-    async fn release_meeting_auto_end_check_claim(&self, meeting_id: Uuid) -> Result<()>;
+    async fn release_meeting_auto_end_check_claim(
+        &self,
+        candidate: &MeetingAutoEndCandidate,
+    ) -> Result<()>;
 
     /// Releases a retryable sync claim.
     async fn release_meeting_sync_claim(&self, meeting: &Meeting) -> Result<()>;
@@ -62,7 +65,7 @@ pub(crate) trait DBMeetings {
     /// Records the outcome of an auto-end check for a meeting.
     async fn set_meeting_auto_end_check_outcome(
         &self,
-        meeting_id: Uuid,
+        candidate: &MeetingAutoEndCandidate,
         outcome: MeetingAutoEndCheckOutcome,
     ) -> Result<()>;
 
@@ -201,11 +204,14 @@ impl DBMeetings for PgDB {
             .map_err(|_| anyhow::anyhow!("stale sync claim count cannot be negative"))
     }
 
-    #[instrument(skip(self), err)]
-    async fn release_meeting_auto_end_check_claim(&self, meeting_id: Uuid) -> Result<()> {
+    #[instrument(skip(self, candidate), err)]
+    async fn release_meeting_auto_end_check_claim(
+        &self,
+        candidate: &MeetingAutoEndCandidate,
+    ) -> Result<()> {
         self.execute(
-            "select release_meeting_auto_end_check_claim($1::uuid)",
-            &[&meeting_id],
+            "select release_meeting_auto_end_check_claim($1::timestamptz, $2::uuid)",
+            &[&candidate.auto_end_check_claimed_at, &candidate.meeting_id],
         )
         .await
     }
@@ -224,15 +230,19 @@ impl DBMeetings for PgDB {
         .await
     }
 
-    #[instrument(skip(self), err)]
+    #[instrument(skip(self, candidate), err)]
     async fn set_meeting_auto_end_check_outcome(
         &self,
-        meeting_id: Uuid,
+        candidate: &MeetingAutoEndCandidate,
         outcome: MeetingAutoEndCheckOutcome,
     ) -> Result<()> {
         self.execute(
-            "select set_meeting_auto_end_check_outcome($1::uuid, $2::text)",
-            &[&meeting_id, &outcome.as_ref()],
+            "select set_meeting_auto_end_check_outcome($1::timestamptz, $2::uuid, $3::text)",
+            &[
+                &candidate.auto_end_check_claimed_at,
+                &candidate.meeting_id,
+                &outcome.as_ref(),
+            ],
         )
         .await
     }
@@ -275,6 +285,8 @@ impl DBMeetings for PgDB {
 /// Candidate meeting to process for auto-end checks.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub(crate) struct MeetingAutoEndCandidate {
+    /// Claim token that must match when releasing the claim or recording the outcome.
+    pub auto_end_check_claimed_at: DateTime<Utc>,
     pub meeting_id: Uuid,
     #[serde(alias = "meeting_provider_id")]
     pub provider: MeetingProvider,
