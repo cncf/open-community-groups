@@ -400,7 +400,7 @@ export class Calendar {
       try {
         events = await this.fetchEvents();
       } catch (error) {
-        // If fetch fails, hide loading and ignore error
+        // fetchData already showed the error; hide loading and stop.
         hideLoadingSpinner(LOADING_CALENDAR_ID);
         return;
       }

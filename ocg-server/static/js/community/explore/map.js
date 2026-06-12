@@ -275,7 +275,7 @@ export class Map {
       try {
         data = await this.fetchLocationData(overwriteBounds);
       } catch (error) {
-        // If fetch fails (e.g., due to invalid bbox), hide loading and ignore error
+        // fetchData already showed the error; hide loading and stop.
         hideLoadingSpinner(MAP_LOADING_ID);
         return;
       }
