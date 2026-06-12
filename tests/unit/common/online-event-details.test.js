@@ -201,6 +201,42 @@ describe("online-event-details", () => {
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
 
+  it("removes the capacity input listener when disconnected", async () => {
+    // Create the capacity input fixture.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    document.body.append(capacity);
+
+    // Track listener cleanup on the capacity input.
+    const originalRemoveEventListener = capacity.removeEventListener.bind(capacity);
+    const removedListeners = [];
+    capacity.removeEventListener = (type, listener, options) => {
+      removedListeners.push({ type, listener, options });
+      return originalRemoveEventListener(type, listener, options);
+    };
+
+    try {
+      // Render the online-event-details fixture.
+      const element = await mountLitComponent("online-event-details", {
+        meetingMaxParticipants: { zoom: 100 },
+      });
+      const capacityInputHandler = element._capacityInputHandler;
+
+      // Disconnect the component to trigger lifecycle cleanup.
+      element.remove();
+
+      // The stored capacity input handler is removed on disconnect.
+      expect(
+        removedListeners.some(
+          ({ type, listener }) => type === "input" && listener === capacityInputHandler,
+        ),
+      ).to.equal(true);
+    } finally {
+      // Restore the native listener removal method.
+      capacity.removeEventListener = originalRemoveEventListener;
+    }
+  });
+
   it("does not copy synced automatic meeting details into manual fields", async () => {
     // Render the online-event-details fixture.
     const element = await mountLitComponent("online-event-details", {
