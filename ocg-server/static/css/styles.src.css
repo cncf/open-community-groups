@@ -466,6 +466,13 @@ input:placeholder-shown {
   width: 380px;
 }
 
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .fc-daygrid-event-harness .explore-popover-card-shell {
+    max-width: min(340px, calc(100vw - 2rem));
+    width: 340px;
+  }
+}
+
 .explore-popover-card-shell > a {
   width: 100%;
 }

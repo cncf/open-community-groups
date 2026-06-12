@@ -27,7 +27,7 @@ const NO_RESULTS_SELECTOR = ".no-results-default, .no-results-filtered";
 const DEFAULT_NO_RESULTS_SELECTOR = ".no-results-default";
 const FILTERED_NO_RESULTS_SELECTOR = ".no-results-filtered";
 const RIGHT_ALIGNED_COLUMN_THRESHOLD = 3;
-const TOP_ALIGNED_ROW_THRESHOLD = 4;
+const TOP_ALIGNED_ROW_THRESHOLD = 3;
 const PAST_EVENT_COLOR_ALPHA = 0.35;
 const UPCOMING_COLOR_VARIABLES = {
   background: "--color-primary-50",
