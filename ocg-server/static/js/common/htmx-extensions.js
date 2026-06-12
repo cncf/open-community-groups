@@ -12,6 +12,7 @@ const responseHandlerRoots = new WeakSet();
 const handledDeclarativeResponseXhrs = new WeakSet();
 const htmxResponseSelector = "[data-htmx-response]";
 const REFRESH_BODY_TRIGGER = "refresh-body";
+const BODY_REFRESH_SUCCESS_TIMEOUT_MS = 10000;
 
 /**
  * Finds the closest response owner from whichever element HTMX exposes.
@@ -239,13 +240,21 @@ export const isSuccessfulRefreshBodyResponse = (xhr) => {
  */
 export const showSuccessAfterBodyRefresh = (successMessage) => {
   window.setTimeout(() => {
-    document.addEventListener(
-      "htmx:afterSettle",
-      () => {
-        showSuccessAlert(successMessage);
-      },
-      { once: true },
-    );
+    let timeoutId;
+    const showSuccessOnBodyRefreshSettle = (event) => {
+      if (event.target !== document.body) {
+        return;
+      }
+
+      window.clearTimeout(timeoutId);
+      document.removeEventListener("htmx:afterSettle", showSuccessOnBodyRefreshSettle);
+      showSuccessAlert(successMessage);
+    };
+
+    timeoutId = window.setTimeout(() => {
+      document.removeEventListener("htmx:afterSettle", showSuccessOnBodyRefreshSettle);
+    }, BODY_REFRESH_SUCCESS_TIMEOUT_MS);
+    document.addEventListener("htmx:afterSettle", showSuccessOnBodyRefreshSettle);
   }, 0);
 };
 

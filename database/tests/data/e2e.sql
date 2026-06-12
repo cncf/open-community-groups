@@ -191,7 +191,7 @@ insert into event (
     event_id, name, slug, description, description_short, timezone, event_category_id,
     event_kind_id, group_id, published, starts_at, ends_at,
     venue_name, venue_address, venue_city, venue_state, venue_country_name,
-    venue_country_code, venue_zip_code, banner_url, logo_url, capacity,
+    venue_country_code, venue_zip_code, location, banner_url, logo_url, capacity,
     registration_required, tags, meetup_url, meeting_join_url, photos_urls
 ) values (
     '55555555-5555-5555-5555-555555555501',
@@ -213,6 +213,7 @@ insert into event (
     'United States',
     'US',
     '10001',
+    ST_SetSRID(ST_MakePoint(-74.006, 40.7128), 4326),
     '/static/images/e2e/event-banner.svg',
     '/static/images/e2e/event-logo.svg',
     100,

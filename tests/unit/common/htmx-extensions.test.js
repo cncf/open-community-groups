@@ -445,7 +445,7 @@ describe("htmx extensions", () => {
     // The success message waits for the triggered body refresh.
     expect(swal.calls).to.have.length(0);
     await waitForDelay();
-    document.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+    document.body.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
 
     // The delayed message is shown after the refresh settles.
     expect(swal.calls).to.have.length(1);
@@ -453,6 +453,58 @@ describe("htmx extensions", () => {
       text: "Saved after refresh.",
       icon: "success",
     });
+  });
+
+  it("expires refresh-body success messages that do not see a body settle", () => {
+    const originalSetTimeout = window.setTimeout;
+    const originalClearTimeout = window.clearTimeout;
+    const scheduledTimeouts = [];
+    const clearedTimeouts = [];
+
+    window.setTimeout = (callback, delay) => {
+      const id = scheduledTimeouts.length + 1;
+      scheduledTimeouts.push({ callback, delay, id });
+      return id;
+    };
+    window.clearTimeout = (id) => {
+      clearedTimeouts.push(id);
+    };
+
+    try {
+      // Build a form with declarative response messages.
+      const form = document.createElement("form");
+      form.dataset.htmxResponse = "";
+      form.dataset.successMessage = "Saved after refresh.";
+
+      // Dispatch a successful response that will trigger a body refresh.
+      handleDeclarativeHtmxResponse({
+        detail: {
+          elt: form,
+          xhr: {
+            status: 204,
+            responseText: "",
+            getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+          },
+        },
+      });
+      scheduledTimeouts[0].callback();
+
+      // An unrelated HTMX settle does not consume the pending success message.
+      const unrelatedElement = document.createElement("section");
+      document.body.append(unrelatedElement);
+      unrelatedElement.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+      expect(swal.calls).to.have.length(0);
+      expect(scheduledTimeouts[1]).to.include({ delay: 10000 });
+
+      // Once the pending listener expires, a later body settle does not show it.
+      scheduledTimeouts[1].callback();
+      document.body.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+      expect(swal.calls).to.have.length(0);
+      expect(clearedTimeouts).to.deep.equal([]);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      window.clearTimeout = originalClearTimeout;
+    }
   });
 
   it("keeps declarative content-refresh success messages immediate", () => {
