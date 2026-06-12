@@ -134,3 +134,20 @@
   </div>
 {% endmacro permission_warning -%}
 {# End permission warning #}
+
+{# Empty state #}
+{% macro empty_state(title, title_margin = "mb-6", wrapper_class = "") -%}
+  <div class="flex flex-col items-center justify-center min-h-[125px] {{ wrapper_class }}">
+    <div class="text-xl lg:text-2xl {{ title_margin }}">{{ title }}</div>
+    {{ caller() }}
+  </div>
+{% endmacro empty_state -%}
+{# End empty state #}
+
+{# Compact empty state #}
+{% macro empty_state_compact(title, wrapper_class = "") -%}
+  <div class="flex flex-col items-center justify-center min-h-[125px] {{ wrapper_class }}">
+    <div class="text-lg lg:text-xl">{{ title }}</div>
+  </div>
+{% endmacro empty_state_compact -%}
+{# End compact empty state #}
