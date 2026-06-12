@@ -7,9 +7,12 @@ create or replace function delete_group_category(
 returns void as $$
 declare
     v_groups_count bigint;
+    v_name text;
 begin
-    -- Ensure the group category exists in the selected community
-    perform 1
+    -- Ensure the group category exists in the selected community, snapshotting
+    -- its name so the audit row remains readable after deletion
+    select gc.name
+    into v_name
     from group_category gc
     where gc.community_id = p_community_id
       and gc.group_category_id = p_group_category_id;
@@ -39,7 +42,10 @@ begin
         p_actor_user_id,
         'group_category',
         p_group_category_id,
-        p_community_id
+        p_community_id,
+        null,
+        null,
+        jsonb_build_object('name', v_name)
     );
 end;
 $$ language plpgsql;

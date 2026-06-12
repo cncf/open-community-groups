@@ -26,7 +26,9 @@ filtered_groups as (
             date_trunc('month', g.created_at at time zone 'UTC')
         ) as created_month
     from "group" g
-    where g.active = true
+    join community c on c.community_id = g.community_id
+    where c.active = true
+        and g.active = true
         and g.deleted = false
 ),
 members as (

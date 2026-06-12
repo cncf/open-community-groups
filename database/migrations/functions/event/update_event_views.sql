@@ -4,9 +4,10 @@ returns void as $$
     -- Make sure only one batch of updates is processed at a time
     select pg_advisory_xact_lock(hashtextextended('ocg:update-event-views', 0));
 
-    -- Insert or update the corresponding views counters as needed
+    -- Insert or update the corresponding views counters as needed,
+    -- pre-aggregating duplicate (event_id, day) entries in the payload
     insert into event_views (event_id, day, total)
-    select views_batch.*
+    select views_batch.event_id, views_batch.day, sum(views_batch.total)::integer
     from (
         select
             (value->>0)::uuid as event_id,
@@ -17,6 +18,7 @@ returns void as $$
     join event e on e.event_id = views_batch.event_id
     where e.deleted = false
         and e.published = true
+    group by views_batch.event_id, views_batch.day
     on conflict (event_id, day) do
     update set total = event_views.total + excluded.total;
 $$ language sql;

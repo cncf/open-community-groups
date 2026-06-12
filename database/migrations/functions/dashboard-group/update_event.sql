@@ -294,7 +294,9 @@ begin
     -- Synchronize event hosts, speakers, and sponsors
     perform sync_event_hosts_speakers_sponsors(p_event_id, p_event);
 
-    -- Synchronize event sessions and speakers
+    -- Synchronize event sessions and speakers. This must run after the event
+    -- row update so the session bounds trigger re-validates retained sessions
+    -- against the new event dates
     perform sync_event_sessions(p_event_id, p_event, v_event_before);
 
     -- Track the updated event

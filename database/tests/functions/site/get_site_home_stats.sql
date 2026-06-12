@@ -9,6 +9,7 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
+\set category2ID '00000000-0000-0000-0000-000000000012'
 \set categoryID '00000000-0000-0000-0000-000000000011'
 \set community2ID '00000000-0000-0000-0000-000000000002'
 \set community3ID '00000000-0000-0000-0000-000000000003'
@@ -17,10 +18,13 @@ select plan(2);
 \set event3ID '00000000-0000-0000-0000-000000000053'
 \set event4ID '00000000-0000-0000-0000-000000000054'
 \set event5ID '00000000-0000-0000-0000-000000000055'
+\set event6ID '00000000-0000-0000-0000-000000000056'
+\set eventCategory2ID '00000000-0000-0000-0000-000000000062'
 \set eventCategoryID '00000000-0000-0000-0000-000000000061'
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
+\set group4ID '00000000-0000-0000-0000-000000000034'
 \set groupID '00000000-0000-0000-0000-000000000031'
 \set user1ID '00000000-0000-0000-0000-000000000041'
 \set user2ID '00000000-0000-0000-0000-000000000042'
@@ -47,14 +51,17 @@ insert into community (
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Tech', :'communityID');
+values
+    (:'categoryID', 'Tech', :'communityID'),
+    (:'category2ID', 'Tech', :'community3ID');
 
 -- Group
 insert into "group" (group_id, name, slug, community_id, group_category_id, active, deleted)
 values
     (:'groupID', 'G1', 'g1', :'communityID', :'categoryID', true, false),
     (:'group2ID', 'G2', 'g2', :'communityID', :'categoryID', true, false),
-    (:'group3ID', 'G3', 'g3', :'communityID', :'categoryID', false, true);
+    (:'group3ID', 'G3', 'g3', :'communityID', :'categoryID', false, true),
+    (:'group4ID', 'G4', 'g4', :'community3ID', :'category2ID', true, false);
 
 -- User
 insert into "user" (user_id, email, username, name, email_verified, auth_hash, created_at)
@@ -65,7 +72,9 @@ values
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Cat', :'communityID');
+values
+    (:'eventCategoryID', 'Cat', :'communityID'),
+    (:'eventCategory2ID', 'Cat', :'community3ID');
 
 -- Event
 insert into event (
@@ -86,7 +95,8 @@ insert into event (
     (:'event2ID', 'E2', 'e2', 'd', false, 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false),
     (:'event3ID', 'E3', 'e3', 'd', false, 'UTC', :'eventCategoryID', 'in-person', :'group2ID', true, false, false),
     (:'event4ID', 'E4', 'e4', 'd', false, 'UTC', :'eventCategoryID', 'in-person', :'group2ID', false, true, false),
-    (:'event5ID', 'E5', 'e5', 'd', true, 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true);
+    (:'event5ID', 'E5', 'e5', 'd', true, 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true),
+    (:'event6ID', 'E6', 'e6', 'd', false, 'UTC', :'eventCategory2ID', 'in-person', :'group4ID', false, false, true);
 
 -- Group Member
 insert into group_member (group_id, user_id, created_at)
@@ -94,7 +104,8 @@ values
     (:'groupID', :'user1ID', '2024-01-01 00:00:00'),
     (:'groupID', :'user2ID', '2024-01-01 00:00:00'),
     (:'group2ID', :'user1ID', '2024-01-01 00:00:00'),
-    (:'group3ID', :'user3ID', '2024-01-01 00:00:00');
+    (:'group3ID', :'user3ID', '2024-01-01 00:00:00'),
+    (:'group4ID', :'user3ID', '2024-01-01 00:00:00');
 
 -- Event Attendee
 insert into event_attendee (event_id, user_id, created_at)
@@ -104,7 +115,8 @@ values
     (:'event2ID', :'user1ID', '2024-01-01 00:00:00'),
     (:'event3ID', :'user2ID', '2024-01-01 00:00:00'),
     (:'event4ID', :'user3ID', '2024-01-01 00:00:00'),
-    (:'event5ID', :'user3ID', '2024-01-01 00:00:00');
+    (:'event5ID', :'user3ID', '2024-01-01 00:00:00'),
+    (:'event6ID', :'user1ID', '2024-01-01 00:00:00');
 
 -- ============================================================================
 -- TESTS
@@ -126,11 +138,12 @@ select is(
 -- Should exclude inactive communities, deleted groups and unpublished/canceled/deleted events
 -- Data setup:
 -- - 3 communities: 2 active (community, community2), 1 inactive (community3)
--- - 3 groups: 2 active (group, group2), 1 deleted (group3)
--- - 5 events: 1 published (event), 1 unpublished (event2), 1 canceled (event3),
---   1 deleted (event4), 1 test event (event5)
--- - 4 group members: 3 in active groups, 1 in deleted group (should be excluded)
--- - 6 event attendees: 2 in published event, 4 in excluded events (should be excluded)
+-- - 4 groups: 2 active (group, group2), 1 deleted (group3), 1 in inactive community (group4)
+-- - 6 events: 1 published (event), 1 unpublished (event2), 1 canceled (event3),
+--   1 deleted (event4), 1 test event (event5), 1 in inactive community (event6)
+-- - 5 group members: 3 in active groups, 1 in deleted group, 1 in inactive
+--   community group (should be excluded)
+-- - 7 event attendees: 2 in published event, 5 in excluded events (should be excluded)
 -- Expected: communities=2, groups=2, events=1, groups_members=3, events_attendees=2
 select is(
     get_site_home_stats()::jsonb,

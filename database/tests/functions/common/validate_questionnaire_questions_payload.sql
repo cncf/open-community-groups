@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- TESTS
@@ -109,6 +109,24 @@ select throws_ok(
     $$,
     'questionnaire question id must be a uuid',
     'Should reject invalid question ids'
+);
+
+-- Should reject questions without ids
+select throws_ok(
+    $$
+        select validate_questionnaire_questions_payload(
+            '[
+                {
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb
+        )
+    $$,
+    'questionnaire question id must be a uuid',
+    'Should reject questions without ids'
 );
 
 -- Should reject duplicate question ids
@@ -235,6 +253,29 @@ select throws_ok(
     $$,
     'select questionnaire questions require options',
     'Should reject select questions without options'
+);
+
+-- Should reject options without ids
+select throws_ok(
+    $$
+        select validate_questionnaire_questions_payload(
+            '[
+                {
+                    "id": "90000000-0000-0000-0000-000000000101",
+                    "kind": "single-select",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": [
+                        {
+                            "label": "One"
+                        }
+                    ]
+                }
+            ]'::jsonb
+        )
+    $$,
+    'questionnaire question option id must be a uuid',
+    'Should reject options without ids'
 );
 
 -- Should reject duplicate option ids per question

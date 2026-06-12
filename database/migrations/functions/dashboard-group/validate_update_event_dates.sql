@@ -33,11 +33,15 @@ begin
         raise exception 'published event must have a start date';
     end if;
 
-    -- Detect whether the current event snapshot is already in the past
+    -- Detect whether the current event snapshot is already in the past,
+    -- treating dateless events as non-past
     v_is_past_event := coalesce(
-        v_event_before_ends_at,
-        v_event_before_starts_at
-    ) < current_timestamp;
+        coalesce(
+            v_event_before_ends_at,
+            v_event_before_starts_at
+        ) < current_timestamp,
+        false
+    );
 
     -- Prevent past events from being moved back into the future
     if v_is_past_event then
@@ -70,7 +74,8 @@ begin
     -- Prevent non-past events from moving into invalid past dates
     if not v_is_past_event then
         if p_event->>'starts_at' is not null and v_new_starts_at < current_timestamp then
-            if v_event_before_starts_at >= current_timestamp then
+            if v_event_before_starts_at is null
+               or v_event_before_starts_at >= current_timestamp then
                 raise exception 'event starts_at cannot be in the past';
             elsif v_new_starts_at < v_event_before_starts_at then
                 raise exception 'event starts_at cannot be earlier than current value';

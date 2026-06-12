@@ -7,9 +7,12 @@ create or replace function delete_region(
 returns void as $$
 declare
     v_groups_count bigint;
+    v_name text;
 begin
-    -- Ensure the region exists in the selected community
-    perform 1
+    -- Ensure the region exists in the selected community, snapshotting its
+    -- name so the audit row remains readable after deletion
+    select r.name
+    into v_name
     from region r
     where r.community_id = p_community_id
       and r.region_id = p_region_id;
@@ -39,7 +42,10 @@ begin
         p_actor_user_id,
         'region',
         p_region_id,
-        p_community_id
+        p_community_id,
+        null,
+        null,
+        jsonb_build_object('name', v_name)
     );
 end;
 $$ language plpgsql;

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,8 +11,10 @@ select plan(19);
 
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
+\set category3ID '00000000-0000-0000-0000-000000000013'
 \set community1ID '00000000-0000-0000-0000-000000000001'
 \set community2ID '00000000-0000-0000-0000-000000000002'
+\set community3ID '00000000-0000-0000-0000-000000000003'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
@@ -20,11 +22,14 @@ select plan(19);
 \set event5ID '00000000-0000-0000-0000-000000000045'
 \set event6ID '00000000-0000-0000-0000-000000000046'
 \set event7ID '00000000-0000-0000-0000-000000000047'
+\set event8ID '00000000-0000-0000-0000-000000000048'
 \set eventCategory1ID '00000000-0000-0000-0000-000000000021'
 \set eventCategory2ID '00000000-0000-0000-0000-000000000022'
+\set eventCategory3ID '00000000-0000-0000-0000-000000000023'
 \set group1ID '00000000-0000-0000-0000-000000000031'
 \set group2ID '00000000-0000-0000-0000-000000000032'
 \set group3ID '00000000-0000-0000-0000-000000000033'
+\set group4ID '00000000-0000-0000-0000-000000000034'
 
 -- ============================================================================
 -- SEED DATA
@@ -59,11 +64,33 @@ insert into community (
         'https://example.com/banner2.png'
     );
 
+-- Inactive community
+insert into community (
+    community_id,
+    active,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values (
+    :'community3ID',
+    false,
+    'inactive-community',
+    'Inactive Community',
+    'An inactive test community',
+    'https://example.com/logo3.png',
+    'https://example.com/banner_mobile3.png',
+    'https://example.com/banner3.png'
+);
+
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
 values
     (:'category1ID', 'Technology', :'community1ID'),
-    (:'category2ID', 'Technology', :'community2ID');
+    (:'category2ID', 'Technology', :'community2ID'),
+    (:'category3ID', 'Technology', :'community3ID');
 
 -- Group
 insert into "group" (group_id, name, slug, slug_pretty, community_id, group_category_id, city, state, country_code, country_name, logo_url, location)
@@ -76,13 +103,17 @@ values
      ST_GeogFromText('POINT(-73.935242 40.73061)')),
     (:'group3ID', 'Other Group', 'other-group', null, :'community2ID', :'category2ID',
      'Chicago', 'IL', 'US', 'United States', 'https://example.com/other-group.png',
-     ST_GeogFromText('POINT(-87.6298 41.8781)'));
+     ST_GeogFromText('POINT(-87.6298 41.8781)')),
+    (:'group4ID', 'Inactive Community Group', 'inactive-community-group', null, :'community3ID', :'category3ID',
+     'Denver', 'CO', 'US', 'United States', 'https://example.com/inactive-community-group.png',
+     ST_GeogFromText('POINT(-104.9903 39.7392)'));
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
 values
     (:'eventCategory1ID', 'Tech Talks', :'community1ID'),
-    (:'eventCategory2ID', 'Workshops', :'community2ID');
+    (:'eventCategory2ID', 'Workshops', :'community2ID'),
+    (:'eventCategory3ID', 'Workshops', :'community3ID');
 
 -- Event
 insert into event (
@@ -146,6 +177,12 @@ insert into event (
      :'eventCategory1ID', 'virtual', :'group1ID', true,
      now() + interval '6 days', now() + interval '6 days' + interval '1 hour', array['test'],
      'Online', 'Online', null, 'https://example.com/test-fixture.png', false,
+     null),
+    -- Event in inactive community (should be filtered out from search results)
+    (:'event8ID', 'Inactive Community Event', 'inactive-community-event', 'Event in inactive community', false, 'Inactive community event', 'UTC',
+     :'eventCategory3ID', 'in-person', :'group4ID', true,
+     now() + interval '7 days', now() + interval '7 days' + interval '2 hours', array['inactive'],
+     'Denver', 'Tech Hall', '321 Main St', 'https://example.com/inactive-community-event.png', false,
      null);
 
 -- ============================================================================
@@ -174,6 +211,18 @@ select is(
     ),
     5::bigint,
     'Should exclude test events from total counts'
+);
+
+-- Should exclude events from inactive communities
+select ok(
+    not exists (
+        select 1
+        from jsonb_array_elements(
+            search_events(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'events'
+        ) as e
+        where e->>'event_id' = :'event8ID'
+    ),
+    'Should exclude events from inactive communities'
 );
 
 -- Should filter events by community

@@ -28,15 +28,16 @@ declare
     v_registration_questions jsonb;
     v_ticket_title text;
 begin
-    -- Expire stale pending purchases for the event before reserving a new one
-    perform prepare_event_checkout_expire_stale_holds(p_event_id);
-
-    -- Lock the event and validate that checkout is still allowed
+    -- Lock the event first to keep a consistent event -> purchase -> attendee
+    -- lock order with attend_event, then validate that checkout is allowed
     v_currency_code := prepare_event_checkout_validate_event(
         p_community_id,
         p_event_id,
         p_configured_provider
     );
+
+    -- Expire stale pending purchases for the event before reserving a new one
+    perform prepare_event_checkout_expire_stale_holds(p_event_id);
 
     -- Load the route and recipient details needed by the checkout provider
     select

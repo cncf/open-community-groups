@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(116);
+select plan(118);
 
 -- ============================================================================
 -- VARIABLES
@@ -39,6 +39,7 @@ select plan(116);
 \set eventQuestionsAnsweredID '90300000-0000-0000-0000-000000000043'
 \set eventQuestionsID '90300000-0000-0000-0000-000000000041'
 \set eventQuestionsPublishedID '90300000-0000-0000-0000-000000000042'
+\set eventShrinkBoundsID '00000000-0000-0000-0000-000000000035'
 \set group1ID '00000000-0000-0000-0000-000000000002'
 \set invalidUserID '99999999-9999-9999-9999-999999999999'
 \set label1ID '00000000-0000-0000-0000-000000000401'
@@ -60,6 +61,7 @@ select plan(116);
 \set session2ID '00000000-0000-0000-0000-000000000102'
 \set session3ID '00000000-0000-0000-0000-000000000103'
 \set session4ID '00000000-0000-0000-0000-000000000104'
+\set sessionShrinkBoundsID '00000000-0000-0000-0000-000000000105'
 \set sponsorNewID '00000000-0000-0000-0000-000000000062'
 \set sponsorOrigID '00000000-0000-0000-0000-000000000061'
 \set user1ID '00000000-0000-0000-0000-000000000020'
@@ -1305,6 +1307,50 @@ insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
 insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
     (:'label3ID', :'event18ID', '#CCFBF1', 'track / backend'),
     (:'label4ID', :'event18ID', '#FEE2E2', 'track / frontend');
+
+-- Event with session for bounds shrink checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at
+) values (
+    :'eventShrinkBoundsID',
+    :'group1ID',
+    'Shrink Bounds Event',
+    'shrink-bounds-event',
+    'This event has a session used for bounds shrink checks',
+    'UTC',
+    :'category1ID',
+    'virtual',
+    '2030-05-01 09:00:00+00',
+    '2030-05-01 17:00:00+00'
+);
+
+-- Session near the end of the event for bounds shrink checks
+insert into session (
+    session_id,
+    event_id,
+    name,
+    description,
+    starts_at,
+    ends_at,
+    session_kind_id
+) values (
+    :'sessionShrinkBoundsID',
+    :'eventShrinkBoundsID',
+    'Shrink Bounds Session',
+    'Session near the end of the event',
+    '2030-05-01 15:00:00+00',
+    '2030-05-01 16:00:00+00',
+    'virtual'
+);
 
 -- ============================================================================
 -- TESTS
@@ -2803,6 +2849,30 @@ select lives_ok(
         '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
     'Should succeed when session is within event bounds'
+);
+
+-- Should throw error when shrinking event bounds leaves a retained session out
+-- of bounds (relies on the event row update running before the session sync)
+select throws_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000035'::uuid,
+        '{"name": "Shrink Bounds Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "starts_at": "2030-05-01T09:00:00", "ends_at": "2030-05-01T12:00:00", "sessions": [{"session_id": "00000000-0000-0000-0000-000000000105", "name": "Shrink Bounds Session", "starts_at": "2030-05-01T15:00:00", "ends_at": "2030-05-01T16:00:00", "kind": "virtual"}]}'::jsonb
+    )$$,
+    'session starts_at must be within event bounds',
+    'Should throw error when shrinking event bounds leaves a retained session out of bounds'
+);
+
+-- Should succeed when shrinking event bounds keeps the retained session within bounds
+select lives_ok(
+    $$select update_event(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000002'::uuid,
+        '00000000-0000-0000-0000-000000000035'::uuid,
+        '{"name": "Shrink Bounds Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "starts_at": "2030-05-01T09:00:00", "ends_at": "2030-05-01T16:30:00", "sessions": [{"session_id": "00000000-0000-0000-0000-000000000105", "name": "Shrink Bounds Session", "starts_at": "2030-05-01T15:00:00", "ends_at": "2030-05-01T16:00:00", "kind": "virtual"}]}'::jsonb
+    )$$,
+    'Should succeed when shrinking event bounds keeps the retained session within bounds'
 );
 
 -- Should update all fields on past events

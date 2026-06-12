@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(18);
 
 -- ============================================================================
 -- TESTS
@@ -193,6 +193,32 @@ select throws_ok(
     $$,
     'questionnaire answer must be an object',
     'Should reject non-object answers'
+);
+
+-- Should reject answers without a question_id
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "90000000-0000-0000-0000-000000000101",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "value": "Answer"
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'questionnaire answer question_id must be a uuid',
+    'Should reject answers without a question_id'
 );
 
 -- Should reject duplicate answers for a question
@@ -428,6 +454,94 @@ select throws_ok(
     $$,
     'free-text questionnaire answer must be a string',
     'Should reject non-string free-text answers'
+);
+
+-- Should reject free-text answers without a value
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "90000000-0000-0000-0000-000000000101",
+                    "kind": "free-text",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": []
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "question_id": "90000000-0000-0000-0000-000000000101"
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'free-text questionnaire answer must be a string',
+    'Should reject free-text answers without a value'
+);
+
+-- Should reject single-select answers without a value
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "90000000-0000-0000-0000-000000000101",
+                    "kind": "single-select",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": [
+                        {
+                            "id": "90000000-0000-0000-0000-000000000201",
+                            "label": "One"
+                        }
+                    ]
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "question_id": "90000000-0000-0000-0000-000000000101"
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'single-select questionnaire answer must be an option id',
+    'Should reject single-select answers without a value'
+);
+
+-- Should reject multi-select answers without a value
+select throws_ok(
+    $$
+        select validate_questionnaire_answers_payload(
+            '[
+                {
+                    "id": "90000000-0000-0000-0000-000000000101",
+                    "kind": "multi-select",
+                    "prompt": "Question",
+                    "required": true,
+                    "options": [
+                        {
+                            "id": "90000000-0000-0000-0000-000000000201",
+                            "label": "One"
+                        }
+                    ]
+                }
+            ]'::jsonb,
+            '{
+                "answers": [
+                    {
+                        "question_id": "90000000-0000-0000-0000-000000000101"
+                    }
+                ]
+            }'::jsonb
+        )
+    $$,
+    'multi-select questionnaire answer must be an option id array',
+    'Should reject multi-select answers without a value'
 );
 
 -- ============================================================================

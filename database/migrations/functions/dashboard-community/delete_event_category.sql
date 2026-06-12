@@ -7,9 +7,12 @@ create or replace function delete_event_category(
 returns void as $$
 declare
     v_events_count bigint;
+    v_name text;
 begin
-    -- Ensure the event category exists in the selected community
-    perform 1
+    -- Ensure the event category exists in the selected community, snapshotting
+    -- its name so the audit row remains readable after deletion
+    select ec.name
+    into v_name
     from event_category ec
     where ec.community_id = p_community_id
       and ec.event_category_id = p_event_category_id;
@@ -39,7 +42,10 @@ begin
         p_actor_user_id,
         'event_category',
         p_event_category_id,
-        p_community_id
+        p_community_id,
+        null,
+        null,
+        jsonb_build_object('name', v_name)
     );
 end;
 $$ language plpgsql;

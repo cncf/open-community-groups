@@ -1,4 +1,5 @@
--- search_user searches for users by username, name, or email.
+-- search_user searches for users by username or name prefix, or by exact
+-- email match.
 create or replace function search_user(p_query text)
 returns jsonb as $$
     select coalesce(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb)
@@ -14,9 +15,9 @@ returns jsonb as $$
         and u.registration_status = 'registered'
         and p_query <> ''
         and (
-            u.username ilike replace(replace(p_query, '%', '\%'), '_', '\_') || '%' escape '\'
-            or u.name ilike replace(replace(p_query, '%', '\%'), '_', '\_') || '%' escape '\'
-            or u.email ilike replace(replace(p_query, '%', '\%'), '_', '\_') || '%' escape '\'
+            u.username ilike escape_ilike_pattern(p_query) || '%' escape '\'
+            or u.name ilike escape_ilike_pattern(p_query) || '%' escape '\'
+            or lower(u.email) = lower(p_query)
         )
         order by u.username
         limit 5

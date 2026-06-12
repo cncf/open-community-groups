@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(8);
 \set user6ID '00000000-0000-0000-0000-000000000016'
 \set user7ID '00000000-0000-0000-0000-000000000017'
 \set user8ID '00000000-0000-0000-0000-000000000018'
+\set user9ID '00000000-0000-0000-0000-000000000021'
 \set userPreRegisteredID '00000000-0000-0000-0000-000000000019'
 \set userUnverifiedID '00000000-0000-0000-0000-000000000020'
 
@@ -36,6 +37,7 @@ values
     -- Users for testing special characters
     (:'user7ID', 'user%test', 'usertest@example.com', true, 'hash14', 'User Percent Test', null, 'registered'),
     (:'user8ID', 'user_special', 'userspecial@example.com', true, 'hash15', 'User Underscore', null, 'registered'),
+    (:'user9ID', 'back\slash', 'backslash@example.com', true, 'hash18', 'Back Slash', null, 'registered'),
     -- Pre-registered users should not appear in regular dashboard search
     (:'userPreRegisteredID', 'invited-user', 'invited@example.com', true, 'hash17', 'Invited User', null, 'pre-registered'),
     -- User with unverified email (should not appear in results)
@@ -89,9 +91,9 @@ select is(
     'Should find users by name prefix'
 );
 
--- Should find users by email prefix
+-- Should find users by exact email match
 select is(
-    search_user('alice@'),
+    search_user('Alice@Example.com'),
     '[
         {
             "user_id": "00000000-0000-0000-0000-000000000014",
@@ -100,7 +102,56 @@ select is(
             "photo_url": "https://example.com/alice.jpg"
         }
     ]'::jsonb,
-    'Should find users by email prefix'
+    'Should find users by exact email match (case-insensitive)'
+);
+
+-- Should not find users by email prefix
+select is(
+    search_user('alice@'),
+    '[]'::jsonb,
+    'Should not find users by email prefix'
+);
+
+-- Should treat percent in query as a literal character
+select is(
+    search_user('user%'),
+    '[
+        {
+            "user_id": "00000000-0000-0000-0000-000000000017",
+            "username": "user%test",
+            "name": "User Percent Test",
+            "photo_url": null
+        }
+    ]'::jsonb,
+    'Should treat percent in query as a literal character'
+);
+
+-- Should treat underscore in query as a literal character
+select is(
+    search_user('user_'),
+    '[
+        {
+            "user_id": "00000000-0000-0000-0000-000000000018",
+            "username": "user_special",
+            "name": "User Underscore",
+            "photo_url": null
+        }
+    ]'::jsonb,
+    'Should treat underscore in query as a literal character'
+);
+
+-- Should treat backslash in query as a literal character
+select is(
+    search_user('back\'),
+    '[
+        {
+            "user_id": "00000000-0000-0000-0000-000000000021",
+            "username": "back\\slash",
+            "name": "Back Slash",
+            "photo_url": null
+        }
+    ]'::jsonb,
+    'Should treat backslash in query as a literal character'
 );
 
 -- Should cap results to maximum of 5

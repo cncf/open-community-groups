@@ -4,9 +4,10 @@ returns void as $$
     -- Make sure only one batch of updates is processed at a time
     select pg_advisory_xact_lock(hashtextextended('ocg:update-community-views', 0));
 
-    -- Insert or update the corresponding views counters as needed
+    -- Insert or update the corresponding views counters as needed,
+    -- pre-aggregating duplicate (community_id, day) entries in the payload
     insert into community_views (community_id, day, total)
-    select views_batch.*
+    select views_batch.community_id, views_batch.day, sum(views_batch.total)::integer
     from (
         select
             (value->>0)::uuid as community_id,
@@ -16,6 +17,7 @@ returns void as $$
     ) as views_batch
     join community c on c.community_id = views_batch.community_id
     where c.active = true
+    group by views_batch.community_id, views_batch.day
     on conflict (community_id, day) do
     update set total = community_views.total + excluded.total;
 $$ language sql;

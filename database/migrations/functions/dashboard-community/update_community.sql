@@ -37,6 +37,11 @@ begin
         youtube_url = nullif(p_data->>'youtube_url', '')
     where community_id = p_community_id;
 
+    -- Ensure the target community exists
+    if not found then
+        raise exception 'community not found';
+    end if;
+
     -- Track the community update
     perform insert_audit_log(
         'community_updated',

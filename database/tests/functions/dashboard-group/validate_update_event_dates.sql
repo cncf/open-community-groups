@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- TESTS
@@ -71,6 +71,32 @@ select throws_ok(
     )$$,
     'event starts_at cannot be earlier than current value',
     'Should reject a live event that moves earlier than its current start'
+);
+
+-- Should reject a dateless event that moves into the past
+select throws_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'starts_at', to_char(current_timestamp at time zone 'UTC' - interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        ),
+        '{}'::jsonb
+    )$$,
+    'event starts_at cannot be in the past',
+    'Should reject a dateless event that moves into the past'
+);
+
+-- Should accept a dateless event that moves into the future
+select lives_ok(
+    $$select validate_update_event_dates(
+        jsonb_build_object(
+            'starts_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'ends_at', to_char(current_timestamp at time zone 'UTC' + interval '1 day' + interval '1 hour', 'YYYY-MM-DD"T"HH24:MI:SS'),
+            'timezone', 'UTC'
+        ),
+        '{}'::jsonb
+    )$$,
+    'Should accept a dateless event that moves into the future'
 );
 
 -- Should reject a future session that moves into the past

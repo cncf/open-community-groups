@@ -30,6 +30,10 @@ begin
             raise exception 'questionnaire question id must be a uuid';
         end;
 
+        if v_question_id is null then
+            raise exception 'questionnaire question id must be a uuid';
+        end if;
+
         if v_question_id = any(v_question_ids) then
             raise exception 'questionnaire question ids must be unique';
         end if;
@@ -77,6 +81,10 @@ begin
             exception when invalid_text_representation then
                 raise exception 'questionnaire question option id must be a uuid';
             end;
+
+            if v_option_id is null then
+                raise exception 'questionnaire question option id must be a uuid';
+            end if;
 
             if v_option_id = any(v_option_ids) then
                 raise exception 'questionnaire question option ids must be unique per question';

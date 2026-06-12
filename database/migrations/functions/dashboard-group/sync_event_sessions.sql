@@ -37,6 +37,8 @@ begin
                 where sess->>'session_id' = v_session_id::text
                 limit 1;
 
+                -- Update the session unconditionally so the session bounds
+                -- trigger re-validates it against the current event dates
                 update session set
                     cfs_submission_id = nullif(v_session->>'cfs_submission_id', '')::uuid,
                     description = nullif(v_session->>'description', ''),

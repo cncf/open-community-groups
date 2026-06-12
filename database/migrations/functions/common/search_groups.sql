@@ -72,9 +72,11 @@ begin
             g.location,
             g.name
         from "group" g
+        join community c on c.community_id = g.community_id
         join group_category gc using (group_category_id)
         left join region r using (region_id)
-        where (g.active = true or v_include_inactive)
+        where c.active = true
+        and (g.active = true or v_include_inactive)
         and g.deleted = false
         and
             case when v_bbox is not null then
