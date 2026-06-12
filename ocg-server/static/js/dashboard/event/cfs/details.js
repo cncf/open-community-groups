@@ -35,7 +35,7 @@ export const renderCfsPersonRow = (person) => {
  * @param {Object} proposal Proposal payload.
  * @returns {import("lit").TemplateResult}
  */
-export const renderCfsProposalMeta = (proposal) => {
+const renderCfsProposalMeta = (proposal) => {
   const level = proposal?.session_proposal_level_name;
   const duration = proposal?.duration_minutes;
   return html`
@@ -63,7 +63,7 @@ export const renderCfsProposalMeta = (proposal) => {
  * @param {Object} state Details label state.
  * @returns {import("lit").TemplateResult}
  */
-export const renderCfsDetailsLabels = (state) => {
+const renderCfsDetailsLabels = (state) => {
   if (state.labels.length === 0) {
     return html``;
   }

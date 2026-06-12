@@ -175,7 +175,7 @@ export const initializeEventsListPage = (root = document) => {
  * @param {Document|Element} root - Root element to scan from.
  * @returns {void}
  */
-export const initializeEventsListPageRoots = (root = document) => {
+const initializeEventsListPageRoots = (root = document) => {
   initializeMatchingRoots(root, EVENTS_LIST_PAGE_SELECTOR, initializeEventsListPage);
 };
 

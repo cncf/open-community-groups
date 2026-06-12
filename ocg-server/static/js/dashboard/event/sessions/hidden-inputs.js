@@ -59,7 +59,7 @@ const renderSessionSpeakerHiddenInputs = ({ index, session, values }) => {
  * @param {number} index Session index.
  * @returns {import("lit").TemplateResult}
  */
-export const renderSessionHiddenInputs = (session, index) => {
+const renderSessionHiddenInputs = (session, index) => {
   const values = getSessionHiddenInputValues(session);
 
   return html`

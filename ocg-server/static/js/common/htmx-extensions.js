@@ -49,7 +49,7 @@ export const getDeclarativeHtmxResponseElement = (event) => {
  * @param {boolean} dropZero Whether the string "0" should be treated as empty.
  * @returns {Array<[string, FormDataEntryValue|string]>} Filtered entries.
  */
-export const filterHtmxEntries = (source, dropZero) => {
+const filterHtmxEntries = (source, dropZero) => {
   const filteredEntries = [];
 
   for (const [key, rawValue] of source.entries()) {
@@ -71,7 +71,7 @@ export const filterHtmxEntries = (source, dropZero) => {
  * @param {Array<[string, FormDataEntryValue|string]>} entries Filtered entries.
  * @returns {void}
  */
-export const replaceHtmxEntries = (parameters, entries) => {
+const replaceHtmxEntries = (parameters, entries) => {
   for (const key of [...parameters.keys()]) {
     parameters.delete(key);
   }
@@ -238,7 +238,7 @@ export const isSuccessfulRefreshBodyResponse = (xhr) => {
  * @param {string} successMessage Success alert message.
  * @returns {void}
  */
-export const showSuccessAfterBodyRefresh = (successMessage) => {
+const showSuccessAfterBodyRefresh = (successMessage) => {
   window.setTimeout(() => {
     let timeoutId;
     const showSuccessOnBodyRefreshSettle = (event) => {

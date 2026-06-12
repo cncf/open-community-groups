@@ -35,7 +35,7 @@ export const EVENT_PAGE_FORM_IDS = [
  * @param {"add"|"update"} pageName Page marker value.
  * @returns {Document|Element} Page root or the provided root.
  */
-export const resolveEventPageRoot = (root, pageName) => {
+const resolveEventPageRoot = (root, pageName) => {
   if (root instanceof Element && root.matches(`[data-event-page="${pageName}"]`)) {
     return root;
   }
@@ -186,7 +186,7 @@ export const initializeSharedEventPageControls = ({
  * @param {(field: HTMLElement|null) => boolean} [config.isFieldLocked] Locked-field lookup.
  * @returns {(enabled: boolean) => void} Shared CFS field updater.
  */
-export const createEventPageCfsFieldUpdater = ({
+const createEventPageCfsFieldUpdater = ({
   cfsStartsAtInput,
   cfsEndsAtInput,
   cfsDescriptionInput,
@@ -293,7 +293,7 @@ const reportInvalidTarget = (target) => {
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
  * @returns {boolean} True when every existing form is valid.
  */
-export const validateEventFormsAcrossSections = ({
+const validateEventFormsAcrossSections = ({
   pageRoot,
   formSections,
   displayActiveSection,
@@ -335,7 +335,7 @@ export const validateEventFormsAcrossSections = ({
  * @param {(sectionName: string) => void} config.displayActiveSection Section activation callback.
  * @returns {boolean} True when every session online details widget is valid.
  */
-export const validateSessionOnlineDetailsWidgets = ({ queryOne, displayActiveSection }) => {
+const validateSessionOnlineDetailsWidgets = ({ queryOne, displayActiveSection }) => {
   const sessionsSection = queryOne("sessions-section");
   if (!sessionsSection) {
     return true;
@@ -365,7 +365,7 @@ export const validateSessionOnlineDetailsWidgets = ({ queryOne, displayActiveSec
  * @returns {{validateEventForms: () => boolean, validateSessionOnlineDetails: () => boolean, showSessionBoundsError: () => void}}
  * Shared validation callbacks.
  */
-export const createEventPageValidationCallbacks = ({
+const createEventPageValidationCallbacks = ({
   pageRoot,
   queryOne,
   displayActiveSection,
@@ -400,7 +400,7 @@ export const createEventPageValidationCallbacks = ({
  * @param {Document|Element} config.pageRoot Page root.
  * @returns {string} Validation message.
  */
-export const getSessionBoundsErrorMessage = ({ pageRoot }) => {
+const getSessionBoundsErrorMessage = ({ pageRoot }) => {
   const sessionsForm = getElementById(pageRoot, "sessions-form");
   const sessionDateInputs = sessionsForm?.querySelectorAll(
     'input[name^="sessions"][name$="[starts_at]"], input[name^="sessions"][name$="[ends_at]"]',
@@ -424,7 +424,7 @@ export const getSessionBoundsErrorMessage = ({ pageRoot }) => {
  * @param {HTMLElement|null} config.onlineEventDetails Online event details component.
  * @returns {void}
  */
-export const bindSharedEventDateFieldListeners = ({
+const bindSharedEventDateFieldListeners = ({
   pageRoot,
   syncSessionsDateRange,
   startsAtInput,
@@ -506,7 +506,7 @@ export const bindSharedEventDateFieldListeners = ({
  * @param {Record<string, string>} parameters HTMX request parameters.
  * @returns {void}
  */
-export const convertSharedEventDateParameters = (parameters) => {
+const convertSharedEventDateParameters = (parameters) => {
   Object.keys(parameters).forEach((key) => {
     const isEventDate = key.match(/^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/);
     const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
@@ -528,7 +528,7 @@ export const convertSharedEventDateParameters = (parameters) => {
  * @param {boolean} [config.bindDisabledCfsToggle=false] Whether disabled CFS toggles should bind changes.
  * @returns {void}
  */
-export const initializeCommonEventPageToggles = ({
+const initializeCommonEventPageToggles = ({
   pageRoot,
   toggleCfsEnabled,
   cfsEnabledInput,
@@ -588,7 +588,7 @@ export const initializeCommonEventPageToggles = ({
  * @param {(selector: string) => Element|null} config.queryOne Root-scoped selector lookup.
  * @returns {void}
  */
-export const configureScopedTicketingEditors = ({ pageRoot, queryOne }) => {
+const configureScopedTicketingEditors = ({ pageRoot, queryOne }) => {
   const currencyInput = getElementById(pageRoot, "payment_currency_code");
   const timezoneInput = queryOne('[name="timezone"]');
 
@@ -616,7 +616,7 @@ export const configureScopedTicketingEditors = ({ pageRoot, queryOne }) => {
  * @param {(kind: string) => void} config.updateSectionVisibility Section visibility callback.
  * @returns {void}
  */
-export const initializeEventKindField = ({
+const initializeEventKindField = ({
   kindSelect,
   onlineEventDetails,
   hasVenueData,

@@ -4,7 +4,6 @@ import {
   isElementHidden,
   loadScriptOnce,
   setElementHidden,
-  toggleElementHidden,
 } from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
@@ -359,17 +358,6 @@ export const resetBodyScrollLock = () => {
   delete body.dataset.modalOpenCount;
   delete body.dataset.modalOverflow;
   delete body.dataset.modalPaddingRight;
-};
-
-/**
- * Toggles the visibility of the mobile navigation bar and its backdrop.
- * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
- */
-export const toggleMobileNavbarVisibility = () => {
-  const navbarMobile = getElementById(document, "navbar-mobile");
-  toggleElementHidden(navbarMobile);
-  const navbarBackdrop = getElementById(document, "navbar-backdrop");
-  toggleElementHidden(navbarBackdrop);
 };
 
 /**

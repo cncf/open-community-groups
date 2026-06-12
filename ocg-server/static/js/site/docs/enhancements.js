@@ -127,7 +127,7 @@ export const enhanceMobileCardTables = (docsRoot) => {
  * @param {string} path Route path.
  * @returns {string} Normalized path.
  */
-export const normalizeDocsPath = (path) => {
+const normalizeDocsPath = (path) => {
   if (!path || path === "/") {
     return "";
   }

@@ -6,7 +6,7 @@ import { getLocationResultText } from "/static/js/common/location/search-display
  * @param {Object} state Result row state.
  * @returns {import("lit").TemplateResult}
  */
-export const renderLocationSearchResult = (state) => {
+const renderLocationSearchResult = (state) => {
   const { mainText, secondaryText } = getLocationResultText(state.result);
   const rowClass = `flex items-start gap-3 px-4 py-3 cursor-pointer ${
     state.isHighlighted ? "bg-stone-100" : "hover:bg-stone-50"

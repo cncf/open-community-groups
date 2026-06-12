@@ -177,17 +177,6 @@ export class SessionsSection extends LitWrapper {
   }
 
   /**
-   * Gets the display name for a session kind.
-   * @param {string} kindId - Session kind ID
-   * @returns {string} Display name
-   * @private
-   */
-  _getSessionKindDisplayName(kindId) {
-    const kind = this.sessionKinds.find((k) => k.session_kind_id === kindId);
-    return kind?.display_name || kindId || "";
-  }
-
-  /**
    * Renders the no-dates placeholder.
    * @returns {import('lit').TemplateResult}
    * @private

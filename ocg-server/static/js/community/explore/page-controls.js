@@ -268,7 +268,7 @@ export const initializeExploreWidgets = async (root = document, { force = false 
  * Initializes delegated explore page controls.
  * @param {Document} root - Document root used for event binding
  */
-export const initializeExploreControls = (root = document) => {
+const initializeExploreControls = (root = document) => {
   if (!markDatasetReady(root.documentElement, EXPLORE_CONTROLS_READY_KEY)) {
     return;
   }

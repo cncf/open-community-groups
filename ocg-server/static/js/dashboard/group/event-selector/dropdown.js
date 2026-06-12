@@ -27,7 +27,7 @@ export const renderEventSelectorPreview = (event) => {
  * @param {Object} state Option state and callbacks.
  * @returns {import("lit").TemplateResult}
  */
-export const renderEventSelectorOption = (state) => {
+const renderEventSelectorOption = (state) => {
   const { isSelected, statusClass } = getEventOptionState({
     activeIndex: state.activeIndex,
     event: state.event,

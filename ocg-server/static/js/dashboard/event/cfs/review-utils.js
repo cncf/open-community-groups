@@ -5,8 +5,7 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
  * @param {Object} submission Submission payload.
  * @returns {Array<Object>} Submission ratings, or an empty list.
  */
-export const getSubmissionRatings = (submission) =>
-  Array.isArray(submission?.ratings) ? submission.ratings : [];
+const getSubmissionRatings = (submission) => (Array.isArray(submission?.ratings) ? submission.ratings : []);
 
 /**
  * Reviewer ids may arrive as numbers or strings from different payloads.
@@ -241,7 +240,7 @@ export const handleReviewAfterRequest = ({ event, handleResponse, onSuccess }) =
  * @param {Object} submission Submission payload.
  * @returns {Array<string>} Selected label ids.
  */
-export const getSubmissionLabelIds = (submission) =>
+const getSubmissionLabelIds = (submission) =>
   (submission?.labels || [])
     .map((label) => String(label?.event_cfs_label_id || ""))
     .filter((eventCfsLabelId) => eventCfsLabelId.length > 0);
@@ -251,7 +250,7 @@ export const getSubmissionLabelIds = (submission) =>
  * @param {Object} submission Submission payload.
  * @returns {string} Review status id.
  */
-export const getSubmissionReviewStatusId = (submission) =>
+const getSubmissionReviewStatusId = (submission) =>
   submission?.linked_session_id ? "approved" : String(submission?.status_id || "");
 
 /**

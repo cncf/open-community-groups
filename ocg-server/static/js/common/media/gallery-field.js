@@ -410,16 +410,6 @@ export class GalleryField extends LitWrapper {
   }
 
   /**
-   * Clear every thumbnail when the form requests a full reset.
-   */
-  _handleRemoveAll() {
-    if (this._isUploading || this.images.length === 0) {
-      return;
-    }
-    this._setImages([]);
-  }
-
-  /**
    * Ensures the add tile stays the same size as the existing previews on large screens.
    */
   _renderAddTile() {

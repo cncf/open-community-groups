@@ -213,7 +213,7 @@ export const shouldRefreshBodyForBackendFlash = (xhr, successMessage = "") => {
  * Triggers a body refresh after the current HTMX response settles.
  * @returns {void}
  */
-export const refreshBodyAfterHtmxSettle = () => {
+const refreshBodyAfterHtmxSettle = () => {
   document.addEventListener(
     "htmx:afterSettle",
     () => {
