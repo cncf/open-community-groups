@@ -1,7 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { computeUserInitials } from "/static/js/common/common.js";
-import "/static/js/common/media/logo-image.js";
+import "/static/js/common/users/selected-user-pill.js";
 import { focusUserSearchField } from "/static/js/common/users/user-search-field.js";
 
 /**
@@ -102,30 +101,6 @@ export class UserSearchSelector extends LitWrapper {
   }
 
   /**
-   * Renders avatar component for a user.
-   * @param {Object} user - User object with photo_url and name/username
-   * @param {boolean} small - Whether to render a small avatar for badges
-   * @returns {TemplateResult} Avatar component template
-   * @private
-   */
-  _renderAvatar(user, small = false) {
-    const initials = computeUserInitials(user.name, user.username, 2);
-    if (small) {
-      return html`
-        <logo-image
-          image-url=${user.photo_url || ""}
-          placeholder=${initials}
-          size="size-[24px]"
-          font-size="text-xs"
-          hide-border="true"
-        >
-        </logo-image>
-      `;
-    }
-    return html` <logo-image image-url=${user.photo_url || ""} placeholder=${initials}></logo-image> `;
-  }
-
-  /**
    * Renders a selected user item.
    * @param {Object} user - User object to render
    * @returns {TemplateResult} Selected user item template
@@ -133,19 +108,12 @@ export class UserSearchSelector extends LitWrapper {
    */
   _renderSelectedUser(user) {
     return html`
-      <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1">
-        ${this._renderAvatar(user, true)}
-        <span class="text-sm text-stone-700 pe-2"> ${user.name || user.username} </span>
-        <button
-          type="button"
-          class="p-1 hover:bg-stone-200 rounded-full transition-colors"
-          title="Remove user"
-          @click=${() => this._removeUser(user.username)}
-          ?disabled=${this.disabled}
-        >
-          <div class="svg-icon size-3 icon-close bg-stone-600"></div>
-        </button>
-      </div>
+      <selected-user-pill
+        .user=${user}
+        remove-label="Remove user"
+        @remove=${() => this._removeUser(user.username)}
+        ?disabled=${this.disabled}
+      ></selected-user-pill>
     `;
   }
 
