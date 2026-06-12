@@ -8,7 +8,10 @@
       hx-exclude="input[type='checkbox'][name^='toggle_']"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #community-settings-spinner"
-      hx-disabled-elt="button[type=submit], #cancel-button">
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully updated the community settings."
+      data-error-message="Something went wrong updating the settings. Please try again later.">
 
   <div class="space-y-12">
     {{ dashboard::page_title(title = "General Settings", docs_href = "/docs#/guides/community-dashboard?id=settings-community-identity", description = "Configure core community information and basic settings.") -}}
@@ -367,9 +370,7 @@
       <label for="new_group_details" class="form-label">New Group Details</label>
       <div class="mt-2">
         <markdown-editor id="new_group_details" name="new_group_details" mini
-        {% if let Some(new_group_details) = &community.new_group_details -%}
-          content="{{ new_group_details }}"
-        {% endif -%}
+        {% if let Some(new_group_details) = &community.new_group_details -%} content="{{ new_group_details }}" {% endif -%}
         ></markdown-editor>
       </div>
       <p class="form-legend">Instructions for creating new groups.</p>
@@ -416,35 +417,4 @@
 </div>
 </form>
 
-<script type="module">
-  import {
-    handleHtmxResponse
-  } from '/static/js/common/alerts.js';
-  import {
-    bindBooleanToggle
-  } from '/static/js/dashboard/group/page-form-state.js';
-
-  const settingsForm = document.getElementById('settings-form');
-  const groupTeamRestrictionToggle = document.getElementById('toggle_group_team_management_restricted');
-  const groupTeamRestrictionInput = document.getElementById('group_team_management_restricted');
-
-  if (settingsForm) {
-    bindBooleanToggle({
-      toggle: groupTeamRestrictionToggle,
-      hiddenInput: groupTeamRestrictionInput,
-      syncOnInit: true
-    });
-
-    settingsForm.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'settings-form') {
-        const xhr = e.detail?.xhr;
-        handleHtmxResponse({
-          xhr,
-          successMessage: 'You have successfully updated the community settings.',
-          errorMessage: 'Something went wrong updating the settings. Please try again later.'
-        });
-      }
-    });
-  }
-</script>
 {# End Community settings update form -#}

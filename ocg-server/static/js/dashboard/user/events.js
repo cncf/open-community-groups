@@ -1,5 +1,7 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
+import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
 
 const DATA_KEY = "userEventQuestionsReady";
@@ -12,11 +14,11 @@ const ACTIONS_DROPDOWN_SELECTOR = "[data-user-event-actions-dropdown]";
  */
 const getModal = (trigger) => {
   const modalId = trigger?.dataset?.userEventQuestionsModal;
-  return modalId ? document.getElementById(modalId) : null;
+  return modalId ? getElementById(document, modalId) : null;
 };
 
 const closeModal = (modal) => {
-  if (modal instanceof HTMLElement && !modal.classList.contains("hidden")) {
+  if (modal instanceof HTMLElement && !isElementHidden(modal)) {
     toggleModalVisibility(modal.id);
   }
 };
@@ -30,27 +32,26 @@ const closeActionDropdowns = (exceptDropdown = null) => {
 };
 
 const handleClick = (event) => {
-  const target = event.target instanceof Element ? event.target : null;
-  const actionsSummary = target?.closest(`${ACTIONS_DROPDOWN_SELECTOR} > summary`);
+  const actionsSummary = closestElement(event.target, `${ACTIONS_DROPDOWN_SELECTOR} > summary`);
   const actionsDropdown = actionsSummary?.closest(ACTIONS_DROPDOWN_SELECTOR);
   if (actionsDropdown instanceof HTMLDetailsElement && !actionsDropdown.open) {
     closeActionDropdowns(actionsDropdown);
   }
 
-  if (!target?.closest(ACTIONS_DROPDOWN_SELECTOR)) {
+  if (!closestElement(event.target, ACTIONS_DROPDOWN_SELECTOR)) {
     closeActionDropdowns();
   }
 
-  const trigger = target?.closest("[data-user-event-questions-open]");
+  const trigger = closestElement(event.target, "[data-user-event-questions-open]");
   if (trigger instanceof HTMLElement) {
     const modal = getModal(trigger);
-    if (modal instanceof HTMLElement && modal.classList.contains("hidden")) {
+    if (modal instanceof HTMLElement && isElementHidden(modal)) {
       toggleModalVisibility(modal.id);
     }
     return;
   }
 
-  const closeTrigger = target?.closest("[data-user-event-questions-close]");
+  const closeTrigger = closestElement(event.target, "[data-user-event-questions-close]");
   if (closeTrigger instanceof HTMLElement) {
     closeModal(closeTrigger.closest("[data-user-event-questions-modal]"));
   }
@@ -91,7 +92,7 @@ const handleAfterRequest = (event) => {
 };
 
 const handleKeydown = (event) => {
-  if (event.key !== "Escape") {
+  if (!isEscapeEvent(event)) {
     return;
   }
 
@@ -101,11 +102,10 @@ const handleKeydown = (event) => {
 };
 
 const initializeUserEventQuestions = () => {
-  if (document.documentElement.dataset[DATA_KEY] === "true") {
+  if (!markDatasetReady(document.documentElement, DATA_KEY)) {
     return;
   }
 
-  document.documentElement.dataset[DATA_KEY] = "true";
   document.addEventListener("click", handleClick);
   document.addEventListener("submit", handleSubmit, true);
   document.addEventListener("htmx:afterRequest", handleAfterRequest);

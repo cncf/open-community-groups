@@ -1,6 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import { lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 const QUESTION_TYPES = [
   ["free-text", "Free text"],
@@ -62,12 +63,7 @@ class QuestionsEditor extends LitWrapper {
       attribute: "questions",
       converter: {
         fromAttribute(value) {
-          if (!value) return [];
-          try {
-            return normalizeQuestions(JSON.parse(value));
-          } catch {
-            return [];
-          }
+          return normalizeQuestions(parseJsonAttribute(value, []));
         },
       },
     },
@@ -97,9 +93,7 @@ class QuestionsEditor extends LitWrapper {
   }
 
   disconnectedCallback() {
-    if (this._isModalOpen) {
-      unlockBodyScroll();
-    }
+    this._isModalOpen = closeModalBodyScroll(this._isModalOpen);
 
     super.disconnectedCallback();
   }
@@ -145,9 +139,9 @@ class QuestionsEditor extends LitWrapper {
     this._draggedOptionIndex = null;
     this._dragOverOptionIndex = null;
     this._editingQuestionIndex = null;
-    this._isModalOpen = false;
+    const wasOpen = this._isModalOpen;
     this._isNewQuestion = false;
-    unlockBodyScroll();
+    this._isModalOpen = closeModalBodyScroll(wasOpen);
   }
 
   /**
@@ -173,8 +167,7 @@ class QuestionsEditor extends LitWrapper {
     this._draftQuestion = existingQuestion ? cloneQuestion(existingQuestion) : createBlankQuestion();
     this._editingQuestionIndex = questionIndex;
     this._isNewQuestion = questionIndex === null;
-    this._isModalOpen = true;
-    lockBodyScroll();
+    this._isModalOpen = openModalBodyScroll(this._isModalOpen);
     this.updateComplete.then(() => this.querySelector("[data-question-modal-field]")?.focus());
   }
 

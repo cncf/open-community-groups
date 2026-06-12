@@ -1,11 +1,47 @@
+import { handleHtmxResponse, showSuccessAlert } from "/static/js/common/alerts.js";
 import {
   addLoadedCommitShaHeader,
   isDeploymentReloadRequested,
   reloadIfDeploymentChanged,
 } from "/static/js/common/deployment-version.js";
+import { hasHtmxTrigger } from "/static/js/common/htmx-triggers.js";
 
 // Tracks event roots already wired so repeated initialization stays idempotent.
 const responseHandlerRoots = new WeakSet();
+// Tracks XHRs whose declarative response message was already displayed.
+const handledDeclarativeResponseXhrs = new WeakSet();
+const htmxResponseSelector = "[data-htmx-response]";
+const REFRESH_BODY_TRIGGER = "refresh-body";
+const BODY_REFRESH_SUCCESS_TIMEOUT_MS = 10000;
+
+/**
+ * Finds the closest response owner from whichever element HTMX exposes.
+ *
+ * Different HTMX lifecycle events point at the swapped element, the request
+ * element, or the original trigger, so all three are checked for nested controls.
+ * @param {CustomEvent} event HTMX lifecycle event.
+ * @returns {Element|null} Declarative response element when present.
+ */
+export const getDeclarativeHtmxResponseElement = (event) => {
+  const candidates = [
+    event.detail?.elt,
+    event.detail?.requestConfig?.elt,
+    event.detail?.requestConfig?.triggeringEvent?.target,
+  ];
+
+  for (const candidate of candidates) {
+    if (!(candidate instanceof Element)) {
+      continue;
+    }
+
+    const responseElement = candidate.closest(htmxResponseSelector);
+    if (responseElement) {
+      return responseElement;
+    }
+  }
+
+  return null;
+};
 
 /**
  * Filters HTMX parameters by trimming strings and dropping selected empty values.
@@ -149,6 +185,80 @@ export const handleCommitShaBeforeSwap = (event, root = document) => {
 };
 
 /**
+ * Shows configured success or error alerts for declarative HTMX response elements.
+ * @param {CustomEvent} event HTMX afterRequest event.
+ * @returns {void}
+ */
+export const handleDeclarativeHtmxResponse = (event) => {
+  const responseElement = getDeclarativeHtmxResponseElement(event);
+  if (!responseElement) {
+    return;
+  }
+
+  const xhr = event.detail?.xhr;
+  if (xhr && handledDeclarativeResponseXhrs.has(xhr)) {
+    return;
+  }
+
+  const successMessage = responseElement.dataset.successMessage || "";
+  if (isSuccessfulRefreshBodyResponse(xhr) && successMessage) {
+    if (xhr) {
+      handledDeclarativeResponseXhrs.add(xhr);
+    }
+    showSuccessAfterBodyRefresh(successMessage);
+    return;
+  }
+
+  if (xhr) {
+    handledDeclarativeResponseXhrs.add(xhr);
+  }
+  handleHtmxResponse({
+    xhr,
+    successMessage,
+    errorMessage: responseElement.dataset.errorMessage || "Something went wrong. Please try again later.",
+  });
+};
+
+/**
+ * Checks whether a successful HTMX response triggers a body refresh.
+ * @param {XMLHttpRequest|undefined|null} xhr HTMX response XHR.
+ * @returns {boolean} True when the response will refresh the body.
+ */
+export const isSuccessfulRefreshBodyResponse = (xhr) => {
+  if (!xhr || xhr.status < 200 || xhr.status >= 300 || typeof xhr.getResponseHeader !== "function") {
+    return false;
+  }
+
+  return hasHtmxTrigger(xhr, REFRESH_BODY_TRIGGER);
+};
+
+/**
+ * Shows success feedback after the triggered body refresh has settled.
+ * Server refresh-body responses are expected to settle a no-content body refresh.
+ * @param {string} successMessage Success alert message.
+ * @returns {void}
+ */
+export const showSuccessAfterBodyRefresh = (successMessage) => {
+  window.setTimeout(() => {
+    let timeoutId;
+    const showSuccessOnBodyRefreshSettle = (event) => {
+      if (event.target !== document.body) {
+        return;
+      }
+
+      window.clearTimeout(timeoutId);
+      document.removeEventListener("htmx:afterSettle", showSuccessOnBodyRefreshSettle);
+      showSuccessAlert(successMessage);
+    };
+
+    timeoutId = window.setTimeout(() => {
+      document.removeEventListener("htmx:afterSettle", showSuccessOnBodyRefreshSettle);
+    }, BODY_REFRESH_SUCCESS_TIMEOUT_MS);
+    document.addEventListener("htmx:afterSettle", showSuccessOnBodyRefreshSettle);
+  }, 0);
+};
+
+/**
  * Registers the shared HTMX parameter filtering extensions.
  * @param {{defineExtension?: Function}|undefined|null} htmxInstance Global HTMX instance.
  * @returns {void}
@@ -168,14 +278,17 @@ export const registerHtmxNoEmptyValuesExtensions = (htmxInstance) => {
  * @returns {void}
  */
 export const registerHtmxResponseHandlers = (root = document) => {
-  const eventRoot = root?.body;
-  if (!eventRoot || responseHandlerRoots.has(eventRoot)) {
+  const eventRoot = root;
+  if (!eventRoot || typeof eventRoot.addEventListener !== "function" || responseHandlerRoots.has(eventRoot)) {
     return;
   }
 
   eventRoot.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
   eventRoot.addEventListener("htmx:beforeOnLoad", handleCommitShaBeforeOnLoad);
+  eventRoot.addEventListener("htmx:beforeOnLoad", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);
   eventRoot.addEventListener("htmx:beforeSwap", handleNotFoundBeforeSwap);
+  eventRoot.addEventListener("htmx:beforeSwap", handleDeclarativeHtmxResponse);
+  eventRoot.addEventListener("htmx:afterRequest", handleDeclarativeHtmxResponse);
   responseHandlerRoots.add(eventRoot);
 };

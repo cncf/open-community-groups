@@ -1,3 +1,5 @@
+import { getElementById } from "/static/js/common/dom.js";
+
 /**
  * Checks if the provided value is a string.
  * @param {*} value Incoming value
@@ -57,7 +59,7 @@ const normalizeUsers = (list) => {
  * @param {*} value New value
  */
 const setTextValue = (id, value) => {
-  const input = document.getElementById(id);
+  const input = getElementById(document, id);
   if (!input) {
     return;
   }
@@ -72,7 +74,7 @@ const setTextValue = (id, value) => {
  * @param {*} value New value
  */
 const setSelectValue = (id, value) => {
-  const select = document.getElementById(id);
+  const select = getElementById(document, id);
   if (!select) {
     return;
   }
@@ -102,6 +104,26 @@ const setImageFieldValue = (fieldName, url) => {
 };
 
 /**
+ * Safely parses JSON text.
+ * @param {*} value Raw JSON string
+ * @param {*} fallback Fallback value
+ * @param {(error: Error) => void} onError Optional parse error handler
+ * @returns {*}
+ */
+const parseJsonText = (value, fallback, onError) => {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    onError?.(error);
+    return fallback;
+  }
+};
+
+/**
  * Safely parses a JSON attribute or returns already parsed JSON-like values.
  * @param {*} value Raw attribute value
  * @param {*} fallback Fallback value
@@ -116,15 +138,7 @@ const parseJsonAttribute = (value, fallback) => {
     return value;
   }
 
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(value);
-  } catch (_) {
-    return fallback;
-  }
+  return parseJsonText(value, fallback);
 };
 
 /**
@@ -155,6 +169,7 @@ export {
   isString,
   normalizeUsers,
   parseJsonAttribute,
+  parseJsonText,
   sanitizeStringArray,
   setImageFieldValue,
   setSelectValue,

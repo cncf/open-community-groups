@@ -2,29 +2,27 @@ import { expect } from "@open-wc/testing";
 
 import {
   clearChartElement,
-  deferUntilHtmxSettled,
   getThemePalette,
   hasChartData,
   hasStackedTimeSeriesData,
   hasTimeSeriesData,
   showChartEmptyState,
   toTimeSeries,
-  triggerChangeOnForm,
+} from "/static/js/common/charts/charts.js";
+import {
+  deferUntilHtmxSettled,
 } from "/static/js/dashboard/common.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
-import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 
 describe("dashboard common utilities", () => {
   const originalEcharts = globalThis.echarts;
 
-  let htmx;
   let disposedCharts;
 
   beforeEach(() => {
     disposedCharts = [];
     resetDom();
-    htmx = mockHtmx();
 
     // Run the behavior under test.
     globalThis.echarts = {
@@ -38,7 +36,6 @@ describe("dashboard common utilities", () => {
 
   afterEach(() => {
     resetDom();
-    htmx.restore();
     globalThis.echarts = originalEcharts;
   });
 
@@ -86,19 +83,6 @@ describe("dashboard common utilities", () => {
     expect(
       hasStackedTimeSeriesData([{ data: [1] }, { data: [1, 2, 3] }], 3),
     ).to.equal(true);
-  });
-
-  it("triggers htmx change events on forms", () => {
-    // Prepare form for triggers HTMX change events on forms.
-    const form = document.createElement("form");
-    form.id = "filters-form";
-    document.body.append(form);
-
-    // Call trigger change on form.
-    triggerChangeOnForm("filters-form");
-
-    // Assert the htmx.
-    expect(htmx.triggerCalls).to.deep.equal([[form, "change"]]);
   });
 
   it("reads palette values with fallback and normalizes time series", () => {

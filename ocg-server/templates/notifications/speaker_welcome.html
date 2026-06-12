@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Speaker Welcome Notification -#}
 {% block subject -%}
   You're speaking at {{ event.name }}
 {% endblock subject -%}
@@ -71,3 +72,4 @@
   {{ event.community_display_name }} community. If this wasn't you, you can
   ignore this message.
 {% endblock footer -%}
+{# End speaker welcome notification -#}

@@ -1,14 +1,24 @@
-import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
-import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code-modal.js";
-import "/static/js/common/user-search-field.js";
+import { createNotificationModal } from "/static/js/dashboard/group/notification-modal.js";
+import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code/modal.js";
+import "/static/js/common/users/user-search-field.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import {
   computeUserInitials,
   isSuccessfulXHRStatus,
   toggleModalVisibility,
 } from "/static/js/common/common.js";
-import { queryElementById } from "/static/js/common/dom.js";
+import {
+  closestElement,
+  closestElementWithinRoot,
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  isElementHidden,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { readTrustedHtml, setTrustedHtml } from "/static/js/common/trusted-html.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";
@@ -17,21 +27,22 @@ const refundModalId = "attendee-refund-modal";
 const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
 const answersModalId = "attendee-answers-modal";
+const attendeesRootSelector = "#attendees-content";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
 const attendeeRowActionsMenuSelector = "[data-attendee-row-actions-menu]";
 const invitationModalId = "attendee-invitation-modal";
 const invitationEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const resolveAttendeesRoot = (root = document) => {
-  if (root instanceof Element && root.id === "attendees-content") {
+  if (root instanceof Element && root.matches(attendeesRootSelector)) {
     return root;
   }
 
   if (root instanceof Element) {
-    return root.closest("#attendees-content") || root.querySelector("#attendees-content") || root;
+    return root.closest(attendeesRootSelector) || getElementById(root, "attendees-content") || root;
   }
 
-  return root.querySelector?.("#attendees-content") || root.body || root;
+  return getElementById(root, "attendees-content") || root.body || root;
 };
 
 /**
@@ -40,13 +51,62 @@ const resolveAttendeesRoot = (root = document) => {
  * @returns {Object} Refund modal controls.
  */
 const getRefundReviewControls = (root = document) => ({
-  modal: queryElementById(root, refundModalId),
-  nameField: queryElementById(root, "attendee-refund-name"),
-  ticketField: queryElementById(root, "attendee-refund-ticket"),
-  amountField: queryElementById(root, "attendee-refund-amount"),
-  approveButton: queryElementById(root, refundApproveButtonId),
-  rejectButton: queryElementById(root, refundRejectButtonId),
+  modal: getElementById(root, refundModalId),
+  nameField: getElementById(root, "attendee-refund-name"),
+  ticketField: getElementById(root, "attendee-refund-ticket"),
+  amountField: getElementById(root, "attendee-refund-amount"),
+  approveButton: getElementById(root, refundApproveButtonId),
+  rejectButton: getElementById(root, refundRejectButtonId),
 });
+
+/**
+ * Set a scoped modal visible or hidden only when its current state differs.
+ * @param {Document|Element} root Query root.
+ * @param {string} targetModalId Modal element id.
+ * @param {boolean} visible Whether the modal should be visible.
+ * @returns {void}
+ */
+const setScopedModalVisibility = (root, targetModalId, visible) => {
+  const modal = getElementById(root, targetModalId);
+  if (!modal) return;
+
+  const isHidden = isElementHidden(modal);
+  if ((visible && isHidden) || (!visible && !isHidden)) {
+    toggleModalVisibility(targetModalId);
+  }
+};
+
+/**
+ * Closes a scoped modal when an event target matches its dismiss controls.
+ * @param {Event} event Event to inspect.
+ * @param {Document|Element} root Query root.
+ * @param {string} closeSelector Close, cancel, and overlay selector.
+ * @param {Function} closeModal Modal close callback.
+ * @returns {boolean} True when the event closed the modal.
+ */
+const closeScopedModalFromEvent = (event, root, closeSelector, closeModal) => {
+  if (!closestElementWithinRoot(event.target, closeSelector, root)) {
+    return false;
+  }
+
+  event.stopPropagation();
+  closeModal(root);
+  return true;
+};
+
+/**
+ * Binds Escape handling for a scoped modal.
+ * @param {Document|Element} root Query root.
+ * @param {Function} closeModal Modal close callback.
+ * @returns {void}
+ */
+const bindScopedModalEscape = (root, closeModal) => {
+  root.addEventListener("keydown", (event) => {
+    if (isEscapeEvent(event)) {
+      closeModal(root);
+    }
+  });
+};
 
 /**
  * Show the refund review modal if it is currently hidden.
@@ -54,10 +114,7 @@ const getRefundReviewControls = (root = document) => ({
  * @returns {void}
  */
 const openRefundModal = (root = document) => {
-  const modal = queryElementById(root, refundModalId);
-  if (modal?.classList.contains("hidden")) {
-    toggleModalVisibility(refundModalId);
-  }
+  setScopedModalVisibility(root, refundModalId, true);
 };
 
 /**
@@ -66,10 +123,7 @@ const openRefundModal = (root = document) => {
  * @returns {void}
  */
 const closeRefundModal = (root = document) => {
-  const modal = queryElementById(root, refundModalId);
-  if (modal && !modal.classList.contains("hidden")) {
-    toggleModalVisibility(refundModalId);
-  }
+  setScopedModalVisibility(root, refundModalId, false);
 };
 
 /**
@@ -78,10 +132,7 @@ const closeRefundModal = (root = document) => {
  * @returns {void}
  */
 const closeAnswersModal = (root = document) => {
-  const modal = queryElementById(root, answersModalId);
-  if (modal && !modal.classList.contains("hidden")) {
-    toggleModalVisibility(answersModalId);
-  }
+  setScopedModalVisibility(root, answersModalId, false);
 };
 
 /**
@@ -92,15 +143,15 @@ const closeAnswersModal = (root = document) => {
  */
 const populateAnswersModal = (trigger, root) => {
   const sourceId = trigger.dataset.attendeeAnswersSource;
-  const source = sourceId ? queryElementById(root, sourceId) : null;
-  const content = queryElementById(root, "attendee-answers-content");
-  const name = queryElementById(root, "attendee-answers-name");
+  const source = sourceId ? getElementById(root, sourceId) : null;
+  const content = getElementById(root, "attendee-answers-content");
+  const name = getElementById(root, "attendee-answers-name");
 
   if (name) {
     name.textContent = trigger.dataset.attendeeName || "";
   }
   if (content) {
-    content.innerHTML = source?.innerHTML || "";
+    setTrustedHtml(content, readTrustedHtml(source));
   }
 };
 
@@ -110,10 +161,7 @@ const populateAnswersModal = (trigger, root) => {
  * @returns {void}
  */
 const openAnswersModal = (root = document) => {
-  const modal = queryElementById(root, answersModalId);
-  if (modal?.classList.contains("hidden")) {
-    toggleModalVisibility(answersModalId);
-  }
+  setScopedModalVisibility(root, answersModalId, true);
 };
 
 /**
@@ -122,10 +170,7 @@ const openAnswersModal = (root = document) => {
  * @returns {void}
  */
 const closeInvitationModal = (root = document) => {
-  const modal = queryElementById(root, invitationModalId);
-  if (modal && !modal.classList.contains("hidden")) {
-    toggleModalVisibility(invitationModalId);
-  }
+  setScopedModalVisibility(root, invitationModalId, false);
 };
 
 /**
@@ -144,17 +189,48 @@ const getInvitationSearchField = (root) =>
   root.querySelector?.("user-search-field[data-attendee-invitation-search]") || null;
 
 /**
+ * Resolve the attendee invitation controls from the current modal.
+ * @param {Document|Element} root Query root.
+ * @returns {Object} Invitation controls.
+ */
+const getInvitationControls = (root) => ({
+  form: getElementById(root, "attendee-invitation-form"),
+  submit: getElementById(root, "submit-attendee-invitation"),
+  userInput: getElementById(root, "attendee-invitation-user-id"),
+  emailInput: getElementById(root, "attendee-invitation-email"),
+  selectedUser: getElementById(root, "attendee-invitation-selected-user"),
+});
+
+/**
  * Set which invitation field should be submitted.
  * @param {Document|Element} root Query root.
  * @param {"user"|"email"|""} field Active submission field.
  * @returns {void}
  */
 const setInvitationSubmissionField = (root, field) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
+  const { userInput, emailInput } = getInvitationControls(root);
 
   if (userInput) userInput.disabled = field !== "user";
   if (emailInput) emailInput.disabled = field !== "email";
+};
+
+/**
+ * Clear attendee invitation hidden fields, selected display, and search value.
+ * @param {Document|Element} root Query root.
+ * @returns {void}
+ */
+const clearInvitationState = (root) => {
+  const { userInput, emailInput, selectedUser } = getInvitationControls(root);
+  const searchField = getInvitationSearchField(root);
+
+  if (userInput) userInput.value = "";
+  if (emailInput) emailInput.value = "";
+  setInvitationSubmissionField(root, "");
+  selectedUser?.replaceChildren();
+  if (typeof searchField?.clearSearch === "function") {
+    searchField.clearSearch({ refocus: false });
+  }
+  updateInvitationSubmitState(root);
 };
 
 /**
@@ -163,19 +239,7 @@ const setInvitationSubmissionField = (root, field) => {
  * @returns {void}
  */
 const clearInvitationSelectedUser = (root) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
-  const searchField = getInvitationSearchField(root);
-
-  if (userInput) userInput.value = "";
-  if (emailInput) emailInput.value = "";
-  setInvitationSubmissionField(root, "");
-  selectedUser?.replaceChildren();
-  if (typeof searchField?.clearSearch === "function") {
-    searchField.clearSearch({ refocus: false });
-  }
-  updateInvitationSubmitState(root);
+  clearInvitationState(root);
 };
 
 /**
@@ -184,19 +248,41 @@ const clearInvitationSelectedUser = (root) => {
  * @returns {void}
  */
 const resetInvitationForm = (root) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
-  const searchField = getInvitationSearchField(root);
+  clearInvitationState(root);
+};
 
-  if (userInput) userInput.value = "";
-  if (emailInput) emailInput.value = "";
-  setInvitationSubmissionField(root, "");
-  selectedUser?.replaceChildren();
-  if (typeof searchField?.clearSearch === "function") {
-    searchField.clearSearch({ refocus: false });
-  }
-  updateInvitationSubmitState(root);
+/**
+ * Render the selected invitation chip with the shared user/email style.
+ * @param {Document|Element} root Query root.
+ * @param {Object} config Chip render configuration.
+ * @param {HTMLElement} config.leadingElement Leading avatar or icon element.
+ * @param {string} config.labelText Chip label text.
+ * @param {string} config.removeTitle Remove button title.
+ * @returns {void}
+ */
+const renderInvitationSelectedChip = (root, { leadingElement, labelText, removeTitle }) => {
+  const { selectedUser } = getInvitationControls(root);
+  if (!selectedUser) return;
+
+  const pill = document.createElement("div");
+  pill.className = "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1";
+
+  const label = document.createElement("span");
+  label.className = "text-sm text-stone-700 pe-2";
+  label.textContent = labelText;
+
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
+  removeButton.title = removeTitle;
+  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
+
+  const removeIcon = document.createElement("div");
+  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
+
+  removeButton.append(removeIcon);
+  pill.append(leadingElement, label, removeButton);
+  selectedUser.replaceChildren(pill);
 };
 
 /**
@@ -206,12 +292,6 @@ const resetInvitationForm = (root) => {
  * @returns {void}
  */
 const renderInvitationSelectedUser = (root, user) => {
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
-  if (!selectedUser) return;
-
-  const pill = document.createElement("div");
-  pill.className = "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1";
-
   const avatar = document.createElement("logo-image");
   avatar.setAttribute("image-url", user.photo_url || "");
   avatar.setAttribute("placeholder", computeUserInitials(user.name, user.username, 2));
@@ -219,22 +299,11 @@ const renderInvitationSelectedUser = (root, user) => {
   avatar.setAttribute("font-size", "text-xs");
   avatar.setAttribute("hide-border", "true");
 
-  const label = document.createElement("span");
-  label.className = "text-sm text-stone-700 pe-2";
-  label.textContent = user.name || user.username;
-
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
-  removeButton.title = "Remove user";
-  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
-
-  const removeIcon = document.createElement("div");
-  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
-
-  removeButton.append(removeIcon);
-  pill.append(avatar, label, removeButton);
-  selectedUser.replaceChildren(pill);
+  renderInvitationSelectedChip(root, {
+    leadingElement: avatar,
+    labelText: user.name || user.username,
+    removeTitle: "Remove user",
+  });
 };
 
 /**
@@ -244,12 +313,6 @@ const renderInvitationSelectedUser = (root, user) => {
  * @returns {void}
  */
 const renderInvitationSelectedEmail = (root, email) => {
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
-  if (!selectedUser) return;
-
-  const pill = document.createElement("div");
-  pill.className = "inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-1 py-1";
-
   const iconBox = document.createElement("span");
   iconBox.className =
     "inline-flex size-[24px] shrink-0 items-center justify-center rounded-full bg-stone-200";
@@ -257,23 +320,12 @@ const renderInvitationSelectedEmail = (root, email) => {
   const icon = document.createElement("div");
   icon.className = "svg-icon size-3.5 icon-email bg-stone-600";
 
-  const label = document.createElement("span");
-  label.className = "text-sm text-stone-700 pe-2";
-  label.textContent = email;
-
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className = "p-1 hover:bg-stone-200 rounded-full transition-colors";
-  removeButton.title = "Remove email";
-  removeButton.setAttribute("data-attendee-invitation-clear-user", "");
-
-  const removeIcon = document.createElement("div");
-  removeIcon.className = "svg-icon size-3 icon-close bg-stone-600";
-
-  removeButton.append(removeIcon);
   iconBox.append(icon);
-  pill.append(iconBox, label, removeButton);
-  selectedUser.replaceChildren(pill);
+  renderInvitationSelectedChip(root, {
+    leadingElement: iconBox,
+    labelText: email,
+    removeTitle: "Remove email",
+  });
 };
 
 /**
@@ -282,12 +334,11 @@ const renderInvitationSelectedEmail = (root, email) => {
  * @returns {void}
  */
 const updateInvitationSubmitState = (root) => {
-  const form = queryElementById(root, "attendee-invitation-form");
-  const submit = queryElementById(root, "submit-attendee-invitation");
+  const { form, submit, userInput, emailInput } = getInvitationControls(root);
   if (!form || !submit) return;
 
-  const userId = queryElementById(root, "attendee-invitation-user-id")?.value || "";
-  const email = queryElementById(root, "attendee-invitation-email")?.value.trim() || "";
+  const userId = userInput?.value || "";
+  const email = emailInput?.value.trim() || "";
   submit.disabled = userId === "" && !isValidInvitationEmail(email);
 };
 
@@ -298,9 +349,7 @@ const updateInvitationSubmitState = (root) => {
  * @returns {void}
  */
 const updateInvitationQuery = (root, query) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
-  const selectedUser = queryElementById(root, "attendee-invitation-selected-user");
+  const { userInput, emailInput, selectedUser } = getInvitationControls(root);
   if (!userInput || !emailInput) return;
 
   const email = query.trim();
@@ -323,8 +372,7 @@ const updateInvitationQuery = (root, query) => {
  * @returns {void}
  */
 const selectInvitationEmail = (root, email) => {
-  const userInput = queryElementById(root, "attendee-invitation-user-id");
-  const emailInput = queryElementById(root, "attendee-invitation-email");
+  const { userInput, emailInput } = getInvitationControls(root);
   if (!emailInput || !isValidInvitationEmail(email)) return;
 
   if (userInput) userInput.value = "";
@@ -369,7 +417,7 @@ const processRefundActionButton = (button) => {
  * @returns {void}
  */
 const closeAttendeeActionsDropdown = (root = document) => {
-  root.querySelector?.(attendeeActionsDropdownSelector)?.classList.add("hidden");
+  setElementHidden(root.querySelector?.(attendeeActionsDropdownSelector), true);
 };
 
 /**
@@ -392,7 +440,8 @@ const closeAttendeeRowActionMenus = (root = document, exceptMenu = null) => {
  * @returns {void}
  */
 const toggleAttendeeActionsDropdown = (root = document) => {
-  root.querySelector?.(attendeeActionsDropdownSelector)?.classList.toggle("hidden");
+  const dropdown = root.querySelector?.(attendeeActionsDropdownSelector);
+  setElementHidden(dropdown, !isElementHidden(dropdown));
 };
 
 /**
@@ -424,7 +473,7 @@ const populateRefundReviewModal = (triggerButton, root = document) => {
   }
 
   if (approveButton) {
-    approveButton.classList.remove("hidden");
+    setElementHidden(approveButton, false);
     setRefundActionLabel(
       approveButton,
       status === "approving" ? "Retry refund finalization" : "Approve refund",
@@ -442,13 +491,13 @@ const populateRefundReviewModal = (triggerButton, root = document) => {
   }
 
   if (status === "approving") {
-    rejectButton.classList.add("hidden");
+    setElementHidden(rejectButton, true);
     rejectButton.removeAttribute("hx-put");
     processRefundActionButton(rejectButton);
     return;
   }
 
-  rejectButton.classList.remove("hidden");
+  setElementHidden(rejectButton, false);
   if (triggerButton.dataset.refundRejectUrl) {
     rejectButton.setAttribute("hx-put", triggerButton.dataset.refundRejectUrl);
   } else {
@@ -490,64 +539,58 @@ const initializeAttendeeNotification = (root) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeAttendeeActionsMenu = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeActionsMenuReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeActionsMenuReady")) {
     return;
   }
 
-  root.dataset.attendeeActionsMenuReady = "true";
-
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-
-    const rowSummary = target?.closest(`${attendeeRowActionsMenuSelector} summary`);
+    const rowSummary = closestElementWithinRoot(
+      event.target,
+      `${attendeeRowActionsMenuSelector} summary`,
+      root,
+    );
     const rowMenu = rowSummary?.closest(attendeeRowActionsMenuSelector);
-    if (rowMenu instanceof HTMLDetailsElement && root.contains(rowMenu)) {
+    if (rowMenu instanceof HTMLDetailsElement) {
       closeAttendeeActionsDropdown(root);
       closeAttendeeRowActionMenus(root, rowMenu);
       return;
     }
 
-    const rowMenuItem = target?.closest(
+    const rowMenuItem = closestElementWithinRoot(
+      event.target,
       `${attendeeRowActionsMenuSelector} button, ${attendeeRowActionsMenuSelector} a`,
+      root,
     );
-    if (rowMenuItem instanceof HTMLElement && root.contains(rowMenuItem)) {
+    if (rowMenuItem instanceof HTMLElement) {
       closeAttendeeRowActionMenus(root);
       return;
     }
 
-    const trigger = target?.closest("#attendee-actions-button");
-    if (trigger instanceof HTMLElement && root.contains(trigger)) {
+    const trigger = closestElementWithinRoot(event.target, "#attendee-actions-button", root);
+    if (trigger instanceof HTMLElement) {
       event.stopPropagation();
       closeAttendeeRowActionMenus(root);
       toggleAttendeeActionsDropdown(root);
       return;
     }
 
-    const menuItem = target?.closest(`${attendeeActionsDropdownSelector} a`);
-    if (menuItem instanceof HTMLAnchorElement && root.contains(menuItem)) {
+    const menuItem = closestElementWithinRoot(event.target, `${attendeeActionsDropdownSelector} a`, root);
+    if (menuItem instanceof HTMLAnchorElement) {
       closeAttendeeActionsDropdown(root);
       return;
     }
 
-    if (!target?.closest(attendeeActionsDropdownSelector)) {
+    if (!closestElementWithinRoot(event.target, attendeeActionsDropdownSelector, root)) {
       closeAttendeeActionsDropdown(root);
     }
 
-    if (!target?.closest(attendeeRowActionsMenuSelector)) {
-      closeAttendeeRowActionMenus(root);
-    }
-  });
-
-  document.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target && !root.contains(target)) {
-      closeAttendeeActionsDropdown(root);
+    if (!closestElementWithinRoot(event.target, attendeeRowActionsMenuSelector, root)) {
       closeAttendeeRowActionMenus(root);
     }
   });
 
   root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+    if (isEscapeEvent(event)) {
       const openRowMenu = root.querySelector(`${attendeeRowActionsMenuSelector}[open]`);
       const rowSummary = openRowMenu?.querySelector("summary");
       closeAttendeeActionsDropdown(root);
@@ -556,8 +599,31 @@ const initializeAttendeeActionsMenu = (root = document) => {
         rowSummary.focus();
         return;
       }
-      queryElementById(root, "attendee-actions-button")?.focus();
+      getElementById(root, "attendee-actions-button")?.focus();
     }
+  });
+};
+
+/**
+ * Initialize document-level attendee menu cleanup.
+ */
+const initializeAttendeeOutsideClickListener = () => {
+  if (!markDatasetReady(document.documentElement, "attendeeOutsideClickReady")) {
+    return;
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) {
+      return;
+    }
+
+    document.querySelectorAll(attendeesRootSelector).forEach((root) => {
+      if (!root.contains(target)) {
+        closeAttendeeActionsDropdown(root);
+        closeAttendeeRowActionMenus(root);
+      }
+    });
   });
 };
 
@@ -567,11 +633,10 @@ const initializeAttendeeActionsMenu = (root = document) => {
  */
 const initCheckInToggles = (root = document) => {
   root.querySelectorAll(".check-in-toggle").forEach((checkbox) => {
-    if (checkbox.dataset.checkInReady === "true") {
+    if (!markDatasetReady(checkbox, "checkInReady")) {
       return;
     }
 
-    checkbox.dataset.checkInReady = "true";
     checkbox.addEventListener("change", async () => {
       const url = checkbox.dataset.url;
       const label = checkbox.closest("label");
@@ -610,37 +675,28 @@ const initCheckInToggles = (root = document) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeRefundReviewModal = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeRefundReviewReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeRefundReviewReady")) {
     return;
   }
 
-  root.dataset.attendeeRefundReviewReady = "true";
-
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    const refundTrigger = target?.closest("[data-refund-review-trigger]");
-    if (refundTrigger instanceof HTMLElement && root.contains(refundTrigger)) {
+    const refundTrigger = closestElementWithinRoot(event.target, "[data-refund-review-trigger]", root);
+    if (refundTrigger instanceof HTMLElement) {
       event.stopPropagation();
       populateRefundReviewModal(refundTrigger, root);
       openRefundModal(root);
       return;
     }
 
-    if (
-      target?.closest(
-        "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
-      )
-    ) {
-      event.stopPropagation();
-      closeRefundModal(root);
-    }
+    closeScopedModalFromEvent(
+      event,
+      root,
+      "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
+      closeRefundModal,
+    );
   });
 
-  root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeRefundModal(root);
-    }
-  });
+  bindScopedModalEscape(root, closeRefundModal);
 
   root.addEventListener("htmx:afterRequest", (event) => {
     const requestTarget = event.target;
@@ -662,37 +718,28 @@ const initializeRefundReviewModal = (root = document) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeAnswersModal = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeAnswersReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeAnswersReady")) {
     return;
   }
 
-  root.dataset.attendeeAnswersReady = "true";
-
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    const answersTrigger = target?.closest("[data-attendee-answers-open]");
-    if (answersTrigger instanceof HTMLElement && root.contains(answersTrigger)) {
+    const answersTrigger = closestElementWithinRoot(event.target, "[data-attendee-answers-open]", root);
+    if (answersTrigger instanceof HTMLElement) {
       event.stopPropagation();
       populateAnswersModal(answersTrigger, root);
       openAnswersModal(root);
       return;
     }
 
-    if (
-      target?.closest(
-        "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
-      )
-    ) {
-      event.stopPropagation();
-      closeAnswersModal(root);
-    }
+    closeScopedModalFromEvent(
+      event,
+      root,
+      "#close-attendee-answers-modal, #cancel-attendee-answers-modal, #overlay-attendee-answers-modal",
+      closeAnswersModal,
+    );
   });
 
-  root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeAnswersModal(root);
-    }
-  });
+  bindScopedModalEscape(root, closeAnswersModal);
 };
 
 /**
@@ -700,50 +747,49 @@ const initializeAnswersModal = (root = document) => {
  * @param {Document|Element} [root=document] Query root.
  */
 const initializeInvitationModal = (root = document) => {
-  if (!(root instanceof Element) || root.dataset.attendeeInvitationReady === "true") {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeInvitationReady")) {
     return;
   }
 
-  root.dataset.attendeeInvitationReady = "true";
-
   root.addEventListener("click", (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest("#open-attendee-invitation-modal")) {
+    if (closestElementWithinRoot(event.target, "#open-attendee-invitation-modal", root)) {
+      // Opening the modal always starts from a clean search and selection state.
       event.stopPropagation();
       resetInvitationForm(root);
-      toggleModalVisibility(invitationModalId);
+      setScopedModalVisibility(root, invitationModalId, true);
       getInvitationSearchField(root)?.focusInput?.();
       return;
     }
 
-    const clearUserButton = target?.closest("[data-attendee-invitation-clear-user]");
-    if (clearUserButton instanceof HTMLElement && root.contains(clearUserButton)) {
+    const clearUserButton = closestElementWithinRoot(
+      event.target,
+      "[data-attendee-invitation-clear-user]",
+      root,
+    );
+    if (clearUserButton instanceof HTMLElement) {
       event.preventDefault();
       clearInvitationSelectedUser(root);
       return;
     }
 
-    if (
-      target?.closest(
-        "#close-attendee-invitation-modal, #cancel-attendee-invitation, #overlay-attendee-invitation-modal",
-      )
-    ) {
-      event.stopPropagation();
-      closeInvitationModal(root);
-    }
+    closeScopedModalFromEvent(
+      event,
+      root,
+      "#close-attendee-invitation-modal, #cancel-attendee-invitation, #overlay-attendee-invitation-modal",
+      closeInvitationModal,
+    );
   });
 
+  // User search is a custom element, so selection and query changes are events.
   root.addEventListener("user-selected", (event) => {
     const user = event.detail?.user;
-    const input = queryElementById(root, "attendee-invitation-user-id");
-    const emailInput = queryElementById(root, "attendee-invitation-email");
-    const selected = queryElementById(root, "attendee-invitation-selected-user");
-    if (!user || !input) return;
+    const { userInput, emailInput, selectedUser } = getInvitationControls(root);
+    if (!user || !userInput) return;
 
-    input.value = user.user_id || "";
+    userInput.value = user.user_id || "";
     if (emailInput) emailInput.value = "";
     setInvitationSubmissionField(root, "user");
-    if (selected) renderInvitationSelectedUser(root, user);
+    if (selectedUser) renderInvitationSelectedUser(root, user);
     updateInvitationSubmitState(root);
   });
 
@@ -765,7 +811,7 @@ const initializeInvitationModal = (root = document) => {
     const target = event.target;
     const searchField =
       target instanceof HTMLInputElement
-        ? target.closest("user-search-field[data-attendee-invitation-search]")
+        ? closestElement(target, "user-search-field[data-attendee-invitation-search]")
         : null;
 
     if (searchField) {
@@ -785,16 +831,13 @@ const initializeInvitationModal = (root = document) => {
       errorMessage: "Something went wrong sending this invitation. Please try again later.",
     });
     if (ok) {
+      // The attendee list refreshes through HTMX; reset local modal state now.
       closeInvitationModal(root);
       resetInvitationForm(root);
     }
   });
 
-  root.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeInvitationModal(root);
-    }
-  });
+  bindScopedModalEscape(root, closeInvitationModal);
 };
 
 const initializeAttendeesFeatures = (root = document) => {
@@ -810,10 +853,7 @@ const initializeAttendeesFeatures = (root = document) => {
   initializeQrCodeModal(attendeesRoot);
   initializeRefundReviewModal(attendeesRoot);
   initCheckInToggles(attendeesRoot);
+  initializeAttendeeOutsideClickListener();
 };
 
-initializeAttendeesFeatures();
-
-document.addEventListener("htmx:load", (event) => {
-  initializeAttendeesFeatures(event.target || document);
-});
+initializeOnReadyAndHtmxLoad(initializeAttendeesFeatures);

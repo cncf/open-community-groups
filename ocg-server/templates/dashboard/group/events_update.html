@@ -394,7 +394,9 @@
                    min="1"
                    class="input-primary"
                    placeholder="100"
-                   {% if let Some(capacity) = &event.capacity %}value="{{ capacity }}"{% endif %}>
+                   {% if let Some(capacity) = &event.capacity %}
+                     value="{{ capacity }}"
+                   {% endif %}>
           </div>
           <p class="form-legend">
             Maximum number of attendees.
@@ -419,7 +421,9 @@
                    type="checkbox"
                    class="sr-only peer"
                    {% if let Some(registration_required) = &event.registration_required %}
-                     {% if registration_required %}checked{% endif %}
+                     {% if registration_required %}
+                       checked
+                     {% endif %}
                    {% endif %}>
             <input type="hidden"
                    id="registration_required"
@@ -441,7 +445,9 @@
                    value="enabled"
                    type="checkbox"
                    class="sr-only peer"
-                   {% if event.test_event %}checked{% endif %}>
+                   {% if event.test_event %}
+                     checked
+                   {% endif %}>
             <input type="hidden"
                    id="test_event"
                    name="test_event"
@@ -463,7 +469,9 @@
                    value="required"
                    type="checkbox"
                    class="sr-only peer"
-                   {% if event.attendee_approval_required %}checked{% endif %}>
+                   {% if event.attendee_approval_required %}
+                     checked
+                   {% endif %}>
             <input type="hidden"
                    id="attendee_approval_required"
                    name="attendee_approval_required"
@@ -488,7 +496,9 @@
                    value="enabled"
                    type="checkbox"
                    class="sr-only peer"
-                   {% if event.waitlist_enabled %}checked{% endif %}>
+                   {% if event.waitlist_enabled %}
+                     checked
+                   {% endif %}>
             <input type="hidden"
                    id="waitlist_enabled"
                    name="waitlist_enabled"
@@ -517,7 +527,9 @@
                      id="meetup_url"
                      class="input-primary"
                      placeholder="https://meetup.com/group/events/123456"
-                     {% if let Some(meetup_url) = &event.meetup_url %}value="{{ meetup_url }}"{% endif %}>
+                     {% if let Some(meetup_url) = &event.meetup_url %}
+                       value="{{ meetup_url }}"
+                     {% endif %}>
             </div>
             <p class="form-legend">Link to the Meetup.com event page.</p>
           </div>
@@ -532,7 +544,9 @@
                      id="luma_url"
                      class="input-primary"
                      placeholder="https://luma.com/event"
-                     {% if let Some(luma_url) = &event.luma_url %}value="{{ luma_url }}"{% endif %}>
+                     {% if let Some(luma_url) = &event.luma_url %}
+                       value="{{ luma_url }}"
+                     {% endif %}>
             </div>
             <p class="form-legend">Link to the Luma event page.</p>
           </div>
@@ -726,7 +740,7 @@
           </div>
           {# End Start date/time -#}
 
-          {# End date/time -#}
+          {# Finish date/time -#}
           <div class="col-span-full lg:col-span-3">
             <label for="ends_at" class="form-label">End Date & Time</label>
             <div class="mt-2">
@@ -738,7 +752,7 @@
             </div>
             <p class="form-legend">When the event ends.</p>
           </div>
-          {# End End date/time -#}
+          {# End finish date/time -#}
 
           {# Event reminder toggle -#}
           <div class="col-span-full lg:col-span-6">
@@ -780,18 +794,14 @@
       <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
         {# Location search -#}
         <div class="col-span-full">
-          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
+          <location-search-field placeholder-text="Search for a venue or address..." venue-name-field-name="venue_name" venue-address-field-name="venue_address" venue-city-field-name="venue_city" venue-zip-code-field-name="venue_zip_code" latitude-field-name="latitude" longitude-field-name="longitude"
           {% if let Some(venue_name) = &event.venue_name %}initial-venue-name="{{ venue_name }}"{% endif %}
 
-          {% if let Some(venue_address) = &event.venue_address %}
-            initial-venue-address="{{ venue_address }}"
-          {% endif %}
+          {% if let Some(venue_address) = &event.venue_address %} initial-venue-address="{{ venue_address }}" {% endif %}
 
           {% if let Some(venue_city) = &event.venue_city %}initial-venue-city="{{ venue_city }}"{% endif %}
 
-          {% if let Some(venue_zip_code) = &event.venue_zip_code %}
-            initial-venue-zip-code="{{ venue_zip_code }}"
-          {% endif %}
+          {% if let Some(venue_zip_code) = &event.venue_zip_code %} initial-venue-zip-code="{{ venue_zip_code }}" {% endif %}
 
           {% if let Some(lat) = &event.latitude %}initial-latitude="{{ lat }}"{% endif %}
 
@@ -811,25 +821,15 @@
       <div class="mt-10 max-w-5xl">
         {% if meetings_enabled %}
           <online-event-details id="online-event-details" kind="{{ event.kind }}"
-          {% if let Some(meeting_join_url) = &event.meeting_join_url %}
-            meeting-join-url="{{ meeting_join_url }}"
-          {% endif %}
+          {% if let Some(meeting_join_url) = &event.meeting_join_url %} meeting-join-url="{{ meeting_join_url }}" {% endif %}
 
-          {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %}
-            meeting-join-instructions="{{ meeting_join_instructions|json }}"
-          {% endif %}
+          {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions %} meeting-join-instructions="{{ meeting_join_instructions|json }}" {% endif %}
 
-          {% if let Some(meeting_recording_url) = &event.meeting_recording_url %}
-            meeting-recording-url="{{ meeting_recording_url }}"
-          {% endif %}
+          {% if let Some(meeting_recording_url) = &event.meeting_recording_url %} meeting-recording-url="{{ meeting_recording_url }}" {% endif %}
           meeting-recording-published="{{ event.meeting_recording_published.unwrap_or(false) }}"
-          {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %}
-            meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}"
-          {% endif %}
+          {% if let Some(meeting_recording_raw_urls) = &event.meeting_recording_raw_urls %} meeting-recording-raw-urls="{{ meeting_recording_raw_urls|json }}" {% endif %}
 
-          {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %}
-            meeting-recording-requested="{{ meeting_recording_requested }}"
-          {% endif %}
+          {% if let Some(meeting_recording_requested) = &event.meeting_recording_requested %} meeting-recording-requested="{{ meeting_recording_requested }}" {% endif %}
 
           {% if event.meeting_requested.unwrap_or(false) %}meeting-requested="true"{% endif %}
 
@@ -839,9 +839,7 @@
 
           {% endif %}
 
-          {% if let Some(meeting_password) = &event.meeting_password %}
-            meeting-password="{{ meeting_password }}"
-          {% endif %}
+          {% if let Some(meeting_password) = &event.meeting_password %} meeting-password="{{ meeting_password }}" {% endif %}
 
           {% if let Some(meeting_error) = &event.meeting_error %}meeting-error="{{ meeting_error }}"{% endif %}
 
@@ -999,7 +997,9 @@
                   <option value="">Select currency</option>
                   {% for payment_currency_code in payment_currency_codes -%}
                     <option value="{{ payment_currency_code }}"
-                            {% if self.is_selected_payment_currency_code(payment_currency_code) %}selected{% endif %}>{{ payment_currency_code }}</option>
+                            {% if self.is_selected_payment_currency_code(payment_currency_code) %}
+                              selected
+                            {% endif %}>{{ payment_currency_code }}</option>
                   {% endfor -%}
                 </select>
               </div>
@@ -1162,12 +1162,4 @@
 
 <div id="event-preview-modal-root"></div>
 
-<script type="module" src="/static/js/dashboard/group/attendees.js"></script>
-<script type="module">
-  import {
-    initializeEventUpdatePage
-  } from '/static/js/dashboard/group/event-update-page.js';
-
-  initializeEventUpdatePage();
-</script>
 {# End Events update form -#}

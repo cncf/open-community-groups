@@ -1,52 +1,50 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { showErrorAlert } from "/static/js/common/alerts.js";
+import { ComboboxController } from "/static/js/common/combobox.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";
+import { focusElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
  * GroupSelector renders a searchable dropdown to pick a single group.
  *
- * Keyboard interactions follow the ARIA combobox pattern. Down, Up, Home and
- * End move the highlight, Enter selects the highlighted item and Escape closes
- * the menu. Typing in the search field filters results with a debounce to
- * reduce re-render pressure while the user is typing.
+ * Keyboard interactions follow the ARIA combobox pattern. Down and Up move the
+ * highlight, Enter selects the highlighted item and Escape closes the menu.
+ * Typing in the search field filters results with a debounce to reduce
+ * re-render pressure while the user is typing.
  *
  * @property {Array<object>} groups List of groups for the selected community
  * @property {string} selectedGroupId Currently selected group identifier
- * @property {number} searchDelay Debounced search delay in milliseconds
  */
 export class GroupSelector extends LitWrapper {
   static properties = {
     groups: { type: Array, attribute: "groups" },
     selectedGroupId: { type: String, attribute: "selected-group-id" },
-    _isOpen: { state: true },
-    _query: { state: true },
     _isSubmitting: { state: true },
-    _activeIndex: { state: true },
   };
 
   constructor() {
     super();
     this.groups = [];
     this.selectedGroupId = "";
-    this._isOpen = false;
-    this._query = "";
     this._isSubmitting = false;
-    this._activeIndex = null;
-    this._searchTimeoutId = 0;
-    this._documentClickHandler = null;
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    this.addEventListener("keydown", this._handleKeydown.bind(this));
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._removeDocumentListener();
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-    }
+    this._combobox = new ComboboxController(this, {
+      getItemCount: () => this._filteredGroups.length,
+      isInteractionBlocked: () => this._isSubmitting,
+      canOpen: () => this.groups.length > 0,
+      resetQueryOnToggle: true,
+      onOpen: () => {
+        this.updateComplete.then(() => {
+          focusElementById(this, "group-search-input");
+        });
+      },
+      onSelect: (index, event) => {
+        const group = this._filteredGroups[index];
+        if (group && !this._isSelected(group)) {
+          this._handleGroupClick(event, group);
+        }
+      },
+    });
   }
 
   /**
@@ -54,14 +52,9 @@ export class GroupSelector extends LitWrapper {
    * @param {InputEvent} event Native input event
    */
   _handleSearchInput(event) {
-    const value = event.target.value || "";
-    this._query = value;
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-    }
-    this._searchTimeoutId = window.setTimeout(() => {
-      this._activeIndex = null;
-      this.requestUpdate();
+    this._combobox.setQuery(event.target.value || "");
+    this._combobox.scheduleSearchUpdate(() => {
+      this._combobox.setActiveIndex(null);
     }, 200);
   }
 
@@ -69,7 +62,7 @@ export class GroupSelector extends LitWrapper {
    * Gets filtered groups based on current query.
    */
   get _filteredGroups() {
-    const normalized = (this._query || "").trim().toLowerCase();
+    const normalized = (this._combobox.query || "").trim().toLowerCase();
     if (!normalized) {
       return this.groups;
     }
@@ -100,135 +93,13 @@ export class GroupSelector extends LitWrapper {
     }
     event.preventDefault();
     this._isSubmitting = true;
-    this._closeDropdown();
+    this._combobox.close();
     try {
       await this._selectDashboardGroup(group.group_id);
     } catch (_) {
-      // Keep the current selector usable when the request fails.
+      showErrorAlert("Something went wrong selecting the group. Please try again later.");
     } finally {
       this._isSubmitting = false;
-    }
-  }
-
-  /**
-   * Toggles dropdown visibility.
-   */
-  _toggleDropdown() {
-    if (this._isSubmitting) {
-      return;
-    }
-    if (this._isOpen) {
-      this._closeDropdown();
-    } else {
-      this._openDropdown();
-    }
-  }
-
-  /**
-   * Opens the dropdown and resets search.
-   */
-  _openDropdown() {
-    if (this.groups.length === 0 || this._isSubmitting) {
-      return;
-    }
-    this._isOpen = true;
-    this._query = "";
-    this._activeIndex = null;
-    this._addDocumentListener();
-    this.updateComplete.then(() => {
-      const input = this.querySelector("#group-search-input");
-      if (input) {
-        input.focus();
-      }
-    });
-  }
-
-  /**
-   * Closes the dropdown and clears search state.
-   */
-  _closeDropdown() {
-    this._isOpen = false;
-    this._query = "";
-    this._activeIndex = null;
-    this._removeDocumentListener();
-  }
-
-  /**
-   * Registers a click listener on document to detect outside clicks.
-   */
-  _addDocumentListener() {
-    if (this._documentClickHandler) {
-      return;
-    }
-    this._documentClickHandler = (event) => {
-      if (!this.contains(event.target)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
-  }
-
-  /**
-   * Removes the outside click listener if it exists.
-   */
-  _removeDocumentListener() {
-    if (!this._documentClickHandler) {
-      return;
-    }
-    document.removeEventListener("click", this._documentClickHandler);
-    this._documentClickHandler = null;
-  }
-
-  /**
-   * Handles keyboard navigation and shortcuts.
-   * @param {KeyboardEvent} event Native keyboard event
-   */
-  _handleKeydown(event) {
-    if (event.defaultPrevented || this._isSubmitting) {
-      return;
-    }
-
-    if (!this._isOpen || this._filteredGroups.length === 0) {
-      if (this._isOpen && event.key === "Escape") {
-        event.preventDefault();
-        this._closeDropdown();
-      }
-      return;
-    }
-
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex = (this._activeIndex + 1) % this._filteredGroups.length;
-        }
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex =
-            (this._activeIndex - 1 + this._filteredGroups.length) % this._filteredGroups.length;
-        }
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (this._activeIndex !== null) {
-          const group = this._filteredGroups[this._activeIndex];
-          if (group && !this._isSelected(group)) {
-            this._handleGroupClick(event, group);
-          }
-        }
-        break;
-      case "Escape":
-        event.preventDefault();
-        this._closeDropdown();
-        break;
-      default:
-        break;
     }
   }
 
@@ -269,8 +140,8 @@ export class GroupSelector extends LitWrapper {
                 : "cursor-pointer"}"
               ?disabled=${isDisabled}
               aria-haspopup="listbox"
-              aria-expanded=${this._isOpen ? "true" : "false"}
-              @click=${() => this._toggleDropdown()}
+              aria-expanded=${this._combobox.isOpen ? "true" : "false"}
+              @click=${() => this._combobox.toggle()}
             >
               <div class="flex flex-col justify-center min-h-10">
                 <div class="text-xs/4 text-stone-900 line-clamp-2">
@@ -284,7 +155,7 @@ export class GroupSelector extends LitWrapper {
 
             <div
               class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
-                ._isOpen
+                ._combobox.isOpen
                 ? ""
                 : "hidden"}"
             >
@@ -302,7 +173,7 @@ export class GroupSelector extends LitWrapper {
                     autocorrect="off"
                     autocapitalize="off"
                     spellcheck="false"
-                    .value=${this._query}
+                    .value=${this._combobox.query}
                     @input=${(event) => this._handleSearchInput(event)}
                   />
                 </div>
@@ -320,7 +191,7 @@ export class GroupSelector extends LitWrapper {
                         (group) => group.group_id,
                         (group, index) => {
                           const isSelected = this._isSelected(group);
-                          const isActive = this._activeIndex === index;
+                          const isActive = this._combobox.activeIndex === index;
                           const isDisabled = isSelected || this._isSubmitting;
 
                           let statusClass = "";
@@ -342,7 +213,7 @@ export class GroupSelector extends LitWrapper {
                                 role="option"
                                 ?disabled=${isDisabled}
                                 @click=${(event) => this._handleGroupClick(event, group)}
-                                @mouseover=${() => (this._activeIndex = index)}
+                                @mouseover=${() => this._combobox.setActiveIndex(index)}
                               >
                                 <div class="text-xs/4 line-clamp-2">${group.name}</div>
                               </button>

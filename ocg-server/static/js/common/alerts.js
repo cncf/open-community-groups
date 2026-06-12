@@ -1,4 +1,15 @@
 import { scrollToDashboardTop } from "/static/js/common/common.js";
+import {
+  initializeMatchingRoots,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
+import { getHtmxTriggerNames } from "/static/js/common/htmx-triggers.js";
+
+const PAGE_ALERT_SELECTOR = "[data-page-alert]";
+const PAGE_ALERT_READY_KEY = "pageAlertReady";
+const BACKEND_FLASH_REFRESH_TRIGGERS = new Set(["refresh-user-dashboard-content"]);
+const REFRESH_BODY_EVENT = "refresh-body";
 
 /**
  * Returns common configuration options for all alert dialogs.
@@ -40,6 +51,25 @@ export const showSuccessAlert = (message) => {
 };
 
 /**
+ * Displays declarative page alerts rendered by the server.
+ * @param {Document|Element} root - Root element containing alert markers
+ */
+export const initializePageAlerts = (root = document) => {
+  initializeMatchingRoots(root, PAGE_ALERT_SELECTOR, (alertMarker) => {
+    if (!markDatasetReady(alertMarker, PAGE_ALERT_READY_KEY)) {
+      return;
+    }
+
+    const message = alertMarker.dataset.alertMessage || "";
+    if (alertMarker.dataset.alertLevel === "success") {
+      showSuccessAlert(message);
+    } else if (alertMarker.dataset.alertLevel === "error") {
+      showErrorAlert(message);
+    }
+  });
+};
+
+/**
  * Displays an error alert with the given message.
  * Auto-dismisses after 30 seconds to ensure user sees errors.
  * @param {string} message - The error message to display
@@ -61,6 +91,8 @@ export const showErrorAlert = (message, withHtml = false, persist = false) => {
 
   Swal.fire(alertOptions);
 };
+
+initializeOnReadyAndHtmxLoad(initializePageAlerts);
 
 /**
  * Displays the deployment refresh retry alert while cached HTML expires.
@@ -158,6 +190,40 @@ const buildForbiddenMessage = (message) => {
 };
 
 /**
+ * Checks whether a successful response should fetch server-rendered flash alerts.
+ * @param {XMLHttpRequest} xhr HTMX response XHR.
+ * @param {string} successMessage Frontend success message.
+ * @returns {boolean} True when a backend flash refresh should run.
+ */
+export const shouldRefreshBodyForBackendFlash = (xhr, successMessage = "") => {
+  if (
+    successMessage ||
+    !xhr ||
+    xhr.status < 200 ||
+    xhr.status >= 300 ||
+    typeof xhr.getResponseHeader !== "function"
+  ) {
+    return false;
+  }
+
+  return getHtmxTriggerNames(xhr).some((trigger) => BACKEND_FLASH_REFRESH_TRIGGERS.has(trigger));
+};
+
+/**
+ * Triggers a body refresh after the current HTMX response settles.
+ * @returns {void}
+ */
+export const refreshBodyAfterHtmxSettle = () => {
+  document.addEventListener(
+    "htmx:afterSettle",
+    () => {
+      document.body?.dispatchEvent(new Event(REFRESH_BODY_EVENT, { bubbles: true }));
+    },
+    { once: true },
+  );
+};
+
+/**
  * Handles common HTMX response patterns and displays alerts.
  * Returns true on success (2xx), false otherwise.
  * @param {Object} params
@@ -175,6 +241,8 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
   if (xhr.status >= 200 && xhr.status < 300) {
     if (successMessage) {
       showSuccessAlert(successMessage);
+    } else if (shouldRefreshBodyForBackendFlash(xhr, successMessage)) {
+      refreshBodyAfterHtmxSettle();
     }
     return true;
   }
@@ -195,6 +263,24 @@ export const handleHtmxResponse = ({ xhr, successMessage, errorMessage }) => {
   scrollToDashboardTop();
   showErrorAlert(errorMessage);
   return false;
+};
+
+/**
+ * Binds a standard HTMX response alert handler to an element.
+ * @param {Element|null|undefined} element - Element receiving htmx:afterRequest
+ * @param {Object} messages - Alert messages for the response
+ * @param {string} messages.successMessage - Success alert copy
+ * @param {string} messages.errorMessage - Error alert copy
+ * @returns {void}
+ */
+export const bindHtmxResponseAlert = (element, { successMessage = "", errorMessage }) => {
+  element?.addEventListener("htmx:afterRequest", (event) => {
+    handleHtmxResponse({
+      xhr: event.detail?.xhr,
+      successMessage,
+      errorMessage,
+    });
+  });
 };
 
 /**

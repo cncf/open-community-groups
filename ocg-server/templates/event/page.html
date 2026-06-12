@@ -33,26 +33,24 @@
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
-  <script type="module" src="/static/js/common/images-gallery.js"></script>
-  <script type="module">
-    import {
-      trackPageView
-    } from "/static/js/common/page-views.js";
-
-    trackPageView({
-      entityId: "{{ event.event_id }}",
-      entityType: "event"
-    });
-  </script>
-  <script type="module" src="/static/js/common/people-list.js"></script>
-  <script type="module" src="/static/js/common/user-chip.js"></script>
-  <script type="module" src="/static/js/common/user-info-modal.js"></script>
-  <script type="module" src="/static/js/common/share-modal.js"></script>
+  <script type="module" src="/static/js/common/modals/images-gallery.js"></script>
+  <script type="module" src="/static/js/common/charts/page-views.js"></script>
+  <script type="module" src="/static/js/common/modals/map-modal.js"></script>
+  <script type="module" src="/static/js/common/users/people-list.js"></script>
+  <script type="module" src="/static/js/common/users/user-chip.js"></script>
+  <script type="module" src="/static/js/common/modals/user-info-modal.js"></script>
+  <script type="module" src="/static/js/common/modals/share-modal.js"></script>
   <script type="module" src="/static/js/common/cfs-label-selector.js"></script>
+  <script type="module" src="/static/js/event/agenda-tabs.js"></script>
   <script type="module" src="/static/js/event/cfs.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
+  <span data-page-view
+        data-entity-id="{{ event.event_id }}"
+        data-entity-type="event"
+        hidden></span>
+
   {% let has_social_links = event.meetup_url.is_some() || event.luma_url.is_some() -%}
 
   {# Breadcrumb -#}
@@ -61,6 +59,7 @@
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible">
+      {# Status badge -#}
       {% if event.canceled -%}
         {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
                 capacity = event.capacity,
@@ -76,10 +75,9 @@
       {# End status badge -#}
 
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
-        {# Event header with name and group -#}
+        {# Event header -#}
         <div>
-          {# Main flex container for logo, name/group,
-             and social networks -#}
+          {# Main flex container -#}
           <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto]">
             {# Event logo -#}
             <div class="relative hidden md:row-span-2 md:block">
@@ -183,7 +181,7 @@
               </div>
               {# End event details and date -#}
 
-              {# Social networks (mobile only) -#}
+              {# Social networks (mobile) -#}
               {% if has_social_links -%}
                 <div class="md:hidden mt-4 md:mb-0">
                   <div class="flex flex-wrap gap-2">
@@ -280,6 +278,7 @@
               </div>
             </div>
           </div>
+          {# End event date -#}
           {# Location -#}
           <div class="border border-stone-200 rounded-lg p-4 bg-white h-full flex flex-col">
             <div class="flex items-center justify-between mb-4 min-h-[25px]">
@@ -483,7 +482,7 @@
       </div>
       {# End event description -#}
 
-      {# Tags if available -#}
+      {# Tags -#}
       {% if let Some(tags) = &event.tags -%}
         {% if !tags.is_empty() -%}
           <div>
@@ -500,7 +499,7 @@
       {% endif -%}
       {# End tags -#}
 
-      {# Sessions section - Full width -#}
+      {# Sessions section -#}
       {% if !event.sessions.is_empty() -%}
         {% let days_count = event.sessions.len() -%}
         <div>
@@ -508,15 +507,16 @@
             Agenda
           </div>
 
-          {# Single-day agenda: no date title -#}
+          {# Single-day agenda -#}
           {% if days_count == 1 -%}
             {% for day in event.sessions -%}
               <ol class="relative border-s border-stone-200">
                 {% for session in day.1 %}{{ session_item(session = session, is_last = loop.last) -}}{% endfor %}
               </ol>
             {% endfor -%}
+            {# End single-day agenda -#}
           {% else -%}
-            {# Multi-day agenda: tabs with one day per tab -#}
+            {# Multi-day agenda -#}
             <ul class="flex flex-wrap space-x-2 -mb-px text-sm font-medium text-center border-b border-stone-200 -mt-1">
               {% for day in event.sessions -%}
                 <li>
@@ -542,27 +542,13 @@
                 </ol>
               </div>
             {% endfor -%}
-
-            <script type="module">
-              const dayTabs = document.querySelectorAll('[data-day-tab]');
-              const dayPanels = document.querySelectorAll('[data-day-content]');
-              dayTabs.forEach((btn) => {
-                btn.addEventListener('click', () => {
-                  const target = btn.getAttribute('data-day-tab');
-                  dayTabs.forEach(b => b.setAttribute('data-active', b === btn ? 'true' : 'false'));
-                  dayPanels.forEach(panel => {
-                    const isTarget = panel.getAttribute('data-day-content') === target;
-                    panel.toggleAttribute('hidden', !isTarget);
-                  });
-                });
-              });
-            </script>
+            {# End multi-day agenda -#}
           {% endif -%}
         </div>
       {% endif -%}
       {# End sessions section -#}
 
-      {# Hosts section - Full width -#}
+      {# Hosts section -#}
       {% if !event.hosts.is_empty() -%}
         <div class="hidden has-[user-chip]:block">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
@@ -603,7 +589,7 @@
       {% endif -%}
       {# End hosts section -#}
 
-      {# Event speakers section - Full width -#}
+      {# Event speakers section -#}
       {% if !event.speakers.is_empty() -%}
         <div class="featured-speakers-section hidden has-[user-chip]:block">
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
@@ -657,7 +643,7 @@
       {% endif -%}
       {# End event speakers section -#}
 
-      {# Organizers section - Full width -#}
+      {# Organizers section -#}
       {% if !event.organizers.is_empty() -%}
         <div>
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
@@ -674,7 +660,7 @@
       {% endif -%}
       {# End organizers section -#}
 
-      {# Sponsors section - Full width -#}
+      {# Sponsors section -#}
       {% if !event.sponsors.is_empty() -%}
         <div>
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
@@ -707,6 +693,7 @@
 
 {# User info modal -#}
 <user-info-modal></user-info-modal>
+{# End user info modal -#}
 {% endblock content -%}
 
 {# Macro for rendering a single host social link -#}

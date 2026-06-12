@@ -1,11 +1,12 @@
-import { createNotificationModal } from "/static/js/dashboard/group/notificationModal.js";
+import { createNotificationModal } from "/static/js/dashboard/group/notification-modal.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 
 const modalId = "notification-modal";
 const formId = "notification-form";
 const dataKey = "membersNotificationReady";
 
 // Reuse the shared helper for the members notification modal.
-const initializeMembersNotification = () => {
+const initializeMembersNotification = (root = document) => {
   createNotificationModal({
     modalId,
     formId,
@@ -15,9 +16,8 @@ const initializeMembersNotification = () => {
     cancelButtonId: "cancel-notification",
     overlayId: "overlay-notification-modal",
     successMessage: "Email sent successfully to all group members.",
+    root,
   });
 };
 
-initializeMembersNotification();
-
-document.addEventListener("htmx:load", initializeMembersNotification);
+initializeOnReadyAndHtmxLoad(initializeMembersNotification);

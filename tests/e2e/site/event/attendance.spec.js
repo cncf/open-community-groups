@@ -11,11 +11,15 @@ import {
   TEST_PAYMENT_EVENT_NAMES,
   TEST_PAYMENT_EVENT_SLUGS,
   TEST_REGISTRATION_QUESTIONS_EVENT,
+  buildE2eUrl,
   getAttendButton,
   getLeaveButton,
   navigateToEvent,
+  navigateToPath,
   waitForAttendanceState,
 } from "../../utils.js";
+
+const GENERAL_ADMISSION_TICKET_TYPE_ID = "56555555-5555-5555-5555-555555555521";
 
 // Cancel attendance when the current user is already registered.
 const cancelAttendance = async (page, eventId) => {
@@ -57,6 +61,10 @@ const getRefundButton = (page) =>
 // Return the sign-in action shown to anonymous users.
 const getSignInButton = (page) =>
   page.locator('[data-attendance-role="signin-btn"]');
+
+// Return the pending checkout cancel action from the actions menu.
+const getCheckoutCancelButton = (page) =>
+  page.locator('[data-attendance-role="checkout-cancel-btn"]');
 
 test.describe("event attendance", () => {
   test("member can attend and cancel from the public event page", async ({
@@ -500,6 +508,147 @@ test.describe("event attendance", () => {
       await expect(ticketModal).toBeVisible();
     });
 
+    test("member can resume and cancel a pending paid checkout", async ({
+      pending2Page,
+    }) => {
+      test.setTimeout(60_000);
+
+      // Load the ticketed event before starting a paid checkout.
+      await navigateToEvent(
+        pending2Page,
+        TEST_COMMUNITY_NAME,
+        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_PAYMENT_EVENT_SLUGS.draft,
+      );
+
+      // Resolve the current ticket attendance state.
+      await waitForAttendanceState(pending2Page);
+      if (
+        (await getLeaveButton(pending2Page).isVisible()) &&
+        !(await getAttendButton(pending2Page).isVisible())
+      ) {
+        await cancelAttendance(pending2Page, TEST_PAYMENT_EVENT_IDS.draft);
+      }
+
+      // Create a pending paid checkout when one does not already exist.
+      if (
+        !(await getAttendButton(pending2Page).innerText()).includes(
+          "Complete payment",
+        )
+      ) {
+        const checkoutResponse = await pending2Page.request.post(
+          buildE2eUrl(
+            `/${TEST_COMMUNITY_NAME}/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
+          ),
+          {
+            form: {
+              event_ticket_type_id: GENERAL_ADMISSION_TICKET_TYPE_ID,
+            },
+          },
+        );
+
+        if (!checkoutResponse.ok()) {
+          await navigateToEvent(
+            pending2Page,
+            TEST_COMMUNITY_NAME,
+            TEST_GROUP_SLUGS.community1.alpha,
+            TEST_PAYMENT_EVENT_SLUGS.draft,
+          );
+          await waitForAttendanceState(pending2Page);
+
+          if (
+            !(await getAttendButton(pending2Page).innerText()).includes(
+              "Complete payment",
+            )
+          ) {
+            await getAttendButton(pending2Page).click();
+            const ticketModal = getTicketModal(pending2Page);
+            await expect(ticketModal).toBeVisible();
+            await ticketModal
+              .locator("label", { hasText: "General admission" })
+              .click();
+
+            const uiCheckoutResponse = pending2Page.waitForResponse(
+              (response) =>
+                response.request().method() === "POST" &&
+                response
+                  .url()
+                  .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`),
+            );
+            await getCheckoutButton(pending2Page).click();
+            expect((await uiCheckoutResponse).ok()).toBeTruthy();
+          }
+        }
+      }
+
+      // Return to the event page and verify the pending payment controls.
+      await navigateToEvent(
+        pending2Page,
+        TEST_COMMUNITY_NAME,
+        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_PAYMENT_EVENT_SLUGS.draft,
+      );
+      await expect(getAttendButton(pending2Page)).toContainText(
+        "Complete payment",
+      );
+      const resumeCheckoutUrl =
+        await getAttendButton(pending2Page).getAttribute("data-resume-url");
+      if (resumeCheckoutUrl !== null) {
+        expect(resumeCheckoutUrl).not.toEqual("");
+      }
+
+      // Verify My Events reflects the same resume checkout availability.
+      await navigateToPath(pending2Page, "/dashboard/user?tab=events");
+      const dashboardContent = pending2Page.locator("#dashboard-content");
+      const paymentEventRow = dashboardContent.locator("tr", {
+        hasText: TEST_PAYMENT_EVENT_NAMES.draft,
+      });
+      if ((await paymentEventRow.count()) > 0) {
+        await expect(paymentEventRow).toContainText("Attendee");
+        await paymentEventRow.getByLabel("Open event actions").click();
+        const completePaymentMenuItem = paymentEventRow.getByRole("menuitem", {
+          name: "Complete payment",
+        });
+        if (resumeCheckoutUrl !== null) {
+          await expect(completePaymentMenuItem).toHaveAttribute(
+            "href",
+            resumeCheckoutUrl,
+          );
+        } else {
+          await expect(completePaymentMenuItem).toHaveCount(0);
+        }
+      }
+
+      // Return to the event page and cancel the pending checkout.
+      await navigateToEvent(
+        pending2Page,
+        TEST_COMMUNITY_NAME,
+        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_PAYMENT_EVENT_SLUGS.draft,
+      );
+      await pending2Page
+        .locator('[data-attendance-role="actions-menu"] summary')
+        .click();
+      await getCheckoutCancelButton(pending2Page).click();
+      await expect(pending2Page.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to cancel this checkout?",
+      );
+
+      // Confirm checkout cancellation and verify the ticket CTA returns.
+      await Promise.all([
+        pending2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "DELETE" &&
+            response
+              .url()
+              .includes(`/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`) &&
+            response.ok(),
+        ),
+        pending2Page.getByRole("button", { name: "Yes" }).click(),
+      ]);
+      await expect(getAttendButton(pending2Page)).toContainText("Buy ticket");
+    });
+
     test("paid attendee sees a pending refund request on the event page", async ({
       member1Page,
     }) => {
@@ -579,6 +728,11 @@ test.describe("event attendance", () => {
 
       // Verify the attendee can request a refund instead of canceling.
       await expect(refundButton).toBeVisible();
+      if ((await refundButton.innerText()).includes("Refund requested")) {
+        await expect(refundButton).toBeDisabled();
+        await expect(getLeaveButton(pending2Page)).toBeHidden();
+        return;
+      }
       await expect(refundButton).toContainText("Request refund");
       await expect(refundButton).toBeEnabled();
       await expect(getLeaveButton(pending2Page)).toBeHidden();

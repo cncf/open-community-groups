@@ -1,10 +1,13 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  bindHtmxResponseAlert,
   confirmAction,
   confirmSeriesAction,
   getCommonAlertOptions,
   handleHtmxResponse,
+  initializePageAlerts,
+  shouldRefreshBodyForBackendFlash,
   showConfirmAlert,
   showDeploymentRefreshRetryAlert,
   showErrorAlert,
@@ -14,6 +17,7 @@ import {
 } from "/static/js/common/alerts.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
+import { dispatchHtmxLoad } from "/tests/unit/test-utils/htmx.js";
 
 describe("alerts", () => {
   const env = useDashboardTestEnv({
@@ -49,6 +53,65 @@ describe("alerts", () => {
     });
     expect(env.current.swal.calls[3].html).to.include("Validation failed");
     expect(env.current.swal.calls[3].html).to.include("Missing field");
+  });
+
+  it("renders declarative page alerts once", () => {
+    // Build the DOM fixture with server-rendered alert markers.
+    document.body.innerHTML = `
+      <span data-page-alert data-alert-level="success" data-alert-message="Saved" hidden></span>
+      <span data-page-alert data-alert-level="error" data-alert-message="Failed" hidden></span>
+    `;
+
+    // Initialize alerts twice to verify markers are consumed only once.
+    initializePageAlerts();
+    initializePageAlerts();
+
+    // Assert the markers produce one success alert and one error alert.
+    expect(env.current.swal.calls).to.have.length(2);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+    });
+    expect(env.current.swal.calls[1]).to.include({
+      text: "Failed",
+      icon: "error",
+    });
+  });
+
+  it("renders declarative page alerts after HTMX loads", () => {
+    // Build the DOM fixture with a server-rendered alert in swapped content.
+    document.body.innerHTML = `
+      <section id="profile-content">
+        <span data-page-alert data-alert-level="success" data-alert-message="Saved" hidden></span>
+      </section>
+    `;
+
+    // Dispatch the HTMX load event emitted for swapped content.
+    dispatchHtmxLoad(document.getElementById("profile-content"));
+
+    // Assert the backend flash marker produces one success alert.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+    });
+  });
+
+  it("renders declarative page alerts when the HTMX root is the marker", () => {
+    // Build the DOM fixture with the alert marker as the swapped root itself.
+    document.body.innerHTML = `
+      <span data-page-alert data-alert-level="success" data-alert-message="Saved" hidden></span>
+    `;
+
+    // Dispatch the HTMX load event emitted for a top-level swapped marker.
+    dispatchHtmxLoad(document.querySelector("[data-page-alert]"));
+
+    // Assert the backend flash marker is consumed even when it is the root.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+    });
   });
 
   it("supports persistent and html error alerts", () => {
@@ -134,6 +197,116 @@ describe("alerts", () => {
       { top: 0, behavior: "auto" },
       { top: 0, behavior: "auto" },
     ]);
+  });
+
+  it("detects successful responses that need backend flash refreshes", () => {
+    // Build response fixtures with and without backend flash refresh triggers.
+    const successfulFlashResponse = {
+      status: 204,
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+    };
+    const failedFlashResponse = {
+      status: 500,
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+    };
+
+    // Only successful responses without frontend messages need body refreshes.
+    expect(shouldRefreshBodyForBackendFlash(successfulFlashResponse, "")).to.equal(true);
+    expect(shouldRefreshBodyForBackendFlash(successfulFlashResponse, "Saved")).to.equal(false);
+    expect(shouldRefreshBodyForBackendFlash(failedFlashResponse, "")).to.equal(false);
+    expect(shouldRefreshBodyForBackendFlash({ status: 204 }, "")).to.equal(false);
+  });
+
+  it("refreshes the body for successful backend flash responses", () => {
+    // Track body refresh events emitted after the current HTMX response settles.
+    let refreshBodyEvents = 0;
+    document.body.addEventListener("refresh-body", () => {
+      refreshBodyEvents += 1;
+    });
+
+    // Handle a successful response that stores a backend flash message.
+    expect(
+      handleHtmxResponse({
+        xhr: {
+          status: 204,
+          getResponseHeader: (name) =>
+            name === "HX-Trigger" ? "refresh-user-dashboard-content" : null,
+        },
+        successMessage: "",
+        errorMessage: "Failed",
+      }),
+    ).to.equal(true);
+
+    // The helper waits for HTMX to settle before refreshing the body.
+    expect(refreshBodyEvents).to.equal(0);
+    document.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+
+    // The body refresh will fetch and consume the server-rendered flash message.
+    expect(refreshBodyEvents).to.equal(1);
+    expect(env.current.swal.calls).to.have.length(0);
+  });
+
+  it("keeps explicit frontend success messages immediate during content refreshes", () => {
+    // Track body refresh events to verify explicit frontend messages do not need one.
+    let refreshBodyEvents = 0;
+    document.body.addEventListener("refresh-body", () => {
+      refreshBodyEvents += 1;
+    });
+
+    // Handle an explicit success message with a dashboard-content refresh trigger.
+    expect(
+      handleHtmxResponse({
+        xhr: {
+          status: 204,
+          getResponseHeader: (name) =>
+            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+        },
+        successMessage: "You have successfully added the region.",
+        errorMessage: "Failed",
+      }),
+    ).to.equal(true);
+    document.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+
+    // The old frontend-toast behavior is preserved for explicit messages.
+    expect(refreshBodyEvents).to.equal(0);
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "You have successfully added the region.",
+      icon: "success",
+    });
+  });
+
+  it("binds standard htmx response alerts", () => {
+    // Build the element that receives an HTMX after-request event.
+    const button = document.createElement("button");
+    bindHtmxResponseAlert(button, {
+      successMessage: "Saved",
+      errorMessage: "Save failed",
+    });
+
+    // Dispatch a successful HTMX response.
+    button.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        detail: {
+          xhr: { status: 204 },
+        },
+      }),
+    );
+
+    // Assert the bound handler delegates to the shared response handling.
+    expect(env.current.swal.calls).to.have.length(1);
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Saved",
+      icon: "success",
+    });
+    expect(() =>
+      bindHtmxResponseAlert(null, {
+        successMessage: "",
+        errorMessage: "Missing",
+      }),
+    ).not.to.throw();
   });
 
   it("resolves confirm actions from the swal result", async () => {

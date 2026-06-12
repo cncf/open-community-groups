@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import { Map as ExploreMap } from "/static/js/community/explore/map.js";
+import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("community explore map", () => {
@@ -9,6 +10,7 @@ describe("community explore map", () => {
   let addedLayers;
   let markerAdds;
   let flyToBoundsCalls;
+  let leafletMock;
 
   beforeEach(() => {
     resetDom();
@@ -28,7 +30,7 @@ describe("community explore map", () => {
     globalThis.htmx = { process() {} };
 
     // Run the behavior under test.
-    globalThis.L = {
+    leafletMock = {
       Browser: { retina: false },
       latLng(lat, lng) {
         return { lat, lng };
@@ -96,7 +98,8 @@ describe("community explore map", () => {
         };
       },
     };
-    globalThis.window.L = globalThis.L;
+    globalThis.L = leafletMock;
+    globalThis.window.L = leafletMock;
   });
 
   afterEach(() => {
@@ -121,7 +124,7 @@ describe("community explore map", () => {
     }
   });
 
-  it("loads map scripts, filters invalid coordinates, fits bbox, and navigates to group pages", () => {
+  it("loads map scripts, filters invalid coordinates, fits bbox, and navigates to group pages", async () => {
     // Prepare original anchor click for loading map scripts, filters invalid.
     const originalAnchorClick = HTMLAnchorElement.prototype.click;
     const clickedUrls = [];
@@ -130,17 +133,25 @@ describe("community explore map", () => {
     };
 
     // Prepare map for loading map scripts, filters invalid coordinates, fits bbox.
+    delete globalThis.L;
+    delete globalThis.window.L;
     const map = new ExploreMap("groups", { groups: [] });
     const leafletScript = document.head.querySelector(
       'script[src*="leaflet.v1.9.4.min.js"]',
     );
 
-    // Verify loads map scripts, filters invalid coordinates, fits.
+    // Finish Leaflet first so marker clustering can load after it.
+    globalThis.L = { ...leafletMock, markerClusterGroup: undefined };
+    globalThis.window.L = globalThis.L;
     leafletScript.onload();
+    await waitForMicrotask();
     const clusterScript = document.head.querySelector(
       'script[src*="leaflet.markercluster.v1.5.3.min.js"]',
     );
+    globalThis.L = leafletMock;
+    globalThis.window.L = leafletMock;
     clusterScript.onload();
+    await waitForMicrotask();
 
     // Add markers while invalid coordinates are present.
     try {
@@ -187,7 +198,7 @@ describe("community explore map", () => {
     }
   });
 
-  it("builds event urls and ignores invalid bounding boxes", () => {
+  it("builds event urls and ignores invalid bounding boxes", async () => {
     // Prepare original anchor click for building event urls and ignores invalid.
     const originalAnchorClick = HTMLAnchorElement.prototype.click;
     const clickedUrls = [];
@@ -197,13 +208,21 @@ describe("community explore map", () => {
 
     // Verify builds event urls and ignores invalid bounding boxes.
     try {
+      delete globalThis.L;
+      delete globalThis.window.L;
       const map = new ExploreMap("events", { events: [] });
+      globalThis.L = { ...leafletMock, markerClusterGroup: undefined };
+      globalThis.window.L = globalThis.L;
       document.head
         .querySelector('script[src*="leaflet.v1.9.4.min.js"]')
         ?.onload();
+      await waitForMicrotask();
+      globalThis.L = leafletMock;
+      globalThis.window.L = leafletMock;
       document.head
         .querySelector('script[src*="leaflet.markercluster.v1.5.3.min.js"]')
         ?.onload();
+      await waitForMicrotask();
 
       // Verify builds event urls and ignores invalid bounding.
       map.addMarkers(

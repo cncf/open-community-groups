@@ -33,20 +33,16 @@
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
-  <script type="module" src="/static/js/common/images-gallery.js"></script>
-  <script type="module">
-    import {
-      trackPageView
-    } from "/static/js/common/page-views.js";
-
-    trackPageView({
-      entityId: "{{ community.community_id }}",
-      entityType: "community"
-    });
-  </script>
+  <script type="module" src="/static/js/common/modals/images-gallery.js"></script>
+  <script type="module" src="/static/js/common/charts/page-views.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
+  <span data-page-view
+        data-entity-id="{{ community.community_id }}"
+        data-entity-type="community"
+        hidden></span>
+
   {# Breadcrumb -#}
   <breadcrumb-nav banner-url="{{ community.banner_url }}" banner-mobile-url="{{ community.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ community.display_name|json }}, "icon": "community"}]'></breadcrumb-nav>
   {# End breadcrumb -#}

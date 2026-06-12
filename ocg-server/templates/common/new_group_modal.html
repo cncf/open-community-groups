@@ -8,6 +8,7 @@
          role="dialog"
          class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex">
       <div id="backdrop-new-group-modal"
+           data-modal-toggle="new-group-modal"
            class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[.35]"></div>
       <div class="modal-panel p-4 max-w-2xl">
         <div class="modal-card rounded-lg">
@@ -21,6 +22,7 @@
             {# Close button -#}
             <button id="close-new-group-modal"
                     type="button"
+                    data-modal-toggle="new-group-modal"
                     class="group bg-transparent hover:bg-stone-200 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
               <div class="svg-icon h-5 w-5 bg-stone-400 group-hover:bg-stone-900 transition-colors icon-close"></div>
               <span class="sr-only">Close modal</span>
@@ -35,21 +37,6 @@
         </div>
       </div>
     </div>
-    <script type="module">
-      import {
-        toggleModalVisibility
-      } from '/static/js/common/common.js';
-
-      const backdropNewGroupModal = document.getElementById('backdrop-new-group-modal');
-      if (backdropNewGroupModal) {
-        backdropNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
-      }
-
-      const closeNewGroupModal = document.getElementById('close-new-group-modal');
-      if (closeNewGroupModal) {
-        closeNewGroupModal.addEventListener('click', () => toggleModalVisibility('new-group-modal'));
-      }
-    </script>
   {% endif -%}
 {% endif -%}
 {# End new group modal -#}

@@ -7,16 +7,21 @@ import {
   hasChartData,
   hasTimeSeriesData,
   loadEChartsScript,
-} from "/static/js/dashboard/common.js";
+} from "/static/js/common/charts/charts.js";
 import {
   getCategoryLabelInterval,
   getTimeSplitNumber,
+  initializeChartsFromJsonMarker,
   registerChartResizeHandler,
   renderChart,
-} from "/static/js/common/stats.js";
+} from "/static/js/common/charts/stats.js";
+import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
+
+const SITE_STATS_DATA_SELECTOR = "[data-site-stats]";
+const SITE_STATS_READY_KEY = "siteStatsReady";
 
 /**
- * Apply stats-page specific legend styling without affecting dashboard charts.
+ * Apply public stats page legend styling without affecting dashboard charts.
  * @param {Object} option - ECharts option object.
  * @param {Object} legendOverrides - Legend overrides.
  * @returns {Object} Styled ECharts option.
@@ -130,3 +135,23 @@ export const initSiteStatsCharts = async (stats) => {
 
   registerChartResizeHandler(charts);
 };
+
+/**
+ * Initialize site stats charts from the page JSON marker.
+ * @param {Document|Element} root - Root element to search from.
+ * @param {Object} context - Initialization lifecycle context.
+ * @returns {Promise<void>} Promise resolved when initialization finishes.
+ */
+export const initializeSiteStatsFromPage = async (root = document, context = {}) => {
+  return initializeChartsFromJsonMarker({
+    root,
+    selector: SITE_STATS_DATA_SELECTOR,
+    readyKey: SITE_STATS_READY_KEY,
+    initialize: initSiteStatsCharts,
+    parseErrorMessage: "Failed to parse site stats payload:",
+    initErrorMessage: "Failed to initialize site stats charts:",
+    force: context.historyRestore === true,
+  });
+};
+
+initializeOnReadyAndHtmxLoad(initializeSiteStatsFromPage);

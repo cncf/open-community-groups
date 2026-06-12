@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Refund Requested Notification -#}
 {% block subject -%}
   Refund requested: {{ event.name }}
 {% endblock subject -%}
@@ -35,3 +36,4 @@
   You received this email notification because you can manage event refunds for
   {{ event.group_name }} in the {{ event.community_display_name }} community.
 {% endblock footer -%}
+{# End event refund requested notification -#}

@@ -5,12 +5,15 @@
 {% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
+{# Attendees refresh trigger -#}
 <div id="attendees-refresh"
      hx-get="/dashboard/group/events/{{ event.event_id }}/attendees?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
      hx-trigger="refresh-event-attendees from:body"
      hx-target="#attendees-content"
      hx-swap="innerHTML"></div>
+{# End attendees refresh trigger -#}
 
+{# Header actions -#}
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
@@ -119,12 +122,14 @@
     </div>
   </div>
 </div>
+{# End header actions -#}
 
 {# Attendees table -#}
 <div class="relative overflow-visible pb-12">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Attendees list">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
@@ -138,8 +143,10 @@
         </th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="attendees-list" role="rowgroup">
       {% if attendees.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center" colspan="4">
             {% include "dashboard/placeholders/group_attendees_empty.html" -%}
@@ -150,16 +157,16 @@
             {% include "dashboard/placeholders/group_attendees_empty.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for attendee in attendees -%}
+          {# Attendee row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
                 <logo-image
-                {% if let Some(photo_url) = &attendee.photo_url -%}
-                  image-url="{{ photo_url }}"
-                {% endif -%}
+                {% if let Some(photo_url) = &attendee.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str()) }}">
                 </logo-image>
                 <div class="min-w-0">
@@ -434,6 +441,7 @@
             </td>
             {# End actions -#}
           </tr>
+          {# End attendee row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
@@ -542,6 +550,7 @@
     </div>
   </div>
 </div>
+{# End refund review modal -#}
 
 {# Invitation modal -#}
 <div id="attendee-invitation-modal"
@@ -602,6 +611,7 @@
     </div>
   </div>
 </div>
+{# End invitation modal -#}
 
 {# Notification modal -#}
 <div id="attendee-notification-modal"
@@ -624,6 +634,8 @@
           <span class="sr-only">Close modal</span>
         </button>
       </div>
+      {# End modal header -#}
+
       {# Modal body -#}
       <div class="modal-body p-4 md:p-8">
         <div class="bg-stone-50 border border-stone-200 text-stone-800 rounded-lg p-4 mb-5 text-sm">
@@ -685,9 +697,11 @@
           </div>
         </form>
       </div>
+      {# End modal body -#}
     </div>
   </div>
 </div>
+{# End notification modal -#}
 
 {# QR code modal -#}
 <div id="event-qr-code-modal"
@@ -758,3 +772,4 @@
     </div>
   </div>
 </div>
+{# End QR code modal -#}

@@ -106,7 +106,7 @@ describe("group membership", () => {
     // Assert the captured calls.
     expect(env.current.swal.calls[0].icon).to.equal("info");
     expect(env.current.swal.calls[0].html).to.include(
-      "/log-in?next_url=/groups/test-group",
+      "/log-in?next_url=%2Fgroups%2Ftest-group",
     );
 
     // Confirm the leave action.
@@ -136,7 +136,21 @@ describe("group membership", () => {
     // Verify membership clicks work after the page body is swapped.
     expect(env.current.swal.calls[0].icon).to.equal("info");
     expect(env.current.swal.calls[0].html).to.include(
-      "/log-in?next_url=/groups/test-group",
+      "/log-in?next_url=%2Fgroups%2Ftest-group",
+    );
+  });
+
+  it("escapes the sign-in return path in membership alerts", () => {
+    // Render the membership fixture with a path that has query delimiters.
+    const { signinButton } = renderMembershipDom();
+    signinButton.dataset.path = "/groups/test-group?tab=members&role=admin";
+
+    // Open the membership sign-in alert.
+    signinButton.click();
+
+    // The sign-in link keeps the full return path inside the next_url value.
+    expect(env.current.swal.calls[0].html).to.include(
+      "/log-in?next_url=%2Fgroups%2Ftest-group%3Ftab%3Dmembers%26role%3Dadmin",
     );
   });
 

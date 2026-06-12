@@ -56,32 +56,18 @@
                    {% endif -%}">Add Group</button>
   </div>
   {# End add group button -#}
-
-  <script type="module">
-    import {
-      cleanInputField,
-      searchOnEnter,
-      triggerChangeOnForm
-    } from '/static/js/community/explore/filters.js';
-
-    const searchInput = document.getElementById('search_groups');
-    if (searchInput) {
-      searchInput.addEventListener('keydown', (event) => {
-        searchOnEnter(event, 'groups-search-form');
-      });
-    }
-  </script>
 </div>
 
 <div class="text-sm text-stone-600">
   {{ pagination::range_display(offset = offset.unwrap_or(0) , count = groups.len(), total = total, label = "group") }}
 </div>
+{# End groups list header with title -#}
 
 {# Groups Table -#}
 <div class="relative overflow-visible mt-5">
   <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
-      {# Header -#}
+      {# Table header -#}
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Location</th>
@@ -91,9 +77,11 @@
           <span class="sr-only">Actions</span>
         </th>
       </tr>
+      {# End table header -#}
     </thead>
     <tbody id="groups-list">
       {% if groups.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
             {# No results when filtering -#}
@@ -105,6 +93,7 @@
             <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
               {% include "dashboard/placeholders/no_results.html" -%}
             </td>
+            {# End no results when filtering -#}
           {% else -%}
             {# No groups created yet -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="2">
@@ -115,16 +104,19 @@
             <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
               {% include "dashboard/placeholders/community_groups_table.html" -%}
             </td>
+            {# End no groups created yet -#}
           {% endif -%}
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for group in groups -%}
+          {# Group row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             <th scope="row"
                 class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
               <div class="flex items-center">
                 <div class="min-w-0">
-                  {# Group name with inactive badge if needed -#}
+                  {# Group name -#}
                   <div class="max-w-full truncate flex items-center gap-x-2">
                     <button type="button"
                             data-select-group-id="{{ group.group_id }}"
@@ -208,7 +200,7 @@
                 </div>
                 {# End view group button -#}
 
-                {# Actions dropdown (Deactivate/Delete) -#}
+                {# Actions dropdown -#}
                 <div class="group relative">
                   <button data-group-id="{{ group.group_id }}"
                           class="btn-group-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
@@ -222,7 +214,7 @@
                   <div id="dropdown-group-actions-{{ group.group_id }}"
                        class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                     <ul class="py-2 text-sm text-stone-700">
-                      {# Activate/Deactivate button depending on status -#}
+                      {# Activate/deactivate button -#}
                       {% if group.active -%}
                         <li>
                           <button id="deactivate-group-{{ group.group_id }}"
@@ -230,6 +222,11 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
+                                  data-confirm-action
+                                  data-confirm-message="Are you sure you wish to deactivate this group?"
+                                  data-confirm-text="Yes"
+                                  data-success-message="You have successfully deactivated the group."
+                                  data-error-message="Something went wrong deactivating this group. Please try again later."
                                   class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
                                          {% if !can_manage_groups -%}
                                            opacity-50 cursor-not-allowed
@@ -242,32 +239,6 @@
                               <div class="ms-2">Deactivate</div>
                             </div>
                           </button>
-                          <script type="module">
-                            import {
-                              showConfirmAlert,
-                              handleHtmxResponse,
-                            } from '/static/js/common/alerts.js';
-
-                            const deactivateGroupBtn = document.getElementById('deactivate-group-{{ group.group_id }}');
-                            if (deactivateGroupBtn) {
-                              deactivateGroupBtn.addEventListener('click', () => {
-                                showConfirmAlert(
-                                  "Are you sure you wish to deactivate this group?",
-                                  "deactivate-group-{{ group.group_id }}",
-                                  "Yes",
-                                );
-                              });
-
-                              deactivateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                                const xhr = e.detail?.xhr;
-                                handleHtmxResponse({
-                                  xhr,
-                                  successMessage: "You have successfully deactivated the group.",
-                                  errorMessage: "Something went wrong deactivating this group. Please try again later."
-                                });
-                              });
-                            }
-                          </script>
                         </li>
                       {% else -%}
                         <li>
@@ -276,6 +247,11 @@
                                   hx-target="#dashboard-content"
                                   hx-indicator="#dashboard-spinner"
                                   hx-trigger="confirmed"
+                                  data-confirm-action
+                                  data-confirm-message="Are you sure you wish to activate this group?"
+                                  data-confirm-text="Yes"
+                                  data-success-message="You have successfully activated the group."
+                                  data-error-message="Something went wrong activating this group. Please try again later."
                                   class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
                                          {% if !can_manage_groups -%}
                                            opacity-50 cursor-not-allowed
@@ -288,34 +264,9 @@
                               <div class="ms-2">Activate</div>
                             </div>
                           </button>
-                          <script type="module">
-                            import {
-                              showConfirmAlert,
-                              handleHtmxResponse,
-                            } from '/static/js/common/alerts.js';
-
-                            const activateGroupBtn = document.getElementById('activate-group-{{ group.group_id }}');
-                            if (activateGroupBtn) {
-                              activateGroupBtn.addEventListener('click', () => {
-                                showConfirmAlert(
-                                  "Are you sure you wish to activate this group?",
-                                  "activate-group-{{ group.group_id }}",
-                                  "Yes",
-                                );
-                              });
-
-                              activateGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                                const xhr = e.detail?.xhr;
-                                handleHtmxResponse({
-                                  xhr,
-                                  successMessage: "You have successfully activated the group.",
-                                  errorMessage: "Something went wrong activating this group. Please try again later."
-                                });
-                              });
-                            }
-                          </script>
                         </li>
                       {% endif -%}
+                      {# End activate/deactivate button -#}
 
                       {# Delete button -#}
                       <li>
@@ -324,6 +275,11 @@
                                 hx-target="#dashboard-content"
                                 hx-indicator="#dashboard-spinner"
                                 hx-trigger="confirmed"
+                                data-confirm-action
+                                data-confirm-message="Are you sure you wish to delete this group?"
+                                data-confirm-text="Yes"
+                                data-success-message="You have successfully deleted the group."
+                                data-error-message="Something went wrong deleting this group. Please try again later."
                                 class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
                                        {% if !can_manage_groups -%}
                                          opacity-50 cursor-not-allowed
@@ -336,32 +292,6 @@
                             <div class="ms-2">Delete</div>
                           </div>
                         </button>
-                        <script type="module">
-                          import {
-                            showConfirmAlert,
-                            handleHtmxResponse,
-                          } from '/static/js/common/alerts.js';
-
-                          const deleteGroupBtn = document.getElementById('delete-group-{{ group.group_id }}');
-                          if (deleteGroupBtn) {
-                            deleteGroupBtn.addEventListener('click', () => {
-                              showConfirmAlert(
-                                "Are you sure you wish to delete this group?",
-                                "delete-group-{{ group.group_id }}",
-                                "Yes",
-                              );
-                            });
-
-                            deleteGroupBtn.addEventListener('htmx:afterRequest', (e) => {
-                              const xhr = e.detail?.xhr;
-                              handleHtmxResponse({
-                                xhr,
-                                successMessage: "You have successfully deleted the group.",
-                                errorMessage: "Something went wrong deleting this group. Please try again later."
-                              });
-                            });
-                          }
-                        </script>
                       </li>
                       {# End delete button -#}
                     </ul>
@@ -372,69 +302,11 @@
             </td>
             {# End actions -#}
           </tr>
+          {# End group row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
   </table>
-  <script type="module">
-    import {
-      selectDashboardAndSwapBody
-    } from '/static/js/common/dashboard-selection.js';
-
-    let isSelectingGroup = false;
-    const groupsList = document.getElementById('groups-list');
-    if (groupsList) {
-      groupsList.addEventListener('click', async (event) => {
-        const selectGroupButton = event.target.closest('[data-select-group-id]');
-        if (!selectGroupButton) {
-          return;
-        }
-
-        event.preventDefault();
-        if (isSelectingGroup) {
-          return;
-        }
-
-        const groupId = selectGroupButton.dataset.selectGroupId;
-        if (!groupId) {
-          return;
-        }
-
-        isSelectingGroup = true;
-        selectGroupButton.setAttribute('disabled', 'disabled');
-        try {
-          await selectDashboardAndSwapBody(`/dashboard/group/${groupId}/select`, '/dashboard/group');
-        } catch (error) {
-          console.warn('Failed to select group from groups list:', error);
-        } finally {
-          selectGroupButton.removeAttribute('disabled');
-          isSelectingGroup = false;
-        }
-      });
-    }
-
-    const btnGroupActions = document.querySelectorAll('.btn-group-actions');
-    btnGroupActions.forEach((btnAction) => {
-      btnAction.addEventListener('click', () => {
-        const groupId = btnAction.dataset.groupId;
-        const dropdown = document.getElementById(`dropdown-group-actions-${groupId}`);
-        if (!dropdown) return;
-
-        const isHidden = dropdown.classList.contains('hidden');
-        dropdown.classList.toggle('hidden');
-
-        if (isHidden) {
-          const outsideClick = (ev) => {
-            if (!dropdown.contains(ev.target) && !btnAction.contains(ev.target)) {
-              dropdown.classList.add('hidden');
-              document.removeEventListener('click', outsideClick);
-            }
-          };
-          setTimeout(() => document.addEventListener('click', outsideClick), 0);
-        }
-      });
-    });
-  </script>
 </div>
 {# End Groups Table -#}
 

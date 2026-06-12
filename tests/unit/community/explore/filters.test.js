@@ -10,6 +10,7 @@ import {
   openFiltersDrawer,
   resetFilters,
   resetDateFiltersOnCalendarViewMode,
+  searchOnEnter,
   triggerChangeOnForm,
   unckeckAllKinds,
   updateDateInput,
@@ -97,6 +98,61 @@ describe("explore filters", () => {
     expect(htmx.triggerCalls).to.deep.equal([
       [document.getElementById("events-form"), "change"],
     ]);
+  });
+
+  it("redirects escaped text searches when pressing enter outside a form", () => {
+    // Prepare assigned URLs for redirecting to explore with special characters.
+    const assignedUrls = [];
+    const executeSearchOnEnter = new Function(
+      "document",
+      `const searchOnEnter = ${searchOnEnter.toString()}; return searchOnEnter;`,
+    )({
+      location: {
+        set href(url) {
+          assignedUrls.push(url);
+        },
+      },
+    });
+
+    // Press Enter in a search input without a form target.
+    executeSearchOnEnter({
+      key: "Enter",
+      currentTarget: {
+        value: "cloud & native?",
+        blur() {},
+      },
+    });
+
+    // Submitted search text is escaped in the explore redirect.
+    expect(assignedUrls).to.deep.equal(["/explore?ts_query=cloud+%26+native%3F"]);
+  });
+
+  it("blurs the search input when enter search is delegated from document", () => {
+    // Render the form target used by delegated search.
+    document.body.innerHTML = `<form id="events-form"></form>`;
+
+    // Prepare the delegated key event with the input as the original target.
+    let blurred = false;
+    const input = {
+      blur() {
+        blurred = true;
+      },
+      value: "conference",
+    };
+
+    // Press Enter from a document-level listener.
+    searchOnEnter(
+      {
+        currentTarget: document,
+        key: "Enter",
+        target: input,
+      },
+      "events-form",
+    );
+
+    // The search submits and the original input is blurred.
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
+    expect(blurred).to.equal(true);
   });
 
   it("updates sort inputs from the selector value", () => {

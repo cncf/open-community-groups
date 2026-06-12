@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Refund Approved Notification -#}
 {% block subject -%}
   Refund approved: {{ event.name }}
 {% endblock subject -%}
@@ -25,3 +26,4 @@
   {{ event.name }}, an event from {{ event.group_name }} in the
   {{ event.community_display_name }} community.
 {% endblock footer -%}
+{# End event refund approved notification -#}

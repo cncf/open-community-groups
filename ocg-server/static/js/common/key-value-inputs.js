@@ -184,7 +184,7 @@ export class KeyValueInputs extends LitWrapper {
                   class="input-primary"
                   placeholder=${this.keyPlaceholder}
                   value=${item.key}
-                  @input=${(e) => this._handleInputChange(index, "key", e)}
+                  @input=${(event) => this._handleInputChange(index, "key", event)}
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"
@@ -195,7 +195,7 @@ export class KeyValueInputs extends LitWrapper {
                   class="input-primary col-span-2"
                   placeholder=${this.valuePlaceholder}
                   value=${item.value}
-                  @input=${(e) => this._handleInputChange(index, "value", e)}
+                  @input=${(event) => this._handleInputChange(index, "value", event)}
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"

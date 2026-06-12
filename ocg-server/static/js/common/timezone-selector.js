@@ -1,4 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { ComboboxController } from "/static/js/common/combobox.js";
+import { focusElementById, getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -17,9 +19,6 @@ export class TimezoneSelector extends LitWrapper {
     timezones: { type: Array, attribute: "timezones" },
     required: { type: Boolean, attribute: "required" },
     disabled: { type: Boolean, attribute: "disabled" },
-    _isOpen: { state: true },
-    _query: { state: true },
-    _activeIndex: { state: true },
   };
 
   constructor() {
@@ -29,24 +28,24 @@ export class TimezoneSelector extends LitWrapper {
     this.timezones = [];
     this.required = false;
     this.disabled = false;
-    this._isOpen = false;
-    this._query = "";
-    this._activeIndex = null;
-    this._searchTimeoutId = 0;
-    this._documentClickHandler = null;
-  }
-
-  connectedCallback() {
-    super.connectedCallback();
-    this.addEventListener("keydown", this._handleKeydown.bind(this));
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._removeDocumentListener();
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-    }
+    this._combobox = new ComboboxController(this, {
+      getItemCount: () => this._filteredTimezones.length,
+      isInteractionBlocked: () => this.disabled,
+      canOpen: () => this.timezones.length > 0,
+      resetQueryOnToggle: true,
+      onOpen: () => {
+        this.updateComplete.then(() => {
+          focusElementById(this, "timezone-search-input");
+        });
+      },
+      onActiveIndexMove: () => this._scrollActiveIntoView(),
+      onSelect: (index, event) => {
+        const timezone = this._filteredTimezones[index];
+        if (timezone && !this._isSelected(timezone)) {
+          this._handleTimezoneClick(event, timezone);
+        }
+      },
+    });
   }
 
   /**
@@ -54,14 +53,9 @@ export class TimezoneSelector extends LitWrapper {
    * @param {InputEvent} event Native input event
    */
   _handleSearchInput(event) {
-    const value = event.target.value || "";
-    this._query = value;
-    if (this._searchTimeoutId) {
-      window.clearTimeout(this._searchTimeoutId);
-    }
-    this._searchTimeoutId = window.setTimeout(() => {
-      this._activeIndex = null;
-      this.requestUpdate();
+    this._combobox.setQuery(event.target.value || "");
+    this._combobox.scheduleSearchUpdate(() => {
+      this._combobox.setActiveIndex(null);
     }, 200);
   }
 
@@ -70,7 +64,7 @@ export class TimezoneSelector extends LitWrapper {
    * @returns {Array<string>}
    */
   get _filteredTimezones() {
-    const normalized = (this._query || "").trim().toLowerCase();
+    const normalized = (this._combobox.query || "").trim().toLowerCase();
     if (!normalized) {
       return this.timezones;
     }
@@ -91,131 +85,8 @@ export class TimezoneSelector extends LitWrapper {
     }
     event.preventDefault();
     this.value = timezone;
-    this._closeDropdown();
+    this._combobox.close();
     this.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
-  /**
-   * Toggles dropdown visibility.
-   */
-  _toggleDropdown() {
-    if (this.disabled) {
-      return;
-    }
-    if (this._isOpen) {
-      this._closeDropdown();
-    } else {
-      this._openDropdown();
-    }
-  }
-
-  /**
-   * Opens the dropdown and resets search.
-   */
-  _openDropdown() {
-    if (this.timezones.length === 0 || this.disabled) {
-      return;
-    }
-    this._isOpen = true;
-    this._query = "";
-    this._activeIndex = null;
-    this._addDocumentListener();
-    this.updateComplete.then(() => {
-      const input = this.querySelector("#timezone-search-input");
-      if (input) {
-        input.focus();
-      }
-    });
-  }
-
-  /**
-   * Closes the dropdown and clears search state.
-   */
-  _closeDropdown() {
-    this._isOpen = false;
-    this._query = "";
-    this._activeIndex = null;
-    this._removeDocumentListener();
-  }
-
-  /**
-   * Registers a click listener on document to detect outside clicks.
-   */
-  _addDocumentListener() {
-    if (this._documentClickHandler) {
-      return;
-    }
-    this._documentClickHandler = (event) => {
-      if (!this.contains(event.target)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
-  }
-
-  /**
-   * Removes the outside click listener if it exists.
-   */
-  _removeDocumentListener() {
-    if (!this._documentClickHandler) {
-      return;
-    }
-    document.removeEventListener("click", this._documentClickHandler);
-    this._documentClickHandler = null;
-  }
-
-  /**
-   * Handles keyboard navigation and shortcuts.
-   * @param {KeyboardEvent} event Native keyboard event
-   */
-  _handleKeydown(event) {
-    if (event.defaultPrevented || this.disabled) {
-      return;
-    }
-
-    const filteredTimezones = this._filteredTimezones;
-    if (!this._isOpen || filteredTimezones.length === 0) {
-      if (this._isOpen && event.key === "Escape") {
-        event.preventDefault();
-        this._closeDropdown();
-      }
-      return;
-    }
-
-    const moveActiveIndex = (delta) => {
-      if (this._activeIndex === null) {
-        this._activeIndex = 0;
-      } else {
-        this._activeIndex = (this._activeIndex + delta + filteredTimezones.length) % filteredTimezones.length;
-      }
-      this._scrollActiveIntoView();
-    };
-
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        moveActiveIndex(1);
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        moveActiveIndex(-1);
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (this._activeIndex !== null) {
-          const timezone = filteredTimezones[this._activeIndex];
-          if (timezone && !this._isSelected(timezone)) {
-            this._handleTimezoneClick(event, timezone);
-          }
-        }
-        break;
-      case "Escape":
-        event.preventDefault();
-        this._closeDropdown();
-        break;
-      default:
-        break;
-    }
   }
 
   /**
@@ -223,11 +94,11 @@ export class TimezoneSelector extends LitWrapper {
    */
   _scrollActiveIntoView() {
     this.updateComplete.then(() => {
-      if (this._activeIndex === null) {
+      if (this._combobox.activeIndex === null) {
         return;
       }
-      const list = this.querySelector("#timezone-selector-list");
-      const activeItem = list?.querySelector(`[data-index="${this._activeIndex}"]`);
+      const list = getElementById(this, "timezone-selector-list");
+      const activeItem = list?.querySelector(`[data-index="${this._combobox.activeIndex}"]`);
       if (activeItem && list) {
         activeItem.scrollIntoView({ block: "nearest" });
       }
@@ -265,8 +136,8 @@ export class TimezoneSelector extends LitWrapper {
             : "cursor-pointer"}"
           ?disabled=${isDisabled}
           aria-haspopup="listbox"
-          aria-expanded=${this._isOpen ? "true" : "false"}
-          @click=${() => this._toggleDropdown()}
+          aria-expanded=${this._combobox.isOpen ? "true" : "false"}
+          @click=${() => this._combobox.toggle()}
         >
           <div class="flex items-center min-h-6">
             <span class="${this.value ? "text-stone-900" : "text-stone-500"}">${displayValue}</span>
@@ -278,7 +149,7 @@ export class TimezoneSelector extends LitWrapper {
 
         <div
           class="absolute top-full mt-1 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
-            ._isOpen
+            ._combobox.isOpen
             ? ""
             : "hidden"}"
         >
@@ -296,7 +167,7 @@ export class TimezoneSelector extends LitWrapper {
                 autocorrect="off"
                 autocapitalize="off"
                 spellcheck="false"
-                .value=${this._query}
+                .value=${this._combobox.query}
                 @input=${(event) => this._handleSearchInput(event)}
               />
             </div>
@@ -314,7 +185,7 @@ export class TimezoneSelector extends LitWrapper {
                     (tz) => tz,
                     (timezone, index) => {
                       const isSelected = this._isSelected(timezone);
-                      const isActive = this._activeIndex === index;
+                      const isActive = this._combobox.activeIndex === index;
                       const isItemDisabled = isSelected || this.disabled;
 
                       let statusClass = "";
@@ -337,7 +208,7 @@ export class TimezoneSelector extends LitWrapper {
                             aria-selected=${isSelected ? "true" : "false"}
                             ?disabled=${isItemDisabled}
                             @click=${(event) => this._handleTimezoneClick(event, timezone)}
-                            @mouseover=${() => (this._activeIndex = index)}
+                            @mouseover=${() => this._combobox.setActiveIndex(index)}
                           >
                             ${timezone}
                           </button>

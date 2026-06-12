@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Invitation Notification -#}
 {% block subject -%}
   You have been invited: {{ event.name }}
 {% endblock subject -%}
@@ -43,3 +44,4 @@
   the {{ event.community_display_name }} community. If you did not expect this
   invitation, you can ignore this message.
 {% endblock footer -%}
+{# End event invitation notification -#}

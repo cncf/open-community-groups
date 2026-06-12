@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Group Custom Notification -#}
 {% block subject -%}
   {{ subject }}
 {% endblock subject -%}
@@ -22,3 +23,4 @@
   You received this email notification because you're a member of {{ group.name }}
   in the {{ group.community_display_name }} community.
 {% endblock footer -%}
+{# End group custom notification -#}

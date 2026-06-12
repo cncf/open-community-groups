@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Event Waitlist Promoted Notification -#}
 {% block subject -%}
   You're in: {{ event.name }}
 {% endblock subject -%}
@@ -78,3 +79,4 @@
   waiting list for {{ event.name }}, an event from {{ event.group_name }} in the
   {{ event.community_display_name }} community.
 {% endblock footer -%}
+{# End event waitlist promoted notification -#}

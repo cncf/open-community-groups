@@ -10,7 +10,7 @@ import {
   getVerticalBarCategoryAxisConfig,
   getVerticalBarSeriesStyle,
   toCategorySeries,
-} from "/static/js/dashboard/common.js";
+} from "/static/js/common/charts/charts.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("dashboard chart config helpers", () => {
@@ -70,18 +70,7 @@ describe("dashboard chart config helpers", () => {
 
   it("formats sparse category axis labels", () => {
     // Prepare categories for formatting sparse category axis labels.
-    const categories = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-    ];
+    const categories = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
     const axisConfig = getVerticalBarCategoryAxisConfig(categories);
     const formatter = axisConfig.axisLabel.formatter;
 
@@ -126,9 +115,7 @@ describe("dashboard chart config helpers", () => {
     document.documentElement.style.setProperty("--color-stone-100", "#f5f5f4");
 
     // Assert the computed value.
-    expect(
-      getChartTitleConfig("Members over time", { 950: "#0c0a09" }),
-    ).to.deep.equal({
+    expect(getChartTitleConfig("Members over time", { 950: "#0c0a09" })).to.deep.equal({
       text: "Members over time",
       left: "center",
       top: 12,

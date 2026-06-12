@@ -1,5 +1,7 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { getElementById } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
  * Event sponsors selector.
@@ -42,6 +44,7 @@ export class SponsorsSection extends LitWrapper {
     this.pendingSponsor = null;
     this.pendingLevel = "";
     this.disabled = false;
+    this._handleClickOutside = this._handleClickOutside.bind(this);
   }
 
   connectedCallback() {
@@ -57,12 +60,12 @@ export class SponsorsSection extends LitWrapper {
     window.addEventListener("mousedown", this._handleClickOutside);
 
     // Validate levels before submitting add/update event forms
-    const addBtn = document.getElementById("add-event-button");
-    const updateBtn = document.getElementById("update-event-button");
-    const beforeSubmit = (e) => {
+    const addBtn = getElementById(document, "add-event-button");
+    const updateBtn = getElementById(document, "update-event-button");
+    const beforeSubmit = (event) => {
       if (!this._requireLevels()) {
-        e.preventDefault();
-        e.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
         const missing = (this.selectedSponsors || []).find((s) => !s.level || !String(s.level).trim().length);
         if (missing) {
           this.pendingSponsor = missing;
@@ -86,14 +89,7 @@ export class SponsorsSection extends LitWrapper {
    * @private
    */
   _ensureArrayProp(prop) {
-    const value = this[prop];
-    if (typeof value === "string") {
-      try {
-        this[prop] = JSON.parse(value || "[]");
-      } catch (_e) {
-        this[prop] = [];
-      }
-    }
+    this[prop] = parseJsonAttribute(this[prop], []);
     if (!Array.isArray(this[prop])) {
       this[prop] = [];
     }
@@ -120,12 +116,12 @@ export class SponsorsSection extends LitWrapper {
    * @param {MouseEvent} event
    * @private
    */
-  _handleClickOutside = (event) => {
+  _handleClickOutside(event) {
     if (this.disabled) return;
     if (!this.contains(event.target)) {
       this._cleanEnteredValue();
     }
-  };
+  }
 
   /**
    * Filters available sponsors based on entered text and current selection.
@@ -178,7 +174,7 @@ export class SponsorsSection extends LitWrapper {
    * @param {KeyboardEvent} event
    * @private
    */
-  _handleKeyDown(event) {
+  _handleKeydown(event) {
     if (this.disabled) return;
     if (!this.visibleDropdown || this.visibleOptions.length === 0) return;
 
@@ -345,8 +341,8 @@ export class SponsorsSection extends LitWrapper {
             autocapitalize="off"
             spellcheck="false"
             .value=${this.enteredValue}
-            @input=${(e) => this._onInputChange(e)}
-            @keydown=${(e) => this._handleKeyDown(e)}
+            @input=${(event) => this._onInputChange(event)}
+            @keydown=${(event) => this._handleKeydown(event)}
             @focus=${() => this._onInputFocus()}
             ?disabled=${this.disabled}
           />
@@ -456,7 +452,7 @@ export class SponsorsSection extends LitWrapper {
                     class="input-primary mt-2 w-full"
                     placeholder="Gold, Silver, Bronze, ..."
                     .value=${this.pendingLevel}
-                    @input=${(e) => (this.pendingLevel = e.target.value || "")}
+                    @input=${(event) => (this.pendingLevel = event.target.value || "")}
                     ?disabled=${this.disabled}
                   />
                   <div class="mt-6 flex items-center justify-end gap-3">

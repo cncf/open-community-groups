@@ -1,4 +1,4 @@
-{# Database-free event preview modal. -#}
+{# Event preview modal -#}
 {% import "macros/badges.html" as badges -%}
 {% import "macros/ui.html" as ui -%}
 <div id="event-preview-modal"
@@ -50,13 +50,9 @@
 
         {# Breadcrumb -#}
         <breadcrumb-nav class="[&>.container]:max-w-[90rem]"
-        {% if let Some(banner_url) = &event.banner_url -%}
-          banner-url="{{ banner_url }}"
-        {% endif -%}
+        {% if let Some(banner_url) = &event.banner_url -%} banner-url="{{ banner_url }}" {% endif -%}
         items='[ {"label": "Home", "icon": "home"},
-        {% if let Some(community_display_name) = &event.community_display_name -%}
-          {"label": {{ community_display_name|json }}, "icon": "community"},
-        {% endif -%}
+        {% if let Some(community_display_name) = &event.community_display_name -%} {"label": {{ community_display_name|json }}, "icon": "community"}, {% endif -%}
         {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
         {# End breadcrumb -#}
 
@@ -64,9 +60,9 @@
         <div class="relative container mx-auto flex h-full max-w-[90rem] grow p-4 sm:p-6 lg:p-8">
           <div class="relative flex w-full flex-col overflow-visible rounded-lg border border-stone-200 bg-white">
             <div class="flex flex-col gap-y-8 px-4 py-5 sm:px-6 sm:py-6 lg:gap-y-12 lg:px-10 lg:py-10">
-              {# Event header with name and group -#}
+              {# Event header -#}
               <header>
-                {# Main grid container for logo, name/group, social links, and actions -#}
+                {# Main grid container -#}
                 <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto]">
                   {# Event logo -#}
                   <div class="relative hidden md:row-span-2 md:block">
@@ -452,3 +448,4 @@
     </div>
   </div>
 </div>
+{# End event preview modal -#}

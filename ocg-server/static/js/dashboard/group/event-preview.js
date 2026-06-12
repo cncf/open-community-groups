@@ -1,14 +1,18 @@
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/breadcrumb-nav.js";
-import {
-  convertDateTimeLocalToISO,
-  loadMap,
-  lockBodyScroll,
-  unlockBodyScroll,
-} from "/static/js/common/common.js";
+import { convertDateTimeLocalToISO, loadMap } from "/static/js/common/common.js";
+import { closestElement, getElementById, markDatasetReady, setElementHidden } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
-import "/static/js/common/images-gallery.js";
-import "/static/js/common/user-chip.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  openModalBodyScroll,
+} from "/static/js/common/modals/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { setTrustedHtml } from "/static/js/common/trusted-html.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
+import "/static/js/common/modals/images-gallery.js";
+import "/static/js/common/users/user-chip.js";
 import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page-shared.js";
 
 const PREVIEW_ENDPOINT = "/dashboard/group/events/preview";
@@ -29,6 +33,8 @@ const EVENT_PREVIEW_SOCIAL_LINKS = [
   },
 ];
 const modalState = new WeakMap();
+const MODAL_WAS_CLOSED = false;
+const MODAL_WAS_OPEN = true;
 
 /**
  * Initializes event preview behavior for an add or update event page.
@@ -40,12 +46,11 @@ export const initializeEventPreview = ({ pageRoot }) => {
   const previewButton = pageRoot?.querySelector?.(`#${PREVIEW_BUTTON_ID}`);
   const modalRoot =
     pageRoot?.ownerDocument?.getElementById?.(PREVIEW_MODAL_ROOT_ID) ||
-    document.getElementById(PREVIEW_MODAL_ROOT_ID);
-  if (!previewButton || !modalRoot || previewButton.dataset.eventPreviewReady === "true") {
+    getElementById(document, PREVIEW_MODAL_ROOT_ID);
+  if (!modalRoot || !markDatasetReady(previewButton, "eventPreviewReady")) {
     return;
   }
 
-  previewButton.dataset.eventPreviewReady = "true";
   previewButton.addEventListener("click", async () => {
     if (previewButton.disabled) {
       return;
@@ -151,7 +156,7 @@ export const collectEventPreviewContext = (pageRoot) => {
  * @returns {HTMLElement|null} Dashboard content root.
  */
 const getDashboardContent = (pageRoot) =>
-  pageRoot.closest?.("#dashboard-content") || document.getElementById("dashboard-content");
+  pageRoot.closest?.("#dashboard-content") || getElementById(document, "dashboard-content");
 
 /**
  * Inserts preview HTML and binds modal close behavior.
@@ -162,25 +167,25 @@ const getDashboardContent = (pageRoot) =>
  */
 export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
   closeEventPreviewModal(modalRoot);
-  modalRoot.innerHTML = html;
+  setTrustedHtml(modalRoot, html);
   initializeEventPreviewMaps(modalRoot, pageRoot);
   initializeEventPreviewDraftSections(modalRoot, pageRoot);
-  lockBodyScroll();
+  openModalBodyScroll(MODAL_WAS_CLOSED);
 
   const handleClick = (event) => {
-    if (event.target.closest("[data-event-preview-close]")) {
+    if (closestElement(event.target, "[data-event-preview-close]")) {
       closeEventPreviewModal(modalRoot);
     }
   };
   const handleKeydown = (event) => {
-    if (event.key === "Escape") {
+    if (isEscapeEvent(event)) {
       closeEventPreviewModal(modalRoot);
     }
   };
 
   modalRoot.addEventListener("click", handleClick);
-  document.addEventListener("keydown", handleKeydown);
-  modalState.set(modalRoot, { handleClick, handleKeydown });
+  const removeDismissListeners = bindModalDismissListeners({ onKeydown: handleKeydown });
+  modalState.set(modalRoot, { handleClick, removeDismissListeners });
 };
 
 /**
@@ -191,15 +196,15 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
 export const closeEventPreviewModal = (modalRoot) => {
   const state = modalState.get(modalRoot);
   if (!state) {
-    modalRoot.innerHTML = "";
+    modalRoot.replaceChildren();
     return;
   }
 
   modalRoot.removeEventListener("click", state.handleClick);
-  document.removeEventListener("keydown", state.handleKeydown);
+  state.removeDismissListeners();
   modalState.delete(modalRoot);
-  modalRoot.innerHTML = "";
-  unlockBodyScroll();
+  modalRoot.replaceChildren();
+  closeModalBodyScroll(MODAL_WAS_OPEN);
 };
 
 /**
@@ -235,18 +240,18 @@ const initializeEventPreviewMap = async (mapRoot, latitude, longitude) => {
 
   const fallback = mapRoot.querySelector("[data-event-preview-location-map-fallback]");
   const emptyState = mapRoot.querySelector("[data-event-preview-location-empty]");
-  mapCanvas.classList.remove("hidden");
+  setElementHidden(mapCanvas, false);
 
   try {
     await loadMap(mapCanvas.id, latitude, longitude, {
       interactive: false,
     });
-    fallback?.classList.add("hidden");
-    emptyState?.classList.add("hidden");
+    setElementHidden(fallback, true);
+    setElementHidden(emptyState, true);
   } catch (_) {
-    mapCanvas.classList.add("hidden");
-    fallback?.classList.remove("hidden");
-    emptyState?.classList.remove("hidden");
+    setElementHidden(mapCanvas, true);
+    setElementHidden(fallback, false);
+    setElementHidden(emptyState, false);
   }
 };
 
@@ -312,7 +317,7 @@ const updateEventPreviewTestBadge = (modalRoot, pageRoot) => {
     .toLowerCase();
   const isTestEvent = testEventValue === "true" || testEventToggle?.checked === true;
 
-  badge.classList.toggle("hidden", !isTestEvent);
+  setElementHidden(badge, !isTestEvent);
 };
 
 /**
@@ -345,7 +350,7 @@ const renderEventPreviewSocialLinks = (modalRoot, links) => {
     const linksList = container.querySelector("[data-event-preview-social-links-list]") || container;
     linksList.replaceChildren(...links.map(createEventPreviewSocialLink));
     if (!container.classList.contains("md:flex")) {
-      container.classList.remove("hidden");
+      setElementHidden(container, false);
     }
   });
 };
@@ -426,7 +431,7 @@ const renderEventPreviewTags = (modalRoot, tags) => {
   });
 
   tagsSection.replaceChildren(heading, tagList);
-  tagsSection.classList.remove("hidden");
+  setElementHidden(tagsSection, false);
 };
 
 /**
@@ -622,16 +627,8 @@ const readArray = (value) => {
     return value;
   }
 
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (_) {
-      return [];
-    }
-  }
-
-  return [];
+  const parsed = parseJsonAttribute(value, []);
+  return Array.isArray(parsed) ? parsed : [];
 };
 
 /**

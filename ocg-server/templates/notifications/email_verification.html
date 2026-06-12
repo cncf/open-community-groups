@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Email Verification Notification -#}
 {% block subject -%}
   Verify your email address
 {% endblock subject -%}
@@ -34,3 +35,4 @@
   create an Open Community Groups account. If that wasn't you, you can ignore
   this message.
 {% endblock footer -%}
+{# End email verification notification -#}

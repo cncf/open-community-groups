@@ -1,4 +1,12 @@
-import { queryElementById } from "/static/js/common/dom.js";
+import {
+  closestElementWithinRoot,
+  getElementById,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
+
+const BOOLEAN_TOGGLE_BOUND_KEY = "booleanToggleBound";
+const SECTION_TABS_BOUND_KEY = "sectionTabsBound";
 
 /**
  * Builds a list of existing form ids for page-level wiring.
@@ -7,7 +15,7 @@ import { queryElementById } from "/static/js/common/dom.js";
  * @returns {string[]} Existing form ids only.
  */
 export const collectExistingFormIds = (formIds, root = document) =>
-  (formIds || []).filter((formId) => !!queryElementById(root, formId));
+  (formIds || []).filter((formId) => !!getElementById(root, formId));
 
 /**
  * Syncs a checkbox toggle with its hidden boolean input.
@@ -33,7 +41,9 @@ export const bindBooleanToggle = ({ toggle, hiddenInput, onChange = () => {}, sy
     return { sync };
   }
 
-  toggle.addEventListener("change", sync);
+  if (markDatasetReady(toggle, BOOLEAN_TOGGLE_BOUND_KEY)) {
+    toggle.addEventListener("change", sync);
+  }
 
   if (syncOnInit) {
     sync();
@@ -64,7 +74,7 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     const hasNextButton = currentIndex >= 0 && currentIndex < tabButtons.length - 1;
 
     getNextButtons().forEach((button) => {
-      button.classList.toggle("hidden", !hasNextButton);
+      setElementHidden(button, !hasNextButton);
       button.disabled = !hasNextButton;
     });
   };
@@ -89,52 +99,57 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
 
     contentSections.forEach((section) => {
       const isActive = section.getAttribute("data-content") === sectionName;
-      section.classList.toggle("hidden", !isActive);
+      setElementHidden(section, !isActive);
     });
 
     updateNextButtons(sectionName);
     onSectionChange(sectionName);
   };
 
-  root.addEventListener("click", (event) => {
-    const nextButton = event.target?.closest?.("[data-section-next]");
-    if (nextButton && root.contains(nextButton)) {
-      event.preventDefault();
-      event.stopPropagation();
+  const bindSectionTabsClick =
+    !(root instanceof HTMLElement) || markDatasetReady(root, SECTION_TABS_BOUND_KEY);
 
-      const tabButtons = getTabButtons();
-      const currentIndex = tabButtons.findIndex((button) => button.getAttribute("data-active") === "true");
-      const nextTabButton = tabButtons[currentIndex + 1];
-      const nextSectionName = nextTabButton?.getAttribute("data-section") || "";
+  if (bindSectionTabsClick) {
+    root.addEventListener("click", (event) => {
+      const nextButton = closestElementWithinRoot(event.target, "[data-section-next]", root);
+      if (nextButton) {
+        event.preventDefault();
+        event.stopPropagation();
 
-      if (!nextTabButton || !nextSectionName) {
-        updateNextButtons(tabButtons[currentIndex]?.getAttribute("data-section") || "");
+        const tabButtons = getTabButtons();
+        const currentIndex = tabButtons.findIndex((button) => button.getAttribute("data-active") === "true");
+        const nextTabButton = tabButtons[currentIndex + 1];
+        const nextSectionName = nextTabButton?.getAttribute("data-section") || "";
+
+        if (!nextTabButton || !nextSectionName) {
+          updateNextButtons(tabButtons[currentIndex]?.getAttribute("data-section") || "");
+          return;
+        }
+
+        skipSectionClickActivation = true;
+        try {
+          nextTabButton.click();
+        } finally {
+          skipSectionClickActivation = false;
+        }
+
+        displayActiveSection(nextSectionName);
+        scrollToTop();
         return;
       }
 
-      skipSectionClickActivation = true;
-      try {
-        nextTabButton.click();
-      } finally {
-        skipSectionClickActivation = false;
+      const button = closestElementWithinRoot(event.target, "[data-section]", root);
+      if (!button) {
+        return;
       }
 
-      displayActiveSection(nextSectionName);
-      scrollToTop();
-      return;
-    }
+      if (skipSectionClickActivation) {
+        return;
+      }
 
-    const button = event.target?.closest?.("[data-section]");
-    if (!button || !root.contains(button)) {
-      return;
-    }
-
-    if (skipSectionClickActivation) {
-      return;
-    }
-
-    displayActiveSection(button.getAttribute("data-section") || "");
-  });
+      displayActiveSection(button.getAttribute("data-section") || "");
+    });
+  }
 
   const activeSectionName =
     getTabButtons()

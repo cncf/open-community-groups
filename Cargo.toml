@@ -40,7 +40,7 @@ hex = "0.4"
 hmac = "0.12.1"
 icalendar = "0.17.10"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
-lettre = { version = "0.11.21", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
+lettre = { version = "0.11.22", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
 markdown = "1.0.0"
 mime_guess = "2.0.5"
 minify-html = "0.18.1"

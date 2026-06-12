@@ -1,12 +1,20 @@
 import { showConfirmAlert, showInfoAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import {
+  closestElement,
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 
 const MEMBERSHIP_CONTAINER_SELECTOR = "#membership-container";
 const GROUP_ACTIONS_MENU_SELECTOR = "[data-group-actions-menu]";
 
 /**
  * Returns all membership containers within a root node.
- * @param {Document|HTMLElement} root - Root node to search
+ * @param {Document|Element} root - Root node to search
  * @returns {HTMLElement[]} Membership containers
  */
 const getMembershipContainers = (root) => {
@@ -31,11 +39,7 @@ const getMembershipContainers = (root) => {
  * @param {HTMLElement} container - Membership container element
  */
 const initializeMembershipContainer = (container) => {
-  if (!container || container.dataset.membershipReady === "true") {
-    return;
-  }
-
-  container.dataset.membershipReady = "true";
+  markDatasetReady(container, "membershipReady");
 };
 
 /**
@@ -48,43 +52,43 @@ const handleMembershipCheckResponse = (event) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   if (!container) {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const signinButton = container.querySelector("#signin-btn");
-  const joinButton = container.querySelector("#join-btn");
-  const leaveButton = container.querySelector("#leave-btn");
+  const loadingButton = getElementById(container, "loading-btn");
+  const signinButton = getElementById(container, "signin-btn");
+  const joinButton = getElementById(container, "join-btn");
+  const leaveButton = getElementById(container, "leave-btn");
 
   if (!loadingButton || !signinButton || !joinButton || !leaveButton) {
     return;
   }
 
-  loadingButton.classList.add("hidden");
-  signinButton.classList.add("hidden");
-  joinButton.classList.add("hidden");
-  leaveButton.classList.add("hidden");
+  setElementHidden(loadingButton, true);
+  setElementHidden(signinButton, true);
+  setElementHidden(joinButton, true);
+  setElementHidden(leaveButton, true);
 
   const xhr = event.detail?.xhr;
 
   if (isSuccessfulXHRStatus(xhr?.status)) {
-    try {
-      const response = JSON.parse(xhr.responseText);
+    const response = parseJsonText(xhr.responseText, null);
+    if (!response) {
+      setElementHidden(signinButton, false);
+      return;
+    }
 
-      if (response.is_member) {
-        leaveButton.classList.remove("hidden");
-      } else {
-        joinButton.classList.remove("hidden");
-      }
-    } catch (error) {
-      signinButton.classList.remove("hidden");
+    if (response.is_member) {
+      setElementHidden(leaveButton, false);
+    } else {
+      setElementHidden(joinButton, false);
     }
     return;
   }
 
-  signinButton.classList.remove("hidden");
+  setElementHidden(signinButton, false);
 };
 
 /**
@@ -96,14 +100,14 @@ const handleJoinBeforeRequest = (target) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
-  const loadingButton = container?.querySelector("#loading-btn");
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
+  const loadingButton = container ? getElementById(container, "loading-btn") : null;
   if (!loadingButton) {
     return;
   }
 
-  target.classList.add("hidden");
-  loadingButton.classList.remove("hidden");
+  setElementHidden(target, true);
+  setElementHidden(loadingButton, false);
 };
 
 /**
@@ -115,14 +119,14 @@ const handleLeaveBeforeRequest = (target) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
-  const loadingButton = container?.querySelector("#loading-btn");
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
+  const loadingButton = container ? getElementById(container, "loading-btn") : null;
   if (!loadingButton) {
     return;
   }
 
-  target.classList.add("hidden");
-  loadingButton.classList.remove("hidden");
+  setElementHidden(target, true);
+  setElementHidden(loadingButton, false);
 };
 
 /**
@@ -135,13 +139,13 @@ const handleJoinAfterRequest = (event) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   if (!container) {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const joinButton = container.querySelector("#join-btn");
+  const loadingButton = getElementById(container, "loading-btn");
+  const joinButton = getElementById(container, "join-btn");
   if (!loadingButton || !joinButton) {
     return;
   }
@@ -155,8 +159,8 @@ const handleJoinAfterRequest = (event) => {
   if (ok) {
     document.body.dispatchEvent(new Event("membership-changed"));
   } else {
-    loadingButton.classList.add("hidden");
-    joinButton.classList.remove("hidden");
+    setElementHidden(loadingButton, true);
+    setElementHidden(joinButton, false);
   }
 };
 
@@ -170,13 +174,13 @@ const handleLeaveAfterRequest = (event) => {
     return;
   }
 
-  const container = target.closest(MEMBERSHIP_CONTAINER_SELECTOR);
+  const container = closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR);
   if (!container) {
     return;
   }
 
-  const loadingButton = container.querySelector("#loading-btn");
-  const leaveButton = container.querySelector("#leave-btn");
+  const loadingButton = getElementById(container, "loading-btn");
+  const leaveButton = getElementById(container, "leave-btn");
   if (!loadingButton || !leaveButton) {
     return;
   }
@@ -190,8 +194,8 @@ const handleLeaveAfterRequest = (event) => {
   if (ok) {
     document.body.dispatchEvent(new Event("membership-changed"));
   } else {
-    loadingButton.classList.add("hidden");
-    leaveButton.classList.remove("hidden");
+    setElementHidden(loadingButton, true);
+    setElementHidden(leaveButton, false);
   }
 };
 
@@ -205,7 +209,7 @@ const handleBeforeRequest = (event) => {
     return;
   }
 
-  if (!target.closest(MEMBERSHIP_CONTAINER_SELECTOR)) {
+  if (!closestElement(target, MEMBERSHIP_CONTAINER_SELECTOR)) {
     return;
   }
 
@@ -239,21 +243,22 @@ const handleMembershipClick = (event) => {
     }
   });
 
-  if (!target.closest(MEMBERSHIP_CONTAINER_SELECTOR)) {
+  if (!closestElement(event.target, MEMBERSHIP_CONTAINER_SELECTOR)) {
     return;
   }
 
-  const signinButton = target.closest("#signin-btn");
+  const signinButton = closestElement(event.target, "#signin-btn");
   if (signinButton) {
     const path = signinButton.dataset.path || window.location.pathname;
+    const nextUrl = encodeURIComponent(path);
     showInfoAlert(
-      `You need to be <a href='/log-in?next_url=${path}' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.`,
+      `You need to be <a href='/log-in?next_url=${nextUrl}' class='underline font-medium' hx-boost='true'>logged in</a> to join this group.`,
       true,
     );
     return;
   }
 
-  const leaveButton = target.closest("#leave-btn");
+  const leaveButton = closestElement(event.target, "#leave-btn");
   if (leaveButton) {
     showConfirmAlert("Are you sure you want to leave this group?", "leave-btn", "Yes");
   }
@@ -261,31 +266,18 @@ const handleMembershipClick = (event) => {
 
 /**
  * Initializes membership handlers for the current page.
- * @param {Document|HTMLElement} root - Root node to search
+ * @param {Document|Element} root - Root node to search
  */
 const initializeMembership = (root = document) => {
   getMembershipContainers(root).forEach(initializeMembershipContainer);
 
-  if (document.documentElement.dataset.membershipListenersReady === "true") {
+  if (!markDatasetReady(document.documentElement, "membershipListenersReady")) {
     return;
   }
 
-  document.documentElement.dataset.membershipListenersReady = "true";
   document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
   document.addEventListener("htmx:afterRequest", handleAfterRequest);
   document.addEventListener("click", handleMembershipClick);
 };
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => initializeMembership(document));
-} else {
-  initializeMembership(document);
-}
-
-if (window.htmx && typeof htmx.onLoad === "function") {
-  htmx.onLoad((element) => {
-    if (element) {
-      initializeMembership(element);
-    }
-  });
-}
+initializeOnReadyAndHtmxLoad(initializeMembership);

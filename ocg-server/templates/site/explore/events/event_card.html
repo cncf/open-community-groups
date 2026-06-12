@@ -3,6 +3,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/cards.html" as cards -%}
 
+{# Site Explore Events Event Card -#}
 {% block href -%}
   {{- "/" -}}{{- event.community_name -}}/group/{{- event.public_group_slug() -}}/event/{{- event.slug -}}
 {%- endblock href %}
@@ -65,3 +66,4 @@
 {% block footer -%}
   {{- cards::event_footer(event = event, left_width_classes = "w-[60px] min-w-[60px] md:w-[88px] md:min-w-[88px]") -}}
 {%- endblock footer %}
+{# End site explore events event card -#}

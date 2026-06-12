@@ -193,7 +193,7 @@ export class MultipleInputs extends LitWrapper {
                     class="input-primary w-full"
                     placeholder=${this.placeholder}
                     value=${item.value}
-                    @input=${(e) => this._handleInputChange(item.id, e)}
+                    @input=${(event) => this._handleInputChange(item.id, event)}
                     autocomplete="off"
                     autocorrect="off"
                     autocapitalize="off"

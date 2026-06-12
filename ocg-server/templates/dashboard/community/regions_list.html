@@ -22,10 +22,12 @@
                    {% endif -%}">Add Region</button>
   </div>
 </div>
+{# End regions header -#}
 
 {# Regions table -#}
 <div class="relative overflow-visible mt-5">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
@@ -35,8 +37,10 @@
         </th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="regions-list">
       {% if regions.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200 xl:hidden">
           <td class="px-8 py-12 text-center text-stone-500" colspan="2">
             {% include "dashboard/placeholders/community_regions_table.html" -%}
@@ -47,17 +51,24 @@
             {% include "dashboard/placeholders/community_regions_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for region in regions -%}
           {% let groups_count = region.groups_count.unwrap_or(0) -%}
+          {# Region row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Region -#}
             <td class="px-3 xl:px-5 py-4">
               <div class="font-medium text-stone-900">{{ region.name }}</div>
               <div class="xl:hidden text-xs text-stone-500 mt-1">
                 {{ groups_count }} group{%- if groups_count != 1 -%}s{%- endif -%}
               </div>
             </td>
+            {# End region -#}
+            {# Groups count -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4">{{ groups_count }}</td>
+            {# End groups count -#}
+            {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[112px]">
               <div class="flex items-center justify-end gap-2">
                 <button hx-get="/dashboard/community/regions/{{ region.region_id }}/update"
@@ -75,6 +86,11 @@
                         hx-target="#dashboard-content"
                         hx-indicator="#dashboard-spinner"
                         hx-trigger="confirmed"
+                        data-confirm-action
+                        data-confirm-message="Are you sure you would like to delete this region?"
+                        data-confirm-text="Yes"
+                        data-success-message="You have successfully deleted the region."
+                        data-error-message="Something went wrong deleting this region. Please try again later."
                         class="btn-tertiary p-2
                                {% if groups_count > 0 || !can_manage_taxonomy -%}
                                  opacity-50 cursor-not-allowed
@@ -87,37 +103,14 @@
                         aria-label="Delete region: {{ region.name }}">
                   <div class="svg-icon size-4 icon-trash"></div>
                 </button>
-                <script type="module">
-                  import {
-                    showConfirmAlert,
-                    handleHtmxResponse,
-                  } from '/static/js/common/alerts.js';
-
-                  const deleteButton = document.getElementById('delete-region-{{ region.region_id }}');
-                  if (deleteButton && !deleteButton.disabled) {
-                    deleteButton.addEventListener('click', () => {
-                      showConfirmAlert(
-                        'Are you sure you would like to delete this region?',
-                        'delete-region-{{ region.region_id }}',
-                        'Yes',
-                      );
-                    });
-
-                    deleteButton.addEventListener('htmx:afterRequest', (e) => {
-                      const xhr = e.detail?.xhr;
-                      handleHtmxResponse({
-                        xhr,
-                        successMessage: 'You have successfully deleted the region.',
-                        errorMessage: 'Something went wrong deleting this region. Please try again later.'
-                      });
-                    });
-                  }
-                </script>
               </div>
             </td>
+            {# End actions -#}
           </tr>
+          {# End region row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
   </table>
 </div>
+{# End regions table -#}

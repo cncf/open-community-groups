@@ -9,6 +9,7 @@ import {
   isDashboardPath,
   isElementInView,
 } from "/static/js/common/common.js";
+import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------
@@ -16,7 +17,7 @@ import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js
 // -----------------------------------------------------------------------------
 
 const FIELD_SELECTOR =
-  'input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]), textarea';
+  'input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
 const GROUP_PRETTY_SLUG_PATTERN = /^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/;
 const GROUP_PRETTY_SLUG_MESSAGE =
   "Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number.";
@@ -36,7 +37,7 @@ const isPasswordField = (field) => field instanceof HTMLInputElement && field.ty
 /**
  * Normalizes a non-required field by trimming whitespace.
  * Skips password fields to preserve intentional spaces.
- * @param {HTMLInputElement|HTMLTextAreaElement} field - The form field
+ * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} field - The form field
  */
 const normalizeField = (field) => {
   if (isPasswordField(field)) return;
@@ -78,7 +79,7 @@ const getVisibleScrollTarget = (field) => {
  */
 const getStickyHeaderOffset = () => {
   const header =
-    document.querySelector('nav[role="banner"]') || document.querySelector("#header")?.closest("nav");
+    document.querySelector('nav[role="banner"]') || getElementById(document, "header")?.closest("nav");
 
   if (!header) {
     return 0;
@@ -184,17 +185,19 @@ const handleInvalidEvent = (event) => {
 /**
  * Validates a required field is not empty or whitespace-only.
  * Also trims non-password fields on success.
- * @param {HTMLInputElement|HTMLTextAreaElement} field - The form field
+ * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} field - The form field
  * @returns {boolean} True if valid
  */
 const validateRequiredField = (field) => {
   field.setCustomValidity("");
 
-  const error = trimmedNonEmpty(field.value);
-  if (error) {
-    field.setCustomValidity(error);
-    field.reportValidity();
-    return false;
+  if (!(field instanceof HTMLSelectElement)) {
+    const error = trimmedNonEmpty(field.value);
+    if (error) {
+      field.setCustomValidity(error);
+      field.reportValidity();
+      return false;
+    }
   }
 
   if (!isPasswordField(field)) {
@@ -268,9 +271,11 @@ const wireRequiredInputs = (form) => {
 
   fields.forEach((field) => {
     if (!field.required) return;
-    field.addEventListener("input", () => {
+    const clearValidity = () => {
       field.setCustomValidity("");
-    });
+    };
+    field.addEventListener("input", clearValidity);
+    field.addEventListener("change", clearValidity);
   });
 };
 
@@ -713,8 +718,7 @@ const validateIncludedForms = (elt) => {
  * @param {HTMLFormElement} form - The form element
  */
 const wireForm = (form) => {
-  if (form.dataset.trimmedReady === "true") return;
-  form.dataset.trimmedReady = "true";
+  if (!markDatasetReady(form, "trimmedReady")) return;
 
   wirePasswordInputs(form);
   wireRequiredInputs(form);
@@ -759,28 +763,40 @@ const handleConfigRequest = (event) => {
 // Initialization
 // -----------------------------------------------------------------------------
 
-/**
- * Initializes form validation on all matching forms.
- */
-const init = () => {
-  document.querySelectorAll("form").forEach(wireForm);
+let globalValidationListenersBound = false;
 
-  if (window.htmx && typeof htmx.onLoad === "function") {
-    htmx.onLoad((elt) => {
-      if (!elt) return;
-      if (elt instanceof HTMLFormElement) {
-        wireForm(elt);
-      }
-      elt.querySelectorAll?.("form").forEach(wireForm);
-    });
+/**
+ * Wires form validation for forms in the current root.
+ * @param {Document|Element} root - Root element to search from.
+ */
+const wireFormsInRoot = (root = document) => {
+  if (root instanceof HTMLFormElement) {
+    wireForm(root);
   }
 
+  root.querySelectorAll?.("form").forEach(wireForm);
+};
+
+/**
+ * Binds global validation event handlers once.
+ */
+const bindGlobalValidationListeners = () => {
+  if (globalValidationListenersBound) {
+    return;
+  }
+
+  globalValidationListenersBound = true;
   document.body?.addEventListener("htmx:configRequest", handleConfigRequest);
   document.addEventListener("invalid", handleInvalidEvent, true);
 };
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
+/**
+ * Initializes form validation on all matching forms.
+ * @param {Document|Element} root - Root element to search from.
+ */
+const init = (root = document) => {
+  wireFormsInRoot(root);
+  bindGlobalValidationListeners();
+};
+
+initializeOnReadyAndHtmxLoad(init);

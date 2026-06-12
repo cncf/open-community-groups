@@ -28,6 +28,39 @@ describe("form validation helpers", () => {
     expect(parseLocalDate("invalid")).to.equal(null);
   });
 
+  it("reports required selects in included HTMX forms", () => {
+    document.body.innerHTML = `
+      <form id="select-form">
+        <select id="category_id" name="category_id" required>
+          <option value="">Select a category</option>
+          <option value="general">General</option>
+        </select>
+      </form>
+      <button id="save-button" hx-include="#select-form"></button>
+    `;
+
+    const select = document.getElementById("category_id");
+    const saveButton = document.getElementById("save-button");
+    let reportCalls = 0;
+    select.reportValidity = () => {
+      reportCalls += 1;
+      return false;
+    };
+
+    const requestEvent = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        elt: saveButton,
+      },
+    });
+
+    saveButton.dispatchEvent(requestEvent);
+
+    expect(requestEvent.defaultPrevented).to.equal(true);
+    expect(reportCalls).to.equal(1);
+  });
+
   it("validates optional group pretty slugs before submit", () => {
     // Create a slug input with the generated slug metadata.
     const input = document.createElement("input");

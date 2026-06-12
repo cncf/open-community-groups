@@ -101,6 +101,45 @@ describe("dashboard user submissions", () => {
     ).to.equal(false);
   });
 
+  it("opens the action required modal when swapped triggers and modal are siblings", () => {
+    // Render the sibling roots produced by user dashboard submissions swaps.
+    document.body.innerHTML = `
+      <div id="submissions-list">
+        <button
+          type="button"
+          data-action="open-action-required-modal"
+          data-action-required-message="Please update the outline before resubmitting."
+        >
+          Open
+        </button>
+      </div>
+      <div id="action-required-modal" class="hidden"></div>
+      <div id="action-required-modal-message"></div>
+      <button id="close-action-required-modal" type="button">Close</button>
+      <button id="cancel-action-required-modal" type="button">Cancel</button>
+      <div id="overlay-action-required-modal"></div>
+    `;
+
+    // Initialize each top-level swapped child independently.
+    dispatchHtmxLoad(document.getElementById("submissions-list"));
+    dispatchHtmxLoad(document.getElementById("action-required-modal"));
+
+    // Open the modal from the trigger sibling.
+    document
+      .querySelector('[data-action="open-action-required-modal"]')
+      ?.click();
+
+    // The document-level modal fallback keeps sibling triggers working.
+    expect(
+      document.getElementById("action-required-modal-message")?.textContent,
+    ).to.equal("Please update the outline before resubmitting.");
+    expect(
+      document
+        .getElementById("action-required-modal")
+        ?.classList.contains("hidden"),
+    ).to.equal(false);
+  });
+
   it("opens a confirmation dialog for withdraw actions and handles request errors", async () => {
     // Render the DOM fixture for opening a confirmation dialog for withdraw actions.
     document.body.innerHTML = `

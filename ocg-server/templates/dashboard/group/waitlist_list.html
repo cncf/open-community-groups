@@ -2,23 +2,28 @@
 {% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
+{# Waitlist refresh trigger -#}
 <div id="waitlist-refresh"
      hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
      hx-trigger="refresh-event-waitlist from:body"
      hx-target="#waitlist-content"
      hx-swap="innerHTML"></div>
+{# End waitlist refresh trigger -#}
 
+{# Header -#}
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
     {{ pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry") }}
   </div>
 </div>
+{# End header -#}
 
 {# Waitlist table -#}
 <div class="relative overflow-visible pb-12">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Waitlist entries">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
@@ -27,8 +32,10 @@
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Joined</th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="waitlist-list" role="rowgroup">
       {% if waitlist.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center" colspan="2">
             {% if event.waitlist_enabled -%}
@@ -45,15 +52,16 @@
             {% endif -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for entry in waitlist -%}
+          {# Waitlist row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Entry -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
                 <logo-image
-                {% if let Some(photo_url) = &entry.photo_url -%}
-                  image-url="{{ photo_url }}"
-                {% endif -%}
+                {% if let Some(photo_url) = &entry.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(entry.name.as_deref() , entry.username.as_str()) }}">
                 </logo-image>
                 <div class="min-w-0">
@@ -64,11 +72,17 @@
                 </div>
               </div>
             </td>
+            {# End entry -#}
+            {# Position -#}
             <td class="px-3 xl:px-5 py-4">{{ refresh_offset + loop.index }}</td>
+            {# End position -#}
+            {# Joined date -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {{ entry.created_at.format("%b %d, %Y") }}
             </td>
+            {# End joined date -#}
           </tr>
+          {# End waitlist row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>

@@ -1,5 +1,8 @@
-import { resolveEventTimezone, unlockBodyScroll } from "/static/js/common/common.js";
+import { resolveEventTimezone } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { bindModalDismissListeners, closeModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import {
   resolveCurrencyInputPlaceholder,
   resolveCurrencyInputStep,
@@ -37,7 +40,8 @@ export class TicketingEditorBase extends LitWrapper {
 
     this._boundHandleExternalAddClick = this._handleExternalAddClick.bind(this);
     this._boundHandleDependencyChange = this._handleDependencyChange.bind(this);
-    this._boundHandleKeydown = this._handleKeydown.bind(this);
+    this._handleKeydown = this._handleKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   /**
@@ -45,7 +49,10 @@ export class TicketingEditorBase extends LitWrapper {
    */
   connectedCallback() {
     super.connectedCallback();
-    this._resolveDocument().addEventListener("keydown", this._boundHandleKeydown);
+    this._removeDismissListeners = bindModalDismissListeners({
+      onKeydown: this._handleKeydown,
+      target: this._resolveDocument(),
+    });
     this.configure();
   }
 
@@ -66,14 +73,13 @@ export class TicketingEditorBase extends LitWrapper {
    * Removes shared listeners and restores body scrolling when detached.
    */
   disconnectedCallback() {
-    this._resolveDocument().removeEventListener("keydown", this._boundHandleKeydown);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
     this._setAddButton(null);
     this._setCurrencyInput(null);
     this._setTimezoneInput(null);
 
-    if (this._isModalOpen) {
-      unlockBodyScroll();
-    }
+    this._isModalOpen = closeModalBodyScroll(this._isModalOpen);
 
     super.disconnectedCallback?.();
   }
@@ -114,7 +120,7 @@ export class TicketingEditorBase extends LitWrapper {
    * @returns {HTMLElement|null}
    */
   _resolveAddButton() {
-    return this._resolveDocument().getElementById(this._addButtonId);
+    return getElementById(this._resolveDocument(), this._addButtonId);
   }
 
   /**
@@ -122,7 +128,7 @@ export class TicketingEditorBase extends LitWrapper {
    * @returns {HTMLInputElement|HTMLSelectElement|null}
    */
   _resolveCurrencyInput() {
-    return this._resolveDocument().getElementById("payment_currency_code");
+    return getElementById(this._resolveDocument(), "payment_currency_code");
   }
 
   /**
@@ -220,7 +226,7 @@ export class TicketingEditorBase extends LitWrapper {
    * @returns {void}
    */
   _handleKeydown(event) {
-    if (event.key === "Escape" && this._isModalOpen) {
+    if (isEscapeEvent(event) && this._isModalOpen) {
       this._closeEditorModal();
     }
   }

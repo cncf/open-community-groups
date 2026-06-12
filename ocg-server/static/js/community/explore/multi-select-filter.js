@@ -1,4 +1,5 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { ComboboxController } from "/static/js/common/combobox.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { triggerChangeOnForm } from "/static/js/community/explore/filters.js";
 
@@ -14,9 +15,6 @@ export class MultiSelectFilter extends LitWrapper {
     options: { type: Array },
     selected: { type: Array },
     placeholder: { type: String },
-    _isOpen: { state: true },
-    _query: { state: true },
-    _activeIndex: { state: true },
   };
 
   constructor() {
@@ -26,11 +24,16 @@ export class MultiSelectFilter extends LitWrapper {
     this.options = [];
     this.selected = [];
     this.placeholder = "Type to search";
-    this._isOpen = false;
-    this._query = "";
-    this._activeIndex = null;
-    this._documentClickHandler = null;
-    this._keydownHandler = null;
+    this._combobox = new ComboboxController(this, {
+      getItemCount: () => this._filteredOptions.length,
+      canOpen: () => this.options.length > 0,
+      onSelect: (index) => {
+        const opt = this._filteredOptions[index];
+        if (opt) {
+          this._toggleOption(opt.value);
+        }
+      },
+    });
   }
 
   /**
@@ -39,23 +42,12 @@ export class MultiSelectFilter extends LitWrapper {
    */
   cleanSelected() {
     this.selected = [];
-    this._query = "";
+    this._combobox.setQuery("");
   }
 
   connectedCallback() {
     super.connectedCallback();
     this._prepareSelected();
-    this._keydownHandler = this._handleKeydown.bind(this);
-    this.addEventListener("keydown", this._keydownHandler);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    this._removeDocumentListener();
-    if (this._keydownHandler) {
-      this.removeEventListener("keydown", this._keydownHandler);
-      this._keydownHandler = null;
-    }
   }
 
   /**
@@ -94,7 +86,7 @@ export class MultiSelectFilter extends LitWrapper {
    * @returns {Array} Filtered options
    */
   get _filteredOptions() {
-    const normalized = (this._query || "").trim().toLowerCase();
+    const normalized = (this._combobox.query || "").trim().toLowerCase();
     if (!normalized) {
       return this.options;
     }
@@ -115,9 +107,8 @@ export class MultiSelectFilter extends LitWrapper {
    * @private
    */
   _handleSearchInput(event) {
-    const value = event.target.value || "";
-    this._query = value;
-    this._activeIndex = null;
+    this._combobox.setQuery(event.target.value || "");
+    this._combobox.setActiveIndex(null);
   }
 
   /**
@@ -125,8 +116,8 @@ export class MultiSelectFilter extends LitWrapper {
    * @private
    */
   _clearQuery() {
-    this._query = "";
-    this._activeIndex = null;
+    this._combobox.setQuery("");
+    this._combobox.setActiveIndex(null);
   }
 
   /**
@@ -180,119 +171,11 @@ export class MultiSelectFilter extends LitWrapper {
   }
 
   /**
-   * Opens the dropdown.
-   * @private
-   */
-  _openDropdown() {
-    if (this.options.length === 0) {
-      return;
-    }
-    this._isOpen = true;
-    this._activeIndex = null;
-    this._addDocumentListener();
-  }
-
-  /**
-   * Closes the dropdown.
-   * @private
-   */
-  _closeDropdown() {
-    this._isOpen = false;
-    this._activeIndex = null;
-    this._removeDocumentListener();
-  }
-
-  /**
    * Handles focus on the input.
    * @private
    */
   _handleFocus() {
-    this._openDropdown();
-  }
-
-  /**
-   * Registers a click listener on document to detect outside clicks.
-   * @private
-   */
-  _addDocumentListener() {
-    if (this._documentClickHandler) {
-      return;
-    }
-    this._documentClickHandler = (event) => {
-      const path = event.composedPath();
-      if (!path.includes(this)) {
-        this._closeDropdown();
-      }
-    };
-    document.addEventListener("click", this._documentClickHandler);
-  }
-
-  /**
-   * Removes the outside click listener.
-   * @private
-   */
-  _removeDocumentListener() {
-    if (!this._documentClickHandler) {
-      return;
-    }
-    document.removeEventListener("click", this._documentClickHandler);
-    this._documentClickHandler = null;
-  }
-
-  /**
-   * Handles keyboard navigation.
-   * @param {KeyboardEvent} event - Keyboard event
-   * @private
-   */
-  _handleKeydown(event) {
-    if (event.defaultPrevented) {
-      return;
-    }
-
-    if (!this._isOpen) {
-      return;
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      this._closeDropdown();
-      return;
-    }
-
-    if (this._filteredOptions.length === 0) {
-      return;
-    }
-
-    switch (event.key) {
-      case "ArrowDown":
-        event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex = (this._activeIndex + 1) % this._filteredOptions.length;
-        }
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        if (this._activeIndex === null) {
-          this._activeIndex = 0;
-        } else {
-          this._activeIndex =
-            (this._activeIndex - 1 + this._filteredOptions.length) % this._filteredOptions.length;
-        }
-        break;
-      case "Enter":
-        event.preventDefault();
-        if (this._activeIndex !== null) {
-          const opt = this._filteredOptions[this._activeIndex];
-          if (opt) {
-            this._toggleOption(opt.value);
-          }
-        }
-        break;
-      default:
-        break;
-    }
+    this._combobox.open();
   }
 
   render() {
@@ -312,12 +195,12 @@ export class MultiSelectFilter extends LitWrapper {
               class="flex-1 text-base md:text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0"
               placeholder="${this.placeholder}"
               autocomplete="off"
-              .value=${this._query}
-              @input=${(e) => this._handleSearchInput(e)}
+              .value=${this._combobox.query}
+              @input=${(event) => this._handleSearchInput(event)}
               @change=${(event) => event.stopPropagation()}
               @focus=${() => this._handleFocus()}
             />
-            ${this._query
+            ${this._combobox.query
               ? html`
                   <button
                     type="button"
@@ -330,7 +213,7 @@ export class MultiSelectFilter extends LitWrapper {
               : ""}
           </div>
 
-          ${this._isOpen
+          ${this._combobox.isOpen
             ? html`
                 <div
                   class="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 max-h-48 overflow-y-auto"
@@ -343,7 +226,7 @@ export class MultiSelectFilter extends LitWrapper {
                             (opt) => opt.value,
                             (opt, index) => {
                               const isSelected = this.selected.includes(opt.value);
-                              const isActive = this._activeIndex === index;
+                              const isActive = this._combobox.activeIndex === index;
 
                               return html`
                                 <li role="presentation">
@@ -357,7 +240,7 @@ export class MultiSelectFilter extends LitWrapper {
                                     @click=${() => {
                                       this._toggleOption(opt.value);
                                     }}
-                                    @mouseover=${() => (this._activeIndex = index)}
+                                    @mouseover=${() => this._combobox.setActiveIndex(index)}
                                   >
                                     <span class="shrink-0 w-4 h-4 flex items-center justify-center">
                                       ${isSelected
@@ -392,7 +275,7 @@ export class MultiSelectFilter extends LitWrapper {
                       <button
                         type="button"
                         class="text-stone-400 hover:text-stone-700"
-                        @click=${(e) => this._removeOption(opt.value, e)}
+                        @click=${(event) => this._removeOption(opt.value, event)}
                       >
                         <div class="svg-icon size-3.5 icon-close bg-current shrink-0"></div>
                       </button>

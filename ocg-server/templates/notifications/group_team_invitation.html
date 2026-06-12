@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Group Team Invitation Notification -#}
 {% block subject -%}
   You have been invited to join the {{ group.name }} team
 {% endblock subject -%}
@@ -28,3 +29,4 @@
   {{ group.community_display_name }} community. If you did not expect this
   invitation, you can ignore this message.
 {% endblock footer -%}
+{# End group team invitation notification -#}

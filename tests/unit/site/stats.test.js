@@ -1,6 +1,9 @@
 import { expect } from "@open-wc/testing";
 
-import { initSiteStatsCharts } from "/static/js/site/stats.js";
+import {
+  initializeSiteStatsFromPage,
+  initSiteStatsCharts,
+} from "/static/js/site/stats.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
 
 describe("site stats", () => {
@@ -161,5 +164,86 @@ describe("site stats", () => {
     // Verify renders charts for each stats section and registers resize handling.
     expect(resizeCalls).to.include("groups-running-chart");
     expect(resizeCalls).to.include("attendees-monthly-chart");
+  });
+
+  it("initializes charts from the page payload only once", async () => {
+    // Prepare the declarative stats payload used by the page template.
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.siteStats = "";
+    marker.textContent = JSON.stringify({
+      groups: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      members: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      events: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      attendees: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+    });
+    document.body.append(marker);
+
+    // Run the page initializer twice to verify duplicate renders are guarded.
+    await initializeSiteStatsFromPage(marker);
+    await initializeSiteStatsFromPage();
+
+    // Verify the page payload renders the same chart set once.
+    expect(initCalls).to.have.length(8);
+  });
+
+  it("reinitializes restored page payloads on history restore", async () => {
+    // Prepare a stats payload restored from a cached history snapshot.
+    const marker = document.createElement("script");
+    marker.type = "application/json";
+    marker.dataset.siteStats = "";
+    marker.dataset.siteStatsReady = "true";
+    marker.textContent = JSON.stringify({
+      groups: {
+        running_total: [
+          [1, 1],
+          [2, 2],
+        ],
+        per_month: [["2025-01", 1]],
+      },
+      members: {
+        running_total: [],
+        per_month: [],
+      },
+      events: {
+        running_total: [],
+        per_month: [],
+      },
+      attendees: {
+        running_total: [],
+        per_month: [],
+      },
+    });
+    document.body.append(marker);
+
+    // Force rehydration for cached history restores.
+    await initializeSiteStatsFromPage(document, { historyRestore: true });
+
+    // The restored ready marker still renders its available chart data.
+    expect(initCalls.map(({ element }) => element.id)).to.include("groups-running-chart");
   });
 });

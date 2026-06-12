@@ -1,5 +1,6 @@
 {% extends "notifications/base.html" -%}
 
+{# Speaker Series Welcome Notification -#}
 {% block subject -%}
   {% if event_count == 1 -%}
     You're speaking at an upcoming event
@@ -83,3 +84,4 @@
   {% endif -%}
   If this wasn't you, you can ignore this message.
 {% endblock footer -%}
+{# End speaker series welcome notification -#}

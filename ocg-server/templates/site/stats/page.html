@@ -87,12 +87,7 @@
 
 {% block scripts -%}
   {# djlint:off #}
-  <script type="module">
-    import { initSiteStatsCharts } from '/static/js/site/stats.js';
-
-    const stats = {{ stats | json | safe }};
-    initSiteStatsCharts(stats)
-      .catch((error) => console.error('Failed to initialize site stats charts:', error));
-</script>
+  <script type="application/json" data-site-stats>{{ stats | json | safe }}</script>
   {# djlint:on #}
+  <script type="module" src="/static/js/site/stats.js"></script>
 {% endblock scripts -%}

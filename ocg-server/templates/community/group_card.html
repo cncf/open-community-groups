@@ -2,6 +2,7 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/cards.html" as cards -%}
 
+{# Community Group Card -#}
 {% block href -%}
   {{- "/" -}}{{- group.community_name -}}/group/{{- group.public_slug() -}}
 {%- endblock href %}
@@ -27,3 +28,4 @@
 {% block footer -%}
   {{- cards::group_footer(group = group, location_max_len = 32, left_width_classes = "w-[60px] min-w-[60px]") -}}
 {%- endblock footer %}
+{# End community group card -#}

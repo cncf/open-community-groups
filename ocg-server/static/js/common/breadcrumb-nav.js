@@ -1,5 +1,7 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
  * BreadcrumbNav - Responsive breadcrumb navigation component with optional banner.
@@ -48,13 +50,7 @@ export class BreadcrumbNav extends LitWrapper {
   connectedCallback() {
     super.connectedCallback();
 
-    if (typeof this.items === "string") {
-      try {
-        this.items = JSON.parse(this.items);
-      } catch (_) {
-        this.items = [];
-      }
-    }
+    this.items = parseJsonAttribute(this.items, []);
 
     document.addEventListener("click", this._handleDocumentClick);
     document.addEventListener("keydown", this._handleKeydown);
@@ -67,12 +63,8 @@ export class BreadcrumbNav extends LitWrapper {
   }
 
   willUpdate(changedProperties) {
-    if (changedProperties.has("items") && typeof this.items === "string") {
-      try {
-        this.items = JSON.parse(this.items);
-      } catch (_) {
-        this.items = [];
-      }
+    if (changedProperties.has("items")) {
+      this.items = parseJsonAttribute(this.items, []);
     }
   }
 
@@ -97,7 +89,7 @@ export class BreadcrumbNav extends LitWrapper {
   }
 
   _handleKeydown(event) {
-    if (event.key === "Escape" && this._isOpen) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this._isOpen = false;
       const trigger = this.querySelector("[data-breadcrumb-trigger]");
       if (trigger) {
@@ -119,6 +111,12 @@ export class BreadcrumbNav extends LitWrapper {
     return this.items.find((item) => item.current) || this.items[this.items.length - 1];
   }
 
+  /**
+   * Renders one mobile dropdown row, preserving links only for navigable items.
+   * @param {object} item - Breadcrumb item to render
+   * @returns {TemplateResult} Dropdown row template
+   * @private
+   */
   _renderMobileDropdownItem(item) {
     const isCurrent = item.current;
 
@@ -160,6 +158,13 @@ export class BreadcrumbNav extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders one desktop breadcrumb item with its leading separator.
+   * @param {object} item - Breadcrumb item to render
+   * @param {number} index - Item position in the breadcrumb trail
+   * @returns {TemplateResult} Desktop breadcrumb item template
+   * @private
+   */
   _renderDesktopItem(item, index) {
     const isHome = item.icon === "home";
     const isLast = index === this.items.length - 1;

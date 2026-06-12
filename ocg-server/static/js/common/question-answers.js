@@ -1,11 +1,22 @@
 const DEFAULT_FREE_TEXT_MESSAGE = "Answer this question.";
 const DEFAULT_MULTI_SELECT_MESSAGE = "Select at least one option.";
 
+/**
+ * Checks whether a DOM node can hold a questionnaire answer value.
+ * @param {Element|null} control Potential answer control.
+ * @returns {boolean} Whether the node is a supported answer control.
+ */
 const isAnswerControl = (control) =>
   control instanceof HTMLInputElement ||
   control instanceof HTMLTextAreaElement ||
   control instanceof HTMLSelectElement;
 
+/**
+ * Clears custom validity from every answer control in a form.
+ * @param {HTMLFormElement} form Questions form.
+ * @param {string} answerSelector Selector for answer controls.
+ * @returns {void}
+ */
 const clearQuestionValidity = (form, answerSelector) => {
   form.querySelectorAll(answerSelector).forEach((control) => {
     if (isAnswerControl(control)) {
@@ -14,6 +25,13 @@ const clearQuestionValidity = (form, answerSelector) => {
   });
 };
 
+/**
+ * Sets custom validity on the first answer control inside a question fieldset.
+ * @param {HTMLFieldSetElement} fieldset Question fieldset.
+ * @param {string} answerSelector Selector for answer controls.
+ * @param {string} message Custom validity message.
+ * @returns {void}
+ */
 const setQuestionValidity = (fieldset, answerSelector, message) => {
   const control = fieldset.querySelector(answerSelector);
   if (isAnswerControl(control)) {

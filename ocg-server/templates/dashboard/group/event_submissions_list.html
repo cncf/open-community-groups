@@ -2,15 +2,21 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/pagination.html" as pagination -%}
 
+{# Dashboard Group Event Submissions List -#}
+{# Header -#}
 {{ dashboard::page_title(title = "Submissions", docs_href = "/docs#/guides/event-operations?id=submissions",
 description = "Review and manage call for speakers submissions.") -}}
+{# End header -#}
 
+{# Refresh trigger -#}
 <div id="submissions-refresh"
      hx-get="{{ refresh_url }}"
      hx-trigger="refresh-event-submissions from:#event-update-page"
      hx-target="#submissions-content"
      hx-swap="innerHTML"></div>
+{# End refresh trigger -#}
 
+{# Filters form -#}
 <div class="mt-6">
   <form id="submissions-filters-form"
         class="w-full"
@@ -52,29 +58,13 @@ description = "Review and manage call for speakers submissions.") -}}
     </div>
   </form>
 </div>
-<script type="module">
-  const submissionsFiltersForm = document.getElementById("submissions-filters-form");
-  const submissionsSort = document.getElementById("submissions-sort");
-  const submissionsLabelFilter = document.getElementById("submissions-label-filter");
-  const submitFilters = () => {
-    if (!submissionsFiltersForm) {
-      return;
-    }
-    window.requestAnimationFrame(() => submissionsFiltersForm.requestSubmit());
-  };
+{# End filters form -#}
 
-  if (submissionsFiltersForm && submissionsSort) {
-    submissionsSort.addEventListener("change", () => submitFilters());
-  }
-
-  if (submissionsFiltersForm && submissionsLabelFilter) {
-    submissionsLabelFilter.addEventListener("change", () => submitFilters());
-  }
-</script>
-
+{# Submissions table -#}
 <div class="mt-10">
   <div class="relative overflow-visible">
     <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
+      {# Table columns -#}
       <colgroup>
         <col class="xl:w-[250px]" />
         <col />
@@ -83,6 +73,8 @@ description = "Review and manage call for speakers submissions.") -}}
         <col class="hidden 2xl:table-column w-[110px]" />
         <col class="w-[72px]" />
       </colgroup>
+      {# End table columns -#}
+      {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Speaker</th>
@@ -95,8 +87,10 @@ description = "Review and manage call for speakers submissions.") -}}
           </th>
         </tr>
       </thead>
+      {# End table header -#}
       <tbody>
         {% if submissions.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             <td class="xl:hidden px-8 py-16 text-center" colspan="4">
               {% include "dashboard/placeholders/group_event_submissions_table.html" -%}
@@ -107,15 +101,16 @@ description = "Review and manage call for speakers submissions.") -}}
               {% include "dashboard/placeholders/group_event_submissions_table.html" -%}
             </td>
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for submission in submissions -%}
+            {# Submission row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              {# Speaker -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center space-x-3">
                   <logo-image
-                  {% if let Some(photo_url) = &submission.speaker.photo_url -%}
-                    image-url="{{ photo_url }}"
-                  {% endif -%}
+                  {% if let Some(photo_url) = &submission.speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
                   size="size-8" placeholder="{{ self::user_initials(submission.speaker.name.as_deref() , submission.speaker.username.as_str()) }}">
                   </logo-image>
                   <div class="font-medium text-stone-900 truncate">
@@ -123,6 +118,8 @@ description = "Review and manage call for speakers submissions.") -}}
                   </div>
                 </div>
               </td>
+              {# End speaker -#}
+              {# Proposal -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="font-medium text-stone-900 line-clamp-2 xl:line-clamp-1">
                   {{ submission.session_proposal.title }}
@@ -135,9 +132,13 @@ description = "Review and manage call for speakers submissions.") -}}
                   </div>
                 {% endif -%}
               </td>
+              {# End proposal -#}
+              {# Status -#}
               <td class="px-3 xl:px-5 py-4">
                 {{ badges::submission_status_badge(status_id = submission.status_id, label = submission.status_name, extra_styles = Some("px-2.5 py-0.5 uppercase") ) -}}
               </td>
+              {# End status -#}
+              {# Ratings -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {% if let Some(average_rating) = submission.average_rating -%}
                   <div class="inline-flex items-center gap-2 text-stone-700">
@@ -158,9 +159,13 @@ description = "Review and manage call for speakers submissions.") -}}
                   {% endif -%}
                 </div>
               </td>
+              {# End ratings -#}
+              {# Submitted date -#}
               <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
                 {{ submission.created_at.format("%b %d, %Y") }}
               </td>
+              {# End submitted date -#}
+              {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
                 <button type="button"
                         class="btn-tertiary p-2
@@ -185,14 +190,20 @@ description = "Review and manage call for speakers submissions.") -}}
                   <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
                 </button>
               </td>
+              {# End actions -#}
             </tr>
+            {# End submission row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
     </table>
   </div>
 </div>
+{# End submissions table -#}
 
 {% if total > submissions.len() -%}
+  {# Pagination -#}
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#submissions-content", hx_indicator = "#dashboard-spinner") }}
+  {# End pagination -#}
 {% endif -%}
+{# End dashboard group event submissions list -#}

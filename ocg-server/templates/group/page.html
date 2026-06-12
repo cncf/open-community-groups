@@ -33,24 +33,21 @@
 
 {% block scripts -%}
   <script type="module" src="/static/js/common/breadcrumb-nav.js"></script>
-  <script type="module" src="/static/js/common/images-gallery.js"></script>
-  <script type="module">
-    import {
-      trackPageView
-    } from "/static/js/common/page-views.js";
-
-    trackPageView({
-      entityId: "{{ group.group_id }}",
-      entityType: "group"
-    });
-  </script>
-  <script type="module" src="/static/js/common/people-list.js"></script>
-  <script type="module" src="/static/js/common/user-chip.js"></script>
-  <script type="module" src="/static/js/common/user-info-modal.js"></script>
-  <script type="module" src="/static/js/common/share-modal.js"></script>
+  <script type="module" src="/static/js/common/modals/images-gallery.js"></script>
+  <script type="module" src="/static/js/common/charts/page-views.js"></script>
+  <script type="module" src="/static/js/common/modals/map-modal.js"></script>
+  <script type="module" src="/static/js/common/users/people-list.js"></script>
+  <script type="module" src="/static/js/common/users/user-chip.js"></script>
+  <script type="module" src="/static/js/common/modals/user-info-modal.js"></script>
+  <script type="module" src="/static/js/common/modals/share-modal.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
+  <span data-page-view
+        data-entity-id="{{ group.group_id }}"
+        data-entity-type="group"
+        hidden></span>
+
   {% let has_social_links = group.website_url.is_some() || group.bluesky_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
 
   {# Breadcrumb -#}
@@ -60,9 +57,9 @@
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
     <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full">
       <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
-        {# Group header with name and region -#}
+        {# Group header -#}
         <div>
-          {# Main flex container for logo, name/region, and social networks -#}
+          {# Main flex container -#}
           <div class="grid gap-x-6 gap-y-4 md:gap-y-0 md:grid-cols-[auto_minmax(0,1fr)_auto]">
             {# Group logo -#}
             <div class="relative hidden md:row-span-2 md:block">
@@ -83,7 +80,7 @@
                   </span>
                   {# End region/category legend -#}
 
-                  {# Group name: use smaller font size for long titles (>68 chars) -#}
+                  {# Group name -#}
                   {% if group.name.len() > 68 -%}
                     <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ group.name|demoji }}
@@ -120,7 +117,7 @@
               </div>
               {# End members count and founded date -#}
 
-              {# Social networks (mobile only) -#}
+              {# Social networks (mobile) -#}
               {% if has_social_links -%}
                 <div class="md:hidden mt-4 md:mb-0">
                   <div class="flex flex-wrap gap-2">{% include "group/social_networks.html" -%}</div>
@@ -236,8 +233,9 @@
               </div>
             </div>
           </div>
+          {# End next event section -#}
 
-          {# Location and event section -#}
+          {# Location and map section -#}
           <div class="border border-stone-200 rounded-lg flex flex-col bg-white">
             {# Location details -#}
             <div class="flex flex-col p-4 h-full">
@@ -297,7 +295,7 @@
       {% endif -%}
       {# End group description -#}
 
-      {# Tags if available -#}
+      {# Tags -#}
       {% if let Some(tags) = &group.tags -%}
         {% if !tags.is_empty() -%}
           <div>
@@ -384,7 +382,7 @@
       {% endif -%}
       {# End past events section -#}
 
-      {# Organizers section - Full width -#}
+      {# Organizers section -#}
       {% if !group.organizers.is_empty() -%}
         <div>
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
@@ -437,4 +435,5 @@
 
 {# User info modal -#}
 <user-info-modal></user-info-modal>
+{# End user info modal -#}
 {% endblock content -%}

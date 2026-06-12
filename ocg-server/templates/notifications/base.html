@@ -1,3 +1,4 @@
+{# Notification base -#}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -13,6 +14,7 @@
     <meta name="color-scheme" content="light dark">
     <meta name="supported-color-schemes" content="light dark">
 
+    {# Email styles -#}
     <style type="text/css">
     :root {
       color-scheme: light dark;
@@ -221,6 +223,7 @@
       }
     }
     </style>
+    {# End email styles -#}
   </head>
   {# djlint:off H021 #}
   <body class="body"
@@ -234,6 +237,7 @@
                padding: 0;
                -ms-text-size-adjust: 100%;
                -webkit-text-size-adjust: 100%">
+    {# Email body table -#}
     <table border="0"
            cellpadding="0"
            cellspacing="0"
@@ -256,6 +260,7 @@
                    padding: 10px;
                    width: 580px">
           {# djlint:off H021 #}
+          {# Centered container -#}
           <div class="content"
                style="box-sizing: border-box;
                       display: block;
@@ -263,6 +268,7 @@
                       max-width: 580px;
                       padding: 10px">
             <!-- START CENTERED WHITE CONTAINER -->
+            {# Preheader -#}
             <span class="preheader"
                   style="color: transparent;
                          display: none;
@@ -277,6 +283,8 @@
               {% block preheader -%}
               {% endblock preheader -%}
             </span>
+            {# End preheader -#}
+            {# Message card -#}
             <table class="main line"
                    style="border-collapse: separate;
                           mso-table-lspace: 0pt;
@@ -294,6 +302,7 @@
                            vertical-align: top;
                            box-sizing: border-box;
                            padding: 20px">
+                  {# Message content -#}
                   <table border="0"
                          cellpadding="0"
                          cellspacing="0"
@@ -311,13 +320,16 @@
                       </td>
                     </tr>
                   </table>
+                  {# End message content -#}
                 </td>
               </tr>
 
               <!-- END MAIN CONTENT AREA -->
             </table>
+            {# End message card -#}
 
             <!-- START FOOTER -->
+            {# Footer -#}
             <div class="footer"
                  style="clear: both;
                         Margin-top: 10px;
@@ -354,15 +366,19 @@
                 </tr>
               </table>
             </div>
+            {# End footer -#}
             <!-- END FOOTER -->
 
             <!-- END CENTERED WHITE CONTAINER -->
           </div>
+          {# End centered container -#}
           {# djlint:on H021 -#}
         </td>
         <td style="font-family: sans-serif; font-size: 14px; vertical-align: top">&nbsp;</td>
       </tr>
     </table>
+    {# End email body table -#}
   </body>
   {# djlint:on H021 #}
 </html>
+{# End notification base -#}

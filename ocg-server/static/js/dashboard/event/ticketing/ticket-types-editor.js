@@ -1,10 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import {
-  lockBodyScroll,
-  toDateTimeLocalInTimezone,
-  toUtcIsoInTimezone,
-  unlockBodyScroll,
-} from "/static/js/common/common.js";
+import { toDateTimeLocalInTimezone, toUtcIsoInTimezone } from "/static/js/common/common.js";
+import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
 import { toBoolean, toTrimmedString, parseJsonAttribute } from "/static/js/common/utils.js";
 import { TicketingEditorBase } from "/static/js/dashboard/event/ticketing/editor-base.js";
 import {
@@ -314,8 +310,7 @@ class TicketTypesEditor extends TicketingEditorBase {
     this._isNewRow = !existingRow;
     this._editingRowId = existingRow?._row_id ?? null;
     this._draftRow = existingRow ? this._cloneTicketType(existingRow) : this._createEmptyTicketType();
-    this._isModalOpen = true;
-    lockBodyScroll();
+    this._isModalOpen = openModalBodyScroll(this._isModalOpen);
   }
 
   /**
@@ -329,9 +324,9 @@ class TicketTypesEditor extends TicketingEditorBase {
 
     this._draftRow = null;
     this._editingRowId = null;
-    this._isModalOpen = false;
+    const wasOpen = this._isModalOpen;
     this._isNewRow = false;
-    unlockBodyScroll();
+    this._isModalOpen = closeModalBodyScroll(wasOpen);
   }
 
   /**
@@ -393,6 +388,7 @@ class TicketTypesEditor extends TicketingEditorBase {
 
     this._syncPriceWindowAmountValidity();
 
+    // Native validation catches both ticket fields and nested price-window fields.
     const invalidField = Array.from(this.querySelectorAll("[data-ticket-modal-field]")).find(
       (field) => typeof field.checkValidity === "function" && !field.checkValidity(),
     );
@@ -402,6 +398,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       return;
     }
 
+    // Normalize string fields before persisting the draft back into the table rows.
     const rowToSave = {
       ...this._draftRow,
       description: String(this._draftRow.description || ""),
@@ -413,6 +410,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       return;
     }
 
+    // Save keeps the row id stable so hidden fields and Lit repeats stay aligned.
     if (this._isNewRow) {
       this._rows = [...this._rows, rowToSave];
     } else {
@@ -577,6 +575,7 @@ class TicketTypesEditor extends TicketingEditorBase {
       return null;
     }
 
+    // Stable row ids keep each price-window input state intact while editing.
     return repeat(
       this._draftRow.price_windows,
       (windowRow) => windowRow._row_id,

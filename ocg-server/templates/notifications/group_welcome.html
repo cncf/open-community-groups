@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Group Welcome Notification -#}
 {% block subject -%}
   Welcome to {{ group.name }}
 {% endblock subject -%}
@@ -36,3 +37,4 @@
   the {{ group.community_display_name }} community. If this wasn't you, you can
   ignore this message.
 {% endblock footer -%}
+{# End group welcome notification -#}

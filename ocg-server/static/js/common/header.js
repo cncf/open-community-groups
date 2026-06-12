@@ -1,12 +1,16 @@
 /**
  * Initializes header dropdown and nav loading behavior with HTMX awareness.
  */
+import { closestElement, getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
+
 let documentHandlersBound = false;
 let lifecycleListenersBound = false;
 let pendingHeaderNavLink = null;
 let pendingHeaderNavLinkTimer = null;
 
 const headerNavLinkSelector = "[data-header-nav-link]";
+/** Wait before showing nav loading so quick HTMX requests can finish without flicker. */
 const headerNavLinkPendingDelayMs = 120;
 
 /**
@@ -151,8 +155,8 @@ const ensureDocumentHandlers = () => {
   }
 
   const handleDocumentClick = (event) => {
-    const button = document.getElementById("user-dropdown-button");
-    const dropdown = document.getElementById("user-dropdown");
+    const button = getElementById(document, "user-dropdown-button");
+    const dropdown = getElementById(document, "user-dropdown");
 
     if (!button || !dropdown) {
       return;
@@ -163,23 +167,23 @@ const ensureDocumentHandlers = () => {
 
     if (!clickedButton && !clickedDropdown) {
       // Hide if the click did not originate inside the dropdown or trigger.
-      dropdown.classList.add("hidden");
+      setElementHidden(dropdown, true);
     }
   };
 
   const handleKeydown = (event) => {
-    if (event.key !== "Escape") {
+    if (!isEscapeEvent(event)) {
       return;
     }
 
-    const button = document.getElementById("user-dropdown-button");
-    const dropdown = document.getElementById("user-dropdown");
+    const button = getElementById(document, "user-dropdown-button");
+    const dropdown = getElementById(document, "user-dropdown");
 
-    if (!button || !dropdown || dropdown.classList.contains("hidden")) {
+    if (!button || !dropdown || isElementHidden(dropdown)) {
       return;
     }
 
-    dropdown.classList.add("hidden");
+    setElementHidden(dropdown, true);
     button.focus();
   };
 
@@ -243,12 +247,12 @@ const bindLifecycleListeners = () => {
 
 // Toggles dropdown visibility when the avatar button is clicked.
 const toggleDropdownVisibility = () => {
-  const dropdown = document.getElementById("user-dropdown");
+  const dropdown = getElementById(document, "user-dropdown");
   if (!dropdown) {
     return;
   }
 
-  dropdown.classList.toggle("hidden");
+  setElementHidden(dropdown, !isElementHidden(dropdown));
 };
 
 // Public initializer for the user dropdown interactions.
@@ -256,8 +260,8 @@ export const initUserDropdown = () => {
   ensureDocumentHandlers();
   bindLifecycleListeners();
 
-  const button = document.getElementById("user-dropdown-button");
-  const dropdown = document.getElementById("user-dropdown");
+  const button = getElementById(document, "user-dropdown-button");
+  const dropdown = getElementById(document, "user-dropdown");
 
   if (!button || !dropdown || button.__ocgDropdownInitialized) {
     return;
@@ -270,7 +274,7 @@ export const initUserDropdown = () => {
     dropdown.addEventListener(
       "click",
       (event) => {
-        const link = event.target.closest("a");
+        const link = closestElement(event.target, "a");
         if (!link) {
           return;
         }
@@ -282,7 +286,7 @@ export const initUserDropdown = () => {
           }
           return;
         }
-        dropdown.classList.add("hidden");
+        setElementHidden(dropdown, true);
       },
       true,
     );

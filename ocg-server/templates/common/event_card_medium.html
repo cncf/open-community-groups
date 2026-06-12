@@ -8,7 +8,7 @@
    hx-target="body"
    class="group select-none cursor-pointer h-full">
   <article class="flex flex-col md:flex-row h-full">
-    {# Top section with logo and content -#}
+    {# Top section -#}
     <div class="flex md:contents">
       {# Event logo - Desktop -#}
       <div class="hidden md:block shrink-0 group-hover:opacity-75 transition-opacity relative">
@@ -95,7 +95,7 @@
     </div>
     {# End top section -#}
 
-    {# Event location and date footer - Mobile (full width) -#}
+    {# Event location and date footer - Mobile -#}
     <div class="md:hidden mt-2 pt-2 border-t border-stone-200 border-dashed">
       <div class="card-meta">
         {% if event.kind != EventKind::Virtual -%}

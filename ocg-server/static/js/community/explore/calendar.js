@@ -1,11 +1,280 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
+import { getElementById, loadScriptOnce, setElementHidden } from "/static/js/common/dom.js";
+import { insertTrustedHtml } from "/static/js/common/trusted-html.js";
+import { parseJsonText } from "/static/js/common/utils.js";
 import { fetchData } from "/static/js/community/explore/explore.js";
 import {
   getFirstAndLastDayOfMonth,
   hasActiveCalendarFilters,
   updateDateInput,
 } from "/static/js/community/explore/filters.js";
+import {
+  cancelDelayedPopover,
+  getExploreItemUrl,
+  loadWidgetScripts,
+  renderPopoverCardShell,
+  scheduleDelayedPopover,
+} from "/static/js/community/explore/widgets.js";
 
+const FULLCALENDAR_SCRIPT_SRC = "/static/vendor/js/fullcalendar.v6.1.19.min.js";
+const MAIN_LOADING_CALENDAR_ID = "main-loading-calendar";
+const LOADING_CALENDAR_ID = "loading-calendar";
+const CALENDAR_ELEMENT_ID = "calendar-box";
+const CALENDAR_DATE_ID = "calendar-date";
+const EVENTS_FORM_ID = "events-form";
+const DATE_TO_INPUT_SELECTOR = 'input[name="date_to"]';
+const NO_RESULTS_SELECTOR = ".no-results-default, .no-results-filtered";
+const DEFAULT_NO_RESULTS_SELECTOR = ".no-results-default";
+const FILTERED_NO_RESULTS_SELECTOR = ".no-results-filtered";
+const RIGHT_ALIGNED_COLUMN_THRESHOLD = 3;
+const TOP_ALIGNED_ROW_THRESHOLD = 4;
+const PAST_EVENT_COLOR_ALPHA = 0.35;
+const UPCOMING_COLOR_VARIABLES = {
+  background: "--color-primary-50",
+  border: "--color-primary-200",
+};
+const POPOVER_BASE_CLASSES =
+  "absolute z-10 invisible inline-block text-sm text-stone-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow";
+const POPOVER_BOTTOM_CLASSES = "pt-1.5";
+const POPOVER_TOP_CLASSES = "top-0 -translate-y-full pb-1.5";
+
+/**
+ * Reads the initially selected calendar date from the hidden date input.
+ * @returns {Date} Initial calendar date
+ */
+const getInitialCalendarDate = () => {
+  const dateToInput = document.querySelector(DATE_TO_INPUT_SELECTOR);
+  return dateToInput ? new Date(dateToInput.value) : new Date();
+};
+
+/**
+ * Loads the FullCalendar script when needed.
+ * @returns {Promise<void>} Promise resolved when FullCalendar is available
+ */
+const loadFullCalendarScript = () =>
+  loadScriptOnce(FULLCALENDAR_SCRIPT_SRC, {
+    isLoaded: () => typeof window.FullCalendar !== "undefined",
+  });
+
+/**
+ * Builds popover alignment data from the FullCalendar segment.
+ * @param {object} info - FullCalendar event mount info
+ * @returns {object} Popover alignment data
+ */
+const getPopoverAlignment = (info) => ({
+  id: `popover-${info.event.extendedProps.event.slug}`,
+  horizontal: info.el.fcSeg.firstCol > RIGHT_ALIGNED_COLUMN_THRESHOLD ? "right" : "left",
+  vertical: info.el.fcSeg.row >= TOP_ALIGNED_ROW_THRESHOLD ? "top" : "bottom",
+});
+
+/**
+ * Reads popover alignment data stored on a calendar event parent.
+ * @param {HTMLElement} parent - Event parent element
+ * @returns {object|null} Popover alignment data
+ */
+const readPopoverAlignment = (parent) => {
+  if (!parent.dataset.popoverAlign) {
+    return null;
+  }
+
+  return parseJsonText(parent.dataset.popoverAlign, null);
+};
+
+/**
+ * Removes an existing popover by id.
+ * @param {string} id - Popover element id
+ */
+const removePopoverById = (id) => {
+  getElementById(document, id)?.remove();
+};
+
+/**
+ * Clears popover data and DOM for an event parent.
+ * @param {HTMLElement} parent - Event parent element
+ */
+const clearPopover = (parent) => {
+  const alignData = readPopoverAlignment(parent);
+  if (alignData) {
+    removePopoverById(alignData.id);
+  }
+  delete parent.dataset.popoverAlign;
+  parent.removeAttribute("popovertarget");
+};
+
+/**
+ * Stores popover alignment data on an event parent.
+ * @param {HTMLElement} parent - Event parent element
+ * @param {object} info - FullCalendar event mount info
+ */
+const setPopoverAlignment = (parent, info) => {
+  parent.dataset.popoverAlign = JSON.stringify(getPopoverAlignment(info));
+};
+
+/**
+ * Reads primary colors used by upcoming calendar events.
+ * @returns {object} Calendar color tokens
+ */
+const getCalendarColors = () => {
+  const styles = getComputedStyle(document.documentElement);
+  return {
+    upcomingBg: styles.getPropertyValue(UPCOMING_COLOR_VARIABLES.background).trim(),
+    upcomingBorder: styles.getPropertyValue(UPCOMING_COLOR_VARIABLES.border).trim(),
+  };
+};
+
+/**
+ * Formats one event for FullCalendar.
+ * @param {object} event - Explore event payload
+ * @param {object} colors - Calendar color tokens
+ * @returns {object|undefined} FullCalendar event data
+ */
+const formatCalendarEvent = (event, colors) => {
+  if (!event.starts_at) {
+    return undefined;
+  }
+
+  const startDate = new Date(event.starts_at * 1000);
+  const endDate = event.ends_at ? new Date(event.ends_at * 1000) : startDate;
+  const isPast = new Date().getTime() - endDate.getTime() > 0;
+  const backgroundColor = isPast ? updateColor(event.group_color) : colors.upcomingBg;
+  const borderColor = isPast ? event.group_color : colors.upcomingBorder;
+
+  return {
+    title: event.name,
+    start: convertDate(startDate),
+    end: convertDate(endDate),
+    className: `cursor-pointer ${isPast ? "opacity-40" : ""}`,
+    backgroundColor,
+    borderColor,
+    extendedProps: {
+      event,
+    },
+  };
+};
+
+/**
+ * Hides no-results placeholders inside the calendar wrapper.
+ * @param {HTMLElement|null} wrapper - Calendar wrapper element
+ */
+const hideNoResultsPlaceholders = (wrapper) => {
+  wrapper?.querySelectorAll(NO_RESULTS_SELECTOR).forEach((container) => {
+    setElementHidden(container, true);
+  });
+};
+
+/**
+ * Shows the matching no-results placeholder for the current filter state.
+ * @param {HTMLElement|null} wrapper - Calendar wrapper element
+ * @param {object} fullCalendar - FullCalendar instance
+ */
+const showNoResultsPlaceholder = (wrapper, fullCalendar) => {
+  const selector = hasActiveCalendarFilters(EVENTS_FORM_ID, fullCalendar.getDate())
+    ? FILTERED_NO_RESULTS_SELECTOR
+    : DEFAULT_NO_RESULTS_SELECTOR;
+  setElementHidden(wrapper?.querySelector(selector), false);
+};
+
+/**
+ * Converts a hexadecimal color to RGB with opacity for calendar events.
+ * @param {string} color - The hexadecimal color string
+ * @returns {string|undefined} The RGBA color string with 0.35 opacity
+ */
+const updateColor = (color) => {
+  if (!color) {
+    return undefined;
+  }
+  return hexToRgb(color, PAST_EVENT_COLOR_ALPHA);
+};
+
+/**
+ * Converts a hexadecimal color value to RGBA format.
+ * @param {string} hex - The hexadecimal color string (with or without #)
+ * @param {number} alpha - The alpha/opacity value (0-1)
+ * @returns {string} The RGBA color string
+ */
+const hexToRgb = (hex, alpha = 1) => {
+  const normalizedHex = hex.replace(/^#/, "");
+  const bigint = parseInt(normalizedHex, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+/**
+ * Converts a Date object to ISO format string.
+ * @param {Date} date - The date object to convert
+ * @returns {string} The ISO formatted date string
+ */
+const convertDate = (date) => date.toISOString();
+
+/**
+ * Creates a popover HTML element for displaying event details.
+ * @param {string} id - The unique ID for the popover element
+ * @param {object} event - The event object containing popover_html
+ * @param {string} horizontalAlignment - Horizontal alignment ('left' or 'right')
+ * @param {string} verticalAlignment - Vertical alignment ('top' or 'bottom')
+ * @returns {string} The HTML string for the popover element
+ */
+const newEventPopover = (id, event, horizontalAlignment, verticalAlignment) => {
+  const alignmentClasses = [
+    POPOVER_BASE_CLASSES,
+    horizontalAlignment === "right" ? "end-0" : "",
+    verticalAlignment === "top" ? POPOVER_TOP_CLASSES : POPOVER_BOTTOM_CLASSES,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  // prettier-ignore
+  const popover = `
+  <div
+    id="${id}"
+    role="tooltip"
+    data-popover="true"
+    class="${alignmentClasses}"
+  >
+    ${renderPopoverCardShell(event.popover_html)}
+  </div>
+  `;
+
+  return popover;
+};
+
+/**
+ * Creates the popover DOM if it doesn't already exist.
+ * @param {HTMLElement} parent - The parent element to attach the popover to
+ * @param {object} event - The event object containing popover_html
+ */
+const createPopoverIfNeeded = (parent, event) => {
+  const alignData = readPopoverAlignment(parent);
+  if (!alignData) return;
+
+  // Check if popover already exists
+  if (getElementById(document, alignData.id)) return;
+
+  // Set popovertarget and create popover
+  parent.setAttribute("popovertarget", alignData.id);
+  insertTrustedHtml(
+    parent,
+    "beforeend",
+    newEventPopover(alignData.id, event, alignData.horizontal, alignData.vertical),
+  );
+};
+
+/**
+ * Updates the browser URL to reflect the current calendar filters.
+ * @param {URLSearchParams} params - Query params to write to the URL
+ */
+const updateCalendarUrl = (params) => {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.search = params.toString();
+  window.history.replaceState({}, "", nextUrl);
+};
+
+/**
+ * FullCalendar-backed community explore calendar controller.
+ */
 export class Calendar {
   /**
    * Initializes the calendar with FullCalendar library.
@@ -21,24 +290,11 @@ export class Calendar {
 
     this.popoverTimers = new WeakMap();
 
-    // Display main loading spinner
-    // This is used to show a loading spinner while the calendar is being set up
-    // and the FullCalendar script is being loaded.
-    const mainLoading = document.getElementById("main-loading-calendar");
-    if (mainLoading) {
-      mainLoading.classList.remove("hidden");
-    }
-
-    // Load `fullcalendar` script
-    let script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = "/static/vendor/js/fullcalendar.v6.1.19.min.js";
-    document.getElementsByTagName("head")[0].appendChild(script);
-
-    // Setup calendar after script is loaded
-    script.onload = () => {
-      this.setup(data);
-    };
+    loadWidgetScripts({
+      mainLoadingId: MAIN_LOADING_CALENDAR_ID,
+      loadScripts: loadFullCalendarScript,
+      onReady: () => this.setup(data),
+    });
 
     // Save calendar instance
     Calendar._instance = this;
@@ -49,9 +305,8 @@ export class Calendar {
    * @param {object} data - Calendar data containing events to display
    */
   setup(data) {
-    const calendarEl = document.getElementById("calendar-box");
-    const date_to = document.querySelector('input[name="date_to"]');
-    const initialDate = date_to ? new Date(date_to.value) : new Date();
+    const calendarEl = getElementById(document, CALENDAR_ELEMENT_ID);
+    const initialDate = getInitialCalendarDate();
 
     this.fullCalendar = new FullCalendar.Calendar(calendarEl, {
       timeZone: "local",
@@ -69,10 +324,9 @@ export class Calendar {
       // Handle event clicks to navigate to event page
       eventClick: (info) => {
         const event = info.event.extendedProps.event;
-        if (event.group_slug && event.slug) {
-          navigateWithHtmx(
-            `/${event.community_name}/group/${event.group_slug_pretty || event.group_slug}/event/${event.slug}`,
-          );
+        const url = getExploreItemUrl("events", event);
+        if (url) {
+          navigateWithHtmx(url);
         }
       },
 
@@ -84,57 +338,35 @@ export class Calendar {
         }
 
         if (info.event.extendedProps.event.popover_html) {
-          parent.dataset.popoverAlign = JSON.stringify({
-            id: `popover-${info.event.extendedProps.event.slug}`,
-            horizontal: info.el.fcSeg.firstCol > 3 ? "right" : "left",
-            vertical: info.el.fcSeg.row >= 4 ? "top" : "bottom",
-          });
-        } else if (parent.dataset.popoverAlign) {
-          const { id } = JSON.parse(parent.dataset.popoverAlign);
-          const existingPopover = document.getElementById(id);
-          if (existingPopover) {
-            existingPopover.remove();
-          }
-          delete parent.dataset.popoverAlign;
-          parent.removeAttribute("popovertarget");
+          setPopoverAlignment(parent, info);
+        } else {
+          clearPopover(parent);
         }
       },
 
-      // Start 300ms timer to show popover on mouse enter
+      // Start a delayed timer to show the popover on mouse enter
       eventMouseEnter: (info) => {
         const parent = info.el.parentNode;
-        if (!parent) return;
-        if (!parent.dataset.popoverAlign) return;
+        if (!parent || !parent.dataset.popoverAlign) return;
 
-        clearTimeout(this.popoverTimers.get(parent));
-        const timer = setTimeout(() => {
+        scheduleDelayedPopover(this.popoverTimers, parent, () => {
           createPopoverIfNeeded(parent, info.event.extendedProps.event);
-        }, 300);
-        this.popoverTimers.set(parent, timer);
+        });
       },
 
       // Cancel popover timer on mouse leave
       eventMouseLeave: (info) => {
         const parent = info.el.parentNode;
         if (!parent) return;
-        clearTimeout(this.popoverTimers.get(parent));
+        cancelDelayedPopover(this.popoverTimers, parent);
       },
 
       // Clean up timers when events are unmounted (e.g., month navigation)
       eventWillUnmount: (info) => {
         const parent = info.el.parentNode;
         if (!parent) return;
-        clearTimeout(this.popoverTimers.get(parent));
-        this.popoverTimers.delete(parent);
-        if (parent.dataset.popoverAlign) {
-          const { id } = JSON.parse(parent.dataset.popoverAlign);
-          const existingPopover = document.getElementById(id);
-          if (existingPopover) {
-            existingPopover.remove();
-          }
-          delete parent.dataset.popoverAlign;
-          parent.removeAttribute("popovertarget");
-        }
+        cancelDelayedPopover(this.popoverTimers, parent);
+        clearPopover(parent);
       },
     });
 
@@ -149,7 +381,7 @@ export class Calendar {
    */
   async refresh(data) {
     // Update calendar title
-    const el = document.getElementById("calendar-date");
+    const el = getElementById(document, CALENDAR_DATE_ID);
     if (el) {
       el.textContent = this.fullCalendar.currentData.viewTitle;
     }
@@ -162,28 +394,22 @@ export class Calendar {
       events = data.events;
     } else {
       // Show loading spinner
-      showLoadingSpinner("loading-calendar");
+      showLoadingSpinner(LOADING_CALENDAR_ID);
 
       // Fetch events
       try {
         events = await this.fetchEvents();
       } catch (error) {
         // If fetch fails, hide loading and ignore error
-        hideLoadingSpinner("loading-calendar");
+        hideLoadingSpinner(LOADING_CALENDAR_ID);
         return;
       }
     }
 
     // Toggle placeholder visibility and calendar opacity
-    const calendarEl = document.getElementById("calendar-box");
+    const calendarEl = getElementById(document, CALENDAR_ELEMENT_ID);
     const wrapper = calendarEl ? calendarEl.parentElement : null;
-    const placeholderContainers = wrapper
-      ? wrapper.querySelectorAll(".no-results-default, .no-results-filtered")
-      : [];
-
-    placeholderContainers.forEach((container) => {
-      container.classList.add("hidden");
-    });
+    hideNoResultsPlaceholders(wrapper);
 
     if (events && events.length > 0) {
       // Ensure calendar is fully visible
@@ -197,16 +423,7 @@ export class Calendar {
         calendarEl.classList.add("opacity-30");
       }
       this.addEvents([]);
-      const visiblePlaceholder = wrapper
-        ? wrapper.querySelector(
-            hasActiveCalendarFilters("events-form", this.fullCalendar.getDate())
-              ? ".no-results-filtered"
-              : ".no-results-default",
-          )
-        : null;
-      if (visiblePlaceholder) {
-        visiblePlaceholder.classList.remove("hidden");
-      }
+      showNoResultsPlaceholder(wrapper, this.fullCalendar);
     }
   }
 
@@ -245,49 +462,8 @@ export class Calendar {
    * @param {Array} events - Array of event objects to add to the calendar
    */
   addEvents(events) {
-    // Get primary colors from CSS variables for upcoming events
-    const styles = getComputedStyle(document.documentElement);
-    const upcomingBg = styles.getPropertyValue("--color-primary-50").trim();
-    const upcomingBorder = styles.getPropertyValue("--color-primary-200").trim();
-
-    // Prepare events for calendar
-    let formattedEvents = events.map((event) => {
-      // Skip events without start date
-      if (!event.starts_at) {
-        return;
-      }
-
-      // Get start and end dates
-      const startDate = new Date(event.starts_at * 1000);
-      const endDate = event.ends_at ? new Date(event.ends_at * 1000) : startDate;
-
-      // Check if event is past
-      const diff = new Date().getTime() - endDate.getTime();
-      const isPast = diff > 0;
-
-      // Determine colors: past events keep group color, upcoming use primary
-      let backgroundColor, borderColor;
-      if (isPast) {
-        backgroundColor = updateColor(event.group_color);
-        borderColor = event.group_color;
-      } else {
-        backgroundColor = upcomingBg;
-        borderColor = upcomingBorder;
-      }
-
-      // Add event to calendar
-      return {
-        title: event.name,
-        start: convertDate(startDate),
-        end: convertDate(endDate),
-        className: `cursor-pointer ${isPast ? "opacity-40" : ""}`,
-        backgroundColor,
-        borderColor,
-        extendedProps: {
-          event: event,
-        },
-      };
-    });
+    const colors = getCalendarColors();
+    const formattedEvents = events.map((event) => formatCalendarEvent(event, colors)).filter(Boolean);
 
     // Remove all previous events from calendar
     this.fullCalendar.removeAllEvents();
@@ -296,7 +472,7 @@ export class Calendar {
     this.fullCalendar.addEventSource(formattedEvents);
 
     // Hide loading spinner
-    hideLoadingSpinner("loading-calendar");
+    hideLoadingSpinner(LOADING_CALENDAR_ID);
   }
 
   /**
@@ -327,102 +503,4 @@ export class Calendar {
     this.fullCalendar.prev();
     this.refresh();
   }
-}
-
-/**
- * Converts a hexadecimal color to RGB with opacity for calendar events.
- * @param {string} color - The hexadecimal color string
- * @returns {string|undefined} The RGBA color string with 0.35 opacity
- */
-function updateColor(color) {
-  if (!color) {
-    return;
-  }
-  return hexToRgb(color, 0.35);
-}
-
-/**
- * Converts a hexadecimal color value to RGBA format.
- * @param {string} hex - The hexadecimal color string (with or without #)
- * @param {number} alpha - The alpha/opacity value (0-1)
- * @returns {string} The RGBA color string
- */
-function hexToRgb(hex, alpha = 1) {
-  // Remove the hash sign if it's included
-  hex = hex.replace(/^#/, "");
-
-  // Parse the hex values
-  let bigint = parseInt(hex, 16);
-
-  // Extract RGB components
-  let r = (bigint >> 16) & 255;
-  let g = (bigint >> 8) & 255;
-  let b = bigint & 255;
-
-  // Return the RGBA string
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
-/**
- * Converts a Date object to ISO format string.
- * @param {Date} date - The date object to convert
- * @returns {string} The ISO formatted date string
- */
-function convertDate(date) {
-  return date.toISOString();
-}
-
-/**
- * Creates a popover HTML element for displaying event details.
- * @param {string} id - The unique ID for the popover element
- * @param {object} event - The event object containing popover_html
- * @param {string} horizontalAlignment - Horizontal alignment ('left' or 'right')
- * @param {string} verticalAlignment - Vertical alignment ('top' or 'bottom')
- * @returns {string} The HTML string for the popover element
- */
-function newEventPopover(id, event, horizontalAlignment, verticalAlignment) {
-  // prettier-ignore
-  const popover = `
-  <div
-    id="${id}"
-    role="tooltip"
-    data-popover="true"
-    class="absolute ${horizontalAlignment == "right" ? "end-0" : ""} ${verticalAlignment == "top" ? "top-0 -translate-y-full pb-1.5" : "pt-1.5"} z-10 invisible inline-block text-sm text-stone-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow"
-  >
-    <div class="explore-popover-card-shell">
-      ${event.popover_html}
-    </div>
-  </div>
-  `;
-
-  return popover;
-}
-
-/**
- * Creates the popover DOM if it doesn't already exist.
- * @param {HTMLElement} parent - The parent element to attach the popover to
- * @param {object} event - The event object containing popover_html
- */
-function createPopoverIfNeeded(parent, event) {
-  const alignData = parent.dataset.popoverAlign;
-  if (!alignData) return;
-
-  const { id, horizontal, vertical } = JSON.parse(alignData);
-
-  // Check if popover already exists
-  if (document.getElementById(id)) return;
-
-  // Set popovertarget and create popover
-  parent.setAttribute("popovertarget", id);
-  parent.insertAdjacentHTML("beforeend", newEventPopover(id, event, horizontal, vertical));
-}
-
-/**
- * Updates the browser URL to reflect the current calendar filters.
- * @param {URLSearchParams} params - Query params to write to the URL
- */
-function updateCalendarUrl(params) {
-  const nextUrl = new URL(window.location.href);
-  nextUrl.search = params.toString();
-  window.history.replaceState({}, "", nextUrl);
 }

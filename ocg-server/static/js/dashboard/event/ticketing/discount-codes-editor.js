@@ -1,10 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import {
-  lockBodyScroll,
-  toDateTimeLocalInTimezone,
-  toUtcIsoInTimezone,
-  unlockBodyScroll,
-} from "/static/js/common/common.js";
+import { toDateTimeLocalInTimezone, toUtcIsoInTimezone } from "/static/js/common/common.js";
+import { closeModalBodyScroll, openModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";
 import { parseJsonAttribute, toBoolean, toTrimmedString } from "/static/js/common/utils.js";
 import {
   formatMinorUnitsForInput,
@@ -252,8 +248,7 @@ class DiscountCodesEditor extends TicketingEditorBase {
     this._isNewRow = !existingRow;
     this._editingRowId = existingRow?._row_id ?? null;
     this._draftRow = existingRow ? this._cloneDiscountCode(existingRow) : this._createEmptyDiscountCode();
-    this._isModalOpen = true;
-    lockBodyScroll();
+    this._isModalOpen = openModalBodyScroll(this._isModalOpen);
   }
 
   /**
@@ -267,9 +262,9 @@ class DiscountCodesEditor extends TicketingEditorBase {
 
     this._draftRow = null;
     this._editingRowId = null;
-    this._isModalOpen = false;
+    const wasOpen = this._isModalOpen;
     this._isNewRow = false;
-    unlockBodyScroll();
+    this._isModalOpen = closeModalBodyScroll(wasOpen);
   }
 
   /**

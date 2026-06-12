@@ -5,10 +5,14 @@ import {
   handleCommitShaBeforeOnLoad,
   handleCommitShaBeforeSwap,
   handleCommitShaConfigRequest,
+  handleDeclarativeHtmxResponse,
   handleNotFoundBeforeSwap,
+  getDeclarativeHtmxResponseElement,
+  isSuccessfulRefreshBodyResponse,
   registerHtmxNoEmptyValuesExtensions,
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import {
   COMMIT_SHA_HEADER,
   consumePendingDeploymentRefreshAlert,
@@ -19,6 +23,8 @@ import {
 
 // Convert form data into comparable entries.
 const formDataToEntries = (formData) => Array.from(formData.entries());
+const waitForDelay = (delay = 0) =>
+  new Promise((resolve) => setTimeout(resolve, delay));
 
 // Set the loaded commit SHA meta tag for deployment header checks.
 const setLoadedCommitSha = (commitSha) => {
@@ -27,8 +33,14 @@ const setLoadedCommitSha = (commitSha) => {
 
 describe("htmx extensions", () => {
   const originalDateNow = Date.now;
+  let swal;
+
+  beforeEach(() => {
+    swal = mockSwal();
+  });
 
   afterEach(() => {
+    swal.restore();
     Date.now = originalDateNow;
     document.head.innerHTML = "";
     resetDeploymentReloadState();
@@ -45,10 +57,7 @@ describe("htmx extensions", () => {
     registerHtmxNoEmptyValuesExtensions(htmxMock);
 
     // The default and keep-zero variants are both available by name.
-    expect(Array.from(extensions.keys())).to.deep.equal([
-      "no-empty-vals",
-      "no-empty-vals-keep-zero",
-    ]);
+    expect(Array.from(extensions.keys())).to.deep.equal(["no-empty-vals", "no-empty-vals-keep-zero"]);
   });
 
   it('drops empty strings and "0" for the default no-empty-vals extension', () => {
@@ -63,9 +72,7 @@ describe("htmx extensions", () => {
     extension.encodeParameters(null, parameters, null);
 
     // Blank strings and zero values are removed while text is trimmed.
-    expect(formDataToEntries(parameters)).to.deep.equal([
-      ["name", "Spring meetup"],
-    ]);
+    expect(formDataToEntries(parameters)).to.deep.equal([["name", "Spring meetup"]]);
   });
 
   it('keeps "0" while still trimming and removing blank values for the keep-zero extension', () => {
@@ -144,8 +151,7 @@ describe("htmx extensions", () => {
         shouldSwap: false,
         xhr: {
           status: 404,
-          getResponseHeader: (name) =>
-            name === "X-OCG-Not-Found" ? "true" : null,
+          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
         },
       },
     };
@@ -210,8 +216,7 @@ describe("htmx extensions", () => {
       cancelable: true,
       detail: {
         xhr: {
-          getResponseHeader: (name) =>
-            name === REFRESH_HEADER ? "true" : null,
+          getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
         },
       },
     });
@@ -238,8 +243,7 @@ describe("htmx extensions", () => {
         cancelable: true,
         detail: {
           xhr: {
-            getResponseHeader: (name) =>
-              name === REFRESH_HEADER ? "true" : null,
+            getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
           },
         },
       }),
@@ -253,8 +257,7 @@ describe("htmx extensions", () => {
       cancelable: true,
       detail: {
         xhr: {
-          getResponseHeader: (name) =>
-            name === REFRESH_HEADER ? "true" : null,
+          getResponseHeader: (name) => (name === REFRESH_HEADER ? "true" : null),
         },
       },
     });
@@ -278,8 +281,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) =>
-            name === COMMIT_SHA_HEADER ? "def456" : null,
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     };
@@ -303,8 +305,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) =>
-            name === COMMIT_SHA_HEADER ? "def456" : null,
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     });
@@ -333,8 +334,7 @@ describe("htmx extensions", () => {
       detail: {
         shouldSwap: true,
         xhr: {
-          getResponseHeader: (name) =>
-            name === COMMIT_SHA_HEADER ? "def456" : null,
+          getResponseHeader: (name) => (name === COMMIT_SHA_HEADER ? "def456" : null),
         },
       },
     });
@@ -344,8 +344,7 @@ describe("htmx extensions", () => {
         shouldSwap: false,
         xhr: {
           status: 404,
-          getResponseHeader: (name) =>
-            name === "X-OCG-Not-Found" ? "true" : null,
+          getResponseHeader: (name) => (name === "X-OCG-Not-Found" ? "true" : null),
         },
       },
     };
@@ -358,24 +357,263 @@ describe("htmx extensions", () => {
     expect(event.detail.isError).to.equal(true);
   });
 
+  it("handles declarative HTMX response messages", () => {
+    // Build a form with declarative response messages.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "Saved successfully.";
+    form.dataset.errorMessage = "Save failed.";
+
+    // Dispatch a successful HTMX response from the form.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 204,
+          responseText: "",
+        },
+      },
+    });
+
+    // The configured success message is shown.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Saved successfully.",
+      icon: "success",
+    });
+
+    // Dispatch a failed HTMX response from the form.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 500,
+          responseText: "",
+        },
+      },
+    });
+
+    // The configured error message is shown.
+    expect(swal.calls).to.have.length(2);
+    expect(swal.calls[1]).to.include({
+      text: "Save failed.",
+      icon: "error",
+    });
+  });
+
+  it("detects successful refresh-body responses", () => {
+    // Build successful and unsuccessful response fixtures.
+    const successfulRefresh = {
+      status: 204,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+    };
+    const successfulOtherRefresh = {
+      status: 204,
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-sidebar, refresh-body" : null,
+    };
+    const failedRefresh = {
+      status: 500,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+    };
+
+    // Only successful responses that trigger a body refresh match.
+    expect(isSuccessfulRefreshBodyResponse(successfulRefresh)).to.equal(true);
+    expect(isSuccessfulRefreshBodyResponse(successfulOtherRefresh)).to.equal(true);
+    expect(isSuccessfulRefreshBodyResponse(failedRefresh)).to.equal(false);
+    expect(isSuccessfulRefreshBodyResponse({ status: 204 })).to.equal(false);
+  });
+
+  it("delays refresh-body success messages until the body refresh settles", async () => {
+    // Build a form with declarative response messages.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "Saved after refresh.";
+
+    // Dispatch a successful response that will trigger a body refresh.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 204,
+          responseText: "",
+          getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+        },
+      },
+    });
+
+    // The success message waits for the triggered body refresh.
+    expect(swal.calls).to.have.length(0);
+    await waitForDelay();
+    document.body.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+
+    // The delayed message is shown after the refresh settles.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Saved after refresh.",
+      icon: "success",
+    });
+  });
+
+  it("expires refresh-body success messages that do not see a body settle", () => {
+    const originalSetTimeout = window.setTimeout;
+    const originalClearTimeout = window.clearTimeout;
+    const scheduledTimeouts = [];
+    const clearedTimeouts = [];
+
+    window.setTimeout = (callback, delay) => {
+      const id = scheduledTimeouts.length + 1;
+      scheduledTimeouts.push({ callback, delay, id });
+      return id;
+    };
+    window.clearTimeout = (id) => {
+      clearedTimeouts.push(id);
+    };
+
+    try {
+      // Build a form with declarative response messages.
+      const form = document.createElement("form");
+      form.dataset.htmxResponse = "";
+      form.dataset.successMessage = "Saved after refresh.";
+
+      // Dispatch a successful response that will trigger a body refresh.
+      handleDeclarativeHtmxResponse({
+        detail: {
+          elt: form,
+          xhr: {
+            status: 204,
+            responseText: "",
+            getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-body" : null),
+          },
+        },
+      });
+      scheduledTimeouts[0].callback();
+
+      // An unrelated HTMX settle does not consume the pending success message.
+      const unrelatedElement = document.createElement("section");
+      document.body.append(unrelatedElement);
+      unrelatedElement.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+      expect(swal.calls).to.have.length(0);
+      expect(scheduledTimeouts[1]).to.include({ delay: 10000 });
+
+      // Once the pending listener expires, a later body settle does not show it.
+      scheduledTimeouts[1].callback();
+      document.body.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true }));
+      expect(swal.calls).to.have.length(0);
+      expect(clearedTimeouts).to.deep.equal([]);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      window.clearTimeout = originalClearTimeout;
+    }
+  });
+
+  it("keeps declarative content-refresh success messages immediate", () => {
+    // Build a region/category-style form with declarative response messages.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "You have successfully added the region.";
+    form.dataset.errorMessage = "Something went wrong adding the region.";
+
+    // Dispatch a successful response that refreshes dashboard content.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr: {
+          status: 201,
+          responseText: "",
+          getResponseHeader: (name) =>
+            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+        },
+      },
+    });
+
+    // Explicit frontend messages keep the previous immediate toast behavior.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "You have successfully added the region.",
+      icon: "success",
+    });
+  });
+
+  it("handles declarative responses before swaps without duplicating after request", () => {
+    // Build a form that will be swapped out by a successful HTMX response.
+    const form = document.createElement("form");
+    form.dataset.htmxResponse = "";
+    form.dataset.successMessage = "You have successfully added the group category.";
+    const xhr = {
+      status: 201,
+      responseText: "",
+      getResponseHeader: (name) =>
+        name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+    };
+
+    // Handle the response before HTMX removes the source element.
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr,
+      },
+    });
+    handleDeclarativeHtmxResponse({
+      detail: {
+        elt: form,
+        xhr,
+      },
+    });
+
+    // The success message is shown once for the response.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "You have successfully added the group category.",
+      icon: "success",
+    });
+  });
+
+  it("finds declarative response config from htmx request config elements", () => {
+    // Build the swap target and original form elements from a beforeSwap event.
+    const target = document.createElement("section");
+    const form = document.createElement("form");
+    form.id = "group-category-form";
+    form.dataset.htmxResponse = "";
+    const button = document.createElement("button");
+    form.append(button);
+
+    // Read the declarative response owner from HTMX request metadata.
+    expect(
+      getDeclarativeHtmxResponseElement({
+        detail: {
+          elt: target,
+          requestConfig: {
+            elt: form,
+            triggeringEvent: {
+              target: button,
+            },
+          },
+        },
+      }),
+    ).to.equal(form);
+  });
+
   it("registers the shared htmx response handlers", () => {
-    // Capture listeners added to the root body.
+    // Capture listeners added to the event root.
     const listeners = [];
     const root = {
-      body: {
-        addEventListener: (name, handler) => listeners.push([name, handler]),
-      },
+      body: {},
+      addEventListener: (name, handler) => listeners.push([name, handler]),
     };
 
     // Register the shared HTMX response handlers.
     registerHtmxResponseHandlers(root);
 
-    // All shared response handlers are registered on the root body.
+    // All shared response handlers are registered on the event root.
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
+      ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
+      ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);
   });
 
@@ -383,9 +621,7 @@ describe("htmx extensions", () => {
     // Capture listeners added during repeated registration.
     const listeners = [];
     const root = {
-      body: {
-        addEventListener: (name, handler) => listeners.push([name, handler]),
-      },
+      addEventListener: (name, handler) => listeners.push([name, handler]),
     };
 
     // Register the shared handlers twice on the same root.
@@ -396,8 +632,50 @@ describe("htmx extensions", () => {
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
+      ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
       ["htmx:beforeSwap", handleNotFoundBeforeSwap],
+      ["htmx:beforeSwap", handleDeclarativeHtmxResponse],
+      ["htmx:afterRequest", handleDeclarativeHtmxResponse],
     ]);
+  });
+
+  it("keeps shared htmx response handlers active after body replacement", () => {
+    // Build a form with declarative response messages in the current body.
+    document.body.innerHTML = `
+      <form data-htmx-response data-success-message="Saved successfully.">
+        <button type="submit">Save</button>
+      </form>
+    `;
+    registerHtmxResponseHandlers(document);
+
+    // Replace the body and dispatch a response from a new swapped form.
+    const replacementBody = document.createElement("body");
+    replacementBody.innerHTML = `
+      <form data-htmx-response data-success-message="Saved after swap.">
+        <button type="submit">Save</button>
+      </form>
+    `;
+    document.documentElement.replaceChild(replacementBody, document.body);
+    const form = document.querySelector("[data-htmx-response]");
+    form.dispatchEvent(
+      new CustomEvent("htmx:afterRequest", {
+        bubbles: true,
+        detail: {
+          elt: form,
+          xhr: {
+            status: 204,
+            responseText: "",
+          },
+        },
+      }),
+    );
+
+    // The document-level listener still handles the swapped form response.
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Saved after swap.",
+      icon: "success",
+    });
   });
 });

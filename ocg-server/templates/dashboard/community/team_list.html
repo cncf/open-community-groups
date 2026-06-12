@@ -11,16 +11,16 @@
   </div>
   <div>
     <team-add-member dashboard-type="community" can-manage-team="{{ can_manage_team }}"
-    {% if can_manage_team %}
-      selected-users='{{ members|json }}' role-options='{{ roles|json }}'
-    {% endif -%}
+    {% if can_manage_team %} selected-users='{{ members|json }}' role-options='{{ roles|json }}' {% endif -%}
     ></team-add-member>
   </div>
 </div>
+{# End header -#}
 
 {# Team Table -#}
 <div class="relative overflow-visible">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
@@ -31,8 +31,10 @@
         </th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="team-list">
       {% if members.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {# Mobile: 3 columns (Member, Role, Actions) -#}
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
@@ -43,16 +45,16 @@
             {% include "dashboard/placeholders/community_team_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for member in members -%}
+          {# Member row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Member -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
                 <logo-image
-                {% if let Some(photo_url) = &member.photo_url -%}
-                  image-url="{{ photo_url }}"
-                {% endif -%}
+                {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
                 </logo-image>
                 <div class="min-w-0">
@@ -95,9 +97,9 @@
                       <select name="role"
                               class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem] opacity-50 cursor-not-allowed"
                               aria-label="Role"
+                              data-team-role-select
                               disabled
-                              title="At least one accepted admin is required."
-                              onchange="this.form.requestSubmit()">
+                              title="At least one accepted admin is required.">
                         {% for role_option in roles -%}
                           <option value="{{ role_option.community_role_id }}"
                                   {% if role.to_string() == role_option.community_role_id -%}
@@ -109,7 +111,7 @@
                       <select name="role"
                               class="input-primary py-1.5 text-xs xl:text-sm min-w-[10rem]"
                               aria-label="Role"
-                              onchange="this.form.requestSubmit()">
+                              data-team-role-select>
                         {% for role_option in roles -%}
                           <option value="{{ role_option.community_role_id }}"
                                   {% if role.to_string() == role_option.community_role_id -%}
@@ -188,6 +190,7 @@
             </td>
             {# End actions -#}
           </tr>
+          {# End member row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>

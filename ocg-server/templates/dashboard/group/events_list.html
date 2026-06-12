@@ -2,8 +2,9 @@
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 
-{# Events list header with title -#}
+{# Events list header -#}
 {{ dashboard::page_title(title = "Events", docs_href = "/docs#/guides/event-operations?id=events-list-work-queue") -}}
+{# End events list header -#}
 
 {# Add event button -#}
 <div class="mb-10 mt-5 flex justify-end">
@@ -51,9 +52,11 @@
     </li>
   </ul>
 </div>
+{# End events tabs navigation -#}
 
 {# Upcoming Events Section -#}
 <div id="upcoming-content"
+     data-events-list-page
      data-events-content="upcoming"
      class="{% if events_tab == EventsTab::Past %}
               hidden
@@ -61,13 +64,14 @@
   <div class="text-sm text-stone-600 mb-5">
     {{ pagination::range_display(offset = upcoming_offset.unwrap_or(0) , count = events.upcoming.events.len(), total = events.upcoming.total, label = "event") }}
   </div>
+  {# Upcoming events table -#}
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"
            role="table"
            aria-label="Upcoming events list">
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
              role="rowgroup">
-        {# Header -#}
+        {# Table header -#}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
@@ -78,9 +82,11 @@
             <span class="sr-only">Actions</span>
           </th>
         </tr>
+        {# End table header -#}
       </thead>
       <tbody id="upcoming-events-list" role="rowgroup">
         {% if events.upcoming.events.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             {# Mobile: 3 columns (Name, Status, Actions) -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="3">
@@ -94,8 +100,10 @@
               {% include "dashboard/placeholders/group_events_table.html" -%}
             </td>
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for event in events.upcoming.events -%}
+            {# Event row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
                   class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
@@ -197,7 +205,9 @@
                             hx-swap="innerHTML show:body:top"
                             hx-disabled-elt="this"
                             class="btn-tertiary p-2"
-                            {% if event.canceled %}title="View canceled event"{% endif %}
+                            {% if event.canceled %}
+                              title="View canceled event"
+                            {% endif %}
                             aria-label="Edit event: {{ event.name }}">
                       <div class="svg-icon size-4 icon-pencil"></div>
                     </button>
@@ -243,7 +253,7 @@
                          class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                       <ul class="py-2 text-sm text-stone-700"
                           aria-labelledby="dropdownDefaultButton">
-                        {# Publish/Unpublish button depending on status -#}
+                        {# Publish/unpublish button -#}
                         {% if event.published && !event.canceled -%}
                           {{ event_scoped_action(event = event,
                                                     can_manage_events = can_manage_events,
@@ -312,11 +322,13 @@
               </td>
               {# End actions -#}
             </tr>
+            {# End event row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
     </table>
   </div>
+  {# End upcoming events table -#}
   {# Pagination -#}
   {% if events.upcoming.total > events.upcoming.events.len() -%}
     {{ pagination::navigation_links(links = upcoming_navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "upcoming-events-pagination-") }}
@@ -327,6 +339,7 @@
 
 {# Past Events Section -#}
 <div id="past-content"
+     data-events-list-page
      data-events-content="past"
      class="{% if events_tab == EventsTab::Upcoming %}
               hidden
@@ -334,13 +347,14 @@
   <div class="text-sm text-stone-600 mb-5">
     {{ pagination::range_display(offset = past_offset.unwrap_or(0) , count = events.past.events.len(), total = events.past.total, label = "event") }}
   </div>
+  {# Past events table -#}
   <div class="relative overflow-visible">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"
            role="table"
            aria-label="Past events list">
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
              role="rowgroup">
-        {# Header -#}
+        {# Table header -#}
         <tr>
           <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
           <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Location</th>
@@ -351,9 +365,11 @@
             <span class="sr-only">Actions</span>
           </th>
         </tr>
+        {# End table header -#}
       </thead>
       <tbody id="past-events-list" role="rowgroup">
         {% if events.past.events.is_empty() -%}
+          {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
             {# Mobile: 3 columns (Name, Status, Actions) -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="3">
@@ -367,8 +383,10 @@
               {% include "dashboard/placeholders/events_past.html" -%}
             </td>
           </tr>
+          {# End empty state -#}
         {% else -%}
           {% for event in events.past.events -%}
+            {# Event row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               <th scope="row"
                   class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
@@ -470,7 +488,9 @@
                             hx-swap="innerHTML show:body:top"
                             hx-disabled-elt="this"
                             class="btn-tertiary p-2"
-                            {% if event.canceled %}title="View canceled event"{% endif %}
+                            {% if event.canceled %}
+                              title="View canceled event"
+                            {% endif %}
                             aria-label="Edit event: {{ event.name }}">
                       <div class="svg-icon size-4 icon-pencil"></div>
                     </button>
@@ -537,11 +557,13 @@
               </td>
               {# End actions -#}
             </tr>
+            {# End event row -#}
           {% endfor -%}
         {% endif -%}
       </tbody>
     </table>
   </div>
+  {# End past events table -#}
 
   {# Pagination -#}
   {% if events.past.total > events.past.events.len() -%}
@@ -550,14 +572,6 @@
   {# End pagination -#}
 </div>
 {# End Past Events Section -#}
-
-<script type="module">
-  import {
-    initializeEventsListPage
-  } from '/static/js/dashboard/group/events-list-page.js';
-
-  initializeEventsListPage();
-</script>
 
 {# Event dropdown action with optional series scope. #}
 {% macro event_scoped_action(

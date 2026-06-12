@@ -2,6 +2,18 @@ import { expect, test } from "@playwright/test";
 
 import { navigateToPath } from "../../utils.js";
 
+const expectChartSettled = async (page, selector) => {
+  const chart = page.locator(selector);
+
+  if ((await chart.count()) === 0) {
+    await expect(page.locator(".chart-empty-state").first()).toBeVisible();
+    return;
+  }
+
+  await expect(chart).toBeVisible();
+  await expect(chart.locator("svg-spinner")).toHaveCount(0);
+};
+
 test.describe("site stats page", () => {
   test("renders totals and analytics chart containers", async ({ page }) => {
     // Load the public stats page before checking analytics sections.
@@ -88,5 +100,11 @@ test.describe("site stats page", () => {
         .locator("#attendees-monthly-chart, .chart-empty-state")
         .last(),
     ).toBeVisible();
+
+    // Verify representative charts finish rendering or show the empty state.
+    await expectChartSettled(page, "#groups-running-chart");
+    await expectChartSettled(page, "#members-running-chart");
+    await expectChartSettled(page, "#events-running-chart");
+    await expectChartSettled(page, "#attendees-running-chart");
   });
 });

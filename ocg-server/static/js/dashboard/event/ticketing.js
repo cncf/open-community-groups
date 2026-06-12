@@ -1,4 +1,4 @@
-import { queryElementById } from "/static/js/common/dom.js";
+import { getElementById } from "/static/js/common/dom.js";
 
 /**
  * Collects the shared event enrollment controls used across the form.
@@ -20,19 +20,19 @@ import { queryElementById } from "/static/js/common/dom.js";
  * }}
  */
 const resolveEventEnrollmentControls = (root = document) => ({
-  attendeeApprovalRequiredInput: queryElementById(root, "attendee_approval_required"),
-  attendeeApprovalToggleLabel: queryElementById(root, "attendee-approval-toggle-label"),
-  capacityInput: queryElementById(root, "capacity"),
-  clearTicketingInput: queryElementById(root, "clear_ticketing"),
-  discountCodesRoot: queryElementById(root, "discount-codes-ui"),
-  paymentCurrencyInput: queryElementById(root, "payment_currency_code"),
-  ticketTypesRoot: queryElementById(root, "ticket-types-ui"),
+  attendeeApprovalRequiredInput: getElementById(root, "attendee_approval_required"),
+  attendeeApprovalToggleLabel: getElementById(root, "attendee-approval-toggle-label"),
+  capacityInput: getElementById(root, "capacity"),
+  clearTicketingInput: getElementById(root, "clear_ticketing"),
+  discountCodesRoot: getElementById(root, "discount-codes-ui"),
+  paymentCurrencyInput: getElementById(root, "payment_currency_code"),
+  ticketTypesRoot: getElementById(root, "ticket-types-ui"),
   timezoneInput: root.querySelector('[name="timezone"]'),
-  toggleAttendeeApprovalRequired: queryElementById(root, "toggle_attendee_approval_required"),
-  toggleClearTicketing: queryElementById(root, "toggle_clear_ticketing"),
-  toggleWaitlistEnabled: queryElementById(root, "toggle_waitlist_enabled"),
-  waitlistEnabledInput: queryElementById(root, "waitlist_enabled"),
-  waitlistToggleLabel: queryElementById(root, "waitlist-toggle-label"),
+  toggleAttendeeApprovalRequired: getElementById(root, "toggle_attendee_approval_required"),
+  toggleClearTicketing: getElementById(root, "toggle_clear_ticketing"),
+  toggleWaitlistEnabled: getElementById(root, "toggle_waitlist_enabled"),
+  waitlistEnabledInput: getElementById(root, "waitlist_enabled"),
+  waitlistToggleLabel: getElementById(root, "waitlist-toggle-label"),
 });
 
 /**

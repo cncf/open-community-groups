@@ -1,3 +1,4 @@
+import { getElementById } from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
 const DEFAULT_CURRENCY_PLACEHOLDER = "USD";
@@ -51,7 +52,7 @@ const STRIPE_STANDARD_MAXIMUM_CHARGE_AMOUNT_MINOR = 99999999;
  * @returns {string}
  */
 export const resolveEventCurrencyCode = (
-  currencyField = document.getElementById("payment_currency_code"),
+  currencyField = getElementById(document, "payment_currency_code"),
 ) => {
   const currencyCode = toTrimmedString(currencyField?.value).toUpperCase();
 

@@ -14,7 +14,7 @@
      class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:gap-4 md:max-xl:gap-2
             {% if !event.is_past() && event.formatted_ticket_price_badge().is_some() %}mt-3 md:mt-0{% endif %}">
 
-  <!-- Loading spinner (shown initially) -->
+  {# Loading spinner -#}
   <button id="loading-btn-{{ attendance_instance }}"
           data-attendance-role="loading-btn"
           disabled
@@ -22,8 +22,9 @@
     {{ ui::spinner(size = "size-4") -}}
     <span class="ms-2">Checking...</span>
   </button>
+  {# End loading spinner -#}
 
-  <!-- Sign in prompt (hidden initially) -->
+  {# Sign in prompt -#}
   {% if event.is_ticketed() -%}
     <button id="signin-btn-{{ attendance_instance }}"
             data-attendance-role="signin-btn"
@@ -76,8 +77,9 @@
       {% endif -%}
     </button>
   {% endif -%}
+  {# End sign in prompt -#}
 
-  <!-- Attend button (hidden initially) -->
+  {# Attend button -#}
   {% if event.is_ticketed() -%}
     <button id="attend-btn-{{ attendance_instance }}"
             data-attendance-role="attend-btn"
@@ -133,7 +135,9 @@
       {% endif -%}
     </button>
   {% endif -%}
+  {# End attend button -#}
 
+  {# Registration questions modal -#}
   {% if !event.registration_questions.is_empty() -%}
     <div id="questions-modal-{{ attendance_instance }}"
          data-attendance-role="registration-modal"
@@ -234,7 +238,9 @@
       </div>
     </div>
   {% endif -%}
+  {# End registration questions modal -#}
 
+  {# Ticket modal -#}
   {% if event.is_ticketed() -%}
     <div id="ticket-modal-{{ attendance_instance }}"
          data-attendance-role="ticket-modal"
@@ -408,8 +414,9 @@
       </div>
     </div>
   {% endif -%}
+  {# End ticket modal -#}
 
-  <!-- Join meeting button (hidden initially, shown for attendees when live) -->
+  {# Join meeting button -#}
   {% if !event.canceled %}
     {% if let Some(meeting_join_url) = &event.meeting_join_url %}
       <a id="join-meeting-btn-{{ attendance_instance }}"
@@ -424,8 +431,9 @@
       </a>
     {% endif %}
   {% endif %}
+  {# End join meeting button -#}
 
-  <!-- Leave button (hidden initially) -->
+  {# Leave button -#}
   <button id="leave-btn-{{ attendance_instance }}"
           data-attendance-role="leave-btn"
           hx-delete="/{{ event.community.name }}/event/{{ event.event_id }}/leave"
@@ -434,7 +442,9 @@
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
     {{ attendance::control_content(label = "Cancel attendance", icon_class = "icon-cancel") -}}
   </button>
+  {# End leave button -#}
 
+  {# Actions menu -#}
   {% if !event.canceled -%}
     <details id="actions-menu-{{ attendance_instance }}"
              data-attendance-role="actions-menu"
@@ -478,8 +488,9 @@
       </div>
     </details>
   {% endif -%}
+  {# End actions menu -#}
 
-  <!-- Refund request button (hidden initially) -->
+  {# Refund request button -#}
   <button id="refund-btn-{{ attendance_instance }}"
           data-attendance-role="refund-btn"
           hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/refund-request"
@@ -488,12 +499,15 @@
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
     {{ attendance::control_content(label = "Request refund", icon_class = "icon-refund") -}}
   </button>
+  {# End refund request button -#}
 
-  <!-- Hidden element that checks attendance status -->
+  {# Attendance checker -#}
   <div id="attendance-checker-{{ attendance_instance }}"
        data-attendance-role="attendance-checker"
        class="hidden"
        hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/attendance"
        hx-trigger="load, attendance-changed from:body"
        hx-swap="none"></div>
+  {# End attendance checker -#}
 </div>
+{# End attend button section -#}

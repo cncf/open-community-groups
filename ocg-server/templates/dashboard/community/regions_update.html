@@ -8,7 +8,10 @@
       hx-target="#dashboard-content"
       hx-history="false"
       hx-indicator="#dashboard-spinner, #community-region-update-spinner"
-      hx-disabled-elt="button[type=submit], #cancel-button">
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully updated the region."
+      data-error-message="Something went wrong updating the region. Please try again later.">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12 space-y-12">
       {{ dashboard::page_title(title = "Region Details", docs_href = "/docs#/guides/community-dashboard?id=regions-geographic-scope", description = "Update the region for this community.") -}}
@@ -66,24 +69,4 @@
   </div>
 </form>
 
-<script type="module">
-  import {
-    handleHtmxResponse
-  } from '/static/js/common/alerts.js';
-
-  const regionForm = document.getElementById('region-form');
-
-  if (regionForm) {
-    regionForm.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'region-form') {
-        const xhr = e.detail?.xhr;
-        handleHtmxResponse({
-          xhr,
-          successMessage: 'You have successfully updated the region.',
-          errorMessage: 'Something went wrong updating the region. Please try again later.'
-        });
-      }
-    });
-  }
-</script>
 {# End Update Region form -#}

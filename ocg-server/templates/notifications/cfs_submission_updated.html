@@ -1,6 +1,7 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
+{# Cfs Submission Updated Notification -#}
 {% block subject -%}
   Submission update: {{ event.name }}
 {% endblock subject -%}
@@ -54,3 +55,4 @@
   {{ event.name }} from {{ event.group_name }} in the
   {{ event.community_display_name }} community.
 {% endblock footer -%}
+{# End cfs submission updated notification -#}

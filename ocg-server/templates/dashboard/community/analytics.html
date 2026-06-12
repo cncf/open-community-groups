@@ -291,14 +291,7 @@ description = "Community statistics and growth trends. Analytics are cached for 
 </div>
 {# End charts sections #}
 
-{# Initialize charts with server data #}
 {# djlint:off #}
-<script type="module">
-  import { initAnalyticsCharts } from '/static/js/dashboard/community/analytics.js';
-
-  const stats = {{ stats | json | safe }};
-  initAnalyticsCharts(stats)
-    .catch((error) => console.error('Failed to initialize analytics charts:', error));
-</script>
+<script type="application/json" data-community-analytics>{{ stats | json | safe }}</script>
 {# djlint:on #}
-{# End initialize charts with server data #}
+<script type="module" src="/static/js/dashboard/community/analytics.js"></script>

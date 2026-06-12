@@ -1,4 +1,10 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
+import {
+  isDatasetReady,
+  isElementHidden,
+  markDatasetReady,
+  setElementHidden,
+} from "/static/js/common/dom.js";
 
 import {
   getAttendanceControl,
@@ -109,7 +115,8 @@ const hideControl = (control) => {
   }
 
   control.classList.remove("opacity-100");
-  control.classList.add("hidden", "opacity-0", "transition-opacity", "duration-150");
+  setElementHidden(control, true);
+  control.classList.add("opacity-0", "transition-opacity", "duration-150");
 };
 
 /**
@@ -141,7 +148,7 @@ const setControlPriceBadgesHidden = (container, hidden) => {
 
     getControlPriceBadges(control).forEach((priceBadge) => {
       priceBadge.hidden = hidden;
-      priceBadge.classList.toggle("hidden", hidden);
+      setElementHidden(priceBadge, hidden);
       priceBadge.style.display = hidden ? "none" : "";
     });
   });
@@ -168,9 +175,9 @@ const renderControl = (control, state = {}) => {
   } = state;
 
   if (visible) {
-    const wasHidden = control.classList.contains("hidden");
+    const wasHidden = isElementHidden(control);
     control.classList.add("opacity-0", "transition-opacity", "duration-150");
-    control.classList.remove("hidden");
+    setElementHidden(control, false);
     const showControl = () => {
       control.classList.remove("opacity-0");
       control.classList.add("opacity-100");
@@ -192,7 +199,7 @@ const renderControl = (control, state = {}) => {
   const shouldHidePriceBadge = hidePriceBadge || (label !== null && label !== BUY_TICKET_LABEL);
   getControlPriceBadges(control).forEach((priceBadge) => {
     priceBadge.hidden = shouldHidePriceBadge;
-    priceBadge.classList.toggle("hidden", shouldHidePriceBadge);
+    setElementHidden(priceBadge, shouldHidePriceBadge);
     priceBadge.style.display = shouldHidePriceBadge ? "none" : "";
   });
 
@@ -358,7 +365,7 @@ export const resetPrimaryControls = (container) => {
     refundButton,
   } = getPrimaryControls(container);
 
-  actionsMenu?.classList.remove("hidden");
+  setElementHidden(actionsMenu, false);
   hideControl(loadingButton);
   hideControl(signinButton);
   hideControl(attendButton);
@@ -391,21 +398,21 @@ export const renderMeetingDetails = (isAttendee, meta) => {
 
   sections.forEach((section) => {
     const sectionHasRecording = section.dataset?.hasRecording === "true";
-    section.classList.toggle("hidden", !(sectionHasRecording || showAttendeeMeetingAccess));
+    setElementHidden(section, !(sectionHasRecording || showAttendeeMeetingAccess));
     section.querySelectorAll("[data-join-link-always]").forEach((link) => {
-      link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+      setElementHidden(link, !showAttendeeMeetingAccess);
     });
   });
 
   const joinLinksLive = document.querySelectorAll("[data-join-link]");
   joinLinksLive.forEach((link) => {
-    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    setElementHidden(link, !showAttendeeMeetingAccess);
     link.classList.toggle("xl:flex", showAttendeeMeetingAccess);
   });
 
   const joinLinksMenu = document.querySelectorAll("[data-join-link-menu]");
   joinLinksMenu.forEach((link) => {
-    link.classList.toggle("hidden", !showAttendeeMeetingAccess);
+    setElementHidden(link, !showAttendeeMeetingAccess);
     link.classList.toggle("max-xl:flex", showAttendeeMeetingAccess);
   });
 };
@@ -670,7 +677,7 @@ export const updateCheckoutButtonState = (container) => {
     checkoutButton.removeAttribute("title");
   }
 
-  if (checkoutSpinner instanceof HTMLElement && !checkoutSpinner.classList.contains("hidden")) {
+  if (checkoutSpinner instanceof HTMLElement && !isElementHidden(checkoutSpinner)) {
     checkoutButton.disabled = true;
   }
 };
@@ -684,7 +691,7 @@ const setCheckoutLoadingState = (container, isLoading) => {
   const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");
   const checkoutLabel = getAttendanceControl(container, "checkout-btn-label");
 
-  checkoutSpinner?.classList.toggle("hidden", !isLoading);
+  setElementHidden(checkoutSpinner, !isLoading);
   checkoutSpinner?.classList.toggle("flex", isLoading);
   checkoutLabel?.classList.toggle("invisible", isLoading);
 };
@@ -699,7 +706,7 @@ const syncTicketModalState = (container) => {
   const meta = getAttendanceMeta(container);
   const ticketTypeOptions = container.querySelectorAll('[data-attendance-role="ticket-type-option"]');
 
-  ticketModalForm?.classList.remove("hidden");
+  setElementHidden(ticketModalForm, false);
   setCheckoutLoadingState(container, false);
 
   ticketTypeOptions.forEach((ticketTypeOption) => {
@@ -747,12 +754,10 @@ export const showCheckoutLoadingState = (container) => {
  * @param {HTMLElement} container - Attendance container element
  */
 const initializeTicketModalControls = (container) => {
-  if (container.dataset.ticketModalReady === "true") {
+  if (!markDatasetReady(container, "ticketModalReady")) {
     syncTicketModalState(container);
     return;
   }
-
-  container.dataset.ticketModalReady = "true";
 
   container.querySelectorAll('[data-attendance-role="ticket-type-option"]').forEach((ticketTypeOption) => {
     if (ticketTypeOption instanceof HTMLInputElement) {
@@ -791,7 +796,7 @@ export const openQuestionsModal = (container) => {
     return;
   }
 
-  if (questionsModal.classList.contains("hidden")) {
+  if (isElementHidden(questionsModal)) {
     toggleModalVisibility(questionsModal.id);
   }
 };
@@ -815,11 +820,7 @@ export const closeTicketModal = (container) => {
  */
 export const closeQuestionsModal = (container) => {
   const questionsModal = getAttendanceControl(container, "registration-modal");
-  if (
-    !(questionsModal instanceof HTMLElement) ||
-    !questionsModal.id ||
-    questionsModal.classList.contains("hidden")
-  ) {
+  if (!(questionsModal instanceof HTMLElement) || !questionsModal.id || isElementHidden(questionsModal)) {
     return;
   }
 
@@ -839,15 +840,15 @@ export const showPrimaryRequestLoading = (container, role) => {
   }
 
   if (role === "checkout-cancel-btn") {
-    getAttendanceControl(container, "attend-btn")?.classList.add("hidden");
+    setElementHidden(getAttendanceControl(container, "attend-btn"), true);
     const actionsMenu = getAttendanceControl(container, "actions-menu");
-    actionsMenu?.classList.add("hidden");
+    setElementHidden(actionsMenu, true);
     if (actionsMenu instanceof HTMLDetailsElement) {
       actionsMenu.open = false;
     }
   }
-  targetControl.classList.add("hidden");
-  loadingButton.classList.remove("hidden");
+  setElementHidden(targetControl, true);
+  setElementHidden(loadingButton, false);
 };
 
 /**
@@ -862,13 +863,13 @@ export const restorePrimaryRequestControl = (container, role) => {
     return;
   }
 
-  loadingButton.classList.add("hidden");
+  setElementHidden(loadingButton, true);
   if (role === "checkout-cancel-btn") {
-    getAttendanceControl(container, "attend-btn")?.classList.remove("hidden");
+    setElementHidden(getAttendanceControl(container, "attend-btn"), false);
     const actionsMenu = getAttendanceControl(container, "actions-menu");
-    actionsMenu?.classList.remove("hidden");
+    setElementHidden(actionsMenu, false);
   }
-  targetControl.classList.remove("hidden");
+  setElementHidden(targetControl, false);
 };
 
 /**
@@ -876,7 +877,7 @@ export const restorePrimaryRequestControl = (container, role) => {
  * @param {HTMLElement} container - Attendance container element
  */
 export const initializeAttendanceContainer = (container) => {
-  if (!container || container.dataset.attendanceReady === "true") {
+  if (!container || isDatasetReady(container, "attendanceReady")) {
     return;
   }
 
@@ -897,6 +898,5 @@ export const initializeAttendanceContainer = (container) => {
     visible: false,
   });
   initializeTicketModalControls(container);
-
-  container.dataset.attendanceReady = "true";
+  markDatasetReady(container, "attendanceReady");
 };

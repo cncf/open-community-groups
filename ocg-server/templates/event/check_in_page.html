@@ -2,6 +2,7 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 
+{# Event check-in page -#}
 {% block content -%}
   <div class="flex items-center justify-center w-full">
     <div class="container max-w-7xl m-auto px-4 py-8 md:px-6 md:py-12">
@@ -175,39 +176,6 @@
 {% endblock content -%}
 
 {% block scripts -%}
-  <script type="module">
-    import {
-      handleHtmxResponse
-    } from "/static/js/common/alerts.js";
-
-    const successCard = document.getElementById("check-in-success-card");
-    const formContainer = document.getElementById("check-in-form-container");
-    const form = document.getElementById("event-check-in-form");
-    const viewDetailsButton = document.getElementById("view-event-details-button");
-
-    if (form) {
-      form.addEventListener("htmx:afterRequest", (event) => {
-        const xhr = event.detail?.xhr;
-        const ok = handleHtmxResponse({
-          xhr,
-          successMessage: "You're all checked in! Enjoy the event.",
-          errorMessage: "Check-in failed. Please try again later."
-        });
-        if (ok) {
-          if (successCard) {
-            successCard.classList.remove("hidden");
-          }
-          if (formContainer) {
-            formContainer.classList.add("hidden");
-          }
-          if (form) {
-            form.classList.add("hidden");
-          }
-          if (viewDetailsButton) {
-            viewDetailsButton.classList.remove("hidden");
-          }
-        }
-      });
-    }
-  </script>
+  <script type="module" src="/static/js/event/check-in.js"></script>
 {% endblock scripts -%}
+{# End event check-in page -#}

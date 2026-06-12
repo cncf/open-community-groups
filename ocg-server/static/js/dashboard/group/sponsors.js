@@ -1,5 +1,22 @@
 import { confirmAction, showErrorAlert } from "/static/js/common/alerts.js";
+import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+
+/**
+ * Update a sponsor featured toggle loading state.
+ * @param {HTMLInputElement} checkbox Toggle input.
+ * @param {boolean} loading Whether the toggle should be disabled.
+ * @returns {void}
+ */
+const setSponsorFeaturedToggleLoading = (checkbox, loading) => {
+  const label = checkbox.closest("label");
+
+  checkbox.disabled = loading;
+  if (label) {
+    label.classList.toggle("cursor-pointer", !loading);
+    label.classList.toggle("cursor-not-allowed", loading);
+  }
+};
 
 /**
  * Update a sponsor featured toggle and refresh the dashboard table on success.
@@ -9,15 +26,10 @@ import { ocgFetch } from "/static/js/common/fetch.js";
  */
 const updateSponsorFeatured = async (checkbox, nextChecked) => {
   const url = checkbox.dataset.url;
-  const label = checkbox.closest("label");
   const previousChecked = checkbox.dataset.currentChecked === "true";
 
   checkbox.checked = nextChecked;
-  checkbox.disabled = true;
-  if (label) {
-    label.classList.remove("cursor-pointer");
-    label.classList.add("cursor-not-allowed");
-  }
+  setSponsorFeaturedToggleLoading(checkbox, true);
 
   try {
     const response = await ocgFetch(url, {
@@ -36,24 +48,16 @@ const updateSponsorFeatured = async (checkbox, nextChecked) => {
     }
 
     checkbox.dataset.currentChecked = String(nextChecked);
-    checkbox.disabled = false;
-    if (label) {
-      label.classList.add("cursor-pointer");
-      label.classList.remove("cursor-not-allowed");
-    }
+    setSponsorFeaturedToggleLoading(checkbox, false);
 
-    document.getElementById("dashboard-content")?.dispatchEvent(
+    getElementById(document, "dashboard-content")?.dispatchEvent(
       new Event("refresh-group-dashboard-table", {
         bubbles: true,
       }),
     );
   } catch {
     checkbox.checked = previousChecked;
-    checkbox.disabled = false;
-    if (label) {
-      label.classList.add("cursor-pointer");
-      label.classList.remove("cursor-not-allowed");
-    }
+    setSponsorFeaturedToggleLoading(checkbox, false);
     showErrorAlert("Failed to update sponsor visibility. Please try again.");
   }
 };
@@ -69,11 +73,10 @@ const initializeSponsorFeaturedToggles = (root = document) => {
       return;
     }
 
-    if (checkbox.dataset.featuredToggleReady === "true" || checkbox.disabled) {
+    if (checkbox.disabled || !markDatasetReady(checkbox, "featuredToggleReady")) {
       return;
     }
 
-    checkbox.dataset.featuredToggleReady = "true";
     checkbox.dataset.currentChecked = String(checkbox.checked);
     checkbox.addEventListener("change", async () => {
       const previousChecked = checkbox.dataset.currentChecked === "true";
@@ -105,8 +108,4 @@ const initializeSponsorsFeatures = (root = document) => {
   initializeSponsorFeaturedToggles(root);
 };
 
-initializeSponsorsFeatures();
-
-document.addEventListener("htmx:load", (event) => {
-  initializeSponsorsFeatures(event.target || document);
-});
+initializeOnReadyAndHtmxLoad(initializeSponsorsFeatures);

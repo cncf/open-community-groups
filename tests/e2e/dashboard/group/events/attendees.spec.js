@@ -15,7 +15,9 @@ import {
   TEST_USER_IDS,
   navigateToEvent,
   navigateToPath,
+  selectTimezone,
 } from "../../../utils.js";
+import { fillMarkdownEditor } from "../../form-helpers.js";
 
 import {
   ATTENDEE_NOTIFICATION_BODY,
@@ -61,6 +63,103 @@ const openAttendeesTab = async (page, eventName, eventId) => {
   ).toBeVisible();
 
   return attendeesContent;
+};
+
+// Create a published event that requires organizer approval for attendees.
+const createApprovalRequiredEvent = async (page, eventName) => {
+  await navigateToPath(page, "/dashboard/group?tab=events");
+
+  const dashboardContent = page.locator("#dashboard-content");
+  await expect(
+    dashboardContent.getByText("Events", { exact: true }),
+  ).toBeVisible();
+  await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+  await expect(page.locator("#name")).toBeVisible();
+
+  await page.locator("#name").fill(eventName);
+  await page.locator("#kind_id").selectOption("virtual");
+  await page
+    .locator("#category_id")
+    .selectOption("33333333-3333-3333-3333-333333333331");
+  await page
+    .locator("#description_short")
+    .fill("A temporary approval-required event from the e2e suite.");
+  await fillMarkdownEditor(
+    page,
+    "description",
+    "A temporary approval-required event for invitation request coverage.",
+  );
+  await page.locator("#capacity").fill("25");
+  await page
+    .locator("#toggle_attendee_approval_required")
+    .check({ force: true });
+
+  await page.locator("button[data-section-next]").click();
+  await expect(
+    page.locator('button[data-section="date-venue"]'),
+  ).toHaveAttribute("data-active", "true");
+  await selectTimezone(page, "UTC");
+  await page.locator("#starts_at").fill("2030-06-20T10:00");
+  await page.locator("#ends_at").fill("2030-06-20T12:00");
+  await page
+    .locator("#meeting_join_url")
+    .fill("https://meet.example.com/e2e-invitation-requests");
+
+  const visibleAddEventButton = page.locator(
+    "#pending-changes-alert:not(.hidden) #add-event-button",
+  );
+  await expect(visibleAddEventButton).toBeVisible();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/dashboard/group/events/add") &&
+        response.status() === 201,
+    ),
+    visibleAddEventButton.click(),
+  ]);
+
+  const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+  await expect(eventRow).toBeVisible();
+
+  const actionsButton = eventRow.locator(".btn-actions");
+  const eventId = await actionsButton.getAttribute("data-event-id");
+
+  expect(eventId).not.toBeNull();
+
+  const publishResponse = await page.request.put(
+    buildE2eUrl(`/dashboard/group/events/${eventId}/publish`),
+  );
+  expect(publishResponse.ok()).toBeTruthy();
+
+  await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes(`/dashboard/group/events/${eventId}/update`) &&
+        response.ok(),
+    ),
+    eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+  ]);
+  const viewEventHref = await page
+    .locator("#event-update-page")
+    .getAttribute("data-event-public-url");
+
+  expect(viewEventHref).not.toBeNull();
+
+  return {
+    eventId: eventId ?? "",
+    viewEventHref: viewEventHref ?? "",
+  };
+};
+
+// Delete the temporary event created for invitation request coverage.
+const deleteEventFromList = async (page, eventId) => {
+  const deleteResponse = await page.request.delete(
+    buildE2eUrl(`/dashboard/group/events/${eventId}/delete`),
+  );
+  expect([200, 204, 404]).toContain(deleteResponse.status());
 };
 
 test.describe("group dashboard attendees tab", () => {
@@ -402,68 +501,43 @@ test.describe("group dashboard attendees tab", () => {
   test("organizer sees the empty state on the attendees tab for an event without RSVPs", async ({
     organizerGroupPage,
   }) => {
-    // Load the group events dashboard before opening the seeded event.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    // Give temporary event setup and cleanup enough time on slower deep runs.
+    test.setTimeout(60_000);
 
-    // Find the event row.
-    const eventRow = organizerGroupPage.locator("tr", {
-      hasText: "Upcoming Virtual Event",
-    });
-    await expect(eventRow).toBeVisible();
-
-    // Open the event update form before switching to attendees.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.two}/update`,
-            ) &&
-          response.ok(),
-      ),
-      eventRow
-        .locator('td button[aria-label="Edit event: Upcoming Virtual Event"]')
-        .click(),
-    ]);
-
-    // Load the attendees tab for an event without RSVPs.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.two}/attendees`,
-            ) &&
-          response.ok(),
-      ),
-      organizerGroupPage.locator('button[data-section="attendees"]').click(),
-    ]);
-
-    // Verify the empty state and disabled email action.
-    const attendeesContent = organizerGroupPage.locator("#attendees-content");
-
-    // Assert that Attendees list is visible.
-    await expect(
-      attendeesContent.getByRole("table", { name: "Attendees list" }),
-    ).toBeVisible();
-    await expect(
-      attendeesContent.locator("div.text-xl.lg\\:text-2xl:visible").filter({
-        hasText: "No attendees found for this event.",
-      }),
-    ).toBeVisible();
-    await expect(
-      attendeesContent.getByRole("button", { name: "Send email" }),
-    ).toBeDisabled();
-    await expect(
-      attendeesContent.getByRole("button", { name: "Send email" }),
-    ).toHaveAttribute(
-      "title",
-      "No confirmed attendees with verified email addresses.",
+    // Create a temporary event without attendees.
+    const eventName = `E2E Empty Attendees ${Date.now()}`;
+    const { eventId } = await createApprovalRequiredEvent(
+      organizerGroupPage,
+      eventName,
     );
+
+    try {
+      // Load the attendees tab for the temporary event.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        eventName,
+        eventId,
+      );
+
+      // Assert that Attendees list is visible.
+      await expect(
+        attendeesContent.getByRole("table", { name: "Attendees list" }),
+      ).toBeVisible();
+      await expect(attendeesContent).toContainText(
+        "No attendees found for this event.",
+      );
+      await expect(
+        attendeesContent.getByRole("button", { name: "Send email" }),
+      ).toBeDisabled();
+      await expect(
+        attendeesContent.getByRole("button", { name: "Send email" }),
+      ).toHaveAttribute(
+        "title",
+        "No confirmed attendees with verified email addresses.",
+      );
+    } finally {
+      await deleteEventFromList(organizerGroupPage, eventId);
+    }
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({
@@ -638,111 +712,234 @@ test.describe("group dashboard attendees tab", () => {
     // Give the invite and cancel flow enough time on slower deep runs.
     test.setTimeout(60_000);
 
-    // Load the attendees tab for a seeded event without RSVPs.
-    const attendeesContent = await openAttendeesTab(
+    // Create a temporary event for the invitation lifecycle.
+    const eventName = `E2E Attendee Invitation ${Date.now()}`;
+    const { eventId } = await createApprovalRequiredEvent(
       organizerGroupPage,
-      "Upcoming Virtual Event",
-      TEST_EVENT_IDS.alpha.two,
+      eventName,
     );
 
-    // Open the manual invitation modal for an event without RSVPs.
-    const inviteAttendeeButton = attendeesContent.getByRole("button", {
-      name: "Invite",
-    });
-    await expect(inviteAttendeeButton).toBeVisible();
-    await inviteAttendeeButton.click();
+    try {
+      // Load the attendees tab for the temporary event.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        eventName,
+        eventId,
+      );
 
-    // Find the modal.
-    const modal = organizerGroupPage.locator("#attendee-invitation-modal");
-    const searchField = modal.locator(
-      "user-search-field[data-attendee-invitation-search]",
+      // Open the manual invitation modal for an event without RSVPs.
+      const inviteAttendeeButton = attendeesContent.getByRole("button", {
+        name: "Invite",
+      });
+      await expect(inviteAttendeeButton).toBeVisible();
+      await inviteAttendeeButton.click();
+
+      // Find the modal.
+      const modal = organizerGroupPage.locator("#attendee-invitation-modal");
+      const searchField = modal.locator(
+        "user-search-field[data-attendee-invitation-search]",
+      );
+      const searchInput = searchField.locator(
+        "#attendee-invitation-search-input",
+      );
+
+      // Assert the expected content is visible.
+      await expect(modal).toBeVisible();
+      await expect(
+        modal.getByRole("heading", { name: "Invite attendee" }),
+      ).toBeVisible();
+      await expect(modal.locator("#submit-attendee-invitation")).toBeDisabled();
+
+      // Keep invalid free-form input from enabling the invitation form.
+      await searchInput.fill("not-an-email");
+      await expect(modal.locator("#submit-attendee-invitation")).toBeDisabled();
+
+      // Select a seeded user and submit the invitation.
+      await searchInput.fill("e2e-pending-2");
+      await expect(searchField.getByText("E2E Pending Two")).toBeVisible();
+      await searchField.getByText("E2E Pending Two").click();
+      await expect(
+        modal.locator("#attendee-invitation-selected-user"),
+      ).toContainText("E2E Pending Two");
+      await expect(modal.locator("#submit-attendee-invitation")).toBeEnabled();
+
+      // Submit and wait for the server response.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "POST" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/attendees/invite`,
+              ) &&
+            response.ok(),
+        ),
+        modal.locator("#submit-attendee-invitation").click(),
+      ]);
+
+      // Assert that the content is hidden.
+      await expect(modal).toBeHidden();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Invitation sent.",
+      );
+
+      // Verify the invitation appears in the attendees table.
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Pending Two",
+      });
+      await expect(attendeeRow).toBeVisible();
+      await expect(attendeeRow).toContainText("Invitation sent");
+
+      // Cancel the temporary invitation and wait for the table to refresh.
+      const rowActionsMenu = attendeeRow.locator(
+        "[data-attendee-row-actions-menu]",
+      );
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu
+        .getByRole("menuitem", { name: "Cancel invitation" })
+        .click();
+      await expect(
+        organizerGroupPage.getByRole("button", { name: "Yes" }),
+      ).toBeVisible();
+
+      // Click Yes.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending2}/invitation/cancel`,
+              ) &&
+            response.ok(),
+        ),
+        organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+      ]);
+
+      // Assert how many matching elements are shown.
+      await expect(attendeeRow).toHaveCount(0);
+      await expect(attendeesContent).toContainText(
+        "No attendees found for this event.",
+      );
+    } finally {
+      await deleteEventFromList(organizerGroupPage, eventId);
+    }
+  });
+
+  test("organizer can accept and reject attendee invitation requests", async ({
+    organizerGroupPage,
+    pending1Page,
+    pending2Page,
+  }) => {
+    // Give the invitation request flow enough time on slower deep runs.
+    test.setTimeout(60_000);
+
+    // Create a temporary approval-required event.
+    const eventName = `E2E Invitation Requests ${Date.now()}`;
+    const { eventId } = await createApprovalRequiredEvent(
+      organizerGroupPage,
+      eventName,
     );
-    const searchInput = searchField.locator(
-      "#attendee-invitation-search-input",
-    );
 
-    // Assert the expected content is visible.
-    await expect(modal).toBeVisible();
-    await expect(
-      modal.getByRole("heading", { name: "Invite attendee" }),
-    ).toBeVisible();
-    await expect(modal.locator("#submit-attendee-invitation")).toBeDisabled();
+    try {
+      // Request invitations from two users. The attend endpoint expects a
+      // form-encoded body, so send an empty form payload with each request.
+      for (const requesterPage of [pending1Page, pending2Page]) {
+        const requestResponse = await requesterPage.request.post(
+          buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
+          { form: {} },
+        );
+        expect(requestResponse.ok()).toBeTruthy();
+      }
 
-    // Keep invalid free-form input from enabling the invitation form.
-    await searchInput.fill("not-an-email");
-    await expect(modal.locator("#submit-attendee-invitation")).toBeDisabled();
+      // Open the organizer Requests tab for the temporary event.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+      const eventRow = organizerGroupPage.locator("tr", { hasText: eventName });
+      await expect(eventRow).toBeVisible();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(`/dashboard/group/events/${eventId}/update`) &&
+            response.ok(),
+        ),
+        eventRow.locator('td button[aria-label^="Edit event:"]').click(),
+      ]);
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests`,
+              ) &&
+            response.ok(),
+        ),
+        organizerGroupPage
+          .locator('button[data-section="invitation-requests"]')
+          .click(),
+      ]);
 
-    // Select a seeded user and submit the invitation.
-    await searchInput.fill("e2e-pending-2");
-    await expect(searchField.getByText("E2E Pending Two")).toBeVisible();
-    await searchField.getByText("E2E Pending Two").click();
-    await expect(
-      modal.locator("#attendee-invitation-selected-user"),
-    ).toContainText("E2E Pending Two");
-    await expect(modal.locator("#submit-attendee-invitation")).toBeEnabled();
+      const requestsContent = organizerGroupPage.locator(
+        "#invitation-requests-content",
+      );
+      await expect(
+        requestsContent.getByRole("table", { name: "Invitation requests" }),
+      ).toBeVisible();
 
-    // Submit and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "POST" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.two}/attendees/invite`,
-            ) &&
-          response.ok(),
-      ),
-      modal.locator("#submit-attendee-invitation").click(),
-    ]);
+      // Reject one invitation request.
+      const pendingOneRow = requestsContent.locator("tr", {
+        hasText: "E2E Pending One",
+      });
+      await expect(pendingOneRow).toContainText("Pending");
+      await pendingOneRow.getByLabel("Open actions menu").click();
+      await pendingOneRow.getByRole("menuitem", { name: "Reject" }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Are you sure you want to reject this invitation request?",
+      );
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending1}/invitation-request/reject`,
+              ) &&
+            response.ok(),
+        ),
+        organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+      ]);
+      await expect(pendingOneRow).toContainText("Rejected");
 
-    // Assert that the content is hidden.
-    await expect(modal).toBeHidden();
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Invitation sent.",
-    );
-
-    // Verify the invitation appears in the attendees table.
-    const attendeeRow = attendeesContent.locator("tr", {
-      hasText: "E2E Pending Two",
-    });
-    await expect(attendeeRow).toBeVisible();
-    await expect(attendeeRow).toContainText("Invitation sent");
-
-    // Cancel the temporary invitation and wait for the table to refresh.
-    const rowActionsMenu = attendeeRow.locator(
-      "[data-attendee-row-actions-menu]",
-    );
-    await rowActionsMenu.locator("summary").click();
-    await rowActionsMenu
-      .getByRole("menuitem", { name: "Cancel invitation" })
-      .click();
-    await expect(
-      organizerGroupPage.getByRole("button", { name: "Yes" }),
-    ).toBeVisible();
-
-    // Click Yes.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.two}/attendees/${TEST_USER_IDS.pending2}/invitation/cancel`,
-            ) &&
-          response.ok(),
-      ),
-      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
-    ]);
-
-    // Assert how many matching elements are shown.
-    await expect(attendeeRow).toHaveCount(0);
-    await expect(
-      attendeesContent.locator("div.text-xl.lg\\:text-2xl:visible").filter({
-        hasText: "No attendees found for this event.",
-      }),
-    ).toBeVisible();
+      // Accept the other invitation request.
+      const pendingTwoRow = requestsContent.locator("tr", {
+        hasText: "E2E Pending Two",
+      });
+      await expect(pendingTwoRow).toContainText("Pending");
+      await pendingTwoRow.getByLabel("Open actions menu").click();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/attendees/${TEST_USER_IDS.pending2}/invitation-request/accept`,
+              ) &&
+            response.ok(),
+        ),
+        pendingTwoRow.getByRole("menuitem", { name: "Accept" }).click(),
+      ]);
+      await expect(pendingTwoRow).toContainText("Accepted");
+    } finally {
+      await deleteEventFromList(organizerGroupPage, eventId);
+    }
   });
 
   test.describe("payment-enabled attendee refund flows", () => {

@@ -3,6 +3,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/cards.html" as cards -%}
 
+{# Site Explore Events Calendar Event Card -#}
 {% block footer_top -%}
   {% if event.formatted_ticket_price_badge().is_some() -%}
     <div class="mb-2.5">{{ cards::ticket_price_badge(event, true) -}}</div>
@@ -61,3 +62,4 @@
     </div>
   </div>
 {%- endblock footer %}
+{# End site explore events calendar event card -#}

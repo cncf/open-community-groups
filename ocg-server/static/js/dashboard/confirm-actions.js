@@ -1,10 +1,16 @@
 import { showConfirmAlert, handleHtmxResponse } from "/static/js/common/alerts.js";
+import { closestElement } from "/static/js/common/dom.js";
 
-if (!window.__ocgConfirmActionsBound) {
-  window.__ocgConfirmActionsBound = true;
+let confirmActionsBound = false;
 
+const bindConfirmActions = () => {
+  if (confirmActionsBound) {
+    return;
+  }
+
+  confirmActionsBound = true;
   document.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-confirm-action]");
+    const button = closestElement(event.target, "[data-confirm-action]");
     if (!button || button.disabled) {
       return;
     }
@@ -17,7 +23,7 @@ if (!window.__ocgConfirmActionsBound) {
   });
 
   document.addEventListener("htmx:afterRequest", (event) => {
-    const button = event.target?.closest?.("[data-confirm-action]");
+    const button = closestElement(event.target, "[data-confirm-action]");
     if (!button) {
       return;
     }
@@ -28,4 +34,6 @@ if (!window.__ocgConfirmActionsBound) {
       errorMessage: button.dataset.errorMessage || "Something went wrong. Please try again later.",
     });
   });
-}
+};
+
+bindConfirmActions();

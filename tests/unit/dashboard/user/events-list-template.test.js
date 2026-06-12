@@ -1,7 +1,9 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/user/events_list.html");
+  const response = await fetch(
+    "/ocg-server/templates/dashboard/user/events_list.html",
+  );
 
   expect(response.ok).to.equal(true);
 
@@ -17,7 +19,9 @@ describe("dashboard user events list template", () => {
 
     // Verify allowed cancellations get a confirmed cancel action.
     expect(template).to.include("<span>Cancel attendance</span>");
-    expect(template).to.include('id="cancel-attendance-{{ item.event.event_id }}"');
+    expect(template).to.include(
+      'id="cancel-attendance-{{ item.event.event_id }}"',
+    );
     expect(template).to.include("{% if item.can_cancel_attendance() -%}");
     expect(template).to.include(
       'hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance"',
@@ -25,8 +29,12 @@ describe("dashboard user events list template", () => {
     expect(template).to.include('hx-trigger="confirmed"');
     expect(template).to.include('hx-disabled-elt="this"');
     expect(template).to.include("data-confirm-action");
-    expect(template).to.include('data-confirm-message="Are you sure you want to cancel your attendance?"');
-    expect(template).to.include('data-success-message="You have successfully canceled your attendance."');
+    expect(template).to.include(
+      'data-confirm-message="Are you sure you want to cancel your attendance?"',
+    );
+    expect(template).to.include(
+      'data-success-message="You have successfully canceled your attendance."',
+    );
     expect(template).to.include(
       'data-error-message="Something went wrong canceling your attendance. Please try again later."',
     );
@@ -38,7 +46,9 @@ describe("dashboard user events list template", () => {
 
     // Verify unavailable cancellations stay visible and disabled.
     expect(template).to.include("disabled");
-    expect(template).to.include('title="Only attendee attendance can be canceled."');
+    expect(template).to.include(
+      'title="This attendance cannot be canceled from My Events."',
+    );
     expect(template).to.include('<span class="sr-only">Actions</span>');
     expect(template).to.include('aria-label="Open event actions"');
   });

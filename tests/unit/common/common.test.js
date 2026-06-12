@@ -14,6 +14,7 @@ import {
   isDashboardPath,
   isObjectEmpty,
   lockBodyScroll,
+  resetBodyScrollLock,
   resolveEventTimezone,
   scrollToDashboardTop,
   showLoadingSpinner,
@@ -295,6 +296,23 @@ describe("common utilities", () => {
     unlockBodyScroll();
     expect(document.body.dataset.modalOpenCount).to.equal("0");
     expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("resets body scroll locks from restored page snapshots", () => {
+    // Simulate a cached page snapshot with an active modal lock.
+    document.body.dataset.modalOpenCount = "1";
+    document.body.dataset.modalOverflow = "";
+    document.body.dataset.modalPaddingRight = "";
+    document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = "15px";
+
+    // Reset the restored modal lock state.
+    resetBodyScrollLock();
+
+    // Body scroll state returns to the snapshot baseline.
+    expect(document.body.style.overflow).to.equal("");
+    expect(document.body.style.paddingRight).to.equal("");
+    expect(document.body.dataset.modalOpenCount).to.equal(undefined);
   });
 
   it("formats initials, datetimes, and empty-object checks", () => {

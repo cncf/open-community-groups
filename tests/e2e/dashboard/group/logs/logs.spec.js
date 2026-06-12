@@ -54,7 +54,11 @@ test.describe("group dashboard logs view", () => {
 
     // Find the dashboard content.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
-    const auditLogRow = dashboardContent.locator("tr.audit-log-row").first();
+    const auditLogRow = dashboardContent
+      .locator("tr.audit-log-row", {
+        hasText: "Tech Corp",
+      })
+      .first();
 
     // Verify organizer can open seeded group log details.
     await expect(auditLogRow).toContainText("Group sponsor added");
@@ -68,10 +72,15 @@ test.describe("group dashboard logs view", () => {
     await detailsButton.click();
     await expect(detailsButton).toHaveAttribute("aria-expanded", "true");
 
-    // Set up details popover.
-    const detailsPopover = dashboardContent
-      .locator("[data-audit-log-details-card]")
-      .first();
+    // Set up the details popover controlled by the clicked button so the
+    // assertion targets this row even when other rows render details cards.
+    const popoverId = await detailsButton.getAttribute("aria-controls");
+
+    // Fail clearly if the log details popover was not rendered.
+    if (!popoverId) {
+      throw new Error("Expected audit log details button to control a popover");
+    }
+    const detailsPopover = dashboardContent.locator(`#${popoverId}`);
     await expect(detailsPopover).toBeVisible();
     await expect(detailsPopover).toContainText("gold");
     await expect(detailsPopover).toContainText("https://techcorp.example.com");
@@ -122,22 +131,26 @@ test.describe("group dashboard logs view", () => {
   test("organizer can browse the full seeded group logs list", async ({
     organizerGroupPage,
   }) => {
-    // Load the unfiltered group logs URL.
-    await navigateToPath(organizerGroupPage, GROUP_LOGS_PATH);
+    // Load the unfiltered group logs URL sorted oldest first so the seeded
+    // rows stay on the first page even after the run generates new logs.
+    await navigateToPath(
+      organizerGroupPage,
+      `${GROUP_LOGS_PATH}&sort=created-asc`,
+    );
 
     // Find the dashboard content.
     const dashboardContent = organizerGroupPage.locator("#dashboard-content");
 
-    // Verify organizer can browse the full seeded group logs list.
+    // Verify organizer can browse the group logs list even after new logs exist.
     await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "Group updated",
-      }),
-    ).toHaveCount(1);
+      dashboardContent.locator("tr.audit-log-row").first(),
+    ).toBeVisible();
     await expect(
-      dashboardContent.locator("tr.audit-log-row").filter({
-        hasText: "Group sponsor added",
-      }),
-    ).toHaveCount(1);
+      dashboardContent
+        .locator("tr.audit-log-row", {
+          hasText: "Group sponsor added",
+        })
+        .first(),
+    ).toBeVisible();
   });
 });

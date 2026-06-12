@@ -23,12 +23,14 @@
             {% endif -%}>Send email</button>
   </div>
 </div>
+{# End members header -#}
 
 {# Members table -#}
 <div class="relative overflow-visible">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Members list">
+    {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
@@ -37,8 +39,10 @@
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Joined</th>
       </tr>
     </thead>
+    {# End table header -#}
     <tbody id="members-list" role="rowgroup">
       {% if members.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           {# Mobile: 2 columns (Member, Position) -#}
           <td class="xl:hidden px-8 py-12 text-center" colspan="2">
@@ -49,16 +53,16 @@
             {% include "dashboard/placeholders/group_members_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for member in members -%}
+          {# Member row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Member -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
                 <logo-image
-                {% if let Some(photo_url) = &member.photo_url -%}
-                  image-url="{{ photo_url }}"
-                {% endif -%}
+                {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
                 size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
                 </logo-image>
                 <div class="min-w-0">
@@ -88,12 +92,13 @@
             </td>
             {# End joined -#}
           </tr>
+          {# End member row -#}
         {% endfor -%}
       {% endif -%}
     </tbody>
   </table>
-  {# End table -#}
 </div>
+{# End members table -#}
 
 {# Pagination -#}
 {% if total > members.len() -%}
@@ -122,6 +127,8 @@
           <span class="sr-only">Close modal</span>
         </button>
       </div>
+      {# End modal header -#}
+
       {# Modal body -#}
       <div class="modal-body p-4 md:p-8">
         <div class="bg-stone-50 border border-stone-200 text-stone-800 rounded-lg p-4 mb-5 text-sm">
@@ -180,6 +187,8 @@
           </div>
         </form>
       </div>
+      {# End modal body -#}
     </div>
   </div>
 </div>
+{# End notification modal -#}

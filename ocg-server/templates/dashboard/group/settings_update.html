@@ -7,7 +7,10 @@
       hx-ext="no-empty-vals"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #group-settings-update-spinner"
-      hx-disabled-elt="button[type=submit], #cancel-button">
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully updated the group."
+      data-error-message="Something went wrong updating the group. Please try again later.">
   <div class="space-y-12">
     {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/group-dashboard?id=settings-group-identity", description = "Information about the group.") -}}
 
@@ -190,7 +193,7 @@ button = clear_location_button) -}}
 <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
   {# Location search -#}
   <div class="col-span-full">
-    <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" map-enabled
+    <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude"
     {% if let Some(city) = &group.city %}initial-venue-city="{{ city }}"{% endif %}
 
     {% if let Some(state) = &group.state %}initial-state="{{ state }}"{% endif %}
@@ -257,7 +260,9 @@ button = clear_location_button) -}}
                id="website_url"
                class="input-primary ps-10"
                placeholder="https://example.com"
-               {% if let Some(website_url) = &group.website_url %}value="{{ website_url }}"{% endif %}>
+               {% if let Some(website_url) = &group.website_url %}
+                 value="{{ website_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End Website URL -#}
@@ -274,7 +279,9 @@ button = clear_location_button) -}}
                id="bluesky_url"
                class="input-primary ps-10"
                placeholder="https://bsky.app/profile/username"
-               {% if let Some(bluesky_url) = &group.bluesky_url %}value="{{ bluesky_url }}"{% endif %}>
+               {% if let Some(bluesky_url) = &group.bluesky_url %}
+                 value="{{ bluesky_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End Bluesky URL -#}
@@ -291,7 +298,9 @@ button = clear_location_button) -}}
                id="facebook_url"
                class="input-primary ps-10"
                placeholder="https://facebook.com/page"
-               {% if let Some(facebook_url) = &group.facebook_url %}value="{{ facebook_url }}"{% endif %}>
+               {% if let Some(facebook_url) = &group.facebook_url %}
+                 value="{{ facebook_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End Facebook URL -#}
@@ -308,7 +317,9 @@ button = clear_location_button) -}}
                id="flickr_url"
                class="input-primary ps-10"
                placeholder="https://flickr.com/photos/account"
-               {% if let Some(flickr_url) = &group.flickr_url %}value="{{ flickr_url }}"{% endif %}>
+               {% if let Some(flickr_url) = &group.flickr_url %}
+                 value="{{ flickr_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End Flickr URL -#}
@@ -325,7 +336,9 @@ button = clear_location_button) -}}
                id="github_url"
                class="input-primary ps-10"
                placeholder="https://github.com/organization"
-               {% if let Some(github_url) = &group.github_url %}value="{{ github_url }}"{% endif %}>
+               {% if let Some(github_url) = &group.github_url %}
+                 value="{{ github_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End GitHub URL -#}
@@ -342,7 +355,9 @@ button = clear_location_button) -}}
                id="instagram_url"
                class="input-primary ps-10"
                placeholder="https://instagram.com/username"
-               {% if let Some(instagram_url) = &group.instagram_url %}value="{{ instagram_url }}"{% endif %}>
+               {% if let Some(instagram_url) = &group.instagram_url %}
+                 value="{{ instagram_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End Instagram URL -#}
@@ -359,7 +374,9 @@ button = clear_location_button) -}}
                id="linkedin_url"
                class="input-primary ps-10"
                placeholder="https://linkedin.com/company/name"
-               {% if let Some(linkedin_url) = &group.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
+               {% if let Some(linkedin_url) = &group.linkedin_url %}
+                 value="{{ linkedin_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End LinkedIn URL -#}
@@ -376,7 +393,9 @@ button = clear_location_button) -}}
                id="slack_url"
                class="input-primary ps-10"
                placeholder="https://workspace.slack.com"
-               {% if let Some(slack_url) = &group.slack_url %}value="{{ slack_url }}"{% endif %}>
+               {% if let Some(slack_url) = &group.slack_url %}
+                 value="{{ slack_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End Slack URL -#}
@@ -393,7 +412,9 @@ button = clear_location_button) -}}
                id="twitter_url"
                class="input-primary ps-10"
                placeholder="https://x.com/username"
-               {% if let Some(twitter_url) = &group.twitter_url %}value="{{ twitter_url }}"{% endif %}>
+               {% if let Some(twitter_url) = &group.twitter_url %}
+                 value="{{ twitter_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End Twitter URL -#}
@@ -410,7 +431,9 @@ button = clear_location_button) -}}
                id="wechat_url"
                class="input-primary ps-10"
                placeholder="https://wechat.com/account"
-               {% if let Some(wechat_url) = &group.wechat_url %}value="{{ wechat_url }}"{% endif %}>
+               {% if let Some(wechat_url) = &group.wechat_url %}
+                 value="{{ wechat_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End WeChat URL -#}
@@ -427,7 +450,9 @@ button = clear_location_button) -}}
                id="youtube_url"
                class="input-primary ps-10"
                placeholder="https://youtube.com/channel/id"
-               {% if let Some(youtube_url) = &group.youtube_url %}value="{{ youtube_url }}"{% endif %}>
+               {% if let Some(youtube_url) = &group.youtube_url %}
+                 value="{{ youtube_url }}"
+               {% endif %}>
       </div>
     </div>
     {# End YouTube URL -#}
@@ -486,34 +511,4 @@ button = clear_location_button) -}}
 </div>
 </form>
 
-<script type="module">
-  import {
-    handleHtmxResponse
-  } from '/static/js/common/alerts.js';
-  import '/static/js/common/location-search-field.js';
-
-  const groupsForm = document.getElementById('groups-form');
-
-  if (groupsForm) {
-    groupsForm.addEventListener('htmx:afterRequest', (e) => {
-      if (e.detail.elt.id === 'groups-form') {
-        const xhr = e.detail?.xhr;
-        handleHtmxResponse({
-          xhr,
-          successMessage: 'You have successfully updated the group.',
-          errorMessage: 'Something went wrong updating the group. Please try again later.'
-        });
-      }
-    });
-  }
-
-  const clearLocationButton = document.getElementById('clear-location-fields');
-  const locationSearchField = document.getElementById('group-location-search');
-
-  if (clearLocationButton && locationSearchField && typeof locationSearchField.clearLocationFields === 'function') {
-    clearLocationButton.addEventListener('click', () => {
-      locationSearchField.clearLocationFields();
-    });
-  }
-</script>
 {# End Groups update form -#}

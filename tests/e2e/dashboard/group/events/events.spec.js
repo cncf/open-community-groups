@@ -10,6 +10,7 @@ import {
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_GROUP_SLUGS,
+  TEST_USER_IDS,
   navigateToPath,
   selectTimezone,
 } from "../../../utils.js";
@@ -226,6 +227,53 @@ const setCfsLabels = async (page, labels) => {
   ).toHaveCount(labels.length);
 };
 
+// Set registration questions through the editor API and assert submitted inputs.
+const setRegistrationQuestions = async (page, questions) => {
+  const editor = page.locator("questions-editor");
+
+  await editor.evaluate(async (element, nextQuestions) => {
+    const questionsEditor = element;
+
+    questionsEditor.questions = nextQuestions;
+    await questionsEditor.updateComplete;
+  }, questions);
+
+  await expect(
+    editor.locator('input[name^="registration_questions"][name$="[prompt]"]'),
+  ).toHaveCount(questions.length);
+};
+
+// Set event hosts and speakers through selector APIs and assert submitted inputs.
+const setEventPeople = async (page, values) => {
+  await page
+    .locator('user-search-selector[field-name="hosts"]')
+    .evaluate(async (element, hosts) => {
+      const hostSelector = element;
+
+      hostSelector.selectedUsers = hosts;
+      await hostSelector.updateComplete;
+    }, values.hosts);
+  await page
+    .locator('speakers-selector[field-name-prefix="speakers"]')
+    .evaluate(async (element, speakers) => {
+      const speakersSelector = element;
+
+      speakersSelector.selectedSpeakers = speakers;
+      await speakersSelector.updateComplete;
+    }, values.speakers);
+
+  await expect(
+    page.locator(
+      'user-search-selector[field-name="hosts"] input[name="hosts[]"]',
+    ),
+  ).toHaveCount(values.hosts.length);
+  await expect(
+    page.locator(
+      'speakers-selector[field-name-prefix="speakers"] input[name^="speakers"][name$="[user_id]"]',
+    ),
+  ).toHaveCount(values.speakers.length);
+};
+
 test.describe("group dashboard events view", () => {
   test("organizer can switch between upcoming and past events tabs", async ({
     organizerGroupPage,
@@ -404,6 +452,140 @@ test.describe("group dashboard events view", () => {
     ).toHaveCount(0);
   });
 
+  test("organizer can cancel an event from the list", async ({
+    organizerGroupPage,
+  }) => {
+    // Create a unique event name for the temporary cancellation flow.
+    const eventName = `E2E Canceled Group Event ${Date.now()}`;
+
+    // Load the events list before creating a temporary event.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    // Target dashboard content after the events tab loads.
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("Events", { exact: true }),
+    ).toBeVisible();
+
+    // Open the event form from the dashboard list.
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+    // Fill the core event details required for creation.
+    await organizerGroupPage.locator("#name").fill(eventName);
+    await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+    await organizerGroupPage
+      .locator("#category_id")
+      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage
+      .locator("#description_short")
+      .fill("A dashboard-created event for cancellation coverage.");
+    await fillMarkdownEditor(
+      organizerGroupPage,
+      "description",
+      "A dashboard event created and canceled by the e2e suite.",
+    );
+
+    // Fill capacity only when automatic meeting fixtures require it.
+    if (E2E_MEETINGS_ENABLED) {
+      await organizerGroupPage.locator("#capacity").fill("50");
+    }
+
+    // Fill schedule and online meeting details.
+    await organizerGroupPage.locator("button[data-section-next]").click();
+    await expect(
+      organizerGroupPage.locator('button[data-section="date-venue"]'),
+    ).toHaveAttribute("data-active", "true");
+    await selectTimezone(organizerGroupPage, "UTC");
+    await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
+    await organizerGroupPage.locator("#starts_at").fill("2030-05-12T10:00");
+    await organizerGroupPage.locator("#ends_at").fill("2030-05-12T12:00");
+    if (E2E_MEETINGS_ENABLED) {
+      await enableAutomaticMeetingCreation(organizerGroupPage);
+    } else {
+      await organizerGroupPage
+        .locator("#meeting_join_url")
+        .fill("https://meet.example.com/e2e-canceled-event");
+    }
+
+    // Target the visible submit button after pending changes appear.
+    const visibleAddEventButton = organizerGroupPage.locator(
+      "#pending-changes-alert:not(.hidden) #add-event-button",
+    );
+    await expect(
+      organizerGroupPage.locator("#pending-changes-alert"),
+    ).not.toHaveClass(/hidden/);
+    await expect(visibleAddEventButton).toBeVisible();
+
+    // Create the event and wait for the POST response.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/group/events/add") &&
+          response.status() === 201,
+      ),
+      visibleAddEventButton.click(),
+    ]);
+
+    // Verify the temporary event appears in the events list.
+    const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+    await expect(eventRow).toBeVisible();
+
+    // Open the actions menu and cancel the temporary event.
+    await eventRow.locator(".btn-actions").click();
+    const cancelButton = eventRow.locator('button[id^="cancel-event-"]');
+    await expect(cancelButton).toBeVisible();
+    await cancelButton.click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to cancel this event? This action is not reversible.",
+    );
+
+    // Confirm cancellation and wait for the server response.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/cancel") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    // Verify the row reflects canceled state and no longer offers cancellation.
+    await expect(eventRow).toContainText("Canceled");
+    await eventRow.locator(".btn-actions").click();
+    await expect(eventRow.locator('button[id^="cancel-event-"]')).toHaveCount(
+      0,
+    );
+
+    // Delete the temporary canceled event to keep the list reusable.
+    const deleteButton = eventRow.locator('button[id^="delete-event-"]');
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Are you sure you wish to delete this event?",
+    );
+
+    // Confirm deletion and wait for the server response.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/delete") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+
+    // Verify the deleted event is removed from the list.
+    await expect(
+      dashboardContent.locator("tr", { hasText: eventName }),
+    ).toHaveCount(0);
+  });
+
   test("organizer can create and delete a recurring event series", async ({
     organizerGroupPage,
   }) => {
@@ -519,6 +701,292 @@ test.describe("group dashboard events view", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: eventName }),
     ).toHaveCount(0);
+  });
+
+  test("organizer can scope recurring publish, unpublish, and cancel actions", async ({
+    organizerGroupPage,
+  }) => {
+    // Create a unique event name for the recurring scoped actions flow.
+    const eventName = `E2E Recurring Scoped Event ${Date.now()}`;
+
+    // Load the events list before creating a recurring series.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    // Target dashboard content after the events tab loads.
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("Events", { exact: true }),
+    ).toBeVisible();
+
+    // Open the event form from the dashboard list.
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+    // Fill the core event details for the recurring series.
+    await organizerGroupPage.locator("#name").fill(eventName);
+    await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+    await organizerGroupPage
+      .locator("#category_id")
+      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage
+      .locator("#description_short")
+      .fill("A recurring dashboard event for scoped action coverage.");
+    await fillMarkdownEditor(
+      organizerGroupPage,
+      "description",
+      "A recurring dashboard event used by scoped action e2e coverage.",
+    );
+
+    // Fill the recurring schedule and occurrence count.
+    await organizerGroupPage
+      .locator('button[data-section="date-venue"]')
+      .click();
+    await selectTimezone(organizerGroupPage, "UTC");
+    await expect(organizerGroupPage.locator("#starts_at")).toBeVisible();
+    await organizerGroupPage.locator("#starts_at").fill("2030-05-22T10:00");
+    await organizerGroupPage.locator("#ends_at").fill("2030-05-22T12:00");
+    await organizerGroupPage
+      .locator("#meeting_join_url")
+      .fill("https://meet.example.com/e2e-recurring-scoped-event");
+    await organizerGroupPage
+      .locator("#recurrence_pattern")
+      .selectOption("weekly");
+    await expect(
+      organizerGroupPage.locator(
+        "#recurrence-additional-occurrences-container",
+      ),
+    ).toBeVisible();
+    await organizerGroupPage
+      .locator("#recurrence_additional_occurrences")
+      .fill("2");
+
+    // Target the visible submit button after pending changes appear.
+    const visibleAddEventButton = organizerGroupPage.locator(
+      "#pending-changes-alert:not(.hidden) #add-event-button",
+    );
+    await expect(
+      organizerGroupPage.locator("#pending-changes-alert"),
+    ).not.toHaveClass(/hidden/);
+    await expect(visibleAddEventButton).toBeVisible();
+
+    // Create the recurring series and wait for the POST response.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/group/events/add") &&
+          response.status() === 201,
+      ),
+      visibleAddEventButton.click(),
+    ]);
+
+    // Verify the recurring series creates the expected number of rows.
+    const eventRows = dashboardContent.locator("tr", { hasText: eventName });
+    await expect(eventRows).toHaveCount(3);
+
+    // Select a scoped action from the row actions menu.
+    const selectScopedAction = async (row, action, scopeButtonName) => {
+      await row.locator(".btn-actions").click();
+      const actionButton = row.locator(`button[id^="${action}-event-"]`);
+      await expect(actionButton).toBeVisible();
+      await actionButton.click();
+
+      const seriesConfirmationDialog =
+        organizerGroupPage.locator(".swal2-popup");
+      await expect(seriesConfirmationDialog).toContainText(
+        `This event is part of a recurring series. What would you like to ${action}?`,
+      );
+
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            response.url().includes("/dashboard/group/events/") &&
+            response.url().includes(`/${action}`) &&
+            (scopeButtonName === "All in series"
+              ? response.url().includes("scope=series")
+              : !response.url().includes("scope=series")) &&
+            response.ok(),
+        ),
+        seriesConfirmationDialog
+          .getByRole("button", { name: scopeButtonName })
+          .click(),
+      ]);
+    };
+
+    // Publish the series first when the default created state is draft.
+    await eventRows.first().locator(".btn-actions").click();
+    if (
+      (await eventRows
+        .first()
+        .locator('button[id^="publish-event-"]')
+        .count()) > 0
+    ) {
+      await eventRows.first().locator(".btn-actions").click();
+      await selectScopedAction(eventRows.first(), "publish", "All in series");
+      await expect(eventRows.first()).toContainText("Published");
+      await expect(eventRows.nth(1)).toContainText("Published");
+      await expect(eventRows.nth(2)).toContainText("Published");
+    } else {
+      await eventRows.first().locator(".btn-actions").click();
+    }
+
+    // Unpublish the whole series.
+    await selectScopedAction(eventRows.first(), "unpublish", "All in series");
+    await expect(eventRows.first()).toContainText("Draft");
+    await expect(eventRows.nth(1)).toContainText("Draft");
+    await expect(eventRows.nth(2)).toContainText("Draft");
+
+    // Publish only one event in the series.
+    await selectScopedAction(eventRows.first(), "publish", "Only this event");
+    await expect(eventRows.first()).toContainText("Published");
+    await expect(eventRows.nth(1)).toContainText("Draft");
+    await expect(eventRows.nth(2)).toContainText("Draft");
+
+    // Cancel the full series.
+    await selectScopedAction(eventRows.first(), "cancel", "All in series");
+    await expect(eventRows.first()).toContainText("Canceled");
+    await expect(eventRows.nth(1)).toContainText("Canceled");
+    await expect(eventRows.nth(2)).toContainText("Canceled");
+
+    // Delete the full series to keep the seeded list reusable.
+    await eventRows.first().locator(".btn-actions").click();
+    const deleteButton = eventRows
+      .first()
+      .locator('button[id^="delete-event-"]');
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+
+    const seriesConfirmationDialog = organizerGroupPage.locator(".swal2-popup");
+    await expect(seriesConfirmationDialog).toContainText(
+      "This event is part of a recurring series. What would you like to delete?",
+    );
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/delete") &&
+          response.url().includes("scope=series") &&
+          response.ok(),
+      ),
+      seriesConfirmationDialog
+        .getByRole("button", { name: "All in series" })
+        .click(),
+    ]);
+
+    // Verify every recurring series row is removed from the list.
+    await expect(
+      dashboardContent.locator("tr", { hasText: eventName }),
+    ).toHaveCount(0);
+  });
+
+  test("organizer can preview pending event details before saving", async ({
+    organizerGroupPage,
+  }) => {
+    // Create unique draft values for the preview modal.
+    const eventName = `E2E Preview Event ${Date.now()}`;
+    const lumaUrl = "https://luma.com/e2e-preview-event";
+
+    // Load the events list before opening the create form.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+    // Fill enough pending details for the preview request.
+    await organizerGroupPage.locator("#name").fill(eventName);
+    await organizerGroupPage.locator("#kind_id").selectOption("virtual");
+    await organizerGroupPage
+      .locator("#category_id")
+      .selectOption("33333333-3333-3333-3333-333333333331");
+    await organizerGroupPage
+      .locator("#description_short")
+      .fill("Preview coverage for pending event details.");
+    await fillMarkdownEditor(
+      organizerGroupPage,
+      "description",
+      "Preview coverage for pending event details before saving.",
+    );
+    await organizerGroupPage.locator("#luma_url").fill(lumaUrl);
+    await organizerGroupPage
+      .locator('button[data-section="date-venue"]')
+      .click();
+    await selectTimezone(organizerGroupPage, "UTC");
+    await organizerGroupPage.locator("#starts_at").fill("2030-07-10T10:00");
+    await organizerGroupPage.locator("#ends_at").fill("2030-07-10T12:00");
+    await organizerGroupPage
+      .locator("#meeting_join_url")
+      .fill("https://meet.example.com/e2e-preview-event");
+
+    // Open the preview modal and verify pending values are rendered.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response.url().includes("/dashboard/group/events/preview") &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator("#event-preview-button").click(),
+    ]);
+    const previewModal = organizerGroupPage.locator("#event-preview-modal");
+    await expect(previewModal).toBeVisible();
+    await expect(previewModal).toContainText(eventName);
+    await expect(previewModal).toContainText("Preview coverage");
+    const lumaLinks = previewModal.locator(`a[href="${lumaUrl}"]`);
+    await expect(lumaLinks).toHaveCount(2);
+    await expect(lumaLinks.first()).toBeVisible();
+
+    // Close the modal before leaving the form.
+    await previewModal.getByRole("button", { name: "Close modal" }).click();
+    await expect(previewModal).toHaveCount(0);
+  });
+
+  test("organizer can copy details from an existing event", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the events list before opening the create form.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+    // Open the copy selector and choose the first available existing event.
+    await organizerGroupPage.locator("#copy-event-selector").click();
+    const eventOption = organizerGroupPage
+      .locator('#dropdown-events button[id^="select-event-"]')
+      .first();
+    await expect(eventOption).toBeVisible();
+    const copiedEventName = (
+      await eventOption.locator("div").nth(1).innerText()
+    ).trim();
+
+    // Copy the event details into the create form.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/dashboard/group/events/") &&
+          response.url().includes("/details") &&
+          response.ok(),
+      ),
+      eventOption.click(),
+    ]);
+
+    // Verify copied details are applied and the schedule is left blank.
+    await expect(organizerGroupPage.locator("#name")).toHaveValue(
+      `${copiedEventName} (copy)`,
+    );
+    await organizerGroupPage
+      .locator('button[data-section="date-venue"]')
+      .click();
+    await expect(organizerGroupPage.locator("#starts_at")).toHaveValue("");
+    await expect(organizerGroupPage.locator("#ends_at")).toHaveValue("");
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Event details copied.",
+    );
+    await organizerGroupPage.getByRole("button", { name: "OK" }).click();
   });
 
   test("organizer can override recording urls for automatic event and session meetings", async ({
@@ -1199,15 +1667,41 @@ test.describe("group dashboard events view", () => {
       endsAt: "2030-10-05T13:30",
       eventReminderEnabled: true,
       galleryPaths: [TEST_UPLOAD_ASSET_PATHS.galleryOne],
+      hosts: [
+        {
+          name: "E2E Member Two",
+          user_id: TEST_USER_IDS.member2,
+          username: "e2e-member-2",
+        },
+      ],
       kindId: "hybrid",
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
+      lumaUrl: "https://luma.com/e2e-rich-event-initial",
       meetupUrl: "https://meetup.com/e2e-rich-event-initial",
       meetingJoinUrl: "https://meet.example.com/e2e-rich-event-initial",
       meetingRecordingUrl: "https://video.example.com/e2e-rich-event-initial",
       name: `E2E Rich Event ${Date.now()}`,
+      registrationQuestions: [
+        {
+          id: "99999999-0000-4000-8000-000000000001",
+          kind: "free-text",
+          options: [],
+          prompt: "What do you want to learn?",
+          required: true,
+        },
+      ],
       registrationRequired: true,
       startsAt: "2030-10-05T10:00",
+      speakers: [
+        {
+          featured: true,
+          name: "E2E Pending One",
+          user_id: TEST_USER_IDS.pending1,
+          username: "e2e-pending-1",
+        },
+      ],
       tags: ["meetup", "platform"],
+      testEvent: true,
       timezone: "UTC",
       venueAddress: "123 Platform Street",
       venueCity: "Barcelona",
@@ -1215,6 +1709,7 @@ test.describe("group dashboard events view", () => {
       venueLongitude: "2.1686",
       venueName: "Platform Hall",
       venueZipCode: "08001",
+      attendeeApprovalRequired: false,
       waitlistEnabled: true,
     };
     const updatedValues = {
@@ -1232,15 +1727,50 @@ test.describe("group dashboard events view", () => {
       endsAt: "2030-10-08T18:00",
       eventReminderEnabled: false,
       galleryPaths: [TEST_UPLOAD_ASSET_PATHS.galleryTwo],
+      hosts: [
+        {
+          name: "E2E Pending Two",
+          user_id: TEST_USER_IDS.pending2,
+          username: "e2e-pending-2",
+        },
+      ],
       kindId: "hybrid",
       logoPath: TEST_UPLOAD_ASSET_PATHS.logo,
+      lumaUrl: "https://luma.com/e2e-rich-event-updated",
       meetupUrl: "https://meetup.com/e2e-rich-event-updated",
       meetingJoinUrl: "https://meet.example.com/e2e-rich-event-updated",
       meetingRecordingUrl: "https://video.example.com/e2e-rich-event-updated",
       name: `E2E Rich Event Updated ${Date.now()}`,
-      registrationRequired: false,
+      registrationQuestions: [
+        {
+          id: "99999999-0000-4000-8000-000000000002",
+          kind: "single-select",
+          options: [
+            {
+              id: "99999999-0000-4000-8000-000000000003",
+              label: "Platform engineering",
+            },
+            {
+              id: "99999999-0000-4000-8000-000000000004",
+              label: "Developer experience",
+            },
+          ],
+          prompt: "Which track are you most interested in?",
+          required: true,
+        },
+      ],
+      registrationRequired: true,
       startsAt: "2030-10-08T14:00",
+      speakers: [
+        {
+          featured: false,
+          name: "E2E Member Two",
+          user_id: TEST_USER_IDS.member2,
+          username: "e2e-member-2",
+        },
+      ],
       tags: ["conference", "cloud"],
+      testEvent: false,
       timezone: "Europe/Madrid",
       venueAddress: "456 Cloud Avenue",
       venueCity: "Madrid",
@@ -1248,6 +1778,7 @@ test.describe("group dashboard events view", () => {
       venueLongitude: "-3.7038",
       venueName: "Cloud Forum",
       venueZipCode: "28001",
+      attendeeApprovalRequired: true,
       waitlistEnabled: false,
     };
 
@@ -1287,6 +1818,15 @@ test.describe("group dashboard events view", () => {
           .locator("#toggle_registration_required")
           .uncheck({ force: true });
       }
+      if (values.testEvent) {
+        await organizerGroupPage
+          .locator("#toggle_test_event")
+          .check({ force: true });
+      } else {
+        await organizerGroupPage
+          .locator("#toggle_test_event")
+          .uncheck({ force: true });
+      }
       if (values.waitlistEnabled) {
         await organizerGroupPage
           .locator("#toggle_waitlist_enabled")
@@ -1296,7 +1836,17 @@ test.describe("group dashboard events view", () => {
           .locator("#toggle_waitlist_enabled")
           .uncheck({ force: true });
       }
+      if (values.attendeeApprovalRequired) {
+        await organizerGroupPage
+          .locator("#toggle_attendee_approval_required")
+          .check({ force: true });
+      } else {
+        await organizerGroupPage
+          .locator("#toggle_attendee_approval_required")
+          .uncheck({ force: true });
+      }
       await organizerGroupPage.locator("#meetup_url").fill(values.meetupUrl);
+      await organizerGroupPage.locator("#luma_url").fill(values.lumaUrl);
       await fillMultipleInputs(
         organizerGroupPage.locator('multiple-inputs[field-name="tags"]'),
         values.tags,
@@ -1306,6 +1856,21 @@ test.describe("group dashboard events view", () => {
         "photos_urls",
         values.galleryPaths,
       );
+
+      // Fill registration questions for this values set.
+      await organizerGroupPage
+        .locator('button[data-section="questions"]')
+        .click({ force: true });
+      await setRegistrationQuestions(
+        organizerGroupPage,
+        values.registrationQuestions,
+      );
+
+      // Fill hosts and speakers for this values set.
+      await organizerGroupPage
+        .locator('button[data-section="hosts-sponsors"]')
+        .click({ force: true });
+      await setEventPeople(organizerGroupPage, values);
 
       // Fill date, venue, and meeting details for this values set.
       await organizerGroupPage
@@ -1462,11 +2027,20 @@ test.describe("group dashboard events view", () => {
     await expect(
       organizerGroupPage.locator("#registration_required"),
     ).toHaveValue(String(updatedValues.registrationRequired));
+    await expect(organizerGroupPage.locator("#test_event")).toHaveValue(
+      String(updatedValues.testEvent),
+    );
+    await expect(
+      organizerGroupPage.locator("#attendee_approval_required"),
+    ).toHaveValue(String(updatedValues.attendeeApprovalRequired));
     await expect(organizerGroupPage.locator("#waitlist_enabled")).toHaveValue(
       String(updatedValues.waitlistEnabled),
     );
     await expect(organizerGroupPage.locator("#meetup_url")).toHaveValue(
       updatedValues.meetupUrl,
+    );
+    await expect(organizerGroupPage.locator("#luma_url")).toHaveValue(
+      updatedValues.lumaUrl,
     );
     await expect(
       organizerGroupPage.locator(
@@ -1488,6 +2062,37 @@ test.describe("group dashboard events view", () => {
         'multiple-inputs[field-name="tags"] input[name="tags[]"]',
       ),
     ).toHaveCount(updatedValues.tags.length);
+    await organizerGroupPage
+      .locator('button[data-section="questions"]')
+      .click();
+    await expect(
+      organizerGroupPage.locator(
+        'questions-editor input[name="registration_questions[0][prompt]"]',
+      ),
+    ).toHaveValue(updatedValues.registrationQuestions[0].prompt);
+    await expect(
+      organizerGroupPage.locator(
+        'questions-editor input[name="registration_questions[0][options][0][label]"]',
+      ),
+    ).toHaveValue(updatedValues.registrationQuestions[0].options[0].label);
+    await organizerGroupPage
+      .locator('button[data-section="hosts-sponsors"]')
+      .click();
+    await expect(
+      organizerGroupPage.locator(
+        'user-search-selector[field-name="hosts"] input[name="hosts[]"]',
+      ),
+    ).toHaveValue(updatedValues.hosts[0].user_id);
+    await expect(
+      organizerGroupPage.locator(
+        'speakers-selector[field-name-prefix="speakers"] input[name="speakers[0][user_id]"]',
+      ),
+    ).toHaveValue(updatedValues.speakers[0].user_id);
+    await expect(
+      organizerGroupPage.locator(
+        'speakers-selector[field-name-prefix="speakers"] input[name="speakers[0][featured]"]',
+      ),
+    ).toHaveValue(String(updatedValues.speakers[0].featured));
     await organizerGroupPage
       .locator('button[data-section="date-venue"]')
       .click();

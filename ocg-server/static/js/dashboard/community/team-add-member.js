@@ -1,9 +1,17 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/user-search-field.js";
-import "/static/js/common/logo-image.js";
-import { computeUserInitials, lockBodyScroll, unlockBodyScroll } from "/static/js/common/common.js";
+import { focusUserSearchField } from "/static/js/common/users/user-search-field.js";
+import "/static/js/common/media/logo-image.js";
+import { computeUserInitials } from "/static/js/common/common.js";
+import { getElementById } from "/static/js/common/dom.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
+import {
+  bindModalDismissListeners,
+  closeModalBodyScroll,
+  openModalBodyScroll,
+} from "/static/js/common/modals/modal-lifecycle.js";
+import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 
 /**
  * TeamAddMember component for inviting team members.
@@ -48,13 +56,14 @@ export class TeamAddMember extends LitWrapper {
     this._isOpen = false;
     this._selectedRole = "";
     this._selectedUser = null;
+    this._handleKeydown = this._handleKeydown.bind(this);
+    this._removeDismissListeners = null;
   }
 
   connectedCallback() {
     // Add ESC key listener to close the modal
     super.connectedCallback();
-    this._onKeydown = this._onKeydown.bind(this);
-    document.addEventListener("keydown", this._onKeydown);
+    this._removeDismissListeners = bindModalDismissListeners({ onKeydown: this._handleKeydown });
 
     if (this.hasAttribute("can-manage-team")) {
       this.canManageTeam = this.getAttribute("can-manage-team") !== "false";
@@ -62,31 +71,23 @@ export class TeamAddMember extends LitWrapper {
 
     // Parse selected-users attribute (JSON array of user objects)
     const selectedAttr = this.getAttribute("selected-users");
-    if (selectedAttr && typeof selectedAttr === "string") {
-      try {
-        const parsed = JSON.parse(selectedAttr);
-        if (Array.isArray(parsed)) {
-          this.selectedUsers = parsed;
-          this.disabledUserIds = parsed.map((u) => String(u.user_id));
-        }
-      } catch (_) {
-        // ignore parsing errors
+    if (selectedAttr) {
+      const selectedUsers = parseJsonAttribute(selectedAttr, []);
+      if (Array.isArray(selectedUsers)) {
+        this.selectedUsers = selectedUsers;
+        this.disabledUserIds = selectedUsers.map((user) => String(user.user_id));
       }
     }
 
     // Parse role-options attribute (JSON array)
     const roleOptionsAttr = this.getAttribute("role-options");
-    if (roleOptionsAttr && typeof roleOptionsAttr === "string") {
-      try {
-        const parsed = JSON.parse(roleOptionsAttr);
-        if (Array.isArray(parsed)) {
-          this.roleOptions = parsed.map((role) => ({
-            label: role.display_name,
-            value: role.community_role_id || role.group_role_id,
-          }));
-        }
-      } catch (_) {
-        // ignore parsing errors
+    if (roleOptionsAttr) {
+      const roleOptions = parseJsonAttribute(roleOptionsAttr, []);
+      if (Array.isArray(roleOptions)) {
+        this.roleOptions = roleOptions.map((role) => ({
+          label: role.display_name,
+          value: role.community_role_id || role.group_role_id,
+        }));
       }
     }
   }
@@ -94,19 +95,18 @@ export class TeamAddMember extends LitWrapper {
   disconnectedCallback() {
     // Clean up ESC key listener
     super.disconnectedCallback();
-    if (this._isOpen) {
-      unlockBodyScroll();
-    }
-    document.removeEventListener("keydown", this._onKeydown);
+    this._isOpen = closeModalBodyScroll(this._isOpen);
+    this._removeDismissListeners?.();
+    this._removeDismissListeners = null;
   }
 
   /**
    * Handles ESC key to close the modal.
-   * @param {KeyboardEvent} e - Keyboard event
+   * @param {KeyboardEvent} event - Keyboard event
    * @private
    */
-  _onKeydown(e) {
-    if (e.key === "Escape" && this._isOpen) {
+  _handleKeydown(event) {
+    if (isEscapeEvent(event) && this._isOpen) {
       this._close();
     }
   }
@@ -117,11 +117,9 @@ export class TeamAddMember extends LitWrapper {
    */
   _open() {
     if (!this._canManageTeam()) return;
-    this._isOpen = true;
-    lockBodyScroll();
+    this._isOpen = openModalBodyScroll(this._isOpen);
     this.updateComplete.then(() => {
-      const field = this.querySelector("user-search-field");
-      if (field && typeof field.focusInput === "function") field.focusInput();
+      focusUserSearchField(this);
     });
   }
 
@@ -130,8 +128,7 @@ export class TeamAddMember extends LitWrapper {
    * @private
    */
   _close() {
-    this._isOpen = false;
-    unlockBodyScroll();
+    this._isOpen = closeModalBodyScroll(this._isOpen);
   }
 
   /**
@@ -145,27 +142,27 @@ export class TeamAddMember extends LitWrapper {
 
   /**
    * Receives selected user and updates hidden input + submit button state.
-   * @param {CustomEvent} e - Event with detail.user
+   * @param {CustomEvent} event - Event with detail.user
    * @private
    */
-  _onUserSelected(e) {
-    const user = e.detail?.user;
+  _onUserSelected(event) {
+    const user = event.detail?.user;
     if (!user) return;
     this._selectedUser = user;
-    const userIdInput = this.querySelector("#team-add-user-id");
-    const submitBtn = this.querySelector("#team-add-submit");
+    const userIdInput = getElementById(this, "team-add-user-id");
+    const submitBtn = getElementById(this, "team-add-submit");
     if (userIdInput) userIdInput.value = user.user_id;
     if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
   }
 
   /**
    * Handles role selection changes and updates button state.
-   * @param {Event} e - Change event
+   * @param {Event} event - Change event
    * @private
    */
-  _onRoleChanged(e) {
-    this._selectedRole = e.target?.value || "";
-    const submitBtn = this.querySelector("#team-add-submit");
+  _onRoleChanged(event) {
+    this._selectedRole = event.target?.value || "";
+    const submitBtn = getElementById(this, "team-add-submit");
     if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
   }
 
@@ -178,7 +175,7 @@ export class TeamAddMember extends LitWrapper {
     // When modal opens, process HTMX on the newly rendered form and bind events
     if (changed.has("_isOpen")) {
       const justOpened = this._isOpen === true;
-      const form = this.querySelector("#team-add-form");
+      const form = getElementById(this, "team-add-form");
 
       if (justOpened && form) {
         if (window.htmx && typeof window.htmx.process === "function") {
@@ -189,8 +186,8 @@ export class TeamAddMember extends LitWrapper {
         if (this._afterRequestHandler) {
           form.removeEventListener("htmx:afterRequest", this._afterRequestHandler);
         }
-        this._afterRequestHandler = (e) => {
-          const xhr = e.detail?.xhr;
+        this._afterRequestHandler = (event) => {
+          const xhr = event.detail?.xhr;
           const ok = handleHtmxResponse({
             xhr,
             successMessage: "Invitation sent to the selected user.",
@@ -219,9 +216,9 @@ export class TeamAddMember extends LitWrapper {
   _resetSelection() {
     this._selectedUser = null;
     this._selectedRole = "";
-    const userIdInput = this.querySelector("#team-add-user-id");
-    const roleSelect = this.querySelector("#team-add-role");
-    const submitBtn = this.querySelector("#team-add-submit");
+    const userIdInput = getElementById(this, "team-add-user-id");
+    const roleSelect = getElementById(this, "team-add-role");
+    const submitBtn = getElementById(this, "team-add-submit");
     if (userIdInput) userIdInput.value = "";
     if (roleSelect) roleSelect.value = "";
     if (submitBtn) submitBtn.disabled = !(this._selectedRole && this._selectedUser);
@@ -249,6 +246,11 @@ export class TeamAddMember extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the add-member modal and wires its form to the selected user state.
+   * @returns {TemplateResult} Modal template or empty template when closed
+   * @private
+   */
   _renderModal() {
     if (!this._isOpen) return html``;
     return html`
@@ -284,7 +286,7 @@ export class TeamAddMember extends LitWrapper {
                     label="team member"
                     legend="Search for users by their name or username"
                     .disabledUserIds=${this.disabledUserIds || []}
-                    @user-selected=${(e) => this._onUserSelected(e)}
+                    @user-selected=${(event) => this._onUserSelected(event)}
                   ></user-search-field>
                   <input type="hidden" name="user_id" id="team-add-user-id" />
                 </div>
@@ -295,7 +297,7 @@ export class TeamAddMember extends LitWrapper {
                     name="role"
                     class="input-primary"
                     required
-                    @change=${(e) => this._onRoleChanged(e)}
+                    @change=${(event) => this._onRoleChanged(event)}
                   >
                     <option value="" selected disabled>Select a role</option>
                     ${this.roleOptions.map((o) => html`<option value=${o.value}>${o.label}</option>`)}

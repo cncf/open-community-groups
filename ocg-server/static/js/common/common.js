@@ -1,3 +1,11 @@
+import {
+  getElementById,
+  initializeOnReady,
+  isElementHidden,
+  loadScriptOnce,
+  setElementHidden,
+  toggleElementHidden,
+} from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
 export const MEETING_RECORDING_URL_LEGEND =
@@ -14,6 +22,7 @@ export const BROKEN_IMAGE_PLACEHOLDER_URL = "/static/images/icons/broken_image.s
 const DEFAULT_BROKEN_IMAGE_PLACEHOLDER_BG_CLASS = "bg-stone-50";
 const REMOVE_BROKEN_IMAGE_SELECTOR = "[data-ocg-remove-broken-images]";
 const EMPTY_IMAGE_WRAPPER_SELECTOR = "img, video, iframe, object, embed";
+const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
 
 /**
  * Checks if a failed image should be removed instead of replaced.
@@ -220,12 +229,8 @@ document.addEventListener(
   true,
 );
 
-// Some images can fail before this module registers captured error listeners.
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", applyBrokenImagePlaceholdersForDocument, { once: true });
-} else {
-  applyBrokenImagePlaceholdersForDocument();
-}
+// Captured error listeners can miss images that failed before this script loaded.
+initializeOnReady(applyBrokenImagePlaceholdersForDocument);
 
 // Re-scan after all resources settle so late or lazy image failures are covered.
 window.addEventListener("load", applyBrokenImagePlaceholdersForDocument, { once: true });
@@ -235,7 +240,7 @@ window.addEventListener("load", applyBrokenImagePlaceholdersForDocument, { once:
  * @param {string} id - The ID of the element to show loading spinner for
  */
 export const showLoadingSpinner = (id) => {
-  const content = document.getElementById(id);
+  const content = getElementById(document, id);
   if (content) {
     content.classList.add("is-loading");
   }
@@ -246,7 +251,7 @@ export const showLoadingSpinner = (id) => {
  * @param {string} id - The ID of the element to hide loading spinner for
  */
 export const hideLoadingSpinner = (id) => {
-  const content = document.getElementById(id);
+  const content = getElementById(document, id);
   if (content) {
     content.classList.remove("is-loading");
   }
@@ -345,18 +350,26 @@ export const unlockBodyScroll = () => {
 };
 
 /**
+ * Restores body scroll state after a cached page snapshot is restored.
+ */
+export const resetBodyScrollLock = () => {
+  const body = document.body;
+  body.style.overflow = body.dataset.modalOverflow ?? "";
+  body.style.paddingRight = body.dataset.modalPaddingRight ?? "";
+  delete body.dataset.modalOpenCount;
+  delete body.dataset.modalOverflow;
+  delete body.dataset.modalPaddingRight;
+};
+
+/**
  * Toggles the visibility of the mobile navigation bar and its backdrop.
  * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
  */
 export const toggleMobileNavbarVisibility = () => {
-  const navbarMobile = document.getElementById("navbar-mobile");
-  if (navbarMobile) {
-    navbarMobile.classList.toggle("hidden");
-  }
-  const navbarBackdrop = document.getElementById("navbar-backdrop");
-  if (navbarBackdrop) {
-    navbarBackdrop.classList.toggle("hidden");
-  }
+  const navbarMobile = getElementById(document, "navbar-mobile");
+  toggleElementHidden(navbarMobile);
+  const navbarBackdrop = getElementById(document, "navbar-backdrop");
+  toggleElementHidden(navbarBackdrop);
 };
 
 /**
@@ -364,10 +377,10 @@ export const toggleMobileNavbarVisibility = () => {
  * @param {string} modalId - The ID of the modal element to toggle
  */
 export const toggleModalVisibility = (modalId) => {
-  const modal = document.getElementById(modalId);
+  const modal = getElementById(document, modalId);
   if (modal) {
-    const willOpen = modal.classList.contains("hidden");
-    modal.classList.toggle("hidden");
+    const willOpen = isElementHidden(modal);
+    setElementHidden(modal, !willOpen);
     if (willOpen) {
       lockBodyScroll();
     } else {
@@ -381,20 +394,8 @@ export const toggleModalVisibility = (modalId) => {
  * @returns {Promise} Promise that resolves when Leaflet is loaded
  */
 const loadLeafletScript = () => {
-  return new Promise((resolve, reject) => {
-    // Check if Leaflet is already loaded
-    if (window.L) {
-      resolve();
-      return;
-    }
-
-    // Create and load the Leaflet script
-    const script = document.createElement("script");
-    script.type = "text/javascript";
-    script.src = "/static/vendor/js/leaflet.v1.9.4.min.js";
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
+  return loadScriptOnce(LEAFLET_SCRIPT_SRC, {
+    isLoaded: () => typeof window.L !== "undefined",
   });
 };
 
@@ -545,12 +546,12 @@ export const isSuccessfulXHRStatus = (status) => {
 };
 
 /**
- * Converts HTML datetime-local input value to PostgreSQL-compatible timestamp format.
+ * Converts a datetime-local value to the timestamp string expected by PostgreSQL.
  * HTML datetime-local format: YYYY-MM-DDTHH:MM
  * PostgreSQL timestamp format: YYYY-MM-DDTHH:MM:SS
  *
- * @param {string} dateTimeLocal - The datetime-local input value (e.g., "2025-08-23T15:00")
- * @returns {string|null} Timestamp formatted string (e.g., "2025-08-23T15:00:00") or null if input is empty
+ * @param {string} dateTimeLocal - Datetime-local value, e.g. "2025-08-23T15:00".
+ * @returns {string|null} Timestamp string, or null when input is empty.
  *
  * @example
  * convertDateTimeLocalToISO("2025-08-23T15:00") // returns "2025-08-23T15:00:00"
@@ -562,15 +563,12 @@ export const convertDateTimeLocalToISO = (dateTimeLocal) => {
 };
 
 /**
- * Converts a Unix timestamp (in seconds) to a datetime-local input value.
+ * Converts Unix seconds into the value used by datetime-local inputs.
  *
- * This function transforms Unix timestamps into the format required by HTML5
- * <input type="datetime-local"> elements. The output uses UTC timezone.
+ * The output uses UTC because event timestamps are stored as absolute instants.
  *
- * @param {number} tsSeconds - Unix timestamp in seconds since epoch (1970-01-01 00:00:00 UTC).
- *                             Must be a finite number.
- * @returns {string} Datetime string in YYYY-MM-DDTHH:MM format (UTC timezone)
- *                   Returns empty string if input is invalid (non-number, NaN, Infinity)
+ * @param {number} tsSeconds - Unix timestamp in seconds. Must be finite.
+ * @returns {string} Datetime string in YYYY-MM-DDTHH:MM format, or "".
  *
  * @example
  * // Valid timestamp

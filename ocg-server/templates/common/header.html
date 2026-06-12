@@ -214,6 +214,7 @@
               </div>
             </a>
           </li>
+          {# End dashboard links -#}
 
           {# Logout -#}
           <li class="border-t border-stone-200 mt-2 pt-2" role="none">
@@ -228,8 +229,10 @@
               </div>
             </a>
           </li>
+          {# End logout -#}
         </ul>
       </div>
+      {# End user dropdown menu -#}
     {% else -%}
       <button id="user-dropdown-button"
               data-logged-in="false"
@@ -311,6 +314,7 @@
               </div>
             </a>
           </li>
+          {# End sign up -#}
 
           {# Log in -#}
           <li role="none">
@@ -325,18 +329,11 @@
               </div>
             </a>
           </li>
+          {# End log in -#}
         </ul>
       </div>
+      {# End user dropdown menu for non-logged users -#}
     {% endif -%}
-
-    {# Dropdown script -#}
-    <script type="module">
-      import {
-        initUserDropdown
-      } from '/static/js/common/header.js';
-
-      initUserDropdown();
-    </script>
   </div>
 {% endmacro user_menu -%}
 {# End user menu macro -#}

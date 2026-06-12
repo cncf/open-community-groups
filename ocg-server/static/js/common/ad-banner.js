@@ -1,3 +1,5 @@
+import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
+
 const FLOATING_AD_BANNER_SELECTOR = '[data-ad-banner="floating"]';
 const AD_BANNER_CLOSE_SELECTOR = "[data-ad-banner-close]";
 const BANNER_HIDDEN_TRANSLATE_CLASS = "translate-y-[150%]";
@@ -55,11 +57,10 @@ const saveClosedAdBanner = (imageUrl, linkUrl) => {
  * @param {HTMLElement} banner - Floating advertisement banner element.
  */
 const initializeFloatingAdBanner = (banner) => {
-  if (banner.dataset.adBannerInitialized === "true") {
+  if (!markDatasetReady(banner, "adBannerInitialized")) {
     return;
   }
 
-  banner.dataset.adBannerInitialized = "true";
   const imageUrl = (banner.dataset.adBannerImageUrl || "").trim();
   const linkUrl = (banner.dataset.adBannerLinkUrl || "").trim();
   if (isAdBannerClosed(imageUrl, linkUrl)) {
@@ -116,16 +117,4 @@ export const initializeFloatingAdBanners = (root = document) => {
   root.querySelectorAll(FLOATING_AD_BANNER_SELECTOR).forEach(initializeFloatingAdBanner);
 };
 
-/**
- * Initializes banners after the first page load.
- */
-const handleDocumentReady = () => initializeFloatingAdBanners(document);
-
-/**
- * Initializes banners inside HTMX-loaded fragments.
- * @param {Event} event - HTMX load event.
- */
-const handleHtmxLoad = (event) => initializeFloatingAdBanners(event.target);
-
-document.addEventListener("DOMContentLoaded", handleDocumentReady);
-document.addEventListener("htmx:load", handleHtmxLoad);
+initializeOnReadyAndHtmxLoad(initializeFloatingAdBanners);
