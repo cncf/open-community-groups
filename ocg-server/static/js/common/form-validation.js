@@ -4,11 +4,7 @@
  * @module form-validation
  */
 
-import {
-  convertDateToDateTimeLocalInTz,
-  isDashboardPath,
-  isElementInView,
-} from "/static/js/common/common.js";
+import { isDashboardPath, isElementInView, toDateTimeLocalInTimezone } from "/static/js/common/common.js";
 import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
@@ -413,27 +409,6 @@ const resolveTimezone = ({ endsInput, startsInput, timezone = null } = {}) => {
 };
 
 /**
- * Converts a Date to datetime-local format in the provided timezone.
- * @param {Date|null} dateValue - Date value to convert
- * @param {string} timezone - IANA timezone identifier
- * @returns {string} Datetime-local string in timezone or empty when invalid
- */
-const toDateTimeLocalInTimezone = (dateValue, timezone) => {
-  if (!(dateValue instanceof Date) || Number.isNaN(dateValue.getTime())) {
-    return "";
-  }
-  if (typeof timezone !== "string" || timezone.length === 0) {
-    return "";
-  }
-
-  try {
-    return convertDateToDateTimeLocalInTz(dateValue, timezone);
-  } catch (_) {
-    return "";
-  }
-};
-
-/**
  * Validates event-level start/end dates.
  * Sets custom validity messages on provided inputs.
  * @param {Object} params - Validation params
@@ -476,7 +451,9 @@ export const validateEventDates = ({
   }
 
   if (latestAllowed) {
-    const latestAllowedInTimezone = toDateTimeLocalInTimezone(latestAllowed, eventTimezone);
+    const latestAllowedInTimezone = eventTimezone
+      ? toDateTimeLocalInTimezone(latestAllowed.toISOString(), eventTimezone)
+      : "";
     if (latestAllowedInTimezone) {
       const startsAtValue = startsInput?.value || "";
       if (startsAtValue && startsAtValue > latestAllowedInTimezone) {
