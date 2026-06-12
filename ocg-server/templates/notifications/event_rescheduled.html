@@ -32,7 +32,13 @@
       <br />
       {% if let Some(meeting_password) = &event.meeting_password -%}
         Meeting password:
-        <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800">
+        <code style="background-color:#f5f5f4;
+                     border-radius:4px;
+                     color:#292524;
+                     font-size:0.875em;
+                     font-weight:600;
+                     margin-left:8px;
+                     padding:2px 8px">
           {{ meeting_password }}
         </code>
         <br />
