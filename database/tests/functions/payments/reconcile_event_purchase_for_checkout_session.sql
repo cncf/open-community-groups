@@ -9,28 +9,29 @@ select plan(17);
 -- VARIABLES
 -- ============================================================================
 
+\set activeEventID '79000000-0000-0000-0000-000000000004'
+\set activePriceWindowID '79000000-0000-0000-0000-000000000010'
+\set activeTicketTypeID '79000000-0000-0000-0000-000000000006'
+\set canceledEventID '79000000-0000-0000-0000-000000000005'
+\set canceledPriceWindowID '79000000-0000-0000-0000-000000000011'
+\set canceledTicketTypeID '79000000-0000-0000-0000-000000000007'
 \set communityID '79000000-0000-0000-0000-000000000001'
 \set discountCodeID '79000000-0000-0000-0000-000000000002'
 \set eventCategoryID '79000000-0000-0000-0000-000000000003'
-\set activeEventID '79000000-0000-0000-0000-000000000004'
-\set canceledEventID '79000000-0000-0000-0000-000000000005'
-\set activeTicketTypeID '79000000-0000-0000-0000-000000000006'
-\set canceledTicketTypeID '79000000-0000-0000-0000-000000000007'
 \set groupCategoryID '79000000-0000-0000-0000-000000000008'
 \set groupID '79000000-0000-0000-0000-000000000009'
-\set activePriceWindowID '79000000-0000-0000-0000-000000000010'
-\set canceledPriceWindowID '79000000-0000-0000-0000-000000000011'
-\set purchaseCompleteID '79000000-0000-0000-0000-000000000012'
-\set purchaseExpiredID '79000000-0000-0000-0000-000000000013'
 \set purchaseCanceledID '79000000-0000-0000-0000-000000000014'
-\set purchaseMissingRefID '79000000-0000-0000-0000-000000000015'
+\set purchaseCompleteID '79000000-0000-0000-0000-000000000012'
+\set purchaseConfirmedID '79000000-0000-0000-0000-000000000028'
 \set purchaseDoneID '79000000-0000-0000-0000-000000000016'
+\set purchaseExpiredActiveHoldID '79000000-0000-0000-0000-000000000026'
+\set purchaseExpiredID '79000000-0000-0000-0000-000000000013'
+\set purchaseInvitedID '79000000-0000-0000-0000-000000000027'
+\set purchaseMissingRefID '79000000-0000-0000-0000-000000000015'
 \set purchaseStartedID '79000000-0000-0000-0000-000000000022'
+\set registrationQuestionID '79000000-0000-0000-0000-000000000101'
 \set startedEventID '79000000-0000-0000-0000-000000000023'
 \set startedTicketTypeID '79000000-0000-0000-0000-000000000024'
-\set purchaseExpiredActiveHoldID '79000000-0000-0000-0000-000000000026'
-\set purchaseInvitedID '79000000-0000-0000-0000-000000000027'
-\set purchaseConfirmedID '79000000-0000-0000-0000-000000000028'
 \set user1ID '79000000-0000-0000-0000-000000000017'
 \set user2ID '79000000-0000-0000-0000-000000000018'
 \set user3ID '79000000-0000-0000-0000-000000000019'
@@ -45,8 +46,23 @@ select plan(17);
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'complete-community', 'Complete Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'complete-community',
+    'Complete Community',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -57,7 +73,8 @@ insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'General');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values
     (:'user1ID', 'hash-1', 'user1@example.com', true, 'buyer-1'),
     (:'user2ID', 'hash-2', 'user2@example.com', true, 'buyer-2'),
     (:'user3ID', 'hash-3', 'user3@example.com', true, 'buyer-3'),
@@ -100,7 +117,13 @@ insert into event (
     now() + interval '1 day',
     true,
     now(),
-    '[{"id": "79000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    jsonb_build_array(jsonb_build_object(
+        'id', :'registrationQuestionID',
+        'kind', 'free-text',
+        'options', jsonb_build_array(),
+        'prompt', 'Note',
+        'required', true
+    ))
 ), (
     false,
     :'startedEventID',
@@ -337,13 +360,25 @@ values
     (
         :'activeEventID',
         :'user1ID',
-        '{"answers": [{"question_id": "79000000-0000-0000-0000-000000000101", "value": "Paid checkout answer"}]}'::jsonb,
+        jsonb_build_object(
+            'answers',
+            jsonb_build_array(jsonb_build_object(
+                'question_id', :'registrationQuestionID',
+                'value', 'Paid checkout answer'
+            ))
+        ),
         'registration-questions-pending'
     ),
     (
         :'activeEventID',
         :'user2ID',
-        '{"answers": [{"question_id": "79000000-0000-0000-0000-000000000101", "value": "Expired checkout answer"}]}'::jsonb,
+        jsonb_build_object(
+            'answers',
+            jsonb_build_array(jsonb_build_object(
+                'question_id', :'registrationQuestionID',
+                'value', 'Expired checkout answer'
+            ))
+        ),
         'registration-questions-pending'
     ),
     (

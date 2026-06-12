@@ -3,28 +3,28 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000301'
-\set event2ID '00000000-0000-0000-0000-000000000302'
-\set event3ID '00000000-0000-0000-0000-000000000303'
-\set eventCategory2ID '00000000-0000-0000-0000-000000000202'
-\set eventCategoryID '00000000-0000-0000-0000-000000000201'
-\set group1ID '00000000-0000-0000-0000-000000000101'
-\set group2ID '00000000-0000-0000-0000-000000000102'
-\set group3ID '00000000-0000-0000-0000-000000000103'
-\set groupCategory2ID '00000000-0000-0000-0000-000000000502'
-\set groupCategoryID '00000000-0000-0000-0000-000000000501'
-\set nonExistentGroupID '00000000-0000-0000-0000-999999999999'
-\set user1ID '00000000-0000-0000-0000-000000000401'
-\set user2ID '00000000-0000-0000-0000-000000000402'
-\set user3ID '00000000-0000-0000-0000-000000000403'
-\set user4ID '00000000-0000-0000-0000-000000000404'
+\set community2ID '3a120000-0000-0000-0000-000000000001'
+\set communityID '3a120000-0000-0000-0000-000000000002'
+\set event1ID '3a120000-0000-0000-0000-000000000003'
+\set event2ID '3a120000-0000-0000-0000-000000000004'
+\set event3ID '3a120000-0000-0000-0000-000000000005'
+\set eventCategory2ID '3a120000-0000-0000-0000-000000000006'
+\set eventCategoryID '3a120000-0000-0000-0000-000000000007'
+\set group1ID '3a120000-0000-0000-0000-000000000008'
+\set group2ID '3a120000-0000-0000-0000-000000000009'
+\set group3ID '3a120000-0000-0000-0000-000000000010'
+\set groupCategory2ID '3a120000-0000-0000-0000-000000000011'
+\set groupCategoryID '3a120000-0000-0000-0000-000000000012'
+\set nonExistentGroupID '3a120000-0000-0000-0000-000000000013'
+\set user1ID '3a120000-0000-0000-0000-000000000014'
+\set user2ID '3a120000-0000-0000-0000-000000000015'
+\set user3ID '3a120000-0000-0000-0000-000000000016'
+\set user4ID '3a120000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
@@ -36,12 +36,27 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values
-    (:'communityID', 'test-community', 'Test Community', 'Community used for group stats tests', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
-    (:'community2ID', 'other-community', 'Other Community', 'Separate community for isolation testing', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
+    (
+        :'communityID',
+        'test-community',
+        'Test Community',
+        'Community used for group stats tests',
+        'https://example.com/banner-mobile.png',
+        'https://example.com/banner.png',
+        'https://example.com/logo.png'
+    ), (
+        :'community2ID',
+        'other-community',
+        'Other Community',
+        'Separate community for isolation testing',
+        'https://example.com/banner-mobile-2.png',
+        'https://example.com/banner-2.png',
+        'https://example.com/logo-2.png'
+    );
 
 -- Group categories
 insert into group_category (group_category_id, community_id, name) values
@@ -80,9 +95,19 @@ insert into "user" (user_id, auth_hash, email, username) values
 
 -- Members (month -3 and month -1 relative to current date)
 insert into group_member (group_id, user_id, created_at) values
-    (:'group1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '5 days'),
-    (:'group1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '10 days'),
-    (:'group2ID', :'user3ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '15 days');
+    (
+        :'group1ID',
+        :'user1ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '5 days'
+    ), (
+        :'group1ID',
+        :'user2ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '10 days'
+    ), (
+        :'group2ID',
+        :'user3ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '1 month' + interval '15 days'
+    );
 
 -- Events (month -2 and current month)
 insert into event (
@@ -99,22 +124,66 @@ insert into event (
     deleted,
     starts_at
 ) values
-    (:'event1ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event One', 'event-one',
-        'First event', 'UTC', true, false, false,
-        date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '15 days'),
-    (:'event2ID', :'group1ID', :'eventCategoryID', 'in-person', 'Event Two', 'event-two',
-        'Second event', 'UTC', true, true, false,
-        date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'),
-    (:'event3ID', :'group3ID', :'eventCategory2ID', 'in-person', 'Other Group Event', 'other-event',
-        'Other group event', 'UTC', true, false, false,
-        date_trunc('month', current_timestamp at time zone 'UTC') + interval '20 days');
+    (
+        :'event1ID',
+        :'group1ID',
+        :'eventCategoryID',
+        'in-person',
+        'Event One',
+        'event-one',
+        'First event',
+        'UTC',
+        true,
+        false,
+        false,
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '15 days'
+    ), (
+        :'event2ID',
+        :'group1ID',
+        :'eventCategoryID',
+        'in-person',
+        'Event Two',
+        'event-two',
+        'Second event',
+        'UTC',
+        true,
+        true,
+        false,
+        date_trunc('month', current_timestamp at time zone 'UTC') + interval '15 days'
+    ), (
+        :'event3ID',
+        :'group3ID',
+        :'eventCategory2ID',
+        'in-person',
+        'Other Group Event',
+        'other-event',
+        'Other group event',
+        'UTC',
+        true,
+        false,
+        false,
+        date_trunc('month', current_timestamp at time zone 'UTC') + interval '20 days'
+    );
 
 -- Attendees (matching event months)
 insert into event_attendee (event_id, user_id, created_at) values
-    (:'event1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '1 day'),
-    (:'event1ID', :'user2ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '5 days'),
-    (:'event2ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') + interval '10 days'),
-    (:'event3ID', :'user4ID', date_trunc('month', current_timestamp at time zone 'UTC') + interval '20 days');
+    (
+        :'event1ID',
+        :'user1ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '1 day'
+    ), (
+        :'event1ID',
+        :'user2ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '5 days'
+    ), (
+        :'event2ID',
+        :'user1ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') + interval '10 days'
+    ), (
+        :'event3ID',
+        :'user4ID',
+        date_trunc('month', current_timestamp at time zone 'UTC') + interval '20 days'
+    );
 
 -- Page views
 insert into group_views (day, group_id, total) values
@@ -269,13 +338,6 @@ select is(
     }
     $$,
     'Should return empty stats for unknown group'
-);
-
--- Should only count events from the requested group
-select is(
-    (get_group_stats(:'communityID'::uuid, :'group1ID'::uuid)::jsonb->'events'->>'total')::int,
-    1,
-    'Should only count events from the requested group'
 );
 
 -- ============================================================================

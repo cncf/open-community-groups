@@ -9,37 +9,48 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set eventID '00000000-0000-0000-0000-000000000021'
-\set eventProtectedID '00000000-0000-0000-0000-000000000022'
-\set groupCategoryID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000041'
-\set ticketType1ID '00000000-0000-0000-0000-000000000051'
-\set ticketType2ID '00000000-0000-0000-0000-000000000052'
-\set ticketType3ID '00000000-0000-0000-0000-000000000053'
-\set ticketTypeProtectedID '00000000-0000-0000-0000-000000000054'
-\set userID '00000000-0000-0000-0000-000000000061'
-\set window1CurrentID '00000000-0000-0000-0000-000000000071'
-\set window1OldID '00000000-0000-0000-0000-000000000072'
-\set window3ID '00000000-0000-0000-0000-000000000073'
-\set windowProtectedID '00000000-0000-0000-0000-000000000074'
+\set communityID '3a350000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a350000-0000-0000-0000-000000000002'
+\set eventID '3a350000-0000-0000-0000-000000000003'
+\set eventProtectedID '3a350000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a350000-0000-0000-0000-000000000005'
+\set groupID '3a350000-0000-0000-0000-000000000006'
+\set ticketType1ID '3a350000-0000-0000-0000-000000000007'
+\set ticketType2ID '3a350000-0000-0000-0000-000000000008'
+\set ticketType3ID '3a350000-0000-0000-0000-000000000009'
+\set ticketTypeProtectedID '3a350000-0000-0000-0000-000000000010'
+\set userID '3a350000-0000-0000-0000-000000000011'
+\set window1CurrentID '3a350000-0000-0000-0000-000000000012'
+\set window1OldID '3a350000-0000-0000-0000-000000000013'
+\set window3ID '3a350000-0000-0000-0000-000000000014'
+\set windowProtectedID '3a350000-0000-0000-0000-000000000015'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'community-1', 'Community 1', 'Test community', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'ticket-type-community',
+    'Ticket Type Community',
+    'A test community for ticket types',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Group 1', 'group-1');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name)
@@ -48,6 +59,10 @@ values (:'eventCategoryID', :'communityID', 'Meetup');
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified)
 values (:'userID', 'test_hash', 'ticket-user@example.test', 'ticket-user', true);
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'Ticket Group', 'ticket-group');
 
 -- Events
 insert into event (

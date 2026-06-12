@@ -20,17 +20,17 @@ select lives_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
                         "ends_at": "2025-06-30 23:59:59+00",
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
                     },
                     {
                         "amount_minor": 2500,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000072",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000003",
                         "starts_at": "2025-07-01 00:00:00+00"
                     }
                 ],
@@ -47,19 +47,19 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
                         "ends_at": "2025-07-10 00:00:00+00",
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002",
                         "starts_at": "2025-07-01 00:00:00+00"
                     },
                     {
                         "amount_minor": 2500,
                         "ends_at": "2025-07-15 00:00:00+00",
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000072",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000003",
                         "starts_at": "2025-07-05 00:00:00+00"
                     }
                 ],
@@ -77,7 +77,7 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
@@ -102,7 +102,7 @@ select throws_ok(
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
                     }
                 ],
                 "seats_total": 50,
@@ -119,12 +119,12 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
                     }
                 ],
                 "seats_total": 50,
@@ -141,12 +141,12 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
                     }
                 ],
                 "title": "General admission"
@@ -162,12 +162,12 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
                     }
                 ],
                 "seats_total": -1,
@@ -184,7 +184,7 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "seats_total": 50,
                 "title": "General admission"
@@ -200,7 +200,7 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [],
                 "seats_total": 50,
@@ -217,11 +217,11 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
                     }
                 ],
                 "seats_total": 50,
@@ -238,12 +238,12 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": -1,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002"
                     }
                 ],
                 "seats_total": 50,
@@ -260,13 +260,13 @@ select throws_ok(
     $$select validate_event_ticket_types_payload(
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a460000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
                         "ends_at": "2025-07-01 00:00:00+00",
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071",
+                        "event_ticket_price_window_id": "3a460000-0000-0000-0000-000000000002",
                         "starts_at": "2025-07-02 00:00:00+00"
                     }
                 ],

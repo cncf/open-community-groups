@@ -3,41 +3,42 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set inactiveGroupID '00000000-0000-0000-0000-000000000302'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000201'
-\set activeGroupID '00000000-0000-0000-0000-000000000301'
-\set unknownGroupID '00000000-0000-0000-0000-999999999999'
+\set activeGroupID '6a070000-0000-0000-0000-000000000001'
+\set communityID '6a070000-0000-0000-0000-000000000002'
+\set groupCategoryID '6a070000-0000-0000-0000-000000000003'
+\set inactiveGroupID '6a070000-0000-0000-0000-000000000004'
+\set unknownGroupID '6a070000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community and group category
+-- Community
 insert into community (
     community_id,
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'views-community',
     'Views Community',
     'Community for update_group_views tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
+-- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
@@ -51,20 +52,44 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'activeGroupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
-    (:'inactiveGroupID', :'communityID', :'groupCategoryID', 'Inactive Group', 'inactive-group', false, false);
+    (
+        :'activeGroupID',
+        :'communityID',
+        :'groupCategoryID',
+        'Active Group',
+        'active-group',
+        true,
+        false
+    ),
+    (
+        :'inactiveGroupID',
+        :'communityID',
+        :'groupCategoryID',
+        'Inactive Group',
+        'inactive-group',
+        false,
+        false
+    );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should insert counters only for active groups
-select update_group_views(
-    jsonb_build_array(
-        jsonb_build_array(:'activeGroupID'::text, current_date::text, 3),
-        jsonb_build_array(:'inactiveGroupID'::text, current_date::text, 5),
-        jsonb_build_array(:'unknownGroupID'::text, current_date::text, 8)
-    )
+select lives_ok(
+    format(
+        $$
+        select update_group_views(
+            jsonb_build_array(
+                jsonb_build_array(%L::text, current_date::text, 3),
+                jsonb_build_array(%L::text, current_date::text, 5),
+                jsonb_build_array(%L::text, current_date::text, 8)
+            )
+        )
+        $$,
+        :'activeGroupID', :'inactiveGroupID', :'unknownGroupID'
+    ),
+    'Should record views for active, inactive and unknown groups without error'
 );
 
 select is(
@@ -97,10 +122,18 @@ select is(
 );
 
 -- Should increment existing counters on conflict
-select update_group_views(
-    jsonb_build_array(
-        jsonb_build_array(:'activeGroupID'::text, current_date::text, 4)
-    )
+select lives_ok(
+    format(
+        $$
+        select update_group_views(
+            jsonb_build_array(
+                jsonb_build_array(%L::text, current_date::text, 4)
+            )
+        )
+        $$,
+        :'activeGroupID'
+    ),
+    'Should record additional views for an existing counter without error'
 );
 
 select is(
@@ -126,11 +159,19 @@ select is(
 );
 
 -- Should aggregate duplicate entries for the same group and day
-select update_group_views(
-    jsonb_build_array(
-        jsonb_build_array(:'activeGroupID'::text, current_date::text, 1),
-        jsonb_build_array(:'activeGroupID'::text, current_date::text, 2)
-    )
+select lives_ok(
+    format(
+        $$
+        select update_group_views(
+            jsonb_build_array(
+                jsonb_build_array(%L::text, current_date::text, 1),
+                jsonb_build_array(%L::text, current_date::text, 2)
+            )
+        )
+        $$,
+        :'activeGroupID', :'activeGroupID'
+    ),
+    'Should record duplicate view entries without error'
 );
 
 select is(

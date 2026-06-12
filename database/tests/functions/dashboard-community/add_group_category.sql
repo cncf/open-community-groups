@@ -9,7 +9,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set communityID '2c050000-0000-0000-0000-000000000001'
 
 -- ============================================================================
 -- SEED DATA
@@ -21,17 +21,17 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'cncf-seattle',
     'CNCF Seattle',
     'Community for group category tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- ============================================================================
@@ -40,21 +40,27 @@ insert into community (
 
 -- Should create a new group category and auto-generate normalized name
 select lives_ok(
-    $$ select add_group_category(
+    format(
+        $$ select add_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'Platform Engineering')
     ) $$,
+        :'communityID'
+    ),
     'Should create a group category with generated normalized name'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select
         gc.name,
         gc.normalized_name
     from group_category gc
-    where gc.community_id = '00000000-0000-0000-0000-000000000001'::uuid
-    $$,
+    where gc.community_id = %L::uuid
+        $$,
+        :'communityID'
+    ),
     $$ values ('Platform Engineering'::text, 'platform-engineering'::text) $$,
     'Should store category name and generated normalized name'
 );
@@ -71,27 +77,34 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         select
             'group_category_added',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'group_category',
             group_category_id
         from group_category
-        where community_id = '00000000-0000-0000-0000-000000000001'::uuid
-    $$,
+        where community_id = %L::uuid
+        $$,
+        :'communityID',
+        :'communityID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should not allow duplicate group category normalized name in same community
 select throws_ok(
-    $$ select add_group_category(
+    format(
+        $$ select add_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'platform engineering')
     ) $$,
+        :'communityID'
+    ),
     'group category already exists',
     'Should reject duplicate group category names'
 );

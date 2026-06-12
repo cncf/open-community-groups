@@ -9,95 +9,123 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000001811'
-\set communityID '00000000-0000-0000-0000-000000001801'
-\set eventID '00000000-0000-0000-0000-000000001812'
-\set groupCategoryID '00000000-0000-0000-0000-000000001810'
-\set groupID '00000000-0000-0000-0000-000000001802'
-\set sessionID '00000000-0000-0000-0000-000000001813'
-\set userHostID '00000000-0000-0000-0000-000000001821'
-\set userSpeakerID '00000000-0000-0000-0000-000000001822'
+\set communityID '7a080000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a080000-0000-0000-0000-000000000002'
+\set eventID '7a080000-0000-0000-0000-000000000003'
+\set groupCategoryID '7a080000-0000-0000-0000-000000000004'
+\set groupID '7a080000-0000-0000-0000-000000000005'
+\set sessionID '7a080000-0000-0000-0000-000000000006'
+\set userHostID '7a080000-0000-0000-0000-000000000007'
+\set userSpeakerID '7a080000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
-
--- Users
-insert into "user" (user_id, auth_hash, email, username) values
-    (:'userHostID', 'hash-host', 'host@example.com', 'host'),
-    (:'userSpeakerID', 'hash-speaker', 'speaker@example.com', 'speaker');
-
--- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Conference');
+
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, username) values
+    (:'userHostID', 'hash-host', 'host@example.com', true, 'host'),
+    (:'userSpeakerID', 'hash-speaker', 'speaker@example.com', true, 'speaker');
+
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, description)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    description
+) values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Test Group',
+    'test-group',
+    'A test group'
+);
 
 -- Parent event
 insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
     event_id,
+    event_category_id,
     event_kind_id,
     group_id,
+    name,
+    slug,
+    description,
+    capacity,
+    ends_at,
     meeting_provider_id,
     meeting_requested,
-    name,
     published,
-    slug,
     starts_at,
     timezone
 ) values (
-    100,
-    'Parent event for session hash',
-    '2026-06-01 12:00:00+00',
-    :'categoryID',
     :'eventID',
+    :'eventCategoryID',
     'virtual',
     :'groupID',
+    'Parent Event',
+    'parent-event',
+    'Parent event for session hash',
+    100,
+    '2026-06-01 12:00:00+00',
     'zoom',
     true,
-    'Parent Event',
     true,
-    'parent-event',
     '2026-06-01 10:00:00+00',
     'UTC'
 );
 
 -- Session hash target
 insert into session (
+    session_id,
+    event_id,
+    name,
+    session_kind_id,
     description,
     ends_at,
-    event_id,
     meeting_hosts,
     meeting_provider_id,
     meeting_requested,
-    name,
-    session_id,
-    session_kind_id,
     starts_at
 ) values (
+    :'sessionID',
+    :'eventID',
+    'Hash Target Session',
+    'virtual',
     'Hash target session',
     '2026-06-01 10:30:00+00',
-    :'eventID',
     array['explicit@example.com'],
     'zoom',
     true,
-    'Hash Target Session',
-    :'sessionID',
-    'virtual',
     '2026-06-01 10:00:00+00'
 );
 
@@ -142,12 +170,18 @@ values ('after_parent_event_change', get_session_meeting_sync_state_hash(:'sessi
 
 -- Capture hashes before and after changing the parent recording preference
 insert into session_sync_hash (label, sync_state_hash)
-values ('before_parent_recording_requested_change', get_session_meeting_sync_state_hash(:'sessionID'));
+values (
+    'before_parent_recording_requested_change',
+    get_session_meeting_sync_state_hash(:'sessionID')
+);
 update event
 set meeting_recording_requested = false
 where event_id = :'eventID';
 insert into session_sync_hash (label, sync_state_hash)
-values ('after_parent_recording_requested_change', get_session_meeting_sync_state_hash(:'sessionID'));
+values (
+    'after_parent_recording_requested_change',
+    get_session_meeting_sync_state_hash(:'sessionID')
+);
 
 -- Capture hashes before and after changing session speakers
 insert into session_sync_hash (label, sync_state_hash)

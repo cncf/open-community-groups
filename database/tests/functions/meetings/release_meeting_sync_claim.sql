@@ -3,116 +3,144 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000001211'
-\set communityID '00000000-0000-0000-0000-000000001201'
-\set eventID '00000000-0000-0000-0000-000000001212'
-\set groupCategoryID '00000000-0000-0000-0000-000000001210'
-\set groupID '00000000-0000-0000-0000-000000001202'
-\set meetingID '00000000-0000-0000-0000-000000001214'
-\set sessionID '00000000-0000-0000-0000-000000001213'
+\set communityID '7a0c0000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a0c0000-0000-0000-0000-000000000002'
+\set eventID '7a0c0000-0000-0000-0000-000000000003'
+\set groupCategoryID '7a0c0000-0000-0000-0000-000000000004'
+\set groupID '7a0c0000-0000-0000-0000-000000000005'
+\set meetingID '7a0c0000-0000-0000-0000-000000000006'
+\set sessionID '7a0c0000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Conference');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, description)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    description
+) values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Test Group',
+    'test-group',
+    'A test group'
+);
 
 -- Claimed event meeting
 insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
     event_id,
+    event_category_id,
     event_kind_id,
     group_id,
+    name,
+    slug,
+    description,
+    capacity,
+    ends_at,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_provider_id,
     meeting_requested,
     meeting_sync_claimed_at,
-    name,
     published,
-    slug,
     starts_at,
     timezone
 ) values (
-    100,
-    'A test event',
-    '2026-06-01 11:00:00+00',
-    :'categoryID',
     :'eventID',
+    :'eventCategoryID',
     'virtual',
     :'groupID',
+    'Test Event',
+    'test-event',
+    'A test event',
+    100,
+    '2026-06-01 11:00:00+00',
     false,
     'host@example.com',
     'zoom',
     true,
     current_timestamp,
-    'Test Event',
     true,
-    'test-event',
     '2026-06-01 10:00:00+00',
     'UTC'
 );
 
 -- Claimed session meeting
 insert into session (
-    ends_at,
+    session_id,
     event_id,
+    name,
+    session_kind_id,
+    ends_at,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_provider_id,
     meeting_requested,
     meeting_sync_claimed_at,
-    name,
-    session_id,
-    session_kind_id,
     starts_at
 ) values (
-    '2026-06-01 10:30:00+00',
+    :'sessionID',
     :'eventID',
+    'Test Session',
+    'virtual',
+    '2026-06-01 10:30:00+00',
     false,
     'session-host@example.com',
     'zoom',
     true,
     current_timestamp,
-    'Test Session',
-    :'sessionID',
-    'virtual',
     '2026-06-01 10:00:00+00'
 );
 
 -- Claimed orphan meeting
 insert into meeting (
-    join_url,
     meeting_id,
+    join_url,
     meeting_provider_id,
     provider_meeting_id,
     sync_claimed_at
 ) values (
-    'https://zoom.us/j/orphan',
     :'meetingID',
+    'https://zoom.us/j/orphan',
     'zoom',
     'orphan',
     current_timestamp
@@ -123,11 +151,12 @@ insert into meeting (
 -- ============================================================================
 
 -- Should release a meeting sync claim
-select release_meeting_sync_claim(
-    :'eventID',
-    null,
-    null,
-    current_timestamp - interval '1 hour'
+select lives_ok(
+    format(
+        $$select release_meeting_sync_claim(%L::uuid, null, null, current_timestamp - interval '1 hour')$$,
+        :'eventID'
+    ),
+    'Should accept a stale event claim timestamp without error'
 );
 select isnt(
     (select meeting_sync_claimed_at from event where event_id = :'eventID'),
@@ -154,11 +183,12 @@ select is(
 );
 
 -- Should release a session meeting sync claim
-select release_meeting_sync_claim(
-    null,
-    null,
-    :'sessionID',
-    current_timestamp - interval '1 hour'
+select lives_ok(
+    format(
+        $$select release_meeting_sync_claim(null, null, %L::uuid, current_timestamp - interval '1 hour')$$,
+        :'sessionID'
+    ),
+    'Should accept a stale session claim timestamp without error'
 );
 select isnt(
     (select meeting_sync_claimed_at from session where session_id = :'sessionID'),
@@ -185,11 +215,12 @@ select is(
 );
 
 -- Should release an orphan meeting sync claim
-select release_meeting_sync_claim(
-    null,
-    :'meetingID',
-    null,
-    current_timestamp - interval '1 hour'
+select lives_ok(
+    format(
+        $$select release_meeting_sync_claim(null, %L::uuid, null, current_timestamp - interval '1 hour')$$,
+        :'meetingID'
+    ),
+    'Should accept a stale orphan meeting claim timestamp without error'
 );
 select isnt(
     (select sync_claimed_at from meeting where meeting_id = :'meetingID'),

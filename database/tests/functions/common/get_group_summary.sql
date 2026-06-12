@@ -9,12 +9,14 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupDeletedID '00000000-0000-0000-0000-000000000023'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set groupInactiveID '00000000-0000-0000-0000-000000000022'
-\set regionID '00000000-0000-0000-0000-000000000012'
+\set communityID '0c0b0000-0000-0000-0000-000000000001'
+\set groupCategoryID '0c0b0000-0000-0000-0000-000000000002'
+\set groupDeletedID '0c0b0000-0000-0000-0000-000000000003'
+\set groupID '0c0b0000-0000-0000-0000-000000000004'
+\set groupInactiveID '0c0b0000-0000-0000-0000-000000000005'
+\set regionID '0c0b0000-0000-0000-0000-000000000006'
+\set unknownCommunityID '0c0b0000-0000-0000-0000-000000000007'
+\set unknownGroupID '0c0b0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
@@ -26,34 +28,35 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
--- Region
-insert into region (region_id, name, community_id)
-values (:'regionID', 'North America', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+-- Region
+insert into region (region_id, community_id, name)
+values (:'regionID', :'communityID', 'North America');
 
 -- Group
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     region_id,
     active,
     banner_url,
@@ -68,10 +71,11 @@ insert into "group" (
     created_at
 ) values (
     :'groupID',
+    :'communityID',
+    :'groupCategoryID',
     'Seattle Kubernetes Meetup',
     'abc1234',
-    :'communityID',
-    :'categoryID',
+
     :'regionID',
     true,
     'https://example.com/group-banner.png',
@@ -89,18 +93,20 @@ insert into "group" (
 -- Group (inactive)
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active,
     created_at
 ) values (
     :'groupInactiveID',
+    :'communityID',
+    :'groupCategoryID',
     'Inactive DevOps Group',
     'xyz9876',
-    :'communityID',
-    :'categoryID',
+
     false,
     '2024-02-15 10:00:00+00'
 );
@@ -108,20 +114,22 @@ insert into "group" (
 -- Group (deleted)
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active,
     deleted,
     deleted_at,
     created_at
 ) values (
     :'groupDeletedID',
+    :'communityID',
+    :'groupCategoryID',
     'Deleted DevOps Group',
     'mno3ghi',
-    :'communityID',
-    :'categoryID',
+
     false,
     true,
     '2024-03-15 10:00:00+00',
@@ -138,17 +146,17 @@ select is(
         :'communityID'::uuid,
         :'groupID'::uuid
     )::jsonb,
-    '{
+    format('{
         "active": true,
         "category": {
-            "group_category_id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "%s",
             "name": "Technology",
             "normalized_name": "technology"
         },
         "community_display_name": "Cloud Native Seattle",
         "community_name": "cloud-native-seattle",
         "created_at": 1705312800,
-        "group_id": "00000000-0000-0000-0000-000000000021",
+        "group_id": "%s",
         "name": "Seattle Kubernetes Meetup",
         "slug": "abc1234",
         "banner_url": "https://example.com/group-banner.png",
@@ -161,12 +169,12 @@ select is(
         "longitude": -74.006,
         "og_image_url": "https://example.com/group-og.png",
         "region": {
-            "region_id": "00000000-0000-0000-0000-000000000012",
+            "region_id": "%s",
             "name": "North America",
             "normalized_name": "north-america"
         },
         "state": "NY"
-    }'::jsonb,
+    }', :'groupCategoryID', :'groupID', :'regionID')::jsonb,
     'Should return correct group summary data as JSON'
 );
 
@@ -198,7 +206,7 @@ update "group" set slug_pretty = null where group_id = :'groupID';
 select ok(
     get_group_summary(
         :'communityID'::uuid,
-        '00000000-0000-0000-0000-000000999999'::uuid
+        :'unknownGroupID'::uuid
     ) is null,
     'Should return null for non-existent group ID'
 );
@@ -215,7 +223,7 @@ select ok(
 -- Should return null when community does not match group
 select ok(
     get_group_summary(
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        :'unknownCommunityID'::uuid,
         :'groupID'::uuid
     ) is null,
     'Should return null when community does not match group'

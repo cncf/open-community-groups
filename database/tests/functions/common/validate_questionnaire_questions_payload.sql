@@ -21,40 +21,40 @@ select lives_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "What do you want to learn?",
                     "required": true,
                     "options": []
                 },
                 {
-                    "id": "90000000-0000-0000-0000-000000000102",
+                    "id": "0c1f0000-0000-0000-0000-000000000002",
                     "kind": "single-select",
                     "prompt": "Meal preference",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1f0000-0000-0000-0000-000000000004",
                             "label": "Standard"
                         },
                         {
-                            "id": "90000000-0000-0000-0000-000000000202",
+                            "id": "0c1f0000-0000-0000-0000-000000000005",
                             "label": "Vegetarian"
                         }
                     ]
                 },
                 {
-                    "id": "90000000-0000-0000-0000-000000000103",
+                    "id": "0c1f0000-0000-0000-0000-000000000003",
                     "kind": "multi-select",
                     "prompt": "Topics",
                     "required": false,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000203",
+                            "id": "0c1f0000-0000-0000-0000-000000000006",
                             "label": "Rust"
                         },
                         {
-                            "id": "90000000-0000-0000-0000-000000000204",
+                            "id": "0c1f0000-0000-0000-0000-000000000007",
                             "label": "PostgreSQL"
                         }
                     ]
@@ -77,7 +77,7 @@ select throws_ok(
     $$
         select validate_questionnaire_questions_payload(
             '{
-                "id": "90000000-0000-0000-0000-000000000101"
+                "id": "0c1f0000-0000-0000-0000-000000000001"
             }'::jsonb
         )
     $$,
@@ -135,14 +135,14 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question one",
                     "required": true,
                     "options": []
                 },
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question two",
                     "required": false,
@@ -161,7 +161,7 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": " ",
                     "required": true,
@@ -180,7 +180,7 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "date",
                     "prompt": "Question",
                     "required": true,
@@ -199,7 +199,7 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": "yes",
@@ -218,13 +218,13 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1f0000-0000-0000-0000-000000000004",
                             "label": "Option"
                         }
                     ]
@@ -242,7 +242,7 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "single-select",
                     "prompt": "Question",
                     "required": true,
@@ -261,7 +261,7 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "single-select",
                     "prompt": "Question",
                     "required": true,
@@ -284,17 +284,17 @@ select throws_ok(
         select validate_questionnaire_questions_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1f0000-0000-0000-0000-000000000001",
                     "kind": "single-select",
                     "prompt": "Question",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1f0000-0000-0000-0000-000000000004",
                             "label": "One"
                         },
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1f0000-0000-0000-0000-000000000004",
                             "label": "Two"
                         }
                     ]

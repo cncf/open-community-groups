@@ -9,18 +9,31 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set proposal1ID '00000000-0000-0000-0000-000000000061'
-\set proposal2ID '00000000-0000-0000-0000-000000000062'
-\set userEmptyID '00000000-0000-0000-0000-000000000099'
-\set userID '00000000-0000-0000-0000-000000000071'
+\set proposal1ID '4a0f0000-0000-0000-0000-000000000001'
+\set proposal2ID '4a0f0000-0000-0000-0000-000000000002'
+\set userEmptyID '4a0f0000-0000-0000-0000-000000000003'
+\set userID '4a0f0000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+);
 
 -- Session proposal
 insert into session_proposal (

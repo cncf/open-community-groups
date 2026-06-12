@@ -3,24 +3,25 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000041'
-\set event2ID '00000000-0000-0000-0000-000000000042'
-\set event3ID '00000000-0000-0000-0000-000000000043'
-\set event4ID '00000000-0000-0000-0000-000000000044'
-\set event5ID '00000000-0000-0000-0000-000000000045'
-\set event6ID '00000000-0000-0000-0000-000000000046'
-\set event7ID '00000000-0000-0000-0000-000000000047'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set group2ID '00000000-0000-0000-0000-000000000032'
+\set communityID '0d050000-0000-0000-0000-000000000001'
+\set event1ID '0d050000-0000-0000-0000-000000000002'
+\set event2ID '0d050000-0000-0000-0000-000000000003'
+\set event3ID '0d050000-0000-0000-0000-000000000004'
+\set event4ID '0d050000-0000-0000-0000-000000000005'
+\set event5ID '0d050000-0000-0000-0000-000000000006'
+\set event6ID '0d050000-0000-0000-0000-000000000007'
+\set event7ID '0d050000-0000-0000-0000-000000000008'
+\set eventCategoryID '0d050000-0000-0000-0000-000000000009'
+\set group1ID '0d050000-0000-0000-0000-000000000010'
+\set group2ID '0d050000-0000-0000-0000-000000000011'
+\set groupCategoryID '0d050000-0000-0000-0000-000000000012'
+\set unknownCommunityID '0d050000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
@@ -32,33 +33,67 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'community-upcoming-events',
+    'Community Upcoming Events',
+    'Community used for upcoming events tests',
+    'https://example.com/community-upcoming-events-banner-mobile.png',
+    'https://example.com/community-upcoming-events-banner.png',
+    'https://example.com/community-upcoming-events-logo.png'
 );
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name, logo_url)
-values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID', 'New York', 'NY', 'US', 'United States', 'https://example.com/group-logo.png');
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    city,
+    country_code,
+    country_name,
+    logo_url,
+    state
+) values (
+    :'group1ID',
+    :'communityID',
+    :'groupCategoryID',
+    'Test Group',
+    'test-group',
+    'New York',
+    'US',
+    'United States',
+    'https://example.com/group-logo.png',
+    'NY'
+);
 
-insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url)
-values (:'group2ID', 'Virtual Group', 'virtual-group', :'communityID', :'category1ID', 'https://example.com/virtual-group-logo.png');
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    logo_url
+) values (
+    :'group2ID',
+    :'communityID',
+    :'groupCategoryID',
+    'Virtual Group',
+    'virtual-group',
+    'https://example.com/virtual-group-logo.png'
+);
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategory1ID', 'Tech Talks', :'communityID');
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Tech Talks');
 
 -- Event
 insert into event (
@@ -79,30 +114,32 @@ insert into event (
 ) values
     -- Past event
     (:'event1ID', 'Past Event', 'past-event', 'A past event', false, 'UTC',
-     :'eventCategory1ID', 'in-person', :'group1ID', true,
+     :'eventCategoryID', 'in-person', :'group1ID', true,
      now() - interval '1 year', now() - interval '1 year' + interval '2 hours', false, null),
     -- Future event 1 (with logo)
     (:'event2ID', 'Future Event 1', 'future-event-1', 'A future event', false, 'UTC',
-     :'eventCategory1ID', 'virtual', :'group1ID', true,
+     :'eventCategoryID', 'virtual', :'group1ID', true,
      now() + interval '1 month', now() + interval '1 month' + interval '2 hours', false,
      'https://example.com/event-logo.png'),
     -- Future event 2 (unpublished)
     (:'event3ID', 'Future Event 2', 'future-event-2', 'An unpublished event', false, 'UTC',
-     :'eventCategory1ID', 'hybrid', :'group1ID', false,
+     :'eventCategoryID', 'hybrid', :'group1ID', false,
      now() + interval '3 months', now() + interval '3 months' + interval '2 hours', false, null),
     -- Future event 3 (canceled - should be filtered out)
-    (:'event4ID', 'Canceled Future Event', 'canceled-future-event', 'A canceled event', false, 'UTC',
-     :'eventCategory1ID', 'in-person', :'group1ID', false,
+    (:'event4ID', 'Canceled Future Event', 'canceled-future-event',
+     'A canceled event', false, 'UTC',
+     :'eventCategoryID', 'in-person', :'group1ID', false,
      now() + interval '2 weeks', now() + interval '2 weeks' + interval '2 hours', true, null),
     -- Future event 4 (uses group logo fallback)
     (:'event5ID', 'No Logo Event', 'no-logo-event', 'An event without logo', true, 'UTC',
-     :'eventCategory1ID', 'in-person', :'group1ID', true,
-     now() + interval '1 month' + interval '1 day', now() + interval '1 month' + interval '1 day' + interval '2 hours',
+     :'eventCategoryID', 'in-person', :'group1ID', true,
+     now() + interval '1 month' + interval '1 day',
+     now() + interval '1 month' + interval '1 day' + interval '2 hours',
      false, null),
     -- Future event 5 (virtual event for a group without location data)
     (:'event7ID', 'Locationless Virtual Event', 'locationless-virtual-event',
      'A virtual event for a group without location data', false, 'UTC',
-     :'eventCategory1ID', 'virtual', :'group2ID', true,
+     :'eventCategoryID', 'virtual', :'group2ID', true,
      now() + interval '3 months', now() + interval '3 months' + interval '2 hours',
      false, 'https://example.com/locationless-virtual-event-logo.png');
 
@@ -112,7 +149,7 @@ insert into event (
 
 -- Should return published non-test future events
 select is(
-    get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
+    get_community_upcoming_events(:'communityID'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
         get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
@@ -120,25 +157,14 @@ select is(
     'Should return published non-test future events'
 );
 
--- Should return only published future events matching event kind filter
-delete from event where event_id = :'event5ID';
-select is(
-    get_community_upcoming_events('00000000-0000-0000-0000-000000000001'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
-    jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
-    ),
-    'Should return only published future events'
-);
-
 -- Should return empty array for non-existing community
 select is(
-    get_community_upcoming_events('00000000-0000-0000-0000-999999999999'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
+    get_community_upcoming_events(:'unknownCommunityID'::uuid, array['in-person', 'virtual', 'hybrid'])::jsonb,
     '[]'::jsonb,
     'Should return empty array for non-existing community'
 );
 
--- Add a tied future event to verify deterministic ordering
+-- Intentional mid-test seed: creates a tied future event after baseline assertions.
 insert into event (
     event_id,
     name,
@@ -159,7 +185,7 @@ insert into event (
     'future-event-5',
     'A future event with a tied start time',
     'UTC',
-    :'eventCategory1ID',
+    :'eventCategoryID',
     'virtual',
     :'group1ID',
     true,

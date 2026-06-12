@@ -3,19 +3,20 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set canceledDraftEventID '00000000-0000-0000-0000-000000000303'
-\set canceledEventID '00000000-0000-0000-0000-000000000302'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000201'
-\set groupID '00000000-0000-0000-0000-000000000101'
-\set publishedEventID '00000000-0000-0000-0000-000000000301'
-\set unknownEventID '00000000-0000-0000-0000-999999999999'
+\set canceledDraftEventID '5e0c0000-0000-0000-0000-000000000001'
+\set canceledEventID '5e0c0000-0000-0000-0000-000000000002'
+\set communityID '5e0c0000-0000-0000-0000-000000000003'
+\set eventCategoryID '5e0c0000-0000-0000-0000-000000000004'
+\set groupCategoryID '5e0c0000-0000-0000-0000-000000000005'
+\set groupID '5e0c0000-0000-0000-0000-000000000006'
+\set publishedEventID '5e0c0000-0000-0000-0000-000000000007'
+\set unknownEventID '5e0c0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
@@ -27,29 +28,29 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'views-community',
     'Views Community',
     'Community for update_event_views tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
-values ('00000000-0000-0000-0000-000000000501', :'communityID', 'Technology');
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
 values (
     :'groupID',
     :'communityID',
-    '00000000-0000-0000-0000-000000000501',
+    :'groupCategoryID',
     'Views Group',
     'views-group',
     true,
@@ -74,22 +75,69 @@ insert into event (
     deleted,
     starts_at
 ) values
-    (:'publishedEventID', :'eventCategoryID', 'in-person', :'groupID', 'Published Event', 'published-event', 'Published event', 'UTC', true, false, false, current_timestamp + interval '10 days'),
-    (:'canceledEventID', :'eventCategoryID', 'in-person', :'groupID', 'Canceled Event', 'canceled-event', 'Canceled event', 'UTC', true, true, false, current_timestamp + interval '20 days'),
-    (:'canceledDraftEventID', :'eventCategoryID', 'in-person', :'groupID', 'Canceled Draft Event', 'canceled-draft-event', 'Canceled draft event', 'UTC', false, true, false, current_timestamp + interval '30 days');
+    (
+        :'publishedEventID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Published Event',
+        'published-event',
+        'Published event',
+        'UTC',
+        true,
+        false,
+        false,
+        current_timestamp + interval '10 days'
+    ),
+    (
+        :'canceledEventID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Canceled Event',
+        'canceled-event',
+        'Canceled event',
+        'UTC',
+        true,
+        true,
+        false,
+        current_timestamp + interval '20 days'
+    ),
+    (
+        :'canceledDraftEventID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Canceled Draft Event',
+        'canceled-draft-event',
+        'Canceled draft event',
+        'UTC',
+        false,
+        true,
+        false,
+        current_timestamp + interval '30 days'
+    );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should insert counters for published and canceled events
-select update_event_views(
-    jsonb_build_array(
-        jsonb_build_array(:'publishedEventID'::text, current_date::text, 3),
-        jsonb_build_array(:'canceledEventID'::text, current_date::text, 5),
-        jsonb_build_array(:'canceledDraftEventID'::text, current_date::text, 7),
-        jsonb_build_array(:'unknownEventID'::text, current_date::text, 8)
-    )
+select lives_ok(
+    format(
+        $$
+        select update_event_views(
+            jsonb_build_array(
+                jsonb_build_array(%L::text, current_date::text, 3),
+                jsonb_build_array(%L::text, current_date::text, 5),
+                jsonb_build_array(%L::text, current_date::text, 7),
+                jsonb_build_array(%L::text, current_date::text, 8)
+            )
+        )
+        $$,
+        :'publishedEventID', :'canceledEventID', :'canceledDraftEventID', :'unknownEventID'
+    ),
+    'Should record views for known and unknown events without error'
 );
 
 select is(
@@ -107,13 +155,13 @@ select is(
     jsonb_build_array(
         jsonb_build_object(
             'day', current_date::text,
-            'event_id', :'publishedEventID',
-            'total', 3
+            'event_id', :'canceledEventID',
+            'total', 5
         ),
         jsonb_build_object(
             'day', current_date::text,
-            'event_id', :'canceledEventID',
-            'total', 5
+            'event_id', :'publishedEventID',
+            'total', 3
         )
     ),
     'Should insert counters for published and canceled events'
@@ -127,10 +175,18 @@ select is(
 );
 
 -- Should increment existing counters on conflict
-select update_event_views(
-    jsonb_build_array(
-        jsonb_build_array(:'publishedEventID'::text, current_date::text, 4)
-    )
+select lives_ok(
+    format(
+        $$
+        select update_event_views(
+            jsonb_build_array(
+                jsonb_build_array(%L::text, current_date::text, 4)
+            )
+        )
+        $$,
+        :'publishedEventID'
+    ),
+    'Should record additional views for an existing counter without error'
 );
 
 select is(
@@ -148,24 +204,32 @@ select is(
     jsonb_build_array(
         jsonb_build_object(
             'day', current_date::text,
-            'event_id', :'publishedEventID',
-            'total', 7
+            'event_id', :'canceledEventID',
+            'total', 5
         ),
         jsonb_build_object(
             'day', current_date::text,
-            'event_id', :'canceledEventID',
-            'total', 5
+            'event_id', :'publishedEventID',
+            'total', 7
         )
     ),
     'Should increment existing counters on conflict'
 );
 
 -- Should aggregate duplicate entries for the same event and day
-select update_event_views(
-    jsonb_build_array(
-        jsonb_build_array(:'publishedEventID'::text, current_date::text, 1),
-        jsonb_build_array(:'publishedEventID'::text, current_date::text, 2)
-    )
+select lives_ok(
+    format(
+        $$
+        select update_event_views(
+            jsonb_build_array(
+                jsonb_build_array(%L::text, current_date::text, 1),
+                jsonb_build_array(%L::text, current_date::text, 2)
+            )
+        )
+        $$,
+        :'publishedEventID', :'publishedEventID'
+    ),
+    'Should record duplicate view entries without error'
 );
 
 select is(

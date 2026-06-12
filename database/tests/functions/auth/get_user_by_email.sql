@@ -9,29 +9,29 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set userUnverifiedID '00000000-0000-0000-0000-000000000101'
-\set userVerifiedID '00000000-0000-0000-0000-000000000102'
+\set userUnverifiedID '0a030000-0000-0000-0000-000000000001'
+\set userVerifiedID '0a030000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Verified user
-insert into "user" (auth_hash, email, email_verified, user_id, username) values (
-    'verified_hash',
-    'verified@example.com',
-    true,
-    :'userVerifiedID',
-    'verified-user'
-);
-
--- Unverified user
-insert into "user" (auth_hash, email, email_verified, user_id, username) values (
-    'unverified_hash',
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, password, username)
+values (
+    :'userUnverifiedID',
+    'unverified-hash',
     'unverified@example.com',
     false,
-    :'userUnverifiedID',
+    null,
     'unverified-user'
+), (
+    :'userVerifiedID',
+    'verified-hash',
+    'verified@example.com',
+    true,
+    'hashed-password',
+    'verified-user'
 );
 
 -- ============================================================================

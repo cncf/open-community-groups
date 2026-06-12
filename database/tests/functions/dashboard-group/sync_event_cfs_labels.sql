@@ -9,35 +9,50 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set eventID '00000000-0000-0000-0000-000000000021'
-\set event2ID '00000000-0000-0000-0000-000000000022'
-\set groupCategoryID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000041'
-\set label1ID '00000000-0000-0000-0000-000000000051'
-\set label2ID '00000000-0000-0000-0000-000000000052'
-\set labelOtherID '00000000-0000-0000-0000-000000000053'
+\set communityID '3a310000-0000-0000-0000-000000000001'
+\set event2ID '3a310000-0000-0000-0000-000000000002'
+\set eventCategoryID '3a310000-0000-0000-0000-000000000003'
+\set eventID '3a310000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a310000-0000-0000-0000-000000000005'
+\set groupID '3a310000-0000-0000-0000-000000000006'
+\set label1ID '3a310000-0000-0000-0000-000000000007'
+\set label2ID '3a310000-0000-0000-0000-000000000008'
+\set labelOtherID '3a310000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'community-1', 'Community 1', 'Test community', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'cfs-label-community',
+    'CFS Label Community',
+    'A test community for CFS labels',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Group 1', 'group-1');
-
 -- Event category
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'Meetup');
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'CFS Label Group', 'cfs-label-group');
 
 -- Events
 insert into event (

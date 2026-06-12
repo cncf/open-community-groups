@@ -9,19 +9,19 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set notificationFreshProcessingID '00000000-0000-0000-0000-000000000101'
-\set notificationPendingID '00000000-0000-0000-0000-000000000102'
-\set notificationProcessedID '00000000-0000-0000-0000-000000000103'
-\set notificationStaleProcessingID '00000000-0000-0000-0000-000000000104'
-\set userID '00000000-0000-0000-0000-000000000201'
+\set notificationFreshProcessingID '8a040000-0000-0000-0000-000000000001'
+\set notificationPendingID '8a040000-0000-0000-0000-000000000002'
+\set notificationProcessedID '8a040000-0000-0000-0000-000000000003'
+\set notificationStaleProcessingID '8a040000-0000-0000-0000-000000000004'
+\set userID '8a040000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- User
-insert into "user" (auth_hash, email, email_verified, user_id, username)
-values ('hash', 'user@example.com', true, :'userID', 'user');
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values (:'userID', 'hash', 'user@example.com', true, 'user');
 
 -- Notifications
 insert into notification (
@@ -86,14 +86,17 @@ select is(
 
 -- Should persist delivery-unknown state for stale claims
 select results_eq(
-    $$
+    format(
+        $$
         select
             delivery_status,
             error,
             processed_at is not null
         from notification
-        where notification_id = '00000000-0000-0000-0000-000000000104'
-    $$,
+        where notification_id = %L::uuid
+        $$,
+        :'notificationStaleProcessingID'
+    ),
     $$
         values (
             'delivery-unknown'::text,
@@ -106,35 +109,46 @@ select results_eq(
 
 -- Should leave fresh processing notifications active
 select results_eq(
-    $$
+    format(
+        $$
         select
             delivery_status,
             processed_at
         from notification
-        where notification_id = '00000000-0000-0000-0000-000000000101'
-    $$,
+        where notification_id = %L::uuid
+        $$,
+        :'notificationFreshProcessingID'
+    ),
     $$ values ('processing'::text, null::timestamptz) $$,
     'Leaves fresh processing notifications active'
 );
 
 -- Should leave other delivery statuses unchanged
 select results_eq(
-    $$
+    format(
+        $$
         select
             notification_id,
             delivery_status
         from notification
         where notification_id in (
-            '00000000-0000-0000-0000-000000000102',
-            '00000000-0000-0000-0000-000000000103'
+            %L::uuid,
+            %L::uuid
         )
         order by notification_id
-    $$,
-    $$
+        $$,
+        :'notificationPendingID',
+        :'notificationProcessedID'
+    ),
+    format(
+        $$
         values
-            ('00000000-0000-0000-0000-000000000102'::uuid, 'pending'::text),
-            ('00000000-0000-0000-0000-000000000103'::uuid, 'processed'::text)
-    $$,
+            (%L::uuid, 'pending'::text),
+            (%L::uuid, 'processed'::text)
+        $$,
+        :'notificationPendingID',
+        :'notificationProcessedID'
+    ),
     'Leaves other delivery statuses unchanged'
 );
 

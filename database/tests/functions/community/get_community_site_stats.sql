@@ -3,55 +3,93 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(2);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000051'
-\set event2ID '00000000-0000-0000-0000-000000000052'
-\set event3ID '00000000-0000-0000-0000-000000000053'
-\set event4ID '00000000-0000-0000-0000-000000000054'
-\set eventCategoryID '00000000-0000-0000-0000-000000000061'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set group2ID '00000000-0000-0000-0000-000000000032'
-\set group3ID '00000000-0000-0000-0000-000000000033'
-\set user1ID '00000000-0000-0000-0000-000000000041'
-\set user2ID '00000000-0000-0000-0000-000000000042'
-\set user3ID '00000000-0000-0000-0000-000000000043'
+\set communityID '0d040000-0000-0000-0000-000000000001'
+\set event1ID '0d040000-0000-0000-0000-000000000002'
+\set event2ID '0d040000-0000-0000-0000-000000000003'
+\set event3ID '0d040000-0000-0000-0000-000000000004'
+\set event4ID '0d040000-0000-0000-0000-000000000005'
+\set eventCategoryID '0d040000-0000-0000-0000-000000000006'
+\set group1ID '0d040000-0000-0000-0000-000000000007'
+\set group2ID '0d040000-0000-0000-0000-000000000008'
+\set group3ID '0d040000-0000-0000-0000-000000000009'
+\set groupCategoryID '0d040000-0000-0000-0000-000000000010'
+\set unknownCommunityID '0d040000-0000-0000-0000-000000000011'
+\set user1ID '0d040000-0000-0000-0000-000000000012'
+\set user2ID '0d040000-0000-0000-0000-000000000013'
+\set user3ID '0d040000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'community-site-stats',
+    'Community Site Stats',
+    'Community used for site stats tests',
+    'https://example.com/community-site-stats-banner-mobile.png',
+    'https://example.com/community-site-stats-banner.png',
+    'https://example.com/community-site-stats-logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Tech', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, active, deleted)
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted
+)
 values
-    (:'group1ID', 'G1', 'g1', :'communityID', :'categoryID', true, false),
-    (:'group2ID', 'G2', 'g2', :'communityID', :'categoryID', true, false),
-    (:'group3ID', 'G3', 'g3', :'communityID', :'categoryID', false, true);
+    (:'group1ID', :'communityID', :'groupCategoryID',
+        'Site Stats Group One', 'site-stats-group-one', true, false),
+    (:'group2ID', :'communityID', :'groupCategoryID',
+        'Site Stats Group Two', 'site-stats-group-two', true, false),
+    (:'group3ID', :'communityID', :'groupCategoryID',
+        'Deleted Site Stats Group', 'deleted-site-stats-group', false, true);
 
--- User
-insert into "user" (user_id, email, username, name, email_verified, auth_hash, created_at)
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    created_at,
+    name
+)
 values
-    (:'user1ID', 'u1@e', 'u1', 'U1', true, gen_random_bytes(32), '2024-01-01 00:00:00'),
-    (:'user2ID', 'u2@e', 'u2', 'U2', true, gen_random_bytes(32), '2024-01-01 00:00:00'),
-    (:'user3ID', 'u3@e', 'u3', 'U3', true, gen_random_bytes(32), '2024-01-01 00:00:00');
+    (:'user1ID', gen_random_bytes(32), 'stats-user1@example.com',
+        true, 'stats-user-one', '2024-01-01 00:00:00', 'Stats User One'),
+    (:'user2ID', gen_random_bytes(32), 'stats-user2@example.com',
+        true, 'stats-user-two', '2024-01-01 00:00:00', 'Stats User Two'),
+    (:'user3ID', gen_random_bytes(32), 'stats-user3@example.com',
+        true, 'stats-user-three', '2024-01-01 00:00:00', 'Stats User Three');
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Cat', :'communityID');
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Meetups');
 
 -- Event
 insert into event (
@@ -67,10 +105,18 @@ insert into event (
     deleted,
     published
 ) values
-    (:'event1ID', 'E1', 'e1', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group1ID', false, false, true),
-    (:'event2ID', 'E2', 'e2', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group1ID', false, false, false),
-    (:'event3ID', 'E3', 'e3', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group2ID', true, false, false),
-    (:'event4ID', 'E4', 'e4', 'd', 'UTC', :'eventCategoryID', 'in-person', :'group2ID', false, true, false);
+    (:'event1ID', 'Published Stats Event', 'published-stats-event',
+        'Published event for stats tests', 'UTC', :'eventCategoryID',
+        'in-person', :'group1ID', false, false, true),
+    (:'event2ID', 'Unpublished Stats Event', 'unpublished-stats-event',
+        'Unpublished event for stats tests', 'UTC', :'eventCategoryID',
+        'in-person', :'group1ID', false, false, false),
+    (:'event3ID', 'Canceled Stats Event', 'canceled-stats-event',
+        'Canceled event for stats tests', 'UTC', :'eventCategoryID',
+        'in-person', :'group2ID', true, false, false),
+    (:'event4ID', 'Deleted Stats Event', 'deleted-stats-event',
+        'Deleted event for stats tests', 'UTC', :'eventCategoryID',
+        'in-person', :'group2ID', false, true, false);
 
 -- Group Member
 insert into group_member (group_id, user_id, created_at)
@@ -81,33 +127,22 @@ values
     (:'group3ID', :'user3ID', '2024-01-01 00:00:00');
 
 -- Event Attendee
-insert into event_attendee (event_id, user_id, created_at)
+insert into event_attendee (event_id, user_id, status, created_at)
 values
-    (:'event1ID', :'user1ID', '2024-01-01 00:00:00'),
-    (:'event1ID', :'user2ID', '2024-01-01 00:00:00'),
-    (:'event2ID', :'user1ID', '2024-01-01 00:00:00'),
-    (:'event3ID', :'user2ID', '2024-01-01 00:00:00'),
-    (:'event4ID', :'user3ID', '2024-01-01 00:00:00');
+    (:'event1ID', :'user1ID', 'confirmed', '2024-01-01 00:00:00'),
+    (:'event1ID', :'user2ID', 'confirmed', '2024-01-01 00:00:00'),
+    (:'event1ID', :'user3ID', 'invitation-pending', '2024-01-01 00:00:00'),
+    (:'event2ID', :'user1ID', 'confirmed', '2024-01-01 00:00:00'),
+    (:'event3ID', :'user2ID', 'confirmed', '2024-01-01 00:00:00'),
+    (:'event4ID', :'user3ID', 'confirmed', '2024-01-01 00:00:00');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return correct community statistics as JSON
-select is(
-    get_community_site_stats('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
-    '{
-        "events": 1,
-        "groups": 2,
-        "groups_members": 3,
-        "events_attendees": 2
-    }'::jsonb,
-    'Should return correct community statistics as JSON'
-);
-
 -- Should return zeros for non-existing community
 select is(
-    get_community_site_stats('00000000-0000-0000-0000-999999999999'::uuid)::jsonb,
+    get_community_site_stats(:'unknownCommunityID'::uuid)::jsonb,
     '{
         "events": 0,
         "groups": 0,
@@ -122,7 +157,8 @@ select is(
 -- - 3 groups: 2 active (group1, group2), 1 deleted (group3)
 -- - 4 events: 1 published (event1), 1 unpublished (event2), 1 canceled (event3), 1 deleted (event4)
 -- - 4 group members: 3 in active groups, 1 in deleted group (should be excluded)
--- - 5 event attendees: 2 in published event, 3 in excluded events (should be excluded)
+-- - 6 event attendees: 2 confirmed in published event, 1 non-confirmed in
+--   published event (should be excluded), 3 in excluded events (should be excluded)
 -- Expected: groups=2, events=1, groups_members=3, events_attendees=2
 select is(
     (get_community_site_stats(:'communityID'::uuid)::jsonb),

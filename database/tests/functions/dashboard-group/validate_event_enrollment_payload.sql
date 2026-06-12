@@ -28,12 +28,12 @@ select throws_ok(
         true,
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000060",
+                "event_ticket_type_id": "3a440000-0000-0000-0000-000000000001",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000070"
+                        "event_ticket_price_window_id": "3a440000-0000-0000-0000-000000000002"
                     }
                 ],
                 "seats_total": 50,

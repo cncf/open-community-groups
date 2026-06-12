@@ -9,49 +9,89 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set eventNoApprovedID '00000000-0000-0000-0000-000000000052'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set proposal1ID '00000000-0000-0000-0000-000000000061'
-\set proposal2ID '00000000-0000-0000-0000-000000000062'
-\set proposal3ID '00000000-0000-0000-0000-000000000063'
-\set submission1ID '00000000-0000-0000-0000-000000000071'
-\set submission2ID '00000000-0000-0000-0000-000000000072'
-\set submission3ID '00000000-0000-0000-0000-000000000073'
-\set submission4ID '00000000-0000-0000-0000-000000000074'
-\set submission5ID '00000000-0000-0000-0000-000000000075'
-\set user1ID '00000000-0000-0000-0000-000000000081'
-\set user2ID '00000000-0000-0000-0000-000000000082'
-\set user3ID '00000000-0000-0000-0000-000000000083'
+\set communityID '3a170000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a170000-0000-0000-0000-000000000002'
+\set eventID '3a170000-0000-0000-0000-000000000003'
+\set eventNoApprovedID '3a170000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a170000-0000-0000-0000-000000000005'
+\set groupID '3a170000-0000-0000-0000-000000000006'
+\set proposal1ID '3a170000-0000-0000-0000-000000000007'
+\set proposal2ID '3a170000-0000-0000-0000-000000000008'
+\set proposal3ID '3a170000-0000-0000-0000-000000000009'
+\set submission1ID '3a170000-0000-0000-0000-000000000010'
+\set submission2ID '3a170000-0000-0000-0000-000000000011'
+\set submission3ID '3a170000-0000-0000-0000-000000000012'
+\set submission4ID '3a170000-0000-0000-0000-000000000013'
+\set submission5ID '3a170000-0000-0000-0000-000000000014'
+\set user1ID '3a170000-0000-0000-0000-000000000015'
+\set user2ID '3a170000-0000-0000-0000-000000000016'
+\set user3ID '3a170000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Meetup');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice'),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true, 'Bob'),
-    (:'user3ID', gen_random_bytes(32), 'carol@example.com', 'carol', true, 'Carol');
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'user1ID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    'Bob'
+), (
+    :'user3ID',
+    gen_random_bytes(32),
+    'carol@example.com',
+    true,
+    'carol',
+    'Carol'
+);
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Session proposals
 insert into session_proposal (
@@ -94,45 +134,45 @@ insert into session_proposal (
 -- Event
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
     timezone,
-    event_category_id,
-    event_kind_id,
     published
 ) values (
     :'eventID',
+    :'eventCategoryID',
+    'in-person',
     :'groupID',
     'Event 1',
     'event-1',
     'Event description',
     'UTC',
-    :'eventCategoryID',
-    'in-person',
     true
 );
 
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
     timezone,
-    event_category_id,
-    event_kind_id,
     published
 ) values (
     :'eventNoApprovedID',
+    :'eventCategoryID',
+    'in-person',
     :'groupID',
     'Event 2',
     'event-2',
     'Event description',
     'UTC',
-    :'eventCategoryID',
-    'in-person',
     true
 );
 

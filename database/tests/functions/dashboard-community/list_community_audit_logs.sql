@@ -9,63 +9,60 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set actor1ID '00000000-0000-0000-0000-000000000011'
-\set actor2ID '00000000-0000-0000-0000-000000000012'
-\set audit1ID '00000000-0000-0000-0000-000000000101'
-\set audit2ID '00000000-0000-0000-0000-000000000102'
-\set audit3ID '00000000-0000-0000-0000-000000000103'
-\set audit4ID '00000000-0000-0000-0000-000000000104'
-\set audit5ID '00000000-0000-0000-0000-000000000106'
-\set audit6ID '00000000-0000-0000-0000-000000000107'
-\set audit7ID '00000000-0000-0000-0000-000000000108'
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set deletedRegionID '00000000-0000-0000-0000-000000000042'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set missingRegionID '00000000-0000-0000-0000-000000000041'
-\set wildcardActorID '00000000-0000-0000-0000-000000000013'
-\set wildcardAuditID '00000000-0000-0000-0000-000000000105'
+\set actor1ID '2c0e0000-0000-0000-0000-000000000001'
+\set actor2ID '2c0e0000-0000-0000-0000-000000000002'
+\set audit1ID '2c0e0000-0000-0000-0000-000000000003'
+\set audit2ID '2c0e0000-0000-0000-0000-000000000004'
+\set audit3ID '2c0e0000-0000-0000-0000-000000000005'
+\set audit4ID '2c0e0000-0000-0000-0000-000000000006'
+\set audit5ID '2c0e0000-0000-0000-0000-000000000007'
+\set audit6ID '2c0e0000-0000-0000-0000-000000000008'
+\set audit7ID '2c0e0000-0000-0000-0000-000000000009'
+\set community1ID '2c0e0000-0000-0000-0000-000000000010'
+\set community2ID '2c0e0000-0000-0000-0000-000000000011'
+\set deletedRegionID '2c0e0000-0000-0000-0000-000000000012'
+\set groupCategoryID '2c0e0000-0000-0000-0000-000000000013'
+\set groupID '2c0e0000-0000-0000-0000-000000000014'
+\set missingRegionID '2c0e0000-0000-0000-0000-000000000015'
+\set wildcardActorID '2c0e0000-0000-0000-0000-000000000016'
+\set wildcardAuditID '2c0e0000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username)
-values
-    (:'actor1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice'),
-    (:'actor2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob'),
-    (:'wildcardActorID', gen_random_bytes(32), 'userx1@example.com', true, 'userx1');
-
 -- Communities
 insert into community (
     community_id,
+    name,
+    display_name,
+    description,
     banner_mobile_url,
     banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
-) values
-    (
-        :'community1ID',
-        'https://e/community-1-mobile.png',
-        'https://e/community-1.png',
-        'Community 1',
-        'Community One',
-        'https://e/community-1-logo.png',
-        'community-one'
-    ),
-    (
-        :'community2ID',
-        'https://e/community-2-mobile.png',
-        'https://e/community-2.png',
-        'Community 2',
-        'Community Two',
-        'https://e/community-2-logo.png',
-        'community-two'
-    );
+    logo_url
+) values (
+    :'community1ID',
+    'community-one',
+    'Community One',
+    'Community 1',
+    'https://example.com/community-1-mobile.png',
+    'https://example.com/community-1.png',
+    'https://example.com/community-1-logo.png'
+), (
+    :'community2ID',
+    'community-two',
+    'Community Two',
+    'Community 2',
+    'https://example.com/community-2-mobile.png',
+    'https://example.com/community-2.png',
+    'https://example.com/community-2-logo.png'
+);
+
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, username) values
+    (:'actor1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice'),
+    (:'actor2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob'),
+    (:'wildcardActorID', gen_random_bytes(32), 'userx1@example.com', true, 'userx1');
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
@@ -188,78 +185,96 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'logs',
-        '[
+        format(
+            $json$
+        [
             {
                 "action": "region_deleted",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000108",
+                "audit_log_id": "%s",
                 "created_at": 1707300000,
                 "details": {"name": "Atlantis"},
-                "resource_id": "00000000-0000-0000-0000-000000000042",
+                "resource_id": "%s",
                 "resource_name": "Atlantis",
                 "resource_type": "region"
             },
             {
                 "action": "community_team_invitation_rejected",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000107",
+                "audit_log_id": "%s",
                 "created_at": 1707296400,
                 "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000012",
+                "resource_id": "%s",
                 "resource_name": "bob",
                 "resource_type": "user"
             },
             {
                 "action": "community_team_invitation_accepted",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000106",
+                "audit_log_id": "%s",
                 "created_at": 1707213600,
                 "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000011",
+                "resource_id": "%s",
                 "resource_name": "alice",
                 "resource_type": "user"
             },
             {
                 "action": "community_updated",
                 "actor_username": "userx1",
-                "audit_log_id": "00000000-0000-0000-0000-000000000105",
+                "audit_log_id": "%s",
                 "created_at": 1707127200,
                 "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000001",
+                "resource_id": "%s",
                 "resource_name": "Community One",
                 "resource_type": "community"
             },
             {
                 "action": "region_added",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000103",
+                "audit_log_id": "%s",
                 "created_at": 1706954400,
                 "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_id": "%s",
                 "resource_name": null,
                 "resource_type": "region"
             },
             {
                 "action": "group_added",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000102",
+                "audit_log_id": "%s",
                 "created_at": 1706868000,
                 "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000031",
+                "resource_id": "%s",
                 "resource_name": "Platform",
                 "resource_type": "group"
             },
             {
                 "action": "community_updated",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000101",
+                "audit_log_id": "%s",
                 "created_at": 1706781600,
                 "details": {"subject": "Roadmap updated"},
-                "resource_id": "00000000-0000-0000-0000-000000000001",
+                "resource_id": "%s",
                 "resource_name": "Community One",
                 "resource_type": "community"
             }
-        ]'::jsonb,
+        ]
+            $json$,
+            :'audit7ID',
+            :'deletedRegionID',
+            :'audit6ID',
+            :'actor2ID',
+            :'audit5ID',
+            :'actor1ID',
+            :'wildcardAuditID',
+            :'community1ID',
+            :'audit3ID',
+            :'missingRegionID',
+            :'audit2ID',
+            :'groupID',
+            :'audit1ID',
+            :'community1ID'
+        )::jsonb,
         'total',
         7
     ),
@@ -274,18 +289,24 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'logs',
-        '[
+        format(
+            $json$
+        [
             {
                 "action": "community_updated",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000101",
+                "audit_log_id": "%s",
                 "created_at": 1706781600,
                 "details": {"subject": "Roadmap updated"},
-                "resource_id": "00000000-0000-0000-0000-000000000001",
+                "resource_id": "%s",
                 "resource_name": "Community One",
                 "resource_type": "community"
             }
-        ]'::jsonb,
+        ]
+            $json$,
+            :'audit1ID',
+            :'community1ID'
+        )::jsonb,
         'total',
         1
     ),
@@ -300,18 +321,24 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'logs',
-        '[
+        format(
+            $json$
+        [
             {
                 "action": "community_updated",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000101",
+                "audit_log_id": "%s",
                 "created_at": 1706781600,
                 "details": {"subject": "Roadmap updated"},
-                "resource_id": "00000000-0000-0000-0000-000000000001",
+                "resource_id": "%s",
                 "resource_name": "Community One",
                 "resource_type": "community"
             }
-        ]'::jsonb,
+        ]
+            $json$,
+            :'audit1ID',
+            :'community1ID'
+        )::jsonb,
         'total',
         2
     ),

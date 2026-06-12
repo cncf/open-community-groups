@@ -8,17 +8,18 @@ select plan(3);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000021'
-\set event2ID '00000000-0000-0000-0000-000000000022'
-\set event3ID '00000000-0000-0000-0000-000000000023'
-\set event4ID '00000000-0000-0000-0000-000000000024'
-\set event5ID '00000000-0000-0000-0000-000000000025'
-\set group1ID '00000000-0000-0000-0000-000000000002'
-\set group2ID '00000000-0000-0000-0000-000000000003'
-\set groupCategory1ID '00000000-0000-0000-0000-000000000010'
-\set user1ID '00000000-0000-0000-0000-000000000030'
+\set community1ID '3a200000-0000-0000-0000-000000000001'
+\set event1ID '3a200000-0000-0000-0000-000000000002'
+\set event2ID '3a200000-0000-0000-0000-000000000003'
+\set event3ID '3a200000-0000-0000-0000-000000000004'
+\set event4ID '3a200000-0000-0000-0000-000000000005'
+\set event5ID '3a200000-0000-0000-0000-000000000006'
+\set eventCategoryID '3a200000-0000-0000-0000-000000000007'
+\set group1ID '3a200000-0000-0000-0000-000000000008'
+\set group2ID '3a200000-0000-0000-0000-000000000009'
+\set groupCategory1ID '3a200000-0000-0000-0000-000000000010'
+\set missingGroupID '3a200000-0000-0000-0000-000000000011'
+\set user1ID '3a200000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -45,7 +46,7 @@ insert into community (
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
-values (:'category1ID', 'Conference', :'community1ID');
+values (:'eventCategoryID', 'Conference', :'community1ID');
 
 -- User
 insert into "user" (user_id, email, username, auth_hash, name)
@@ -116,7 +117,7 @@ insert into event (
         'Future Event',
         'future-event',
         'An event in the future',
-        :'category1ID',
+        :'eventCategoryID',
         'in-person',
         'America/New_York',
         '2099-12-01 10:00:00+00',
@@ -132,7 +133,7 @@ insert into event (
         'Past Event',
         'past-event',
         'An event in the past',
-        :'category1ID',
+        :'eventCategoryID',
         'virtual',
         'America/Los_Angeles',
         '2000-01-15 14:00:00+00',
@@ -148,7 +149,7 @@ insert into event (
         'Event Without Date',
         'event-without-date',
         'An event without a start date',
-        :'category1ID',
+        :'eventCategoryID',
         'hybrid',
         'Europe/London',
         null,
@@ -164,7 +165,7 @@ insert into event (
         'Other Group Event',
         'other-group-event',
         'Event in different group',
-        :'category1ID',
+        :'eventCategoryID',
         'in-person',
         'America/Chicago',
         '2099-06-01 09:00:00+00',
@@ -194,7 +195,7 @@ insert into event (
     'Deleted Event',
     'deleted-event',
     'An event that has been deleted',
-    :'category1ID',
+    :'eventCategoryID',
     'virtual',
     'America/New_York',
     '2025-03-15 10:00:00+00',
@@ -208,7 +209,7 @@ insert into event (
 
 select is(
     list_group_events(
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        :'missingGroupID'::uuid,
         '{"limit": 50, "past_offset": 0, "upcoming_offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
@@ -223,21 +224,94 @@ select is(
         :'group1ID'::uuid,
         '{"limit": 50, "past_offset": 0, "upcoming_offset": 0}'::jsonb
     )::jsonb,
-    jsonb_build_object(
-        'past', jsonb_build_object(
-            'events', jsonb_build_array(
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
-            ),
-            'total', 1
-        ),
-        'upcoming', jsonb_build_object(
-            'events', jsonb_build_array(
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
-            ),
-            'total', 2
-        )
-    ),
+    format(
+        '{
+        "past": {
+            "events": [
+                {
+                    "canceled": false,
+                    "community_display_name": "Test Community",
+                    "community_name": "test-community",
+                    "event_id": "%s",
+                    "group_category_name": "Technology",
+                    "group_name": "Test Group",
+                    "group_slug": "test-group",
+                    "has_registration_questions": false,
+                    "has_related_events": false,
+                    "kind": "virtual",
+                    "name": "Past Event",
+                    "published": false,
+                    "slug": "past-event",
+                    "test_event": false,
+                    "timezone": "America/Los_Angeles",
+
+                    "attendee_approval_required": false,
+                    "logo_url": "https://example.com/logo.png",
+                    "starts_at": 947944800,
+                    "waitlist_count": 0,
+                    "waitlist_enabled": false
+                }
+            ],
+            "total": 1
+        },
+        "upcoming": {
+            "events": [
+                {
+                    "canceled": false,
+                    "community_display_name": "Test Community",
+                    "community_name": "test-community",
+                    "event_id": "%s",
+                    "group_category_name": "Technology",
+                    "group_name": "Test Group",
+                    "group_slug": "test-group",
+                    "has_registration_questions": false,
+                    "has_related_events": false,
+                    "kind": "in-person",
+                    "name": "Future Event",
+                    "published": false,
+                    "slug": "future-event",
+                    "test_event": false,
+                    "timezone": "America/New_York",
+
+                    "attendee_approval_required": false,
+                    "logo_url": "https://example.com/future-logo.png",
+                    "starts_at": 4099802400,
+                    "venue_city": "San Francisco",
+                    "waitlist_count": 0,
+                    "waitlist_enabled": false,
+
+                    "created_by_display_name": "Creator User",
+                    "created_by_username": "creator"
+                },
+                {
+                    "canceled": false,
+                    "community_display_name": "Test Community",
+                    "community_name": "test-community",
+                    "event_id": "%s",
+                    "group_category_name": "Technology",
+                    "group_name": "Test Group",
+                    "group_slug": "test-group",
+                    "has_registration_questions": false,
+                    "has_related_events": false,
+                    "kind": "hybrid",
+                    "name": "Event Without Date",
+                    "published": false,
+                    "slug": "event-without-date",
+                    "test_event": false,
+                    "timezone": "Europe/London",
+
+                    "attendee_approval_required": false,
+                    "logo_url": "https://example.com/no-date-logo.png",
+                    "venue_city": "London",
+                    "waitlist_count": 0,
+                    "waitlist_enabled": false
+                }
+            ],
+            "total": 2
+        }
+    }',
+        :'event2ID', :'event1ID', :'event3ID'
+    )::jsonb,
     'Should group events by timeframe with ordering'
 );
 
@@ -247,15 +321,44 @@ select is(
         :'group2ID'::uuid,
         '{"limit": 50, "past_offset": 0, "upcoming_offset": 0}'::jsonb
     )::jsonb,
-    jsonb_build_object(
-        'past', jsonb_build_object('events', '[]'::jsonb, 'total', 0),
-        'upcoming', jsonb_build_object(
-            'events', jsonb_build_array(
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group2ID'::uuid, :'event4ID'::uuid)::jsonb
-            ),
-            'total', 1
-        )
-    ),
+    format(
+        '{
+        "past": {
+            "events": [],
+            "total": 0
+        },
+        "upcoming": {
+            "events": [
+                {
+                    "canceled": false,
+                    "community_display_name": "Test Community",
+                    "community_name": "test-community",
+                    "event_id": "%s",
+                    "group_category_name": "Technology",
+                    "group_name": "Another Group",
+                    "group_slug": "another-group",
+                    "has_registration_questions": false,
+                    "has_related_events": false,
+                    "kind": "in-person",
+                    "name": "Other Group Event",
+                    "published": false,
+                    "slug": "other-group-event",
+                    "test_event": false,
+                    "timezone": "America/Chicago",
+
+                    "attendee_approval_required": false,
+                    "logo_url": "https://example.com/logo.png",
+                    "starts_at": 4083987600,
+                    "venue_city": "Chicago",
+                    "waitlist_count": 0,
+                    "waitlist_enabled": false
+                }
+            ],
+            "total": 1
+        }
+    }',
+        :'event4ID'
+    )::jsonb,
     'Should return correct grouped JSON for specified group'
 );
 

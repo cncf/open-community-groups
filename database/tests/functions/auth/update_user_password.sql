@@ -9,45 +9,29 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set untouchedUserID '00000000-0000-0000-0000-000000000131'
-\set userID '00000000-0000-0000-0000-000000000132'
+\set untouchedUserID '0a0b0000-0000-0000-0000-000000000001'
+\set userID '0a0b0000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Target user
-insert into "user" (
-    auth_hash,
-    email,
-    email_verified,
-    password,
-    user_id,
-    username
-) values (
-    'initial_hash_target',
-    'target@example.com',
-    true,
-    'old_password',
-    :'userID',
-    'target-user'
-);
-
--- Control user
-insert into "user" (
-    auth_hash,
-    email,
-    email_verified,
-    password,
-    user_id,
-    username
-) values (
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, password, username)
+values (
+    :'untouchedUserID',
     'initial_hash_control',
     'control@example.com',
     true,
     'control_password',
-    :'untouchedUserID',
     'control-user'
+), (
+    :'userID',
+    'initial_hash_target',
+    'target@example.com',
+    true,
+    'old_password',
+    'target-user'
 );
 
 -- ============================================================================
@@ -89,15 +73,15 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format($$
         values (
             'user_password_updated',
-            '00000000-0000-0000-0000-000000000132'::uuid,
+            %L::uuid,
             'target-user',
             'user',
-            '00000000-0000-0000-0000-000000000132'::uuid
+            %L::uuid
         )
-    $$,
+    $$, :'userID', :'userID'),
     'Should create the expected audit row'
 );
 

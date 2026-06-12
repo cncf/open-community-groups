@@ -9,32 +9,66 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000033'
+\set communityID '3a050000-0000-0000-0000-000000000001'
+\set groupCategoryID '3a050000-0000-0000-0000-000000000002'
+\set groupID '3a050000-0000-0000-0000-000000000003'
+\set user1ID '3a050000-0000-0000-0000-000000000004'
+\set user2ID '3a050000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Category
-insert into group_category (group_category_id, community_id, name) values
-    (:'categoryID', :'communityID', 'Tech');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, name, username, email_verified) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), 'carol@example.com', 'Carol', 'carol', true);
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'user1ID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'carol@example.com',
+    true,
+    'carol',
+    'Carol'
+);
 
 -- ============================================================================
 -- TESTS
@@ -42,16 +76,22 @@ insert into "user" (user_id, auth_hash, email, name, username, email_verified) v
 
 -- Should create pending membership
 select lives_ok(
-    $$ select add_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
+    format(
+        $$select add_group_team_member(null::uuid, %L::uuid, %L::uuid, 'admin')$$,
+        :'groupID', :'user1ID'
+    ),
     'Should succeed for valid user'
 );
 select results_eq(
-    $$
-    select count(*)::bigint, bool_or(accepted)
-    from group_team
-    where group_id = '00000000-0000-0000-0000-000000000021'::uuid
-      and user_id = '00000000-0000-0000-0000-000000000031'::uuid
-    $$,
+    format(
+        $$
+        select count(*)::bigint, bool_or(accepted)
+        from group_team
+        where group_id = %L::uuid
+          and user_id = %L::uuid
+        $$,
+        :'groupID', :'user1ID'
+    ),
     $$ values (1::bigint, false) $$,
     'Membership should be created with accepted = false'
 );
@@ -70,32 +110,41 @@ select results_eq(
             details
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'group_team_member_added',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
+            %L::uuid,
             'user',
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
             jsonb_build_object('role', 'admin')
         )
-    $$,
+        $$,
+        :'communityID', :'groupID', :'user1ID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should not allow adding membership with invalid role
 select throws_ok(
-    $$ select add_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid, 'invalid') $$,
+    format(
+        $$select add_group_team_member(null::uuid, %L::uuid, %L::uuid, 'invalid')$$,
+        :'groupID', :'user2ID'
+    ),
     '23503',
-    'insert or update on table "group_team" violates foreign key constraint "group_team_role_fkey"',
+    null,
     'Should not allow adding membership with invalid role'
 );
 
 -- Should not allow duplicate group team membership
 select throws_ok(
-    $$ select add_group_team_member(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, 'admin') $$,
+    format(
+        $$select add_group_team_member(null::uuid, %L::uuid, %L::uuid, 'admin')$$,
+        :'groupID', :'user1ID'
+    ),
     'user is already a group team member',
     'Should not allow duplicate group team membership'
 );

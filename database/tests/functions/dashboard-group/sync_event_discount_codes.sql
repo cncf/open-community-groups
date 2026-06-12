@@ -9,34 +9,45 @@ select plan(21);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set discountCode1ID '00000000-0000-0000-0000-000000000051'
-\set discountCode2ID '00000000-0000-0000-0000-000000000052'
-\set discountCode3ID '00000000-0000-0000-0000-000000000053'
-\set discountCodeOtherID '00000000-0000-0000-0000-000000000054'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set eventID '00000000-0000-0000-0000-000000000021'
-\set eventProtectedID '00000000-0000-0000-0000-000000000022'
-\set groupCategoryID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000041'
-\set protectedTicketTypeID '00000000-0000-0000-0000-000000000061'
-\set userID '00000000-0000-0000-0000-000000000071'
+\set communityID '3a320000-0000-0000-0000-000000000001'
+\set discountCode1ID '3a320000-0000-0000-0000-000000000002'
+\set discountCode2ID '3a320000-0000-0000-0000-000000000003'
+\set discountCode3ID '3a320000-0000-0000-0000-000000000004'
+\set discountCodeOtherID '3a320000-0000-0000-0000-000000000005'
+\set eventCategoryID '3a320000-0000-0000-0000-000000000006'
+\set eventID '3a320000-0000-0000-0000-000000000007'
+\set eventProtectedID '3a320000-0000-0000-0000-000000000008'
+\set groupCategoryID '3a320000-0000-0000-0000-000000000009'
+\set groupID '3a320000-0000-0000-0000-000000000010'
+\set protectedTicketTypeID '3a320000-0000-0000-0000-000000000011'
+\set userID '3a320000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'community-1', 'Community 1', 'Test community', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'discount-code-community',
+    'Discount Code Community',
+    'A test community for discount codes',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Group 1', 'group-1');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name)
@@ -45,6 +56,10 @@ values (:'eventCategoryID', :'communityID', 'Meetup');
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified)
 values (:'userID', 'test_hash', 'discount-user@example.test', 'discount-user', true);
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'Discount Group', 'discount-group');
 
 -- Events
 insert into event (
@@ -89,7 +104,14 @@ insert into event_discount_code (
 ) values
     (:'discountCode1ID', 500, 'SAVE5', :'eventID', 'fixed_amount', 'Launch discount'),
     (:'discountCode2ID', 1000, 'SAVE10', :'eventID', 'fixed_amount', 'VIP discount'),
-    (:'discountCodeOtherID', 1500, 'PROTECT', :'eventProtectedID', 'fixed_amount', 'Protected discount');
+    (
+        :'discountCodeOtherID',
+        1500,
+        'PROTECT',
+        :'eventProtectedID',
+        'fixed_amount',
+        'Protected discount'
+    );
 
 -- Protected ticket type and purchase
 insert into event_ticket_type (

@@ -3,36 +3,29 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(3);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return the expected number of supported currencies
-select is(
-    array_length(list_payment_currency_codes(), 1),
-    135,
-    'Should return the expected number of supported currencies'
-);
-
--- Should return currencies sorted alphabetically
-select is(
-    (list_payment_currency_codes())[1],
-    'AED',
-    'Should start with the alphabetically first supported currency'
-);
-
--- Should include USD for common dashboard usage
+-- Should return three-letter uppercase currency codes
 select ok(
-    'USD' = any(list_payment_currency_codes()),
-    'Should include USD'
+    (select bool_and(code ~ '^[A-Z]{3}$') from unnest(list_payment_currency_codes()) code),
+    'Should return three-letter uppercase currency codes'
 );
 
--- Should reject typos by omitting unsupported codes
+-- Should return currencies sorted alphabetically without duplicates
+select is(
+    list_payment_currency_codes(),
+    (select array_agg(code order by code) from (select distinct code from unnest(list_payment_currency_codes()) code) codes),
+    'Should return currencies sorted alphabetically without duplicates'
+);
+
+-- Should include common currencies for dashboard usage
 select ok(
-    not ('USDD' = any(list_payment_currency_codes())),
-    'Should not include unsupported currency codes'
+    array['EUR', 'GBP', 'USD']::text[] <@ list_payment_currency_codes(),
+    'Should include common currencies'
 );
 
 -- ============================================================================

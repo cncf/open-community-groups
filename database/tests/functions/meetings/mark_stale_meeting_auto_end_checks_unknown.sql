@@ -3,13 +3,13 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set meetingID '00000000-0000-0000-0000-000000001101'
+\set meetingID '7a090000-0000-0000-0000-000000000001'
 
 -- ============================================================================
 -- SEED DATA
@@ -33,6 +33,13 @@ insert into meeting (
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject non-positive processing timeouts
+select throws_ok(
+    $$select mark_stale_meeting_auto_end_checks_unknown(0)$$,
+    'processing timeout must be positive',
+    'Should reject non-positive processing timeouts'
+);
 
 -- Should mark stale auto-end claims unknown
 select is(

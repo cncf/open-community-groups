@@ -9,51 +9,143 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCanceledID '00000000-0000-0000-0000-000000000043'
-\set eventCategoryID '00000000-0000-0000-0000-000000000021'
-\set eventDeletedID '00000000-0000-0000-0000-000000000044'
-\set eventDraftCanceledID '00000000-0000-0000-0000-000000000045'
-\set eventID '00000000-0000-0000-0000-000000000041'
-\set eventPaidID '00000000-0000-0000-0000-000000000042'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set sponsor1ID '00000000-0000-0000-0000-000000000061'
-\set sponsor2ID '00000000-0000-0000-0000-000000000062'
-\set ticketPriceWindowID '00000000-0000-0000-0000-000000000064'
-\set ticketTypeID '00000000-0000-0000-0000-000000000063'
-\set user1ID '00000000-0000-0000-0000-000000000051'
-\set user2ID '00000000-0000-0000-0000-000000000052'
-\set user3ID '00000000-0000-0000-0000-000000000053'
-\set user4ID '00000000-0000-0000-0000-000000000054'
+\set communityID '5e060000-0000-0000-0000-000000000001'
+\set eventCanceledID '5e060000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e060000-0000-0000-0000-000000000003'
+\set eventDeletedID '5e060000-0000-0000-0000-000000000004'
+\set eventDraftCanceledID '5e060000-0000-0000-0000-000000000005'
+\set eventID '5e060000-0000-0000-0000-000000000006'
+\set eventPaidID '5e060000-0000-0000-0000-000000000007'
+\set groupCategoryID '5e060000-0000-0000-0000-000000000008'
+\set groupID '5e060000-0000-0000-0000-000000000009'
+\set sponsor1ID '5e060000-0000-0000-0000-00000000000a'
+\set sponsor2ID '5e060000-0000-0000-0000-00000000000b'
+\set ticketPriceWindowID '5e060000-0000-0000-0000-00000000000c'
+\set ticketTypeID '5e060000-0000-0000-0000-00000000000d'
+\set user1ID '5e060000-0000-0000-0000-00000000000e'
+\set user2ID '5e060000-0000-0000-0000-00000000000f'
+\set user3ID '5e060000-0000-0000-0000-000000000010'
+\set user4ID '5e060000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
+
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Tech Talks');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    bio,
+    company,
+    created_at,
+    name,
+    photo_url,
+    title
+)
+values
+    (
+        :'user1ID',
+        'test_hash',
+        'host1@example.com',
+        true,
+        'host1',
+        'Conference opening speaker',
+        'Tech Corp',
+        '2024-01-01 00:00:00',
+        'John Doe',
+        'https://example.com/john.png',
+        'CTO'
+    ),
+    (
+        :'user2ID',
+        'test_hash',
+        'host2@example.com',
+        true,
+        'host2',
+        'Community host and emcee',
+        'Dev Inc',
+        '2024-01-01 00:00:00',
+        'Jane Smith',
+        'https://example.com/jane.png',
+        'Lead Dev'
+    ),
+    (
+        :'user3ID',
+        'test_hash',
+        'organizer1@example.com',
+        true,
+        'organizer1',
+        'Community programs lead',
+        'Cloud Co',
+        '2024-01-01 00:00:00',
+        'Alice Johnson',
+        'https://example.com/alice.png',
+        'Manager'
+    ),
+    (
+        :'user4ID',
+        'test_hash',
+        'organizer2@example.com',
+        true,
+        'organizer2',
+        'Operations and logistics manager',
+        'StartUp',
+        '2024-01-01 00:00:00',
+        'Bob Wilson',
+        'https://example.com/bob.png',
+        'Engineer'
+    );
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active, created_at)
-values (:'groupID', 'Test Group', 'abc1234', :'communityID', :'categoryID', 'https://example.com/group-logo.png', true, '2025-02-11 10:00:00+00');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Tech Talks', :'communityID');
-
--- User
-insert into "user" (user_id, auth_hash, email, username, created_at, bio, company, name, photo_url, title)
-values
-    (:'user1ID', 'test_hash', 'host1@example.com', 'host1', '2024-01-01 00:00:00', 'Conference opening speaker', 'Tech Corp', 'John Doe', 'https://example.com/john.png', 'CTO'),
-    (:'user2ID', 'test_hash', 'host2@example.com', 'host2', '2024-01-01 00:00:00', 'Community host and emcee', 'Dev Inc', 'Jane Smith', 'https://example.com/jane.png', 'Lead Dev'),
-    (:'user3ID', 'test_hash', 'organizer1@example.com', 'organizer1', '2024-01-01 00:00:00', 'Community programs lead', 'Cloud Co', 'Alice Johnson', 'https://example.com/alice.png', 'Manager'),
-    (:'user4ID', 'test_hash', 'organizer2@example.com', 'organizer2', '2024-01-01 00:00:00', 'Operations and logistics manager', 'StartUp', 'Bob Wilson', 'https://example.com/bob.png', 'Engineer');
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    created_at,
+    logo_url
+) values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Test Group',
+    'abc1234',
+    true,
+    '2025-02-11 10:00:00+00',
+    'https://example.com/group-logo.png'
+);
 
 -- Event
 insert into event (
@@ -285,7 +377,13 @@ values
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values
     (:'sponsor1ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null),
-    (:'sponsor2ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'https://techcorp.com');
+    (
+        :'sponsor2ID',
+        :'groupID',
+        'TechCorp',
+        'https://example.com/techcorp.png',
+        'https://techcorp.com'
+    );
 
 -- Event Sponsors (linking group sponsors to event)
 insert into event_sponsor (event_id, group_sponsor_id, level)
