@@ -17,7 +17,7 @@ base64 = "0.22"
 askama = { version = "0.16.0", features = ["serde_json"] }
 async-trait = "0.1.89"
 aws-credential-types = "1.2.14"
-aws-sdk-s3 = { version = "1.131.0", default-features = false, features = [
+aws-sdk-s3 = { version = "1.132.0", default-features = false, features = [
     "default-https-client",
     "http-1x",
     "rt-tokio",
@@ -27,18 +27,18 @@ axum = { version = "0.8.9", features = ["macros", "multipart"] }
 axum-login = "0.18.0"
 axum-messages = "0.8.0"
 bytes = "1.11.1"
-cached = { version = "0.59.0", features = ["async"] }
+cached = { version = "1.1.0", features = ["async"] }
 clap = { version = "4.6.1", features = ["derive"] }
 chrono = { version = "0.4.44", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 csv = "1.4.0"
 deadpool-postgres = { version = "0.14.1", features = ["serde"] }
-emojis = "0.8.1"
+emojis = "0.8.2"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
-garde = { version = "0.22.1", features = ["derive", "url", "email"] }
+garde = { version = "0.23.0", features = ["derive", "url", "email"] }
 hex = "0.4"
-hmac = "0.12.1"
-icalendar = "0.17.10"
+hmac = "0.13.0"
+icalendar = "0.17.11"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
 lettre = { version = "0.11.22", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
 markdown = "1.0.0"
@@ -48,28 +48,28 @@ mockall = "0.14.0"
 num-format = "0.4.4"
 oauth2 = "5.0.0"
 openidconnect = { version = "4.0.1", features = ["accept-rfc3339-timestamps"] }
-openssl = { version = "0.10.78", features = ["vendored"] }
+openssl = { version = "0.10.80", features = ["vendored"] }
 password-auth = "1.0.0"
 percent-encoding = "2.3.2"
 postgres-openssl = "0.5.3"
-quick-xml = "0.39.2"
+quick-xml = "0.40.1"
 qrcode = { version = "0.14.1", features = ["svg"] }
-reqwest = { version = "0.13.3", features = ["json"] }
+reqwest = { version = "0.13.4", features = ["json"] }
 # Keep this exact pin so the workspace resolves to patched rkyv 0.7.46.
 # parcel_sourcemap otherwise pulls vulnerable rkyv 0.7.45 (RUSTSEC-2026-0001).
-rkyv = "=0.7.46"
+rkyv = "=0.8.16"
 rust-embed = "8.11.0"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
-serde_qs = { version = "1.1.1", features = ["axum"] }
+serde_json = "1.0.150"
+serde_qs = { version = "1.1.2", features = ["axum"] }
 serde_urlencoded = "0.7.1"
-serde_with = "3.18.0"
-sha2 = "0.10.9"
+serde_with = "3.20.0"
+sha2 = "0.11.0"
 strum = { version = "0.28.0", features = ["derive"] }
 subtle = "2.6"
 thiserror = "2.0.18"
 time = "0.3.47"
-tokio = { version = "1.52.1", features = [
+tokio = { version = "1.52.3", features = [
     "macros",
     "process",
     "rt-multi-thread",
@@ -86,10 +86,10 @@ tokio-postgres = { version = "0.7.17", features = [
 ] }
 tokio-util = { version = "0.7.18", features = ["full"] }
 tower = "0.5.3"
-tower-http = { version = "0.6.8", features = ["auth", "fs", "set-header", "trace"] }
-tower-sessions = { version = "0.14.0", features = ["signed"] }
+tower-http = { version = "0.6.11", features = ["auth", "fs", "set-header", "trace"] }
+tower-sessions = { version = "0.15.0", features = ["signed"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
-unicode-segmentation = "1.13.2"
-uuid = { version = "1.23.1", features = ["serde", "v4"] }
+unicode-segmentation = "1.13.3"
+uuid = { version = "1.23.2", features = ["serde", "v4"] }
 which = "8.0.2"
