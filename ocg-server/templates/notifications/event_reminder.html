@@ -16,44 +16,7 @@
     <strong>{{ event.group_name }}</strong> starts in less than 24 hours.
     <br />
     <br />
-    {% if let Some(starts_at) = &event.starts_at -%}
-      Date &amp; time:
-      {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
-      <br />
-    {% endif -%}
-    {% if let Some(location) = &self.event.location(90) -%}
-      Location: {{ location }}
-      <br />
-    {% endif -%}
-    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
-      Meeting link:
-      <a href="{{ meeting_join_url }}"
-         target="_blank"
-         rel="noopener noreferrer">{{ meeting_join_url }}</a>
-      <br />
-      {% if let Some(meeting_password) = &event.meeting_password -%}
-        Meeting password:
-        <code style="background-color:#f5f5f4;
-                     border-radius:4px;
-                     color:#292524;
-                     font-size:0.875em;
-                     font-weight:600;
-                     margin-left:8px;
-                     padding:2px 8px">
-          {{ meeting_password }}
-        </code>
-        <br />
-      {% endif -%}
-    {% endif -%}
-    {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
-      Meeting instructions:
-      <br />
-      <br />
-      <blockquote class="join-instructions">
-        {{ meeting_join_instructions }}
-      </blockquote>
-      <br />
-    {% endif -%}
+    {{ email::meeting_details(event = event) }}
   </div>
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
