@@ -1,9 +1,15 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
-import { ocgFetch } from "/static/js/common/fetch.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
+import {
+  DEFAULT_IMAGE_ACCEPTED_FORMATS,
+  getImageUploadErrorMessage,
+  IMAGE_UPLOAD_MAX_SIZE_TEXT,
+  IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT,
+  OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS,
+  uploadImageFile,
+} from "/static/js/common/media/image-upload.js";
 import "/static/js/common/svg-spinner.js";
 
 const IMAGE_KIND = {
@@ -15,9 +21,6 @@ const IMAGE_KIND = {
 const IMAGE_TARGET = {
   OPEN_GRAPH: "open_graph",
 };
-
-const DEFAULT_ACCEPTED_FORMATS = ".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff";
-const OPEN_GRAPH_ACCEPTED_FORMATS = ".png,.jpg,.jpeg,.webp";
 
 /**
  * ImageField renders upload controls with drag-and-drop support and a preview.
@@ -200,38 +203,11 @@ export class ImageField extends LitWrapper {
     this._isUploading = true;
     this.requestUpdate();
 
-    const formData = new FormData();
-    // Append target first (before file) so it's parsed first in multipart
-    if (this.target) {
-      formData.append("target", this.target);
-    }
-    formData.append("file", file, file.name);
-
     try {
-      const response = await ocgFetch("/images", {
-        method: "POST",
-        body: formData,
-        credentials: "same-origin",
-        headers: {
-          "HX-Request": "true",
-        },
-      });
-
-      if (!isSuccessfulXHRStatus(response.status)) {
-        const errorMessage = await response.text();
-        throw new Error(errorMessage || "Upload failed");
-      }
-
-      const data = await response.json();
-      if (!data || !data.url) {
-        throw new Error("Missing image URL");
-      }
-
-      this._setValue(data.url);
+      const imageUrl = await uploadImageFile(file, { target: this.target });
+      this._setValue(imageUrl);
     } catch (error) {
-      const ERROR_MESSAGE =
-        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
-      showErrorAlert(ERROR_MESSAGE, true);
+      showErrorAlert(getImageUploadErrorMessage("image"), true);
     } finally {
       this._isUploading = false;
       if (typeof resetCallback === "function") {
@@ -281,12 +257,14 @@ export class ImageField extends LitWrapper {
     const removeDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
     const helpText = isOpenGraphTarget
-      ? "Maximum size: 1MB."
+      ? IMAGE_UPLOAD_MAX_SIZE_TEXT
       : isWide
-        ? "Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF."
-        : "Images must be 360 x 360 px (square). Maximum size: 1MB. Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
+        ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`
+        : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`;
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
-    const acceptedFormats = isOpenGraphTarget ? OPEN_GRAPH_ACCEPTED_FORMATS : DEFAULT_ACCEPTED_FORMATS;
+    const acceptedFormats = isOpenGraphTarget
+      ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS
+      : DEFAULT_IMAGE_ACCEPTED_FORMATS;
 
     return html`
       <label for=${this._fileInputId} class="form-label">

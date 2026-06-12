@@ -2,10 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/media/image-field.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("image-field", () => {
@@ -35,6 +32,7 @@ describe("image-field", () => {
     const element = await mountLitComponent("image-field", {
       label: "Banner",
       name: "banner_image",
+      target: "banner",
     });
     const values = [];
 
@@ -44,9 +42,7 @@ describe("image-field", () => {
     });
 
     // Upload the selected file and wait for the hidden input to update.
-    await element._uploadFile(
-      new File(["data"], "banner.png", { type: "image/png" }),
-    );
+    await element._uploadFile(new File(["data"], "banner.png", { type: "image/png" }));
     await element.updateComplete;
 
     // Uploads an image and emits the new value.
@@ -55,6 +51,11 @@ describe("image-field", () => {
     expect(element.querySelector('input[name="banner_image"]').value).to.equal(
       "https://example.com/image.png",
     );
+    expect(fetchMock.calls).to.have.length(1);
+    expect(fetchMock.calls[0][0]).to.equal("/images");
+    expect(fetchMock.calls[0][1].method).to.equal("POST");
+    expect(Array.from(fetchMock.calls[0][1].body.keys())).to.deep.equal(["target", "file"]);
+    expect(fetchMock.calls[0][1].body.get("target")).to.equal("banner");
   });
 
   it("clears the image value when remove is triggered", async () => {
