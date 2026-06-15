@@ -34,6 +34,7 @@ export class KeyValueInputs extends LitWrapper {
     this.valuePlaceholder = "Value";
     this.label = "";
     this.maxItems = 0; // 0 means no limit
+    this._nextId = 0;
   }
 
   /**
@@ -52,11 +53,17 @@ export class KeyValueInputs extends LitWrapper {
    */
   _loadInitialData() {
     // Convert to array format for internal use
-    this._itemsArray = this._objectToArray(this.items);
+    this._itemsArray = this._objectToArray(this.items).map((item, index) => ({
+      id: index,
+      ...item,
+    }));
 
     // Ensure we always have at least one empty input pair
     if (this._itemsArray.length === 0) {
-      this._itemsArray = [{ key: "", value: "" }];
+      this._itemsArray = [{ id: 0, key: "", value: "" }];
+      this._nextId = 1;
+    } else {
+      this._nextId = this._itemsArray.length;
     }
   }
 
@@ -97,50 +104,50 @@ export class KeyValueInputs extends LitWrapper {
       return;
     }
 
-    this._itemsArray = [...this._itemsArray, { key: "", value: "" }];
+    this._itemsArray = [...this._itemsArray, { id: this._nextId++, key: "", value: "" }];
     this.items = this._arrayToObject(this._itemsArray);
   }
 
   /**
-   * Removes a key-value pair at the specified index.
+   * Removes a key-value pair by ID.
    * Ensures at least one empty pair remains for user input.
-   * @param {number} index - The index of the pair to remove
+   * @param {number} itemId - The ID of the pair to remove
    * @private
    */
-  _removeItem(index) {
+  _removeItem(itemId) {
     if (this._itemsArray.length <= 1) {
       // Don't allow removing the last item, just clear it
-      this._itemsArray = [{ key: "", value: "" }];
+      this._itemsArray = [{ id: this._nextId++, key: "", value: "" }];
     } else {
-      this._itemsArray = this._itemsArray.filter((_, i) => i !== index);
+      this._itemsArray = this._itemsArray.filter((item) => item.id !== itemId);
     }
     this.items = this._arrayToObject(this._itemsArray);
   }
 
   /**
-   * Updates a specific field (key or value) of a pair at the given index.
-   * @param {number} index - The index of the pair to update
+   * Updates a specific field (key or value) of a pair by ID.
+   * @param {number} itemId - The ID of the pair to update
    * @param {string} field - The field to update ('key' or 'value')
    * @param {string} value - The new value for the field
    * @private
    */
-  _updateItem(index, field, value) {
-    const newItems = [...this._itemsArray];
-    newItems[index] = { ...newItems[index], [field]: value };
-    this._itemsArray = newItems;
+  _updateItem(itemId, field, value) {
+    this._itemsArray = this._itemsArray.map((item) =>
+      item.id === itemId ? { ...item, [field]: value } : item,
+    );
     this.items = this._arrayToObject(this._itemsArray);
   }
 
   /**
    * Handles input change events for key or value fields.
-   * @param {number} index - The index of the changed pair
+   * @param {number} itemId - The ID of the changed pair
    * @param {string} field - The field that changed ('key' or 'value')
    * @param {Event} event - The input change event
    * @private
    */
-  _handleInputChange(index, field, event) {
+  _handleInputChange(itemId, field, event) {
     const value = event.target.value;
-    this._updateItem(index, field, value);
+    this._updateItem(itemId, field, value);
   }
 
   /**
@@ -159,8 +166,9 @@ export class KeyValueInputs extends LitWrapper {
    * @public
    */
   reset() {
-    this._itemsArray = [{ key: "", value: "" }];
+    this._itemsArray = [{ id: 0, key: "", value: "" }];
     this.items = {};
+    this._nextId = 1;
     this.requestUpdate();
   }
 
@@ -175,8 +183,8 @@ export class KeyValueInputs extends LitWrapper {
       <div class="space-y-3">
         ${repeat(
           this._itemsArray,
-          (item, index) => index,
-          (item, index) => html`
+          (item) => item.id,
+          (item) => html`
             <div class="flex items-center gap-2">
               <div class="flex-1 grid grid-cols-3 gap-2">
                 <input
@@ -184,7 +192,7 @@ export class KeyValueInputs extends LitWrapper {
                   class="input-primary"
                   placeholder=${this.keyPlaceholder}
                   value=${item.key}
-                  @input=${(event) => this._handleInputChange(index, "key", event)}
+                  @input=${(event) => this._handleInputChange(item.id, "key", event)}
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"
@@ -195,7 +203,7 @@ export class KeyValueInputs extends LitWrapper {
                   class="input-primary col-span-2"
                   placeholder=${this.valuePlaceholder}
                   value=${item.value}
-                  @input=${(event) => this._handleInputChange(index, "value", event)}
+                  @input=${(event) => this._handleInputChange(item.id, "value", event)}
                   autocomplete="off"
                   autocorrect="off"
                   autocapitalize="off"
@@ -206,7 +214,7 @@ export class KeyValueInputs extends LitWrapper {
                 type="button"
                 class="cursor-pointer p-2 border border-stone-200 hover:bg-stone-100 rounded-full"
                 title="Remove item"
-                @click=${() => this._removeItem(index)}
+                @click=${() => this._removeItem(item.id)}
               >
                 <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
               </button>
