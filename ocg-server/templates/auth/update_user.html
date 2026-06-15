@@ -1,4 +1,5 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
 {% import "macros/ui.html" as ui -%}
 
 {# Update user details form -#}
@@ -176,106 +177,35 @@
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      {% let website_value -%}value="{%- if let Some(website_url) = &user.website_url -%}{{ website_url }}{%- endif -%}"{%- endlet %}
+      {% let linkedin_value -%}value="{%- if let Some(linkedin_url) = &user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"{%- endlet %}
+      {% let bluesky_value -%}value="{%- if let Some(bluesky_url) = &user.bluesky_url -%}{{ bluesky_url }}{%- endif -%}"{%- endlet %}
+      {% let twitter_value -%}value="{%- if let Some(twitter_url) = &user.twitter_url -%}{{ twitter_url }}{%- endif -%}"{%- endlet %}
+      {% let facebook_value -%}value="{%- if let Some(facebook_url) = &user.facebook_url -%}{{ facebook_url }}{%- endif -%}"{%- endlet %}
+      {% let github_value -%}value="{%- if let Some(github_url) = &user.github_url -%}{{ github_url }}{%- endif -%}"{%- endlet %}
+
       {# Website URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="website_url" class="form-label">Website</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-link bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="website_url"
-                 id="website_url"
-                 value="{%- if let Some(website_url) = &user.website_url -%}{{ website_url }}{%- endif -%}"
-                 class="input-primary ps-10"
-                 placeholder="https://example.com">
-        </div>
-      </div>
+      {{ form_fields::social_url_field(name = "website_url", label = "Website", icon = "icon-link", placeholder = "https://example.com", value_attr = website_value) -}}
       {# End Website URL -#}
 
       {# LinkedIn URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="linkedin_url" class="form-label">LinkedIn</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="linkedin_url"
-                 id="linkedin_url"
-                 value="{%- if let Some(linkedin_url) = &user.linkedin_url -%}{{ linkedin_url }}{%- endif -%}"
-                 class="input-primary ps-10"
-                 placeholder="https://linkedin.com/in/username">
-        </div>
-      </div>
+      {{ form_fields::social_url_field(name = "linkedin_url", label = "LinkedIn", icon = "icon-linkedin", placeholder = "https://linkedin.com/in/username", value_attr = linkedin_value) -}}
       {# End LinkedIn URL -#}
 
       {# Bluesky URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="bluesky_url" class="form-label">Bluesky</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-bluesky bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="bluesky_url"
-                 id="bluesky_url"
-                 value="{%- if let Some(bluesky_url) = &user.bluesky_url -%}{{ bluesky_url }}{%- endif -%}"
-                 class="input-primary ps-10"
-                 placeholder="https://bsky.app/profile/username">
-        </div>
-      </div>
+      {{ form_fields::social_url_field(name = "bluesky_url", label = "Bluesky", icon = "icon-bluesky", placeholder = "https://bsky.app/profile/username", value_attr = bluesky_value) -}}
       {# End Bluesky URL -#}
 
       {# Twitter URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="twitter_url"
-                 id="twitter_url"
-                 value="{%- if let Some(twitter_url) = &user.twitter_url -%}{{ twitter_url }}{%- endif -%}"
-                 class="input-primary ps-10"
-                 placeholder="https://x.com/username">
-        </div>
-      </div>
+      {{ form_fields::social_url_field(name = "twitter_url", label = "X (formerly Twitter)", icon = "icon-twitter", placeholder = "https://x.com/username", value_attr = twitter_value) -}}
       {# End Twitter URL -#}
 
       {# Facebook URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="facebook_url" class="form-label">Facebook</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="facebook_url"
-                 id="facebook_url"
-                 value="{%- if let Some(facebook_url) = &user.facebook_url -%}{{ facebook_url }}{%- endif -%}"
-                 class="input-primary ps-10"
-                 placeholder="https://facebook.com/username">
-        </div>
-      </div>
+      {{ form_fields::social_url_field(name = "facebook_url", label = "Facebook", icon = "icon-facebook", placeholder = "https://facebook.com/username", value_attr = facebook_value) -}}
       {# End Facebook URL -#}
 
       {# GitHub URL -#}
-      <div class="col-span-full lg:col-span-3">
-        <label for="github_url" class="form-label">GitHub</label>
-        <div class="mt-2 relative">
-          <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-            <div class="svg-icon size-4 icon-github bg-stone-300"></div>
-          </div>
-          <input type="url"
-                 name="github_url"
-                 id="github_url"
-                 value="{%- if let Some(github_url) = &user.github_url -%}{{ github_url }}{%- endif -%}"
-                 class="input-primary ps-10"
-                 placeholder="https://github.com/username">
-        </div>
-      </div>
+      {{ form_fields::social_url_field(name = "github_url", label = "GitHub", icon = "icon-github", placeholder = "https://github.com/username", value_attr = github_value) -}}
       {# End GitHub URL -#}
     </div>
   </div>

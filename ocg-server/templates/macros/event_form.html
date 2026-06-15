@@ -1,0 +1,22 @@
+{# Event form tab button -#}
+{% macro tab_button(section, icon, label, active = false, extra_attrs = "") -%}
+  {% let active_value -%}
+  {% if active -%}
+    true{%- else -%}false{%- endif %}{%- endlet %}
+    <li class="shrink-0">
+      <button type="button"
+              data-section="{{ section }}"
+              data-active="{{ active_value }}"
+              {{ extra_attrs|safe }}
+              class="group
+                     {% if active -%}
+                       active
+                     {% endif -%}
+                     inline-flex cursor-pointer flex-col items-center justify-center rounded-t-lg border-b-2 border-transparent p-4 px-2 pt-0 hover:border-stone-300 hover:text-stone-600 data-[active=true]:border-primary-500 data-[active=true]:text-primary-500 xl:w-[90px] xl:px-0 2xl:w-[120px]">
+        <div class="svg-icon size-4 lg:size-5 mb-2 icon-{{ icon }} bg-stone-400 group-hover:bg-stone-500 group-[.active]:bg-primary-500 shrink-0">
+        </div>
+        <span class="text-[10px] 2xl:text-xs">{{ label }}</span>
+      </button>
+    </li>
+  {% endmacro tab_button -%}
+  {# End event form tab button -#}
