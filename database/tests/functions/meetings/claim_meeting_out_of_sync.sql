@@ -9,75 +9,103 @@ select plan(26);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000001511'
-\set communityID '00000000-0000-0000-0000-000000001501'
-\set eventCanceledDeleteID '00000000-0000-0000-0000-000000001515'
-\set eventCanceledNoMeetingID '00000000-0000-0000-0000-000000001519'
-\set eventCreateID '00000000-0000-0000-0000-000000001512'
-\set eventDeletedID '00000000-0000-0000-0000-000000001526'
-\set eventDisabledID '00000000-0000-0000-0000-000000001518'
-\set eventInSyncID '00000000-0000-0000-0000-000000001521'
-\set eventNoRequestID '00000000-0000-0000-0000-000000001522'
-\set eventOrphanCascadeID '00000000-0000-0000-0000-000000001527'
-\set eventPastImportID '00000000-0000-0000-0000-000000001551'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000001517'
-\set eventUnpublishedWithMeetingID '00000000-0000-0000-0000-000000001528'
-\set eventUpdateID '00000000-0000-0000-0000-000000001513'
-\set eventWithSessionsID '00000000-0000-0000-0000-000000001514'
-\set groupCategoryID '00000000-0000-0000-0000-000000001510'
-\set groupID '00000000-0000-0000-0000-000000001502'
-\set meetingDisabledID '00000000-0000-0000-0000-000000001538'
-\set meetingEventCanceledDeleteID '00000000-0000-0000-0000-000000001535'
-\set meetingEventDeletedID '00000000-0000-0000-0000-000000001539'
-\set meetingEventOrphanCascadeID '00000000-0000-0000-0000-000000001540'
-\set meetingEventUnpublishedID '00000000-0000-0000-0000-000000001544'
-\set meetingEventUpdateID '00000000-0000-0000-0000-000000001533'
-\set meetingOrphanID '00000000-0000-0000-0000-000000001537'
-\set meetingSessionDeletedParentID '00000000-0000-0000-0000-000000001545'
-\set meetingSessionDeleteID '00000000-0000-0000-0000-000000001536'
-\set meetingSessionDisabledID '00000000-0000-0000-0000-000000001546'
-\set meetingSessionOrphanCascadeID '00000000-0000-0000-0000-000000001547'
-\set meetingSessionUnpublishedID '00000000-0000-0000-0000-000000001548'
-\set meetingSessionUpdateID '00000000-0000-0000-0000-000000001534'
-\set sessionCanceledNoMeetingID '00000000-0000-0000-0000-000000001529'
-\set sessionCreateID '00000000-0000-0000-0000-000000001523'
-\set sessionDeletedParentID '00000000-0000-0000-0000-000000001530'
-\set sessionDeleteID '00000000-0000-0000-0000-000000001525'
-\set sessionDisabledID '00000000-0000-0000-0000-000000001531'
-\set sessionOrphanCascadeID '00000000-0000-0000-0000-000000001532'
-\set sessionPastImportID '00000000-0000-0000-0000-000000001552'
-\set sessionUnpublishedNoMeetingID '00000000-0000-0000-0000-000000001549'
-\set sessionUnpublishedWithMeetingID '00000000-0000-0000-0000-000000001550'
-\set sessionUpdateID '00000000-0000-0000-0000-000000001524'
-\set userEventHostID '00000000-0000-0000-0000-000000001541'
-\set userEventSpeakerID '00000000-0000-0000-0000-000000001542'
-\set userSessionSpeakerID '00000000-0000-0000-0000-000000001543'
+\set communityID '7a050000-0000-0000-0000-000000000001'
+\set eventCanceledDeleteID '7a050000-0000-0000-0000-000000000002'
+\set eventCanceledNoMeetingID '7a050000-0000-0000-0000-000000000003'
+\set eventCategoryID '7a050000-0000-0000-0000-000000000004'
+\set eventCreateID '7a050000-0000-0000-0000-000000000005'
+\set eventDeletedID '7a050000-0000-0000-0000-000000000006'
+\set eventDisabledID '7a050000-0000-0000-0000-000000000007'
+\set eventInSyncID '7a050000-0000-0000-0000-000000000008'
+\set eventNoRequestID '7a050000-0000-0000-0000-000000000009'
+\set eventOrphanCascadeID '7a050000-0000-0000-0000-000000000010'
+\set eventPastImportID '7a050000-0000-0000-0000-000000000011'
+\set eventUnpublishedID '7a050000-0000-0000-0000-000000000012'
+\set eventUnpublishedWithMeetingID '7a050000-0000-0000-0000-000000000013'
+\set eventUpdateID '7a050000-0000-0000-0000-000000000014'
+\set eventWithSessionsID '7a050000-0000-0000-0000-000000000015'
+\set groupCategoryID '7a050000-0000-0000-0000-000000000016'
+\set groupID '7a050000-0000-0000-0000-000000000017'
+\set meetingDisabledID '7a050000-0000-0000-0000-000000000018'
+\set meetingEventCanceledDeleteID '7a050000-0000-0000-0000-000000000019'
+\set meetingEventDeletedID '7a050000-0000-0000-0000-000000000020'
+\set meetingEventOrphanCascadeID '7a050000-0000-0000-0000-000000000021'
+\set meetingEventUnpublishedID '7a050000-0000-0000-0000-000000000022'
+\set meetingEventUpdateID '7a050000-0000-0000-0000-000000000023'
+\set meetingOrphanID '7a050000-0000-0000-0000-000000000024'
+\set meetingSessionDeletedParentID '7a050000-0000-0000-0000-000000000025'
+\set meetingSessionDeleteID '7a050000-0000-0000-0000-000000000026'
+\set meetingSessionDisabledID '7a050000-0000-0000-0000-000000000027'
+\set meetingSessionOrphanCascadeID '7a050000-0000-0000-0000-000000000028'
+\set meetingSessionUnpublishedID '7a050000-0000-0000-0000-000000000029'
+\set meetingSessionUpdateID '7a050000-0000-0000-0000-000000000030'
+\set sessionCanceledNoMeetingID '7a050000-0000-0000-0000-000000000031'
+\set sessionCreateID '7a050000-0000-0000-0000-000000000032'
+\set sessionDeletedParentID '7a050000-0000-0000-0000-000000000033'
+\set sessionDeleteID '7a050000-0000-0000-0000-000000000034'
+\set sessionDisabledID '7a050000-0000-0000-0000-000000000035'
+\set sessionOrphanCascadeID '7a050000-0000-0000-0000-000000000036'
+\set sessionPastImportID '7a050000-0000-0000-0000-000000000037'
+\set sessionUnpublishedNoMeetingID '7a050000-0000-0000-0000-000000000038'
+\set sessionUnpublishedWithMeetingID '7a050000-0000-0000-0000-000000000039'
+\set sessionUpdateID '7a050000-0000-0000-0000-000000000040'
+\set userEventHostID '7a050000-0000-0000-0000-000000000041'
+\set userEventSpeakerID '7a050000-0000-0000-0000-000000000042'
+\set userSessionSpeakerID '7a050000-0000-0000-0000-000000000043'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
-
--- Users for event_host, event_speaker, and session_speaker host aggregation
-insert into "user" (user_id, auth_hash, email, username) values
-    (:'userEventHostID', 'hash1', 'eventhost@example.com', 'eventhost'),
-    (:'userEventSpeakerID', 'hash2', 'eventspeaker@example.com', 'eventspeaker'),
-    (:'userSessionSpeakerID', 'hash3', 'sessionspeaker@example.com', 'sessionspeaker');
-
--- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Conference');
+
+-- Users for event_host, event_speaker, and session_speaker host aggregation
+insert into "user" (user_id, auth_hash, email, email_verified, username) values
+    (:'userEventHostID', 'hash1', 'eventhost@example.com', true, 'eventhost'),
+    (:'userEventSpeakerID', 'hash2', 'eventspeaker@example.com', true, 'eventspeaker'),
+    (:'userSessionSpeakerID', 'hash3', 'sessionspeaker@example.com', true, 'sessionspeaker');
+
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, description)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    description
+) values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Test Group',
+    'test-group',
+    'A test group'
+);
 
 -- Event candidates and exclusions
 -- Delete-focused rows that could interfere start in sync and are reopened later
@@ -107,7 +135,7 @@ insert into event (
     false,
     'Event create test',
     current_timestamp + interval '1 day 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventCreateID',
     'virtual',
     :'groupID',
@@ -127,7 +155,7 @@ insert into event (
     false,
     'Event update test',
     current_timestamp + interval '2 days 2 hours',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventUpdateID',
     'virtual',
     :'groupID',
@@ -147,7 +175,7 @@ insert into event (
     false,
     'Parent event for sessions',
     current_timestamp + interval '3 days 2 hours',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventWithSessionsID',
     'virtual',
     :'groupID',
@@ -167,7 +195,7 @@ insert into event (
     false,
     'Canceled event delete test',
     current_timestamp + interval '4 days 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventCanceledDeleteID',
     'virtual',
     :'groupID',
@@ -187,7 +215,7 @@ insert into event (
     true,
     'Soft deleted event test',
     current_timestamp + interval '4 days 2 hours',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventDeletedID',
     'virtual',
     :'groupID',
@@ -207,7 +235,7 @@ insert into event (
     false,
     'Unpublished event test',
     current_timestamp + interval '5 days 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventUnpublishedID',
     'virtual',
     :'groupID',
@@ -227,7 +255,7 @@ insert into event (
     false,
     'Unpublished event with meeting test',
     current_timestamp + interval '5 days 2 hours',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventUnpublishedWithMeetingID',
     'virtual',
     :'groupID',
@@ -247,7 +275,7 @@ insert into event (
     false,
     'Meeting disabled test',
     current_timestamp + interval '6 days 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventDisabledID',
     'virtual',
     :'groupID',
@@ -267,7 +295,7 @@ insert into event (
     false,
     'Canceled before meeting creation',
     current_timestamp + interval '7 days 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventCanceledNoMeetingID',
     'virtual',
     :'groupID',
@@ -287,7 +315,7 @@ insert into event (
     false,
     'In-sync event exclusion',
     current_timestamp + interval '8 days 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventInSyncID',
     'virtual',
     :'groupID',
@@ -307,7 +335,7 @@ insert into event (
     false,
     'No meeting request exclusion',
     current_timestamp + interval '9 days 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventNoRequestID',
     'virtual',
     :'groupID',
@@ -327,7 +355,7 @@ insert into event (
     false,
     'Past import event exclusion',
     '2020-06-11 11:00:00+00',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventPastImportID',
     'virtual',
     :'groupID',
@@ -347,7 +375,7 @@ insert into event (
     false,
     'Event for hard-delete orphan meetings',
     current_timestamp + interval '10 days 1 hour',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventOrphanCascadeID',
     'virtual',
     :'groupID',
@@ -647,16 +675,19 @@ insert into meeting (
 -- Hosts include explicit meeting_hosts, event_host, and event_speaker emails
 select is(
     claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": false,
         "duration_secs": 3600,
-        "event_id": "00000000-0000-0000-0000-000000001512",
+        "event_id": "%s",
         "hosts": ["eventhost@example.com", "eventspeaker@example.com", "explicit@example.com"],
         "meeting_provider_id": "zoom",
         "meeting_recording_requested": true,
         "timezone": "UTC",
         "topic": "Event Create Test"
-    }'::jsonb,
+    }$json$,
+        :'eventCreateID'
+    )::jsonb,
     'Event needing create returns correctly'
 );
 select isnt(
@@ -671,19 +702,23 @@ update event set meeting_in_sync = true where event_id = :'eventCreateID';
 -- Event update - returns event with delete=false and existing provider fields
 select is(
     claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": false,
         "duration_secs": 7200,
-        "event_id": "00000000-0000-0000-0000-000000001513",
+        "event_id": "%s",
         "join_url": "https://zoom.us/j/event-update",
-        "meeting_id": "00000000-0000-0000-0000-000000001533",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "meeting_recording_requested": true,
         "password": "eventpass",
         "provider_meeting_id": "event-update",
         "timezone": "UTC",
         "topic": "Event Update Test"
-    }'::jsonb,
+    }$json$,
+        :'eventUpdateID',
+        :'meetingEventUpdateID'
+    )::jsonb,
     'Event needing update returns correctly'
 );
 
@@ -695,16 +730,19 @@ update event set meeting_in_sync = true where event_id = :'eventUpdateID';
 -- Hosts include explicit meeting_hosts, parent event_host, and session_speaker emails
 select is(
     claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": false,
         "duration_secs": 1800,
         "hosts": ["eventhost@example.com", "sessionhost@example.com", "sessionspeaker@example.com"],
         "meeting_provider_id": "zoom",
         "meeting_recording_requested": true,
-        "session_id": "00000000-0000-0000-0000-000000001523",
+        "session_id": "%s",
         "timezone": "UTC",
         "topic": "Session Create Test"
-    }'::jsonb,
+    }$json$,
+        :'sessionCreateID'
+    )::jsonb,
     'Session needing create returns correctly'
 );
 
@@ -715,20 +753,24 @@ update session set meeting_in_sync = true where session_id = :'sessionCreateID';
 -- Hosts include parent event_host emails only
 select is(
     claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": false,
         "duration_secs": 1800,
         "hosts": ["eventhost@example.com"],
         "join_url": "https://zoom.us/j/session-update",
-        "meeting_id": "00000000-0000-0000-0000-000000001534",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "meeting_recording_requested": true,
         "password": "sessionpass",
         "provider_meeting_id": "session-update",
-        "session_id": "00000000-0000-0000-0000-000000001524",
+        "session_id": "%s",
         "timezone": "UTC",
         "topic": "Session Update Test"
-    }'::jsonb,
+    }$json$,
+        :'meetingSessionUpdateID',
+        :'sessionUpdateID'
+    )::jsonb,
     'Session needing update returns correctly'
 );
 
@@ -739,14 +781,18 @@ update session set meeting_in_sync = true where session_id = :'sessionUpdateID';
 -- Priority: delete operations come after event and session create/update work
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "event_id": "00000000-0000-0000-0000-000000001515",
+        "event_id": "%s",
         "join_url": "https://zoom.us/j/event-canceled-delete",
-        "meeting_id": "00000000-0000-0000-0000-000000001535",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "event-canceled-delete"
-    }'::jsonb,
+    }$json$,
+        :'eventCanceledDeleteID',
+        :'meetingEventCanceledDeleteID'
+    )::jsonb,
     'Event needing delete returns correctly'
 );
 
@@ -762,14 +808,18 @@ where event_id = :'eventDeletedID';
 -- Soft-deleted event with meeting returns for delete
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "event_id": "00000000-0000-0000-0000-000000001526",
+        "event_id": "%s",
         "join_url": "https://zoom.us/j/event-deleted",
-        "meeting_id": "00000000-0000-0000-0000-000000001539",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "event-deleted"
-    }'::jsonb,
+    }$json$,
+        :'eventDeletedID',
+        :'meetingEventDeletedID'
+    )::jsonb,
     'Soft-deleted event with meeting returns for delete'
 );
 
@@ -785,10 +835,13 @@ where event_id = :'eventUnpublishedID';
 -- Unpublished event without meeting returns for delete to be marked handled
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "event_id": "00000000-0000-0000-0000-000000001517"
-    }'::jsonb,
+        "event_id": "%s"
+    }$json$,
+        :'eventUnpublishedID'
+    )::jsonb,
     'Unpublished event without meeting returns for delete'
 );
 
@@ -804,14 +857,18 @@ where event_id = :'eventUnpublishedWithMeetingID';
 -- Unpublished event with meeting returns for provider deletion
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "event_id": "00000000-0000-0000-0000-000000001528",
+        "event_id": "%s",
         "join_url": "https://zoom.us/j/event-unpublished",
-        "meeting_id": "00000000-0000-0000-0000-000000001544",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "event-unpublished"
-    }'::jsonb,
+    }$json$,
+        :'eventUnpublishedWithMeetingID',
+        :'meetingEventUnpublishedID'
+    )::jsonb,
     'Unpublished event with meeting returns for delete'
 );
 
@@ -827,14 +884,18 @@ where event_id = :'eventDisabledID';
 -- Event with meeting disabled triggers delete
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "event_id": "00000000-0000-0000-0000-000000001518",
+        "event_id": "%s",
         "join_url": "https://zoom.us/j/event-disabled",
-        "meeting_id": "00000000-0000-0000-0000-000000001538",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "event-disabled"
-    }'::jsonb,
+    }$json$,
+        :'eventDisabledID',
+        :'meetingDisabledID'
+    )::jsonb,
     'Event with meeting disabled triggers delete'
 );
 
@@ -850,10 +911,13 @@ where event_id = :'eventCanceledNoMeetingID';
 -- Event canceled before meeting creation returns for delete with null meeting fields
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "event_id": "00000000-0000-0000-0000-000000001519"
-    }'::jsonb,
+        "event_id": "%s"
+    }$json$,
+        :'eventCanceledNoMeetingID'
+    )::jsonb,
     'Event canceled before meeting created returns with delete=true and null meeting fields'
 );
 
@@ -869,14 +933,18 @@ where session_id = :'sessionDeleteID';
 -- Session delete - returns canceled-parent session with delete=true
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
         "join_url": "https://zoom.us/j/session-delete",
-        "meeting_id": "00000000-0000-0000-0000-000000001536",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "session-delete",
-        "session_id": "00000000-0000-0000-0000-000000001525"
-    }'::jsonb,
+        "session_id": "%s"
+    }$json$,
+        :'meetingSessionDeleteID',
+        :'sessionDeleteID'
+    )::jsonb,
     'Session needing delete returns correctly'
 );
 
@@ -892,14 +960,18 @@ where session_id = :'sessionDeletedParentID';
 -- Session on soft-deleted event with meeting returns for delete
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
         "join_url": "https://zoom.us/j/session-deleted-parent",
-        "meeting_id": "00000000-0000-0000-0000-000000001545",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "session-deleted-parent",
-        "session_id": "00000000-0000-0000-0000-000000001530"
-    }'::jsonb,
+        "session_id": "%s"
+    }$json$,
+        :'meetingSessionDeletedParentID',
+        :'sessionDeletedParentID'
+    )::jsonb,
     'Session on soft-deleted event with meeting returns for delete'
 );
 
@@ -915,10 +987,13 @@ where session_id = :'sessionCanceledNoMeetingID';
 -- Session on canceled event before meeting creation returns for delete
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "session_id": "00000000-0000-0000-0000-000000001529"
-    }'::jsonb,
+        "session_id": "%s"
+    }$json$,
+        :'sessionCanceledNoMeetingID'
+    )::jsonb,
     'Session on canceled event before meeting created returns with delete=true and null meeting fields'
 );
 
@@ -934,10 +1009,13 @@ where session_id = :'sessionUnpublishedNoMeetingID';
 -- Session on unpublished event without meeting returns for delete to be handled
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
-        "session_id": "00000000-0000-0000-0000-000000001549"
-    }'::jsonb,
+        "session_id": "%s"
+    }$json$,
+        :'sessionUnpublishedNoMeetingID'
+    )::jsonb,
     'Session on unpublished event without meeting returns for delete'
 );
 
@@ -953,14 +1031,18 @@ where session_id = :'sessionUnpublishedWithMeetingID';
 -- Session on unpublished event with meeting returns for provider deletion
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
         "join_url": "https://zoom.us/j/session-unpublished",
-        "meeting_id": "00000000-0000-0000-0000-000000001548",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "session-unpublished",
-        "session_id": "00000000-0000-0000-0000-000000001550"
-    }'::jsonb,
+        "session_id": "%s"
+    }$json$,
+        :'meetingSessionUnpublishedID',
+        :'sessionUnpublishedWithMeetingID'
+    )::jsonb,
     'Session on unpublished event with meeting returns for delete'
 );
 
@@ -976,14 +1058,18 @@ where session_id = :'sessionDisabledID';
 -- Session with meeting disabled returns for delete
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
         "join_url": "https://zoom.us/j/session-disabled",
-        "meeting_id": "00000000-0000-0000-0000-000000001546",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "session-disabled",
-        "session_id": "00000000-0000-0000-0000-000000001531"
-    }'::jsonb,
+        "session_id": "%s"
+    }$json$,
+        :'meetingSessionDisabledID',
+        :'sessionDisabledID'
+    )::jsonb,
     'Session with meeting disabled returns for delete'
 );
 
@@ -993,13 +1079,16 @@ update session set meeting_in_sync = true where session_id = :'sessionDisabledID
 -- Orphan meeting - already detached meeting rows are claimed for provider cleanup
 select is(
     claim_meeting_out_of_sync() - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": true,
         "join_url": "https://zoom.us/j/orphan",
-        "meeting_id": "00000000-0000-0000-0000-000000001537",
+        "meeting_id": "%s",
         "meeting_provider_id": "zoom",
         "provider_meeting_id": "orphan"
-    }'::jsonb,
+    }$json$,
+        :'meetingOrphanID'
+    )::jsonb,
     'Orphan meeting returns with delete=true'
 );
 select isnt(
@@ -1074,15 +1163,18 @@ set meeting_in_sync = false,
 where event_id = :'eventUnpublishedID';
 select is(
     claim_meeting_out_of_sync() - 'starts_at' - 'provider_host_user_id' - 'sync_claimed_at' - 'sync_state_hash',
-    '{
+    format(
+        $json${
         "delete": false,
         "duration_secs": 3600,
-        "event_id": "00000000-0000-0000-0000-000000001517",
+        "event_id": "%s",
         "meeting_provider_id": "zoom",
         "meeting_recording_requested": true,
         "timezone": "UTC",
         "topic": "Event Unpublished Test"
-    }'::jsonb,
+    }$json$,
+        :'eventUnpublishedID'
+    )::jsonb,
     'Republished event triggers create'
 );
 

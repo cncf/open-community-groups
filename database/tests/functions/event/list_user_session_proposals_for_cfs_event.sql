@@ -9,41 +9,56 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000021'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set proposalRustID '00000000-0000-0000-0000-000000000061'
-\set proposalPendingID '00000000-0000-0000-0000-000000000063'
-\set proposalZigID '00000000-0000-0000-0000-000000000062'
-\set submissionID '00000000-0000-0000-0000-000000000071'
-\set user1ID '00000000-0000-0000-0000-000000000081'
-\set user2ID '00000000-0000-0000-0000-000000000099'
+\set communityID '5e0a0000-0000-0000-0000-000000000001'
+\set eventCategoryID '5e0a0000-0000-0000-0000-000000000002'
+\set eventID '5e0a0000-0000-0000-0000-000000000003'
+\set groupCategoryID '5e0a0000-0000-0000-0000-000000000004'
+\set groupID '5e0a0000-0000-0000-0000-000000000005'
+\set proposalPendingID '5e0a0000-0000-0000-0000-000000000006'
+\set proposalRustID '5e0a0000-0000-0000-0000-000000000007'
+\set proposalZigID '5e0a0000-0000-0000-0000-000000000008'
+\set submissionID '5e0a0000-0000-0000-0000-000000000009'
+\set user1ID '5e0a0000-0000-0000-0000-00000000000a'
+\set user2ID '5e0a0000-0000-0000-0000-00000000000b'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'cfs-proposals-community',
+    'CFS Proposals Community',
+    'Community for CFS proposal tests',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'categoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Meetup');
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, username, name)
+values (:'user1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice', 'Alice');
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'CFS Group', 'cfs-group');
 
 -- Session proposals
 insert into session_proposal (

@@ -9,33 +9,73 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
+\set communityID '3a250000-0000-0000-0000-000000000001'
+\set groupCategoryID '3a250000-0000-0000-0000-000000000002'
+\set groupID '3a250000-0000-0000-0000-000000000003'
+\set missingGroupID '3a250000-0000-0000-0000-000000000004'
+\set user1ID '3a250000-0000-0000-0000-000000000005'
+\set user2ID '3a250000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name)
-values (:'categoryID', :'communityID', 'Tech');
+values (:'groupCategoryID', :'communityID', 'Tech');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
+values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Users
-insert into "user" (user_id, auth_hash, company, email, name, title, username, email_verified)
-values
-    (:'user1ID', gen_random_bytes(32), 'Cloud Corp', 'alice@example.com', 'Alice', 'Organizer', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', null, null, 'bob', true);
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    company,
+    name,
+    title
+) values (
+    :'user1ID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Cloud Corp',
+    'Alice',
+    'Organizer'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    null,
+    null,
+    null
+);
 
 -- Group team membership
 insert into group_team (group_id, user_id, role, accepted)
@@ -54,10 +94,28 @@ select is(
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'members', '[
-            {"accepted": true, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": null, "role": "admin", "title": "Organizer"},
-            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "admin", "title": null}
-        ]'::jsonb,
+        'members', jsonb_build_array(
+            jsonb_build_object(
+                'accepted', true,
+                'company', 'Cloud Corp',
+                'name', 'Alice',
+                'photo_url', null,
+                'role', 'admin',
+                'title', 'Organizer',
+                'user_id', :'user1ID'::uuid,
+                'username', 'alice'
+            ),
+            jsonb_build_object(
+                'accepted', false,
+                'company', null,
+                'name', null,
+                'photo_url', null,
+                'role', 'admin',
+                'title', null,
+                'user_id', :'user2ID'::uuid,
+                'username', 'bob'
+            )
+        ),
         'total', 2,
         'total_accepted', 1,
         'total_admins_accepted', 1
@@ -72,9 +130,18 @@ select is(
         '{"limit": 1, "offset": 1}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'members', '[
-            {"accepted": false, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": null, "role": "admin", "title": null}
-        ]'::jsonb,
+        'members', jsonb_build_array(
+            jsonb_build_object(
+                'accepted', false,
+                'company', null,
+                'name', null,
+                'photo_url', null,
+                'role', 'admin',
+                'title', null,
+                'user_id', :'user2ID'::uuid,
+                'username', 'bob'
+            )
+        ),
         'total', 2,
         'total_accepted', 1,
         'total_admins_accepted', 1
@@ -85,7 +152,7 @@ select is(
 -- Should return empty list for non-existing group
 select is(
     list_group_team_members(
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        :'missingGroupID'::uuid,
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(

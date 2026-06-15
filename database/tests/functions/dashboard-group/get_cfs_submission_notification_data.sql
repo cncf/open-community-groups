@@ -9,38 +9,66 @@ select plan(1);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set proposalID '00000000-0000-0000-0000-000000000061'
-\set submissionID '00000000-0000-0000-0000-000000000071'
-\set userID '00000000-0000-0000-0000-000000000081'
+\set communityID '3a0e0000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a0e0000-0000-0000-0000-000000000002'
+\set eventID '3a0e0000-0000-0000-0000-000000000003'
+\set groupCategoryID '3a0e0000-0000-0000-0000-000000000004'
+\set groupID '3a0e0000-0000-0000-0000-000000000005'
+\set proposalID '3a0e0000-0000-0000-0000-000000000006'
+\set submissionID '3a0e0000-0000-0000-0000-000000000007'
+\set userID '3a0e0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'rust-community',
+    'Rust Community',
+    'A community for Rust events',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Meetup');
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+);
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug)
+values (:'groupID', :'communityID', :'groupCategoryID', 'Rust Group', 'rust-group');
 
 -- Session proposal
 insert into session_proposal (
@@ -64,23 +92,23 @@ insert into session_proposal (
 -- Event
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
     timezone,
-    event_category_id,
-    event_kind_id,
     published
 ) values (
     :'eventID',
-    :'groupID',
-    'Event 1',
-    'event-1',
-    'Event description',
-    'UTC',
     :'eventCategoryID',
     'in-person',
+    :'groupID',
+    'Rust Meetup',
+    'rust-meetup',
+    'Event description',
+    'UTC',
     true
 );
 

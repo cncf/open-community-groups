@@ -9,17 +9,19 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set groupInactiveID '00000000-0000-0000-0000-000000000022'
-\set regionID '00000000-0000-0000-0000-000000000012'
-\set sponsor1ID '00000000-0000-0000-0000-000000000041'
-\set sponsor2ID '00000000-0000-0000-0000-000000000042'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
-\set user3ID '00000000-0000-0000-0000-000000000033'
-\set user4ID '00000000-0000-0000-0000-000000000034'
+\set communityID '0c0a0000-0000-0000-0000-000000000001'
+\set groupCategoryID '0c0a0000-0000-0000-0000-000000000002'
+\set groupID '0c0a0000-0000-0000-0000-000000000003'
+\set groupInactiveID '0c0a0000-0000-0000-0000-000000000004'
+\set regionID '0c0a0000-0000-0000-0000-000000000005'
+\set sponsor1ID '0c0a0000-0000-0000-0000-000000000006'
+\set sponsor2ID '0c0a0000-0000-0000-0000-000000000007'
+\set unknownCommunityID '0c0a0000-0000-0000-0000-000000000008'
+\set unknownGroupID '0c0a0000-0000-0000-0000-000000000009'
+\set user1ID '0c0a0000-0000-0000-0000-00000000000a'
+\set user2ID '0c0a0000-0000-0000-0000-00000000000b'
+\set user3ID '0c0a0000-0000-0000-0000-00000000000c'
+\set user4ID '0c0a0000-0000-0000-0000-00000000000d'
 
 -- ============================================================================
 -- SEED DATA
@@ -31,48 +33,136 @@ insert into community (
     name,
     display_name,
     description,
+    banner_mobile_url,
+    banner_url,
+    logo_url,
+
     ad_banner_link_url,
     ad_banner_url,
-    logo_url,
-    og_image_url,
-    banner_mobile_url,
-    banner_url
+    og_image_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png',
+
     'https://example.com/ad-banner-link',
     'https://example.com/ad-banner.png',
-    'https://example.com/logo.png',
-    'https://example.com/community-og.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/community-og.png'
 );
 
--- Region
-insert into region (region_id, name, community_id)
-values (:'regionID', 'North America', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+-- Region
+insert into region (region_id, community_id, name)
+values (:'regionID', :'communityID', 'North America');
 
 -- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, github_url, linkedin_url, twitter_url, website_url)
-values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Community meetup organizer', 'https://bsky.app/profile/alice', 'Alice Johnson', 'https://example.com/alice.png', jsonb_build_object('github', jsonb_build_object('username', 'alice-gh')), 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://github.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
-    (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', 'Cloud native program lead', null, 'Bob Wilson', 'https://example.com/bob.png', null, 'StartUp', 'Engineer', null, 'https://github.com/bob', 'https://linkedin.com/in/bob', null, 'https://bob.com'),
-    (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', null, null, 'Charlie Brown', null, null, null, null, null, null, null, null, null),
-    (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', null, null, 'Diana Prince', null, null, null, null, null, null, null, null, null);
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    bio,
+    bluesky_url,
+    company,
+    facebook_url,
+    github_url,
+    linkedin_url,
+    name,
+    photo_url,
+    provider,
+    title,
+    twitter_url,
+    website_url
+) values (
+    :'user1ID',
+    'test_hash',
+    'alice@seattle.cloudnative.org',
+    false,
+    'alice-organizer',
+    'Community meetup organizer',
+    'https://bsky.app/profile/alice',
+    'Cloud Co',
+    'https://facebook.com/alice',
+    'https://github.com/alice',
+    'https://linkedin.com/in/alice',
+    'Alice Johnson',
+    'https://example.com/alice.png',
+    jsonb_build_object('github', jsonb_build_object('username', 'alice-gh')),
+    'Manager',
+    'https://twitter.com/alice',
+    'https://alice.com'
+), (
+    :'user2ID',
+    'test_hash',
+    'bob@seattle.cloudnative.org',
+    false,
+    'bob-organizer',
+    'Cloud native program lead',
+    null,
+    'StartUp',
+    null,
+    'https://github.com/bob',
+    'https://linkedin.com/in/bob',
+    'Bob Wilson',
+    'https://example.com/bob.png',
+    null,
+    'Engineer',
+    null,
+    'https://bob.com'
+), (
+    :'user3ID',
+    'test_hash',
+    'charlie@seattle.cloudnative.org',
+    false,
+    'charlie-member',
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    'Charlie Brown',
+    null,
+    null,
+    null,
+    null,
+    null
+), (
+    :'user4ID',
+    'test_hash',
+    'diana@seattle.cloudnative.org',
+    false,
+    'diana-member',
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    'Diana Prince',
+    null,
+    null,
+    null,
+    null,
+    null
+);
 
 -- Group
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     region_id,
     active,
     city,
@@ -103,10 +193,11 @@ insert into "group" (
     created_at
 ) values (
     :'groupID',
+    :'communityID',
+    :'groupCategoryID',
     'Seattle Kubernetes Meetup',
     'abc1234',
-    :'communityID',
-    :'categoryID',
+
     :'regionID',
     true,
     'New York',
@@ -132,7 +223,10 @@ insert into "group" (
     'https://wechat.com/seattlek8s',
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
     'https://example.com/group-og.png',
-    jsonb '[{"name": "Discord", "url": "https://discord.gg/seattlek8s"}, {"name": "Forum", "url": "https://forum.seattlek8s.com"}]',
+    jsonb_build_array(
+        jsonb_build_object('name', 'Discord', 'url', 'https://discord.gg/seattlek8s'),
+        jsonb_build_object('name', 'Forum', 'url', 'https://forum.seattlek8s.com')
+    ),
     jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group'),
     '2024-01-15 10:00:00+00'
 );
@@ -145,8 +239,20 @@ insert into group_sponsor (
     name,
     website_url
 ) values
-    (:'sponsor1ID', :'groupID', 'https://example.com/logos/devops-tools.png', 'DevOps Tools Inc', 'https://devopstools.example.com'),
-    (:'sponsor2ID', :'groupID', 'https://example.com/logos/kube-corp.png', 'Kube Corp', null);
+    (
+        :'sponsor1ID',
+        :'groupID',
+        'https://example.com/logos/devops-tools.png',
+        'DevOps Tools Inc',
+        'https://devopstools.example.com'
+    ),
+    (
+        :'sponsor2ID',
+        :'groupID',
+        'https://example.com/logos/kube-corp.png',
+        'Kube Corp',
+        null
+    );
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted, "order")
@@ -165,18 +271,20 @@ values
 -- Group (inactive)
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active,
     created_at
 ) values (
     :'groupInactiveID',
+    :'communityID',
+    :'groupCategoryID',
     'Inactive DevOps Group',
     'xyz9876',
-    :'communityID',
-    :'categoryID',
+
     false,
     '2024-02-15 10:00:00+00'
 );
@@ -194,12 +302,12 @@ select is(
     '{
         "active": true,
         "category": {
-            "group_category_id": "00000000-0000-0000-0000-000000000011",
+            "group_category_id": "0c0a0000-0000-0000-0000-000000000002",
             "name": "Technology",
             "normalized_name": "technology"
         },
         "created_at": 1705312800,
-        "group_id": "00000000-0000-0000-0000-000000000021",
+        "group_id": "0c0a0000-0000-0000-0000-000000000003",
         "members_count": 4,
         "name": "Seattle Kubernetes Meetup",
         "slug": "abc1234",
@@ -226,7 +334,7 @@ select is(
         },
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "region": {
-            "region_id": "00000000-0000-0000-0000-000000000012",
+            "region_id": "0c0a0000-0000-0000-0000-000000000005",
             "name": "North America",
             "normalized_name": "north-america"
         },
@@ -240,7 +348,7 @@ select is(
         "community": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "00000000-0000-0000-0000-000000000001",
+            "community_id": "0c0a0000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle",
@@ -250,7 +358,7 @@ select is(
         },
         "organizers": [
             {
-                "user_id": "00000000-0000-0000-0000-000000000031",
+                "user_id": "0c0a0000-0000-0000-0000-00000000000a",
                 "username": "alice-organizer",
                 "bio": "Community meetup organizer",
                 "bluesky_url": "https://bsky.app/profile/alice",
@@ -270,7 +378,7 @@ select is(
                 "website_url": "https://alice.com"
             },
             {
-                "user_id": "00000000-0000-0000-0000-000000000032",
+                "user_id": "0c0a0000-0000-0000-0000-00000000000b",
                 "username": "bob-organizer",
                 "bio": "Cloud native program lead",
                 "name": "Bob Wilson",
@@ -285,14 +393,14 @@ select is(
         "sponsors": [
             {
                 "featured": true,
-                "group_sponsor_id": "00000000-0000-0000-0000-000000000041",
+                "group_sponsor_id": "0c0a0000-0000-0000-0000-000000000006",
                 "logo_url": "https://example.com/logos/devops-tools.png",
                 "name": "DevOps Tools Inc",
                 "website_url": "https://devopstools.example.com"
             },
             {
                 "featured": true,
-                "group_sponsor_id": "00000000-0000-0000-0000-000000000042",
+                "group_sponsor_id": "0c0a0000-0000-0000-0000-000000000007",
                 "logo_url": "https://example.com/logos/kube-corp.png",
                 "name": "Kube Corp"
             }
@@ -329,7 +437,7 @@ update "group" set slug_pretty = null where group_id = :'groupID';
 select ok(
     get_group_full(
         :'communityID'::uuid,
-        '00000000-0000-0000-0000-000000999999'::uuid
+        :'unknownGroupID'::uuid
     ) is null,
     'Should return null for non-existent group ID'
 );
@@ -337,7 +445,7 @@ select ok(
 -- Should return null when community does not match group
 select ok(
     get_group_full(
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        :'unknownCommunityID'::uuid,
         :'groupID'::uuid
     ) is null,
     'Should return null when community does not match group'

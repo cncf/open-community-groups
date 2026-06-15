@@ -9,53 +9,72 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set coSpeakerUserID '00000000-0000-0000-0000-000000000071'
-\set proposalPendingID '00000000-0000-0000-0000-000000000081'
-\set proposalReadyID '00000000-0000-0000-0000-000000000082'
-\set speakerUserID '00000000-0000-0000-0000-000000000072'
-\set userID2 '00000000-0000-0000-0000-000000000073'
+\set coSpeakerUserID '4a130000-0000-0000-0000-000000000001'
+\set proposalPendingID '4a130000-0000-0000-0000-000000000002'
+\set proposalReadyID '4a130000-0000-0000-0000-000000000003'
+\set speakerUserID '4a130000-0000-0000-0000-000000000004'
+\set userID2 '4a130000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Users
-insert into "user" (auth_hash, email, email_verified, user_id, username) values
-    ('hash-1', 'co-speaker@example.com', true, :'coSpeakerUserID', 'co-speaker'),
-    ('hash-2', 'speaker@example.com', true, :'speakerUserID', 'speaker'),
-    ('hash-3', 'user2@example.com', true, :'userID2', 'user2');
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username
+) values (
+    :'coSpeakerUserID',
+    'hash-1',
+    'co-speaker@example.com',
+    true,
+    'co-speaker'
+), (
+    :'speakerUserID',
+    'hash-2',
+    'speaker@example.com',
+    true,
+    'speaker'
+), (
+    :'userID2',
+    'hash-3',
+    'user2@example.com',
+    true,
+    'user2'
+);
 
 -- Session proposals
 insert into session_proposal (
+    session_proposal_id,
     co_speaker_user_id,
     description,
     duration,
-    session_proposal_id,
     session_proposal_level_id,
     session_proposal_status_id,
     title,
     user_id
-) values
-    (
-        :'coSpeakerUserID',
-        'Pending proposal',
-        make_interval(mins => 45),
-        :'proposalPendingID',
-        'beginner',
-        'pending-co-speaker-response',
-        'Pending proposal',
-        :'speakerUserID'
-    ),
-    (
-        :'coSpeakerUserID',
-        'Ready proposal',
-        make_interval(mins => 45),
-        :'proposalReadyID',
-        'beginner',
-        'ready-for-submission',
-        'Ready proposal',
-        :'speakerUserID'
-    );
+) values (
+    :'proposalPendingID',
+    :'coSpeakerUserID',
+    'Pending proposal',
+    make_interval(mins => 45),
+    'beginner',
+    'pending-co-speaker-response',
+    'Pending proposal',
+    :'speakerUserID'
+), (
+    :'proposalReadyID',
+    :'coSpeakerUserID',
+    'Ready proposal',
+    make_interval(mins => 45),
+    'beginner',
+    'ready-for-submission',
+    'Ready proposal',
+    :'speakerUserID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -93,15 +112,19 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
-        values (
-            'session_proposal_co_speaker_invitation_rejected',
-            '00000000-0000-0000-0000-000000000071'::uuid,
-            'co-speaker',
-            'session_proposal',
-            '00000000-0000-0000-0000-000000000081'::uuid
-        )
-    $$,
+    format(
+        $$
+            values (
+                'session_proposal_co_speaker_invitation_rejected',
+                %L::uuid,
+                'co-speaker',
+                'session_proposal',
+                %L::uuid
+            )
+        $$,
+        :'coSpeakerUserID',
+        :'proposalPendingID'
+    ),
     'Should create the expected audit row'
 );
 

@@ -9,37 +9,73 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set user1ID '00000000-0000-0000-0000-000000000011'
-\set user2ID '00000000-0000-0000-0000-000000000012'
+\set communityID '2c100000-0000-0000-0000-000000000001'
+\set unknownCommunityID '2c100000-0000-0000-0000-000000000002'
+\set user1ID '2c100000-0000-0000-0000-000000000003'
+\set user2ID '2c100000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'team-members-community',
+    'Team Members Community',
+    'Community for listing team members',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Users
 insert into "user" (
     user_id,
     auth_hash,
-    company,
     email,
-    name,
-    title,
-    username,
     email_verified,
-    photo_url
+    username,
+    company,
+    name,
+    photo_url,
+    title
 ) values
-    (:'user1ID', gen_random_bytes(32), 'Cloud Corp', 'alice@example.com', 'Alice', 'Principal Engineer', 'alice', true, 'https://e/u1.png'),
-    (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://e/u2.png');
+    (
+        :'user1ID',
+        gen_random_bytes(32),
+        'alice@example.com',
+        true,
+        'alice',
+        'Cloud Corp',
+        'Alice',
+        'https://example.com/users/alice.png',
+        'Principal Engineer'
+    ),
+    (
+        :'user2ID',
+        gen_random_bytes(32),
+        'bob@example.com',
+        true,
+        'bob',
+        null,
+        'Bob',
+        'https://example.com/users/bob.png',
+        null
+    );
 
--- Team
-insert into community_team (accepted, community_id, role, user_id) values
-    (true, :'communityID', 'viewer', :'user2ID'),
-    (true, :'communityID', 'admin', :'user1ID');
+-- Community team
+insert into community_team (community_id, user_id, accepted, role) values
+    (:'communityID', :'user2ID', true, 'viewer'),
+    (:'communityID', :'user1ID', true, 'admin');
 
 -- ============================================================================
 -- TESTS
@@ -52,10 +88,34 @@ select is(
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'members', '[
-            {"accepted": true, "role": "admin", "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
-            {"accepted": true, "role": "viewer", "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
-        ]'::jsonb,
+        'members', format(
+            $json$
+            [
+                {
+                    "accepted": true,
+                    "role": "admin",
+                    "user_id": "%s",
+                    "username": "alice",
+                    "company": "Cloud Corp",
+                    "name": "Alice",
+                    "photo_url": "https://example.com/users/alice.png",
+                    "title": "Principal Engineer"
+                },
+                {
+                    "accepted": true,
+                    "role": "viewer",
+                    "user_id": "%s",
+                    "username": "bob",
+                    "company": null,
+                    "name": "Bob",
+                    "photo_url": "https://example.com/users/bob.png",
+                    "title": null
+                }
+            ]
+            $json$,
+            :'user1ID',
+            :'user2ID'
+        )::jsonb,
         'total', 2,
         'total_accepted', 2,
         'total_admins_accepted', 1
@@ -70,9 +130,23 @@ select is(
         '{"limit": 1, "offset": 1}'::jsonb
     )::jsonb,
     jsonb_build_object(
-        'members', '[
-            {"accepted": true, "role": "viewer", "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
-        ]'::jsonb,
+        'members', format(
+            $json$
+            [
+                {
+                    "accepted": true,
+                    "role": "viewer",
+                    "user_id": "%s",
+                    "username": "bob",
+                    "company": null,
+                    "name": "Bob",
+                    "photo_url": "https://example.com/users/bob.png",
+                    "title": null
+                }
+            ]
+            $json$,
+            :'user2ID'
+        )::jsonb,
         'total', 2,
         'total_accepted', 2,
         'total_admins_accepted', 1
@@ -83,7 +157,7 @@ select is(
 -- Should return empty array for unknown community
 select is(
     list_community_team_members(
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        :'unknownCommunityID'::uuid,
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(

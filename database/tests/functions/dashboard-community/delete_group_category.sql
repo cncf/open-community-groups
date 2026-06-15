@@ -9,10 +9,11 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set inUseCategoryID '00000000-0000-0000-0000-000000000011'
-\set unusedCategoryID '00000000-0000-0000-0000-000000000012'
-\set groupID '00000000-0000-0000-0000-000000000013'
+\set communityID '2c0b0000-0000-0000-0000-000000000001'
+\set groupID '2c0b0000-0000-0000-0000-000000000002'
+\set inUseGroupCategoryID '2c0b0000-0000-0000-0000-000000000003'
+\set unknownGroupCategoryID '2c0b0000-0000-0000-0000-000000000004'
+\set unusedGroupCategoryID '2c0b0000-0000-0000-0000-000000000005'
 
 -- ============================================================================
 -- SEED DATA
@@ -24,39 +25,39 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'cncf-seattle',
     'CNCF Seattle',
     'Community for group category delete tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- Group categories
 insert into group_category (
-    community_id,
     group_category_id,
+    community_id,
     name
 ) values
-    (:'communityID', :'inUseCategoryID', 'Platform'),
-    (:'communityID', :'unusedCategoryID', 'Security');
+    (:'inUseGroupCategoryID', :'communityID', 'Platform'),
+    (:'unusedGroupCategoryID', :'communityID', 'Security');
 
 -- Group using the first category
 insert into "group" (
+    group_id,
     community_id,
     group_category_id,
-    group_id,
     name,
     slug
 ) values (
-    :'communityID',
-    :'inUseCategoryID',
     :'groupID',
+    :'communityID',
+    :'inUseGroupCategoryID',
     'Seattle Platform',
     'seattle-platform'
 );
@@ -67,30 +68,41 @@ insert into "group" (
 
 -- Should block deleting category that is still referenced by groups
 select throws_ok(
-    $$ select delete_group_category(
+    format(
+        $$ select delete_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000011'::uuid
+        %L::uuid,
+        %L::uuid
     ) $$,
+        :'communityID',
+        :'inUseGroupCategoryID'
+    ),
     'cannot delete group category in use by groups',
     'Should block deleting group category referenced by groups'
 );
 
 -- Should delete category with no group references
 select lives_ok(
-    $$ select delete_group_category(
+    format(
+        $$ select delete_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000012'::uuid
+        %L::uuid,
+        %L::uuid
     ) $$,
+        :'communityID',
+        :'unusedGroupCategoryID'
+    ),
     'Should delete an unused group category'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select count(*)::bigint
     from group_category gc
-    where gc.group_category_id = '00000000-0000-0000-0000-000000000012'::uuid
-    $$,
+    where gc.group_category_id = %L::uuid
+        $$,
+        :'unusedGroupCategoryID'
+    ),
     $$ values (0::bigint) $$,
     'Unused group category should be deleted'
 );
@@ -108,27 +120,35 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'group_category_deleted',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             '{"name": "Security"}'::jsonb,
             'group_category',
-            '00000000-0000-0000-0000-000000000012'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'communityID',
+        :'unusedGroupCategoryID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should fail when target category does not exist
 select throws_ok(
-    $$ select delete_group_category(
+    format(
+        $$ select delete_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid
+        %L::uuid,
+        %L::uuid
     ) $$,
+        :'communityID',
+        :'unknownGroupCategoryID'
+    ),
     'group category not found',
     'Should fail when deleting a non-existing group category'
 );

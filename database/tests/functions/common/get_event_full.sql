@@ -9,41 +9,44 @@ select plan(14);
 -- VARIABLES
 -- ============================================================================
 
-\set cfsSubmissionID '00000000-0000-0000-0000-000000000082'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventCommunityLogoFallbackID '00000000-0000-0000-0000-000000000034'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000035'
-\set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
-\set eventPaidID '00000000-0000-0000-0000-000000000036'
-\set eventRecordingOverrideID '00000000-0000-0000-0000-000000000037'
-\set eventRelatedID '00000000-0000-0000-0000-000000000039'
-\set eventSeriesID '00000000-0000-0000-0000-000000000038'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
-\set groupCategoryID '00000000-0000-0000-0000-000000000011'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set groupInactiveID '00000000-0000-0000-0000-000000000022'
-\set groupNoLogoID '00000000-0000-0000-0000-000000000023'
-\set label1ID '00000000-0000-0000-0000-000000000075'
-\set label2ID '00000000-0000-0000-0000-000000000076'
-\set legacyHost1ID '00000000-0000-0000-0000-000000000071'
-\set legacyHost2ID '00000000-0000-0000-0000-000000000072'
-\set legacySpeaker1ID '00000000-0000-0000-0000-000000000073'
-\set legacySpeaker2ID '00000000-0000-0000-0000-000000000074'
-\set session1ID '00000000-0000-0000-0000-000000000051'
-\set session2ID '00000000-0000-0000-0000-000000000052'
-\set session3ID '00000000-0000-0000-0000-000000000053'
-\set sessionOverrideID '00000000-0000-0000-0000-000000000054'
-\set sessionProposalID '00000000-0000-0000-0000-000000000081'
-\set sponsor1ID '00000000-0000-0000-0000-000000000061'
-\set sponsor2ID '00000000-0000-0000-0000-000000000062'
-\set ticketDiscountCodeID '00000000-0000-0000-0000-000000000083'
-\set ticketPriceWindowID '00000000-0000-0000-0000-000000000084'
-\set ticketTypeID '00000000-0000-0000-0000-000000000085'
-\set user1ID '00000000-0000-0000-0000-000000000041'
-\set user2ID '00000000-0000-0000-0000-000000000042'
-\set user3ID '00000000-0000-0000-0000-000000000043'
+\set cfsSubmissionID '0c060000-0000-0000-0000-000000000001'
+\set communityID '0c060000-0000-0000-0000-000000000002'
+\set eventCategoryID '0c060000-0000-0000-0000-000000000003'
+\set eventCommunityLogoFallbackID '0c060000-0000-0000-0000-000000000004'
+\set eventGroupLogoFallbackID '0c060000-0000-0000-0000-000000000005'
+\set eventID '0c060000-0000-0000-0000-000000000006'
+\set eventInactiveGroupID '0c060000-0000-0000-0000-000000000007'
+\set eventPaidID '0c060000-0000-0000-0000-000000000008'
+\set eventRecordingOverrideID '0c060000-0000-0000-0000-000000000009'
+\set eventRelatedID '0c060000-0000-0000-0000-00000000000a'
+\set eventSeriesID '0c060000-0000-0000-0000-00000000000b'
+\set eventUnpublishedID '0c060000-0000-0000-0000-00000000000c'
+\set groupCategoryID '0c060000-0000-0000-0000-00000000000d'
+\set groupID '0c060000-0000-0000-0000-00000000000e'
+\set groupInactiveID '0c060000-0000-0000-0000-00000000000f'
+\set groupNoLogoID '0c060000-0000-0000-0000-000000000010'
+\set label1ID '0c060000-0000-0000-0000-000000000011'
+\set label2ID '0c060000-0000-0000-0000-000000000012'
+\set legacyHost1ID '0c060000-0000-0000-0000-000000000013'
+\set legacyHost2ID '0c060000-0000-0000-0000-000000000014'
+\set legacySpeaker1ID '0c060000-0000-0000-0000-000000000015'
+\set legacySpeaker2ID '0c060000-0000-0000-0000-000000000016'
+\set questionID '0c060000-0000-0000-0000-000000000017'
+\set session1ID '0c060000-0000-0000-0000-000000000018'
+\set session2ID '0c060000-0000-0000-0000-000000000019'
+\set session3ID '0c060000-0000-0000-0000-00000000001a'
+\set sessionOverrideID '0c060000-0000-0000-0000-00000000001b'
+\set sessionProposalID '0c060000-0000-0000-0000-00000000001c'
+\set sponsor1ID '0c060000-0000-0000-0000-00000000001d'
+\set sponsor2ID '0c060000-0000-0000-0000-00000000001e'
+\set ticketDiscountCodeID '0c060000-0000-0000-0000-00000000001f'
+\set ticketPriceWindowID '0c060000-0000-0000-0000-000000000020'
+\set ticketTypeID '0c060000-0000-0000-0000-000000000021'
+\set unknownCommunityID '0c060000-0000-0000-0000-000000000022'
+\set unknownEventID '0c060000-0000-0000-0000-000000000023'
+\set user1ID '0c060000-0000-0000-0000-000000000024'
+\set user2ID '0c060000-0000-0000-0000-000000000025'
+\set user3ID '0c060000-0000-0000-0000-000000000026'
 
 -- ============================================================================
 -- SEED DATA
@@ -55,108 +58,186 @@ insert into community (
     name,
     display_name,
     description,
+    banner_mobile_url,
+    banner_url,
+    logo_url,
+
     ad_banner_link_url,
     ad_banner_url,
-    logo_url,
-    og_image_url,
-    banner_mobile_url,
-    banner_url
+    og_image_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png',
+
     'https://example.com/ad-banner-link',
     'https://example.com/ad-banner.png',
-    'https://example.com/logo.png',
-    'https://example.com/community-og.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/community-og.png'
 );
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Tech Talks', :'communityID');
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Tech Talks');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+
+    bio,
+    bluesky_url,
+    company,
+    facebook_url,
+    github_url,
+    linkedin_url,
+    name,
+    photo_url,
+    provider,
+    title,
+    twitter_url,
+    website_url
+) values (
+    :'user1ID',
+    'test_hash',
+    'host@seattle.cloudnative.org',
+    false,
+    'sarah-host',
+
+    'Cloud native community leader',
+    'https://bsky.app/profile/sarahchen',
+    'Microsoft',
+    'https://facebook.com/sarahchen',
+    'https://github.com/sarahchen',
+    'https://linkedin.com/in/sarahchen',
+    'Sarah Chen',
+    'https://example.com/sarah.png',
+    jsonb_build_object('linuxfoundation', jsonb_build_object('username', 'sarah-lf')),
+    'Principal Engineer',
+    'https://twitter.com/sarahchen',
+    'https://sarahchen.dev'
+), (
+    :'user2ID',
+    'test_hash',
+    'organizer@seattle.cloudnative.org',
+    false,
+    'mike-organizer',
+
+    'Event organizer and speaker',
+    'https://bsky.app/profile/mikerod',
+    'AWS',
+    'https://facebook.com/mikerod',
+    'https://github.com/mikerod',
+    'https://linkedin.com/in/mikerod',
+    'Mike Rodriguez',
+    'https://example.com/mike.png',
+    jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')),
+    'Solutions Architect',
+    'https://twitter.com/mikerod',
+    'https://mikerodriguez.io'
+), (
+    :'user3ID',
+    'test_hash',
+    'speaker@seattle.cloudnative.org',
+    false,
+    'alex-speaker',
+
+    'Kubernetes expert and speaker',
+    'https://bsky.app/profile/alexthompson',
+    'Google',
+    null,
+    'https://github.com/alexthompson',
+    'https://linkedin.com/in/alexthompson',
+    'Alex Thompson',
+    'https://example.com/alex.png',
+    null,
+    'Staff Engineer',
+    null,
+    null
+);
 
 -- Group
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active,
-    created_at,
     city,
-    state,
     country_code,
     country_name,
+    created_at,
     location,
-
     logo_url,
-    og_image_url
+    og_image_url,
+    state
 ) values (
     :'groupID',
-    'Seattle Kubernetes Meetup',
-    'abc1234',
     :'communityID',
     :'groupCategoryID',
+    'Seattle Kubernetes Meetup',
+    'abc1234',
+
     true,
-    '2024-03-01 10:00:00+00',
     'New York',
-    'NY',
     'US',
     'United States',
+    '2024-03-01 10:00:00+00',
     ST_SetSRID(ST_MakePoint(-73.935242, 40.730610), 4326),  -- New York coordinates
-
     'https://example.com/group-logo.png',
-    'https://example.com/group-og.png'
+    'https://example.com/group-og.png',
+    'NY'
 );
 
 -- Group (inactive)
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active
 ) values (
     :'groupInactiveID',
-    'Inactive DevOps Group',
-    'xyz9876',
     :'communityID',
     :'groupCategoryID',
+    'Inactive DevOps Group',
+    'xyz9876',
+
     false
 );
 
 -- Group without logo
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active
 ) values (
     :'groupNoLogoID',
-    'Seattle Kubernetes Meetup No Logo',
-    'abc5678',
     :'communityID',
     :'groupCategoryID',
+    'Seattle Kubernetes Meetup No Logo',
+    'abc5678',
+
     true
 );
-
--- User
-insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, github_url, linkedin_url, twitter_url, website_url)
-values
-    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native community leader', 'https://bsky.app/profile/sarahchen', 'Sarah Chen', 'https://example.com/sarah.png', jsonb_build_object('linuxfoundation', jsonb_build_object('username', 'sarah-lf')), 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://github.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
-    (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'https://bsky.app/profile/mikerod', 'Mike Rodriguez', 'https://example.com/mike.png', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')), 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://github.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
-    (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'https://bsky.app/profile/alexthompson', 'Alex Thompson', 'https://example.com/alex.png', null, 'Google', 'Staff Engineer', null, 'https://github.com/alexthompson', 'https://linkedin.com/in/alexthompson', null, null);
 
 -- Event Series
 insert into event_series (
@@ -249,7 +330,10 @@ insert into event (
     true,
     true,
     'Use your registration name when joining.',
-    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),  -- Seattle coordinates (different from group)
+    ST_SetSRID(
+        ST_MakePoint(-122.3321, 47.6062),
+        4326
+    ),  -- Seattle coordinates (different from group)
     null,
     true,
     null,
@@ -311,7 +395,10 @@ insert into event (
     '2024-07-15 09:00:00+00',
     'America/New_York',
     1234,
-    '[{"id": "00000000-0000-0000-0000-000000000091", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]'::jsonb
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]',
+        :'questionID'
+    )::jsonb
 );
 
 -- Event CFS labels
@@ -419,7 +506,10 @@ values (
     :'eventUnpublishedID',
     :'user3ID',
     'confirmed',
-    '{"answers": [{"question_id": "00000000-0000-0000-0000-000000000091", "value": "Answer"}]}'::jsonb
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Answer"}]}',
+        :'questionID'
+    )::jsonb
 );
 
 -- Group Team
@@ -548,8 +638,14 @@ insert into session (
 );
 
 -- Link meeting to event
-insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_urls)
-values (
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    recording_urls
+) values (
     :'eventID',
     'https://meeting.example.com/event',
     'zoom',
@@ -562,8 +658,14 @@ values (
 );
 
 -- Link meeting to session
-insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_urls, session_id)
-values (
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    recording_urls,
+    session_id
+) values (
     'https://meeting.example.com/session2',
     'zoom',
     'session-secret',
@@ -576,8 +678,14 @@ values (
 );
 
 -- Link meeting to event with automatic recording override
-insert into meeting (event_id, join_url, meeting_provider_id, password, provider_meeting_id, recording_urls)
-values (
+insert into meeting (
+    event_id,
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    recording_urls
+) values (
     :'eventRecordingOverrideID',
     'https://meeting.example.com/event-override',
     'zoom',
@@ -590,8 +698,14 @@ values (
 );
 
 -- Link meeting to session with automatic recording override
-insert into meeting (join_url, meeting_provider_id, password, provider_meeting_id, recording_urls, session_id)
-values (
+insert into meeting (
+    join_url,
+    meeting_provider_id,
+    password,
+    provider_meeting_id,
+    recording_urls,
+    session_id
+) values (
     'https://meeting.example.com/session-override',
     'zoom',
     'session-override-secret',
@@ -610,10 +724,25 @@ values
     (:'session1ID', :'user3ID', true);
 
 -- Group Sponsors
-insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
-values
-    (:'sponsor1ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null),
-    (:'sponsor2ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'https://techcorp.com');
+insert into group_sponsor (
+    group_sponsor_id,
+    group_id,
+    name,
+    logo_url,
+    website_url
+) values (
+    :'sponsor1ID',
+    :'groupID',
+    'CloudInc',
+    'https://example.com/cloudinc.png',
+    null
+), (
+    :'sponsor2ID',
+    :'groupID',
+    'TechCorp',
+    'https://example.com/techcorp.png',
+    'https://techcorp.com'
+);
 
 -- Event Sponsors (linking group sponsors to event)
 insert into event_sponsor (event_id, group_sponsor_id, level)
@@ -841,7 +970,7 @@ select is(
         "category_name": "Tech Talks",
         "created_at": 1711965600,
         "description": "Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts from across the cloud native ecosystem",
-        "event_id": "00000000-0000-0000-0000-000000000031",
+        "event_id": "0c060000-0000-0000-0000-000000000006",
         "event_reminder_enabled": true,
         "has_registration_questions": false,
         "has_related_events": true,
@@ -859,18 +988,18 @@ select is(
         "cfs_labels": [
             {
                 "color": "#DBEAFE",
-                "event_cfs_label_id": "00000000-0000-0000-0000-000000000075",
+                "event_cfs_label_id": "0c060000-0000-0000-0000-000000000011",
                 "name": "track / ai + ml"
             },
             {
                 "color": "#FEE2E2",
-                "event_cfs_label_id": "00000000-0000-0000-0000-000000000076",
+                "event_cfs_label_id": "0c060000-0000-0000-0000-000000000012",
                 "name": "track / web"
             }
         ],
         "description_short": "Annual Kubernetes conference",
         "ends_at": 1718557200,
-        "event_series_id": "00000000-0000-0000-0000-000000000038",
+        "event_series_id": "0c060000-0000-0000-0000-00000000000b",
         "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,
@@ -907,7 +1036,7 @@ select is(
         "community": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "00000000-0000-0000-0000-000000000001",
+            "community_id": "0c060000-0000-0000-0000-000000000002",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle",
@@ -922,13 +1051,13 @@ select is(
             "state": "NY",
             "active": true,
             "category": {
-                "group_category_id": "00000000-0000-0000-0000-000000000011",
+                "group_category_id": "0c060000-0000-0000-0000-00000000000d",
                 "name": "Technology",
                 "normalized_name": "technology"
             },
             "community_display_name": "Cloud Native Seattle",
             "community_name": "cloud-native-seattle",
-            "group_id": "00000000-0000-0000-0000-000000000021",
+            "group_id": "0c060000-0000-0000-0000-00000000000e",
             "latitude": 40.73061,
             "logo_url": "https://example.com/group-logo.png",
             "longitude": -73.935242,
@@ -939,7 +1068,7 @@ select is(
         },
         "hosts": [
             {
-                "user_id": "00000000-0000-0000-0000-000000000041",
+                "user_id": "0c060000-0000-0000-0000-000000000024",
                 "username": "sarah-host",
                 "bio": "Cloud native community leader",
                 "bluesky_url": "https://bsky.app/profile/sarahchen",
@@ -989,7 +1118,7 @@ select is(
         ],
         "organizers": [
             {
-                "user_id": "00000000-0000-0000-0000-000000000042",
+                "user_id": "0c060000-0000-0000-0000-000000000025",
                 "username": "mike-organizer",
                 "bio": "Event organizer and speaker",
                 "bluesky_url": "https://bsky.app/profile/mikerod",
@@ -1012,10 +1141,10 @@ select is(
         "sessions": {
             "2024-06-15": [
                 {
-                    "cfs_submission_id": "00000000-0000-0000-0000-000000000082",
+                    "cfs_submission_id": "0c060000-0000-0000-0000-000000000001",
                     "description": "Proposal description for breakfast and registration details",
                     "ends_at": 1718441100,
-                    "session_id": "00000000-0000-0000-0000-000000000053",
+                    "session_id": "0c060000-0000-0000-0000-00000000001a",
                     "kind": "in-person",
                     "name": "Breakfast & Registration",
                     "starts_at": 1718438400,
@@ -1024,7 +1153,7 @@ select is(
                     "location": "Lobby",
                     "speakers": [
                         {
-                            "user_id": "00000000-0000-0000-0000-000000000041",
+                            "user_id": "0c060000-0000-0000-0000-000000000024",
                             "username": "sarah-host",
                             "bio": "Cloud native community leader",
                             "bluesky_url": "https://bsky.app/profile/sarahchen",
@@ -1045,7 +1174,7 @@ select is(
                             "website_url": "https://sarahchen.dev"
                         },
                         {
-                            "user_id": "00000000-0000-0000-0000-000000000042",
+                            "user_id": "0c060000-0000-0000-0000-000000000025",
                             "username": "mike-organizer",
                             "bio": "Event organizer and speaker",
                             "bluesky_url": "https://bsky.app/profile/mikerod",
@@ -1070,7 +1199,7 @@ select is(
                 {
                     "description": "Welcome keynote exploring the evolving landscape of cloud native technologies",
                     "ends_at": 1718445600,
-                    "session_id": "00000000-0000-0000-0000-000000000051",
+                    "session_id": "0c060000-0000-0000-0000-000000000018",
                     "kind": "in-person",
                     "name": "Opening Keynote: The Future of Cloud Native",
                     "starts_at": 1718442000,
@@ -1083,7 +1212,7 @@ select is(
                     "meeting_requested": false,
                     "speakers": [
                         {
-                            "user_id": "00000000-0000-0000-0000-000000000043",
+                            "user_id": "0c060000-0000-0000-0000-000000000026",
                             "username": "alex-speaker",
                             "bio": "Kubernetes expert and speaker",
                             "bluesky_url": "https://bsky.app/profile/alexthompson",
@@ -1096,7 +1225,7 @@ select is(
                             "title": "Staff Engineer"
                         },
                         {
-                            "user_id": "00000000-0000-0000-0000-000000000041",
+                            "user_id": "0c060000-0000-0000-0000-000000000024",
                             "username": "sarah-host",
                             "bio": "Cloud native community leader",
                             "bluesky_url": "https://bsky.app/profile/sarahchen",
@@ -1123,7 +1252,7 @@ select is(
                 {
                     "description": "Hands-on workshop covering security fundamentals for Kubernetes deployments",
                     "ends_at": 1718537400,
-                    "session_id": "00000000-0000-0000-0000-000000000052",
+                    "session_id": "0c060000-0000-0000-0000-000000000019",
                     "kind": "virtual",
                     "name": "Workshop: Kubernetes Security Best Practices",
                     "starts_at": 1718533800,
@@ -1144,7 +1273,7 @@ select is(
         },
         "speakers": [
             {
-                "user_id": "00000000-0000-0000-0000-000000000043",
+                "user_id": "0c060000-0000-0000-0000-000000000026",
                 "username": "alex-speaker",
                 "bio": "Kubernetes expert and speaker",
                 "bluesky_url": "https://bsky.app/profile/alexthompson",
@@ -1157,7 +1286,7 @@ select is(
                 "title": "Staff Engineer"
             },
             {
-                "user_id": "00000000-0000-0000-0000-000000000042",
+                "user_id": "0c060000-0000-0000-0000-000000000025",
                 "username": "mike-organizer",
                 "bio": "Event organizer and speaker",
                 "bluesky_url": "https://bsky.app/profile/mikerod",
@@ -1178,7 +1307,7 @@ select is(
                 "website_url": "https://mikerodriguez.io"
             },
             {
-                "user_id": "00000000-0000-0000-0000-000000000041",
+                "user_id": "0c060000-0000-0000-0000-000000000024",
                 "username": "sarah-host",
                 "bio": "Cloud native community leader",
                 "bluesky_url": "https://bsky.app/profile/sarahchen",
@@ -1201,13 +1330,13 @@ select is(
         ],
         "sponsors": [
             {
-                "group_sponsor_id": "00000000-0000-0000-0000-000000000061",
+                "group_sponsor_id": "0c060000-0000-0000-0000-00000000001d",
                 "level": "Silver",
                 "logo_url": "https://example.com/cloudinc.png",
                 "name": "CloudInc"
             },
             {
-                "group_sponsor_id": "00000000-0000-0000-0000-000000000062",
+                "group_sponsor_id": "0c060000-0000-0000-0000-00000000001e",
                 "level": "Gold",
                 "logo_url": "https://example.com/techcorp.png",
                 "name": "TechCorp",
@@ -1394,7 +1523,7 @@ select ok(
     get_event_full(
         :'communityID'::uuid,
         :'groupID'::uuid,
-        '00000000-0000-0000-0000-000000999999'::uuid
+        :'unknownEventID'::uuid
     ) is null,
     'Should return null for non-existent event ID'
 );
@@ -1412,7 +1541,7 @@ select ok(
 -- Should return null when community does not match event
 select ok(
     get_event_full(
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        :'unknownCommunityID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     ) is null,

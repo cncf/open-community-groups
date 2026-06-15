@@ -3,228 +3,567 @@
 -- ============================================================================
 
 begin;
-select plan(44);
+select plan(47);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCanceled '00000000-0000-0000-0000-000000000043'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventInviteOnly '00000000-0000-0000-0000-000000000049'
-\set eventDeleted '00000000-0000-0000-0000-000000000044'
-\set eventFullNoWaitlist '00000000-0000-0000-0000-000000000047'
-\set eventFullWaitlist '00000000-0000-0000-0000-000000000048'
-\set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
-\set eventOK '00000000-0000-0000-0000-000000000041'
-\set eventPast '00000000-0000-0000-0000-000000000046'
-\set eventQuestionsApprovalID '90400000-0000-0000-0000-000000000042'
-\set eventQuestionsFullWaitlistID '90400000-0000-0000-0000-000000000043'
-\set eventQuestionsID '90400000-0000-0000-0000-000000000041'
-\set eventUnpublished '00000000-0000-0000-0000-000000000042'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set inactiveGroupID '00000000-0000-0000-0000-000000000022'
-\set questionsAttendeeUserID '90400000-0000-0000-0000-000000000031'
-\set questionsCategoryID '90400000-0000-0000-0000-000000000011'
-\set questionsCommunityID '90400000-0000-0000-0000-000000000001'
-\set questionsEventCategoryID '90400000-0000-0000-0000-000000000012'
-\set questionsGroupID '90400000-0000-0000-0000-000000000021'
-\set questionsRequestUserID '90400000-0000-0000-0000-000000000034'
-\set questionsRejoinConflictUserID '90400000-0000-0000-0000-000000000036'
-\set questionsRejoinInsertUserID '90400000-0000-0000-0000-000000000035'
-\set questionsSeatUserID '90400000-0000-0000-0000-000000000033'
-\set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
-\set user3ID '00000000-0000-0000-0000-000000000033'
-\set user4ID '00000000-0000-0000-0000-000000000034'
-\set user5ID '00000000-0000-0000-0000-000000000035'
-\set user6ID '00000000-0000-0000-0000-000000000036'
+\set communityID '5e020000-0000-0000-0000-000000000001'
+\set eventCanceledID '5e020000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e020000-0000-0000-0000-000000000003'
+\set eventDeletedID '5e020000-0000-0000-0000-000000000004'
+\set eventFullNoWaitlistID '5e020000-0000-0000-0000-000000000005'
+\set eventFullWaitlistID '5e020000-0000-0000-0000-000000000006'
+\set eventInactiveGroupID '5e020000-0000-0000-0000-000000000007'
+\set eventInviteOnlyID '5e020000-0000-0000-0000-000000000008'
+\set eventOKID '5e020000-0000-0000-0000-000000000009'
+\set eventPastID '5e020000-0000-0000-0000-00000000000a'
+\set eventQuestionsApprovalID '5e020000-0000-0000-0000-00000000000b'
+\set eventQuestionsFullWaitlistID '5e020000-0000-0000-0000-00000000000c'
+\set eventQuestionsID '5e020000-0000-0000-0000-00000000000d'
+\set eventUnpublishedID '5e020000-0000-0000-0000-00000000000e'
+\set groupCategoryID '5e020000-0000-0000-0000-00000000000f'
+\set groupID '5e020000-0000-0000-0000-000000000010'
+\set ignoredQuestionID '5e020000-0000-0000-0000-000000000011'
+\set inactiveGroupID '5e020000-0000-0000-0000-000000000012'
+\set questionID '5e020000-0000-0000-0000-000000000013'
+\set questionsAttendeeUserID '5e020000-0000-0000-0000-000000000014'
+\set questionsCommunityID '5e020000-0000-0000-0000-000000000015'
+\set questionsEventCategoryID '5e020000-0000-0000-0000-000000000016'
+\set questionsGroupCategoryID '5e020000-0000-0000-0000-000000000017'
+\set questionsGroupID '5e020000-0000-0000-0000-000000000018'
+\set questionsPendingUserID '5e020000-0000-0000-0000-000000000019'
+\set questionsRejoinConflictUserID '5e020000-0000-0000-0000-00000000001a'
+\set questionsRejoinInsertUserID '5e020000-0000-0000-0000-00000000001b'
+\set questionsRequestUserID '5e020000-0000-0000-0000-00000000001c'
+\set questionsSeatUserID '5e020000-0000-0000-0000-00000000001d'
+\set questionsWaitlistUserID '5e020000-0000-0000-0000-00000000001e'
+\set user1ID '5e020000-0000-0000-0000-00000000001f'
+\set user2ID '5e020000-0000-0000-0000-000000000020'
+\set user3ID '5e020000-0000-0000-0000-000000000021'
+\set user4ID '5e020000-0000-0000-0000-000000000022'
+\set user5ID '5e020000-0000-0000-0000-000000000023'
+\set user6ID '5e020000-0000-0000-0000-000000000024'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
-
--- Community for registration-question attendance tests
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'questionsCommunityID', 'attend-questions-community', 'Attend Questions Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+), (
+    :'questionsCommunityID',
+    'attend-questions-community',
+    'Attend Questions Community',
+    'Community for registration-question attendance tests',
+    'https://example.com/questions-banner-mobile.png',
+    'https://example.com/questions-banner.png',
+    'https://example.com/questions-logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
-
--- Group category for registration-question attendance tests
-insert into group_category (group_category_id, name, community_id)
-values (:'questionsCategoryID', 'Technology', :'questionsCommunityID');
+insert into group_category (group_category_id, community_id, name)
+values
+    (:'groupCategoryID', :'communityID', 'Technology'),
+    (:'questionsGroupCategoryID', :'questionsCommunityID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
-
--- Event category for registration-question attendance tests
-insert into event_category (event_category_id, name, community_id)
-values (:'questionsEventCategoryID', 'General', :'questionsCommunityID');
+insert into event_category (event_category_id, community_id, name)
+values
+    (:'eventCategoryID', :'communityID', 'General'),
+    (:'questionsEventCategoryID', :'questionsCommunityID', 'General');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
-values
-    (:'user1ID', 'h', 'u1@test.com', 'u1'),
-    (:'user2ID', 'h', 'u2@test.com', 'u2'),
-    (:'user3ID', 'h', 'u3@test.com', 'u3'),
-    (:'user4ID', 'h', 'u4@test.com', 'u4'),
-    (:'user5ID', 'h', 'u5@test.com', 'u5'),
-    (:'user6ID', 'h', 'u6@test.com', 'u6');
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name,
+    registration_status
+) values (
+    :'user1ID',
+    'user-1-hash',
+    'user-1@example.com',
+    true,
+    'user-1',
+    'User One',
+    'registered'
+), (
+    :'user2ID',
+    'user-2-hash',
+    'user-2@example.com',
+    true,
+    'user-2',
+    'User Two',
+    'registered'
+), (
+    :'user3ID',
+    'user-3-hash',
+    'user-3@example.com',
+    true,
+    'user-3',
+    'User Three',
+    'registered'
+), (
+    :'user4ID',
+    'user-4-hash',
+    'user-4@example.com',
+    true,
+    'user-4',
+    'User Four',
+    'registered'
+), (
+    :'user5ID',
+    'user-5-hash',
+    'user-5@example.com',
+    true,
+    'user-5',
+    'User Five',
+    'registered'
+), (
+    :'user6ID',
+    'user-6-hash',
+    'user-6@example.com',
+    true,
+    'user-6',
+    'User Six',
+    'registered'
+), (
+    :'questionsAttendeeUserID',
+    'rq-hash-1',
+    'rq-attend@example.com',
+    true,
+    'rq-attendee',
+    'Attendee',
+    'registered'
+), (
+    :'questionsWaitlistUserID',
+    'rq-hash-2',
+    'rq-waitlist@example.com',
+    true,
+    'rq-waitlist',
+    'Waitlist User',
+    'registered'
+), (
+    :'questionsSeatUserID',
+    'rq-hash-3',
+    'rq-seat@example.com',
+    true,
+    'rq-seat',
+    'Seat Holder',
+    'registered'
+), (
+    :'questionsRequestUserID',
+    'rq-hash-4',
+    'rq-request@example.com',
+    true,
+    'rq-requester',
+    'Requester',
+    'registered'
+), (
+    :'questionsRejoinInsertUserID',
+    'rq-hash-5',
+    'rq-rejoin-insert@example.com',
+    true,
+    'rq-rejoin-insert',
+    'Rejoin Insert',
+    'registered'
+), (
+    :'questionsRejoinConflictUserID',
+    'rq-hash-6',
+    'rq-rejoin-conflict@example.com',
+    true,
+    'rq-rejoin-conflict',
+    'Rejoin Conflict',
+    'registered'
+), (
+    :'questionsPendingUserID',
+    'rq-hash-7',
+    'rq-pending@example.com',
+    true,
+    'rq-pending',
+    'Pending Answers',
+    'registered'
+);
 
--- Users that submit registration answers while attending
-insert into "user" (user_id, auth_hash, email, email_verified, name, registration_status, username)
-values
-    (:'questionsAttendeeUserID', 'rq-hash-1', 'rq-attend@example.com', true, 'Attendee', 'registered', 'rq-attendee'),
-    (:'questionsWaitlistUserID', 'rq-hash-2', 'rq-waitlist@example.com', true, 'Waitlist User', 'registered', 'rq-waitlist'),
-    (:'questionsSeatUserID', 'rq-hash-3', 'rq-seat@example.com', true, 'Seat Holder', 'registered', 'rq-seat'),
-    (:'questionsRequestUserID', 'rq-hash-4', 'rq-request@example.com', true, 'Requester', 'registered', 'rq-requester'),
-    (:'questionsRejoinInsertUserID', 'rq-hash-5', 'rq-rejoin-insert@example.com', true, 'Rejoin Insert', 'registered', 'rq-rejoin-insert'),
-    (:'questionsRejoinConflictUserID', 'rq-hash-6', 'rq-rejoin-conflict@example.com', true, 'Rejoin Conflict', 'registered', 'rq-rejoin-conflict');
-
--- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
-values
-    (:'groupID', :'communityID', :'categoryID', 'Active Group', 'active-group', true, false),
-    (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
-
--- Group for registration-question attendance tests
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'questionsGroupID', :'questionsCommunityID', :'questionsCategoryID', 'Attend Questions Group', 'attend-questions-group');
+-- Group
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted
+) values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Active Group',
+    'active-group',
+    true,
+    false
+), (
+    :'inactiveGroupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Inactive Group',
+    'inactive-group',
+    false,
+    false
+), (
+    :'questionsGroupID',
+    :'questionsCommunityID',
+    :'questionsGroupCategoryID',
+    'Attend Questions Group',
+    'attend-questions-group',
+    true,
+    false
+);
 
 -- Events
 insert into event (
     event_id,
-    name,
-    slug,
-    description,
-    timezone,
     event_category_id,
     event_kind_id,
     group_id,
-    published,
+    name,
+    slug,
+    attendee_approval_required,
     canceled,
-    deleted,
-    starts_at,
-    ends_at,
     capacity,
-    waitlist_enabled,
-    attendee_approval_required
+    deleted,
+    description,
+    ends_at,
+    published,
+    starts_at,
+    timezone,
+    waitlist_enabled
 )
 values
-    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, null, false, false),
-    (:'eventUnpublished', 'Unpub', 'unpub', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, null, null, null, false, false),
-    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, null, null, null, false, false),
-    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, null, null, null, false, false),
-    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', true, false, false, null, null, null, false, false),
-    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false, false),
-    (:'eventFullNoWaitlist', 'Full No Waitlist', 'full-no-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 2, false, false),
-    (:'eventFullWaitlist', 'Full Waitlist', 'full-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, true, false),
-    (:'eventInviteOnly', 'Invite Only', 'invite-only', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, null, 1, false, true);
+    (
+        :'eventOKID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'OK',
+        'ok',
+        false,
+        false,
+        null,
+        false,
+        'Test event',
+        null,
+        true,
+        null,
+        'UTC',
+        false
+    ),
+    (
+        :'eventUnpublishedID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Unpublished',
+        'unpublished',
+        false,
+        false,
+        null,
+        false,
+        'Test event',
+        null,
+        false,
+        null,
+        'UTC',
+        false
+    ),
+    (
+        :'eventCanceledID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Canceled',
+        'canceled',
+        false,
+        true,
+        null,
+        false,
+        'Test event',
+        null,
+        false,
+        null,
+        'UTC',
+        false
+    ),
+    (
+        :'eventDeletedID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Deleted',
+        'deleted',
+        false,
+        false,
+        null,
+        true,
+        'Test event',
+        null,
+        false,
+        null,
+        'UTC',
+        false
+    ),
+    (
+        :'eventInactiveGroupID',
+        :'eventCategoryID',
+        'in-person',
+        :'inactiveGroupID',
+        'Inactive Group',
+        'inactive-group',
+        false,
+        false,
+        null,
+        false,
+        'Test event',
+        null,
+        true,
+        null,
+        'UTC',
+        false
+    ),
+    (
+        :'eventPastID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Past',
+        'past',
+        false,
+        false,
+        null,
+        false,
+        'Past event',
+        current_timestamp - interval '1 hour',
+        true,
+        current_timestamp - interval '2 hours',
+        'UTC',
+        false
+    ),
+    (
+        :'eventFullNoWaitlistID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Full No Waitlist',
+        'full-no-waitlist',
+        false,
+        false,
+        2,
+        false,
+        'Full event',
+        null,
+        true,
+        null,
+        'UTC',
+        false
+    ),
+    (
+        :'eventFullWaitlistID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Full Waitlist',
+        'full-waitlist',
+        false,
+        false,
+        1,
+        false,
+        'Waitlist event',
+        null,
+        true,
+        null,
+        'UTC',
+        true
+    ),
+    (
+        :'eventInviteOnlyID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Invite Only',
+        'invite-only',
+        true,
+        false,
+        1,
+        false,
+        'Invite-only event',
+        null,
+        true,
+        null,
+        'UTC',
+        false
+    );
 
 -- Events requiring registration answers during attendance
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
-    published,
-    starts_at,
-    capacity,
-    waitlist_enabled,
     attendee_approval_required,
-    registration_questions
+    capacity,
+    description,
+    published,
+    registration_questions,
+    starts_at,
+    timezone,
+    waitlist_enabled
 ) values (
     :'eventQuestionsID',
+    :'questionsEventCategoryID',
+    'in-person',
     :'questionsGroupID',
     'Questions Event',
     'questions-event',
-    'Desc',
-    'UTC',
-    :'questionsEventCategoryID',
-    'in-person',
-    true,
-    '2030-01-01 10:00:00+00',
+    false,
     null,
-    false,
-    false,
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    'Event requiring registration answers',
+    true,
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+        :'questionID'
+    )::jsonb,
+    '2030-01-01 10:00:00+00',
+    'UTC',
+    false
 ), (
     :'eventQuestionsApprovalID',
+    :'questionsEventCategoryID',
+    'in-person',
     :'questionsGroupID',
     'Approval Questions Event',
     'approval-questions-event',
-    'Desc',
-    'UTC',
-    :'questionsEventCategoryID',
-    'in-person',
     true,
-    '2030-01-02 10:00:00+00',
     null,
-    false,
+    'Approval-required event with registration answers',
     true,
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+        :'questionID'
+    )::jsonb,
+    '2030-01-02 10:00:00+00',
+    'UTC',
+    false
 ), (
     :'eventQuestionsFullWaitlistID',
+    :'questionsEventCategoryID',
+    'in-person',
     :'questionsGroupID',
     'Questions Full Waitlist Event',
     'questions-full-waitlist-event',
-    'Desc',
-    'UTC',
-    :'questionsEventCategoryID',
-    'in-person',
-    true,
-    '2030-01-03 10:00:00+00',
-    1,
-    true,
     false,
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    1,
+    'Full waitlist event with registration answers',
+    true,
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+        :'questionID'
+    )::jsonb,
+    '2030-01-03 10:00:00+00',
+    'UTC',
+    true
 );
 
 -- Event attendees
 insert into event_attendee (event_id, user_id, status)
 values
-    (:'eventFullNoWaitlist', :'user1ID', 'confirmed'),
-    (:'eventFullWaitlist', :'user1ID', 'confirmed'),
-    (:'eventQuestionsFullWaitlistID', :'questionsSeatUserID', 'confirmed');
+    (:'eventFullNoWaitlistID', :'user1ID', 'confirmed'),
+    (:'eventFullWaitlistID', :'user1ID', 'confirmed'),
+    (:'eventQuestionsFullWaitlistID', :'questionsSeatUserID', 'confirmed'),
+    (:'eventQuestionsID', :'questionsPendingUserID', 'registration-questions-pending');
 
 -- Stale canceled attendee row for accepted approval-request rejoin tests
 insert into event_attendee (event_id, user_id, registration_answers, status)
 values (
     :'eventQuestionsApprovalID',
     :'questionsRejoinConflictUserID',
-    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Stale answer"}]}'::jsonb,
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Stale answer"}]}',
+        :'questionID'
+    )::jsonb,
     'invitation-canceled'
 );
 
 -- Existing organizer invitation decisions
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values
-    (:'eventOK', :'user3ID', true, 'invitation-canceled'),
-    (:'eventFullWaitlist', :'user3ID', false, 'invitation-canceled'),
-    (:'eventFullNoWaitlist', :'user5ID', true, 'invitation-pending'),
-    (:'eventFullNoWaitlist', :'user6ID', true, 'invitation-rejected');
+    (:'eventOKID', :'user3ID', true, 'invitation-canceled'),
+    (:'eventFullWaitlistID', :'user3ID', false, 'invitation-canceled'),
+    (:'eventFullNoWaitlistID', :'user5ID', true, 'invitation-pending'),
+    (:'eventFullNoWaitlistID', :'user6ID', true, 'invitation-rejected');
 
 -- Event invitation requests
-insert into event_invitation_request (event_id, user_id, created_at, status, reviewed_at, reviewed_by)
+insert into event_invitation_request (
+    event_id,
+    user_id,
+    created_at,
+    status,
+    reviewed_at,
+    reviewed_by
+)
 values
-    (:'eventInviteOnly', :'user3ID', '2024-01-01 00:00:00+00', 'accepted', '2024-01-01 01:00:00+00', :'user1ID'),
-    (:'eventInviteOnly', :'user4ID', '2024-01-02 00:00:00+00', 'rejected', '2024-01-02 01:00:00+00', :'user1ID'),
-    (:'eventQuestionsApprovalID', :'questionsRejoinInsertUserID', '2024-01-03 00:00:00+00', 'accepted', '2024-01-03 01:00:00+00', :'user1ID'),
-    (:'eventQuestionsApprovalID', :'questionsRejoinConflictUserID', '2024-01-04 00:00:00+00', 'accepted', '2024-01-04 01:00:00+00', :'user1ID');
+    (
+        :'eventInviteOnlyID',
+        :'user3ID',
+        '2024-01-01 00:00:00+00',
+        'accepted',
+        '2024-01-01 01:00:00+00',
+        :'user1ID'
+    ),
+    (
+        :'eventInviteOnlyID',
+        :'user4ID',
+        '2024-01-02 00:00:00+00',
+        'rejected',
+        '2024-01-02 01:00:00+00',
+        :'user1ID'
+    ),
+    (
+        :'eventQuestionsApprovalID',
+        :'questionsRejoinInsertUserID',
+        '2024-01-03 00:00:00+00',
+        'accepted',
+        '2024-01-03 01:00:00+00',
+        :'user1ID'
+    ),
+    (
+        :'eventQuestionsApprovalID',
+        :'questionsRejoinConflictUserID',
+        '2024-01-04 00:00:00+00',
+        'accepted',
+        '2024-01-04 01:00:00+00',
+        :'user1ID'
+    );
 
 -- ============================================================================
 -- TESTS
@@ -232,7 +571,7 @@ values
 
 -- Should register a normal attendee when capacity allows
 select is(
-    attend_event(:'communityID'::uuid, :'eventOK'::uuid, :'user1ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventOKID'::uuid, :'user1ID'::uuid),
     'attendee',
     'Returns attendee when the user gets a confirmed seat'
 );
@@ -242,7 +581,7 @@ select ok(
     exists(
         select 1
         from event_attendee
-        where event_id = :'eventOK'::uuid and user_id = :'user1ID'::uuid
+        where event_id = :'eventOKID'::uuid and user_id = :'user1ID'::uuid
         and manually_invited = false
     ),
     'Creates non-manually invited event_attendee row after confirmed RSVP'
@@ -252,9 +591,12 @@ select ok(
 select is(
     attend_event(
         :'communityID'::uuid,
-        :'eventOK'::uuid,
+        :'eventOKID'::uuid,
         :'user4ID'::uuid,
-        '{"answers": [{"question_id": "00000000-0000-0000-0000-000000009999", "value": "No question"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "No question"}]}',
+            :'ignoredQuestionID'
+        )::jsonb
     ),
     'attendee',
     'Returns attendee when questionless event receives ignored answers'
@@ -264,7 +606,7 @@ select is(
     (
         select registration_answers
         from event_attendee
-        where event_id = :'eventOK'::uuid
+        where event_id = :'eventOKID'::uuid
         and user_id = :'user4ID'::uuid
     ),
     null::jsonb,
@@ -273,7 +615,7 @@ select is(
 
 -- Should allow attendance for a capacity-limited event with an open seat
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user2ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventFullNoWaitlistID'::uuid, :'user2ID'::uuid),
     'attendee',
     'Returns attendee when a capacity-limited event still has room'
 );
@@ -282,7 +624,7 @@ select is(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventFullNoWaitlist', :'user3ID'
+        :'communityID', :'eventFullNoWaitlistID', :'user3ID'
     ),
     'event has reached capacity',
     'Rejects new RSVP when the event is sold out and waitlist is disabled'
@@ -292,7 +634,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventFullNoWaitlist', :'user1ID'
+        :'communityID', :'eventFullNoWaitlistID', :'user1ID'
     ),
     'user is already attending this event',
     'Rejects duplicate RSVP for a confirmed attendee'
@@ -300,7 +642,7 @@ select throws_ok(
 
 -- Should confirm a pending organizer invitation even when the event is full
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user5ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventFullNoWaitlistID'::uuid, :'user5ID'::uuid),
     'attendee',
     'Returns attendee when accepting a pending organizer invitation'
 );
@@ -309,7 +651,7 @@ select is(
     (
         select status
         from event_attendee
-        where event_id = :'eventFullNoWaitlist'::uuid
+        where event_id = :'eventFullNoWaitlistID'::uuid
         and user_id = :'user5ID'::uuid
     ),
     'confirmed',
@@ -320,7 +662,7 @@ select ok(
     (
         select manually_invited
         from event_attendee
-        where event_id = :'eventFullNoWaitlist'::uuid
+        where event_id = :'eventFullNoWaitlistID'::uuid
         and user_id = :'user5ID'::uuid
     ),
     'Keeps accepted organizer invitations marked as manually invited'
@@ -328,7 +670,7 @@ select ok(
 
 -- Should confirm a rejected organizer invitation even when the event is full
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user6ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventFullNoWaitlistID'::uuid, :'user6ID'::uuid),
     'attendee',
     'Returns attendee when reversing a rejected organizer invitation'
 );
@@ -337,7 +679,7 @@ select is(
     (
         select status
         from event_attendee
-        where event_id = :'eventFullNoWaitlist'::uuid
+        where event_id = :'eventFullNoWaitlistID'::uuid
         and user_id = :'user6ID'::uuid
     ),
     'confirmed',
@@ -346,7 +688,7 @@ select is(
 
 -- Should allow RSVP after an organizer invitation was canceled
 select is(
-    attend_event(:'communityID'::uuid, :'eventOK'::uuid, :'user3ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventOKID'::uuid, :'user3ID'::uuid),
     'attendee',
     'Returns attendee after a canceled organizer invitation'
 );
@@ -355,7 +697,7 @@ select is(
     (
         select status
         from event_attendee
-        where event_id = :'eventOK'::uuid
+        where event_id = :'eventOKID'::uuid
         and user_id = :'user3ID'::uuid
     ),
     'confirmed',
@@ -366,7 +708,7 @@ select ok(
     not (
         select manually_invited
         from event_attendee
-        where event_id = :'eventOK'::uuid
+        where event_id = :'eventOKID'::uuid
         and user_id = :'user3ID'::uuid
     ),
     'Clears manually invited when a canceled invitation is reused by a normal RSVP'
@@ -374,7 +716,7 @@ select ok(
 
 -- Should place the user on the waitlist when the event is full and waitlist is enabled
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullWaitlist'::uuid, :'user2ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventFullWaitlistID'::uuid, :'user2ID'::uuid),
     'waitlisted',
     'Returns waitlisted when the event is full and waitlist is enabled'
 );
@@ -384,14 +726,14 @@ select ok(
     exists(
         select 1
         from event_waitlist
-        where event_id = :'eventFullWaitlist'::uuid and user_id = :'user2ID'::uuid
+        where event_id = :'eventFullWaitlistID'::uuid and user_id = :'user2ID'::uuid
     ),
     'Creates event_waitlist row after joining the waitlist'
 );
 
 -- Should allow waitlist join after an organizer invitation was canceled
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullWaitlist'::uuid, :'user3ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventFullWaitlistID'::uuid, :'user3ID'::uuid),
     'waitlisted',
     'Returns waitlisted after a canceled organizer invitation for a full event'
 );
@@ -400,7 +742,7 @@ select ok(
     not exists(
         select 1
         from event_attendee
-        where event_id = :'eventFullWaitlist'::uuid
+        where event_id = :'eventFullWaitlistID'::uuid
         and user_id = :'user3ID'::uuid
     ),
     'Removes the canceled organizer invitation row before waitlisting'
@@ -410,7 +752,7 @@ select ok(
     exists(
         select 1
         from event_waitlist
-        where event_id = :'eventFullWaitlist'::uuid
+        where event_id = :'eventFullWaitlistID'::uuid
         and user_id = :'user3ID'::uuid
     ),
     'Creates waitlist row after a canceled organizer invitation'
@@ -451,7 +793,7 @@ select is(
 
 -- Should recreate attendance when an accepted request no longer has an attendee row
 select is(
-    attend_event(:'communityID'::uuid, :'eventInviteOnly'::uuid, :'user3ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventInviteOnlyID'::uuid, :'user3ID'::uuid),
     'attendee',
     'Returns attendee when an accepted requester rejoins'
 );
@@ -461,7 +803,7 @@ select ok(
     exists(
         select 1
         from event_attendee
-        where event_id = :'eventInviteOnly'::uuid and user_id = :'user3ID'::uuid
+        where event_id = :'eventInviteOnlyID'::uuid and user_id = :'user3ID'::uuid
     ),
     'Creates attendee row when an accepted requester rejoins'
 );
@@ -472,7 +814,10 @@ select is(
         :'questionsCommunityID'::uuid,
         :'eventQuestionsApprovalID'::uuid,
         :'questionsRejoinInsertUserID'::uuid,
-        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Rejoin answer"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Rejoin answer"}]}',
+            :'questionID'
+        )::jsonb
     ),
     'attendee',
     'Should allow accepted requesters to rejoin question-enabled events'
@@ -485,7 +830,10 @@ select is(
         where event_id = :'eventQuestionsApprovalID'::uuid
         and user_id = :'questionsRejoinInsertUserID'::uuid
     ),
-    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Rejoin answer"}]}'::jsonb,
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Rejoin answer"}]}',
+        :'questionID'
+    )::jsonb,
     'Should store answers when accepted requesters rejoin after cancellation'
 );
 
@@ -495,7 +843,10 @@ select is(
         :'questionsCommunityID'::uuid,
         :'eventQuestionsApprovalID'::uuid,
         :'questionsRejoinConflictUserID'::uuid,
-        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Updated rejoin answer"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Updated rejoin answer"}]}',
+            :'questionID'
+        )::jsonb
     ),
     'attendee',
     'Should allow accepted requesters to reuse canceled attendee rows'
@@ -508,13 +859,16 @@ select is(
         where event_id = :'eventQuestionsApprovalID'::uuid
         and user_id = :'questionsRejoinConflictUserID'::uuid
     ),
-    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Updated rejoin answer"}]}'::jsonb,
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Updated rejoin answer"}]}',
+        :'questionID'
+    )::jsonb,
     'Should replace stale answers when accepted requesters reuse canceled attendee rows'
 );
 
 -- Should create a pending invitation request when approval is required
 select is(
-    attend_event(:'communityID'::uuid, :'eventInviteOnly'::uuid, :'user2ID'::uuid),
+    attend_event(:'communityID'::uuid, :'eventInviteOnlyID'::uuid, :'user2ID'::uuid),
     'pending-approval',
     'Returns pending approval when the event requires invitation review'
 );
@@ -524,7 +878,7 @@ select ok(
     not exists(
         select 1
         from event_attendee
-        where event_id = :'eventInviteOnly'::uuid and user_id = :'user2ID'::uuid
+        where event_id = :'eventInviteOnlyID'::uuid and user_id = :'user2ID'::uuid
     ),
     'Does not create event_attendee row before invitation approval'
 );
@@ -534,7 +888,7 @@ select ok(
     exists(
         select 1
         from event_invitation_request
-        where event_id = :'eventInviteOnly'::uuid
+        where event_id = :'eventInviteOnlyID'::uuid
         and user_id = :'user2ID'::uuid
         and status = 'pending'
     ),
@@ -545,7 +899,7 @@ select ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInviteOnly', :'user2ID'
+        :'communityID', :'eventInviteOnlyID', :'user2ID'
     ),
     'user has already requested an invitation for this event',
     'Rejects duplicate invitation requests'
@@ -555,7 +909,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInviteOnly', :'user4ID'
+        :'communityID', :'eventInviteOnlyID', :'user4ID'
     ),
     'invitation request was rejected for this event',
     'Rejects users whose invitation request was rejected'
@@ -565,7 +919,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventFullWaitlist', :'user2ID'
+        :'communityID', :'eventFullWaitlistID', :'user2ID'
     ),
     'user is already on the waiting list for this event',
     'Rejects duplicate waitlist joins'
@@ -575,7 +929,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventUnpublished', :'user1ID'
+        :'communityID', :'eventUnpublishedID', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects unpublished events'
@@ -585,7 +939,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventCanceled', :'user1ID'
+        :'communityID', :'eventCanceledID', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects canceled events'
@@ -595,7 +949,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventDeleted', :'user1ID'
+        :'communityID', :'eventDeletedID', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects deleted events'
@@ -605,7 +959,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventPast', :'user1ID'
+        :'communityID', :'eventPastID', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects past events'
@@ -615,10 +969,57 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInactiveGroup', :'user1ID'
+        :'communityID', :'eventInactiveGroupID', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects events from inactive groups'
+);
+
+-- Should start registration-question completion from a pending attendee
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventQuestionsID'::uuid
+        and user_id = :'questionsPendingUserID'::uuid
+    ),
+    'registration-questions-pending',
+    'Should start registration-question completion from a pending attendee'
+);
+
+-- Should confirm pending registration-question attendees with valid answers
+select is(
+    attend_event(
+        :'questionsCommunityID'::uuid,
+        :'eventQuestionsID'::uuid,
+        :'questionsPendingUserID'::uuid,
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Pending answer"}]}',
+            :'questionID'
+        )::jsonb
+    ),
+    'attendee',
+    'Should confirm pending registration-question attendees with valid answers'
+);
+
+-- Should store answers when confirming pending registration-question attendees
+select is(
+    (
+        select jsonb_build_object(
+            'registration_answers',
+            registration_answers,
+            'status',
+            status
+        )
+        from event_attendee
+        where event_id = :'eventQuestionsID'::uuid
+        and user_id = :'questionsPendingUserID'::uuid
+    ),
+    format(
+        '{"registration_answers":{"answers":[{"question_id":"%s","value":"Pending answer"}]},"status":"confirmed"}',
+        :'questionID'
+    )::jsonb,
+    'Should store answers when confirming pending registration-question attendees'
 );
 
 -- Should require answers when attending an event with questions
@@ -637,7 +1038,10 @@ select is(
         :'questionsCommunityID'::uuid,
         :'eventQuestionsID'::uuid,
         :'questionsAttendeeUserID'::uuid,
-        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Attendee answer"}]}',
+            :'questionID'
+        )::jsonb
     ),
     'attendee',
     'Should attend with valid registration answers'
@@ -651,7 +1055,10 @@ select is(
         where event_id = :'eventQuestionsID'::uuid
         and user_id = :'questionsAttendeeUserID'::uuid
     ),
-    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb,
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Attendee answer"}]}',
+        :'questionID'
+    )::jsonb,
     'Should store answers submitted while attending'
 );
 
@@ -661,7 +1068,10 @@ select is(
         :'questionsCommunityID'::uuid,
         :'eventQuestionsApprovalID'::uuid,
         :'questionsRequestUserID'::uuid,
-        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Request answer"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Request answer"}]}',
+            :'questionID'
+        )::jsonb
     ),
     'pending-approval',
     'Should keep approval-required attendance pending and store answers on the request'
@@ -675,7 +1085,10 @@ select is(
         where event_id = :'eventQuestionsApprovalID'::uuid
         and user_id = :'questionsRequestUserID'::uuid
     ),
-    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Request answer"}]}'::jsonb,
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Request answer"}]}',
+        :'questionID'
+    )::jsonb,
     'Should store answers on pending invitation requests'
 );
 

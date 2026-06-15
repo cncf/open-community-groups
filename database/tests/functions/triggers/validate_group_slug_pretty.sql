@@ -3,63 +3,73 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set category1ID '00000000-0000-0000-0000-000000000611'
-\set category2ID '00000000-0000-0000-0000-000000000612'
-\set community1ID '00000000-0000-0000-0000-000000000610'
-\set community2ID '00000000-0000-0000-0000-000000000620'
-\set groupValidID '00000000-0000-0000-0000-000000000601'
-\set groupNullPrettyID '00000000-0000-0000-0000-000000000602'
+\set community1ID 'ab0a0000-0000-0000-0000-000000000001'
+\set community2ID 'ab0a0000-0000-0000-0000-000000000002'
+\set groupCategory1ID 'ab0a0000-0000-0000-0000-000000000003'
+\set groupCategory2ID 'ab0a0000-0000-0000-0000-000000000004'
+\set groupConsecutiveID 'ab0a0000-0000-0000-0000-000000000005'
+\set groupEdgeID 'ab0a0000-0000-0000-0000-000000000006'
+\set groupGeneratedCollisionID 'ab0a0000-0000-0000-0000-000000000007'
+\set groupLongID 'ab0a0000-0000-0000-0000-000000000008'
+\set groupNullPrettyID 'ab0a0000-0000-0000-0000-000000000009'
+\set groupOtherCommunityID 'ab0a0000-0000-0000-0000-000000000010'
+\set groupPrettyCollisionID 'ab0a0000-0000-0000-0000-000000000011'
+\set groupSameID 'ab0a0000-0000-0000-0000-000000000012'
+\set groupUppercaseID 'ab0a0000-0000-0000-0000-000000000013'
+\set groupValidID 'ab0a0000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
+-- Communities
 insert into community (
     community_id,
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values
     (
         :'community1ID',
         'pretty-slug-validation',
         'Pretty Slug Validation',
         'A community for pretty slug validation tests',
-        'https://example.com/logo-pretty.png',
         'https://example.com/banner-mobile-pretty.png',
-        'https://example.com/banner-pretty.png'
+        'https://example.com/banner-pretty.png',
+        'https://example.com/logo-pretty.png'
     ),
     (
         :'community2ID',
         'pretty-slug-validation-other',
         'Pretty Slug Validation Other',
         'Another community for pretty slug validation tests',
-        'https://example.com/logo-pretty-other.png',
         'https://example.com/banner-mobile-pretty-other.png',
-        'https://example.com/banner-pretty-other.png'
+        'https://example.com/banner-pretty-other.png',
+        'https://example.com/logo-pretty-other.png'
     );
 
+-- Group categories
 insert into group_category (
     group_category_id,
     community_id,
     name
 ) values
     (
-        :'category1ID',
+        :'groupCategory1ID',
         :'community1ID',
         'Pretty Slug Category'
     ),
     (
-        :'category2ID',
+        :'groupCategory2ID',
         :'community2ID',
         'Pretty Slug Category Other'
     );
@@ -74,7 +84,7 @@ select lives_ok(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         :'groupValidID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Valid',
         'prettyvalid1',
         'pretty-slug-valid'
@@ -88,7 +98,7 @@ select lives_ok(
         'insert into "group" (group_id, community_id, group_category_id, name, slug) values (%L, %L, %L, %L, %L)',
         :'groupNullPrettyID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Null',
         'prettynull1'
     ),
@@ -99,9 +109,9 @@ select lives_ok(
 select lives_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000621',
+        :'groupOtherCommunityID',
         :'community2ID',
-        :'category2ID',
+        :'groupCategory2ID',
         'Pretty Slug Other Community',
         'prettyvalidother1',
         'pretty-slug-valid'
@@ -109,13 +119,35 @@ select lives_ok(
     'Should allow the same pretty slug in another community'
 );
 
+-- Should accept direct pretty slug updates
+select lives_ok(
+    format(
+        'update "group" set slug_pretty = %L where group_id = %L',
+        'pretty-slug-updated',
+        :'groupNullPrettyID'
+    ),
+    'Should accept direct pretty slug updates'
+);
+
+-- Should reject direct pretty slug conflicts
+select throws_ok(
+    format(
+        'update "group" set slug_pretty = %L where group_id = %L',
+        'pretty-slug-valid',
+        :'groupNullPrettyID'
+    ),
+    'P0001',
+    'Pretty slug is already used by another group in this community',
+    'Should reject direct pretty slug conflicts'
+);
+
 -- Should reject uppercase characters
 select throws_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000603',
+        :'groupUppercaseID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Uppercase',
         'prettyupper1',
         'Pretty-Slug'
@@ -129,9 +161,9 @@ select throws_ok(
 select throws_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000604',
+        :'groupLongID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Long',
         'prettylong1',
         repeat('a', 51)
@@ -145,9 +177,9 @@ select throws_ok(
 select throws_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000605',
+        :'groupConsecutiveID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Consecutive',
         'prettyhyphen1',
         'pretty--slug'
@@ -161,9 +193,9 @@ select throws_ok(
 select throws_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000606',
+        :'groupEdgeID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Edge',
         'prettyedge1',
         '-pretty-slug'
@@ -177,9 +209,9 @@ select throws_ok(
 select throws_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000607',
+        :'groupSameID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Same',
         'prettysame1',
         'prettysame1'
@@ -193,9 +225,9 @@ select throws_ok(
 select throws_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000608',
+        :'groupGeneratedCollisionID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Generated Collision',
         'prettygenerated1',
         'prettyvalid1'
@@ -209,9 +241,9 @@ select throws_ok(
 select throws_ok(
     format(
         'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
-        '00000000-0000-0000-0000-000000000609',
+        :'groupPrettyCollisionID',
         :'community1ID',
-        :'category1ID',
+        :'groupCategory1ID',
         'Pretty Slug Pretty Collision',
         'prettypcollision1',
         'pretty-slug-valid'

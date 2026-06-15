@@ -9,15 +9,15 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000001'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000001'
-\set nonExistentUserID '00000000-0000-0000-0001-999999999999'
-\set userBothTeamsID '00000000-0000-0000-0001-000000000005'
-\set userCommunityOnlyID '00000000-0000-0000-0001-000000000004'
-\set userGroupOnlyID '00000000-0000-0000-0001-000000000003'
-\set userNoTeamsID '00000000-0000-0000-0001-000000000002'
-\set userWithTeamsID '00000000-0000-0000-0001-000000000001'
+\set communityID '0a050000-0000-0000-0000-000000000001'
+\set groupCategoryID '0a050000-0000-0000-0000-000000000002'
+\set groupID '0a050000-0000-0000-0000-000000000003'
+\set nonExistentUserID '0a050000-0000-0000-0000-000000000004'
+\set userBothTeamsID '0a050000-0000-0000-0000-000000000005'
+\set userCommunityOnlyID '0a050000-0000-0000-0000-000000000006'
+\set userGroupOnlyID '0a050000-0000-0000-0000-000000000007'
+\set userNoTeamsID '0a050000-0000-0000-0000-000000000008'
+\set userWithTeamsID '0a050000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
@@ -29,53 +29,90 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'Seattle community for cloud native technologies',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-);
-
--- User with all team memberships
-insert into "user" (
-    user_id,
-    bluesky_url,
-    github_url,
-    email,
-    username,
-    email_verified,
-    name,
-    provider,
-    auth_hash,
-    password
-) values (
-    :'userWithTeamsID',
-    'https://bsky.app/profile/testuser',
-    'https://github.com/testuser',
-    'test@example.com',
-    'testuser',
-    true,
-    'Test User',
-    jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
-    'test_hash',
-    'hashed_password_here'
+    'get-user-by-id-community',
+    'Get User By ID Community',
+    'Test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (
-    group_category_id,
-    community_id,
-    name
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
+
+-- Users
+insert into "user" (
+    user_id,
+    name,
+    auth_hash,
+    bluesky_url,
+    email,
+    email_verified,
+    github_url,
+    password,
+    provider,
+    username
 ) values (
-    :'categoryID'::uuid,
-    :'communityID',
-    'Test Category'
+    :'userBothTeamsID',
+    'Both Teams User',
+    'test_hash_5',
+    null,
+    'both@example.com',
+    true,
+    null,
+    null,
+    null,
+    'bothuser'
+), (
+    :'userCommunityOnlyID',
+    'Community Only User',
+    'test_hash_4',
+    null,
+    'communityonly@example.com',
+    true,
+    null,
+    null,
+    null,
+    'communityonlyuser'
+), (
+    :'userGroupOnlyID',
+    'Group Only User',
+    'test_hash_3',
+    null,
+    'grouponly@example.com',
+    true,
+    null,
+    null,
+    null,
+    'grouponlyuser'
+), (
+    :'userNoTeamsID',
+    'No Groups User',
+    'test_hash_2',
+    null,
+    'nogroups@example.com',
+    true,
+    null,
+    null,
+    null,
+    'nogroupsuser'
+), (
+    :'userWithTeamsID',
+    'Test User',
+    'test_hash',
+    'https://bsky.app/profile/testuser',
+    'test@example.com',
+    true,
+    'https://github.com/testuser',
+    'hashed_password_here',
+    jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
+    'testuser'
 );
 
 -- Group
@@ -84,162 +121,34 @@ insert into "group" (
     community_id,
     group_category_id,
     name,
-    slug,
     description,
-    website_url,
-    logo_url
+    logo_url,
+    slug,
+    website_url
 ) values (
-    :'categoryID'::uuid,
+    :'groupID',
     :'communityID',
-    :'categoryID'::uuid,
+    :'groupCategoryID',
     'Kubernetes Study Group',
-    'kubernetes-study',
     'Weekly Kubernetes study and discussion group',
-    'https://example.com',
-    'https://example.com/logo.png'
+    'https://example.com/logo.png',
+    'kubernetes-study',
+    'https://example.com'
 );
 
--- Group team membership
-insert into group_team (
-    group_id,
-    user_id,
-    role,
-    accepted
-) values (
-    :'categoryID'::uuid,
-    :'userWithTeamsID',
-    'admin',
-    true
-);
+-- Group team memberships
+insert into group_team (group_id, user_id, role, accepted)
+values
+    (:'groupID', :'userBothTeamsID', 'admin', true),
+    (:'groupID', :'userGroupOnlyID', 'admin', true),
+    (:'groupID', :'userWithTeamsID', 'admin', true);
 
--- Community team membership
-insert into community_team (
-    accepted,
-    community_id,
-    role,
-    user_id
-) values (
-    true,
-    :'communityID',
-    'admin',
-    :'userWithTeamsID'
-);
-
--- User without teams
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash
-) values (
-    :'userNoTeamsID',
-    'nogroups@example.com',
-    'nogroupsuser',
-    true,
-    'No Groups User',
-    'test_hash_2'
-);
-
--- User with group team only
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash
-) values (
-    :'userGroupOnlyID',
-    'grouponly@example.com',
-    'grouponlyuser',
-    true,
-    'Group Only User',
-    'test_hash_3'
-);
-
-insert into group_team (
-    group_id,
-    user_id,
-    role,
-    accepted
-) values (
-    :'groupID'::uuid,
-    :'userGroupOnlyID',
-    'admin',
-    true
-);
-
--- User with community team only
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash
-) values (
-    :'userCommunityOnlyID',
-    'communityonly@example.com',
-    'communityonlyuser',
-    true,
-    'Community Only User',
-    'test_hash_4'
-);
-
-insert into community_team (
-    accepted,
-    community_id,
-    role,
-    user_id
-) values (
-    true,
-    :'communityID',
-    'admin',
-    :'userCommunityOnlyID'
-);
-
--- User with both teams
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    name,
-    auth_hash
-) values (
-    :'userBothTeamsID',
-    'both@example.com',
-    'bothuser',
-    true,
-    'Both Teams User',
-    'test_hash_5'
-);
-
-insert into group_team (
-    group_id,
-    user_id,
-    role,
-    accepted
-) values (
-    :'groupID'::uuid,
-    :'userBothTeamsID',
-    'admin',
-    true
-);
-
-insert into community_team (
-    accepted,
-    community_id,
-    role,
-    user_id
-) values (
-    true,
-    :'communityID',
-    'admin',
-    :'userBothTeamsID'
-);
+-- Community team memberships
+insert into community_team (accepted, community_id, role, user_id)
+values
+    (true, :'communityID', 'admin', :'userBothTeamsID'),
+    (true, :'communityID', 'admin', :'userCommunityOnlyID'),
+    (true, :'communityID', 'admin', :'userWithTeamsID');
 
 -- ============================================================================
 -- TESTS
@@ -248,51 +157,43 @@ insert into community_team (
 -- Should return user without password when include_password is false
 select is(
     get_user_by_id(:'userWithTeamsID'::uuid, false)::jsonb,
-    '{
-        "auth_hash": "test_hash",
-        "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
-        "bluesky_url": "https://bsky.app/profile/testuser",
-        "email": "test@example.com",
-        "email_verified": true,
-        "github_url": "https://github.com/testuser",
-        "optional_notifications_enabled": true,
-        "has_password": true,
-        "name": "Test User",
-        "provider": {
-            "github": {
-                "username": "testuser-gh"
-            }
-        },
-        "user_id": "00000000-0000-0000-0001-000000000001",
-        "username": "testuser"
-    }'::jsonb,
+    jsonb_build_object(
+        'auth_hash', 'test_hash',
+        'belongs_to_any_group_team', true,
+        'belongs_to_community_team', true,
+        'bluesky_url', 'https://bsky.app/profile/testuser',
+        'email', 'test@example.com',
+        'email_verified', true,
+        'github_url', 'https://github.com/testuser',
+        'has_password', true,
+        'name', 'Test User',
+        'optional_notifications_enabled', true,
+        'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
+        'user_id', :'userWithTeamsID'::uuid,
+        'username', 'testuser'
+    ),
     'Should return user without password when include_password is false'
 );
 
 -- Should return user with password when include_password is true
 select is(
     get_user_by_id(:'userWithTeamsID'::uuid, true)::jsonb,
-    '{
-        "auth_hash": "test_hash",
-        "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
-        "bluesky_url": "https://bsky.app/profile/testuser",
-        "email": "test@example.com",
-        "email_verified": true,
-        "github_url": "https://github.com/testuser",
-        "optional_notifications_enabled": true,
-        "has_password": true,
-        "name": "Test User",
-        "password": "hashed_password_here",
-        "provider": {
-            "github": {
-                "username": "testuser-gh"
-            }
-        },
-        "user_id": "00000000-0000-0000-0001-000000000001",
-        "username": "testuser"
-    }'::jsonb,
+    jsonb_build_object(
+        'auth_hash', 'test_hash',
+        'belongs_to_any_group_team', true,
+        'belongs_to_community_team', true,
+        'bluesky_url', 'https://bsky.app/profile/testuser',
+        'email', 'test@example.com',
+        'email_verified', true,
+        'github_url', 'https://github.com/testuser',
+        'has_password', true,
+        'name', 'Test User',
+        'optional_notifications_enabled', true,
+        'password', 'hashed_password_here',
+        'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
+        'user_id', :'userWithTeamsID'::uuid,
+        'username', 'testuser'
+    ),
     'Should return user with password when include_password is true'
 );
 
@@ -306,68 +207,68 @@ select is(
 -- Should return false team membership fields when user has no team memberships
 select is(
     get_user_by_id(:'userNoTeamsID'::uuid, false)::jsonb,
-    '{
-        "auth_hash": "test_hash_2",
-        "belongs_to_any_group_team": false,
-        "belongs_to_community_team": false,
-        "email": "nogroups@example.com",
-        "email_verified": true,
-        "optional_notifications_enabled": true,
-        "name": "No Groups User",
-        "user_id": "00000000-0000-0000-0001-000000000002",
-        "username": "nogroupsuser"
-    }'::jsonb,
+    jsonb_build_object(
+        'auth_hash', 'test_hash_2',
+        'belongs_to_any_group_team', false,
+        'belongs_to_community_team', false,
+        'email', 'nogroups@example.com',
+        'email_verified', true,
+        'name', 'No Groups User',
+        'optional_notifications_enabled', true,
+        'user_id', :'userNoTeamsID'::uuid,
+        'username', 'nogroupsuser'
+    ),
     'Should return false team membership fields when user has no team memberships'
 );
 
 -- Should return correct team flags when user is only in group team
 select is(
     get_user_by_id(:'userGroupOnlyID'::uuid, false)::jsonb,
-    '{
-        "auth_hash": "test_hash_3",
-        "belongs_to_any_group_team": true,
-        "belongs_to_community_team": false,
-        "email": "grouponly@example.com",
-        "email_verified": true,
-        "optional_notifications_enabled": true,
-        "name": "Group Only User",
-        "user_id": "00000000-0000-0000-0001-000000000003",
-        "username": "grouponlyuser"
-    }'::jsonb,
+    jsonb_build_object(
+        'auth_hash', 'test_hash_3',
+        'belongs_to_any_group_team', true,
+        'belongs_to_community_team', false,
+        'email', 'grouponly@example.com',
+        'email_verified', true,
+        'name', 'Group Only User',
+        'optional_notifications_enabled', true,
+        'user_id', :'userGroupOnlyID'::uuid,
+        'username', 'grouponlyuser'
+    ),
     'Should return correct team flags when user is only in group team'
 );
 
 -- Should return belongs_to_any_group_team true when user is in community team
 select is(
     get_user_by_id(:'userCommunityOnlyID'::uuid, false)::jsonb,
-    '{
-        "auth_hash": "test_hash_4",
-        "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
-        "email": "communityonly@example.com",
-        "email_verified": true,
-        "optional_notifications_enabled": true,
-        "name": "Community Only User",
-        "user_id": "00000000-0000-0000-0001-000000000004",
-        "username": "communityonlyuser"
-    }'::jsonb,
+    jsonb_build_object(
+        'auth_hash', 'test_hash_4',
+        'belongs_to_any_group_team', true,
+        'belongs_to_community_team', true,
+        'email', 'communityonly@example.com',
+        'email_verified', true,
+        'name', 'Community Only User',
+        'optional_notifications_enabled', true,
+        'user_id', :'userCommunityOnlyID'::uuid,
+        'username', 'communityonlyuser'
+    ),
     'Should return belongs_to_any_group_team true when user is in community team'
 );
 
 -- Should return both team flags true when user is in both teams
 select is(
     get_user_by_id(:'userBothTeamsID'::uuid, false)::jsonb,
-    '{
-        "auth_hash": "test_hash_5",
-        "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
-        "email": "both@example.com",
-        "email_verified": true,
-        "optional_notifications_enabled": true,
-        "name": "Both Teams User",
-        "user_id": "00000000-0000-0000-0001-000000000005",
-        "username": "bothuser"
-    }'::jsonb,
+    jsonb_build_object(
+        'auth_hash', 'test_hash_5',
+        'belongs_to_any_group_team', true,
+        'belongs_to_community_team', true,
+        'email', 'both@example.com',
+        'email_verified', true,
+        'name', 'Both Teams User',
+        'optional_notifications_enabled', true,
+        'user_id', :'userBothTeamsID'::uuid,
+        'username', 'bothuser'
+    ),
     'Should return both team flags true when user is in both teams'
 );
 

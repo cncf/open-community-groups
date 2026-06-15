@@ -9,52 +9,113 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set attendeeUserID '90100000-0000-0000-0000-000000000031'
-\set categoryID '90100000-0000-0000-0000-000000000011'
-\set communityID '90100000-0000-0000-0000-000000000001'
-\set eventCategoryID '90100000-0000-0000-0000-000000000012'
-\set eventAttendeeAnswersID '90100000-0000-0000-0000-000000000042'
-\set eventAttendeeNullAnswersID '90100000-0000-0000-0000-000000000044'
-\set eventNoAnswersID '90100000-0000-0000-0000-000000000041'
-\set eventRequestAnswersID '90100000-0000-0000-0000-000000000043'
-\set groupID '90100000-0000-0000-0000-000000000021'
-\set nullAnswersUserID '90100000-0000-0000-0000-000000000033'
-\set requestUserID '90100000-0000-0000-0000-000000000032'
+\set attendeeUserID '0c150000-0000-0000-0000-000000000001'
+\set communityID '0c150000-0000-0000-0000-000000000002'
+\set eventAttendeeAnswersID '0c150000-0000-0000-0000-000000000003'
+\set eventAttendeeNullAnswersID '0c150000-0000-0000-0000-000000000004'
+\set eventCategoryID '0c150000-0000-0000-0000-000000000005'
+\set eventNoAnswersID '0c150000-0000-0000-0000-000000000006'
+\set eventRequestAnswersID '0c150000-0000-0000-0000-000000000007'
+\set groupCategoryID '0c150000-0000-0000-0000-000000000008'
+\set groupID '0c150000-0000-0000-0000-000000000009'
+\set nullAnswersUserID '0c150000-0000-0000-0000-00000000000a'
+\set requestUserID '0c150000-0000-0000-0000-00000000000b'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'questionnaire-community', 'Questionnaire Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'questionnaire-community',
+    'Questionnaire Community',
+    'Community for questionnaire answer tests',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'General');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'Questionnaire Group', 'questionnaire-group');
+values (
+    :'groupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Questionnaire Group',
+    'questionnaire-group'
+);
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
+insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'attendeeUserID', 'hash-1', 'attendee@example.com', 'attendee'),
-    (:'nullAnswersUserID', 'hash-3', 'null-answers@example.com', 'null-answers'),
-    (:'requestUserID', 'hash-2', 'request@example.com', 'requester');
+    (:'attendeeUserID', 'hash-1', 'attendee@example.com', true, 'attendee'),
+    (:'nullAnswersUserID', 'hash-3', 'null-answers@example.com', true, 'null-answers'),
+    (:'requestUserID', 'hash-2', 'request@example.com', true, 'requester');
 
 -- Events
-insert into event (event_id, group_id, name, slug, description, timezone, event_category_id, event_kind_id)
-values
-    (:'eventNoAnswersID', :'groupID', 'No Answers Event', 'no-answers-event', 'Desc', 'UTC', :'eventCategoryID', 'in-person'),
-    (:'eventAttendeeAnswersID', :'groupID', 'Attendee Answers Event', 'attendee-answers-event', 'Desc', 'UTC', :'eventCategoryID', 'in-person'),
-    (:'eventAttendeeNullAnswersID', :'groupID', 'Attendee Null Answers Event', 'attendee-null-answers-event', 'Desc', 'UTC', :'eventCategoryID', 'in-person'),
-    (:'eventRequestAnswersID', :'groupID', 'Request Answers Event', 'request-answers-event', 'Desc', 'UTC', :'eventCategoryID', 'in-person');
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id
+) values (
+    :'eventNoAnswersID',
+    :'groupID',
+    'No Answers Event',
+    'no-answers-event',
+    'Event without registration answers',
+    'UTC',
+    :'eventCategoryID',
+    'in-person'
+), (
+    :'eventAttendeeAnswersID',
+    :'groupID',
+    'Attendee Answers Event',
+    'attendee-answers-event',
+    'Event with attendee answers',
+    'UTC',
+    :'eventCategoryID',
+    'in-person'
+), (
+    :'eventAttendeeNullAnswersID',
+    :'groupID',
+    'Attendee Null Answers Event',
+    'attendee-null-answers-event',
+    'Event with null attendee answers',
+    'UTC',
+    :'eventCategoryID',
+    'in-person'
+), (
+    :'eventRequestAnswersID',
+    :'groupID',
+    'Request Answers Event',
+    'request-answers-event',
+    'Event with invitation request answers',
+    'UTC',
+    :'eventCategoryID',
+    'in-person'
+);
 
 -- Attendee answers
 insert into event_attendee (event_id, user_id, registration_answers)

@@ -9,49 +9,70 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set eventID '00000000-0000-0000-0000-000000000021'
-\set eventNoTicketTypesID '00000000-0000-0000-0000-000000000022'
-\set groupCategoryID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000041'
-\set ticketTypeAlphaID '00000000-0000-0000-0000-000000000051'
-\set ticketTypeWorkshopID '00000000-0000-0000-0000-000000000052'
-\set user1ID '00000000-0000-0000-0000-000000000061'
-\set user2ID '00000000-0000-0000-0000-000000000062'
-\set user3ID '00000000-0000-0000-0000-000000000063'
-\set user4ID '00000000-0000-0000-0000-000000000064'
-\set windowAlphaCurrentID '00000000-0000-0000-0000-000000000071'
-\set windowAlphaExpiredID '00000000-0000-0000-0000-000000000072'
-\set windowAlphaFutureID '00000000-0000-0000-0000-000000000073'
-\set windowWorkshopID '00000000-0000-0000-0000-000000000074'
+\set communityID '0c120000-0000-0000-0000-000000000001'
+\set eventCategoryID '0c120000-0000-0000-0000-000000000002'
+\set eventID '0c120000-0000-0000-0000-000000000003'
+\set eventNoTicketTypesID '0c120000-0000-0000-0000-000000000004'
+\set groupCategoryID '0c120000-0000-0000-0000-000000000005'
+\set groupID '0c120000-0000-0000-0000-000000000006'
+\set ticketTypeAlphaID '0c120000-0000-0000-0000-000000000007'
+\set ticketTypeWorkshopID '0c120000-0000-0000-0000-000000000008'
+\set user1ID '0c120000-0000-0000-0000-000000000009'
+\set user2ID '0c120000-0000-0000-0000-00000000000a'
+\set user3ID '0c120000-0000-0000-0000-00000000000b'
+\set user4ID '0c120000-0000-0000-0000-00000000000c'
+\set windowAlphaCurrentID '0c120000-0000-0000-0000-00000000000d'
+\set windowAlphaExpiredID '0c120000-0000-0000-0000-00000000000e'
+\set windowAlphaFutureID '0c120000-0000-0000-0000-00000000000f'
+\set windowWorkshopID '0c120000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'community', 'Community', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'ticket-type-community',
+    'Ticket Type Community',
+    'Community for ticket type tests',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, community_id, name) values
     (:'groupCategoryID', :'communityID', 'Tech');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name) values
     (:'eventCategoryID', :'communityID', 'Meetup');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified) values
-    (:'user1ID', 'test_hash', 'user1@example.test', 'user1', true),
-    (:'user2ID', 'test_hash', 'user2@example.test', 'user2', true),
-    (:'user3ID', 'test_hash', 'user3@example.test', 'user3', true),
-    (:'user4ID', 'test_hash', 'user4@example.test', 'user4', true);
+insert into "user" (user_id, auth_hash, email, email_verified, username) values
+    (:'user1ID', 'test_hash', 'user1@example.test', true, 'user1'),
+    (:'user2ID', 'test_hash', 'user2@example.test', true, 'user2'),
+    (:'user3ID', 'test_hash', 'user3@example.test', true, 'user3'),
+    (:'user4ID', 'test_hash', 'user4@example.test', true, 'user4');
+
+-- Group
+insert into "group" (group_id, community_id, group_category_id, name, slug) values
+    (
+        :'groupID',
+        :'communityID',
+        :'groupCategoryID',
+        'Ticket Type Group',
+        'ticket-type-group'
+    );
 
 -- Events
 insert into event (
@@ -64,9 +85,27 @@ insert into event (
     event_category_id,
     event_kind_id,
     published
-) values
-    (:'eventID', :'groupID', 'Event with ticket types', 'event-with-ticket-types', 'd', 'UTC', :'eventCategoryID', 'virtual', true),
-    (:'eventNoTicketTypesID', :'groupID', 'Event without ticket types', 'event-without-ticket-types', 'd', 'UTC', :'eventCategoryID', 'virtual', true);
+) values (
+    :'eventID',
+    :'groupID',
+    'Event with ticket types',
+    'event-with-ticket-types',
+    'Event with ticket types',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    true
+), (
+    :'eventNoTicketTypesID',
+    :'groupID',
+    'Event without ticket types',
+    'event-without-ticket-types',
+    'Event without ticket types',
+    'UTC',
+    :'eventCategoryID',
+    'virtual',
+    true
+);
 
 -- Event ticket types
 insert into event_ticket_type (
@@ -135,11 +174,43 @@ insert into event_purchase (
     status,
     ticket_title,
     user_id
-) values
-    (2500, 'USD', :'eventID', :'ticketTypeAlphaID', null, 'completed', 'Alpha pass', :'user1ID'),
-    (2500, 'USD', :'eventID', :'ticketTypeAlphaID', current_timestamp + interval '1 hour', 'pending', 'Alpha pass', :'user2ID'),
-    (2500, 'USD', :'eventID', :'ticketTypeAlphaID', current_timestamp - interval '1 hour', 'pending', 'Alpha pass', :'user3ID'),
-    (2500, 'USD', :'eventID', :'ticketTypeAlphaID', null, 'refund-requested', 'Alpha pass', :'user4ID');
+) values (
+    2500,
+    'USD',
+    :'eventID',
+    :'ticketTypeAlphaID',
+    null,
+    'completed',
+    'Alpha pass',
+    :'user1ID'
+), (
+    2500,
+    'USD',
+    :'eventID',
+    :'ticketTypeAlphaID',
+    current_timestamp + interval '1 hour',
+    'pending',
+    'Alpha pass',
+    :'user2ID'
+), (
+    2500,
+    'USD',
+    :'eventID',
+    :'ticketTypeAlphaID',
+    current_timestamp - interval '1 hour',
+    'pending',
+    'Alpha pass',
+    :'user3ID'
+), (
+    2500,
+    'USD',
+    :'eventID',
+    :'ticketTypeAlphaID',
+    null,
+    'refund-requested',
+    'Alpha pass',
+    :'user4ID'
+);
 
 -- ============================================================================
 -- TESTS

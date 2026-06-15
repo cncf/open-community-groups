@@ -15,40 +15,40 @@ select lives_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "What do you want to learn?",
                     "required": true,
                     "options": []
                 },
                 {
-                    "id": "90000000-0000-0000-0000-000000000102",
+                    "id": "0c1e0000-0000-0000-0000-000000000002",
                     "kind": "single-select",
                     "prompt": "Meal preference",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1e0000-0000-0000-0000-000000000004",
                             "label": "Standard"
                         },
                         {
-                            "id": "90000000-0000-0000-0000-000000000202",
+                            "id": "0c1e0000-0000-0000-0000-000000000005",
                             "label": "Vegetarian"
                         }
                     ]
                 },
                 {
-                    "id": "90000000-0000-0000-0000-000000000103",
+                    "id": "0c1e0000-0000-0000-0000-000000000003",
                     "kind": "multi-select",
                     "prompt": "Topics",
                     "required": false,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000203",
+                            "id": "0c1e0000-0000-0000-0000-000000000006",
                             "label": "Rust"
                         },
                         {
-                            "id": "90000000-0000-0000-0000-000000000204",
+                            "id": "0c1e0000-0000-0000-0000-000000000007",
                             "label": "PostgreSQL"
                         }
                     ]
@@ -57,17 +57,17 @@ select lives_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": "Scaling communities"
                     },
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000102",
-                        "value": "90000000-0000-0000-0000-000000000202"
+                        "question_id": "0c1e0000-0000-0000-0000-000000000002",
+                        "value": "0c1e0000-0000-0000-0000-000000000005"
                     },
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000103",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000003",
                         "value": [
-                            "90000000-0000-0000-0000-000000000203"
+                            "0c1e0000-0000-0000-0000-000000000006"
                         ]
                     }
                 ]
@@ -83,14 +83,14 @@ select lives_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Required",
                     "required": true,
                     "options": []
                 },
                 {
-                    "id": "90000000-0000-0000-0000-000000000102",
+                    "id": "0c1e0000-0000-0000-0000-000000000002",
                     "kind": "free-text",
                     "prompt": "Optional",
                     "required": false,
@@ -100,7 +100,7 @@ select lives_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": "Answered"
                     }
                 ]
@@ -118,7 +118,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": "Answered"
                     }
                 ]
@@ -135,7 +135,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -155,7 +155,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -177,7 +177,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -201,7 +201,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -227,7 +227,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -237,11 +237,11 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": "One"
                     },
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": "Two"
                     }
                 ]
@@ -258,7 +258,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": false,
@@ -268,7 +268,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000999",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000008",
                         "value": "Answer"
                     }
                 ]
@@ -285,7 +285,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -307,7 +307,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -317,7 +317,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": "  "
                     }
                 ]
@@ -334,13 +334,13 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "single-select",
                     "prompt": "Question",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1e0000-0000-0000-0000-000000000004",
                             "label": "One"
                         }
                     ]
@@ -349,8 +349,8 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
-                        "value": "90000000-0000-0000-0000-000000000999"
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
+                        "value": "0c1e0000-0000-0000-0000-000000000008"
                     }
                 ]
             }'::jsonb
@@ -366,13 +366,13 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "multi-select",
                     "prompt": "Question",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1e0000-0000-0000-0000-000000000004",
                             "label": "One"
                         }
                     ]
@@ -381,10 +381,10 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": [
-                            "90000000-0000-0000-0000-000000000201",
-                            "90000000-0000-0000-0000-000000000201"
+                            "0c1e0000-0000-0000-0000-000000000004",
+                            "0c1e0000-0000-0000-0000-000000000004"
                         ]
                     }
                 ]
@@ -401,13 +401,13 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "multi-select",
                     "prompt": "Question",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1e0000-0000-0000-0000-000000000004",
                             "label": "One"
                         }
                     ]
@@ -416,7 +416,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": [
                             "bad"
                         ]
@@ -435,7 +435,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -445,7 +445,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101",
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001",
                         "value": 42
                     }
                 ]
@@ -462,7 +462,7 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "free-text",
                     "prompt": "Question",
                     "required": true,
@@ -472,7 +472,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101"
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001"
                     }
                 ]
             }'::jsonb
@@ -488,13 +488,13 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "single-select",
                     "prompt": "Question",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1e0000-0000-0000-0000-000000000004",
                             "label": "One"
                         }
                     ]
@@ -503,7 +503,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101"
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001"
                     }
                 ]
             }'::jsonb
@@ -519,13 +519,13 @@ select throws_ok(
         select validate_questionnaire_answers_payload(
             '[
                 {
-                    "id": "90000000-0000-0000-0000-000000000101",
+                    "id": "0c1e0000-0000-0000-0000-000000000001",
                     "kind": "multi-select",
                     "prompt": "Question",
                     "required": true,
                     "options": [
                         {
-                            "id": "90000000-0000-0000-0000-000000000201",
+                            "id": "0c1e0000-0000-0000-0000-000000000004",
                             "label": "One"
                         }
                     ]
@@ -534,7 +534,7 @@ select throws_ok(
             '{
                 "answers": [
                     {
-                        "question_id": "90000000-0000-0000-0000-000000000101"
+                        "question_id": "0c1e0000-0000-0000-0000-000000000001"
                     }
                 ]
             }'::jsonb

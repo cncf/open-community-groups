@@ -9,27 +9,31 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set attendee1ID '00000000-0000-0000-0000-000000000041'
-\set attendee2ID '00000000-0000-0000-0000-000000000042'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCommunityLogoFallbackID '00000000-0000-0000-0000-000000000033'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000032'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set eventPaidID '00000000-0000-0000-0000-000000000034'
-\set eventQuestionsID '90400000-0000-0000-0000-000000000043'
-\set eventSeriesID '00000000-0000-0000-0000-000000000035'
-\set expiredCheckoutUserID '90400000-0000-0000-0000-000000000037'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set groupNoLogoID '00000000-0000-0000-0000-000000000022'
-\set pendingInviteID '00000000-0000-0000-0000-000000000046'
-\set activeCheckoutUserID '90400000-0000-0000-0000-000000000038'
-\set questionsSeatedUserID '90400000-0000-0000-0000-000000000036'
-\set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
-\set ticketPriceWindowID '00000000-0000-0000-0000-000000000045'
-\set ticketTypeID '00000000-0000-0000-0000-000000000044'
-\set waitlistUserID '00000000-0000-0000-0000-000000000043'
+\set activeCheckoutUserID '0c090000-0000-0000-0000-000000000001'
+\set attendee1ID '0c090000-0000-0000-0000-000000000002'
+\set attendee2ID '0c090000-0000-0000-0000-000000000003'
+\set communityID '0c090000-0000-0000-0000-000000000004'
+\set eventCategoryID '0c090000-0000-0000-0000-000000000005'
+\set eventCommunityLogoFallbackID '0c090000-0000-0000-0000-000000000006'
+\set eventGroupLogoFallbackID '0c090000-0000-0000-0000-000000000007'
+\set eventID '0c090000-0000-0000-0000-000000000008'
+\set eventPaidID '0c090000-0000-0000-0000-000000000009'
+\set eventQuestionsID '0c090000-0000-0000-0000-00000000000a'
+\set eventSeriesID '0c090000-0000-0000-0000-00000000000b'
+\set expiredCheckoutUserID '0c090000-0000-0000-0000-00000000000c'
+\set groupCategoryID '0c090000-0000-0000-0000-00000000000d'
+\set groupID '0c090000-0000-0000-0000-00000000000e'
+\set groupNoLogoID '0c090000-0000-0000-0000-00000000000f'
+\set pendingInviteID '0c090000-0000-0000-0000-000000000010'
+\set questionID '0c090000-0000-0000-0000-000000000011'
+\set questionsSeatedUserID '0c090000-0000-0000-0000-000000000012'
+\set questionsWaitlistUserID '0c090000-0000-0000-0000-000000000013'
+\set ticketPriceWindowID '0c090000-0000-0000-0000-000000000014'
+\set ticketTypeID '0c090000-0000-0000-0000-000000000015'
+\set unknownCommunityID '0c090000-0000-0000-0000-000000000016'
+\set unknownEventID '0c090000-0000-0000-0000-000000000017'
+\set unknownGroupID '0c090000-0000-0000-0000-000000000018'
+\set waitlistUserID '0c090000-0000-0000-0000-000000000019'
 
 -- ============================================================================
 -- SEED DATA
@@ -41,42 +45,119 @@ insert into community (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'communityID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant community for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Tech Talks', :'communityID');
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'Tech Talks');
+
+-- Attendees for remaining capacity verification
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+
+    created_at
+) values (
+    :'attendee1ID',
+    'attendee-hash',
+    'attendee1@example.com',
+    true,
+    'attendee1',
+
+    '2024-01-01 00:00:00+00'
+), (
+    :'attendee2ID',
+    'attendee-hash',
+    'attendee2@example.com',
+    true,
+    'attendee2',
+
+    '2024-01-01 00:00:00+00'
+), (
+    :'waitlistUserID',
+    'attendee-hash',
+    'waitlist@example.com',
+    true,
+    'waitlist-user',
+
+    '2024-01-01 00:00:00+00'
+), (
+    :'pendingInviteID',
+    'attendee-hash',
+    'pending@example.com',
+    true,
+    'pending-invite',
+
+    '2024-01-01 00:00:00+00'
+), (
+    :'expiredCheckoutUserID',
+    'registration-hash',
+    'rq-expired-checkout@test.com',
+    true,
+    'rq-expired-checkout',
+
+    '2024-01-01 00:00:00+00'
+), (
+    :'activeCheckoutUserID',
+    'registration-hash',
+    'rq-active-checkout@test.com',
+    true,
+    'rq-active-checkout',
+
+    '2024-01-01 00:00:00+00'
+), (
+    :'questionsSeatedUserID',
+    'registration-hash',
+    'rq-seated@test.com',
+    true,
+    'rq-seated',
+
+    '2024-01-01 00:00:00+00'
+), (
+    :'questionsWaitlistUserID',
+    'registration-hash',
+    'rq-waitlist@test.com',
+    true,
+    'rq-waitlist',
+
+    '2024-01-01 00:00:00+00'
+);
 
 -- Group
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active,
     logo_url
 ) values (
     :'groupID',
+    :'communityID',
+    :'groupCategoryID',
     'Seattle Kubernetes Meetup',
     'abc1234',
-    :'communityID',
-    :'categoryID',
+
     true,
     'https://example.com/group-logo.png'
 );
@@ -84,84 +165,20 @@ insert into "group" (
 -- Group without logo
 insert into "group" (
     group_id,
-    name,
-    slug,
     community_id,
     group_category_id,
+    name,
+    slug,
+
     active
 ) values (
     :'groupNoLogoID',
+    :'communityID',
+    :'groupCategoryID',
     'Seattle Kubernetes Meetup No Logo',
     'abc5678',
-    :'communityID',
-    :'categoryID',
-    true
-);
 
--- Attendees for remaining capacity verification
-insert into "user" (
-    user_id,
-    email,
-    username,
-    email_verified,
-    auth_hash,
-    created_at
-) values (
-    :'attendee1ID',
-    'attendee1@example.com',
-    'attendee1',
-    true,
-    'attendee-hash',
-    '2024-01-01 00:00:00+00'
-), (
-    :'attendee2ID',
-    'attendee2@example.com',
-    'attendee2',
-    true,
-    'attendee-hash',
-    '2024-01-01 00:00:00+00'
-), (
-    :'waitlistUserID',
-    'waitlist@example.com',
-    'waitlist-user',
-    true,
-    'attendee-hash',
-    '2024-01-01 00:00:00+00'
-), (
-    :'pendingInviteID',
-    'pending@example.com',
-    'pending-invite',
-    true,
-    'attendee-hash',
-    '2024-01-01 00:00:00+00'
-), (
-    :'expiredCheckoutUserID',
-    'rq-expired-checkout@test.com',
-    'rq-expired-checkout',
-    true,
-    'h',
-    '2024-01-01 00:00:00+00'
-), (
-    :'activeCheckoutUserID',
-    'rq-active-checkout@test.com',
-    'rq-active-checkout',
-    true,
-    'h',
-    '2024-01-01 00:00:00+00'
-), (
-    :'questionsSeatedUserID',
-    'rq-seated@test.com',
-    'rq-seated',
-    true,
-    'h',
-    '2024-01-01 00:00:00+00'
-), (
-    :'questionsWaitlistUserID',
-    'rq-waitlist@test.com',
-    'rq-waitlist',
-    true,
-    'h',
-    '2024-01-01 00:00:00+00'
+    true
 );
 
 -- Event Series
@@ -240,7 +257,10 @@ insert into event (
     5,
     null,
     true,
-    ST_SetSRID(ST_MakePoint(-122.3321, 47.6062), 4326),  -- Seattle coordinates (different from group)
+    ST_SetSRID(
+        ST_MakePoint(-122.3321, 47.6062),
+        4326
+    ),  -- Seattle coordinates (different from group)
     'https://example.com/event-logo.png',
 
     :'eventSeriesID'
@@ -353,7 +373,7 @@ insert into event (
     :'groupID',
     'Waitlist Questions Event',
     'waitlist-questions-event',
-    'Desc',
+    'Event for waitlist registration question tests',
     'UTC',
     :'eventCategoryID',
     'in-person',
@@ -361,7 +381,10 @@ insert into event (
     '2030-01-03 10:00:00+00',
     2,
     true,
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+        :'questionID'
+    )::jsonb
 );
 
 -- Event ticket type
@@ -456,11 +479,11 @@ select is(
         :'groupID'::uuid,
         :'eventID'::uuid
     )::jsonb,
-    '{
+    format('{
         "canceled": false,
         "community_display_name": "Cloud Native Seattle",
         "community_name": "cloud-native-seattle",
-        "event_id": "00000000-0000-0000-0000-000000000031",
+        "event_id": "%s",
         "group_category_name": "Technology",
         "group_name": "Seattle Kubernetes Meetup",
         "group_slug": "abc1234",
@@ -476,7 +499,7 @@ select is(
         "capacity": 5,
         "description_short": "Annual Kubernetes conference short summary",
         "ends_at": 1718470800,
-        "event_series_id": "00000000-0000-0000-0000-000000000035",
+        "event_series_id": "%s",
         "latitude": 47.6062,
         "logo_url": "https://example.com/event-logo.png",
         "longitude": -122.3321,
@@ -494,7 +517,7 @@ select is(
         "waitlist_count": 1,
         "waitlist_enabled": true,
         "zip_code": "10001"
-    }'::jsonb,
+    }', :'eventID', :'eventSeriesID')::jsonb,
     'Should return correct event summary data as JSON'
 );
 
@@ -600,7 +623,7 @@ select ok(
     get_event_summary(
         :'communityID'::uuid,
         :'groupID'::uuid,
-        '00000000-0000-0000-0000-000000999999'::uuid
+        :'unknownEventID'::uuid
     ) is null,
     'Should return null for non-existent event ID'
 );
@@ -609,7 +632,7 @@ select ok(
 select ok(
     get_event_summary(
         :'communityID'::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        :'unknownGroupID'::uuid,
         :'eventID'::uuid
     ) is null,
     'Should return null when group does not match event'
@@ -618,7 +641,7 @@ select ok(
 -- Should return null when community does not match event
 select ok(
     get_event_summary(
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        :'unknownCommunityID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     ) is null,

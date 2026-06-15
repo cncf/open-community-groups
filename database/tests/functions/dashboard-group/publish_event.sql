@@ -9,57 +9,73 @@ select plan(18);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
-\set eventNoStartDateID '00000000-0000-0000-0000-000000000033'
-\set eventPublishedID '00000000-0000-0000-0000-000000000036'
-\set eventTicketedNoRecipientID '00000000-0000-0000-0000-000000000034'
-\set eventTicketedInvalidCurrencyID '00000000-0000-0000-0000-000000000035'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set groupNoRecipientID '00000000-0000-0000-0000-000000000022'
-\set previousPublisherID '00000000-0000-0000-0000-000000000042'
-\set sessionMeetingID '00000000-0000-0000-0000-000000000051'
-\set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
-\set sessionPublishedMeetingID '00000000-0000-0000-0000-000000000053'
-\set ticketTypeNoRecipientID '00000000-0000-0000-0000-000000000061'
-\set ticketTypeInvalidCurrencyID '00000000-0000-0000-0000-000000000062'
-\set userID '00000000-0000-0000-0000-000000000041'
+\set communityID '3a2b0000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a2b0000-0000-0000-0000-000000000002'
+\set eventID '3a2b0000-0000-0000-0000-000000000003'
+\set eventNoMeetingID '3a2b0000-0000-0000-0000-000000000004'
+\set eventNoStartDateID '3a2b0000-0000-0000-0000-000000000005'
+\set eventPublishedID '3a2b0000-0000-0000-0000-000000000006'
+\set eventTicketedInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000007'
+\set eventTicketedNoRecipientID '3a2b0000-0000-0000-0000-000000000008'
+\set groupCategoryID '3a2b0000-0000-0000-0000-000000000009'
+\set groupID '3a2b0000-0000-0000-0000-000000000010'
+\set groupNoRecipientID '3a2b0000-0000-0000-0000-000000000011'
+\set missingGroupID '3a2b0000-0000-0000-0000-000000000012'
+\set previousPublisherID '3a2b0000-0000-0000-0000-000000000013'
+\set sessionMeetingID '3a2b0000-0000-0000-0000-000000000014'
+\set sessionNoMeetingID '3a2b0000-0000-0000-0000-000000000015'
+\set sessionPublishedMeetingID '3a2b0000-0000-0000-0000-000000000016'
+\set ticketTypeInvalidCurrencyID '3a2b0000-0000-0000-0000-000000000017'
+\set ticketTypeNoRecipientID '3a2b0000-0000-0000-0000-000000000018'
+\set userID '3a2b0000-0000-0000-0000-000000000019'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'General');
 
 -- Group
 insert into "group" (
     group_id,
     community_id,
+    group_category_id,
     name,
     slug,
     description,
-    group_category_id,
     payment_recipient
 ) values (
     :'groupID',
     :'communityID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
     'A test group',
-    :'groupCategoryID',
     jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group')
 );
 
@@ -67,26 +83,24 @@ insert into "group" (
 insert into "group" (
     group_id,
     community_id,
+    group_category_id,
     name,
     slug,
-    description,
-    group_category_id
+    description
 ) values (
     :'groupNoRecipientID',
     :'communityID',
+    :'groupCategoryID',
     'No Recipient Group',
     'no-recipient-group',
-    'A group without a payment recipient',
-    :'groupCategoryID'
+    'A group without a payment recipient'
 );
 
--- User (publisher)
+-- Users
 insert into "user" (user_id, auth_hash, email, username)
-values (:'userID', 'x', 'user@test.local', 'user');
-
--- User (previous publisher)
-insert into "user" (user_id, auth_hash, email, username)
-values (:'previousPublisherID', 'x', 'publisher@test.local', 'publisher');
+values
+    (:'userID', 'publisher-hash', 'user@test.local', 'user'),
+    (:'previousPublisherID', 'previous-publisher-hash', 'publisher@test.local', 'publisher');
 
 -- Event (unpublished, with meeting_in_sync=true to verify it gets set to false)
 insert into event (
@@ -377,7 +391,12 @@ insert into session (
 
 -- Should set published and metadata
 select lives_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, null)$$,
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupID',
+        :'eventID'
+    ),
     'Should set published and metadata'
 );
 
@@ -416,18 +435,25 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'event_published',
-            '00000000-0000-0000-0000-000000000041'::uuid,
+            %L::uuid,
             'user',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'event',
-            '00000000-0000-0000-0000-000000000031'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'userID',
+        :'communityID',
+        :'groupID',
+        :'eventID',
+        :'eventID'
+    ),
     'Should create the expected audit row'
 );
 
@@ -454,13 +480,19 @@ select is(
 
 -- Should leave an already published event unchanged
 select lives_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000036'::uuid, null)$$,
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupID',
+        :'eventPublishedID'
+    ),
     'Should leave an already published event unchanged'
 );
 
 -- Should preserve already published event metadata and meeting sync
 select results_eq(
-    $$
+    format(
+        $$
         select
             e.meeting_in_sync,
             e.published_at,
@@ -468,16 +500,21 @@ select results_eq(
             s.meeting_in_sync
         from event e
         join session s on s.event_id = e.event_id
-        where e.event_id = '00000000-0000-0000-0000-000000000036'::uuid
-    $$,
-    $$
+        where e.event_id = %L::uuid
+        $$,
+        :'eventPublishedID'
+    ),
+    format(
+        $$
         values (
             true,
             '2025-01-01 10:00:00+00'::timestamptz,
-            '00000000-0000-0000-0000-000000000042'::uuid,
+            %L::uuid,
             true
         )
-    $$,
+        $$,
+        :'previousPublisherID'
+    ),
     'Should preserve already published event metadata and meeting sync'
 );
 
@@ -490,7 +527,12 @@ select is(
 
 -- Should publish event when meeting_requested=false
 select lives_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid, null)$$,
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupID',
+        :'eventNoMeetingID'
+    ),
     'Should publish event when meeting_requested=false'
 );
 
@@ -510,28 +552,48 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid, null)$$,
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'missingGroupID',
+        :'eventID'
+    ),
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );
 
 -- Should throw error when event has no start date
 select throws_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000033'::uuid, null)$$,
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, null)',
+        :'userID',
+        :'groupID',
+        :'eventNoStartDateID'
+    ),
     'event must have a start date to be published',
     'Should throw error when event has no start date'
 );
 
 -- Should throw error when ticketed event group has no payment recipient
 select throws_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000034'::uuid, 'stripe')$$,
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, ''stripe'')',
+        :'userID',
+        :'groupNoRecipientID',
+        :'eventTicketedNoRecipientID'
+    ),
     'ticketed events require a payment recipient',
     'Should throw error when ticketed event group has no payment recipient'
 );
 
 -- Should reject ticketed events whose currency code is unsupported
 select throws_ok(
-    $$select publish_event('00000000-0000-0000-0000-000000000041'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000035'::uuid, 'stripe')$$,
+    format(
+        'select publish_event(%L::uuid, %L::uuid, %L::uuid, ''stripe'')',
+        :'userID',
+        :'groupID',
+        :'eventTicketedInvalidCurrencyID'
+    ),
     'payment_currency_code must be a supported currency code',
     'Should reject ticketed events whose currency code is unsupported'
 );

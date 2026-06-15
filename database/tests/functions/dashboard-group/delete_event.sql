@@ -9,14 +9,15 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventID '00000000-0000-0000-0000-000000000003'
-\set eventNoMeetingID '00000000-0000-0000-0000-000000000004'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set sessionMeetingID '00000000-0000-0000-0000-000000000051'
-\set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
+\set communityID '3a0a0000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a0a0000-0000-0000-0000-000000000002'
+\set eventID '3a0a0000-0000-0000-0000-000000000003'
+\set eventNoMeetingID '3a0a0000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a0a0000-0000-0000-0000-000000000005'
+\set groupID '3a0a0000-0000-0000-0000-000000000006'
+\set missingGroupID '3a0a0000-0000-0000-0000-000000000007'
+\set sessionMeetingID '3a0a0000-0000-0000-0000-000000000008'
+\set sessionNoMeetingID '3a0a0000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
@@ -43,7 +44,7 @@ insert into community (
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+values (:'eventCategoryID', 'Conference', :'communityID');
 
 -- Group Category
 insert into group_category (group_category_id, name, community_id)
@@ -91,7 +92,7 @@ insert into event (
     'container-security-workshop',
     'Deep dive into container security best practices and threat mitigation',
     'America/New_York',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     now(),
     now() + interval '1 hour',
@@ -125,7 +126,7 @@ insert into event (
     'event-no-meeting',
     'An event without meeting requested',
     'America/New_York',
-    :'categoryID',
+    :'eventCategoryID',
     'in-person',
     now(),
     now() + interval '1 hour',
@@ -225,18 +226,21 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'event_deleted',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            '00000000-0000-0000-0000-000000000003'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'event',
-            '00000000-0000-0000-0000-000000000003'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'communityID', :'groupID', :'eventID', :'eventID'
+    ),
     'Should create the expected audit row'
 );
 
@@ -285,7 +289,10 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select delete_event(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000003'::uuid)$$,
+    format(
+        $$select delete_event(null::uuid, %L::uuid, %L::uuid)$$,
+        :'missingGroupID', :'eventID'
+    ),
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

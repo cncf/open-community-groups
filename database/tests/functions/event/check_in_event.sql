@@ -3,64 +3,78 @@
 -- ============================================================================
 
 begin;
-select plan(23);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set checkInWindowEventID '00000000-0000-0000-0000-000000000032'
-\set communityID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set futureEventID '00000000-0000-0000-0000-000000000031'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set multiDayEventID '00000000-0000-0000-0000-000000000034'
-\set noStartTimeEventID '00000000-0000-0000-0000-000000000036'
-\set pastEventID '00000000-0000-0000-0000-000000000033'
-\set sameDayWithEndsAtEventID '00000000-0000-0000-0000-000000000035'
-\set userID '00000000-0000-0000-0000-000000000041'
-\set userID2 '00000000-0000-0000-0000-000000000042'
+\set checkInWindowEventID '5e030000-0000-0000-0000-000000000001'
+\set communityID '5e030000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e030000-0000-0000-0000-000000000003'
+\set futureEventID '5e030000-0000-0000-0000-000000000004'
+\set groupCategoryID '5e030000-0000-0000-0000-000000000005'
+\set groupID '5e030000-0000-0000-0000-000000000006'
+\set multiDayEventID '5e030000-0000-0000-0000-000000000007'
+\set noStartTimeEventID '5e030000-0000-0000-0000-000000000008'
+\set pastEventID '5e030000-0000-0000-0000-000000000009'
+\set sameDayWithEndsAtEventID '5e030000-0000-0000-0000-00000000000a'
+\set unknownEventID '5e030000-0000-0000-0000-00000000000b'
+\set userID '5e030000-0000-0000-0000-00000000000c'
+\set userID2 '5e030000-0000-0000-0000-00000000000d'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into community (
+    community_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'communityID',
+    'test-community',
+    'Test Community',
+    'A test community',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+-- Group category
+insert into group_category (group_category_id, community_id, name)
+values (:'groupCategoryID', :'communityID', 'Technology');
 
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'General');
 
--- User 1
-insert into "user" (user_id, auth_hash, email, username)
-values (:'userID', 'x', 'user@test.local', 'user');
-
--- User 2
-insert into "user" (user_id, auth_hash, email, username)
-values (:'userID2', 'x', 'user2@test.local', 'user2');
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values
+    (:'userID', 'user-hash', 'user@test.local', true, 'user'),
+    (:'userID2', 'user-2-hash', 'user2@test.local', true, 'user2');
 
 -- Group
 insert into "group" (
     group_id,
     community_id,
+    group_category_id,
     name,
     slug,
-    description,
-    group_category_id
+    description
 ) values (
     :'groupID',
     :'communityID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
-    'A test group',
-    :'groupCategoryID'
+    'A test group'
 );
 
 -- Event 1: Future event (outside check-in window)
@@ -264,16 +278,6 @@ select is(
     'Should mark attendee as checked in'
 );
 
--- Should set the checked_in_at timestamp
-select ok(
-    (
-        select checked_in_at is not null
-        from event_attendee
-        where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid
-    ),
-    'Should set checked_in_at timestamp'
-);
-
 -- Should set checked_in_at to a recent timestamp
 select ok(
     (
@@ -329,7 +333,10 @@ select throws_ok(
 
 -- Should error when event not found
 select throws_ok(
-    $$select check_in_event('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000041'::uuid, false)$$,
+    format(
+        'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
+        :'communityID', :'unknownEventID', :'userID'
+    ),
     'event not found or inactive',
     'Should throw error when event does not exist'
 );
