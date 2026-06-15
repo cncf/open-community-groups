@@ -1,6 +1,11 @@
 import { getElementById, setElementHidden } from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 
+const EXPLORE_SECTION_ID = "entity-section";
+const DATE_FROM_FIELD_NAME = "date_from";
+const DATE_TO_FIELD_NAME = "date_to";
+const TEXT_SEARCH_INPUT_SELECTOR = 'input[name="ts_query"]';
+
 /**
  * Formats a date object to ISO format (YYYY-MM-DD).
  * @param {Date} date - The date object to format
@@ -8,6 +13,53 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
  */
 const formatDate = (date) => {
   return date.toISOString().split("T")[0];
+};
+
+/**
+ * Sets date range values on matching inputs.
+ * @param {NodeListOf<HTMLInputElement>} inputs - Date fields to update
+ * @param {object} range - Date range values
+ * @param {string} range.from - Start date value
+ * @param {string} range.to - End date value
+ */
+const setDateRangeInputs = (inputs, { from, to }) => {
+  inputs.forEach((input) => {
+    if (input.name === DATE_FROM_FIELD_NAME) {
+      input.value = from;
+    } else if (input.name === DATE_TO_FIELD_NAME) {
+      input.value = to;
+    }
+  });
+};
+
+/**
+ * Resets date filters to the default range for the current form mode.
+ * @param {HTMLFormElement} form - Form containing date filter inputs
+ */
+const resetDateInputs = (form) => {
+  const dateInputs = form.querySelectorAll("input[type=date]");
+  if (dateInputs.length > 0) {
+    setDateRangeInputs(dateInputs, getDefaultDateRange());
+    return;
+  }
+
+  const { first, last } = getFirstAndLastDayOfMonth();
+  setDateRangeInputs(form.querySelectorAll("input[type=hidden]"), {
+    from: first,
+    to: last,
+  });
+};
+
+/**
+ * Clears the explore text search associated with the active section.
+ * @param {HTMLFormElement} form - Form whose explore section owns the search
+ */
+const clearExploreSearchInput = (form) => {
+  const exploreSection = form.closest(`#${EXPLORE_SECTION_ID}`);
+  const searchInput = exploreSection?.querySelector(TEXT_SEARCH_INPUT_SELECTOR);
+  if (searchInput) {
+    searchInput.value = "";
+  }
 };
 
 /**
@@ -68,35 +120,10 @@ export const resetFilters = async (formId) => {
   form.querySelectorAll("input[type=checkbox]").forEach((el) => (el.checked = false));
   form.querySelectorAll("input[type=radio]").forEach((el) => (el.checked = false));
 
-  // Date inputs are hidden when view mode is "calendar"
-  const dateInputs = form.querySelectorAll("input[type=date]");
-  if (dateInputs.length > 0) {
-    const { from, to } = getDefaultDateRange();
-    // Reset date inputs
-    dateInputs.forEach((el) => {
-      if (el.name === "date_from") {
-        el.value = from;
-      } else if (el.name === "date_to") {
-        el.value = to;
-      }
-    });
-  } else {
-    const { first, last } = getFirstAndLastDayOfMonth();
-
-    const inputs = form.querySelectorAll("input[type=hidden]");
-    if (inputs) {
-      inputs.forEach((input) => {
-        if (input.name === "date_from") {
-          input.value = first;
-        } else if (input.name === "date_to") {
-          input.value = last;
-        }
-      });
-    }
-  }
+  resetDateInputs(form);
 
   // Reset text search input
-  document.querySelector('input[name="ts_query"]').value = "";
+  clearExploreSearchInput(form);
 
   // Reset sort by
   const sortSelector = getElementById(document, "sort_selector");

@@ -1,6 +1,7 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { triggerChangeOnForm } from "/static/js/community/explore/filters.js";
+
+const FILTER_CHANGE_EVENT = "filter-change";
 
 /**
  * Collapsible filter component for managing multiple selection options.
@@ -162,14 +163,16 @@ export class CollapsibleFilter extends LitWrapper {
   }
 
   /**
-   * Dynamically finds and returns the parent form ID.
-   * Uses DOM traversal to locate the nearest form element.
-   * @returns {string|null} Parent form ID or null if no form found
+   * Emits a selection change event for page-level filter handling.
    * @private
    */
-  _getParentFormId() {
-    const form = this.closest("form");
-    return form ? form.id : null;
+  _dispatchFilterChange() {
+    this.dispatchEvent(
+      new CustomEvent(FILTER_CHANGE_EVENT, {
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   /**
@@ -200,16 +203,12 @@ export class CollapsibleFilter extends LitWrapper {
     this.requestUpdate();
     await this.updateComplete;
 
-    const parentFormId = this._getParentFormId();
-    if (parentFormId) {
-      // Trigger change event on the form
-      triggerChangeOnForm(parentFormId);
-    }
+    this._dispatchFilterChange();
   }
 
   /**
    * Handles "Any" option selection by clearing all selections.
-   * Triggers form change event after component update.
+   * Emits a filter change event after component update.
    * @private
    */
   async _onSelectAny() {
@@ -225,11 +224,7 @@ export class CollapsibleFilter extends LitWrapper {
     this.requestUpdate();
     await this.updateComplete;
 
-    const parentFormId = this._getParentFormId();
-    if (parentFormId) {
-      // Trigger change event on the form
-      triggerChangeOnForm(parentFormId);
-    }
+    this._dispatchFilterChange();
   }
 
   /**

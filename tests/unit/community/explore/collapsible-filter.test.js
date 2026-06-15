@@ -1,7 +1,6 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/community/explore/collapsible-filter.js";
-import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 import {
   mountLitComponent,
   useMountedElementsCleanup,
@@ -9,16 +8,6 @@ import {
 
 describe("collapsible-filter", () => {
   useMountedElementsCleanup("collapsible-filter");
-
-  let htmx;
-
-  beforeEach(() => {
-    htmx = mockHtmx();
-  });
-
-  afterEach(() => {
-    htmx.restore();
-  });
 
   it("expands when a hidden option is selected initially", async () => {
     // Render the collapsible-filter fixture.
@@ -41,6 +30,8 @@ describe("collapsible-filter", () => {
     // Build the DOM fixture with filters form.
     document.body.innerHTML = '<form id="filters-form"></form>';
     const form = document.getElementById("filters-form");
+    const filterChangeEvents = [];
+    form.addEventListener("filter-change", (event) => filterChangeEvents.push(event));
     const element = document.createElement("collapsible-filter");
     Object.assign(element, {
       options: [
@@ -67,10 +58,9 @@ describe("collapsible-filter", () => {
 
     // Assert the element state.
     expect(element.selected).to.deep.equal([]);
-    expect(htmx.triggerCalls).to.deep.equal([
-      [form, "change"],
-      [form, "change"],
-    ]);
+    expect(filterChangeEvents).to.have.length(2);
+    expect(filterChangeEvents[0].target).to.equal(element);
+    expect(filterChangeEvents[1].target).to.equal(element);
   });
 
   it("resets dependent filters when configured and an option is selected", async () => {

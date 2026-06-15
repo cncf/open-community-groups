@@ -36,6 +36,7 @@ const EXPLORE_WIDGET_READY_KEY = "exploreWidgetReady";
 const CURRENT_MONTH_BUTTON_ID = "current-month-btn";
 const PREV_MONTH_BUTTON_ID = "prev-month-btn";
 const NEXT_MONTH_BUTTON_ID = "next-month-btn";
+const FILTER_CHANGE_EVENT = "filter-change";
 
 /**
  * Gets the active desktop explore form id.
@@ -187,6 +188,17 @@ const handleExploreChange = (event) => {
 };
 
 /**
+ * Handles custom filter component changes.
+ * @param {CustomEvent} event - Filter change event
+ */
+const handleFilterChange = (event) => {
+  const form = closestElement(event.target, FILTER_FORM_SELECTOR);
+  if (form?.id) {
+    triggerChangeOnForm(form.id);
+  }
+};
+
+/**
  * Re-initializes dynamic widgets restored from HTMX history cache.
  */
 const handleExploreHistoryRestore = async () => {
@@ -276,6 +288,7 @@ const initializeExploreControls = (root = document) => {
   root.addEventListener("click", handleExploreClick);
   root.addEventListener("keydown", handleExploreKeydown);
   root.addEventListener("change", handleExploreChange);
+  root.addEventListener(FILTER_CHANGE_EVENT, handleFilterChange);
   root.addEventListener("htmx:afterSwap", handleExploreAfterSwap);
   root.addEventListener("htmx:historyRestore", handleExploreHistoryRestore);
   syncNoResultsPlaceholders(root);

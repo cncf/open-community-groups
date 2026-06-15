@@ -41,25 +41,15 @@ describe("explore filters", () => {
 
     // Verify opens and closes the mobile filters drawer.
     openFiltersDrawer();
-    expect(
-      document
-        .getElementById("drawer-filters")
-        ?.classList.contains("-translate-x-full"),
-    ).to.equal(false);
-    expect(
-      document.getElementById("drawer-backdrop")?.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(document.getElementById("drawer-filters")?.classList.contains("-translate-x-full")).to.equal(
+      false,
+    );
+    expect(document.getElementById("drawer-backdrop")?.classList.contains("hidden")).to.equal(false);
 
     // Verify opens and closes the mobile filters drawer.
     closeFiltersDrawer();
-    expect(
-      document
-        .getElementById("drawer-filters")
-        ?.classList.contains("-translate-x-full"),
-    ).to.equal(true);
-    expect(
-      document.getElementById("drawer-backdrop")?.classList.contains("hidden"),
-    ).to.equal(true);
+    expect(document.getElementById("drawer-filters")?.classList.contains("-translate-x-full")).to.equal(true);
+    expect(document.getElementById("drawer-backdrop")?.classList.contains("hidden")).to.equal(true);
   });
 
   it("cleans inputs and optionally triggers a form change", () => {
@@ -74,9 +64,7 @@ describe("explore filters", () => {
 
     // Assert the saved value was updated.
     expect(document.getElementById("search")?.value).to.equal("");
-    expect(htmx.triggerCalls).to.deep.equal([
-      [document.getElementById("events-form"), "change"],
-    ]);
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
   });
 
   it("only triggers changes from search when the query is not empty", () => {
@@ -95,9 +83,7 @@ describe("explore filters", () => {
     triggerChangeOnForm("events-form", true);
 
     // Non-empty search text triggers a change.
-    expect(htmx.triggerCalls).to.deep.equal([
-      [document.getElementById("events-form"), "change"],
-    ]);
+    expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
   });
 
   it("redirects escaped text searches when pressing enter outside a form", () => {
@@ -166,11 +152,7 @@ describe("explore filters", () => {
     `;
 
     // Call update sort inputs from selector.
-    updateSortInputsFromSelector(
-      document.getElementById("sort_selector"),
-      "sort_by",
-      "sort_direction",
-    );
+    updateSortInputsFromSelector(document.getElementById("sort_selector"), "sort_by", "sort_direction");
 
     // Assert the saved value was updated.
     expect(document.getElementById("sort_by")?.value).to.equal("date");
@@ -179,9 +161,7 @@ describe("explore filters", () => {
 
   it("formats and updates date ranges", () => {
     // Verify formats and updates date ranges.
-    expect(
-      getFirstAndLastDayOfMonth(new Date("2025-02-15T12:00:00Z")),
-    ).to.deep.equal({
+    expect(getFirstAndLastDayOfMonth(new Date("2025-02-15T12:00:00Z"))).to.deep.equal({
       first: "2025-02-01",
       last: "2025-02-28",
     });
@@ -196,12 +176,8 @@ describe("explore filters", () => {
     updateDateInput(new Date("2025-03-20T12:00:00Z"));
 
     // Assert the saved value was updated.
-    expect(document.querySelector('input[name="date_from"]')?.value).to.equal(
-      "2025-03-01",
-    );
-    expect(document.querySelector('input[name="date_to"]')?.value).to.equal(
-      "2025-03-31",
-    );
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal("2025-03-01");
+    expect(document.querySelector('input[name="date_to"]')?.value).to.equal("2025-03-31");
 
     // Prepare default range for formatting and updates date ranges.
     const defaultRange = getDefaultDateRange();
@@ -256,13 +232,9 @@ describe("explore filters", () => {
     unckeckAllKinds();
 
     // Assert the saved value was updated.
-    expect(document.querySelector('input[name="date_from"]')?.value).to.equal(
-      "",
-    );
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal("");
     expect(document.querySelector('input[name="date_to"]')?.value).to.equal("");
-    expect(
-      document.querySelectorAll("input[name='kind[]']:checked"),
-    ).to.have.length(0);
+    expect(document.querySelectorAll("input[name='kind[]']:checked")).to.have.length(0);
   });
 
   it("resets filters, custom components, search, and sort inputs back to defaults", async () => {
@@ -283,13 +255,16 @@ describe("explore filters", () => {
 
     // Render the DOM fixture for resetting filters, custom components, search.
     document.body.innerHTML = `
-      <form id="events-form">
-        <input type="checkbox" name="kind[]" checked />
-        <input type="radio" name="view" value="" />
-        <input type="date" name="date_from" value="2025-01-01" />
-        <input type="date" name="date_to" value="2025-12-31" />
-      </form>
-      <input name="ts_query" value="kubecon" />
+      <div id="entity-section">
+        <form id="events-form">
+          <input type="checkbox" name="kind[]" checked />
+          <input type="radio" name="view" value="" />
+          <input type="date" name="date_from" value="2025-01-01" />
+          <input type="date" name="date_to" value="2025-12-31" />
+        </form>
+        <input name="ts_query" value="kubecon" />
+      </div>
+      <input id="outside-search" name="ts_query" value="dashboard" />
       <select id="sort_selector">
         <option value="date-asc">Date</option>
         <option value="name" selected>Name</option>
@@ -305,28 +280,37 @@ describe("explore filters", () => {
     // Resetting restores filters, custom inputs, search, and sort.
     expect(collapsible.dataset.cleared).to.equal("true");
     expect(multiSelect.dataset.cleared).to.equal("true");
-    expect(
-      document.querySelectorAll('input[name="kind[]"]:checked'),
-    ).to.have.length(0);
-    expect(document.querySelector('input[name="date_from"]')?.value).to.equal(
-      from,
-    );
+    expect(document.querySelectorAll('input[name="kind[]"]:checked')).to.have.length(0);
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal(from);
     expect(document.querySelector('input[name="date_to"]')?.value).to.equal(to);
-    expect(document.querySelector('input[name="ts_query"]')?.value).to.equal(
-      "",
-    );
-    expect(document.getElementById("sort_selector")?.value).to.equal(
-      "date-asc",
-    );
+    expect(document.querySelector('input[name="ts_query"]')?.value).to.equal("");
+    expect(document.getElementById("outside-search")?.value).to.equal("dashboard");
+    expect(document.getElementById("sort_selector")?.value).to.equal("date-asc");
     expect(document.getElementById("sort_by")?.value).to.equal("date");
     expect(document.getElementById("sort_direction")?.value).to.equal("asc");
-    expect(
-      document.querySelector('input[type="radio"][value=""]')?.checked,
-    ).to.equal(true);
-    expect(htmx.triggerCalls.at(-1)).to.deep.equal([
-      document.getElementById("events-form"),
-      "change",
-    ]);
+    expect(document.querySelector('input[type="radio"][value=""]')?.checked).to.equal(true);
+    expect(htmx.triggerCalls.at(-1)).to.deep.equal([document.getElementById("events-form"), "change"]);
+  });
+
+  it("resets hidden date filters without requiring a search input", async () => {
+    // Render the calendar-mode form without the external search field.
+    const { first, last } = getFirstAndLastDayOfMonth();
+    document.body.innerHTML = `
+      <div id="entity-section">
+        <form id="events-form">
+          <input type="hidden" name="date_from" value="2025-01-01" />
+          <input type="hidden" name="date_to" value="2025-12-31" />
+        </form>
+      </div>
+    `;
+
+    // Resetting should not depend on the optional text search field.
+    await resetFilters("events-form");
+
+    // Hidden calendar date fields reset to the current month range.
+    expect(document.querySelector('input[name="date_from"]')?.value).to.equal(first);
+    expect(document.querySelector('input[name="date_to"]')?.value).to.equal(last);
+    expect(htmx.triggerCalls.at(-1)).to.deep.equal([document.getElementById("events-form"), "change"]);
   });
 
   it("detects active calendar filters from current-month dates and other active filters", () => {

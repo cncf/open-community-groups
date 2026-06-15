@@ -1,7 +1,8 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { triggerChangeOnForm } from "/static/js/community/explore/filters.js";
+
+const FILTER_CHANGE_EVENT = "filter-change";
 
 /**
  * Multi-select filter component with search input and badge display.
@@ -61,10 +62,7 @@ export class MultiSelectFilter extends LitWrapper {
       const reconciled = this.selected.filter((v) => validValues.has(v));
       if (reconciled.length !== this.selected.length) {
         this.selected = reconciled;
-        const parentFormId = this._getParentFormId();
-        if (parentFormId) {
-          triggerChangeOnForm(parentFormId);
-        }
+        this.updateComplete.then(() => this._dispatchFilterChange());
       }
     }
   }
@@ -135,10 +133,7 @@ export class MultiSelectFilter extends LitWrapper {
     this.requestUpdate();
     await this.updateComplete;
 
-    const parentFormId = this._getParentFormId();
-    if (parentFormId) {
-      triggerChangeOnForm(parentFormId);
-    }
+    this._dispatchFilterChange();
   }
 
   /**
@@ -154,20 +149,20 @@ export class MultiSelectFilter extends LitWrapper {
     this.requestUpdate();
     await this.updateComplete;
 
-    const parentFormId = this._getParentFormId();
-    if (parentFormId) {
-      triggerChangeOnForm(parentFormId);
-    }
+    this._dispatchFilterChange();
   }
 
   /**
-   * Dynamically finds and returns the parent form ID.
-   * @returns {string|null} Parent form ID or null
+   * Emits a selection change event for page-level filter handling.
    * @private
    */
-  _getParentFormId() {
-    const form = this.closest("form");
-    return form ? form.id : null;
+  _dispatchFilterChange() {
+    this.dispatchEvent(
+      new CustomEvent(FILTER_CHANGE_EVENT, {
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   /**

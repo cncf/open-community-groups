@@ -2,26 +2,17 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/community/explore/multi-select-filter.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
-import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("multi-select-filter", () => {
   useMountedElementsCleanup("multi-select-filter");
 
-  let htmx;
-
-  beforeEach(() => {
-    htmx = mockHtmx();
-  });
-
-  afterEach(() => {
-    htmx.restore();
-  });
-
   it("filters typed options and renders hidden inputs for selected values", async () => {
     // Render the DOM fixture for filtering typed options and renders hidden inputs.
     document.body.innerHTML = '<form id="filters-form"></form>';
     const form = document.getElementById("filters-form");
+    const filterChangeEvents = [];
+    form.addEventListener("filter-change", (event) => filterChangeEvents.push(event));
     const element = document.createElement("multi-select-filter");
     Object.assign(element, {
       options: [
@@ -58,10 +49,9 @@ describe("multi-select-filter", () => {
 
     // Verify filters typed options and renders hidden inputs for selected values.
     expect(element.selected).to.deep.equal([]);
-    expect(htmx.triggerCalls).to.deep.equal([
-      [form, "change"],
-      [form, "change"],
-    ]);
+    expect(filterChangeEvents).to.have.length(2);
+    expect(filterChangeEvents[0].target).to.equal(element);
+    expect(filterChangeEvents[1].target).to.equal(element);
   });
 
   it("supports keyboard navigation and closes on outside clicks", async () => {

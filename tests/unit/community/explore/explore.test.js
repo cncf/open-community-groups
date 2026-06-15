@@ -421,6 +421,28 @@ describe("explore helpers", () => {
     expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
   });
 
+  it("delegates custom filter changes to the originating form", () => {
+    // Build desktop and mobile forms to verify the event source owns the trigger.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form"></form>
+      </div>
+      <form id="events-form-mobile" class="filters-form">
+        <div id="mobile-filter"></div>
+      </form>
+    `;
+
+    // Dispatch the filter event from the mobile form.
+    document.getElementById("mobile-filter").dispatchEvent(
+      new CustomEvent("filter-change", { bubbles: true }),
+    );
+
+    // The mobile form is triggered, even though a desktop form is also present.
+    expect(htmx.triggerCalls).to.deep.equal([
+      [document.getElementById("events-form-mobile"), "change"],
+    ]);
+  });
+
   it("delegates mobile filter drawer actions", () => {
     // Build the DOM fixture with mobile drawer controls.
     document.body.innerHTML = `
