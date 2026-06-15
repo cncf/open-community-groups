@@ -1,5 +1,11 @@
 {% extends "common/base.html" -%}
 
+{% block vendor_styles -%}
+  <link rel="stylesheet" href="/static/vendor/css/leaflet.v1.9.4.min.css" />
+  <link rel="stylesheet"
+        href="/static/vendor/css/leaflet.markercluster.v1.5.3.min.css" />
+{% endblock vendor_styles -%}
+
 {% block scripts -%}
   <script type="module"
           src="/static/js/community/explore/collapsible-filter.js"></script>

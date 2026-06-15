@@ -1,5 +1,14 @@
 {% extends "common/base.html" -%}
 
+{% block vendor_styles -%}
+  <link rel="stylesheet" href="/static/vendor/css/leaflet.v1.9.4.min.css" />
+  <link rel="stylesheet" href="/static/vendor/css/easymde.v2.20.0.min.css" />
+{% endblock vendor_styles -%}
+
+{% block vendor_scripts -%}
+  <script src="/static/vendor/js/easymde.v2.20.0.min.js"></script>
+{% endblock vendor_scripts -%}
+
 {% block content -%}
   {# Skip navigation link -#}
   <a href="#dashboard-main-content"

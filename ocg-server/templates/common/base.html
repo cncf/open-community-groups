@@ -50,10 +50,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     {# Styles -#}
-    <link rel="stylesheet" href="/static/vendor/css/leaflet.v1.9.4.min.css" />
-    <link rel="stylesheet"
-          href="/static/vendor/css/leaflet.markercluster.v1.5.3.min.css" />
-    <link rel="stylesheet" href="/static/vendor/css/easymde.v2.20.0.min.css" />
+    {% block vendor_styles -%}
+    {% endblock vendor_styles -%}
     <link rel="stylesheet" href="/static/css/styles.css" />
     <style>
       :root {
@@ -72,14 +70,13 @@
     <script type="text/javascript" src="/static/vendor/js/htmx.v2.0.7.min.js"></script>
     <script type="text/javascript"
             src="/static/vendor/js/sweetalert2.v11.23.0.min.js"></script>
-    <script src="/static/vendor/js/easymde.v2.20.0.min.js"></script>
+    {% block vendor_scripts -%}
+    {% endblock vendor_scripts -%}
     <script type="module" src="/static/js/common/app-init.js"></script>
     <script type="module" src="/static/js/common/header.js"></script>
     <script type="module" src="/static/js/common/modals/modal-toggle-bindings.js"></script>
     <script type="module" src="/static/js/common/form-validation.js"></script>
     <script type="module" src="/static/js/common/ad-banner.js"></script>
-    <script type="module" src="/static/js/event/attendance.js"></script>
-    <script type="module" src="/static/js/group/membership.js"></script>
     {# End scripts -#}
   </head>
   {# djlint:off #}
