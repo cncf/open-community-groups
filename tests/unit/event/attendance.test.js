@@ -41,7 +41,12 @@ const renderAttendanceDom = ({
       data-attendee-approval-required="${attendeeApprovalRequired}"
     >
       <button data-attendance-role="attendance-checker"></button>
-      <button data-attendance-role="loading-btn" class="hidden">
+      <button
+        data-attendance-role="loading-btn"
+        role="status"
+        aria-live="polite"
+        class="hidden"
+      >
         <span data-attendance-label>Loading</span>
       </button>
       <button
@@ -416,6 +421,8 @@ describe("event attendance", () => {
     // Verify shows loading state before attending and emits a waitlist success.
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.getAttribute("role")).to.equal("status");
+    expect(loadingButton.getAttribute("aria-live")).to.equal("polite");
 
     // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(attendButton, {

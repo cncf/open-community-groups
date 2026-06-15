@@ -9,6 +9,10 @@ import { isEscapeEvent } from "/static/js/common/keyboard.js";
 import "/static/js/dashboard/event/sessions/item.js";
 import { createEmptySession } from "/static/js/dashboard/event/sessions/schedule.js";
 
+const MODAL_FOCUS_SELECTOR =
+  "[autofocus], button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), " +
+  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /**
  * Modal for adding/editing sessions.
  * @extends LitWrapper
@@ -64,6 +68,7 @@ class SessionFormModal extends LitWrapper {
     this._handleKeydown = this._handleKeydown.bind(this);
     this._onDataChange = this._onDataChange.bind(this);
     this._removeDismissListeners = null;
+    this._focusOrigin = null;
   }
 
   connectedCallback() {
@@ -84,10 +89,13 @@ class SessionFormModal extends LitWrapper {
    * @param {string} prefilledDate - Date to pre-fill for the session
    */
   open(session = null, prefilledDate = "") {
+    const activeElement = document.activeElement;
+    this._focusOrigin = activeElement instanceof HTMLElement ? activeElement : null;
     this._isNewSession = !session;
     this._session = session ? { ...session } : createEmptySession(Date.now());
     this._prefilledDate = prefilledDate;
     this._isOpen = openModalBodyScroll(this._isOpen);
+    this.updateComplete.then(() => this._focusOpenModal());
   }
 
   /**
@@ -100,6 +108,37 @@ class SessionFormModal extends LitWrapper {
     this._session = null;
     this._prefilledDate = "";
     this._isOpen = closeModalBodyScroll(wasOpen);
+    this._restoreFocus();
+  }
+
+  /**
+   * Moves focus to the first useful modal control after render.
+   * @private
+   */
+  _focusOpenModal() {
+    if (!this._isOpen) return;
+    const dialog = this.querySelector('[role="dialog"]');
+    const focusTarget =
+      dialog?.querySelector("session-item input:not([disabled]), session-item select:not([disabled])") ||
+      dialog?.querySelector(MODAL_FOCUS_SELECTOR);
+    if (focusTarget instanceof HTMLElement) {
+      focusTarget.focus();
+      return;
+    }
+    if (dialog instanceof HTMLElement) {
+      dialog.focus();
+    }
+  }
+
+  /**
+   * Restores focus to the control that opened the modal.
+   * @private
+   */
+  _restoreFocus() {
+    if (this._focusOrigin instanceof HTMLElement && document.contains(this._focusOrigin)) {
+      this._focusOrigin.focus();
+    }
+    this._focusOrigin = null;
   }
 
   /**
@@ -182,6 +221,7 @@ class SessionFormModal extends LitWrapper {
         role="dialog"
         aria-modal="true"
         aria-labelledby="session-form-modal-title"
+        tabindex="-1"
         data-pending-changes-ignore
       >
         <div class="absolute inset-0 bg-stone-950 opacity-35" @click=${() => this.close()}></div>

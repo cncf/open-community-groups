@@ -73,4 +73,14 @@ describe("markdown-editor", () => {
     // The markdown editor forwards the updated EasyMDE value.
     expect(values).to.deep.equal(["## Updated"]);
   });
+
+  it("applies the optional input id to the textarea", async () => {
+    // Render the markdown-editor fixture with a labelable input id.
+    const element = await mountLitComponent("markdown-editor", {
+      inputId: "description-input",
+    });
+
+    // The textarea receives the id without requiring the host id to match.
+    expect(element.querySelector("textarea")?.id).to.equal("description-input");
+  });
 });

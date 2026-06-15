@@ -1,4 +1,4 @@
-import { html, createRef, ref } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, createRef, nothing, ref } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
 /**
@@ -10,6 +10,7 @@ export class MarkdownEditor extends LitWrapper {
   /**
    * Component properties definition
    * @property {string} id - Editor ID attribute
+   * @property {string} inputId - Textarea ID attribute
    * @property {string} name - Form input name
    * @property {string} content - Initial markdown content
    * @property {boolean} required - Whether input is required
@@ -19,6 +20,7 @@ export class MarkdownEditor extends LitWrapper {
    */
   static properties = {
     id: { type: String },
+    inputId: { type: String, attribute: "input-id" },
     name: { type: String },
     content: { type: String },
     required: { type: Boolean },
@@ -34,6 +36,7 @@ export class MarkdownEditor extends LitWrapper {
   constructor() {
     super();
     this.id = "id";
+    this.inputId = "";
     this.name = undefined;
     this.content = "";
     this.required = false;
@@ -87,6 +90,7 @@ export class MarkdownEditor extends LitWrapper {
       <div class="relative text-sm/6 ${this.mini ? "mini" : ""}">
         <textarea
           ${ref(this.textareaRef)}
+          id=${this.inputId || nothing}
           name=${this.name || this.id}
           class="absolute top-0 left-0 opacity-0 p-0"
           ?required=${this.required}

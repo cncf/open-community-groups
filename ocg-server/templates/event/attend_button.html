@@ -17,6 +17,8 @@
   {# Loading spinner -#}
   <button id="loading-btn-{{ attendance_instance }}"
           data-attendance-role="loading-btn"
+          role="status"
+          aria-live="polite"
           disabled
           class="group relative is-loading btn-primary-outline h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
     {{ ui::spinner(size = "size-4") -}}

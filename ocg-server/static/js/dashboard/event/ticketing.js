@@ -21,7 +21,7 @@ import { getElementById } from "/static/js/common/dom.js";
  */
 const resolveEventEnrollmentControls = (root = document) => ({
   attendeeApprovalRequiredInput: getElementById(root, "attendee_approval_required"),
-  attendeeApprovalToggleLabel: getElementById(root, "attendee-approval-toggle-label"),
+  attendeeApprovalToggleLabel: root.querySelector('[data-enrollment-toggle-label="attendee-approval"]'),
   capacityInput: getElementById(root, "capacity"),
   clearTicketingInput: getElementById(root, "clear_ticketing"),
   discountCodesRoot: getElementById(root, "discount-codes-ui"),
@@ -32,7 +32,7 @@ const resolveEventEnrollmentControls = (root = document) => ({
   toggleClearTicketing: getElementById(root, "toggle_clear_ticketing"),
   toggleWaitlistEnabled: getElementById(root, "toggle_waitlist_enabled"),
   waitlistEnabledInput: getElementById(root, "waitlist_enabled"),
-  waitlistToggleLabel: getElementById(root, "waitlist-toggle-label"),
+  waitlistToggleLabel: root.querySelector('[data-enrollment-toggle-label="waitlist"]'),
 });
 
 /**

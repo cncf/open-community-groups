@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, nothing, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 
@@ -175,6 +175,11 @@ export class MultiSelectFilter extends LitWrapper {
 
   render() {
     const selectedOptions = this._selectedOptions;
+    const listboxId = `${this.name}-filter-listbox`;
+    const activeOptionId =
+      this._combobox.activeIndex === null
+        ? nothing
+        : `${this.name}-filter-option-${this._combobox.activeIndex}`;
 
     return html`
       <div class="px-6 py-7 pt-5 border-b border-stone-100">
@@ -187,6 +192,13 @@ export class MultiSelectFilter extends LitWrapper {
             <div class="svg-icon size-3 icon-search bg-stone-400 shrink-0"></div>
             <input
               type="text"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls=${listboxId}
+              aria-expanded=${String(this._combobox.isOpen)}
+              aria-haspopup="listbox"
+              aria-activedescendant=${activeOptionId}
+              aria-label=${`${this.title} filter`}
               class="flex-1 text-base md:text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0"
               placeholder="${this.placeholder}"
               autocomplete="off"
@@ -199,6 +211,7 @@ export class MultiSelectFilter extends LitWrapper {
               ? html`
                   <button
                     type="button"
+                    aria-label=${`Clear ${this.title}`}
                     class="text-stone-400 hover:text-stone-700 shrink-0"
                     @click=${() => this._clearQuery()}
                   >
@@ -215,7 +228,7 @@ export class MultiSelectFilter extends LitWrapper {
                 >
                   ${this._filteredOptions.length > 0
                     ? html`
-                        <ul class="py-1" role="listbox">
+                        <ul id=${listboxId} class="py-1" role="listbox">
                           ${repeat(
                             this._filteredOptions,
                             (opt) => opt.value,
@@ -224,26 +237,24 @@ export class MultiSelectFilter extends LitWrapper {
                               const isActive = this._combobox.activeIndex === index;
 
                               return html`
-                                <li role="presentation">
-                                  <button
-                                    type="button"
-                                    class="w-full px-3 py-2 text-left text-[0.775rem] flex items-center gap-2 ${isActive
-                                      ? "bg-stone-50"
-                                      : "hover:bg-stone-50"}"
-                                    role="option"
-                                    aria-selected=${isSelected}
-                                    @click=${() => {
-                                      this._toggleOption(opt.value);
-                                    }}
-                                    @mouseover=${() => this._combobox.setActiveIndex(index)}
-                                  >
-                                    <span class="shrink-0 w-4 h-4 flex items-center justify-center">
-                                      ${isSelected
-                                        ? html`<div class="svg-icon size-3 icon-check bg-primary-500"></div>`
-                                        : ""}
-                                    </span>
-                                    <span class="text-stone-700">${opt.name}</span>
-                                  </button>
+                                <li
+                                  id=${`${this.name}-filter-option-${index}`}
+                                  class="w-full px-3 py-2 text-left text-[0.775rem] flex items-center gap-2 cursor-pointer ${isActive
+                                    ? "bg-stone-50"
+                                    : "hover:bg-stone-50"}"
+                                  role="option"
+                                  aria-selected=${String(isSelected)}
+                                  @click=${() => {
+                                    this._toggleOption(opt.value);
+                                  }}
+                                  @mouseover=${() => this._combobox.setActiveIndex(index)}
+                                >
+                                  <span class="shrink-0 w-4 h-4 flex items-center justify-center">
+                                    ${isSelected
+                                      ? html`<div class="svg-icon size-3 icon-check bg-primary-500"></div>`
+                                      : ""}
+                                  </span>
+                                  <span class="text-stone-700">${opt.name}</span>
                                 </li>
                               `;
                             },
@@ -269,6 +280,7 @@ export class MultiSelectFilter extends LitWrapper {
                       <span>${opt.name}</span>
                       <button
                         type="button"
+                        aria-label=${`Remove ${opt.name}`}
                         class="text-stone-400 hover:text-stone-700"
                         @click=${(event) => this._removeOption(opt.value, event)}
                       >

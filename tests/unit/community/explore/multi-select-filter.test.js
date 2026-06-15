@@ -15,6 +15,7 @@ describe("multi-select-filter", () => {
     form.addEventListener("filter-change", (event) => filterChangeEvents.push(event));
     const element = document.createElement("multi-select-filter");
     Object.assign(element, {
+      title: "Group",
       options: [
         { value: "cloud", name: "Cloud" },
         { value: "security", name: "Security" },
@@ -33,6 +34,13 @@ describe("multi-select-filter", () => {
 
     // Verify filters typed options and renders hidden inputs for selected values.
     expect(element._filteredOptions).to.deep.equal([{ value: "security", name: "Security" }]);
+    expect(input.getAttribute("role")).to.equal("combobox");
+    expect(input.getAttribute("aria-expanded")).to.equal("true");
+    expect(input.getAttribute("aria-controls")).to.equal("name-filter-listbox");
+    expect(element.querySelector('[role="listbox"]')?.id).to.equal("name-filter-listbox");
+    expect(element.querySelector('[role="listbox"]')?.children[0]?.getAttribute("role")).to.equal(
+      "option",
+    );
 
     // Verify filters typed options and renders hidden inputs.
     element.querySelector('[role="option"]')?.click();
@@ -42,6 +50,8 @@ describe("multi-select-filter", () => {
     expect(element.selected).to.deep.equal(["security"]);
     expect(element.querySelector('input[type="hidden"][value="security"]')).to.not.equal(null);
     expect(element.textContent).to.include("Security");
+    expect(element.querySelector('[aria-label="Clear Group"]')).to.not.equal(null);
+    expect(element.querySelector('[aria-label="Remove Security"]')).to.not.equal(null);
 
     // Verify selected options stay mirrored in hidden inputs.
     element.querySelectorAll(".icon-close")[1]?.closest("button")?.click();
@@ -57,6 +67,7 @@ describe("multi-select-filter", () => {
   it("supports keyboard navigation and closes on outside clicks", async () => {
     // Call mount lit component.
     const element = await mountLitComponent("multi-select-filter", {
+      title: "Group",
       options: [
         { value: "cloud", name: "Cloud" },
         { value: "security", name: "Security" },
@@ -76,6 +87,7 @@ describe("multi-select-filter", () => {
     // Verify supports keyboard navigation and closes on outside clicks.
     expect(element.selected).to.deep.equal(["cloud"]);
     expect(element._combobox.isOpen).to.equal(true);
+    expect(input.getAttribute("aria-activedescendant")).to.equal("name-filter-option-0");
 
     // Click outside the filter to close the options.
     document.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
