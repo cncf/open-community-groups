@@ -86,7 +86,7 @@ const setSelectValue = (id, value) => {
 };
 
 /**
- * Sets image field value using internal setter when available.
+ * Sets image field value using its public setter when available.
  * @param {string} fieldName Field name attribute
  * @param {*} url Image URL value
  */
@@ -95,8 +95,8 @@ const setImageFieldValue = (fieldName, url) => {
   if (!field) {
     return;
   }
-  if (typeof field._setValue === "function") {
-    field._setValue(toOptionalString(url));
+  if (typeof field.setValue === "function") {
+    field.setValue(toOptionalString(url));
     return;
   }
   field.value = toOptionalString(url);

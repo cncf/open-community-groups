@@ -205,7 +205,7 @@ export class ImageField extends LitWrapper {
 
     try {
       const imageUrl = await uploadImageFile(file, { target: this.target });
-      this._setValue(imageUrl);
+      this.setValue(imageUrl);
     } catch (error) {
       showErrorAlert(getImageUploadErrorMessage("image"), true);
     } finally {
@@ -220,7 +220,7 @@ export class ImageField extends LitWrapper {
   /**
    * Update the hidden field value and notify surrounding forms of the change.
    */
-  _setValue(newValue) {
+  setValue(newValue) {
     this.value = newValue || "";
     const valueInput = getElementById(this, this._valueInputId);
     valueInput?.setCustomValidity("");
@@ -238,7 +238,7 @@ export class ImageField extends LitWrapper {
       return;
     }
 
-    this._setValue("");
+    this.setValue("");
   }
 
   _handleValueInvalid(event) {
