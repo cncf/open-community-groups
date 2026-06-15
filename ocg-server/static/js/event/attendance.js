@@ -1,5 +1,6 @@
 import {
   handleHtmxResponse,
+  showErrorAlert,
   showConfirmAlert,
   showInfoAlert,
   showSuccessAlert,
@@ -66,6 +67,8 @@ const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "lea
 const QUESTIONS_CONTINUE_ACTION_ATTEND = "attend";
 const QUESTIONS_CONTINUE_ACTION_TICKET = "ticket";
 const PENDING_ATTENDANCE_CHECK_RESPONSE = "__ocgPendingAttendanceCheckResponse";
+const AVAILABILITY_REFRESH_ERROR_MESSAGE =
+  "Something went wrong loading event availability. The page is showing the last available event details.";
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
     errorMessage: "Something went wrong registering for this event. Please try again later.",
@@ -174,6 +177,7 @@ const applyAvailability = (container, availability, options = {}) => {
 const handleAvailabilityRefreshFailure = (container, options = {}) => {
   if (container?.dataset?.availabilityHydrated === "false") {
     container.dataset.availabilityHydrated = "true";
+    showErrorAlert(AVAILABILITY_REFRESH_ERROR_MESSAGE);
   }
 
   if (replayPendingAttendanceCheckResponse(container)) {

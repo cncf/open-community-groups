@@ -946,6 +946,10 @@ describe("event attendance", () => {
       // Assert the expected visibility state.
       expect(attendButton.classList.contains("hidden")).to.equal(false);
       expect(attendButton.disabled).to.equal(false);
+      expect(env.current.swal.calls.at(-1)).to.include({
+        icon: "error",
+        text: "Something went wrong loading event availability. The page is showing the last available event details.",
+      });
     } finally {
       fetchMock.restore();
     }

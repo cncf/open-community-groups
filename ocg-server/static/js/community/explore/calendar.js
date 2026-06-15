@@ -33,6 +33,13 @@ const UPCOMING_COLOR_VARIABLES = {
   background: "--color-primary-50",
   border: "--color-primary-200",
 };
+const CALENDAR_STATUS = Object.freeze({
+  empty: "empty",
+  error: "error",
+  idle: "idle",
+  loading: "loading",
+  ready: "ready",
+});
 const POPOVER_BASE_CLASSES =
   "absolute z-10 invisible inline-block text-sm text-stone-500 transition-opacity duration-300 opacity-0 tooltip-with-arrow";
 const POPOVER_BOTTOM_CLASSES = "pt-1.5";
@@ -289,6 +296,7 @@ export class Calendar {
     }
 
     this.popoverTimers = new WeakMap();
+    this.state = { status: CALENDAR_STATUS.idle };
 
     loadWidgetScripts({
       mainLoadingId: MAIN_LOADING_CALENDAR_ID,
@@ -376,6 +384,19 @@ export class Calendar {
   }
 
   /**
+   * Stores the current calendar status and syncs the blocking loading affordance.
+   * @param {string} status - Calendar status
+   */
+  setStatus(status) {
+    this.state = { status };
+    if (status === CALENDAR_STATUS.loading) {
+      showLoadingSpinner(LOADING_CALENDAR_ID);
+    } else {
+      hideLoadingSpinner(LOADING_CALENDAR_ID);
+    }
+  }
+
+  /**
    * Refreshes the calendar by updating the title and loading new events.
    * @param {object} data - Optional data object containing events to display
    */
@@ -393,15 +414,13 @@ export class Calendar {
     if (data) {
       events = data.events;
     } else {
-      // Show loading spinner
-      showLoadingSpinner(LOADING_CALENDAR_ID);
+      this.setStatus(CALENDAR_STATUS.loading);
 
       // Fetch events
       try {
         events = await this.fetchEvents();
       } catch (error) {
-        // fetchData already showed the error; hide loading and stop.
-        hideLoadingSpinner(LOADING_CALENDAR_ID);
+        this.setStatus(CALENDAR_STATUS.error);
         return;
       }
     }
@@ -417,6 +436,7 @@ export class Calendar {
         calendarEl.classList.remove("opacity-30");
       }
       this.addEvents(events);
+      this.setStatus(CALENDAR_STATUS.ready);
     } else {
       // Show placeholder overlay if present and dim calendar
       if (calendarEl) {
@@ -424,6 +444,7 @@ export class Calendar {
       }
       this.addEvents([]);
       showNoResultsPlaceholder(wrapper, this.fullCalendar);
+      this.setStatus(CALENDAR_STATUS.empty);
     }
   }
 
@@ -470,9 +491,6 @@ export class Calendar {
 
     // Add new events to calendar
     this.fullCalendar.addEventSource(formattedEvents);
-
-    // Hide loading spinner
-    hideLoadingSpinner(LOADING_CALENDAR_ID);
   }
 
   /**

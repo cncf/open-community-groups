@@ -179,5 +179,21 @@ describe("community explore calendar", () => {
     expect(replaceStateCalls).to.have.length.greaterThan(0);
     expect(document.getElementById("calendar-box")?.classList.contains("opacity-30")).to.equal(true);
     expect(document.querySelector(".no-results-default")?.classList.contains("hidden")).to.equal(false);
+    expect(calendar.state.status).to.equal("empty");
+    expect(document.getElementById("loading-calendar")?.classList.contains("is-loading")).to.equal(false);
+  });
+
+  it("clears loading and records an error state when month data cannot load", async () => {
+    // Create the calendar and replace the fetch helper with a failing refresh.
+    const calendar = await renderCalendar({ events: [] });
+    calendar.fetchEvents = async () => {
+      throw new Error("network error");
+    };
+
+    // Refresh the calendar and verify the local state recovers from loading.
+    await calendar.refresh();
+
+    expect(calendar.state.status).to.equal("error");
+    expect(document.getElementById("loading-calendar")?.classList.contains("is-loading")).to.equal(false);
   });
 });
