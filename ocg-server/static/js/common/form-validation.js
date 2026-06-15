@@ -74,8 +74,7 @@ const getVisibleScrollTarget = (field) => {
  * @returns {number} Header height in pixels
  */
 const getStickyHeaderOffset = () => {
-  const header =
-    document.querySelector('nav[role="banner"]') || getElementById(document, "header")?.closest("nav");
+  const header = getElementById(document, "dashboard-header") || getElementById(document, "header");
 
   if (!header) {
     return 0;

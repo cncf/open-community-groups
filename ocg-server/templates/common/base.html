@@ -82,20 +82,24 @@
   {# djlint:off #}
   <body class="h-full" hx-get
         hx-trigger="refresh-body">
-    {# Skip navigation link -#}
-    <a href="#main-content"
-       class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-md focus:shadow-lg">
-      Skip to main content
-    </a>
-    {# End skip navigation link -#}
+    {% block skip_link -%}
+      {# Skip navigation link -#}
+      <a href="#main-content"
+         class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-md focus:shadow-lg">
+        Skip to main content
+      </a>
+      {# End skip navigation link -#}
+    {% endblock skip_link -%}
 
     <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
       <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-80% md:from-60% lg:from-40% to-stone-900/12 to-98% lg:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
-        {# Header -#}
-        {% if !path.starts_with("/dashboard") -%}
-          <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
-        {% endif -%}
-        {# End header -#}
+        {% block header -%}
+          {# Header -#}
+          {% if !path.starts_with("/dashboard") -%}
+            <div class="px-4 lg:px-5">{% include "common/header.html" -%}</div>
+          {% endif -%}
+          {# End header -#}
+        {% endblock header -%}
 
         {# Jumbotron -#}
         {% block jumbotron -%}
@@ -104,10 +108,12 @@
       </div>
 
       {# Content -#}
-      <main id="main-content" class='grow z-[1] {% if path == "/log-in" || path == "/sign-up" || path.contains("/check-in/") %}flex{% endif %}' role="main">
-        {% block content -%}
-        {% endblock content -%}
-      </main>
+      {% block main -%}
+        <main id="main-content" class='grow z-[1] {% if path == "/log-in" || path == "/sign-up" || path.contains("/check-in/") %}flex{% endif %}' role="main">
+          {% block content -%}
+          {% endblock content -%}
+        </main>
+      {% endblock main -%}
       {# End content -#}
 
       {# Footer -#}
