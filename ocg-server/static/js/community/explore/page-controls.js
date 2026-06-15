@@ -1,6 +1,7 @@
 import {
   cleanInputField,
   closeFiltersDrawer,
+  FILTER_CHANGE_EVENT,
   hasActiveFilters,
   openFiltersDrawer,
   resetDateFiltersOnCalendarViewMode,
@@ -36,7 +37,6 @@ const EXPLORE_WIDGET_READY_KEY = "exploreWidgetReady";
 const CURRENT_MONTH_BUTTON_ID = "current-month-btn";
 const PREV_MONTH_BUTTON_ID = "prev-month-btn";
 const NEXT_MONTH_BUTTON_ID = "next-month-btn";
-const FILTER_CHANGE_EVENT = "filter-change";
 
 /**
  * Gets the active desktop explore form id.
@@ -174,7 +174,7 @@ const handleExploreChange = (event) => {
     if (target.value === "calendar") {
       updateDateInput();
     } else {
-      resetDateFiltersOnCalendarViewMode();
+      resetDateFiltersOnCalendarViewMode(formId);
     }
     unckeckAllKinds();
     triggerChangeOnForm(formId);

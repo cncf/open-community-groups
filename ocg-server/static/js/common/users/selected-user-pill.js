@@ -47,7 +47,12 @@ export class SelectedUserPill extends LitWrapper {
     if (this.disabled) {
       return;
     }
-    this.dispatchEvent(new CustomEvent("remove"));
+    this.dispatchEvent(
+      new CustomEvent("remove", {
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   render() {

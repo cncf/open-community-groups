@@ -66,4 +66,25 @@ describe("key-value-inputs", () => {
       Docs: "https://example.com/help",
     });
   });
+
+  it("marks duplicate keys invalid", async () => {
+    // Render the key-value-inputs fixture.
+    const element = await mountLitComponent("key-value-inputs", {
+      fieldName: "links",
+    });
+
+    // Fill two rows with the same non-empty key.
+    element._addItem();
+    element._updateItem(0, "key", "Website");
+    element._updateItem(0, "value", "https://example.com");
+    element._updateItem(1, "key", "Website");
+    element._updateItem(1, "value", "https://example.com/docs");
+    await element.updateComplete;
+
+    // Duplicate keys receive native validation feedback.
+    const keyInputs = element.querySelectorAll("[data-key-input-id]");
+    expect(keyInputs[0].validationMessage).to.equal("Each key must be unique.");
+    expect(keyInputs[1].validationMessage).to.equal("Each key must be unique.");
+    expect(keyInputs[0].getAttribute("aria-invalid")).to.equal("true");
+  });
 });

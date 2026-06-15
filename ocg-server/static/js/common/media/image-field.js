@@ -207,7 +207,7 @@ export class ImageField extends LitWrapper {
       const imageUrl = await uploadImageFile(file, { target: this.target });
       this.setValue(imageUrl);
     } catch (error) {
-      showErrorAlert(getImageUploadErrorMessage("image"), true);
+      showErrorAlert(getImageUploadErrorMessage("image", error.message), true);
     } finally {
       this._isUploading = false;
       if (typeof resetCallback === "function") {

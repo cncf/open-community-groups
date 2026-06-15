@@ -188,7 +188,8 @@ export const handleHtmxExcludeConfigRequest = (event) => {
   let excludedControls;
   try {
     excludedControls = triggerElement.ownerDocument.querySelectorAll(excludeSelector);
-  } catch (_error) {
+  } catch (error) {
+    console.warn("Invalid hx-exclude selector ignored.", { selector: excludeSelector, error });
     return;
   }
 

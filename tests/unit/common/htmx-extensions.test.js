@@ -265,7 +265,13 @@ describe("htmx extensions", () => {
     expect(formDataToEntries(parameters)).to.deep.equal([["test_event", "true"]]);
   });
 
-  it("ignores invalid custom hx-exclude selectors", () => {
+  it("warns and ignores invalid custom hx-exclude selectors", () => {
+    // Capture warnings while the invalid selector is handled.
+    const originalWarn = console.warn;
+    const warnCalls = [];
+    console.warn = (...args) => warnCalls.push(args);
+
+    // Build the request fixture with an invalid selector.
     document.body.innerHTML = `
       <button id="save-button" hx-exclude="input[" type="button">Save</button>
     `;
@@ -273,6 +279,7 @@ describe("htmx extensions", () => {
       name: "Spring meetup",
     };
 
+    // Apply exclude filtering without removing any request parameters.
     handleHtmxExcludeConfigRequest({
       detail: {
         elt: document.getElementById("save-button"),
@@ -280,9 +287,15 @@ describe("htmx extensions", () => {
       },
     });
 
+    // The invalid selector is ignored and surfaced to the console.
     expect(parameters).to.deep.equal({
       name: "Spring meetup",
     });
+    expect(warnCalls).to.have.length(1);
+    expect(warnCalls[0][0]).to.equal("Invalid hx-exclude selector ignored.");
+
+    // Restore the console warning implementation.
+    console.warn = originalWarn;
   });
 
   it("records and owns htmx refresh headers before htmx handles them", () => {

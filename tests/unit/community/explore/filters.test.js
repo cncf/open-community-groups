@@ -189,13 +189,15 @@ describe("explore filters", () => {
     // Keep references to the fixture controls under assertion.
     const { from, to } = getDefaultDateRange();
     document.body.innerHTML = `
-      <form id="events-form">
-        <input type="checkbox" name="kind[]" checked />
-        <input name="date_from" value="${from}" />
-        <input name="date_to" value="${to}" />
-        <collapsible-filter name="region" selected='["emea"]'></collapsible-filter>
-      </form>
-      <input name="ts_query" value="" />
+      <div id="entity-section">
+        <form id="events-form">
+          <input type="checkbox" name="kind[]" checked />
+          <input name="date_from" value="${from}" />
+          <input name="date_to" value="${to}" />
+          <collapsible-filter name="region" selected='["emea"]'></collapsible-filter>
+        </form>
+        <input name="ts_query" value="" />
+      </div>
     `;
 
     // Verify detects active filters from kinds, custom filters, dates, and text.
@@ -203,11 +205,13 @@ describe("explore filters", () => {
 
     // Render the DOM fixture for detecting active filters from kinds, custom.
     document.body.innerHTML = `
-      <form id="events-form">
-        <input name="date_from" value="${from}" />
-        <input name="date_to" value="${to}" />
-      </form>
-      <input name="ts_query" value="" />
+      <div id="entity-section">
+        <form id="events-form">
+          <input name="date_from" value="${from}" />
+          <input name="date_to" value="${to}" />
+        </form>
+        <input name="ts_query" value="" />
+      </div>
     `;
 
     // Verify detects active filters from kinds, custom filters, dates, and text.
@@ -218,22 +222,42 @@ describe("explore filters", () => {
     expect(hasActiveFilters("events-form")).to.equal(true);
   });
 
-  it("clears hidden date filters and checked kinds", () => {
+  it("ignores text searches outside the active explore section", () => {
+    const { from, to } = getDefaultDateRange();
+    document.body.innerHTML = `
+      <div id="entity-section">
+        <form id="events-form">
+          <input name="date_from" value="${from}" />
+          <input name="date_to" value="${to}" />
+        </form>
+        <input name="ts_query" value="" />
+      </div>
+      <input id="outside-search" name="ts_query" value="dashboard" />
+    `;
+
+    expect(hasActiveFilters("events-form")).to.equal(false);
+  });
+
+  it("clears scoped hidden date filters and checked kinds", () => {
     // Render date filters and selected kind checkboxes.
     document.body.innerHTML = `
-      <input type="hidden" name="date_from" value="2025-01-01" />
-      <input type="hidden" name="date_to" value="2025-12-31" />
+      <form id="events-form">
+        <input type="hidden" name="date_from" value="2025-01-01" />
+        <input type="hidden" name="date_to" value="2025-12-31" />
+      </form>
+      <input id="outside-date-from" type="hidden" name="date_from" value="2026-01-01" />
       <input type="checkbox" name="kind[]" checked />
       <input type="checkbox" name="kind[]" checked />
     `;
 
     // Call reset date filters on calendar view mode.
-    resetDateFiltersOnCalendarViewMode();
+    resetDateFiltersOnCalendarViewMode("events-form");
     unckeckAllKinds();
 
     // Assert the saved value was updated.
-    expect(document.querySelector('input[name="date_from"]')?.value).to.equal("");
-    expect(document.querySelector('input[name="date_to"]')?.value).to.equal("");
+    expect(document.querySelector('#events-form input[name="date_from"]')?.value).to.equal("");
+    expect(document.querySelector('#events-form input[name="date_to"]')?.value).to.equal("");
+    expect(document.getElementById("outside-date-from")?.value).to.equal("2026-01-01");
     expect(document.querySelectorAll("input[name='kind[]']:checked")).to.have.length(0);
   });
 
@@ -317,11 +341,13 @@ describe("explore filters", () => {
     // Keep references to the fixture controls under assertion.
     const { first, last } = getFirstAndLastDayOfMonth();
     document.body.innerHTML = `
-      <form id="events-form">
-        <input name="date_from" value="${first}" />
-        <input name="date_to" value="${last}" />
-      </form>
-      <input name="ts_query" value="" />
+      <div id="entity-section">
+        <form id="events-form">
+          <input name="date_from" value="${first}" />
+          <input name="date_to" value="${last}" />
+        </form>
+        <input name="ts_query" value="" />
+      </div>
     `;
 
     // Verify detects active calendar filters from current-month dates and other.

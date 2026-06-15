@@ -5,8 +5,25 @@ export const DEFAULT_IMAGE_ACCEPTED_FORMATS = ".svg,.png,.jpg,.jpeg,.gif,.webp,.
 export const OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS = ".png,.jpg,.jpeg,.webp";
 export const IMAGE_UPLOAD_MAX_SIZE_TEXT = "Maximum size: 1MB.";
 export const IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT = "Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
-export const IMAGE_UPLOAD_ERROR_DETAILS =
-  "Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
+export const IMAGE_UPLOAD_ERROR_DETAILS = `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`;
+
+/**
+ * Escapes user-controlled text before it is inserted into alert HTML.
+ * @param {string} value - Text to escape
+ * @returns {string} HTML-safe text
+ */
+const escapeHtml = (value) =>
+  value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character],
+  );
 
 /**
  * Uploads an image through the dashboard image endpoint and returns its URL.
@@ -47,7 +64,15 @@ export const uploadImageFile = async (file, { target = "" } = {}) => {
 /**
  * Builds the shared upload failure alert body.
  * @param {string} imageLabel - Human-facing noun for the failed upload
+ * @param {string} serverMessage - Specific server error message when available
  * @returns {string} HTML message accepted by the alert helper
  */
-export const getImageUploadErrorMessage = (imageLabel) =>
-  `Something went wrong adding the ${imageLabel}. Please try again later.<br /><br /><div class="text-sm text-stone-500">${IMAGE_UPLOAD_ERROR_DETAILS}</div>`;
+export const getImageUploadErrorMessage = (imageLabel, serverMessage = "") => {
+  const specificMessage = serverMessage.trim();
+  const escapedMessage = specificMessage ? escapeHtml(specificMessage) : "";
+  const message = escapedMessage
+    ? `${escapedMessage}<br /><br />Something went wrong adding the ${imageLabel}. Please try again later.`
+    : `Something went wrong adding the ${imageLabel}. Please try again later.`;
+
+  return `${message}<br /><br /><div class="text-sm text-stone-500">${IMAGE_UPLOAD_ERROR_DETAILS}</div>`;
+};

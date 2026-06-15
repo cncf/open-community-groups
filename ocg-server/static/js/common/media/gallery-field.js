@@ -46,7 +46,6 @@ export class GalleryField extends LitWrapper {
     this.maxImages = DEFAULT_MAX_IMAGES;
     this._isUploading = false;
     this._isDragActive = false;
-    this._pendingUploads = 0;
     this._uploadErrorShown = false;
     this._uniqueId = `gallery-field-${Math.random().toString(36).slice(2, 9)}`;
     this._draggedIndex = null;
@@ -219,7 +218,6 @@ export class GalleryField extends LitWrapper {
       return;
     }
 
-    this._pendingUploads += filesToUpload.length;
     this._isUploading = true;
     this._uploadErrorShown = false;
     this.requestUpdate();
@@ -235,16 +233,13 @@ export class GalleryField extends LitWrapper {
         }
       } catch (error) {
         if (!this._uploadErrorShown) {
-          showErrorAlert(getImageUploadErrorMessage("images"), true);
+          showErrorAlert(getImageUploadErrorMessage("images", error.message), true);
           this._uploadErrorShown = true;
         }
       }
     }
 
-    this._pendingUploads = Math.max(0, this._pendingUploads - filesToUpload.length);
-    if (this._pendingUploads === 0) {
-      this._isUploading = false;
-    }
+    this._isUploading = false;
     this.requestUpdate();
   }
 

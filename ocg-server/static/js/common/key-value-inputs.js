@@ -95,6 +95,48 @@ export class KeyValueInputs extends LitWrapper {
   }
 
   /**
+   * Finds duplicate non-empty keys in the editable rows.
+   * @returns {Set<string>} Duplicate normalized keys
+   * @private
+   */
+  _getDuplicateKeys() {
+    const seenKeys = new Set();
+    const duplicateKeys = new Set();
+
+    this._itemsArray.forEach(({ key }) => {
+      const normalizedKey = key.trim();
+      if (!normalizedKey) {
+        return;
+      }
+      if (seenKeys.has(normalizedKey)) {
+        duplicateKeys.add(normalizedKey);
+        return;
+      }
+      seenKeys.add(normalizedKey);
+    });
+
+    return duplicateKeys;
+  }
+
+  /**
+   * Applies native form validation feedback for duplicate keys.
+   * @private
+   */
+  _syncDuplicateKeyValidity() {
+    const duplicateKeys = this._getDuplicateKeys();
+    this.querySelectorAll("[data-key-input-id]").forEach((input) => {
+      const item = this._itemsArray.find(({ id }) => String(id) === input.dataset.keyInputId);
+      const isDuplicate = item ? duplicateKeys.has(item.key.trim()) : false;
+      input.setCustomValidity(isDuplicate ? "Each key must be unique." : "");
+    });
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+    this._syncDuplicateKeyValidity();
+  }
+
+  /**
    * Adds a new empty key-value pair to the list.
    * Respects maxItems limit if set.
    * @private
@@ -179,6 +221,8 @@ export class KeyValueInputs extends LitWrapper {
    * @returns {TemplateResult} Lit HTML template
    */
   render() {
+    const duplicateKeys = this._getDuplicateKeys();
+
     return html`
       <div class="space-y-3">
         ${repeat(
@@ -192,6 +236,8 @@ export class KeyValueInputs extends LitWrapper {
                   class="input-primary"
                   placeholder=${this.keyPlaceholder}
                   value=${item.key}
+                  data-key-input-id=${item.id}
+                  aria-invalid=${duplicateKeys.has(item.key.trim()) ? "true" : "false"}
                   @input=${(event) => this._handleInputChange(item.id, "key", event)}
                   autocomplete="off"
                   autocorrect="off"

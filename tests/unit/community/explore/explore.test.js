@@ -130,10 +130,12 @@ describe("explore helpers", () => {
   it("shows the filtered no-results placeholder with active filters", () => {
     // Build the DOM fixture with an empty results state and active search.
     document.body.innerHTML = `
-      <div id="explore-filters">
-        <form id="events-form" class="filters-form"></form>
+      <div id="entity-section">
+        <div id="explore-filters">
+          <form id="events-form" class="filters-form"></form>
+        </div>
+        <input name="ts_query" value="conference" />
       </div>
-      <input name="ts_query" value="conference" />
       <div id="cards-list">
         <div class="no-results-default hidden"></div>
         <div class="no-results-filtered hidden"></div>
@@ -402,10 +404,10 @@ describe("explore helpers", () => {
       <div id="explore-filters">
         <form id="events-form" class="filters-form">
           <input type="checkbox" name="kind[]" checked />
+          <input type="hidden" name="date_from" value="2026-01-01" />
+          <input type="hidden" name="date_to" value="2026-01-31" />
         </form>
       </div>
-      <input type="hidden" name="date_from" value="2026-01-01" />
-      <input type="hidden" name="date_to" value="2026-01-31" />
       <input type="radio" name="view_mode" value="map" checked />
     `;
 

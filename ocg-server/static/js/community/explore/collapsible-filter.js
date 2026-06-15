@@ -1,7 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { FILTER_CHANGE_EVENT } from "/static/js/community/explore/filters.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-
-const FILTER_CHANGE_EVENT = "filter-change";
 
 /**
  * Collapsible filter component for managing multiple selection options.

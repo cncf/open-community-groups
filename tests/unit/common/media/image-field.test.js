@@ -6,7 +6,7 @@ import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-u
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("image-field", () => {
-  useDashboardTestEnv({ withSwal: true, withScroll: true });
+  const env = useDashboardTestEnv({ withSwal: true, withScroll: true });
   useMountedElementsCleanup("image-field");
 
   let fetchMock;
@@ -107,5 +107,30 @@ describe("image-field", () => {
     // Assert the accepted image formats copy.
     expect(helpText).to.include("Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.");
     expect(fileInput.accept).to.equal(".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff");
+  });
+
+  it("shows escaped server messages when image uploads fail", async () => {
+    // Mock the upload endpoint with a server validation message.
+    fetchMock.setImpl(async () => ({
+      status: 422,
+      async text() {
+        return "Logo must be square <script>";
+      },
+    }));
+
+    // Render the image-field fixture.
+    const element = await mountLitComponent("image-field", {
+      label: "Logo",
+      name: "logo_url",
+    });
+
+    // Upload the selected image and wait for the alert to be shown.
+    await element._uploadFile(new File(["data"], "logo.png", { type: "image/png" }));
+    await element.updateComplete;
+
+    // The server message is escaped and shown before the generic upload copy.
+    const alert = env.current.swal.calls.at(-1);
+    expect(alert.html).to.include("Logo must be square &lt;script&gt;");
+    expect(alert.html).to.include("Something went wrong adding the image.");
   });
 });

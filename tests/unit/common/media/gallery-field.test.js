@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/media/gallery-field.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
@@ -8,13 +9,16 @@ describe("gallery-field", () => {
   useMountedElementsCleanup("gallery-field");
 
   let fetchMock;
+  let swal;
 
   beforeEach(() => {
     fetchMock = mockFetch();
+    swal = mockSwal();
   });
 
   afterEach(() => {
     fetchMock.restore();
+    swal.restore();
   });
 
   it("reorders and removes gallery images while emitting updates", async () => {
@@ -54,6 +58,7 @@ describe("gallery-field", () => {
   });
 
   it("uploads gallery images through the shared image endpoint", async () => {
+    // Mock the upload endpoint response.
     fetchMock.setImpl(async () => ({
       status: 201,
       async json() {
@@ -61,22 +66,50 @@ describe("gallery-field", () => {
       },
     }));
 
+    // Render the gallery-field fixture.
     const element = await mountLitComponent("gallery-field", {
       fieldName: "gallery",
     });
     const received = [];
 
+    // Listen for image list updates.
     element.addEventListener("images-change", (event) => {
       received.push(event.detail.images);
     });
 
+    // Upload a selected gallery image.
     await element._handleIncomingFiles([new File(["data"], "gallery.png", { type: "image/png" })]);
     await element.updateComplete;
 
+    // The uploaded image is stored, emitted, and sent to the shared endpoint.
     expect(element.images).to.deep.equal(["https://example.com/gallery.png"]);
     expect(received).to.deep.equal([["https://example.com/gallery.png"]]);
     expect(fetchMock.calls).to.have.length(1);
     expect(fetchMock.calls[0][0]).to.equal("/images");
     expect(Array.from(fetchMock.calls[0][1].body.keys())).to.deep.equal(["file"]);
+  });
+
+  it("shows escaped server messages when gallery uploads fail", async () => {
+    // Mock the upload endpoint with a server validation message.
+    fetchMock.setImpl(async () => ({
+      status: 422,
+      async text() {
+        return "Image is too large <strong>";
+      },
+    }));
+
+    // Render the gallery-field fixture.
+    const element = await mountLitComponent("gallery-field", {
+      fieldName: "gallery",
+    });
+
+    // Upload a gallery image and wait for the alert to be shown.
+    await element._handleIncomingFiles([new File(["data"], "gallery.png", { type: "image/png" })]);
+    await element.updateComplete;
+
+    // The server message is escaped and shown before the generic upload copy.
+    const alert = swal.calls.at(-1);
+    expect(alert.html).to.include("Image is too large &lt;strong&gt;");
+    expect(alert.html).to.include("Something went wrong adding the images.");
   });
 });

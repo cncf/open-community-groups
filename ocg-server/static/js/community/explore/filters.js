@@ -5,6 +5,7 @@ const EXPLORE_SECTION_ID = "entity-section";
 const DATE_FROM_FIELD_NAME = "date_from";
 const DATE_TO_FIELD_NAME = "date_to";
 const TEXT_SEARCH_INPUT_SELECTOR = 'input[name="ts_query"]';
+export const FILTER_CHANGE_EVENT = "filter-change";
 
 /**
  * Formats a date object to ISO format (YYYY-MM-DD).
@@ -51,12 +52,21 @@ const resetDateInputs = (form) => {
 };
 
 /**
+ * Finds the text search input owned by the same explore section as the form.
+ * @param {HTMLFormElement} form - Form whose explore section owns the search
+ * @returns {HTMLInputElement|null} Section search input when present
+ */
+const getExploreSearchInput = (form) => {
+  const exploreSection = form.closest(`#${EXPLORE_SECTION_ID}`);
+  return exploreSection?.querySelector(TEXT_SEARCH_INPUT_SELECTOR) || null;
+};
+
+/**
  * Clears the explore text search associated with the active section.
  * @param {HTMLFormElement} form - Form whose explore section owns the search
  */
 const clearExploreSearchInput = (form) => {
-  const exploreSection = form.closest(`#${EXPLORE_SECTION_ID}`);
-  const searchInput = exploreSection?.querySelector(TEXT_SEARCH_INPUT_SELECTOR);
+  const searchInput = getExploreSearchInput(form);
   if (searchInput) {
     searchInput.value = "";
   }
@@ -146,18 +156,24 @@ export const resetFilters = async (formId) => {
 };
 
 /**
- * Resets date filters when in calendar view mode by clearing hidden date inputs.
+ * Resets date filters in one form when leaving calendar view mode.
+ * @param {string|HTMLFormElement} formOrId - Form or form ID containing date inputs
  */
-export const resetDateFiltersOnCalendarViewMode = () => {
-  const inputs = document.querySelectorAll("input[type=hidden]");
+export const resetDateFiltersOnCalendarViewMode = (formOrId) => {
+  const form = typeof formOrId === "string" ? getElementById(document, formOrId) : formOrId;
+  if (!form) {
+    return;
+  }
+
+  const inputs = form.querySelectorAll(
+    `input[type=hidden][name="${DATE_FROM_FIELD_NAME}"], input[type=hidden][name="${DATE_TO_FIELD_NAME}"]`,
+  );
   if (inputs.length === 0) {
     return;
   }
 
   inputs.forEach((input) => {
-    if (input.name === "date_from" || input.name === "date_to") {
-      input.value = "";
-    }
+    input.value = "";
   });
 };
 
@@ -322,8 +338,8 @@ export const hasActiveFilters = (formId, { ignoreDateRange = false } = {}) => {
     }
   }
 
-  // Check text search (outside the form)
-  const tsQuery = document.querySelector('input[name="ts_query"]');
+  // Check text search for the same explore section.
+  const tsQuery = getExploreSearchInput(form);
   if (tsQuery && tsQuery.value.trim() !== "") return true;
 
   return false;

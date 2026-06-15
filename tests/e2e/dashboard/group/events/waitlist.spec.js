@@ -111,7 +111,7 @@ test.describe("group dashboard waitlist tab", () => {
         "#toggle_waitlist_enabled",
       );
       const waitlistToggleLabel = organizerGroupPage.locator(
-        "#waitlist-toggle-label",
+        '[data-enrollment-toggle-label="waitlist"]',
       );
 
       // Assert the expected content is visible.

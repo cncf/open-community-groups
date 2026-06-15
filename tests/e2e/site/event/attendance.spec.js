@@ -39,10 +39,17 @@ const cancelAttendance = async (page, eventId) => {
         response.url().includes(`/event/${eventId}/leave`) &&
         response.ok(),
     ),
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        response.url().includes(`/event/${eventId}/attendance`) &&
+        response.ok(),
+    ),
     confirmButton.click(),
   ]);
 
   // Verify the attend action returns after cancellation.
+  await waitForAttendanceState(page);
   await expect(getAttendButton(page)).toBeVisible();
 };
 

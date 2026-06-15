@@ -1,8 +1,7 @@
 import { html, nothing, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { FILTER_CHANGE_EVENT } from "/static/js/community/explore/filters.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-
-const FILTER_CHANGE_EVENT = "filter-change";
 
 /**
  * Multi-select filter component with search input and badge display.
