@@ -1291,18 +1291,6 @@ values (
 );
 
 -- ============================================================================
--- EVENT WAITLIST
--- ============================================================================
-
--- Pre-seeded waitlist entry for the full waitlist-enabled event so dashboard
--- waitlist scenarios have data without going through the join flow.
-insert into event_waitlist (event_id, user_id)
-values (
-    '55555555-5555-5555-5555-555555555521',
-    '77777777-7777-7777-7777-777777777706'
-);
-
--- ============================================================================
 -- EVENT TICKETING
 -- ============================================================================
 
