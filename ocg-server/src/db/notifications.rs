@@ -29,23 +29,19 @@ pub(crate) trait DBNotifications {
     /// Enqueues a notification to be delivered.
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()>;
 
+    /// Enqueues and tracks a custom notification atomically.
+    async fn enqueue_tracked_custom_notification(
+        &self,
+        notification: &NewNotification,
+        tracking: CustomNotificationTracking,
+    ) -> Result<()>;
+
     /// Retrieves a notification attachment by its ID.
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment>;
 
     /// Marks stale claimed notifications with an unknown delivery outcome.
     async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration)
     -> Result<usize>;
-
-    /// Tracks a custom notification after it's been successfully enqueued.
-    async fn track_custom_notification(
-        &self,
-        created_by: Uuid,
-        event_id: Option<Uuid>,
-        group_id: Option<Uuid>,
-        recipient_count: usize,
-        subject: &str,
-        body: &str,
-    ) -> Result<()>;
 
     /// Updates a notification after a delivery attempt.
     async fn update_notification(
@@ -168,6 +164,66 @@ impl DBNotifications for PgDB {
         Ok(())
     }
 
+    #[instrument(skip(self, notification, tracking), err)]
+    async fn enqueue_tracked_custom_notification(
+        &self,
+        notification: &NewNotification,
+        tracking: CustomNotificationTracking,
+    ) -> Result<()> {
+        // Nothing to enqueue or track
+        if notification.recipients.is_empty() {
+            return Ok(());
+        }
+
+        // Convert recipient count to the database integer type
+        let recipient_count = i32::try_from(tracking.recipient_count)
+            .map_err(|_| anyhow!("recipient count cannot exceed i32::MAX"))?;
+
+        // Prepare attachments payload
+        let attachments = notification
+            .attachments
+            .iter()
+            .map(|attachment| EnqueueNotificationAttachment {
+                content_type: &attachment.content_type,
+                data_base64: BASE64.encode(&attachment.data),
+                file_name: &attachment.file_name,
+            })
+            .collect::<Vec<_>>();
+        let attachments = serde_json::to_value(attachments)?;
+
+        // Enqueue notification and store the custom-notification audit atomically
+        let kind = notification.kind.to_string();
+        self.execute(
+            "
+            select enqueue_tracked_custom_notification(
+                $1::text,
+                $2::jsonb,
+                $3::jsonb,
+                $4::uuid[],
+                $5::uuid,
+                $6::uuid,
+                $7::uuid,
+                $8::int,
+                $9::text,
+                $10::text
+            );
+            ",
+            &[
+                &kind,
+                &notification.template_data,
+                &attachments,
+                &notification.recipients,
+                &tracking.created_by,
+                &tracking.event_id,
+                &tracking.group_id,
+                &recipient_count,
+                &tracking.subject,
+                &tracking.body,
+            ],
+        )
+        .await
+    }
+
     /// Retrieves a notification attachment by its ID.
     #[instrument(skip(self), err)]
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment> {
@@ -222,44 +278,6 @@ impl DBNotifications for PgDB {
         Ok(count as usize)
     }
 
-    #[instrument(skip(self), err)]
-    async fn track_custom_notification(
-        &self,
-        created_by: Uuid,
-        event_id: Option<Uuid>,
-        group_id: Option<Uuid>,
-        recipient_count: usize,
-        subject: &str,
-        body: &str,
-    ) -> Result<()> {
-        // Convert recipient count to the database integer type
-        let recipient_count = i32::try_from(recipient_count)
-            .map_err(|_| anyhow!("recipient count cannot exceed i32::MAX"))?;
-
-        // Store the custom notification and corresponding audit entry
-        self.execute(
-            "
-            select track_custom_notification(
-                $1::uuid,
-                $2::uuid,
-                $3::uuid,
-                $4::int,
-                $5::text,
-                $6::text
-            );
-            ",
-            &[
-                &created_by,
-                &event_id,
-                &group_id,
-                &recipient_count,
-                &subject,
-                &body,
-            ],
-        )
-        .await
-    }
-
     /// Updates the notification record after processing, marking it as processed and
     /// recording any error.
     #[instrument(skip(self, notification), err)]
@@ -280,6 +298,22 @@ impl DBNotifications for PgDB {
 
         Ok(())
     }
+}
+
+/// Metadata used to track a custom notification audit entry.
+pub(crate) struct CustomNotificationTracking {
+    /// Body stored in the custom notification record.
+    pub(crate) body: String,
+    /// User who sent the custom notification.
+    pub(crate) created_by: Uuid,
+    /// Event associated with the notification, for event custom notifications.
+    pub(crate) event_id: Option<Uuid>,
+    /// Group associated with the notification.
+    pub(crate) group_id: Option<Uuid>,
+    /// Attempted recipient count before optional notification filtering.
+    pub(crate) recipient_count: usize,
+    /// Subject stored in the custom notification record.
+    pub(crate) subject: String,
 }
 
 /// Serialized attachment payload passed to `enqueue_notification`.

@@ -3,13 +3,14 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set registeredUserID '0a010000-0000-0000-0000-000000000001'
+\set newVerificationCodeID '0a010000-0000-0000-0000-000000000005'
 \set takenUsernameUserID '0a010000-0000-0000-0000-000000000002'
 \set userID '0a010000-0000-0000-0000-000000000003'
 \set verificationCodeID '0a010000-0000-0000-0000-000000000004'
@@ -75,7 +76,12 @@ select is(
                 "name": "Alice Invited",
                 "password": "hashed-password",
                 "username": "alice"
-            }'::jsonb
+            }'::jsonb,
+            :'newVerificationCodeID',
+            jsonb_build_object(
+                'link', 'https://example.test/verify-email/' || :'newVerificationCodeID',
+                'theme', jsonb_build_object('primary_color', '#123456')
+            )
         )
     ),
     'alice2',
@@ -127,6 +133,17 @@ select is(
     'Should keep one email verification code for the activated user'
 );
 
+-- Should rotate the existing email verification code to the caller-provided code.
+select is(
+    (
+        select email_verification_code_id
+        from email_verification_code
+        where user_id = :'userID'
+    ),
+    :'newVerificationCodeID'::uuid,
+    'Should rotate the existing email verification code to the caller-provided code'
+);
+
 -- Should refresh the existing email verification code timestamp.
 select ok(
     (
@@ -135,6 +152,24 @@ select ok(
         where user_id = :'userID'::uuid
     ),
     'Should refresh the existing email verification code timestamp'
+);
+
+-- Should enqueue email verification notification for the activated user.
+select ok(
+    exists (
+        select 1
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'email-verification'
+        and n.user_id = :'userID'::uuid
+        and ntd.data = jsonb_build_object(
+            'link',
+            'https://example.test/verify-email/' || :'newVerificationCodeID',
+            'theme',
+            jsonb_build_object('primary_color', '#123456')
+        )
+    ),
+    'Should enqueue email verification notification for the activated user'
 );
 
 -- Should return null when the email belongs to an already registered user.
@@ -147,7 +182,9 @@ select is(
                 "name": "Registered User",
                 "password": "new-password",
                 "username": "registered-user"
-            }'::jsonb
+            }'::jsonb,
+            gen_random_uuid(),
+            '{}'::jsonb
         )
     ),
     null::jsonb,
@@ -164,7 +201,9 @@ select is(
                 "name": "Missing User",
                 "password": "new-password",
                 "username": "missing-user"
-            }'::jsonb
+            }'::jsonb,
+            gen_random_uuid(),
+            '{}'::jsonb
         )
     ),
     null::jsonb,

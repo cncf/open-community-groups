@@ -8,7 +8,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect},
 };
 use serde_json::json;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -130,29 +130,41 @@ pub(crate) async fn join_group(
     // Join the group
     db.join_group(community_id, group_id, user.user_id).await?;
 
-    // Enqueue welcome to group notification
-    let (site_settings, group) = tokio::try_join!(
-        db.get_site_settings(),
-        db.get_group_summary(community_id, group_id)
-    )?;
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let template_data = GroupWelcome {
-        link: format!(
-            "{}/{}/group/{}",
-            base_url,
-            group.community_name,
-            group.public_slug()
-        ),
-        group,
-        theme: site_settings.theme,
-    };
-    let notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::GroupWelcome,
-        recipients: vec![user.user_id],
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    notifications_manager.enqueue(&notification).await?;
+    // Enqueue welcome notification best-effort after the membership mutation
+    if let Err(err) = async {
+        let (site_settings, group) = tokio::try_join!(
+            db.get_site_settings(),
+            db.get_group_summary(community_id, group_id)
+        )?;
+        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+        let template_data = GroupWelcome {
+            link: format!(
+                "{}/{}/group/{}",
+                base_url,
+                group.community_name,
+                group.public_slug()
+            ),
+            group,
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::GroupWelcome,
+            recipients: vec![user.user_id],
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await
+    }
+    .await
+    {
+        warn!(
+            error = %err,
+            %community_id,
+            %group_id,
+            user_id = %user.user_id,
+            "failed to enqueue group welcome notification"
+        );
+    }
 
     Ok(StatusCode::NO_CONTENT)
 }

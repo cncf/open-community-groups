@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(275);
+select plan(276);
 
 -- ============================================================================
 -- VARIABLES
@@ -84,7 +84,7 @@ select has_function('accept_event_invitation_request', array['uuid', 'uuid', 'uu
 select has_function('accept_group_team_invitation', array['uuid', 'uuid']::name[]);
 select has_function('accept_session_proposal_co_speaker_invitation', array['uuid', 'uuid']::name[]);
 select has_function('activate_group', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('activate_pre_registered_user_email_password', array['jsonb']::name[]);
+select has_function('activate_pre_registered_user_email_password', array['jsonb', 'uuid', 'jsonb']::name[]);
 select has_function('activate_pre_registered_user_external_provider', array['uuid', 'jsonb']::name[]);
 select has_function('add_cfs_submission', array['uuid', 'uuid', 'uuid', 'uuid', 'uuid[]']::name[]);
 select has_function('add_community_team_member', array['uuid', 'uuid', 'uuid', 'text']::name[]);
@@ -128,6 +128,7 @@ select has_function('delete_region', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_session_proposal', array['uuid', 'uuid']::name[]);
 select has_function('enqueue_due_event_reminders', array['text']::name[]);
 select has_function('enqueue_notification', array['text', 'jsonb', 'jsonb', 'uuid[]']::name[]);
+select has_function('enqueue_tracked_custom_notification', array['text', 'jsonb', 'jsonb', 'uuid[]', 'uuid', 'uuid', 'uuid', 'integer', 'text', 'text']::name[]);
 select has_function('ensure_event_is_active', array['uuid', 'uuid']::name[]);
 select has_function('escape_ilike_pattern', array['text']::name[]);
 select has_function('expire_event_purchase_for_checkout_session', array['text', 'text']::name[]);
@@ -268,7 +269,7 @@ select has_function('search_groups', array['jsonb']::name[]);
 select has_function('search_user', array['text']::name[]);
 select has_function('set_meeting_auto_end_check_outcome', array['timestamp with time zone', 'uuid', 'text']::name[]);
 select has_function('set_meeting_error', array['text', 'uuid', 'uuid', 'uuid', 'timestamp with time zone', 'text']::name[]);
-select has_function('sign_up_user', array['jsonb', 'boolean']::name[]);
+select has_function('sign_up_user', array['jsonb', 'boolean', 'uuid', 'jsonb']::name[]);
 select has_function('stats_label_count_series', array['jsonb']::name[]);
 select has_function('stats_label_count_series_by_name', array['jsonb']::name[]);
 select has_function('stats_running_total_series', array['jsonb']::name[]);

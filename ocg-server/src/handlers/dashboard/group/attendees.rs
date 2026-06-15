@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::DynDB,
+    db::{DynDB, notifications::CustomNotificationTracking},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
@@ -479,7 +479,6 @@ pub(crate) async fn send_event_custom_notification(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     ValidatedForm(notification): ValidatedForm<EventCustomNotification>,
@@ -500,7 +499,7 @@ pub(crate) async fn send_event_custom_notification(
             .into_response());
     }
 
-    // Enqueue notification
+    // Build and enqueue the custom notification with its audit entry
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = format!(
         "{}/{}/group/{}/event/{}",
@@ -522,16 +521,16 @@ pub(crate) async fn send_event_custom_notification(
         recipients: event_attendees_ids,
         template_data: Some(serde_json::to_value(&template_data)?),
     };
-    notifications_manager.enqueue(&new_notification).await?;
-
-    // Track custom notification for auditing purposes
-    db.track_custom_notification(
-        user.user_id,
-        Some(event_id),
-        Some(group_id),
-        new_notification.recipients.len(),
-        &notification.subject,
-        &notification.body,
+    db.enqueue_tracked_custom_notification(
+        &new_notification,
+        CustomNotificationTracking {
+            body: notification.body.clone(),
+            created_by: user.user_id,
+            event_id: Some(event_id),
+            group_id: Some(group_id),
+            recipient_count: new_notification.recipients.len(),
+            subject: notification.subject.clone(),
+        },
     )
     .await?;
 
