@@ -6,6 +6,7 @@ import {
   handleCommitShaBeforeSwap,
   handleCommitShaConfigRequest,
   handleDeclarativeHtmxResponse,
+  handleHtmxExcludeConfigRequest,
   handleNotFoundBeforeSwap,
   getDeclarativeHtmxResponseElement,
   isSuccessfulRefreshBodyResponse,
@@ -203,6 +204,84 @@ describe("htmx extensions", () => {
     expect(event.detail.headers).to.deep.equal({
       Existing: "value",
       [COMMIT_SHA_HEADER]: "abc123",
+    });
+  });
+
+  it("excludes named parameters matching a custom hx-exclude selector", () => {
+    document.body.innerHTML = `
+      <form id="details-form">
+        <input type="checkbox" name="toggle_registration_required" checked>
+        <input type="hidden" name="registration_required" value="true">
+        <input type="text" name="name" value="Spring meetup">
+      </form>
+      <button
+        id="save-button"
+        hx-exclude="input[type='checkbox'][name^='toggle_']"
+        type="button"
+      >
+        Save
+      </button>
+    `;
+    const parameters = {
+      toggle_registration_required: "required",
+      registration_required: "true",
+      name: "Spring meetup",
+    };
+
+    handleHtmxExcludeConfigRequest({
+      detail: {
+        elt: document.getElementById("save-button"),
+        parameters,
+      },
+    });
+
+    expect(parameters).to.deep.equal({
+      registration_required: "true",
+      name: "Spring meetup",
+    });
+  });
+
+  it("supports inherited data-hx-exclude for FormData parameters", () => {
+    document.body.innerHTML = `
+      <section data-hx-exclude="input[type='checkbox'][name^='toggle_']">
+        <form id="details-form">
+          <input type="checkbox" name="toggle_test_event" checked>
+          <input type="hidden" name="test_event" value="true">
+        </form>
+        <button id="save-button" type="button">Save</button>
+      </section>
+    `;
+    const parameters = new FormData();
+    parameters.append("toggle_test_event", "enabled");
+    parameters.append("test_event", "true");
+
+    handleHtmxExcludeConfigRequest({
+      detail: {
+        elt: document.getElementById("save-button"),
+        parameters,
+      },
+    });
+
+    expect(formDataToEntries(parameters)).to.deep.equal([["test_event", "true"]]);
+  });
+
+  it("ignores invalid custom hx-exclude selectors", () => {
+    document.body.innerHTML = `
+      <button id="save-button" hx-exclude="input[" type="button">Save</button>
+    `;
+    const parameters = {
+      name: "Spring meetup",
+    };
+
+    handleHtmxExcludeConfigRequest({
+      detail: {
+        elt: document.getElementById("save-button"),
+        parameters,
+      },
+    });
+
+    expect(parameters).to.deep.equal({
+      name: "Spring meetup",
     });
   });
 
@@ -608,6 +687,7 @@ describe("htmx extensions", () => {
     // All shared response handlers are registered on the event root.
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:configRequest", handleHtmxExcludeConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
       ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
@@ -631,6 +711,7 @@ describe("htmx extensions", () => {
     // The root receives one copy of each shared response handler.
     expect(listeners).to.deep.equal([
       ["htmx:configRequest", handleCommitShaConfigRequest],
+      ["htmx:configRequest", handleHtmxExcludeConfigRequest],
       ["htmx:beforeOnLoad", handleCommitShaBeforeOnLoad],
       ["htmx:beforeOnLoad", handleDeclarativeHtmxResponse],
       ["htmx:beforeSwap", handleCommitShaBeforeSwap],
