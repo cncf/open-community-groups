@@ -29,11 +29,7 @@ use crate::{
         extractors::{OAuth2, Oidc},
         tests::*,
     },
-    services::{
-        images::MockImageStorage,
-        notifications::{MockNotificationsManager, NotificationKind},
-    },
-    templates::notifications::EmailVerification as EmailVerificationTemplate,
+    services::{images::MockImageStorage, notifications::MockNotificationsManager},
 };
 
 use super::*;
@@ -1396,10 +1392,10 @@ async fn test_sign_up_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let session_record = sample_empty_session_record(session_id);
-    let email_verification_code = Uuid::new_v4();
-    let user = sample_auth_user(Uuid::new_v4(), "hash");
-    let user_for_notifications = user.clone();
-    let user_for_db = user;
+    let user_for_db = sample_auth_user(Uuid::new_v4(), "hash");
+    let site_settings = sample_site_settings();
+    let activation_primary_color = site_settings.theme.primary_color.clone();
+    let sign_up_primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1407,27 +1403,34 @@ async fn test_sign_up_success() {
         .times(1)
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
-    let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
-    db.expect_activate_pre_registered_user_email_password()
-        .times(1)
-        .withf(move |summary| {
-            summary.email == "test@example.test"
-                && !matches!(summary.password.as_deref(), Some("secret-password"))
-        })
-        .returning(|_| Ok(None));
-    db.expect_sign_up_user()
-        .times(1)
-        .withf(move |summary, verify| {
-            !matches!(summary.password.as_deref(), Some("secret-password")) && !verify
-        })
-        .returning({
-            let user = user_for_db;
-            move |_, _| Ok((user.clone(), Some(email_verification_code)))
-        });
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
+    db.expect_activate_pre_registered_user_email_password()
+        .times(1)
+        .withf(move |summary, verification| {
+            summary.email == "test@example.test"
+                && !matches!(summary.password.as_deref(), Some("secret-password"))
+                && verification.template_data.link
+                    == format!("https://app.example/verify-email/{}", verification.code)
+                && verification.template_data.theme.primary_color == activation_primary_color
+        })
+        .returning(|_, _| Ok(None));
+    db.expect_sign_up_user()
+        .times(1)
+        .withf(move |summary, verify, verification| {
+            !matches!(summary.password.as_deref(), Some("secret-password"))
+                && !*verify
+                && verification.as_ref().is_some_and(|verification| {
+                    verification.template_data.link
+                        == format!("https://app.example/verify-email/{}", verification.code)
+                        && verification.template_data.theme.primary_color == sign_up_primary_color
+                })
+        })
+        .returning({
+            let user = user_for_db;
+            move |_, _, verification| Ok((user.clone(), verification.map(|value| value.code)))
+        });
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -1440,25 +1443,7 @@ async fn test_sign_up_success() {
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(&notification.kind, NotificationKind::EmailVerification)
-                && notification.recipients == vec![user_for_notifications.user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(
-                        |template| {
-                            template.link
-                                == format!(
-                                    "https://app.example/verify-email/{email_verification_code}"
-                                )
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        },
-                    )
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
+    nm.expect_enqueue().times(0);
 
     // Setup router
     let server_cfg = HttpServerConfig {
@@ -1502,10 +1487,9 @@ async fn test_sign_up_activates_pre_registered_user() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let session_record = sample_empty_session_record(session_id);
-    let email_verification_code = Uuid::new_v4();
-    let user = sample_auth_user(Uuid::new_v4(), "hash");
-    let user_for_notifications = user.clone();
-    let user_for_db = user;
+    let user_for_db = sample_auth_user(Uuid::new_v4(), "hash");
+    let site_settings = sample_site_settings();
+    let activation_primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1513,24 +1497,25 @@ async fn test_sign_up_activates_pre_registered_user() {
         .times(1)
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
-    let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
-        .withf(move |summary| {
+        .withf(move |summary, verification| {
             summary.email == "invited@example.test"
                 && summary.name == "Invited User"
                 && summary.username == "invited-user"
                 && !matches!(summary.password.as_deref(), Some("secret-password"))
+                && verification.template_data.link
+                    == format!("https://app.example/verify-email/{}", verification.code)
+                && verification.template_data.theme.primary_color == activation_primary_color
         })
         .returning({
             let user = user_for_db;
-            move |_| Ok(Some((user.clone(), email_verification_code)))
+            move |_, verification| Ok(Some((user.clone(), verification.code)))
         });
     db.expect_sign_up_user().times(0);
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -1543,25 +1528,7 @@ async fn test_sign_up_activates_pre_registered_user() {
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(&notification.kind, NotificationKind::EmailVerification)
-                && notification.recipients == vec![user_for_notifications.user_id]
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    serde_json::from_value::<EmailVerificationTemplate>(value.clone()).is_ok_and(
-                        |template| {
-                            template.link
-                                == format!(
-                                    "https://app.example/verify-email/{email_verification_code}"
-                                )
-                                && template.theme.primary_color
-                                    == site_settings_for_notifications.theme.primary_color
-                        },
-                    )
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
+    nm.expect_enqueue().times(0);
 
     // Setup router
     let server_cfg = HttpServerConfig {
@@ -1645,7 +1612,7 @@ async fn test_sign_up_missing_password() {
 }
 
 #[tokio::test]
-async fn test_sign_up_db_error() {
+async fn test_sign_up_rejects_empty_normalized_base_url() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let session_record = sample_empty_session_record(session_id);
@@ -1656,12 +1623,9 @@ async fn test_sign_up_db_error() {
         .times(1)
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_activate_pre_registered_user_email_password()
-        .times(1)
-        .returning(|_| Ok(None));
-    db.expect_sign_up_user()
-        .times(1)
-        .returning(|_, _| Err(anyhow!("db error")));
+    db.expect_get_site_settings().times(0);
+    db.expect_activate_pre_registered_user_email_password().times(0);
+    db.expect_sign_up_user().times(0);
     db.expect_update_session()
         .times(1)
         .withf(move |record| {
@@ -1677,8 +1641,85 @@ async fn test_sign_up_db_error() {
     nm.expect_enqueue().times(0);
 
     // Setup router
-    let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.email = true;
+    let server_cfg = HttpServerConfig {
+        base_url: "/".to_string(),
+        login: LoginOptions {
+            email: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+
+    // Setup request
+    let form = "email=test%40example.test&name=Test+User&username=test-user&password=secretpw";
+    let request = Request::builder()
+        .method("POST")
+        .uri("/sign-up")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::SEE_OTHER);
+    assert_eq!(
+        parts.headers.get(LOCATION).unwrap(),
+        &HeaderValue::from_static(SIGN_UP_URL),
+    );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_sign_up_db_error() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let session_record = sample_empty_session_record(session_id);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_activate_pre_registered_user_email_password()
+        .times(1)
+        .returning(|_, _| Ok(None));
+    db.expect_sign_up_user()
+        .times(1)
+        .returning(|_, _, _| Err(anyhow!("db error")));
+    db.expect_update_session()
+        .times(1)
+        .withf(move |record| {
+            message_matches(
+                record,
+                "Something went wrong while signing up. Please try again later.",
+            )
+        })
+        .returning(|_| Ok(()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue().times(0);
+
+    // Setup router
+    let server_cfg = HttpServerConfig {
+        base_url: "https://app.example".to_string(),
+        login: LoginOptions {
+            email: true,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
     let router = TestRouterBuilder::new(db, nm)
         .with_server_cfg(server_cfg)
         .build()

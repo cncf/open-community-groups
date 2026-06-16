@@ -332,7 +332,9 @@ pub(crate) async fn cancel(
             db.cancel_event_series_events(user.user_id, group_id, &event_ids)
                 .await?;
         }
-        EventActionScope::This => db.cancel_event(user.user_id, group_id, event_id).await?,
+        EventActionScope::This => {
+            db.cancel_event(user.user_id, group_id, event_id).await?;
+        }
     }
 
     // Notify related users about canceled events that were future published
@@ -469,7 +471,7 @@ pub(crate) async fn publish(
         (EventActionScope::Series, [_, _, ..]) => {
             let event_ids: Vec<Uuid> =
                 events_to_notify.iter().map(|event| event.event_id).collect();
-            notify_events_published(
+            if let Err(err) = notify_events_published(
                 &db,
                 &notifications_manager,
                 &server_cfg,
@@ -477,11 +479,19 @@ pub(crate) async fn publish(
                 group_id,
                 &event_ids,
             )
-            .await?;
+            .await
+            {
+                warn!(
+                    error = %err,
+                    %group_id,
+                    ?event_ids,
+                    "failed to enqueue event series publish notifications"
+                );
+            }
         }
         // Single notifiable event
         (_, [event]) => {
-            notify_event_published(
+            if let Err(err) = notify_event_published(
                 &db,
                 &notifications_manager,
                 &server_cfg,
@@ -489,7 +499,15 @@ pub(crate) async fn publish(
                 group_id,
                 event.event_id,
             )
-            .await?;
+            .await
+            {
+                warn!(
+                    error = %err,
+                    %group_id,
+                    event_id = %event.event_id,
+                    "failed to enqueue event publish notifications"
+                );
+            }
         }
         _ => {}
     }

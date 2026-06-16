@@ -263,7 +263,7 @@ impl AuthnBackend {
             }
             Ok(user)
         } else {
-            let (user, _) = self.db.sign_up_user(user_summary, true).await?;
+            let (user, _) = self.db.sign_up_user(user_summary, true, None).await?;
             Ok(user)
         }
     }

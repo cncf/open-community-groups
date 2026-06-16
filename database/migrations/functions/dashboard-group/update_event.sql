@@ -36,10 +36,8 @@ declare
     v_was_ticketed boolean;
 begin
     -- Load the locked event state used by the update flow
-    select
-        get_event_full(g.community_id, p_group_id, p_event_id)::jsonb
-    into
-        v_event_before
+    select get_event_full(g.community_id, p_group_id, p_event_id)::jsonb
+    into v_event_before
     from "group" g
     join event e on e.group_id = g.group_id
     where g.group_id = p_group_id

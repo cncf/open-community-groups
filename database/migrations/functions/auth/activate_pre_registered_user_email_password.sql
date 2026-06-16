@@ -1,6 +1,8 @@
--- Activates a pre-registered user after password signup and generates an email verification code.
+-- Activates a pre-registered user after password signup and stores an email verification code.
 create or replace function activate_pre_registered_user_email_password(
-    p_user jsonb
+    p_user jsonb,
+    p_verification_code uuid,
+    p_verification_template_data jsonb
 )
 returns table("user" json, verification_code uuid) as $$
 declare
@@ -8,6 +10,14 @@ declare
     v_username text;
     v_verification_code uuid;
 begin
+    -- Validate verification payload before any mutation that depends on it
+    if p_verification_code is null then
+        raise exception 'verification code is required to send verification email';
+    end if;
+    if p_verification_template_data is null then
+        raise exception 'verification template data is required to send verification email';
+    end if;
+
     -- Lock the placeholder user if this email was pre-registered
     select u.user_id
     into v_user_id
@@ -41,11 +51,21 @@ begin
     end if;
 
     -- Create/refresh email verification code for the activated user
-    insert into email_verification_code (user_id)
-    values (v_user_id)
+    insert into email_verification_code (email_verification_code_id, user_id)
+    values (p_verification_code, v_user_id)
     on conflict (user_id) do update
-    set created_at = current_timestamp
+    set
+        created_at = current_timestamp,
+        email_verification_code_id = excluded.email_verification_code_id
     returning email_verification_code_id into v_verification_code;
+
+    -- Enqueue verification email before returning the activated user
+    perform enqueue_notification(
+        'email-verification',
+        p_verification_template_data,
+        '[]'::jsonb,
+        array[v_user_id]
+    );
 
     return query
     select

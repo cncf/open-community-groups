@@ -1846,7 +1846,7 @@ async fn test_send_event_custom_notification_success() {
     })
     .unwrap();
 
-    // Create copies for the track_custom_notification closure
+    // Create copies for the enqueue_tracked_custom_notification closure
     let track_user_id = user_id;
     let track_event_id = event_id;
     let track_group_id = group_id;
@@ -1883,25 +1883,9 @@ async fn test_send_event_custom_notification_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-    db.expect_track_custom_notification()
+    db.expect_enqueue_tracked_custom_notification()
         .times(1)
-        .withf(
-            move |created_by, event_id, group_id, recipient_count, subject, body| {
-                *created_by == track_user_id
-                    && *event_id == Some(track_event_id)
-                    && *group_id == Some(track_group_id)
-                    && *recipient_count == 2
-                    && subject == track_subject
-                    && body == track_body
-            },
-        )
-        .returning(|_, _, _, _, _, _| Ok(()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
+        .withf(move |notification, tracking| {
             matches!(notification.kind, NotificationKind::EventCustom)
                 && notification.recipients == vec![attendee_id1, attendee_id2]
                 && notification.template_data.as_ref().is_some_and(|value| {
@@ -1915,8 +1899,17 @@ async fn test_send_event_custom_notification_success() {
                                 == site_settings_for_notifications.theme.primary_color
                     })
                 })
+                && tracking.created_by == track_user_id
+                && tracking.event_id == Some(track_event_id)
+                && tracking.group_id == Some(track_group_id)
+                && tracking.recipient_count == 2
+                && tracking.subject == track_subject
+                && tracking.body == track_body
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;

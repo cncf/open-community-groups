@@ -1,7 +1,9 @@
--- sign_up_user creates a new user and generates an email verification code if needed.
+-- sign_up_user creates a new user and stores an email verification code if needed.
 create or replace function sign_up_user(
     p_user jsonb,
-    p_email_verified boolean default false
+    p_email_verified boolean default false,
+    p_verification_code uuid default null,
+    p_verification_template_data jsonb default null
 )
 returns table("user" json, verification_code uuid) as $$
 declare
@@ -9,6 +11,14 @@ declare
     v_username text;
     v_verification_code uuid;
 begin
+    -- Validate verification payload before any mutation that depends on it
+    if not p_email_verified and p_verification_code is null then
+        raise exception 'verification code is required to send verification email';
+    end if;
+    if not p_email_verified and p_verification_template_data is null then
+        raise exception 'verification template data is required to send verification email';
+    end if;
+
     -- Resolve the requested username before inserting the user
     v_username := resolve_unique_username(p_user->>'username');
 
@@ -32,11 +42,19 @@ begin
     )
     returning user_id into v_user_id;
 
-    -- Generate verification code if email is not verified
+    -- Store the caller-provided verification code if email is not verified
     if not p_email_verified then
-        insert into email_verification_code (user_id)
-        values (v_user_id)
+        insert into email_verification_code (email_verification_code_id, user_id)
+        values (p_verification_code, v_user_id)
         returning email_verification_code_id into v_verification_code;
+
+        -- Enqueue verification email before returning the new user
+        perform enqueue_notification(
+            'email-verification',
+            p_verification_template_data,
+            '[]'::jsonb,
+            array[v_user_id]
+        );
     end if;
 
     -- Return the user and verification code

@@ -23,7 +23,9 @@ with test_user as (
             'username', 'testuser1',
             'name', 'Test User 1'
         ),
-        false
+        false,
+        gen_random_uuid(),
+        '{}'::jsonb
     )
 )
 
@@ -51,7 +53,9 @@ with test_user as (
             'username', 'testuser1b',
             'name', 'Test User 1b'
         ),
-        false
+        false,
+        gen_random_uuid(),
+        '{}'::jsonb
     )
 )
 
@@ -85,7 +89,9 @@ with test_user as (
             'username', 'testuser2',
             'name', 'Test User 2'
         ),
-        false
+        false,
+        gen_random_uuid(),
+        '{}'::jsonb
     )
 )
 
@@ -110,7 +116,9 @@ with test_user as (
             'username', 'testuser3',
             'name', 'Test User 3'
         ),
-        false
+        false,
+        gen_random_uuid(),
+        '{}'::jsonb
     )
 )
 

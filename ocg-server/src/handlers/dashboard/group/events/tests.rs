@@ -1220,6 +1220,8 @@ async fn test_cancel_series_success() {
         Some(community_id),
         Some(group_id),
     );
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
     let event_summary = EventSummary {
         published: false,
         ..sample_event_summary(event_id, group_id)
@@ -1229,8 +1231,6 @@ async fn test_cancel_series_success() {
         published: false,
         ..sample_event_summary(related_event_id, group_id)
     };
-    let series_event_ids = vec![event_id, related_event_id];
-    let expected_series_event_ids = series_event_ids.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2376,12 +2376,10 @@ async fn test_unpublish_series_success() {
 #[allow(clippy::too_many_lines)]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let attendee_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let speaker_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
@@ -2392,19 +2390,7 @@ async fn test_update_success() {
         Some(group_id),
     );
     let before = sample_event_summary(event_id, group_id);
-    let after = EventSummary {
-        starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
-        ..before.clone()
-    };
-    let event_full = EventFull {
-        speakers: vec![Speaker {
-            featured: false,
-            user: sample_template_user_with_id(speaker_id),
-        }],
-        ..sample_event_full(community_id, event_id, group_id)
-    };
-    let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
+    let after = before.clone();
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
 
@@ -2453,36 +2439,8 @@ async fn test_update_success() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
-    db.expect_get_event_full()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event_full.clone()));
-    db.expect_list_event_attendees_ids()
-        .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(vec![attendee_id]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-
     // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventRescheduled)
-                && notification.recipients.len() == 2
-                && notification.recipients.contains(&attendee_id)
-                && notification.recipients.contains(&speaker_id)
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRescheduled>(value.clone()).is_ok_and(|template| {
-                        template.link == "/test/group/npq6789/event/abc1234"
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;

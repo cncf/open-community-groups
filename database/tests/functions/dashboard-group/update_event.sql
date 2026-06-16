@@ -276,6 +276,10 @@ insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
     (:'label3ID', :'event18ID', '#CCFBF1', 'track / backend'),
     (:'label4ID', :'event18ID', '#FEE2E2', 'track / frontend');
 
+-- Attendee used by reminder evaluation checks
+insert into event_attendee (event_id, user_id)
+values (:'event10ID', :'user1ID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
