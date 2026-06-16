@@ -83,7 +83,7 @@ const renderPaidAttendanceDom = ({
             data-question-kind="free-text"
             data-question-required="true"
           >
-            <textarea data-registration-answer required></textarea>
+            <textarea data-question-answer required></textarea>
           </fieldset>
           <input
             data-attendance-role="registration-answers-input"
@@ -227,7 +227,7 @@ const renderPaidAttendanceDom = ({
     registrationForm: document.querySelector(
       '[data-attendance-role="registration-form"]',
     ),
-    registrationAnswer: document.querySelector("[data-registration-answer]"),
+    registrationAnswer: document.querySelector("[data-question-answer]"),
     registrationAnswersInput: document.querySelector(
       '[data-attendance-role="registration-answers-input"]',
     ),

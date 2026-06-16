@@ -341,7 +341,7 @@ const collectQuestionAnswers = (container) => {
   }
 
   return collectQuestionAnswersFromForm(form, {
-    answerSelector: "[data-registration-answer]",
+    answerSelector: "[data-question-answer]",
   });
 };
 

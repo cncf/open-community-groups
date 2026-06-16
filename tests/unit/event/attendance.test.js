@@ -96,7 +96,7 @@ const renderAttendanceDom = ({
             data-question-kind="free-text"
             data-question-required="true"
           >
-            <textarea data-registration-answer required></textarea>
+            <textarea data-question-answer required></textarea>
           </fieldset>
           <input
             type="hidden"
