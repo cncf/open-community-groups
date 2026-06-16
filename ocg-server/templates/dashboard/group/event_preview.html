@@ -253,7 +253,8 @@
                   About this event
                 </div>
                 {% if let Some(description) = &event.description -%}
-                  <div class="markdown text-sm/6 text-stone-500">{{ description|md_to_html|safe }}</div>
+                  <div class="markdown text-sm/6 text-stone-500"
+                       data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
                 {% else -%}
                   <div class="rounded-lg border border-dashed border-stone-200 p-4 text-sm font-medium text-stone-500">
                     Missing event description
@@ -316,7 +317,8 @@
                           <div class="mb-3 text-sm/6 italic text-stone-500">{{ online_label }}</div>
                         {% endif -%}
                         {% if let Some(description) = &session.description -%}
-                          <div class="markdown mt-3 text-sm/6 text-stone-600">{{ description|md_to_html|safe }}</div>
+                          <div class="markdown mt-3 text-sm/6 text-stone-600"
+                               data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
                         {% endif -%}
                         {% if !session.speakers.is_empty() -%}
                           <div class="mt-4">

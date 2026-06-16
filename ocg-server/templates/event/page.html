@@ -727,7 +727,8 @@
       <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>
     {% endif -%}
     {% if let Some(description) = &session.description -%}
-      <div class="text-sm/6 text-stone-600 markdown mt-3">{{ description|md_to_html|safe }}</div>
+      <div class="text-sm/6 text-stone-600 markdown mt-3"
+           data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
     {% endif -%}
     {% let has_instructions_session = session.meeting_join_instructions.is_some() -%}
     {% let has_join_session = session.meeting_join_url.is_some() -%}
