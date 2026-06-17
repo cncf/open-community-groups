@@ -31,6 +31,7 @@ test.describe("group dashboard sponsors view", () => {
     const featuredToggle = sponsorRow.getByRole("checkbox", {
       name: `Visible on group page for ${ORIGINAL_SPONSOR_NAME}`,
     });
+    const confirmationDialog = organizerGroupPage.locator(".swal2-popup");
     let featuredUpdateRequests = 0;
 
     // Count featured-update requests while the cancel dialog is open.
@@ -56,16 +57,16 @@ test.describe("group dashboard sponsors view", () => {
 
     // Click the featured toggle.
     await featuredToggle.click({ force: true });
-    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+    await expect(confirmationDialog).toContainText(
       "This sponsor will no longer be visible on the public group page.",
     );
 
     // Click No.
-    await organizerGroupPage.getByRole("button", { name: "No" }).click();
+    await confirmationDialog.getByRole("button", { name: "No" }).click();
+    await expect(confirmationDialog).toBeHidden();
 
     // Assert that the sponsor is marked as featured.
     await expect(featuredToggle).toBeChecked();
-    await expect(organizerGroupPage.locator(".swal2-popup")).toHaveCount(0);
     expect(featuredUpdateRequests).toBe(0);
 
     // Stop watching sponsor update requests.

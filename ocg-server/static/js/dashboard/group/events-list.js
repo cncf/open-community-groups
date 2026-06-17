@@ -2,6 +2,7 @@ import { confirmAction, confirmSeriesAction, handleHtmxResponse } from "/static/
 import {
   closestElement,
   closestElementWithinRoot,
+  getElementById,
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,
   isElementHidden,
@@ -25,9 +26,7 @@ const closeDropdowns = (root, exceptDropdown = null) => {
 
 const handleActionsMenuClick = (button, root) => {
   const eventId = button.dataset.eventId;
-  const dropdown =
-    root.getElementById?.(`dropdown-actions-${eventId}`) ||
-    root.querySelector?.(`#dropdown-actions-${CSS.escape(eventId)}`);
+  const dropdown = getElementById(root, `dropdown-actions-${eventId}`);
   if (!dropdown) {
     return;
   }
@@ -130,6 +129,7 @@ export const initializeEventsListPage = (root = document) => {
   root.addEventListener("click", (event) => {
     const actionsButton = closestElementWithinRoot(event.target, EVENT_ACTIONS_BUTTON_SELECTOR, root);
     if (actionsButton) {
+      event.preventDefault();
       handleActionsMenuClick(actionsButton, root);
       return;
     }

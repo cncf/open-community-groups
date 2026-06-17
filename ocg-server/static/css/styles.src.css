@@ -361,6 +361,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .jumbotron-description a, .community-description a, .new-group-content a {
   color: var(--ocg-primary);
   font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .community-description h1,

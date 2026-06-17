@@ -1470,9 +1470,10 @@ test.describe("group dashboard events view", () => {
 
     // Verify the ticketed event appears and dismiss the success dialog.
     const eventRow = dashboardContent.locator("tr", { hasText: eventName });
+    const successDialog = organizerGroupPage.locator(".swal2-popup");
     await expect(eventRow).toBeVisible();
-    await organizerGroupPage.getByRole("button", { name: "OK" }).click();
-    await expect(organizerGroupPage.locator(".swal2-popup")).toHaveCount(0);
+    await successDialog.getByRole("button", { name: "OK" }).click();
+    await expect(successDialog).toBeHidden();
 
     // Reopen the event and verify ticketing values persisted.
     await openEventUpdateFormByName(organizerGroupPage, eventName);
