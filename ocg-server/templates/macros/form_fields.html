@@ -9,6 +9,30 @@
 {% endmacro image_field -%}
 {# End image upload field -#}
 
+{# Required entity name field -#}
+{% macro entity_name_field(legend_prefix, value_attr = "", field_class = "col-span-full lg:col-span-5") -%}
+  <div class="{{ field_class }}">
+    <label for="name" class="form-label">
+      Name <span class="asterisk">*</span>
+    </label>
+    <div class="mt-2">
+      <input type="text"
+             name="name"
+             id="name"
+             maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+             class="input-primary"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false"
+             {{ value_attr|safe }}
+             required>
+    </div>
+    <p class="form-legend">{{ legend_prefix }} Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.</p>
+  </div>
+{% endmacro entity_name_field -%}
+{# End required entity name field -#}
+
 {# Social URL field -#}
 {% macro social_url_field(name, label, icon, placeholder, value_attr = "", field_class = "col-span-full lg:col-span-3") -%}
   <div class="{{ field_class }}">

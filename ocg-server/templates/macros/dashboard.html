@@ -127,6 +127,59 @@
 {% endmacro page_title -%}
 {# End page title #}
 
+{# Form actions #}
+{% macro form_actions(cancel_href, spinner_id, submit_label, disabled = false, disabled_title = "") -%}
+  <div class="mt-6 flex items-center justify-end gap-x-6">
+    <button id="cancel-button"
+            type="button"
+            hx-get="{{ cancel_href }}"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline">Cancel</button>
+
+    <button type="submit"
+            class="btn-primary relative
+                   {% if disabled -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}"
+            {% if disabled -%}
+              disabled title="{{ disabled_title }}"
+            {% endif -%}>
+      {{ ui::btn_spinner(id = spinner_id, spinner_type = "2") -}}
+      {{ submit_label }}
+    </button>
+  </div>
+{% endmacro form_actions -%}
+{# End form actions #}
+
+{# Modal close button #}
+{% macro modal_close_button(id = "", attrs = "") -%}
+  <button {% if !id.is_empty() %}id="{{ id }}"{% endif %}
+          {{ attrs|safe }}
+          type="button"
+          class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+    <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+    <span class="sr-only">Close modal</span>
+  </button>
+{% endmacro modal_close_button -%}
+{# End modal close button #}
+
+{# Modal header #}
+{% macro modal_header(title_id, title, close_id = "", close_attrs = "", subtitle = "", align_items = "items-center") -%}
+  <div class="flex {{ align_items }} justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+    {% if subtitle.is_empty() -%}
+      <h3 id="{{ title_id }}" class="text-xl font-semibold text-stone-900">{{ title }}</h3>
+    {% else -%}
+      <div>
+        <h3 id="{{ title_id }}" class="text-xl font-semibold text-stone-900">{{ title }}</h3>
+        {{ subtitle|safe }}
+      </div>
+    {% endif -%}
+    {{ modal_close_button(id = close_id, attrs = close_attrs) -}}
+  </div>
+{% endmacro modal_header -%}
+{# End modal header #}
+
 {# Permission warning #}
 {% macro permission_warning(message, extra_classes = "mb-6") -%}
   <div class="{{ extra_classes }} rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
