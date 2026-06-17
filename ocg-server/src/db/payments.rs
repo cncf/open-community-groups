@@ -8,7 +8,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::PgExecutor,
     services::payments::CheckoutSession,
     types::{
         payments::{EventPurchaseSummary, PaymentProvider, PreparedEventCheckout},
@@ -125,7 +125,10 @@ pub(crate) trait DBPayments {
 }
 
 #[async_trait]
-impl DBPayments for PgDB {
+impl<T> DBPayments for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBPayments::approve_event_refund_request`]
     #[instrument(skip(self, review_note), err)]
     async fn approve_event_refund_request(

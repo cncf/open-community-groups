@@ -7,13 +7,12 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use cached::proc_macro::cached;
-use deadpool_postgres::Client;
 use serde::Serialize;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    PgDB,
+    db::{PgClient, PgExecutor},
     services::notifications::{Attachment, NewNotification, Notification},
 };
 
@@ -52,11 +51,14 @@ pub(crate) trait DBNotifications {
 }
 
 #[async_trait]
-impl DBNotifications for PgDB {
+impl<T> DBNotifications for T
+where
+    T: PgExecutor + Send + Sync,
+{
     #[instrument(skip(self), err)]
     async fn claim_pending_notification(&self) -> Result<Option<Notification>> {
         // Claim pending notification (if any)
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let Some(row) = db
             .query_opt("select * from claim_pending_notification();", &[])
             .await?
@@ -105,7 +107,7 @@ impl DBNotifications for PgDB {
 
     #[instrument(skip(self), err)]
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize> {
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let count = db
             .query_one(
                 "
@@ -142,7 +144,7 @@ impl DBNotifications for PgDB {
 
         // Enqueue notification in database
         let kind = notification.kind.to_string();
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         db.execute(
             "
             select enqueue_notification(
@@ -234,7 +236,7 @@ impl DBNotifications for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, attachment_id: Uuid) -> Result<Attachment> {
+        async fn inner(db: PgClient<'_>, attachment_id: Uuid) -> Result<Attachment> {
             let row = db
                 .query_one(
                     "
@@ -253,7 +255,7 @@ impl DBNotifications for PgDB {
             })
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db, attachment_id).await
     }
 
@@ -287,7 +289,7 @@ impl DBNotifications for PgDB {
         error: Option<String>,
     ) -> Result<()> {
         // Mark the claimed notification as processed
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         db.execute(
             "
             select update_notification($1::uuid, $2::text);

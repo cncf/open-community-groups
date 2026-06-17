@@ -6,7 +6,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::PgExecutor,
     types::{
         event::{EventKind, EventSummary},
         group::GroupFull,
@@ -57,7 +57,10 @@ pub(crate) trait DBGroup {
 }
 
 #[async_trait]
-impl DBGroup for PgDB {
+impl<T> DBGroup for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBGroup::get_group_full_by_slug`]
     #[instrument(skip(self), err)]
     async fn get_group_full_by_slug(

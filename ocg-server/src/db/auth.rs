@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::{User, UserSummary},
-    db::PgDB,
+    db::PgExecutor,
     templates::{auth::UserDetails, notifications::EmailVerification},
     types::permissions::{CommunityPermission, GroupPermission},
     types::user::UserProvider,
@@ -101,10 +101,11 @@ pub(crate) trait DBAuth {
     async fn verify_email(&self, code: &Uuid) -> Result<()>;
 }
 
-/// Implementation of `DBAuth` for `PgDB`, providing all authentication and authorization
-/// related database operations.
 #[async_trait]
-impl DBAuth for PgDB {
+impl<T> DBAuth for T
+where
+    T: PgExecutor + Send + Sync,
+{
     #[instrument(skip(self, user_summary, verification), err)]
     async fn activate_pre_registered_user_email_password(
         &self,
@@ -112,7 +113,7 @@ impl DBAuth for PgDB {
         verification: &EmailVerificationNotification,
     ) -> Result<Option<(User, Uuid)>> {
         let template_data = serde_json::to_value(&verification.template_data)?;
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let row = db
             .query_opt(
                 "
@@ -184,7 +185,7 @@ impl DBAuth for PgDB {
 
     #[instrument(skip(self, session_id), err)]
     async fn get_session(&self, session_id: &session::Id) -> Result<Option<session::Record>> {
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let row = db
             .query_opt(
                 "select data, expires_at from auth_session where auth_session_id = $1::text;",
@@ -268,7 +269,7 @@ impl DBAuth for PgDB {
             .map(|verification| serde_json::to_value(&verification.template_data))
             .transpose()?;
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let row = db
             .query_one(
                 "

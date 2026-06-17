@@ -3,12 +3,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
-use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 
 use crate::{
-    db::PgDB,
+    db::{PgClient, PgExecutor},
     templates::site::explore::{Entity, FiltersOptions},
     templates::site::stats::SiteStats,
     types::{
@@ -54,9 +53,11 @@ pub(crate) trait DBSite {
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>>;
 }
 
-/// Implementation of `DBSite` for `PgDB`.
 #[async_trait]
-impl DBSite for PgDB {
+impl<T> DBSite for T
+where
+    T: PgExecutor + Send + Sync,
+{
     #[instrument(skip(self), err)]
     async fn get_filters_options(
         &self,
@@ -90,14 +91,14 @@ impl DBSite for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<SiteSettings> {
+        async fn inner(db: PgClient<'_>) -> Result<SiteSettings> {
             let row = db.query_one("select get_site_settings()", &[]).await?;
             let settings = row.try_get::<_, Json<SiteSettings>>(0)?.0;
 
             Ok(settings)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 
@@ -128,14 +129,14 @@ impl DBSite for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<CommunitySummary>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<CommunitySummary>> {
             let row = db.query_one("select list_communities();", &[]).await?;
             let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
 
             Ok(communities)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 }
