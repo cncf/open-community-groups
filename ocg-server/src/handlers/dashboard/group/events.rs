@@ -1,6 +1,6 @@
 //! HTTP handlers for managing events in the group dashboard.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use anyhow::Result;
 use askama::Template;
@@ -10,10 +10,10 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use chrono::{TimeDelta, Utc};
+use chrono::Utc;
 use garde::Validate;
 use serde::Deserialize;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -26,32 +26,23 @@ use crate::{
     router::serde_qs_config,
     services::{
         meetings::MeetingProvider,
-        notifications::{
-            DynNotificationsManager, NewNotification, NotificationKind,
-            helpers::{
-                build_event_canceled_notification, build_event_published_notification,
-                build_event_rescheduled_notification, build_event_waitlist_promoted_notification,
-                build_speaker_welcome_notification, should_send_waitlist_promoted_notification,
-            },
+        notifications::enqueue::{
+            enqueue_event_canceled_notification, enqueue_event_published_notifications,
+            enqueue_event_rescheduled_notification, enqueue_event_series_canceled_notifications,
+            enqueue_event_series_published_notifications,
+            enqueue_event_waitlist_promoted_notification,
         },
     },
-    templates::{
-        dashboard::group::{
-            events::{self, Event, EventsListFilters, EventsTab},
-            sponsors::GroupSponsorsFilters,
-        },
-        notifications::{
-            EventSeriesCanceled, EventSeriesNotificationItem, EventSeriesPublished,
-            SpeakerSeriesWelcome,
-        },
+    templates::dashboard::group::{
+        events::{self, Event, EventsListFilters, EventsTab},
+        sponsors::GroupSponsorsFilters,
     },
     types::{
-        event::{EventFull, EventSummary},
+        event::EventSummary,
         pagination::{self, NavigationLinks},
         payments::GroupPaymentRecipient,
         permissions::GroupPermission,
     },
-    util::build_event_page_link,
 };
 
 mod recurrence;
@@ -64,9 +55,6 @@ use recurrence::RecurringEventPayloads;
 // URLs used by the dashboard page and tab partial
 const DASHBOARD_URL: &str = "/dashboard/group?tab=events";
 const PARTIAL_URL: &str = "/dashboard/group/events";
-
-// Minimum shift required to notify a reschedule.
-const MIN_RESCHEDULE_SHIFT: TimeDelta = TimeDelta::minutes(15);
 
 // Pages handlers.
 
@@ -429,95 +417,90 @@ pub(crate) async fn publish(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(payments_cfg): State<Option<PaymentsConfig>>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve action scope and target event ids
+    // Resolve action scope
     let query = parse_event_action_query(raw_query.as_deref())?;
-    let event_ids = match query.scope {
-        EventActionScope::Series => {
-            db.list_event_series_publishable_event_ids(group_id, event_id).await?
-        }
-        EventActionScope::This => vec![event_id],
-    };
+    let scope = query.scope;
     let configured_provider = payments_cfg.as_ref().map(PaymentsConfig::provider);
 
-    // Load event summaries before publishing so notification decisions match prior state
-    let mut events = Vec::with_capacity(event_ids.len());
-    for event_id in &event_ids {
-        events.push(db.get_event_summary(community_id, group_id, *event_id).await?);
-    }
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Resolve target event ids and load prior state before publishing
+                let event_ids = match scope {
+                    EventActionScope::Series => {
+                        tx.list_event_series_publishable_event_ids(group_id, event_id).await?
+                    }
+                    EventActionScope::This => vec![event_id],
+                };
+                let mut events = Vec::with_capacity(event_ids.len());
+                for event_id in &event_ids {
+                    events.push(tx.get_event_summary(community_id, group_id, *event_id).await?);
+                }
 
-    // Publish the selected event or the whole linked series
-    match query.scope {
-        EventActionScope::Series => {
-            db.publish_event_series_events(user.user_id, configured_provider, group_id, &event_ids)
-                .await?;
-        }
-        EventActionScope::This => {
-            db.publish_event(user.user_id, configured_provider, group_id, event_id)
-                .await?;
-        }
-    }
+                // Publish the selected event or the whole linked series
+                match scope {
+                    EventActionScope::Series => {
+                        tx.publish_event_series_events(
+                            user.user_id,
+                            configured_provider,
+                            group_id,
+                            &event_ids,
+                        )
+                        .await?;
+                    }
+                    EventActionScope::This => {
+                        tx.publish_event(user.user_id, configured_provider, group_id, event_id)
+                            .await?;
+                    }
+                }
 
-    // Enqueue notifications for published events that were future drafts
-    let events_to_notify: Vec<EventSummary> = events
-        .into_iter()
-        .filter(|event| {
-            matches!(
-                (event.published, event.starts_at),
-                (false, Some(starts_at)) if !event.test_event && starts_at > Utc::now()
-            )
+                // Enqueue required publish notifications before committing
+                let events_to_notify: Vec<EventSummary> = events
+                    .into_iter()
+                    .filter(|event| {
+                        matches!(
+                            (event.published, event.starts_at),
+                            (false, Some(starts_at)) if !event.test_event && starts_at > Utc::now()
+                        )
+                    })
+                    .collect();
+                match (scope, events_to_notify.as_slice()) {
+                    // Multiple notifiable events
+                    (EventActionScope::Series, [_, _, ..]) => {
+                        let event_ids: Vec<Uuid> =
+                            events_to_notify.iter().map(|event| event.event_id).collect();
+                        enqueue_event_series_published_notifications(
+                            tx,
+                            &server_cfg,
+                            community_id,
+                            group_id,
+                            &event_ids,
+                        )
+                        .await?;
+                    }
+                    // Single notifiable event
+                    (_, [event]) => {
+                        enqueue_event_published_notifications(
+                            tx,
+                            &server_cfg,
+                            community_id,
+                            group_id,
+                            event.event_id,
+                        )
+                        .await?;
+                    }
+                    _ => {}
+                }
+
+                Ok(())
+            })
         })
-        .collect();
-    match (query.scope, events_to_notify.as_slice()) {
-        // Multiple notifiable events
-        (EventActionScope::Series, [_, _, ..]) => {
-            let event_ids: Vec<Uuid> =
-                events_to_notify.iter().map(|event| event.event_id).collect();
-            if let Err(err) = enqueue_event_series_published_notifications(
-                &db,
-                &notifications_manager,
-                &server_cfg,
-                community_id,
-                group_id,
-                &event_ids,
-            )
-            .await
-            {
-                warn!(
-                    error = %err,
-                    %group_id,
-                    ?event_ids,
-                    "failed to enqueue event series publish notifications"
-                );
-            }
-        }
-        // Single notifiable event
-        (_, [event]) => {
-            if let Err(err) = enqueue_event_published_notifications(
-                &db,
-                &notifications_manager,
-                &server_cfg,
-                community_id,
-                group_id,
-                event.event_id,
-            )
-            .await
-            {
-                warn!(
-                    error = %err,
-                    %group_id,
-                    event_id = %event.event_id,
-                    "failed to enqueue event publish notifications"
-                );
-            }
-        }
-        _ => {}
-    }
+        .await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -652,14 +635,6 @@ enum EventActionScope {
     /// Apply the action only to the selected event.
     #[default]
     This,
-}
-
-/// Recipient group sharing the same event list for one aggregate notification.
-struct EventSeriesNotificationGroup {
-    /// Events included in the notification.
-    events: Vec<EventSeriesNotificationItem>,
-    /// Recipients that should receive the notification.
-    recipients: Vec<Uuid>,
 }
 
 // Helpers.
@@ -810,431 +785,4 @@ pub(crate) async fn prepare_list_page(
     };
 
     Ok((filters, template))
-}
-
-// Notifications helpers.
-
-/// Enqueues the event-canceled notification for attendees, waitlist users, and speakers.
-async fn enqueue_event_canceled_notification(
-    db: &dyn DBOperations,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_id: Uuid,
-) -> Result<()> {
-    // Fetch event full and attendee IDs concurrently
-    let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
-        db.get_event_full(community_id, group_id, event_id),
-        db.list_event_attendees_ids(group_id, event_id),
-        db.list_event_waitlist_ids(group_id, event_id)
-    )?;
-
-    // Test events are reachable by direct link but should not broadcast cancellations
-    if event_full.test_event {
-        return Ok(());
-    }
-
-    // Combine attendee, waitlist, and speaker IDs
-    let speaker_ids = event_full.speakers_ids();
-    let recipients: Vec<Uuid> = attendee_ids
-        .into_iter()
-        .chain(waitlist_ids)
-        .chain(speaker_ids)
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect();
-
-    if recipients.is_empty() {
-        return Ok(());
-    }
-
-    // Build and enqueue the cancellation notification
-    let site_settings = db.get_site_settings().await?;
-    let event_summary = EventSummary::from(&event_full);
-    let notification =
-        build_event_canceled_notification(&event_summary, recipients, server_cfg, &site_settings)?;
-    db.enqueue_notification(&notification).await?;
-
-    Ok(())
-}
-
-/// Enqueues event-published notifications to group members, team members, and speakers.
-async fn enqueue_event_published_notifications(
-    db: &DynDB,
-    notifications_manager: &DynNotificationsManager,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_id: Uuid,
-) -> Result<(), HandlerError> {
-    // Fetch event full and group member IDs concurrently
-    let (event_full, group_member_ids, team_member_ids) = tokio::try_join!(
-        db.get_event_full(community_id, group_id, event_id),
-        db.list_group_members_ids(group_id),
-        db.list_group_team_members_ids(group_id)
-    )?;
-
-    // Test events are reachable by direct link but should not broadcast publication
-    if event_full.test_event {
-        return Ok(());
-    }
-
-    // Combine group members and team members
-    let mut recipients = group_member_ids;
-    recipients.extend(team_member_ids);
-    recipients.sort();
-    recipients.dedup();
-
-    // Extract speaker IDs
-    let speaker_ids = event_full.speakers_ids();
-    let has_speakers = !speaker_ids.is_empty();
-
-    // Filter out speakers because they get a separate notification
-    let recipients: Vec<Uuid> = recipients
-        .into_iter()
-        .filter(|id| !speaker_ids.contains(id))
-        .collect();
-    let has_members = !recipients.is_empty();
-
-    if !has_members && !has_speakers {
-        return Ok(());
-    }
-
-    // Prepare common notification data
-    let site_settings = db.get_site_settings().await?;
-    let event_summary = EventSummary::from(&event_full);
-
-    // Enqueue group member notifications about the published event
-    if has_members {
-        let notification = build_event_published_notification(
-            &event_summary,
-            recipients,
-            server_cfg,
-            &site_settings,
-        )?;
-        notifications_manager.enqueue(&notification).await?;
-    }
-
-    // Enqueue speaker notifications about being added to the event
-    if has_speakers {
-        let notification = build_speaker_welcome_notification(
-            &event_summary,
-            speaker_ids,
-            server_cfg,
-            &site_settings,
-        )?;
-        notifications_manager.enqueue(&notification).await?;
-    }
-
-    Ok(())
-}
-
-/// Enqueues reschedule notifications when an update moves a future published event.
-async fn enqueue_event_rescheduled_notification(
-    db: &dyn DBOperations,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_id: Uuid,
-    before: &EventSummary,
-) -> Result<()> {
-    // Past or test events should not broadcast reschedules
-    if before.is_past() || before.test_event {
-        return Ok(());
-    }
-
-    // Fetch updated event summary to compare start times and detect reschedule
-    let after = db.get_event_summary(community_id, group_id, event_id).await?;
-    let should_notify = match (before.published, before.starts_at, after.starts_at) {
-        (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > Utc::now() => {
-            (a_starts_at - b_starts_at).abs() >= MIN_RESCHEDULE_SHIFT
-        }
-        _ => false,
-    };
-    if !should_notify {
-        return Ok(());
-    }
-
-    // Fetch event full and attendee IDs concurrently
-    let (event_full, attendee_ids) = tokio::try_join!(
-        db.get_event_full(community_id, group_id, event_id),
-        db.list_event_attendees_ids(group_id, event_id)
-    )?;
-
-    // Combine attendee and speaker IDs
-    let speaker_ids = event_full.speakers_ids();
-    let recipients: Vec<Uuid> = attendee_ids
-        .into_iter()
-        .chain(speaker_ids)
-        .collect::<HashSet<_>>()
-        .into_iter()
-        .collect();
-    if recipients.is_empty() {
-        return Ok(());
-    }
-
-    // Build and enqueue the reschedule notification
-    let site_settings = db.get_site_settings().await?;
-    let event_summary = EventSummary::from(&event_full);
-    let notification = build_event_rescheduled_notification(
-        &event_summary,
-        recipients,
-        server_cfg,
-        &site_settings,
-    )?;
-    db.enqueue_notification(&notification).await?;
-
-    Ok(())
-}
-
-/// Enqueues one aggregate cancellation notification per recipient event set.
-async fn enqueue_event_series_canceled_notifications(
-    db: &dyn DBOperations,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_ids: &[Uuid],
-) -> Result<()> {
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-    let mut recipient_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
-
-    // Build recipient event lists for each canceled occurrence
-    for event_id in event_ids {
-        // Fetch event full and affected user IDs for this canceled occurrence
-        let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
-            db.get_event_full(community_id, group_id, *event_id),
-            db.list_event_attendees_ids(group_id, *event_id),
-            db.list_event_waitlist_ids(group_id, *event_id)
-        )?;
-
-        // Test events in a series should stay out of cancellation broadcasts
-        if event_full.test_event {
-            continue;
-        }
-
-        // Map each recipient to the canceled occurrence relevant to them
-        let event = event_series_notification_item(base_url, &event_full);
-        let speaker_ids = event_full.speakers_ids();
-        let recipients = attendee_ids
-            .into_iter()
-            .chain(waitlist_ids)
-            .chain(speaker_ids)
-            .collect::<HashSet<_>>();
-
-        for recipient in recipients {
-            recipient_events.entry(recipient).or_default().push(event.clone());
-        }
-    }
-
-    // If there are no notification recipients, we are done
-    if recipient_events.is_empty() {
-        return Ok(());
-    }
-
-    // Build and enqueue grouped cancellation notifications
-    let site_settings = db.get_site_settings().await?;
-    for group in group_recipients_by_events(recipient_events) {
-        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone())
-        else {
-            continue;
-        };
-        let template_data = EventSeriesCanceled {
-            event_count: group.events.len(),
-            events: group.events,
-            group_name,
-            theme: site_settings.theme.clone(),
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventSeriesCanceled,
-            recipients: group.recipients,
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        db.enqueue_notification(&notification).await?;
-    }
-
-    Ok(())
-}
-
-/// Enqueues aggregate publish notifications to members/team and speakers.
-async fn enqueue_event_series_published_notifications(
-    db: &DynDB,
-    notifications_manager: &DynNotificationsManager,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_ids: &[Uuid],
-) -> Result<(), HandlerError> {
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-
-    // Fetch member recipients shared by all published occurrences
-    let (group_member_ids, team_member_ids) = tokio::try_join!(
-        db.list_group_members_ids(group_id),
-        db.list_group_team_members_ids(group_id)
-    )?;
-    let mut member_ids = group_member_ids;
-    member_ids.extend(team_member_ids);
-    member_ids.sort();
-    member_ids.dedup();
-
-    // Build recipient event lists for each published occurrence
-    let mut member_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
-    let mut speaker_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
-    for event_id in event_ids {
-        // Map members and speakers to the published occurrence relevant to them
-        let event_full = db.get_event_full(community_id, group_id, *event_id).await?;
-
-        // Test events in a series should stay out of publication broadcasts
-        if event_full.test_event {
-            continue;
-        }
-        let event = event_series_notification_item(base_url, &event_full);
-        let speaker_ids = event_full.speakers_ids();
-        let speaker_set: HashSet<Uuid> = speaker_ids.iter().copied().collect();
-
-        for speaker_id in speaker_ids {
-            speaker_events.entry(speaker_id).or_default().push(event.clone());
-        }
-
-        for member_id in &member_ids {
-            if !speaker_set.contains(member_id) {
-                member_events.entry(*member_id).or_default().push(event.clone());
-            }
-        }
-    }
-
-    // If there are no notification recipients, we are done
-    if member_events.is_empty() && speaker_events.is_empty() {
-        return Ok(());
-    }
-
-    // Enqueue group member notifications about the published event series
-    let site_settings = db.get_site_settings().await?;
-    for group in group_recipients_by_events(member_events) {
-        let Some(community_display_name) = group
-            .events
-            .first()
-            .map(|event| event.event.community_display_name.clone())
-        else {
-            continue;
-        };
-        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone())
-        else {
-            continue;
-        };
-        let template_data = EventSeriesPublished {
-            community_display_name,
-            event_count: group.events.len(),
-            events: group.events,
-            group_name,
-            theme: site_settings.theme.clone(),
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EventSeriesPublished,
-            recipients: group.recipients,
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await?;
-    }
-
-    // Enqueue speaker notifications about being added to the event series
-    for group in group_recipients_by_events(speaker_events) {
-        let Some(group_name) = group.events.first().map(|event| event.event.group_name.clone())
-        else {
-            continue;
-        };
-        let template_data = SpeakerSeriesWelcome {
-            event_count: group.events.len(),
-            events: group.events,
-            group_name,
-            theme: site_settings.theme.clone(),
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::SpeakerSeriesWelcome,
-            recipients: group.recipients,
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await?;
-    }
-
-    Ok(())
-}
-
-/// Enqueues waitlist promotion notifications when an update opens capacity.
-async fn enqueue_event_waitlist_promoted_notification(
-    db: &dyn DBOperations,
-    server_cfg: &HttpServerConfig,
-    community_id: Uuid,
-    group_id: Uuid,
-    event_id: Uuid,
-    before: &EventSummary,
-    promoted_user_ids: Vec<Uuid>,
-) -> Result<()> {
-    if promoted_user_ids.is_empty() || before.test_event {
-        return Ok(());
-    }
-
-    // Fetch notification context and updated event summary concurrently
-    let (site_settings, event) = tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary(community_id, group_id, event_id)
-    )?;
-    if !should_send_waitlist_promoted_notification(&event, &promoted_user_ids) {
-        return Ok(());
-    }
-
-    // Build and enqueue the waitlist promotion notification
-    let notification = build_event_waitlist_promoted_notification(
-        &event,
-        promoted_user_ids,
-        server_cfg,
-        &site_settings,
-    )?;
-    db.enqueue_notification(&notification).await?;
-
-    Ok(())
-}
-
-/// Builds one aggregate notification item from full event data.
-fn event_series_notification_item(
-    base_url: &str,
-    event_full: &EventFull,
-) -> EventSeriesNotificationItem {
-    let event = EventSummary::from(event_full);
-    let link = build_event_page_link(base_url, &event);
-
-    EventSeriesNotificationItem { event, link }
-}
-
-/// Groups recipients by the exact event list relevant to them.
-fn group_recipients_by_events(
-    recipient_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>>,
-) -> Vec<EventSeriesNotificationGroup> {
-    let mut groups: HashMap<Vec<Uuid>, EventSeriesNotificationGroup> = HashMap::new();
-
-    // Build groups keyed by each recipient's relevant event ids
-    for (recipient, events) in recipient_events {
-        let key = events.iter().map(|event| event.event.event_id).collect::<Vec<_>>();
-        let group = groups.entry(key).or_insert_with(|| EventSeriesNotificationGroup {
-            events,
-            recipients: Vec::new(),
-        });
-        group.recipients.push(recipient);
-    }
-
-    // Normalize recipient and group ordering for deterministic notifications
-    let mut groups = groups.into_values().collect::<Vec<_>>();
-    for group in &mut groups {
-        group.recipients.sort();
-        group.recipients.dedup();
-    }
-    groups.sort_by(|left, right| {
-        left.events
-            .first()
-            .map(|event| event.event.event_id)
-            .cmp(&right.events.first().map(|event| event.event.event_id))
-    });
-    groups
 }

@@ -1296,10 +1296,13 @@ async fn test_leave_event_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let event = sample_event_summary(event_id, group_id);
+    let site_settings = sample_site_settings();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1315,7 +1318,8 @@ async fn test_leave_event_success() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_leave_event()
+    let mut tx = MockDB::new();
+    tx.expect_leave_event()
         .times(1)
         .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
         .returning(|_, _, _| {
@@ -1324,17 +1328,14 @@ async fn test_leave_event_success() {
                 promoted_user_ids: vec![],
             })
         });
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(sample_event_summary(event_id, Uuid::new_v4())));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+        .returning(move |_, _| Ok(event.clone()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
@@ -1346,7 +1347,11 @@ async fn test_leave_event_success() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -1392,7 +1397,8 @@ async fn test_leave_waitlist_success() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_leave_event()
+    let mut tx = MockDB::new();
+    tx.expect_leave_event()
         .times(1)
         .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
         .returning(|_, _, _| {
@@ -1401,6 +1407,7 @@ async fn test_leave_waitlist_success() {
                 promoted_user_ids: vec![],
             })
         });
+    expect_successful_transaction(&mut db, tx);
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -1454,7 +1461,9 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event_summary = sample_event_summary(event_id, group_id);
+    let event_summary_for_notifications = event_summary.clone();
     let site_settings = sample_site_settings();
+    let site_settings_for_notifications = site_settings.clone();
     let site_settings_for_notification = site_settings.clone();
 
     // Setup database mock
@@ -1471,7 +1480,8 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_leave_event()
+    let mut tx = MockDB::new();
+    tx.expect_leave_event()
         .times(1)
         .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
         .returning(move |_, _, _| {
@@ -1480,17 +1490,14 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
                 promoted_user_ids: vec![promoted_user_id],
             })
         });
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings_for_notifications.clone()));
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+        .returning(move |_, _| Ok(event_summary_for_notifications.clone()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
@@ -1502,8 +1509,8 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
-    nm.expect_enqueue()
+        .returning(|_| Ok(()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
@@ -1519,8 +1526,11 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
@@ -1540,7 +1550,7 @@ async fn test_leave_event_promotes_waitlisted_users_and_enqueues_notification() 
 }
 
 #[tokio::test]
-async fn test_leave_event_success_when_notification_context_load_fails() {
+async fn test_leave_event_rolls_back_when_notification_context_load_fails() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1563,7 +1573,8 @@ async fn test_leave_event_success_when_notification_context_load_fails() {
         .times(1)
         .withf(|name| name == "test-community")
         .returning(move |_| Ok(Some(community_id)));
-    db.expect_leave_event()
+    let mut tx = MockDB::new();
+    tx.expect_leave_event()
         .times(1)
         .withf(move |id, eid, uid| *id == community_id && *eid == event_id && *uid == user_id)
         .returning(|_, _, _| {
@@ -1572,13 +1583,14 @@ async fn test_leave_event_success_when_notification_context_load_fails() {
                 promoted_user_ids: vec![],
             })
         });
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Err(anyhow!("db error")));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(|| Ok(sample_site_settings()));
+    expect_rolled_back_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1596,9 +1608,8 @@ async fn test_leave_event_success_when_notification_context_load_fails() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::OK);
-    let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "left_status": "attendee" }));
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
 }
 
 #[tokio::test]

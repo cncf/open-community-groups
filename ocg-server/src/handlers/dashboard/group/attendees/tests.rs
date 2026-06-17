@@ -73,30 +73,32 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_accept_event_invitation_request()
+    let mut tx = MockDB::new();
+    tx.expect_accept_event_invitation_request()
         .times(1)
         .withf(move |actor_id, gid, eid, uid| {
             *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
         })
         .returning(|_, _, _, _| Ok(()));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWelcome)
                 && notification.recipients == vec![target_user_id]
                 && notification.attachments.len() == 1
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
@@ -309,7 +311,9 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
     );
     let mut event = sample_event_summary(event_id, group_id);
     event.has_registration_questions = true;
+    let event_for_notifications = event.clone();
     let site_settings = sample_site_settings();
+    let site_settings_for_notifications = site_settings.clone();
     let primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock
@@ -331,7 +335,8 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_cancel_event_attendee_attendance()
+    let mut tx = MockDB::new();
+    tx.expect_cancel_event_attendee_attendance()
         .times(1)
         .withf(move |actor_id, gid, eid, uid| {
             *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
@@ -342,17 +347,14 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                 promoted_user_ids: vec![promoted_user_id],
             })
         });
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    db.expect_get_event_summary_by_id()
+        .returning(move || Ok(site_settings_for_notifications.clone()));
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+        .returning(move |_, _| Ok(event_for_notifications.clone()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
@@ -365,8 +367,8 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
-    nm.expect_enqueue()
+        .returning(|_| Ok(()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
@@ -383,8 +385,11 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
         .with_server_cfg(HttpServerConfig {
@@ -412,6 +417,100 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
         StatusCode::NO_CONTENT,
         "refresh-event-attendees",
     );
+}
+
+#[tokio::test]
+async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqueue_fails() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let target_user_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event = sample_event_summary(event_id, group_id);
+    let site_settings = sample_site_settings();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    let mut tx = MockDB::new();
+    tx.expect_cancel_event_attendee_attendance()
+        .times(1)
+        .withf(move |actor_id, gid, eid, uid| {
+            *actor_id == user_id && *gid == group_id && *eid == event_id && *uid == target_user_id
+        })
+        .returning(|_, _, _, _| {
+            Ok(EventLeaveOutcome {
+                left_status: EventAttendanceStatus::Attendee,
+                promoted_user_ids: vec![],
+            })
+        });
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    tx.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
+                && notification.recipients == vec![target_user_id]
+        })
+        .returning(|_| Err(anyhow!("queue error")));
+    expect_rolled_back_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(HttpServerConfig {
+            base_url: "https://ocg.test/".to_string(),
+            ..sample_tracking_server_cfg()
+        })
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/attendance"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]

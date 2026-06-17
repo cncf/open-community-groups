@@ -257,6 +257,20 @@ pub(crate) fn expect_group_permission(
         .returning(|_, _, _, _| Ok(true));
 }
 
+/// Expect a transaction to roll back without committing.
+pub(crate) fn expect_rolled_back_transaction(db: &mut MockDB, mut tx: MockDB) {
+    tx.expect_commit().never();
+    tx.expect_rollback().times(1).returning(|| Ok(()));
+    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+}
+
+/// Expect a transaction to commit without rolling back.
+pub(crate) fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
+    tx.expect_commit().times(1).returning(|| Ok(()));
+    tx.expect_rollback().never();
+    db.expect_begin().times(1).return_once(|| Ok(Box::new(tx)));
+}
+
 // Sample data helpers.
 
 /// Sample attendee used in dashboard group home tests.
