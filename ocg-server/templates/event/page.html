@@ -140,9 +140,13 @@
                     <span>Capacity:</span>
                     <span class="ms-1 inline-flex min-w-4 items-center"
                           data-availability-capacity>
-                      <span data-availability-spinner
-                            class="inline-flex size-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600">
-                      </span>
+                      {% if let Some(capacity) = event.capacity -%}
+                        {{ capacity }}
+                      {% else -%}
+                        <span data-availability-spinner
+                              class="inline-flex size-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600">
+                        </span>
+                      {% endif -%}
                     </span>
                   </span>
                   <span data-availability-caption="remaining"

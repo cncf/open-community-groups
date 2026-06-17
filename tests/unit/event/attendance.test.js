@@ -439,9 +439,10 @@ describe("event attendance", () => {
 
   it("blocks the attend request until registration questions are answered", () => {
     // Render attendance controls with registration questions.
-    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
-      includeRegistrationQuestions: true,
-    });
+    const { attendButton, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        includeRegistrationQuestions: true,
+      });
     const event = new CustomEvent("htmx:beforeRequest", {
       bubbles: true,
       cancelable: true,
@@ -461,12 +462,14 @@ describe("event attendance", () => {
 
   it("allows waitlist joins before registration questions are answered", () => {
     // Render full-event attendance controls with waitlist enabled.
-    const { attendButton, loadingButton, questionsModal } = renderAttendanceDom({
-      capacity: "10",
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, loadingButton, questionsModal } = renderAttendanceDom(
+      {
+        capacity: "10",
+        includeRegistrationQuestions: true,
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      },
+    );
     const event = new CustomEvent("htmx:beforeRequest", {
       bubbles: true,
       cancelable: true,
@@ -492,24 +495,30 @@ describe("event attendance", () => {
 
   it("opens registration questions for promoted waitlist attendees", () => {
     // Render waitlist controls with registration questions.
-    const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
-      capacity: "10",
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, checker, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        capacity: "10",
+        includeRegistrationQuestions: true,
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      });
 
+    // Apply the promoted waitlist state from the attendance check.
     dispatchHtmxAfterRequest(checker, {
-      responseText: JSON.stringify({ status: "registration-questions-pending" }),
+      responseText: JSON.stringify({
+        status: "registration-questions-pending",
+      }),
     });
 
     // Verify opens registration questions for promoted waitlist attendees.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Complete registration",
-    );
     expect(
-      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-list-check"),
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Complete registration");
+    expect(
+      attendButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-list-check"),
     ).to.equal(true);
 
     // Click the attend button.
@@ -536,7 +545,9 @@ describe("event attendance", () => {
     });
 
     dispatchHtmxAfterRequest(checker, {
-      responseText: JSON.stringify({ status: "registration-questions-pending" }),
+      responseText: JSON.stringify({
+        status: "registration-questions-pending",
+      }),
     });
     attendButton.dispatchEvent(event);
 
@@ -805,6 +816,46 @@ describe("event attendance", () => {
     expect(
       attendButton.querySelector("[data-attendance-label]")?.textContent,
     ).to.equal("Attend event");
+  });
+
+  it("clears the availability spinner when refreshed capacity is zero", async () => {
+    // Render capacity availability with the initial server placeholder.
+    const { availabilityCapacity } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    // Mock refreshed availability for an event with no attendee capacity.
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 0,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 0,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      // Initialize attendance behavior and wait for availability hydration.
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      // Verify hydration replaces the spinner with the resolved zero capacity.
+      expect(availabilityCapacity.textContent.trim()).to.equal("0");
+      expect(
+        availabilityCapacity.querySelector("[data-availability-spinner]"),
+      ).to.equal(null);
+    } finally {
+      fetchMock.restore();
+    }
   });
 
   it("shows remaining seats instead of waitlist while capacity is still available", async () => {
