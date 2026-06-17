@@ -336,8 +336,10 @@ Capacity behavior:
   open up, for example after a cancellation or a capacity increase.
 - If you clear `Capacity` and disable waitlist, OCG treats the event as unlimited-capacity and
   immediately promotes everyone still on the waitlist.
-- Promotion notifications are best-effort; the seat change still succeeds even if notification
-  enqueue fails.
+- Promotion notifications from attendance cancellation are best-effort; the seat change still
+  succeeds even if notification enqueue fails.
+- Promotion notifications caused by saving event capacity changes are part of that event update.
+  If OCG cannot queue the required notification, the event update is not saved.
 - Organizer-created manual invitations bypass capacity when the invitee accepts. Use them when an
   organizer intentionally wants to admit someone even if the event is full.
 
@@ -552,6 +554,10 @@ Message behavior:
 - Rescheduling a future published event can notify attendees and speakers when the start or end
   time changes by at least 15 minutes. Waitlisted users are not included in reschedule notices.
 - `Unpublish` and `Delete` do not send broad attendee updates in this flow.
+
+For `Cancel` and event-editor updates that queue required cancellation, reschedule, or waitlist
+promotion notifications, OCG saves the event change and notification queue entries together. If
+one of those required notification rows cannot be queued, the event change is rolled back.
 
 Automatic-meeting lifecycle in these actions:
 

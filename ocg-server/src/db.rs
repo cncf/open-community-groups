@@ -99,7 +99,6 @@ impl<T> DBOperations for T where
 }
 
 /// Root database handle capable of opening an atomic unit of work.
-#[allow(dead_code)]
 #[async_trait]
 pub(crate) trait DB: DBOperations {
     /// Starts a database unit of work.
@@ -107,7 +106,6 @@ pub(crate) trait DB: DBOperations {
 }
 
 /// Transaction-scoped database unit of work.
-#[allow(dead_code)]
 #[async_trait]
 pub(crate) trait DBUnitOfWork: DBOperations {
     /// Commits all database operations executed through this unit of work.
@@ -121,7 +119,6 @@ pub(crate) trait DBUnitOfWork: DBOperations {
 pub(crate) type DynDB = Arc<dyn DB + Send + Sync>;
 
 /// Type alias for an owned transaction-scoped database trait object.
-#[allow(dead_code)]
 pub(crate) type DynDBUnitOfWork = Box<dyn DBUnitOfWork + Send + Sync>;
 
 /// DB implementation backed by `PostgreSQL`.
@@ -152,7 +149,6 @@ impl DB for PgDB {
 }
 
 /// Transaction-scoped DB implementation backed by a pinned `PostgreSQL` client.
-#[allow(dead_code)]
 pub(crate) struct PgUnitOfWork {
     /// Pinned `PostgreSQL` client used for the unit of work.
     client: Option<Client>,
@@ -277,7 +273,6 @@ impl PgExecutor for PgUnitOfWork {
 }
 
 /// `PostgreSQL` client used for one database operation.
-#[allow(dead_code)]
 pub(crate) enum PgClient<'a> {
     /// Client checked out from the pool for this operation.
     Pooled(Box<Client>),
@@ -332,7 +327,6 @@ impl PgClient<'_> {
 }
 
 /// Ergonomic transaction helper layered over [`DB::begin`].
-#[allow(dead_code)]
 #[async_trait]
 pub(crate) trait DBExt {
     /// Runs database work atomically and returns the callback output.
@@ -369,7 +363,6 @@ where
 }
 
 /// Boxed transaction callback future.
-#[allow(dead_code)]
 pub(crate) type TransactionFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
 
 /// Geographic bounding box coordinates.
