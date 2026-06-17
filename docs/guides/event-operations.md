@@ -336,10 +336,11 @@ Capacity behavior:
   open up, for example after a cancellation or a capacity increase.
 - If you clear `Capacity` and disable waitlist, OCG treats the event as unlimited-capacity and
   immediately promotes everyone still on the waitlist.
-- Promotion notifications from attendance cancellation are best-effort; the seat change still
-  succeeds even if notification enqueue fails.
-- Promotion notifications caused by saving event capacity changes are part of that event update.
-  If OCG cannot queue the required notification, the event update is not saved.
+- Attendee cancellation notifications and any promotion notifications caused by attendance
+  cancellation are part of that mutation. If OCG cannot queue a required notification, the
+  attendance cancellation is not saved.
+- Promotion notifications caused by saving event capacity changes are part of that mutation. If OCG
+  cannot queue a required promotion notification, the event update is not saved.
 - Organizer-created manual invitations bypass capacity when the invitee accepts. Use them when an
   organizer intentionally wants to admit someone even if the event is full.
 
@@ -353,6 +354,10 @@ Member-facing behavior:
 - Joining the waitlist sends a waitlist confirmation notification.
 - Leaving the waitlist sends a waitlist removal notification.
 - Promotion sends a confirmation notification with calendar attachment.
+- Confirmation notifications caused by accepting invitation-review requests, accepting
+  organizer-created event invitations, or completing pending registration questions are saved with
+  the attendance confirmation. If OCG cannot queue the required notification, the attendance change
+  is rolled back.
 
 Paid-attendance behavior:
 
@@ -555,9 +560,10 @@ Message behavior:
   time changes by at least 15 minutes. Waitlisted users are not included in reschedule notices.
 - `Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
-For `Cancel` and event-editor updates that queue required cancellation, reschedule, or waitlist
-promotion notifications, OCG saves the event change and notification queue entries together. If
-one of those required notification rows cannot be queued, the event change is rolled back.
+For `Publish`, `Cancel`, and event-editor updates that queue required publish, cancellation,
+reschedule, or waitlist promotion notifications, OCG saves the event change and notification queue
+entries together. If one of those required notification rows cannot be queued, the event change is
+rolled back.
 
 Automatic-meeting lifecycle in these actions:
 

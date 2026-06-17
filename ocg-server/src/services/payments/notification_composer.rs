@@ -10,7 +10,7 @@ use crate::{
     db::{DynDB, payments::CompletedEventPurchase},
     services::notifications::{
         DynNotificationsManager, NewNotification,
-        helpers::{
+        payloads::{
             build_event_refund_approved_notification, build_event_refund_rejected_notification,
             build_event_welcome_notification,
         },

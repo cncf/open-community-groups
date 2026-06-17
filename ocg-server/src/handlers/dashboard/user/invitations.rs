@@ -8,18 +8,18 @@ use axum::{
 };
 use axum_messages::Messages;
 use tower_sessions::Session;
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::DynDB,
+    db::{DBExt, DynDB},
     handlers::{
         auth::{SELECTED_COMMUNITY_ID_KEY, select_first_community_and_group},
         error::HandlerError,
         extractors::CurrentUser,
     },
-    services::notifications::{DynNotificationsManager, helpers::build_event_welcome_notification},
+    services::notifications::enqueue::enqueue_event_welcome_notification,
     templates::dashboard::user::invitations,
 };
 
@@ -70,36 +70,33 @@ pub(crate) async fn accept_event_attendee_invitation(
     messages: Messages,
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Accept event invitation
-    let community_id = db.accept_event_attendee_invitation(user.user_id, event_id).await?;
-    messages.success("Event invitation accepted.");
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Accept the invitation
+                let community_id =
+                    tx.accept_event_attendee_invitation(user.user_id, event_id).await?;
 
-    // Send the normal attendee welcome notification
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
-    ) {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load event invitation welcome notification context");
-            return Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response());
-        }
-    };
-    match build_event_welcome_notification(&event, user.user_id, &server_cfg, &site_settings, true)
-    {
-        Ok(notification) => {
-            if let Err(err) = notifications_manager.enqueue(&notification).await {
-                warn!(error = %err, "failed to enqueue event invitation welcome notification");
-            }
-        }
-        Err(err) => {
-            warn!(error = %err, "failed to build event invitation welcome notification");
-        }
-    }
+                // Enqueue the welcome notification
+                enqueue_event_welcome_notification(
+                    tx,
+                    &server_cfg,
+                    community_id,
+                    event_id,
+                    user.user_id,
+                    true,
+                )
+                .await?;
+
+                Ok(())
+            })
+        })
+        .await?;
+
+    messages.success("Event invitation accepted.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())
 }
