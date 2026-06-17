@@ -7,7 +7,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::PgExecutor,
     templates::event::SessionProposal,
     types::{
         event::{
@@ -105,7 +105,10 @@ pub(crate) trait DBEvent {
 }
 
 #[async_trait]
-impl DBEvent for PgDB {
+impl<T> DBEvent for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBEvent::add_cfs_submission`]
     #[instrument(skip(self), err)]
     async fn add_cfs_submission(

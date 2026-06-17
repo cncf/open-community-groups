@@ -7,7 +7,7 @@ use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{db::PgDB, templates::dashboard::community::groups::Group};
+use crate::{db::PgExecutor, templates::dashboard::community::groups::Group};
 
 /// Common database operations for dashboards.
 #[async_trait]
@@ -26,7 +26,10 @@ pub(crate) trait DBDashboardCommon {
 }
 
 #[async_trait]
-impl DBDashboardCommon for PgDB {
+impl<T> DBDashboardCommon for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBDashboardCommon::search_user`]
     #[instrument(skip(self), err)]
     async fn search_user(&self, query: &str) -> Result<Vec<User>> {

@@ -8,11 +8,19 @@ use mockall::mock;
 use uuid::Uuid;
 
 mock! {
-    /// Mock `DB` struct for testing purposes, implementing the DB trait.
+    /// Mock `DB` struct for testing purposes, implementing the DB traits.
     pub(crate) DB {}
 
     #[async_trait]
-    impl crate::db::DB for DB {}
+    impl crate::db::DB for DB {
+        async fn begin(&self) -> Result<crate::db::DynDBUnitOfWork>;
+    }
+
+    #[async_trait]
+    impl crate::db::DBUnitOfWork for DB {
+        async fn commit(self: Box<Self>) -> Result<()>;
+        async fn rollback(self: Box<Self>) -> Result<()>;
+    }
 
     #[async_trait]
     impl crate::db::auth::DBAuth for DB {

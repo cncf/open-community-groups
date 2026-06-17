@@ -10,7 +10,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    PgDB,
+    db::PgExecutor,
     services::meetings::{Meeting, MeetingAutoEndCheckOutcome, MeetingProvider},
 };
 
@@ -77,7 +77,10 @@ pub(crate) trait DBMeetings {
 }
 
 #[async_trait]
-impl DBMeetings for PgDB {
+impl<T> DBMeetings for T
+where
+    T: PgExecutor + Send + Sync,
+{
     #[instrument(skip(self, meeting), err)]
     async fn add_meeting(&self, meeting: &Meeting) -> Result<()> {
         self.execute(

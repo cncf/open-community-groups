@@ -4,7 +4,7 @@
 
 use async_trait::async_trait;
 
-use crate::db::PgDB;
+use crate::db::PgExecutor;
 
 use common::DBDashboardCommon;
 use community::DBDashboardCommunity;
@@ -27,4 +27,4 @@ pub(crate) trait DBDashboard:
 {
 }
 
-impl DBDashboard for PgDB {}
+impl<T> DBDashboard for T where T: PgExecutor + Send + Sync {}

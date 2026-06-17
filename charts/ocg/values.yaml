@@ -29,6 +29,10 @@ db:
   dbname: ocg
   user: ocg
   password: ocg
+  pool:
+    maxSize: 25
+    recycleTimeoutSeconds: 5
+    waitTimeoutSeconds: 5
 
 # Email configuration
 email:

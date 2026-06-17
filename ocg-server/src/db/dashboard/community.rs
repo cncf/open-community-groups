@@ -3,13 +3,12 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
-use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::{PgClient, PgExecutor},
     templates::dashboard::{
         audit::{AuditLogFilters, AuditLogsOutput},
         community::{
@@ -203,7 +202,10 @@ pub(crate) trait DBDashboardCommunity {
 }
 
 #[async_trait]
-impl DBDashboardCommunity for PgDB {
+impl<T> DBDashboardCommunity for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBDashboardCommunity::activate_group`]
     #[instrument(skip(self), err)]
     async fn activate_group(
@@ -395,7 +397,7 @@ impl DBDashboardCommunity for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, community_id: Uuid) -> Result<CommunityDashboardStats> {
+        async fn inner(db: PgClient<'_>, community_id: Uuid) -> Result<CommunityDashboardStats> {
             let row = db
                 .query_one("select get_community_stats($1::uuid)", &[&community_id])
                 .await?;
@@ -404,7 +406,7 @@ impl DBDashboardCommunity for PgDB {
             Ok(stats)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db, community_id).await
     }
 
@@ -432,14 +434,14 @@ impl DBDashboardCommunity for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<CommunityRoleSummary>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<CommunityRoleSummary>> {
             let row = db.query_one("select list_community_roles()", &[]).await?;
             let roles = row.try_get::<_, Json<Vec<CommunityRoleSummary>>>(0)?.0;
 
             Ok(roles)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 
