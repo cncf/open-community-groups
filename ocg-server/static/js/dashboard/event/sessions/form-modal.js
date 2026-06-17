@@ -29,6 +29,7 @@ class SessionFormModal extends LitWrapper {
    * @property {number} sessionNameMaxLength - Max session title length.
    * @property {number} locationMaxLength - Max session location length.
    * @property {boolean} disabled - Whether editing controls are disabled.
+   * @property {boolean} eventPast - Whether the parent event is in the past.
    * @property {boolean} _isOpen - Whether the modal is visible.
    * @property {?Object} _session - Session being edited.
    * @property {string} _prefilledDate - Date used to pre-fill time fields.
@@ -44,6 +45,7 @@ class SessionFormModal extends LitWrapper {
     sessionNameMaxLength: { type: Number },
     locationMaxLength: { type: Number },
     disabled: { type: Boolean },
+    eventPast: { type: Boolean },
     _isOpen: { type: Boolean },
     _session: { type: Object },
     _prefilledDate: { type: String },
@@ -61,6 +63,7 @@ class SessionFormModal extends LitWrapper {
     this.sessionNameMaxLength = undefined;
     this.locationMaxLength = undefined;
     this.disabled = false;
+    this.eventPast = false;
     this._isOpen = false;
     this._session = null;
     this._prefilledDate = "";
@@ -257,6 +260,7 @@ class SessionFormModal extends LitWrapper {
                 .locationMaxLength=${this.locationMaxLength}
                 .onDataChange=${this._onDataChange}
                 .disabled=${this.disabled}
+                .eventPast=${this.eventPast}
                 .prefilledDate=${this._prefilledDate}
               ></session-item>
             </div>

@@ -201,6 +201,95 @@ describe("online-event-details", () => {
     expect(element._capacityWarning).to.include("Capacity (150) exceeds");
   });
 
+  it("disables automatic meeting creation for past events", async () => {
+    // Create the capacity fixture required by automatic meeting validation.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "75";
+    document.body.append(capacity);
+    const swal = mockSwal();
+
+    try {
+      // Render the online-event-details fixture for a past event.
+      const element = await mountLitComponent("online-event-details", {
+        endsAt: "2025-05-10T12:00",
+        eventPast: true,
+        kind: "virtual",
+        meetingMaxParticipants: { zoom: 100 },
+        startsAt: "2025-05-10T10:00",
+      });
+
+      // The automatic option is disabled and explains the past-event rule.
+      const automaticModeInput = element.renderRoot.querySelector(
+        'input[type="radio"][value="automatic"]',
+      );
+      const automaticModeCard = automaticModeInput.nextElementSibling;
+      expect(automaticModeInput.disabled).to.equal(true);
+      expect(automaticModeCard.classList.contains("border-dashed")).to.equal(true);
+      expect(automaticModeCard.classList.contains("bg-stone-50")).to.equal(true);
+      expect(element.textContent).to.include(
+        "Automatic meetings are not available for past events.",
+      );
+
+      // Attempting to switch into automatic mode keeps the component manual.
+      await element._handleModeChange({
+        preventDefault() {},
+        target: { value: "automatic" },
+      });
+      expect(element._mode).to.equal("manual");
+      expect(element.getMeetingData()).to.include({
+        meeting_requested: false,
+      });
+      expect(swal.calls[0]).to.include({
+        text: "Automatic meetings are not available for past events.",
+        icon: "info",
+      });
+    } finally {
+      swal.restore();
+    }
+  });
+
+  it("keeps synced past automatic meetings selected without enablement requirements", async () => {
+    // Create the capacity fixture required by automatic meeting validation.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "75";
+    document.body.append(capacity);
+
+    // Render the online-event-details fixture for a synced past automatic meeting.
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2025-05-10T12:00",
+      eventPast: true,
+      kind: "virtual",
+      meetingInSync: true,
+      meetingJoinUrl: "https://zoom.us/j/synced-past",
+      meetingMaxParticipants: { zoom: 100 },
+      meetingPassword: "past-auto",
+      meetingProviderId: "zoom",
+      meetingRequested: true,
+      startsAt: "2025-05-10T10:00",
+    });
+
+    // The synced automatic meeting stays selected but avoids enablement copy.
+    const automaticModeInput = element.renderRoot.querySelector(
+      'input[type="radio"][value="automatic"]',
+    );
+    expect(automaticModeInput.checked).to.equal(true);
+    expect(automaticModeInput.disabled).to.equal(true);
+    expect(element.textContent).to.include(
+      "This existing automatic meeting is preserved. New automatic meetings cannot be enabled for past events.",
+    );
+    expect(element.textContent).to.not.include(
+      "Complete these requirements to enable this option:",
+    );
+    expect(element.textContent).to.include("Meeting synced");
+    expect(element.textContent).to.include("https://zoom.us/j/synced-past");
+    expect(element.getMeetingData()).to.include({
+      meeting_requested: true,
+      meeting_provider_id: "zoom",
+    });
+  });
+
   it("removes the capacity input listener when disconnected", async () => {
     // Create the capacity input fixture.
     const capacity = document.createElement("input");

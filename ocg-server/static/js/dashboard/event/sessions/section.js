@@ -43,6 +43,7 @@ export class SessionsSection extends LitWrapper {
    * @property {boolean} disabled - Whether editing controls are disabled.
    * @property {string} eventStartsAt - Event start datetime.
    * @property {string} eventEndsAt - Event end datetime.
+   * @property {boolean} eventPast - Whether the parent event is in the past.
    */
   static properties = {
     sessions: { type: Array },
@@ -57,6 +58,7 @@ export class SessionsSection extends LitWrapper {
     disabled: { type: Boolean },
     eventStartsAt: { type: String, attribute: "event-starts-at" },
     eventEndsAt: { type: String, attribute: "event-ends-at" },
+    eventPast: { type: Boolean, attribute: "event-past" },
   };
 
   constructor() {
@@ -72,6 +74,7 @@ export class SessionsSection extends LitWrapper {
     this.disabled = false;
     this.eventStartsAt = "";
     this.eventEndsAt = "";
+    this.eventPast = false;
     this._handleSessionSaved = this._handleSessionSaved.bind(this);
     this._bindHtmxCleanup();
   }
@@ -360,6 +363,7 @@ export class SessionsSection extends LitWrapper {
         .sessionNameMaxLength=${this.sessionNameMaxLength}
         .locationMaxLength=${this.locationMaxLength}
         .disabled=${this.disabled}
+        .eventPast=${this.eventPast}
         @session-saved=${this._handleSessionSaved}
       ></session-form-modal>
     `;

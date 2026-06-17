@@ -45,6 +45,7 @@ class SessionItem extends LitWrapper {
    * @property {boolean} disabled - Whether editing controls are disabled.
    * @property {string} inputMode - Entry mode, manual or cfs.
    * @property {string} prefilledDate - Date used to pre-fill time fields.
+   * @property {boolean} eventPast - Whether the parent event is in the past.
    */
   static properties = {
     data: { type: Object },
@@ -62,6 +63,7 @@ class SessionItem extends LitWrapper {
     disabled: { type: Boolean },
     inputMode: { type: String },
     prefilledDate: { type: String },
+    eventPast: { type: Boolean },
   };
 
   constructor() {
@@ -98,6 +100,7 @@ class SessionItem extends LitWrapper {
     this.disabled = false;
     this.inputMode = "manual";
     this.prefilledDate = "";
+    this.eventPast = false;
     this._onModeChange = this._onModeChange.bind(this);
     this._handleSpeakersChanged = this._handleSpeakersChanged.bind(this);
   }
@@ -550,6 +553,7 @@ class SessionItem extends LitWrapper {
                         .meetingHosts=${this.data.meeting_hosts || {}}
                         .meetingJoinInstructions=${this.data.meeting_join_instructions || ""}
                         .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
+                        .eventPast=${this.eventPast}
                         field-name-prefix="sessions[${this.index}]"
                         ?disabled=${this.disabled}
                       ></online-event-details>

@@ -100,4 +100,30 @@ describe("session-form-modal", () => {
     expect(startLabel?.control).to.equal(sessionItem.querySelector("#session-0-starts-at"));
     expect(descriptionLabel?.control).to.equal(sessionItem.querySelector("#session-0-description"));
   });
+
+  it("passes past-event state to automatic session meeting details", async () => {
+    // Render the session form modal fixture for a past event.
+    const element = await mountLitComponent("session-form-modal", {
+      eventPast: true,
+      meetingsEnabled: true,
+      sessionKinds: [{ session_kind_id: "talk", display_name: "Talk" }],
+    });
+
+    // Open a virtual session so the online meeting editor is rendered.
+    element.open({
+      id: 7,
+      kind: "virtual",
+      name: "Past session",
+      starts_at: "2025-05-10T10:00",
+    });
+    await element.updateComplete;
+    const sessionItem = element.querySelector("session-item");
+    await sessionItem.updateComplete;
+    const onlineEventDetails = sessionItem.querySelector("online-event-details");
+    await onlineEventDetails.updateComplete;
+
+    // Session meeting details inherit the parent event's past-event rule.
+    expect(sessionItem.eventPast).to.equal(true);
+    expect(onlineEventDetails.eventPast).to.equal(true);
+  });
 });
