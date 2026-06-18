@@ -23,6 +23,7 @@
 {{ template "common/get_community_full.sql" }}
 {{ template "common/get_community_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_occupied_seat_count.sql" }} -- Dependency for event capacity counts
+{{ template "common/is_registration_window_open.sql" }} -- Dependency for attendee registration flows
 {{ template "common/list_event_discount_codes.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency

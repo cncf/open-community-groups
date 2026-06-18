@@ -24,6 +24,10 @@
       Location: {{ location }}
       <br />
     {% endif -%}
+    {% if let Some(registration_window_message) = event.registration_window_message() -%}
+      Registration: {{ registration_window_message }}
+      <br />
+    {% endif -%}
   </p>
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}

@@ -3,10 +3,12 @@ import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js"
 import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import {
   clearCfsWindowValidity,
+  clearRegistrationWindowValidity,
   clearSessionDateBoundsValidity,
   parseLocalDate,
   validateCfsWindow,
   validateEventDates,
+  validateRegistrationWindow,
   validateSessionDateBounds,
 } from "/static/js/common/form-validation.js";
 import { initializeEventEnrollmentState } from "/static/js/dashboard/event/ticketing.js";
@@ -77,6 +79,8 @@ export const resolveSharedEventPageControls = (pageRoot) => ({
   cfsEndsAtInput: getElementById(pageRoot, "cfs_ends_at"),
   cfsDescriptionInput: getElementById(pageRoot, "cfs_description"),
   cfsLabelsEditor: getElementById(pageRoot, "cfs-labels-editor"),
+  registrationStartsAtInput: getElementById(pageRoot, "registration_starts_at"),
+  registrationEndsAtInput: getElementById(pageRoot, "registration_ends_at"),
   startsAtInput: getElementById(pageRoot, "starts_at"),
   endsAtInput: getElementById(pageRoot, "ends_at"),
 });
@@ -113,6 +117,8 @@ export const initializeSharedEventPageControls = ({
     cfsEndsAtInput,
     cfsDescriptionInput,
     cfsLabelsEditor,
+    registrationStartsAtInput,
+    registrationEndsAtInput,
     startsAtInput,
     endsAtInput,
   } = controls;
@@ -168,6 +174,8 @@ export const initializeSharedEventPageControls = ({
     syncSessionsDateRange,
     startsAtInput,
     endsAtInput,
+    registrationStartsAtInput,
+    registrationEndsAtInput,
     cfsStartsAtInput,
     cfsEndsAtInput,
     onlineEventDetails,
@@ -419,6 +427,8 @@ const getSessionBoundsErrorMessage = ({ pageRoot }) => {
  * @param {() => void} config.syncSessionsDateRange Sessions sync callback.
  * @param {HTMLInputElement|null} config.startsAtInput Event start input.
  * @param {HTMLInputElement|null} config.endsAtInput Event end input.
+ * @param {HTMLInputElement|null} config.registrationStartsAtInput Registration start input.
+ * @param {HTMLInputElement|null} config.registrationEndsAtInput Registration end input.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS start input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS end input.
  * @param {HTMLElement|null} config.onlineEventDetails Online event details component.
@@ -429,6 +439,8 @@ const bindSharedEventDateFieldListeners = ({
   syncSessionsDateRange,
   startsAtInput,
   endsAtInput,
+  registrationStartsAtInput,
+  registrationEndsAtInput,
   cfsStartsAtInput,
   cfsEndsAtInput,
   onlineEventDetails,
@@ -443,6 +455,10 @@ const bindSharedEventDateFieldListeners = ({
         cfsStartsInput: cfsStartsAtInput,
         cfsEndsInput: cfsEndsAtInput,
       });
+      clearRegistrationWindowValidity({
+        registrationStartsInput: registrationStartsAtInput,
+        registrationEndsInput: registrationEndsAtInput,
+      });
       clearSessionDateBoundsValidity({
         sessionForm: getElementById(pageRoot, "sessions-form"),
       });
@@ -456,6 +472,10 @@ const bindSharedEventDateFieldListeners = ({
       clearCfsWindowValidity({
         cfsStartsInput: cfsStartsAtInput,
         cfsEndsInput: cfsEndsAtInput,
+      });
+      clearRegistrationWindowValidity({
+        registrationStartsInput: registrationStartsAtInput,
+        registrationEndsInput: registrationEndsAtInput,
       });
       clearSessionDateBoundsValidity({
         sessionForm: getElementById(pageRoot, "sessions-form"),
@@ -473,6 +493,24 @@ const bindSharedEventDateFieldListeners = ({
   if (cfsEndsAtInput) {
     cfsEndsAtInput.addEventListener("change", () => {
       cfsEndsAtInput.setCustomValidity("");
+    });
+  }
+
+  if (registrationStartsAtInput) {
+    registrationStartsAtInput.addEventListener("change", () => {
+      clearRegistrationWindowValidity({
+        registrationStartsInput: registrationStartsAtInput,
+        registrationEndsInput: registrationEndsAtInput,
+      });
+    });
+  }
+
+  if (registrationEndsAtInput) {
+    registrationEndsAtInput.addEventListener("change", () => {
+      clearRegistrationWindowValidity({
+        registrationStartsInput: registrationStartsAtInput,
+        registrationEndsInput: registrationEndsAtInput,
+      });
     });
   }
 
@@ -508,7 +546,9 @@ const bindSharedEventDateFieldListeners = ({
  */
 const convertSharedEventDateParameters = (parameters) => {
   Object.keys(parameters).forEach((key) => {
-    const isEventDate = key.match(/^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/);
+    const isEventDate = key.match(
+      /^(starts_at|ends_at|registration_starts_at|registration_ends_at|cfs_starts_at|cfs_ends_at)$/,
+    );
     const isSessionDate = key.match(/^sessions\[\d+\]\[(starts_at|ends_at)\]$/);
     if ((isEventDate || isSessionDate) && parameters[key]) {
       parameters[key] = convertDateTimeLocalToISO(parameters[key]);
@@ -694,6 +734,8 @@ export const initializeEventPagePendingChanges = ({ pageRoot, confirmMessage }) 
  * @param {Document|Element} config.pageRoot Page root.
  * @param {HTMLInputElement|null} config.startsAtInput Event start input.
  * @param {HTMLInputElement|null} config.endsAtInput Event end input.
+ * @param {HTMLInputElement|null} config.registrationStartsAtInput Registration start input.
+ * @param {HTMLInputElement|null} config.registrationEndsAtInput Registration end input.
  * @param {HTMLInputElement|null} config.cfsEnabledInput Hidden CFS enabled input.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
@@ -712,6 +754,8 @@ export const attachEventSaveBeforeRequestValidation = ({
   pageRoot,
   startsAtInput,
   endsAtInput,
+  registrationStartsAtInput,
+  registrationEndsAtInput,
   cfsEnabledInput,
   cfsStartsAtInput,
   cfsEndsAtInput,
@@ -738,6 +782,12 @@ export const attachEventSaveBeforeRequestValidation = ({
       latestDate,
       onDateSection: () => displayActiveSection("date-venue"),
     });
+    const registrationWindowValid = validateRegistrationWindow({
+      registrationStartsInput: registrationStartsAtInput,
+      registrationEndsInput: registrationEndsAtInput,
+      eventStartsInput: startsAtInput,
+      onDateSection: () => displayActiveSection("date-venue"),
+    });
     const cfsValid = validateCfsWindow({
       cfsEnabledInput,
       cfsStartsInput: cfsStartsAtInput,
@@ -747,7 +797,7 @@ export const attachEventSaveBeforeRequestValidation = ({
       onCfsSection: () => displayActiveSection("cfs"),
     });
 
-    if (!datesValid || !cfsValid) {
+    if (!datesValid || !registrationWindowValid || !cfsValid) {
       event.preventDefault();
       event.stopImmediatePropagation();
       return false;
@@ -774,7 +824,15 @@ export const attachEventSaveBeforeRequestValidation = ({
       showSessionBoundsError();
     }
 
-    if (!isValid || !datesValid || !cfsValid || !onlineValid || !sessionsOnlineValid || !sessionBoundsValid) {
+    if (
+      !isValid ||
+      !datesValid ||
+      !registrationWindowValid ||
+      !cfsValid ||
+      !onlineValid ||
+      !sessionsOnlineValid ||
+      !sessionBoundsValid
+    ) {
       event.preventDefault();
       event.stopImmediatePropagation();
       return false;

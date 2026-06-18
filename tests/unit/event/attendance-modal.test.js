@@ -23,6 +23,8 @@ const renderPaidAttendanceDom = ({
   markButtonPriceBadge = true,
   availabilityUrl = "",
   includeRegistrationQuestions = false,
+  registrationWindowOpen = "true",
+  registrationWindowUnavailableTitle = "",
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -31,6 +33,12 @@ const renderPaidAttendanceDom = ({
       data-is-ticketed="true"
       data-ticket-purchase-available="${ticketPurchaseAvailable}"
       ${availabilityUrl ? `data-availability-url="${availabilityUrl}"` : ""}
+      data-registration-window-open="${registrationWindowOpen}"
+      ${
+        registrationWindowUnavailableTitle
+          ? `data-registration-window-unavailable-title="${registrationWindowUnavailableTitle}"`
+          : ""
+      }
       data-path="/events/test-event"
       data-attendee-meeting-access-open="false"
       data-waitlist-enabled="false"
@@ -832,6 +840,36 @@ describe("event attendance paid modal", () => {
     expect(actionsMenu.classList.contains("hidden")).to.equal(false);
     expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
     expect(ticketModal.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("keeps pending-payment available after the registration window closes", async () => {
+    // Render an active pending payment after public registration has closed.
+    const { checker, attendButton, checkoutCancelButton } =
+      renderPaidAttendanceDom({
+        registrationWindowOpen: "false",
+        registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
+      });
+    await initializeAttendanceDom();
+
+    // Dispatch the pending-payment attendance state.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        status: "pending-payment",
+        resume_checkout_url: "https://example.test/checkout/resume",
+      }),
+    });
+
+    // Existing active holds can still resume payment after public registration closes.
+    expect(attendButton.classList.contains("hidden")).to.equal(false);
+    expect(attendButton.disabled).to.equal(false);
+    expect(attendButton.hasAttribute("title")).to.equal(false);
+    expect(
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Complete payment");
+    expect(attendButton.dataset.resumeUrl).to.equal(
+      "https://example.test/checkout/resume",
+    );
+    expect(checkoutCancelButton.classList.contains("hidden")).to.equal(false);
   });
 
   it("renders pending payment when attendance status returns before availability", async () => {

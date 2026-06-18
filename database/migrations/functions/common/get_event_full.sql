@@ -77,7 +77,9 @@ returns json as $$
             'meeting_recording_url', e.meeting_recording_url,
             'meeting_requested', e.meeting_requested,
             'meetup_url', e.meetup_url,
-            'payment_currency_code', e.payment_currency_code,
+            'payment_currency_code', e.payment_currency_code
+        )
+        || jsonb_build_object(
             'has_ticket_purchases', exists (
                 select 1
                 from event_purchase ep
@@ -86,7 +88,9 @@ returns json as $$
             ),
             'photos_urls', e.photos_urls,
             'published_at', floor(extract(epoch from e.published_at)),
+            'registration_ends_at', floor(extract(epoch from e.registration_ends_at)),
             'registration_required', e.registration_required,
+            'registration_starts_at', floor(extract(epoch from e.registration_starts_at)),
             'starts_at', floor(extract(epoch from e.starts_at)),
             'tags', e.tags,
             'ticket_types', list_event_ticket_types(e.event_id),

@@ -279,6 +279,16 @@
                 {% else -%}
                   <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
                 {% endif -%}
+                {% let registration_window_message = event.registration_window_message() -%}
+                <div data-registration-window-message-display
+                     class="{% if registration_window_message.is_none() -%}
+                              hidden
+                            {% endif -%}
+                            mt-4 border-t border-stone-100 pt-3 text-sm/6 text-stone-600">
+                  {% if let Some(message) = registration_window_message -%}
+                    {{ message }}
+                  {% endif -%}
+                </div>
               </div>
             </div>
           </div>

@@ -17,6 +17,11 @@
     <br />
     You have been added to the waiting list. If a seat opens up and you are promoted,
     we will send you a follow-up email.
+    {% if let Some(registration_window_message) = event.registration_window_message() -%}
+      <br />
+      <br />
+      {{ registration_window_message }} Waitlist promotions only happen while registration is open.
+    {% endif -%}
   </p>
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}

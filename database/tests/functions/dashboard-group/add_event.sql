@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(37);
+select plan(38);
 
 -- ============================================================================
 -- VARIABLES
@@ -579,6 +579,38 @@ select is(
     (select meeting_recording_requested from event where event_id = :'recordingDisabledEventID'::uuid),
     false,
     'Should persist event meeting recording preference when disabled'
+);
+
+-- Should create event with registration window dates
+select add_event(
+    null::uuid,
+    :'groupID'::uuid,
+    jsonb_build_object(
+        'name', 'Registration Window Event',
+        'description', 'Event with configured registration dates',
+        'timezone', 'UTC',
+        'category_id', :'eventCategoryID',
+        'kind_id', 'in-person',
+        'starts_at', '2030-02-01T12:00:00',
+        'ends_at', '2030-02-01T14:00:00',
+        'registration_starts_at', '2030-02-01T09:00:00',
+        'registration_ends_at', '2030-02-01T11:00:00'
+    )
+) as "registrationWindowEventID" \gset
+select is(
+    (
+        select jsonb_build_object(
+            'registration_ends_at', floor(extract(epoch from registration_ends_at)),
+            'registration_starts_at', floor(extract(epoch from registration_starts_at))
+        )
+        from event
+        where event_id = :'registrationWindowEventID'::uuid
+    ),
+    jsonb_build_object(
+        'registration_ends_at', floor(extract(epoch from '2030-02-01 11:00:00+00'::timestamptz)),
+        'registration_starts_at', floor(extract(epoch from '2030-02-01 09:00:00+00'::timestamptz))
+    ),
+    'Should persist registration window dates when creating an event'
 );
 
 -- Should throw error when capacity exceeds max_participants with meeting_requested

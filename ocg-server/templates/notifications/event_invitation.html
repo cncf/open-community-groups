@@ -26,6 +26,12 @@
     {% endif -%}
     <br />
     <br />
+    {% if let Some(registration_window_message) = event.registration_window_message() -%}
+      Public registration: {{ registration_window_message }}
+      Organizer invitations can still be completed outside this window.
+      <br />
+      <br />
+    {% endif -%}
     When logging in with LF SSO, make sure the invited email address matches
     the primary email configured on your LF account. If the emails do not
     match, you will not be able to accept this invitation.

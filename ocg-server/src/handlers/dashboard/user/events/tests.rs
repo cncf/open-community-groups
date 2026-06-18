@@ -56,6 +56,7 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::RegistrationQuestionsPending,
 
                 purchase_amount_minor: None,
@@ -160,6 +161,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
                 purchase_amount_minor: None,
@@ -273,6 +275,7 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
                 purchase_amount_minor: None,
@@ -358,6 +361,7 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::Waitlisted,
 
                 purchase_amount_minor: None,
@@ -427,6 +431,7 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::RegistrationQuestionsPending,
 
                 purchase_amount_minor: None,
@@ -570,6 +575,7 @@ async fn test_list_page_success() {
         events: vec![crate::templates::dashboard::user::events::UserEvent {
             event: sample_event_summary(event_id, group_id),
             has_paid_purchase: false,
+            manually_invited: false,
             registration_questions: vec![],
             roles: vec![UserEventRole::Attendee, UserEventRole::Host],
             attendance_status: Some(EventAttendanceStatus::Attendee),

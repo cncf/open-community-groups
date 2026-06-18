@@ -631,6 +631,43 @@
                 </div>
                 {# End finish date/time -#}
 
+                {# Registration window start -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="registration_starts_at" class="form-label">Registration Opens</label>
+                  <div class="mt-2">
+                    <input type="datetime-local"
+                           name="registration_starts_at"
+                           id="registration_starts_at"
+                           class="input-primary"
+                           value="{{ event.registration_starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                  </div>
+                  <p class="form-legend">Leave blank to allow registration immediately.</p>
+                </div>
+                {# End registration window start -#}
+
+                {# Registration window end -#}
+                <div class="col-span-full lg:col-span-3">
+                  <label for="registration_ends_at" class="form-label">Registration Closes</label>
+                  <div class="mt-2">
+                    <input type="datetime-local"
+                           name="registration_ends_at"
+                           id="registration_ends_at"
+                           class="input-primary"
+                           value="{{ event.registration_ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}">
+                  </div>
+                  <p class="form-legend">
+                    Must be after the open date. Leave blank with an open date to close at event start.
+                    Leave both fields blank for no window.
+                  </p>
+                </div>
+                {# End registration window end -#}
+
+                <div class="col-span-full rounded-md border border-stone-200 bg-stone-50 px-4 py-3 text-sm/6 text-stone-600">
+                  A registration window limits attendee self-registration, ticket checkout, invitation requests,
+                  waitlist promotion, and registration-question answers. Organizers can still manually invite
+                  attendees outside the window; those invitees can complete required registration questions.
+                </div>
+
                 {# Event reminder toggle -#}
                 <div class="col-span-full lg:col-span-6">
                   <label class="inline-flex items-center cursor-pointer">

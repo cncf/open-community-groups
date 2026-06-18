@@ -242,10 +242,17 @@ Waitlist-aware event operations also include:
 
 - A `Waitlist enabled` toggle in event details.
 - Waitlist requires a numeric event capacity; unlimited-capacity events cannot enable it.
+- Optional `Registration Opens` and `Registration Closes` fields in `Date & Venue`.
+  When configured, the window controls public registration, invitation requests, starting ticket
+  checkout, registration-question answers, and automatic waitlist promotion.
+  Registration open and close dates cannot be after the event start, and close must be after open
+  when both are set. If only an open date is set, registration closes at event start; if both fields
+  are blank, no registration window is applied. Active checkout holds may still complete payment and
+  required registration questions after the public window closes, until the hold expires.
 - Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on
   event enrollment settings.
 - Automatic promotion from the waitlist when attendees leave, capacity increases, or capacity is
-  removed.
+  removed, but only while registration is open.
 - Waitlist recipients included in event cancellation notifications.
 
 Invitation-review event operations include:
@@ -263,6 +270,8 @@ Organizer-created event invitations are managed from the event `Attendees` tab:
 - Email invitations are for LF SSO accounts. The invited email must match the invitee's LF account
   primary email, or the invitee will not be able to accept.
 - Manual invitations are available for free RSVP events only, not ticketed events.
+- Manual invitations are an organizer override for registration windows and capacity. Invitees can
+  accept and answer required registration questions outside the public registration window.
 - Pending invitations appear in the attendee table with invitation status and can be canceled
   before the invitee accepts.
 - If an invitee rejects the invitation, the attendee row stays rejected and the same user cannot be

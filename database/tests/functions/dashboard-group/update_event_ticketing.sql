@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(42);
+select plan(44);
 
 -- ============================================================================
 -- VARIABLES
@@ -23,6 +23,7 @@ select plan(42);
 \set event24ID '3a3c0000-0000-0000-0000-000000000013'
 \set eventOverCapacityID '3a3c0000-0000-0000-0000-000000000014'
 \set eventQuestionsAnsweredID '3a3c0000-0000-0000-0000-000000000015'
+\set eventQuestionsHoldID '3a3c0000-0000-0000-0000-000000000056'
 \set eventQuestionsID '3a3c0000-0000-0000-0000-000000000016'
 \set eventQuestionsPublishedID '3a3c0000-0000-0000-0000-000000000017'
 \set group1ID '3a3c0000-0000-0000-0000-000000000018'
@@ -31,6 +32,10 @@ select plan(42);
 \set questionsCommunityID '3a3c0000-0000-0000-0000-000000000021'
 \set questionsEventCategoryID '3a3c0000-0000-0000-0000-000000000022'
 \set questionsGroupID '3a3c0000-0000-0000-0000-000000000023'
+\set questionsHoldPriceWindowID '3a3c0000-0000-0000-0000-000000000060'
+\set questionsHoldPurchaseID '3a3c0000-0000-0000-0000-000000000059'
+\set questionsHoldTicketTypeID '3a3c0000-0000-0000-0000-000000000058'
+\set questionsHoldUserID '3a3c0000-0000-0000-0000-000000000057'
 \set questionsOrganizerUserID '3a3c0000-0000-0000-0000-000000000024'
 \set user1ID '3a3c0000-0000-0000-0000-000000000025'
 \set user2ID '3a3c0000-0000-0000-0000-000000000026'
@@ -88,7 +93,8 @@ insert into "user" (user_id, auth_hash, email, username, name) values
     (:'user4ID', 'hash4', 'waitlist1@example.com', 'waitlist1', 'Waitlist One'),
     (:'user5ID', 'hash5', 'waitlist2@example.com', 'waitlist2', 'Waitlist Two'),
     (:'questionsOrganizerUserID', 'rq-hash-1', 'rq-organizer@example.com', 'rq-organizer', null),
-    (:'questionsAttendeeUserID', 'rq-hash-2', 'rq-attendee@example.com', 'rq-attendee', null);
+    (:'questionsAttendeeUserID', 'rq-hash-2', 'rq-attendee@example.com', 'rq-attendee', null),
+    (:'questionsHoldUserID', 'rq-hash-3', 'rq-hold@example.com', 'rq-hold', null);
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
@@ -148,7 +154,8 @@ insert into event (
     event_kind_id,
     published,
     starts_at,
-    registration_questions
+    registration_questions,
+    payment_currency_code
 ) values (
     :'eventQuestionsID',
     :'questionsGroupID',
@@ -160,7 +167,8 @@ insert into event (
     'in-person',
     false,
     '2030-01-01 10:00:00+00',
-    '[]'::jsonb
+    '[]'::jsonb,
+    null
 ), (
     :'eventQuestionsPublishedID',
     :'questionsGroupID',
@@ -178,7 +186,8 @@ insert into event (
         'options', '[]'::jsonb,
         'prompt', 'Original',
         'required', true
-    ))
+    )),
+    null
 ), (
     :'eventQuestionsAnsweredID',
     :'questionsGroupID',
@@ -196,7 +205,27 @@ insert into event (
         'options', '[]'::jsonb,
         'prompt', 'Original',
         'required', true
-    ))
+    )),
+    null
+), (
+    :'eventQuestionsHoldID',
+    :'questionsGroupID',
+    'Held Questions Event',
+    'held-questions-event',
+    'Desc',
+    'UTC',
+    :'questionsEventCategoryID',
+    'in-person',
+    true,
+    '2030-01-01 10:00:00+00',
+    jsonb_build_array(jsonb_build_object(
+        'id', '3a3c0000-0000-0000-0000-000000000031',
+        'kind', 'free-text',
+        'options', '[]'::jsonb,
+        'prompt', 'Original',
+        'required', true
+    )),
+    'USD'
 );
 
 -- Published event for waitlist promotion checks
@@ -711,6 +740,32 @@ insert into event_discount_code (
     'Other launch'
 );
 
+insert into event_ticket_type (
+    event_ticket_type_id,
+    active,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'questionsHoldTicketTypeID',
+    true,
+    :'eventQuestionsHoldID',
+    1,
+    10,
+    'Held General'
+);
+
+insert into event_ticket_price_window (
+    event_ticket_price_window_id,
+    amount_minor,
+    event_ticket_type_id
+) values (
+    :'questionsHoldPriceWindowID',
+    2500,
+    :'questionsHoldTicketTypeID'
+);
+
 insert into event_purchase (
     amount_minor,
     currency_code,
@@ -731,6 +786,28 @@ insert into event_purchase (
     'completed',
     'Protected General',
     :'user1ID'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'questionsHoldPurchaseID',
+    2500,
+    'USD',
+    :'eventQuestionsHoldID',
+    :'questionsHoldTicketTypeID',
+    current_timestamp + interval '10 minutes',
+    'pending',
+    'Held General',
+    :'questionsHoldUserID'
 );
 
 -- Event Attendees (for capacity validation and waitlist promotion tests)
@@ -1716,6 +1793,29 @@ select throws_ok(
     )$$,
     'registration questions cannot be changed after attendees have submitted answers',
     'Should reject registration question changes after answers exist'
+);
+
+-- Should allow unrelated event edits while checkout holds are active
+select lives_ok(
+    $$select update_event(
+        '3a3c0000-0000-0000-0000-000000000024'::uuid,
+        '3a3c0000-0000-0000-0000-000000000023'::uuid,
+        '3a3c0000-0000-0000-0000-000000000056'::uuid,
+        '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z"}'::jsonb
+    )$$,
+    'Should allow unrelated event edits while checkout holds are active'
+);
+
+-- Should reject registration question changes while checkout holds are active
+select throws_ok(
+    $$select update_event(
+        '3a3c0000-0000-0000-0000-000000000024'::uuid,
+        '3a3c0000-0000-0000-0000-000000000023'::uuid,
+        '3a3c0000-0000-0000-0000-000000000056'::uuid,
+        '{"name": "Held Questions Event Updated", "description": "Desc", "timezone": "UTC", "category_id": "3a3c0000-0000-0000-0000-000000000022", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00Z", "registration_questions": [{"id": "3a3c0000-0000-0000-0000-000000000031", "kind": "free-text", "prompt": "Changed", "required": true, "options": []}]}'::jsonb
+    )$$,
+    'registration questions cannot be changed while checkout holds are active',
+    'Should reject registration question changes while checkout holds are active'
 );
 
 -- ============================================================================

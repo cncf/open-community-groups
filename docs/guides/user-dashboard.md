@@ -50,9 +50,15 @@ Each row includes:
   `Registration pending`.
 
 When a row is marked `Payment pending`, use the row actions menu to complete checkout while the
-ticket hold is still active. When a row is marked `Registration pending`, use the row actions menu
-to complete the event's registration questions. You can update submitted answers from the same
-menu before the event starts.
+ticket hold is still active, even if public registration closes after checkout started. When a row
+is marked `Registration pending`, use the row actions menu to complete the event's registration
+questions. You can update submitted answers from the same menu before the event starts while
+registration is open, while an active checkout hold exists, or when an organizer invited you
+manually.
+
+If organizers configured a registration window, new public registration actions are disabled
+outside that window. Organizer-created manual invitations and active checkout holds are the
+exceptions for completing required registration questions from `My Events`.
 
 Filtering behavior:
 

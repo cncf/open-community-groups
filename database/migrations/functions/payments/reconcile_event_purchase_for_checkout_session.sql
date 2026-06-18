@@ -73,8 +73,7 @@ begin
         return jsonb_build_object('outcome', 'noop');
     end if;
 
-    -- Complete the purchase when it is still fulfillable and the attendee row
-    -- can be confirmed; otherwise fall through to the refund path below
+    -- Complete active holds even if public registration has closed since checkout started
     if v_status <> 'refund-pending'
        and not v_hold_expired
        and not v_unfulfillable then

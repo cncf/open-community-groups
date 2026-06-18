@@ -8,6 +8,7 @@ import { toTrimmedString } from "/static/js/common/utils.js";
 class AttendanceTicketCard extends LitWrapper {
   static properties = {
     canceled: { type: Boolean },
+    registrationWindowOpen: { type: Boolean },
     ticket: { type: Object },
     ticketPurchaseAvailable: { type: Boolean },
   };
@@ -15,6 +16,7 @@ class AttendanceTicketCard extends LitWrapper {
   constructor() {
     super();
     this.canceled = false;
+    this.registrationWindowOpen = true;
     this.ticket = null;
     this.ticketPurchaseAvailable = false;
   }
@@ -36,11 +38,13 @@ class AttendanceTicketCard extends LitWrapper {
   }
 
   get _isDisabled() {
-    return this.canceled || !this.ticketPurchaseAvailable || !this._isSellableNow;
+    return (
+      this.canceled || !this.registrationWindowOpen || !this.ticketPurchaseAvailable || !this._isSellableNow
+    );
   }
 
   get _cardStateClasses() {
-    return this._isSellableNow
+    return !this._isDisabled
       ? "bg-white cursor-pointer hover:border-primary-300"
       : "bg-stone-50 cursor-not-allowed opacity-60";
   }
@@ -48,6 +52,10 @@ class AttendanceTicketCard extends LitWrapper {
   get _statusLabel() {
     if (this.ticket?.sold_out === true) {
       return "Sold out";
+    }
+
+    if (!this.registrationWindowOpen) {
+      return "Registration not open";
     }
 
     return this._isSellableNow ? "Available now" : "Not on sale";

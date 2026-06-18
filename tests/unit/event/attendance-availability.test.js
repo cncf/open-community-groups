@@ -111,4 +111,123 @@ describe("attendance availability", () => {
       document.querySelector('[data-attendance-role="ticket-type-price-badge"]')?.textContent,
     ).to.equal("EUR 20.00");
   });
+
+  it("renders closed registration windows into messages and disabled tickets", () => {
+    // Build a minimal attendance fixture with a registration-window message.
+    document.body.innerHTML = `
+      <div data-registration-window-message-display class="hidden"></div>
+      <span data-availability-caption="capacity" class="hidden"></span>
+      <div data-attendance-container>
+        <div data-attendance-role="ticket-type-list">
+          <label data-attendance-role="ticket-type-card">
+            <input
+              data-attendance-role="ticket-type-option"
+              type="radio"
+              name="event_ticket_type_id"
+              value="ticket-1"
+              class="sr-only"
+              checked
+            />
+            <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer"></div>
+            <div data-attendance-role="ticket-type-summary"></div>
+            <span data-attendance-role="ticket-type-status-dot" class="bg-green-500"></span>
+            <span data-attendance-role="ticket-type-status-label">Available now</span>
+          </label>
+        </div>
+      </div>
+    `;
+
+    // Render a closed registration window over otherwise sellable tickets.
+    const container = document.querySelector("[data-attendance-container]");
+    const ticketOption = container.querySelector('[data-attendance-role="ticket-type-option"]');
+    const ticketStatusLabel = container.querySelector(
+      '[data-attendance-role="ticket-type-status-label"]',
+    );
+    renderAttendanceAvailability(container, {
+      attendee_approval_required: false,
+      capacity: null,
+      canceled: false,
+      has_sellable_ticket_types: true,
+      is_live: false,
+      is_past: false,
+      is_ticketed: true,
+      registration_window_message: "Registration closed May 1, 2099.",
+      registration_window_open: false,
+      registration_window_unavailable_title: "Registration closed May 1, 2099.",
+      remaining_capacity: null,
+      ticket_types: [
+        {
+          current_price_label: "EUR 20.00",
+          event_ticket_type_id: "ticket-1",
+          is_sellable_now: true,
+          sold_out: false,
+        },
+      ],
+      waitlist_count: 0,
+      waitlist_enabled: false,
+    });
+
+    // Closed windows update metadata, show the message and disable ticket selection.
+    const message = document.querySelector("[data-registration-window-message-display]");
+    expect(container.dataset.registrationWindowOpen).to.equal("false");
+    expect(container.dataset.registrationWindowUnavailableTitle).to.equal(
+      "Registration closed May 1, 2099.",
+    );
+    expect(message.textContent).to.equal("Registration closed May 1, 2099.");
+    expect(message.classList.contains("hidden")).to.equal(false);
+    expect(ticketOption.disabled).to.equal(true);
+    expect(ticketOption.checked).to.equal(false);
+    expect(ticketStatusLabel.textContent).to.equal("Registration not open");
+  });
+
+  it("renders appended ticket cards as disabled when registration is closed", async () => {
+    // Build a minimal attendance fixture where cached markup has no ticket cards.
+    document.body.innerHTML = `
+      <div data-registration-window-message-display class="hidden"></div>
+      <span data-availability-caption="capacity" class="hidden"></span>
+      <div data-attendance-container>
+        <div data-attendance-role="ticket-type-list"></div>
+      </div>
+    `;
+
+    // Render a newly available ticket after the registration window has closed.
+    const container = document.querySelector("[data-attendance-container]");
+    renderAttendanceAvailability(container, {
+      attendee_approval_required: false,
+      capacity: null,
+      canceled: false,
+      has_sellable_ticket_types: true,
+      is_live: false,
+      is_past: false,
+      is_ticketed: true,
+      registration_window_message: "Registration closed May 1, 2099.",
+      registration_window_open: false,
+      registration_window_unavailable_title: "Registration closed May 1, 2099.",
+      remaining_capacity: null,
+      ticket_types: [
+        {
+          current_price_label: "EUR 20.00",
+          event_ticket_type_id: "ticket-1",
+          is_sellable_now: true,
+          sold_out: false,
+          title: "General admission",
+        },
+      ],
+      waitlist_count: 0,
+      waitlist_enabled: false,
+    });
+
+    const card = container.querySelector("attendance-ticket-card");
+    await card.updateComplete;
+
+    // Appended cards should use the same closed-registration state as cached cards.
+    const ticketOption = card.querySelector('[data-attendance-role="ticket-type-option"]');
+    const ticketCardBody = card.querySelector('[data-attendance-role="ticket-type-card-body"]');
+    const ticketStatusLabel = card.querySelector(
+      '[data-attendance-role="ticket-type-status-label"]',
+    );
+    expect(ticketOption.disabled).to.equal(true);
+    expect(ticketCardBody.classList.contains("cursor-not-allowed")).to.equal(true);
+    expect(ticketStatusLabel.textContent.trim()).to.equal("Registration not open");
+  });
 });

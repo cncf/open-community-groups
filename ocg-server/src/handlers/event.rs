@@ -351,6 +351,7 @@ pub(crate) async fn attendance_status(
     Ok(Json(json!({
         "can_request_refund": can_request_refund,
         "is_checked_in": attendance.is_checked_in,
+        "manually_invited": attendance.manually_invited,
         "purchase_amount_minor": attendance.purchase_amount_minor,
         "refund_request_status": attendance.refund_request_status,
         "resume_checkout_url": attendance.resume_checkout_url,
@@ -685,6 +686,8 @@ struct EventAvailability {
     is_past: bool,
     /// Whether the event uses the ticketing flow.
     is_ticketed: bool,
+    /// Whether attendee registration is currently open.
+    registration_window_open: bool,
     /// Current public availability for each ticket type.
     ticket_types: Vec<EventTicketAvailability>,
     /// Current number of users on the waiting list.
@@ -694,6 +697,10 @@ struct EventAvailability {
 
     /// Maximum capacity for the event.
     capacity: Option<i32>,
+    /// Message describing the configured registration window.
+    registration_window_message: Option<String>,
+    /// Disabled-control title explaining why registration is unavailable.
+    registration_window_unavailable_title: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
     remaining_capacity: Option<i32>,
 }
@@ -709,6 +716,7 @@ impl EventAvailability {
             is_live: event.is_live(),
             is_past: event.is_past(),
             is_ticketed: event.is_ticketed(),
+            registration_window_open: event.registration_window_is_open(),
             ticket_types: event
                 .ticket_types
                 .as_deref()
@@ -725,6 +733,8 @@ impl EventAvailability {
             waitlist_enabled: event.waitlist_enabled,
 
             capacity: event.capacity,
+            registration_window_message: event.registration_window_message(),
+            registration_window_unavailable_title: event.registration_window_unavailable_title(),
             remaining_capacity: event.remaining_capacity,
         }
     }
@@ -848,15 +858,10 @@ async fn load_checkoutable_event(
     // Stop checkout when the event is no longer attendee-visible
     ensure_attendee_event_is_active(db, community_id, event_id).await?;
 
-    // Ensure the event actually offers attendee-purchasable tickets
+    // Ensure the event uses ticket purchases; the DB validates new-hold availability
     let event = db.get_event_summary_by_id(community_id, event_id).await?;
     if !event.is_ticketed() {
         return Err(anyhow::anyhow!("event does not use ticket purchases").into());
-    }
-    if !event.has_sellable_ticket_types() {
-        return Err(HandlerError::Database(
-            "tickets are currently unavailable for this event".to_string(),
-        ));
     }
 
     Ok(event)

@@ -15,8 +15,14 @@ use crate::{
 };
 
 /// Event-level local datetime fields shifted for each generated occurrence.
-const EVENT_LOCAL_DATETIME_FIELD_NAMES: [&str; 4] =
-    ["cfs_ends_at", "cfs_starts_at", "ends_at", "starts_at"];
+const EVENT_LOCAL_DATETIME_FIELD_NAMES: [&str; 6] = [
+    "cfs_ends_at",
+    "cfs_starts_at",
+    "ends_at",
+    "registration_ends_at",
+    "registration_starts_at",
+    "starts_at",
+];
 /// Start and end field names shared by nested schedule-like payloads.
 const START_END_FIELD_NAMES: [&str; 2] = ["ends_at", "starts_at"];
 

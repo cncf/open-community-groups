@@ -3,6 +3,8 @@ create or replace function validate_add_event_dates(p_event jsonb)
 returns void as $$
 declare
     v_ends_at timestamptz;
+    v_registration_ends_at timestamptz;
+    v_registration_starts_at timestamptz;
     v_session jsonb;
     v_session_ends_at timestamptz;
     v_session_starts_at timestamptz;
@@ -22,6 +24,35 @@ begin
         if v_ends_at < current_timestamp then
             raise exception 'event ends_at cannot be in the past';
         end if;
+    end if;
+
+    -- Parse optional registration window bounds using the event timezone
+    if p_event->>'registration_starts_at' is not null then
+        v_registration_starts_at := (p_event->>'registration_starts_at')::timestamp at time zone v_timezone;
+    end if;
+
+    if p_event->>'registration_ends_at' is not null then
+        v_registration_ends_at := (p_event->>'registration_ends_at')::timestamp at time zone v_timezone;
+    end if;
+
+    -- Require a positive registration window when both bounds are set
+    if v_registration_starts_at is not null
+       and v_registration_ends_at is not null
+       and v_registration_starts_at >= v_registration_ends_at then
+        raise exception 'registration starts_at must be before registration ends_at';
+    end if;
+
+    -- Keep configured registration windows from extending past the event start
+    if v_registration_starts_at is not null
+       and v_starts_at is not null
+       and v_registration_starts_at > v_starts_at then
+        raise exception 'registration starts_at cannot be after event starts_at';
+    end if;
+
+    if v_registration_ends_at is not null
+       and v_starts_at is not null
+       and v_registration_ends_at > v_starts_at then
+        raise exception 'registration ends_at cannot be after event starts_at';
     end if;
 
     -- New event sessions cannot be created with past session dates

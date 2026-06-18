@@ -21,6 +21,11 @@
     {% endif -%}
     <br />
     <br />
+    {% if let Some(registration_window_message) = event.registration_window_message() -%}
+      {{ registration_window_message }}
+      <br />
+      <br />
+    {% endif -%}
     {{ email::meeting_details(event = event, show_meeting_details = !has_registration_questions) }}
   </div>
 

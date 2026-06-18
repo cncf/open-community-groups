@@ -69,6 +69,8 @@ export const applyCopiedEventDetails = async (details) => {
 
   resetCopiedMeetingFields();
   setTextValue("name", appendCopySuffix(details.name));
+  setTextValue("registration_ends_at", "");
+  setTextValue("registration_starts_at", "");
   setCategoryValue(details);
   setSelectValue("kind_id", details.kind);
   setImageFieldValue("logo_url", details.logo_url);

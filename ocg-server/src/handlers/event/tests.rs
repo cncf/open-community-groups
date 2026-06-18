@@ -420,6 +420,7 @@ async fn test_check_in_page_success() {
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
                 purchase_amount_minor: None,
@@ -1030,6 +1031,7 @@ async fn test_attendance_status_success() {
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::Attendee,
 
                 purchase_amount_minor: None,
@@ -1065,6 +1067,7 @@ async fn test_attendance_status_success() {
         json!({
             "can_request_refund": false,
             "is_checked_in": false,
+            "manually_invited": false,
             "purchase_amount_minor": null,
             "refund_request_status": null,
             "resume_checkout_url": null,
@@ -1103,6 +1106,7 @@ async fn test_attendance_status_stale_event_returns_none_without_summary_lookup(
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
+                manually_invited: false,
                 status: EventAttendanceStatus::None,
 
                 purchase_amount_minor: None,
@@ -1134,6 +1138,7 @@ async fn test_attendance_status_stale_event_returns_none_without_summary_lookup(
         json!({
             "can_request_refund": false,
             "is_checked_in": false,
+            "manually_invited": false,
             "purchase_amount_minor": null,
             "refund_request_status": null,
             "resume_checkout_url": null,
@@ -1873,7 +1878,8 @@ async fn test_start_checkout_rejects_refund_requested_purchase() {
 }
 
 #[tokio::test]
-async fn test_start_checkout_rejects_when_tickets_are_unavailable() {
+#[allow(clippy::too_many_lines)]
+async fn test_start_checkout_allows_active_hold_after_registration_window_closes() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -1885,19 +1891,28 @@ async fn test_start_checkout_rejects_when_tickets_are_unavailable() {
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let mut event_summary = sample_event_summary(event_id, group_id);
     event_summary.payment_currency_code = Some("USD".to_string());
+    event_summary.registration_ends_at = Some(chrono::Utc::now() - chrono::Duration::hours(1));
     event_summary.ticket_types = Some(vec![EventTicketType {
         active: true,
         event_ticket_type_id: ticket_type_id,
         order: 1,
         title: "General admission".to_string(),
 
-        current_price: None,
+        current_price: Some(EventTicketCurrentPrice {
+            amount_minor: 2_500,
+            ends_at: None,
+            starts_at: None,
+        }),
         description: None,
         price_windows: vec![],
         remaining_seats: Some(10),
         seats_total: Some(10),
         sold_out: false,
     }]);
+    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
+    purchase.event_ticket_type_id = ticket_type_id;
+    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
+    let event_purchase_id = purchase.event_purchase_id;
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1921,13 +1936,54 @@ async fn test_start_checkout_rejects_when_tickets_are_unavailable() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
-    db.expect_prepare_event_checkout_purchase().times(0);
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_prepare_event_checkout_purchase()
+        .times(1)
+        .withf(move |cid, input| {
+            *cid == community_id
+                && input.configured_provider.is_none()
+                && input.event_id == event_id
+                && input.event_ticket_type_id == ticket_type_id
+                && input.user_id == user_id
+        })
+        .returning(move |_, _| {
+            Ok(PreparedEventCheckout {
+                community_name: "test-community".to_string(),
+                event_id,
+                event_slug: "event".to_string(),
+                group_slug: "group".to_string(),
+                purchase: purchase.clone(),
+                recipient: crate::types::payments::GroupPaymentRecipient {
+                    provider: crate::types::payments::PaymentProvider::Stripe,
+                    recipient_id: "acct_test_123".to_string(),
+                },
+                group_slug_pretty: None,
+            })
+        });
+
+    // Setup payments manager mock
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_get_or_create_checkout_redirect_url()
+        .times(1)
+        .withf(move |prepared_checkout, id| {
+            *id == user_id
+                && prepared_checkout.event_id == event_id
+                && prepared_checkout.purchase.event_purchase_id == event_purchase_id
+        })
+        .returning(|_, _| Box::pin(async { Ok("https://checkout.test/session".to_string()) }));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
     // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
     let request = Request::builder()
         .method("POST")
         .uri(format!("/test-community/event/{event_id}/checkout"))
@@ -1940,11 +1996,130 @@ async fn test_start_checkout_rejects_when_tickets_are_unavailable() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(
-        String::from_utf8(bytes.to_vec()).unwrap(),
-        "tickets are currently unavailable for this event"
-    );
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
+    assert_eq!(body["status"], json!("pending-payment"));
+}
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let mut event_summary = sample_event_summary(event_id, group_id);
+    event_summary.payment_currency_code = Some("USD".to_string());
+    event_summary.ticket_types = Some(vec![EventTicketType {
+        active: true,
+        event_ticket_type_id: ticket_type_id,
+        order: 1,
+        title: "General admission".to_string(),
+
+        current_price: None,
+        description: None,
+        price_windows: vec![],
+        remaining_seats: Some(0),
+        seats_total: Some(10),
+        sold_out: true,
+    }]);
+    let mut purchase = sample_purchase_summary(EventPurchaseStatus::Pending);
+    purchase.event_ticket_type_id = ticket_type_id;
+    purchase.hold_expires_at = Some(chrono::Utc::now() + chrono::Duration::minutes(15));
+    let event_purchase_id = purchase.event_purchase_id;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-community")
+        .returning(move |_| Ok(Some(community_id)));
+    db.expect_ensure_event_is_active()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(()));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_summary.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_prepare_event_checkout_purchase()
+        .times(1)
+        .withf(move |cid, input| {
+            *cid == community_id
+                && input.configured_provider.is_none()
+                && input.event_id == event_id
+                && input.event_ticket_type_id == ticket_type_id
+                && input.user_id == user_id
+        })
+        .returning(move |_, _| {
+            Ok(PreparedEventCheckout {
+                community_name: "test-community".to_string(),
+                event_id,
+                event_slug: "event".to_string(),
+                group_slug: "group".to_string(),
+                purchase: purchase.clone(),
+                recipient: crate::types::payments::GroupPaymentRecipient {
+                    provider: crate::types::payments::PaymentProvider::Stripe,
+                    recipient_id: "acct_test_123".to_string(),
+                },
+                group_slug_pretty: None,
+            })
+        });
+
+    // Setup payments manager mock
+    let mut payments_manager = MockPaymentsManager::new();
+    payments_manager
+        .expect_get_or_create_checkout_redirect_url()
+        .times(1)
+        .withf(move |prepared_checkout, id| {
+            *id == user_id
+                && prepared_checkout.event_id == event_id
+                && prepared_checkout.purchase.event_purchase_id == event_purchase_id
+        })
+        .returning(|_, _| Box::pin(async { Ok("https://checkout.test/session".to_string()) }));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_payments_manager(payments_manager)
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body["redirect_url"], json!("https://checkout.test/session"));
+    assert_eq!(body["status"], json!("pending-payment"));
 }
 
 #[tokio::test]

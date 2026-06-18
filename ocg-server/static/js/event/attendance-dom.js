@@ -175,6 +175,10 @@ export const getAttendanceMeta = (container) => {
   const canceled = container?.dataset?.canceled === "true";
   const hydratedIsPast = parseHydratedIsPast(container);
   const isTicketed = container?.dataset?.isTicketed === "true";
+  const registrationWindowOpen = container?.dataset?.registrationWindowOpen !== "false";
+  const registrationWindowMessage = container?.dataset?.registrationWindowMessage || "";
+  const registrationWindowUnavailableTitle =
+    container?.dataset?.registrationWindowUnavailableTitle || "Registration is not currently open.";
   const ticketPurchaseAvailable = container?.dataset?.ticketPurchaseAvailable === "true";
   const waitlistEnabled = container?.dataset?.waitlistEnabled === "true";
   const isPastEvent = (() => {
@@ -201,6 +205,9 @@ export const getAttendanceMeta = (container) => {
     hasNoCapacity,
     isSoldOut,
     isPastEvent,
+    registrationWindowMessage,
+    registrationWindowOpen,
+    registrationWindowUnavailableTitle,
     ticketPurchaseAvailable,
     waitlistEnabled,
     isTicketed,
