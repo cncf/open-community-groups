@@ -67,6 +67,10 @@ describe("question answer helpers", () => {
 
     // Select the answer option.
     input.checked = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(input.validationMessage).to.equal("");
+
+    // Collect the updated answers.
     const nextPayload = collectQuestionAnswers(form, { answerSelector: "[data-answer]" });
 
     // Assert the validation message.

@@ -17,267 +17,267 @@ description = "Create reusable session proposals to submit to events.") -}}
         You have <span class="font-semibold">{{ pending_co_speaker_invitations.len() }}</span> co-speaker
         invitation
         {%- if pending_co_speaker_invitations.len() != 1 -%}s{% endif %}
-          waiting for your
-          response
-        </p>
-      </div>
-    </div>
-    {# End pending invitations alert -#}
-    {# Pending invitations table -#}
-    <div class="mb-10">
-      <div class="overflow-hidden bg-white">
-        <div class="relative overflow-visible">
-          <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
-            {# Table header -#}
-            <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
-              <tr>
-                <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-                <th scope="col" class="px-3 xl:px-5 py-3">Invited by</th>
-                <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Updated</th>
-                <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
-                  <span class="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            {# End table header -#}
-            <tbody>
-              {% for invitation in pending_co_speaker_invitations -%}
-                {# Invitation row -#}
-                <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
-                  {# Proposal -#}
-                  <td class="px-3 xl:px-5 py-4">
-                    <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
-                  </td>
-                  {# End proposal -#}
-                  {# Invited by -#}
-                  <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-                    <div class="flex items-center space-x-3">
-                      <logo-image
-                      {% if let Some(photo_url) = &invitation.speaker_photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                      size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str() ) }}">
-                      </logo-image>
-                      <div class="font-medium text-stone-900">{{ invitation.speaker_name }}</div>
-                    </div>
-                  </td>
-                  {# End invited by -#}
-                  {# Updated date -#}
-                  <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden xl:table-cell">
-                    {% if let Some(updated_at) = invitation.session_proposal.updated_at -%}
-                      {{ updated_at.format("%b %d, %Y") }}
-                    {% else -%}
-                      {{ invitation.session_proposal.created_at.format("%b %d, %Y") }}
-                    {% endif -%}
-                  </td>
-                  {# End updated date -#}
-                  {# Actions -#}
-                  <td class="px-3 xl:px-5 py-4 w-[152px]">
-                    <div class="flex items-center justify-end gap-2">
-                      <button type="button"
-                              class="btn-tertiary p-2"
-                              data-action="view-pending-session-proposal"
-                              data-session-proposal='{{ invitation.session_proposal|json }}'
-                              data-speaker-name="{{ invitation.speaker_name }}"
-                              data-speaker-photo-url="{{ invitation.speaker_photo_url.as_deref().unwrap_or("") }}"
-                              data-proposal-description-html='{{ invitation.session_proposal.description|md_to_html|json }}'
-                              aria-label="View proposal"
-                              title="View proposal">
-                        <div class="svg-icon size-3 md:size-4 icon-eye"></div>
-                      </button>
-                      <button type="button"
-                              class="btn-tertiary p-2"
-                              data-action="accept-co-speaker-invitation"
-                              hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/accept"
-                              hx-indicator="#dashboard-spinner"
-                              hx-disabled-elt="this"
-                              aria-label="Accept invitation"
-                              title="Accept invitation">
-                        <div class="svg-icon size-3 md:size-4 icon-check"></div>
-                      </button>
-                      <button id="reject-co-speaker-invitation-{{ invitation.session_proposal.session_proposal_id }}"
-                              type="button"
-                              class="btn-tertiary p-2"
-                              data-action="reject-co-speaker-invitation"
-                              data-session-proposal-id="{{ invitation.session_proposal.session_proposal_id }}"
-                              hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/reject"
-                              hx-trigger="confirmed"
-                              hx-indicator="#dashboard-spinner"
-                              hx-disabled-elt="this"
-                              aria-label="Decline invitation"
-                              title="Decline invitation">
-                        <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
-                      </button>
-                    </div>
-                  </td>
-                  {# End actions -#}
-                </tr>
-                {# End invitation row -#}
-              {% endfor -%}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    {# End pending invitations table -#}
-  {% endif -%}
-
-  {# Proposals header -#}
-  <div class="flex justify-between items-end my-5">
-    <div class="text-sm text-stone-600">
-      {{ pagination::range_display(offset = offset.unwrap_or(0) , count = session_proposals.len(), total = total, label = "session proposal") }}
-    </div>
-    <div>
-      <button id="open-session-proposal-modal" type="button" class="btn-primary">New proposal</button>
+        waiting for your
+        response
+      </p>
     </div>
   </div>
-  {# End proposals header -#}
-
-  {# Session proposals table -#}
-  <div>
-    <div class="relative overflow-visible">
-      <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
-        {# Table header -#}
-        <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
-          <tr>
-            <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
-            <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Co-speaker</th>
-            <th scope="col" class="px-3 xl:px-5 py-3 hidden 2xl:table-cell">Updated</th>
-            <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-            <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
-              <span class="sr-only">Actions</span>
-            </th>
-          </tr>
-        </thead>
-        {# End table header -#}
-        <tbody>
-          {% if session_proposals.is_empty() -%}
-            {# Empty state -#}
-            <tr class="bg-white border-b border-stone-200 xl:hidden">
-              <td class="px-8 py-16 text-center" colspan="3">
-                {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
-              </td>
+  {# End pending invitations alert -#}
+  {# Pending invitations table -#}
+  <div class="mb-10">
+    <div class="overflow-hidden bg-white">
+      <div class="relative overflow-visible">
+        <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+          {# Table header -#}
+          <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+            <tr>
+              <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+              <th scope="col" class="px-3 xl:px-5 py-3">Invited by</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Updated</th>
+              <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+                <span class="sr-only">Actions</span>
+              </th>
             </tr>
-            <tr class="hidden xl:table-row 2xl:hidden bg-white border-b border-stone-200">
-              <td class="px-8 py-16 text-center" colspan="4">
-                {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
-              </td>
-            </tr>
-            <tr class="hidden 2xl:table-row bg-white border-b border-stone-200">
-              <td class="px-8 py-16 text-center" colspan="5">
-                {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
-              </td>
-            </tr>
-            {# End empty state -#}
-          {% else -%}
-            {% for session_proposal in session_proposals -%}
-              {# Session proposal row -#}
+          </thead>
+          {# End table header -#}
+          <tbody>
+            {% for invitation in pending_co_speaker_invitations -%}
+              {# Invitation row -#}
               <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
                 {# Proposal -#}
                 <td class="px-3 xl:px-5 py-4">
-                  <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
+                  <div class="font-medium text-stone-900 line-clamp-1">{{ invitation.session_proposal.title }}</div>
                 </td>
                 {# End proposal -#}
-                {# Co-speaker -#}
-                <td class="px-3 xl:px-5 py-4 text-nowrap hidden xl:table-cell">
-                  {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
-                    <div class="flex items-center space-x-3">
-                      <logo-image
-                      {% if let Some(photo_url) = &co_speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                      size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
-                      </logo-image>
-                      <div class="font-medium text-stone-900">
-                        {{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}
-                      </div>
-                    </div>
-                  {% endif -%}
+                {# Invited by -#}
+                <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+                  <div class="flex items-center space-x-3">
+                    <logo-image
+                    {% if let Some(photo_url) = &invitation.speaker_photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                    size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str() ) }}">
+                    </logo-image>
+                    <div class="font-medium text-stone-900">{{ invitation.speaker_name }}</div>
+                  </div>
                 </td>
-                {# End co-speaker -#}
+                {# End invited by -#}
                 {# Updated date -#}
-                <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden 2xl:table-cell">
-                  {% if let Some(updated_at) = &session_proposal.updated_at -%}
+                <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden xl:table-cell">
+                  {% if let Some(updated_at) = invitation.session_proposal.updated_at -%}
                     {{ updated_at.format("%b %d, %Y") }}
                   {% else -%}
-                    {{ session_proposal.created_at.format("%b %d, %Y") }}
+                    {{ invitation.session_proposal.created_at.format("%b %d, %Y") }}
                   {% endif -%}
                 </td>
                 {# End updated date -#}
-                {# Status -#}
-                <td class="px-3 xl:px-5 py-4">
-                  {% if session_proposal.linked_session_id.is_some() -%}
-                    {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
-                  {% else if session_proposal.has_submissions -%}
-                    {{ badges::status_badge(label = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal has already been submitted to at least one event call for speakers.") -}}
-                  {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
-                    {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal can be submitted to event call for speakers.") -}}
-                  {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
-                    {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.") -}}
-                  {% else -%}
-                    {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
-                  {% endif -%}
-                </td>
-                {# End status -#}
                 {# Actions -#}
                 <td class="px-3 xl:px-5 py-4 w-[152px]">
                   <div class="flex items-center justify-end gap-2">
-                    {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
-                    <button type="button"
-                            class="btn-tertiary p-2
-                                   {% if edit_disabled %}opacity-50 cursor-not-allowed{% endif %}"
-                            data-session-proposal='{{ session_proposal|json }}'
-                            data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
-                            data-action="edit-session-proposal"
-                            {% if edit_disabled %}
-                              disabled title="Linked proposals cannot be edited"
-                            {% else %}
-                              title="Edit proposal"
-                            {% endif %}>
-                      <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
-                    </button>
                     <button type="button"
                             class="btn-tertiary p-2"
-                            data-session-proposal='{{ session_proposal|json }}'
-                            data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
-                            data-action="view-session-proposal"
+                            data-action="view-pending-session-proposal"
+                            data-session-proposal='{{ invitation.session_proposal|json }}'
+                            data-speaker-name="{{ invitation.speaker_name }}"
+                            data-speaker-photo-url="{{ invitation.speaker_photo_url.as_deref().unwrap_or("") }}"
+                            data-proposal-description-html='{{ invitation.session_proposal.description|md_to_html|json }}'
+                            aria-label="View proposal"
                             title="View proposal">
                       <div class="svg-icon size-3 md:size-4 icon-eye"></div>
                     </button>
-                    {% set delete_disabled = session_proposal.has_submissions
-                                        || session_proposal.linked_session_id.is_some() -%}
                     <button type="button"
-                            class="btn-tertiary p-2
-                                   {% if delete_disabled %}opacity-50 cursor-not-allowed{% endif %}"
-                            data-action="delete-session-proposal"
-                            data-session-proposal-id="{{ session_proposal.session_proposal_id }}"
-                            hx-delete="/dashboard/user/session-proposals/{{ session_proposal.session_proposal_id }}"
+                            class="btn-tertiary p-2"
+                            data-action="accept-co-speaker-invitation"
+                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/accept"
+                            hx-indicator="#dashboard-spinner"
+                            hx-disabled-elt="this"
+                            aria-label="Accept invitation"
+                            title="Accept invitation">
+                      <div class="svg-icon size-3 md:size-4 icon-check"></div>
+                    </button>
+                    <button id="reject-co-speaker-invitation-{{ invitation.session_proposal.session_proposal_id }}"
+                            type="button"
+                            class="btn-tertiary p-2"
+                            data-action="reject-co-speaker-invitation"
+                            data-session-proposal-id="{{ invitation.session_proposal.session_proposal_id }}"
+                            hx-put="/dashboard/user/session-proposals/{{ invitation.session_proposal.session_proposal_id }}/co-speaker-invitation/reject"
                             hx-trigger="confirmed"
                             hx-indicator="#dashboard-spinner"
                             hx-disabled-elt="this"
-                            {% if delete_disabled %}
-                              disabled title="Submitted proposals cannot be deleted"
-                            {% else %}
-                              title="Delete proposal"
-                            {% endif %}>
-                      <div class="svg-icon size-3 md:size-4 icon-trash"></div>
+                            aria-label="Decline invitation"
+                            title="Decline invitation">
+                      <div class="svg-icon size-2.5 md:size-3.5 icon-cancel"></div>
                     </button>
                   </div>
                 </td>
                 {# End actions -#}
               </tr>
-              {# End session proposal row -#}
+              {# End invitation row -#}
             {% endfor -%}
-          {% endif -%}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
-  {# End session proposals table -#}
+  {# End pending invitations table -#}
+{% endif -%}
 
-  {% if total > session_proposals.len() -%}
-    {# Pagination -#}
-    {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
-    {# End pagination -#}
-  {% endif -%}
+{# Proposals header -#}
+<div class="flex justify-between items-end my-5">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = session_proposals.len(), total = total, label = "session proposal") }}
+  </div>
+  <div>
+    <button id="open-session-proposal-modal" type="button" class="btn-primary">New proposal</button>
+  </div>
+</div>
+{# End proposals header -#}
 
-  {# Session proposal modal -#}
-  <session-proposal-modal id="session-proposal-modal-component" session-proposal-levels='{{ session_proposal_levels|json }}' current-user-id="{{ current_user_id }}" title-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" duration-max="{{ crate::validation::MAX_SESSION_PROPOSAL_DURATION_MINUTES }}"></session-proposal-modal>
-  {# End session proposal modal -#}
-  {# End dashboard user session proposals list -#}
+{# Session proposals table -#}
+<div>
+  <div class="relative overflow-visible">
+    <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
+      {# Table header -#}
+      <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+        <tr>
+          <th scope="col" class="px-3 xl:px-5 py-3">Proposal</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 hidden xl:table-cell">Co-speaker</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 hidden 2xl:table-cell">Updated</th>
+          <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
+          <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+            <span class="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      {# End table header -#}
+      <tbody>
+        {% if session_proposals.is_empty() -%}
+          {# Empty state -#}
+          <tr class="bg-white border-b border-stone-200 xl:hidden">
+            <td class="px-8 py-16 text-center" colspan="3">
+              {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
+            </td>
+          </tr>
+          <tr class="hidden xl:table-row 2xl:hidden bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="4">
+              {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
+            </td>
+          </tr>
+          <tr class="hidden 2xl:table-row bg-white border-b border-stone-200">
+            <td class="px-8 py-16 text-center" colspan="5">
+              {% include "dashboard/placeholders/user_session_proposals_table.html" -%}
+            </td>
+          </tr>
+          {# End empty state -#}
+        {% else -%}
+          {% for session_proposal in session_proposals -%}
+            {# Session proposal row -#}
+            <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+              {# Proposal -#}
+              <td class="px-3 xl:px-5 py-4">
+                <div class="font-medium text-stone-900 line-clamp-1">{{ session_proposal.title }}</div>
+              </td>
+              {# End proposal -#}
+              {# Co-speaker -#}
+              <td class="px-3 xl:px-5 py-4 text-nowrap hidden xl:table-cell">
+                {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
+                  <div class="flex items-center space-x-3">
+                    <logo-image
+                    {% if let Some(photo_url) = &co_speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                    size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
+                    </logo-image>
+                    <div class="font-medium text-stone-900">
+                      {{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}
+                    </div>
+                  </div>
+                {% endif -%}
+              </td>
+              {# End co-speaker -#}
+              {# Updated date -#}
+              <td class="px-3 xl:px-5 py-4 whitespace-nowrap hidden 2xl:table-cell">
+                {% if let Some(updated_at) = &session_proposal.updated_at -%}
+                  {{ updated_at.format("%b %d, %Y") }}
+                {% else -%}
+                  {{ session_proposal.created_at.format("%b %d, %Y") }}
+                {% endif -%}
+              </td>
+              {# End updated date -#}
+              {# Status -#}
+              <td class="px-3 xl:px-5 py-4">
+                {% if session_proposal.linked_session_id.is_some() -%}
+                  {{ badges::status_badge(label = "Linked", published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This session proposal has been approved and linked to an event's session.") -}}
+                {% else if session_proposal.has_submissions -%}
+                  {{ badges::status_badge(label = "Submitted", extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal has already been submitted to at least one event call for speakers.") -}}
+                {% else if session_proposal.session_proposal_status_id == "ready-for-submission" -%}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , published = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal can be submitted to event call for speakers.") -}}
+                {% else if session_proposal.session_proposal_status_id == "declined-by-co-speaker" -%}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , canceled = true, extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "The invited co-speaker declined this proposal. To submit it to any event, you'll need to remove the co-speaker.") -}}
+                {% else -%}
+                  {{ badges::status_badge(label = session_proposal.status_name.as_str() , extra_styles = Some("px-2.5 py-0.5 uppercase") , title = "This proposal is waiting for co-speaker response.") -}}
+                {% endif -%}
+              </td>
+              {# End status -#}
+              {# Actions -#}
+              <td class="px-3 xl:px-5 py-4 w-[152px]">
+                <div class="flex items-center justify-end gap-2">
+                  {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
+                  <button type="button"
+                          class="btn-tertiary p-2
+                                 {% if edit_disabled %}opacity-50 cursor-not-allowed{% endif %}"
+                          data-session-proposal='{{ session_proposal|json }}'
+                          data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
+                          data-action="edit-session-proposal"
+                          {% if edit_disabled %}
+                            disabled title="Linked proposals cannot be edited"
+                          {% else %}
+                            title="Edit proposal"
+                          {% endif %}>
+                    <div class="svg-icon size-3 md:size-4 icon-pencil"></div>
+                  </button>
+                  <button type="button"
+                          class="btn-tertiary p-2"
+                          data-session-proposal='{{ session_proposal|json }}'
+                          data-proposal-description-html='{{ session_proposal.description|md_to_html|json }}'
+                          data-action="view-session-proposal"
+                          title="View proposal">
+                    <div class="svg-icon size-3 md:size-4 icon-eye"></div>
+                  </button>
+                  {% set delete_disabled = session_proposal.has_submissions
+                                    || session_proposal.linked_session_id.is_some() -%}
+                  <button type="button"
+                          class="btn-tertiary p-2
+                                 {% if delete_disabled %}opacity-50 cursor-not-allowed{% endif %}"
+                          data-action="delete-session-proposal"
+                          data-session-proposal-id="{{ session_proposal.session_proposal_id }}"
+                          hx-delete="/dashboard/user/session-proposals/{{ session_proposal.session_proposal_id }}"
+                          hx-trigger="confirmed"
+                          hx-indicator="#dashboard-spinner"
+                          hx-disabled-elt="this"
+                          {% if delete_disabled %}
+                            disabled title="Submitted proposals cannot be deleted"
+                          {% else %}
+                            title="Delete proposal"
+                          {% endif %}>
+                    <div class="svg-icon size-3 md:size-4 icon-trash"></div>
+                  </button>
+                </div>
+              </td>
+              {# End actions -#}
+            </tr>
+            {# End session proposal row -#}
+          {% endfor -%}
+        {% endif -%}
+      </tbody>
+    </table>
+  </div>
+</div>
+{# End session proposals table -#}
+
+{% if total > session_proposals.len() -%}
+  {# Pagination -#}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+  {# End pagination -#}
+{% endif -%}
+
+{# Session proposal modal -#}
+<session-proposal-modal id="session-proposal-modal-component" session-proposal-levels='{{ session_proposal_levels|json }}' current-user-id="{{ current_user_id }}" title-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" duration-max="{{ crate::validation::MAX_SESSION_PROPOSAL_DURATION_MINUTES }}"></session-proposal-modal>
+{# End session proposal modal -#}
+{# End dashboard user session proposals list -#}
