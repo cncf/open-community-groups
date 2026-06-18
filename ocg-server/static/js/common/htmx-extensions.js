@@ -13,6 +13,7 @@ const handledDeclarativeResponseXhrs = new WeakSet();
 const htmxResponseSelector = "[data-htmx-response]";
 const REFRESH_BODY_TRIGGER = "refresh-body";
 const BODY_REFRESH_SUCCESS_TIMEOUT_MS = 10000;
+const HTMX_EXCLUDE_SELECTOR = "[hx-exclude], [data-hx-exclude]";
 
 /**
  * Finds the closest response owner from whichever element HTMX exposes.
@@ -49,7 +50,7 @@ export const getDeclarativeHtmxResponseElement = (event) => {
  * @param {boolean} dropZero Whether the string "0" should be treated as empty.
  * @returns {Array<[string, FormDataEntryValue|string]>} Filtered entries.
  */
-export const filterHtmxEntries = (source, dropZero) => {
+const filterHtmxEntries = (source, dropZero) => {
   const filteredEntries = [];
 
   for (const [key, rawValue] of source.entries()) {
@@ -71,7 +72,7 @@ export const filterHtmxEntries = (source, dropZero) => {
  * @param {Array<[string, FormDataEntryValue|string]>} entries Filtered entries.
  * @returns {void}
  */
-export const replaceHtmxEntries = (parameters, entries) => {
+const replaceHtmxEntries = (parameters, entries) => {
   for (const key of [...parameters.keys()]) {
     parameters.delete(key);
   }
@@ -79,6 +80,21 @@ export const replaceHtmxEntries = (parameters, entries) => {
   for (const [key, value] of entries) {
     parameters.append(key, value);
   }
+};
+
+/**
+ * Deletes a submitted parameter from any mutable HTMX parameters shape.
+ * @param {FormData|URLSearchParams|Object} parameters HTMX parameters collection.
+ * @param {string} name Parameter name.
+ * @returns {void}
+ */
+const deleteHtmxParameter = (parameters, name) => {
+  if (typeof parameters.delete === "function") {
+    parameters.delete(name);
+    return;
+  }
+
+  delete parameters[name];
 };
 
 /**
@@ -149,6 +165,40 @@ export const handleCommitShaConfigRequest = (event, root = document) => {
 
   event.detail.headers = event.detail.headers || {};
   addLoadedCommitShaHeader(event.detail.headers, root);
+};
+
+/**
+ * Applies OCG's selector-based custom hx-exclude request parameter filtering.
+ * @param {CustomEvent} event HTMX configRequest event.
+ * @returns {void}
+ */
+export const handleHtmxExcludeConfigRequest = (event) => {
+  const triggerElement = event.detail?.elt;
+  const parameters = event.detail?.parameters;
+  if (!(triggerElement instanceof Element) || !parameters) {
+    return;
+  }
+
+  const excludeElement = triggerElement.closest(HTMX_EXCLUDE_SELECTOR);
+  const excludeSelector = excludeElement?.getAttribute("hx-exclude") || excludeElement?.dataset.hxExclude;
+  if (!excludeSelector) {
+    return;
+  }
+
+  let excludedControls;
+  try {
+    excludedControls = triggerElement.ownerDocument.querySelectorAll(excludeSelector);
+  } catch (error) {
+    console.warn("Invalid hx-exclude selector ignored.", { selector: excludeSelector, error });
+    return;
+  }
+
+  excludedControls.forEach((control) => {
+    const controlName = control.getAttribute("name");
+    if (controlName) {
+      deleteHtmxParameter(parameters, controlName);
+    }
+  });
 };
 
 /**
@@ -238,7 +288,7 @@ export const isSuccessfulRefreshBodyResponse = (xhr) => {
  * @param {string} successMessage Success alert message.
  * @returns {void}
  */
-export const showSuccessAfterBodyRefresh = (successMessage) => {
+const showSuccessAfterBodyRefresh = (successMessage) => {
   window.setTimeout(() => {
     let timeoutId;
     const showSuccessOnBodyRefreshSettle = (event) => {
@@ -284,6 +334,7 @@ export const registerHtmxResponseHandlers = (root = document) => {
   }
 
   eventRoot.addEventListener("htmx:configRequest", handleCommitShaConfigRequest);
+  eventRoot.addEventListener("htmx:configRequest", handleHtmxExcludeConfigRequest);
   eventRoot.addEventListener("htmx:beforeOnLoad", handleCommitShaBeforeOnLoad);
   eventRoot.addEventListener("htmx:beforeOnLoad", handleDeclarativeHtmxResponse);
   eventRoot.addEventListener("htmx:beforeSwap", handleCommitShaBeforeSwap);

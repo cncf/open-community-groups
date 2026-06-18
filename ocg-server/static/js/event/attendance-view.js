@@ -18,21 +18,20 @@ import {
 
 export const ATTEND_EVENT_LABEL = "Attend event";
 export const BUY_TICKET_LABEL = "Buy ticket";
-export const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
+const TICKETS_UNAVAILABLE_LABEL = "Tickets unavailable";
 export const JOIN_WAITLIST_LABEL = "Join waiting list";
 export const REQUEST_INVITATION_LABEL = "Request invitation";
-export const COMPLETE_REGISTRATION_LABEL = "Complete registration";
-export const COMPLETE_PAYMENT_LABEL = "Complete payment";
+const COMPLETE_REGISTRATION_LABEL = "Complete registration";
+const COMPLETE_PAYMENT_LABEL = "Complete payment";
 export const CANCEL_ATTENDANCE_LABEL = "Cancel attendance";
-export const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
+const CANCEL_CHECKOUT_LABEL = "Cancel checkout";
 export const CANCEL_INVITATION_REQUEST_LABEL = "Cancel request";
-export const INVITATION_REQUESTED_LABEL = "Invitation requested";
-export const REQUEST_REJECTED_LABEL = "Request rejected";
+const REQUEST_REJECTED_LABEL = "Request rejected";
 export const LEAVE_WAITLIST_LABEL = "Leave waiting list";
-export const REQUEST_REFUND_LABEL = "Request refund";
-export const REFUND_REQUESTED_LABEL = "Refund requested";
-export const REFUND_PROCESSING_LABEL = "Refund processing";
-export const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
+const REQUEST_REFUND_LABEL = "Request refund";
+const REFUND_REQUESTED_LABEL = "Refund requested";
+const REFUND_PROCESSING_LABEL = "Refund processing";
+const REFUND_UNAVAILABLE_LABEL = "Refund unavailable";
 
 const ATTEND_EVENT_ICON = "icon-user-plus";
 const CANCEL_ACTION_ICON = "icon-cancel";
@@ -353,7 +352,7 @@ const getAttendState = (meta) => {
  * Hides all primary attendance controls for a container.
  * @param {HTMLElement} container - Attendance container element
  */
-export const resetPrimaryControls = (container) => {
+const resetPrimaryControls = (container) => {
   const {
     actionsMenu,
     loadingButton,
@@ -650,7 +649,7 @@ export const showAttendeeState = (container, meta, response) => {
  * Updates the enabled state for the modal checkout button.
  * @param {HTMLElement} container - Attendance container element
  */
-export const updateCheckoutButtonState = (container) => {
+const updateCheckoutButtonState = (container) => {
   const meta = getAttendanceMeta(container);
   const checkoutButton = getAttendanceControl(container, "checkout-btn");
   const checkoutSpinner = getAttendanceControl(container, "checkout-btn-spinner");

@@ -1,7 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
-import { computeUserInitials } from "/static/js/common/common.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/media/logo-image.js";
+import "/static/js/common/users/selected-user-pill.js";
 import "/static/js/dashboard/event/sessions/speaker-modal.js";
 import {
   normalizeSpeakers,
@@ -127,27 +126,15 @@ export class SpeakersSelector extends LitWrapper {
    * @private
    */
   _renderSpeakerChip(speaker) {
-    const initials = computeUserInitials(speaker.name, speaker.username, 2);
     return html`
-      <div class="inline-flex items-center gap-2 bg-stone-100 rounded-full ps-1 pe-2 py-1">
-        <logo-image
-          image-url=${speaker.photo_url || ""}
-          placeholder=${initials}
-          size="size-[24px]"
-          hide-border
-        ></logo-image>
-        ${speaker.featured ? html`<div class="svg-icon size-3 icon-star bg-amber-500"></div>` : ""}
-        <span class="text-sm text-stone-700">${speaker.name || speaker.username}</span>
-        <button
-          type="button"
-          class="p-1 hover:bg-stone-200 rounded-full transition-colors"
-          title="Remove speaker"
-          @click=${() => this._removeSpeaker(speaker)}
-          ?disabled=${this.disabled}
-        >
-          <div class="svg-icon size-3 icon-close bg-stone-600"></div>
-        </button>
-      </div>
+      <selected-user-pill
+        .user=${speaker}
+        ?featured=${speaker.featured}
+        variant="speaker"
+        remove-label="Remove speaker"
+        @remove=${() => this._removeSpeaker(speaker)}
+        ?disabled=${this.disabled}
+      ></selected-user-pill>
     `;
   }
 

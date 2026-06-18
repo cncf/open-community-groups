@@ -302,14 +302,6 @@ export class ReviewSubmissionModal extends LitWrapper {
   }
 
   /**
-   * Handles status selection changes.
-   * @param {Event} event
-   */
-  _onStatusChange(event) {
-    this._statusId = String(event.target?.value || "");
-  }
-
-  /**
    * Handles label selection changes from cfs-label-selector.
    * @param {Event} event
    */

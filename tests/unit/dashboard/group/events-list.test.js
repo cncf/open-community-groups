@@ -70,6 +70,34 @@ describe("events list page", () => {
     expect(dropdown.classList.contains("hidden")).to.equal(true);
   });
 
+  it("toggles event action dropdowns added after initialization", () => {
+    // Prepare an empty root before inserting a newly rendered event row.
+    document.body.innerHTML = '<div id="events-list-root"></div>';
+    const root = document.getElementById("events-list-root");
+    initializeEventsListPage(root);
+
+    // Insert the controls the dashboard receives after an event list refresh.
+    root.insertAdjacentHTML(
+      "beforeend",
+      `
+        <button type="button" class="btn-actions" data-event-id="event.123">Actions</button>
+        <div id="dropdown-actions-event.123" data-event-actions-dropdown class="dropdown hidden">
+          ${scopedActionMarkup()}
+        </div>
+      `,
+    );
+
+    // Verify delegated handlers and id lookup work for the added row.
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    });
+    root.querySelector(".btn-actions").dispatchEvent(clickEvent);
+
+    expect(clickEvent.defaultPrevented).to.equal(true);
+    expect(root.querySelector(".dropdown").classList.contains("hidden")).to.equal(false);
+  });
+
   it("confirms a single-event action and rewrites the HTMX request path", async () => {
     // Prepare root for confirming a single-event action and rewrites the HTMX.
     const root = mountEventsList();

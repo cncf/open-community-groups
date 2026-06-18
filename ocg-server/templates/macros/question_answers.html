@@ -1,0 +1,63 @@
+{% macro fields(questions, answers, answer_attr, radio_name_prefix) -%}
+  {% for question in questions -%}
+    <fieldset data-question-id="{{ question.id }}"
+              data-question-kind="{{ question.kind.to_string() }}"
+              data-question-required="{{ question.required }}"
+              class="space-y-2">
+      <legend class="form-label">
+        <span class="flex items-start gap-2">
+          <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold leading-6 text-stone-700">
+            {{ loop.index }}
+          </span>
+          <span class="min-w-0">
+            {{ question.prompt }}
+            {% if question.required %}<span class="asterisk">*</span>{% endif %}
+          </span>
+        </span>
+      </legend>
+      {% if question.kind.to_string() == "free-text" -%}
+        <div class="ms-8">
+          <textarea class="input-primary min-h-24 text-stone-500"
+                    {{ answer_attr|safe }}
+                    {% if question.required %}
+                      required
+                    {% endif %}>{% if let Some(answer) = question.free_text_answer(*answers) %}{{ answer }}{% endif %}</textarea>
+        </div>
+      {% else if question.kind.to_string() == "single-select" -%}
+        <div class="ms-8 space-y-2">
+          {% for option in question.options -%}
+            <label class="flex items-center gap-2 text-sm text-stone-500">
+              <input type="radio"
+                     name="{{ radio_name_prefix }}-{{ question.id }}"
+                     value="{{ option.id }}"
+                     class="radio-primary"
+                     {{ answer_attr|safe }}
+                     {% if question.is_option_selected(*answers, option.id) %}checked{% endif %}
+                     {% if question.required %}required{% endif %}>
+              <span>{{ option.label }}</span>
+            </label>
+          {% endfor -%}
+        </div>
+      {% else -%}
+        <div class="ms-8 space-y-2">
+          {% for option in question.options -%}
+            <label class="flex items-center gap-2 text-sm text-stone-500">
+              <input type="checkbox"
+                     value="{{ option.id }}"
+                     class="checkbox-primary"
+                     {{ answer_attr|safe }}
+                     {% if question.is_option_selected(*answers, option.id) %}checked{% endif %}>
+              <span>{{ option.label }}</span>
+            </label>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    </fieldset>
+  {% endfor -%}
+{% endmacro fields -%}
+
+{% macro required_note() -%}
+  <p class="text-xs text-stone-500">
+    <span class="asterisk">*</span> Questions marked with an asterisk are required.
+  </p>
+{% endmacro required_note -%}

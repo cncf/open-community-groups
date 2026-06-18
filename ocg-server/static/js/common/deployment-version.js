@@ -41,7 +41,7 @@ export const addLoadedCommitShaHeader = (headers, root = document) => {
  * @param {Document} root Document used to find the commit SHA meta tag.
  * @returns {string} Loaded page commit SHA, or an empty string when absent.
  */
-export const getLoadedCommitSha = (root = document) =>
+const getLoadedCommitSha = (root = document) =>
   root?.querySelector?.(COMMIT_SHA_META_SELECTOR)?.getAttribute("content")?.trim() || "";
 
 /**

@@ -36,11 +36,11 @@
   <script type="module" src="/static/js/common/modals/images-gallery.js"></script>
   <script type="module" src="/static/js/common/charts/page-views.js"></script>
   <script type="module" src="/static/js/common/modals/map-modal.js"></script>
-  <script type="module" src="/static/js/common/users/people-list.js"></script>
   <script type="module" src="/static/js/common/users/user-chip.js"></script>
   <script type="module" src="/static/js/common/modals/user-info-modal.js"></script>
   <script type="module" src="/static/js/common/modals/share-modal.js"></script>
   <script type="module" src="/static/js/common/cfs-label-selector.js"></script>
+  <script type="module" src="/static/js/event/attendance.js"></script>
   <script type="module" src="/static/js/event/agenda-tabs.js"></script>
   <script type="module" src="/static/js/event/cfs.js"></script>
 {% endblock scripts -%}
@@ -140,9 +140,13 @@
                     <span>Capacity:</span>
                     <span class="ms-1 inline-flex min-w-4 items-center"
                           data-availability-capacity>
-                      <span data-availability-spinner
-                            class="inline-flex size-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600">
-                      </span>
+                      {% if let Some(capacity) = event.capacity -%}
+                        {{ capacity }}
+                      {% else -%}
+                        <span data-availability-spinner
+                              class="inline-flex size-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-600">
+                        </span>
+                      {% endif -%}
                     </span>
                   </span>
                   <span data-availability-caption="remaining"
@@ -727,7 +731,8 @@
       <div class="text-sm/6 text-stone-500 italic mb-3">{{ location }}</div>
     {% endif -%}
     {% if let Some(description) = &session.description -%}
-      <div class="text-sm/6 text-stone-600 markdown mt-3">{{ description|md_to_html|safe }}</div>
+      <div class="text-sm/6 text-stone-600 markdown mt-3"
+           data-ocg-remove-broken-images>{{ description|md_to_html|safe }}</div>
     {% endif -%}
     {% let has_instructions_session = session.meeting_join_instructions.is_some() -%}
     {% let has_join_session = session.meeting_join_url.is_some() -%}

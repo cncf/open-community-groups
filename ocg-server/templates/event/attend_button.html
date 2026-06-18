@@ -1,4 +1,5 @@
 {% import "macros/ui.html" as ui -%}
+{% import "macros/question_answers.html" as question_answers -%}
 {% import "event/attendance_macros.html" as attendance -%}
 {# Attend button section -#}
 <div id="attendance-container-{{ attendance_instance }}"
@@ -17,6 +18,8 @@
   {# Loading spinner -#}
   <button id="loading-btn-{{ attendance_instance }}"
           data-attendance-role="loading-btn"
+          role="status"
+          aria-live="polite"
           disabled
           class="group relative is-loading btn-primary-outline h-10 md:h-[30px] opacity-50 cursor-not-allowed flex items-center justify-center whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
     {{ ui::spinner(size = "size-4") -}}
@@ -164,66 +167,16 @@
           </div>
           <form data-attendance-role="registration-form"
                 class="modal-body p-4 md:p-6 space-y-7">
-            {% for question in event.registration_questions -%}
-              <fieldset data-question-id="{{ question.id }}"
-                        data-question-kind="{{ question.kind.to_string() }}"
-                        data-question-required="{{ question.required }}"
-                        class="space-y-2">
-                <legend class="form-label">
-                  <span class="flex items-start gap-2">
-                    <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold leading-6 text-stone-700">
-                      {{ loop.index }}
-                    </span>
-                    <span class="min-w-0">
-                      {{ question.prompt }}
-                      {% if question.required %}<span class="asterisk">*</span>{% endif %}
-                    </span>
-                  </span>
-                </legend>
-                {% if question.kind.to_string() == "free-text" -%}
-                  <div class="ms-8">
-                    <textarea class="input-primary min-h-24 text-stone-500"
-                              data-registration-answer
-                              {% if question.required %}
-                                required
-                              {% endif %}></textarea>
-                  </div>
-                {% else if question.kind.to_string() == "single-select" -%}
-                  <div class="ms-8 space-y-2">
-                    {% for option in question.options -%}
-                      <label class="flex items-center gap-2 text-sm text-stone-500">
-                        <input type="radio"
-                               name="registration-question-{{ question.id }}"
-                               value="{{ option.id }}"
-                               class="radio-primary"
-                               data-registration-answer
-                               {% if question.required %}required{% endif %}>
-                        <span>{{ option.label }}</span>
-                      </label>
-                    {% endfor -%}
-                  </div>
-                {% else -%}
-                  <div class="ms-8 space-y-2">
-                    {% for option in question.options -%}
-                      <label class="flex items-center gap-2 text-sm text-stone-500">
-                        <input type="checkbox"
-                               value="{{ option.id }}"
-                               class="checkbox-primary"
-                               data-registration-answer>
-                        <span>{{ option.label }}</span>
-                      </label>
-                    {% endfor -%}
-                  </div>
-                {% endif -%}
-              </fieldset>
-            {% endfor -%}
+            {% let empty_registration_answers = crate::types::questionnaire::QuestionnaireAnswers::default() -%}
+            {{ question_answers::fields(questions = event.registration_questions,
+                        answers = Some(empty_registration_answers) ,
+            answer_attr = "data-question-answer",
+            radio_name_prefix = "registration-question") -}}
             <input type="hidden"
                    data-attendance-role="registration-answers-input"
                    name="registration_answers">
             <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
-              <p class="text-xs text-stone-500">
-                <span class="asterisk">*</span> Questions marked with an asterisk are required.
-              </p>
+              {{ question_answers::required_note() -}}
               <div class="flex flex-col gap-3 md:flex-row md:justify-end">
                 <button data-attendance-role="registration-modal-cancel"
                         type="button"

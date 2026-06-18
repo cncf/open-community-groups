@@ -86,12 +86,12 @@
           {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
             {# No results when filtering -#}
             <td class="xl:hidden px-8 py-20 text-center" colspan="2">
-              {% include "dashboard/placeholders/no_results.html" -%}
+              {% include "dashboard/placeholders/community_groups_no_results.html" -%}
             </td>
             <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
-                colspan="4">{% include "dashboard/placeholders/no_results.html" -%}</td>
+                colspan="4">{% include "dashboard/placeholders/community_groups_no_results.html" -%}</td>
             <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
-              {% include "dashboard/placeholders/no_results.html" -%}
+              {% include "dashboard/placeholders/community_groups_no_results.html" -%}
             </td>
             {# End no results when filtering -#}
           {% else -%}

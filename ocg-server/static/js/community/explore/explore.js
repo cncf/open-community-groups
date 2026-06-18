@@ -33,7 +33,7 @@ export const updateResultsFromSummary = (root = document) => {
  * Initializes result summary updates for initial render and HTMX swaps.
  * @param {Document} root - Document root used for event binding
  */
-export const initializeExploreResults = (root = document) => {
+const initializeExploreResults = (root = document) => {
   updateResultsFromSummary(root);
   root.addEventListener("htmx:afterSwap", (event) => {
     const target = event.target;

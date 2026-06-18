@@ -361,6 +361,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .jumbotron-description a, .community-description a, .new-group-content a {
   color: var(--ocg-primary);
   font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .community-description h1,
@@ -464,6 +466,13 @@ input:placeholder-shown {
   max-width: min(380px, calc(100vw - 2rem));
   overflow: hidden;
   width: 380px;
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .fc-daygrid-event-harness .explore-popover-card-shell {
+    max-width: min(340px, calc(100vw - 2rem));
+    width: 340px;
+  }
 }
 
 .explore-popover-card-shell > a {

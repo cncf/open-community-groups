@@ -45,12 +45,17 @@ describe("session-form-modal", () => {
 
   it("closes with Escape and releases the body scroll lock", async () => {
     // Render the session form modal fixture.
+    const trigger = document.createElement("button");
+    trigger.textContent = "Add session";
+    document.body.append(trigger);
+    trigger.focus();
     const element = await mountLitComponent("session-form-modal");
 
     // Open the modal before dispatching Escape.
     element.open({ id: 7, name: "Panel", starts_at: "2025-05-10T10:00" });
     await element.updateComplete;
     expect(document.body.dataset.modalOpenCount).to.equal("1");
+    expect(document.activeElement).to.equal(element.querySelector('input[data-name="name"]'));
 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     await element.updateComplete;
@@ -58,6 +63,7 @@ describe("session-form-modal", () => {
     // Escape closes the modal and clears the shared body scroll lock.
     expect(element._isOpen).to.equal(false);
     expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(document.activeElement).to.equal(trigger);
   });
 
   it("renders without max length props", async () => {
@@ -81,5 +87,43 @@ describe("session-form-modal", () => {
         .querySelector('input[data-name="location"]')
         .hasAttribute("maxlength"),
     ).to.equal(false);
+
+    // Visible form labels are associated with their controls.
+    const nameLabel = sessionItem.querySelector('label[for="session-0-name"]');
+    const kindLabel = sessionItem.querySelector('label[for="session-0-kind"]');
+    const startLabel = sessionItem.querySelector('label[for="session-0-starts-at"]');
+    const descriptionLabel = sessionItem.querySelector('label[for="session-0-description"]');
+    await sessionItem.querySelector("markdown-editor")?.updateComplete;
+
+    expect(nameLabel?.control).to.equal(sessionItem.querySelector("#session-0-name"));
+    expect(kindLabel?.control).to.equal(sessionItem.querySelector("#session-0-kind"));
+    expect(startLabel?.control).to.equal(sessionItem.querySelector("#session-0-starts-at"));
+    expect(descriptionLabel?.control).to.equal(sessionItem.querySelector("#session-0-description"));
+  });
+
+  it("passes past-event state to automatic session meeting details", async () => {
+    // Render the session form modal fixture for a past event.
+    const element = await mountLitComponent("session-form-modal", {
+      eventPast: true,
+      meetingsEnabled: true,
+      sessionKinds: [{ session_kind_id: "talk", display_name: "Talk" }],
+    });
+
+    // Open a virtual session so the online meeting editor is rendered.
+    element.open({
+      id: 7,
+      kind: "virtual",
+      name: "Past session",
+      starts_at: "2025-05-10T10:00",
+    });
+    await element.updateComplete;
+    const sessionItem = element.querySelector("session-item");
+    await sessionItem.updateComplete;
+    const onlineEventDetails = sessionItem.querySelector("online-event-details");
+    await onlineEventDetails.updateComplete;
+
+    // Session meeting details inherit the parent event's past-event rule.
+    expect(sessionItem.eventPast).to.equal(true);
+    expect(onlineEventDetails.eventPast).to.equal(true);
   });
 });

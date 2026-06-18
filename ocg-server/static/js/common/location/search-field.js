@@ -128,7 +128,6 @@ export class LocationSearchField extends LitWrapper {
     _searchQuery: { type: String, state: true },
     _highlightedIndex: { type: Number, state: true },
     _searchError: { type: String, state: true },
-    _abortController: { type: Object, state: true },
     _latitudeValue: { type: String, state: true },
     _longitudeValue: { type: String, state: true },
     _venueNameValue: { type: String, state: true },

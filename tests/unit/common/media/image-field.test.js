@@ -2,14 +2,11 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/common/media/image-field.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 import { mockFetch } from "/tests/unit/test-utils/network.js";
 
 describe("image-field", () => {
-  useDashboardTestEnv({ withSwal: true, withScroll: true });
+  const env = useDashboardTestEnv({ withSwal: true, withScroll: true });
   useMountedElementsCleanup("image-field");
 
   let fetchMock;
@@ -35,6 +32,7 @@ describe("image-field", () => {
     const element = await mountLitComponent("image-field", {
       label: "Banner",
       name: "banner_image",
+      target: "banner",
     });
     const values = [];
 
@@ -44,9 +42,7 @@ describe("image-field", () => {
     });
 
     // Upload the selected file and wait for the hidden input to update.
-    await element._uploadFile(
-      new File(["data"], "banner.png", { type: "image/png" }),
-    );
+    await element._uploadFile(new File(["data"], "banner.png", { type: "image/png" }));
     await element.updateComplete;
 
     // Uploads an image and emits the new value.
@@ -55,6 +51,11 @@ describe("image-field", () => {
     expect(element.querySelector('input[name="banner_image"]').value).to.equal(
       "https://example.com/image.png",
     );
+    expect(fetchMock.calls).to.have.length(1);
+    expect(fetchMock.calls[0][0]).to.equal("/images");
+    expect(fetchMock.calls[0][1].method).to.equal("POST");
+    expect(Array.from(fetchMock.calls[0][1].body.keys())).to.deep.equal(["target", "file"]);
+    expect(fetchMock.calls[0][1].body.get("target")).to.equal("banner");
   });
 
   it("clears the image value when remove is triggered", async () => {
@@ -106,5 +107,30 @@ describe("image-field", () => {
     // Assert the accepted image formats copy.
     expect(helpText).to.include("Supported formats: SVG, PNG, JPEG, GIF, WEBP and TIFF.");
     expect(fileInput.accept).to.equal(".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff");
+  });
+
+  it("shows escaped server messages when image uploads fail", async () => {
+    // Mock the upload endpoint with a server validation message.
+    fetchMock.setImpl(async () => ({
+      status: 422,
+      async text() {
+        return "Logo must be square <script>";
+      },
+    }));
+
+    // Render the image-field fixture.
+    const element = await mountLitComponent("image-field", {
+      label: "Logo",
+      name: "logo_url",
+    });
+
+    // Upload the selected image and wait for the alert to be shown.
+    await element._uploadFile(new File(["data"], "logo.png", { type: "image/png" }));
+    await element.updateComplete;
+
+    // The server message is escaped and shown before the generic upload copy.
+    const alert = env.current.swal.calls.at(-1);
+    expect(alert.html).to.include("Logo must be square &lt;script&gt;");
+    expect(alert.html).to.include("Something went wrong adding the image.");
   });
 });

@@ -3,7 +3,6 @@ import {
   getStatusColor,
   isLinkedToSession,
   isMessageRequired,
-  isStatusAllowed,
 } from "/static/js/dashboard/event/cfs/review-utils.js";
 
 /**

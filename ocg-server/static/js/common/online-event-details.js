@@ -42,6 +42,7 @@ export class OnlineEventDetails extends LitWrapper {
       },
     },
     meetingRequested: { type: Boolean, attribute: "meeting-requested" },
+    eventPast: { type: Boolean, attribute: "event-past" },
     meetingHosts: {
       type: Array,
       attribute: "meeting-hosts",
@@ -99,6 +100,7 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingRecordingUrl = "";
     this.meetingRecordingRequested = true;
     this.meetingRequested = false;
+    this.eventPast = false;
     this.meetingHosts = [];
     this.startsAt = "";
     this.endsAt = "";
@@ -472,9 +474,26 @@ export class OnlineEventDetails extends LitWrapper {
   _renderModeOption(option) {
     const isSelected = this._mode === option.value;
     const isDisabled = this.disabled || option.disabled;
+    const cardClasses = [
+      "rounded-xl border transition p-4 md:p-5 flex",
+      isDisabled
+        ? "border-stone-300 border-dashed bg-stone-50 cursor-not-allowed"
+        : isSelected
+          ? "border-primary-400 ring-2 ring-primary-200 bg-white"
+          : "border-stone-200 bg-white hover:border-primary-300",
+    ].join(" ");
+    const radioClasses = [
+      "relative flex h-5 w-5 items-center justify-center rounded-full border",
+      isDisabled ? "border-stone-300 bg-stone-100" : isSelected ? "border-primary-500" : "border-stone-300",
+    ].join(" ");
+    const titleClasses = ["text-base font-semibold", isDisabled ? "text-stone-500" : "text-stone-900"].join(
+      " ",
+    );
+    const descriptionClasses = ["form-legend", isDisabled ? "text-stone-500" : ""].join(" ");
+    const reasonClasses = ["form-legend", isDisabled ? "text-stone-600" : ""].join(" ");
 
     return html`
-      <label class="block">
+      <label class="block" aria-disabled="${isDisabled ? "true" : "false"}">
         <input
           type="radio"
           class="sr-only"
@@ -483,32 +502,25 @@ export class OnlineEventDetails extends LitWrapper {
           ?disabled="${isDisabled}"
           @change="${this._handleModeChange}"
         />
-        <div
-          class="rounded-xl border transition bg-white p-4 md:p-5 flex ${isSelected
-            ? "border-primary-400 ring-2 ring-primary-200"
-            : "border-stone-200"} ${isDisabled
-            ? "opacity-60 cursor-not-allowed"
-            : "hover:border-primary-300"}"
-        >
+        <div class="${cardClasses}">
           <div class="flex items-start gap-3">
             <span class="mt-1 inline-flex">
-              <span
-                class="${[
-                  "relative flex h-5 w-5 items-center justify-center rounded-full",
-                  "border",
-                  isSelected ? "border-primary-500" : "border-stone-300",
-                ].join(" ")}"
-              >
-                ${isSelected ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>` : ""}
+              <span class="${radioClasses}">
+                ${isSelected
+                  ? html`<span
+                      class="h-2.5 w-2.5 rounded-full ${isDisabled ? "bg-stone-400" : "bg-primary-500"}"
+                    ></span>`
+                  : ""}
               </span>
             </span>
             <div class="space-y-1">
-              <div class="text-base font-semibold text-stone-900">${option.title}</div>
-              <p class="form-legend">${option.description}</p>
+              <div class="${titleClasses}">${option.title}</div>
+              <p class="${descriptionClasses}">${option.description}</p>
+              ${option.note ? html`<p class="${reasonClasses} mt-2">${option.note}</p>` : ""}
               ${option.reasons && option.reasons.length > 0
                 ? html`
-                    <p class="form-legend mt-2">Complete these requirements to enable this option:</p>
-                    <ul class="list-disc list-inside form-legend mt-1">
+                    <p class="${reasonClasses} mt-2">${option.reasonsIntro}</p>
+                    <ul class="list-disc list-inside ${reasonClasses} mt-1">
                       ${option.reasons.map((r) => html`<li>${r}</li>`)}
                     </ul>
                   `
@@ -680,6 +692,10 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     const reasons = [];
+
+    if (this.eventPast) {
+      reasons.push("Automatic meetings are not available for past events.");
+    }
 
     // Automatic meetings are only valid for event types that can expose a join URL.
     const isVirtualOrHybrid = this.kind === "virtual" || this.kind === "hybrid";
@@ -1228,6 +1244,12 @@ export class OnlineEventDetails extends LitWrapper {
    */
   render() {
     const availability = this._getAutomaticAvailability();
+    const automaticSelected = this._mode === "automatic";
+    const syncedPastAutomatic = this.eventPast && automaticSelected && this.meetingInSync;
+    const automaticReasons = syncedPastAutomatic ? [] : availability.reasons;
+    const automaticReasonsIntro = this.eventPast
+      ? "This option is unavailable:"
+      : "Complete these requirements to enable this option:";
     const modeOptions = [
       {
         value: "manual",
@@ -1240,7 +1262,11 @@ export class OnlineEventDetails extends LitWrapper {
         value: "automatic",
         title: "Create meeting automatically",
         description: "We will create and manage a meeting when you save this event.",
-        reasons: availability.reasons,
+        note: syncedPastAutomatic
+          ? "This existing automatic meeting is preserved. New automatic meetings cannot be enabled for past events."
+          : "",
+        reasons: automaticReasons,
+        reasonsIntro: automaticReasonsIntro,
         disabled: this.disabled || !availability.allowed,
       },
     ];

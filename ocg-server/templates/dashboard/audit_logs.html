@@ -167,16 +167,9 @@
   <div class="modal-panel p-4 max-w-3xl">
     <div class="modal-card rounded-lg">
       {# Modal header -#}
-      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <h3 id="audit-log-filters-modal-title"
-            class="text-xl font-semibold text-stone-900">Filter logs</h3>
-        <button id="close-audit-log-filters-modal"
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-          <span class="sr-only">Close modal</span>
-        </button>
-      </div>
+      {{ dashboard::modal_header(title_id = "audit-log-filters-modal-title",
+            title = "Filter logs",
+            close_id = "close-audit-log-filters-modal") -}}
       {# End modal header -#}
       {# Modal body -#}
       <div class="modal-body p-4 md:p-8">

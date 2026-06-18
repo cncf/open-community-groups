@@ -21,4 +21,12 @@ describe("dashboard group event update template", () => {
       "Registration questions are read-only because attendees have submitted answers.",
     );
   });
+
+  it("passes past-event state to online event and session details", async () => {
+    // Load the event update template before checking the component contract.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the online and session details components receive past-event state.
+    expect(template).to.include("{% if event.is_past() %}event-past{% endif %}");
+  });
 });

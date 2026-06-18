@@ -1,10 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/users/speakers-selector.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("speakers-selector", () => {
   useMountedElementsCleanup("speakers-selector");
@@ -64,11 +61,8 @@ describe("speakers-selector", () => {
       },
     ]);
     expect(received).to.have.length(1);
-    expect(
-      element.querySelector('input[name="speakers[0][user_id]"]').value,
-    ).to.equal("21");
-    expect(
-      element.querySelector('input[name="speakers[0][featured]"]').value,
-    ).to.equal("true");
+    expect(element.querySelector("selected-user-pill")?.featured).to.equal(true);
+    expect(element.querySelector('input[name="speakers[0][user_id]"]').value).to.equal("21");
+    expect(element.querySelector('input[name="speakers[0][featured]"]').value).to.equal("true");
   });
 });

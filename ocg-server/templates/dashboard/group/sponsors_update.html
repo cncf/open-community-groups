@@ -1,5 +1,5 @@
-{% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/sponsor.html" as sponsor_fields -%}
 
 {# Update Sponsor form -#}
 <form id="sponsor-form"
@@ -24,96 +24,19 @@
            {% if !can_manage_sponsors -%}
              inert
            {% endif -%}>
-        {# Sponsor name -#}
-        <div class="col-span-full lg:col-span-5">
-          <label for="name" class="form-label">
-            Name <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="name"
-                   id="name"
-                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false"
-                   value="{{ sponsor.name }}"
-                   required>
-          </div>
-          <p class="form-legend">Sponsor's name. Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.</p>
-        </div>
-        {# End Sponsor name -#}
-
-        {# Logo URL -#}
-        <div class="col-span-full lg:col-span-5">
-          <image-field class="w-full block" label="Logo" name="logo_url" image-kind="logo" value="{{ sponsor.logo_url }}" target="logo" required>
-        </image-field>
-      </div>
-      {# End Logo URL -#}
-
-      {# Website URL -#}
-      <div class="col-span-full lg:col-span-5">
-        <label for="website_url" class="form-label">Website</label>
-        <div class="mt-2">
-          <input type="url"
-                 name="website_url"
-                 id="website_url"
-                 class="input-primary"
-                 placeholder="https://example.com"
-                 {% if let Some(website) = &sponsor.website_url %}value="{{ website }}"{% endif %}>
-        </div>
-      </div>
-      {# End Website URL -#}
-
-      {# Featured sponsor -#}
-      <div class="col-span-full lg:col-span-5">
-        <label class="inline-flex items-center cursor-pointer">
-          <input id="featured"
-                 name="featured"
-                 value="true"
-                 type="checkbox"
-                 class="sr-only peer"
-                 {% if sponsor.featured %}checked{% endif %}>
-          <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
-          </div>
-          <span class="ms-3 text-sm font-medium text-stone-900">Visible on group page</span>
-        </label>
-        <p class="form-legend">
-          Only featured sponsors appear in the public group page sponsors section.
-          All sponsors remain available for events.
-        </p>
-      </div>
-      {# End featured sponsor -#}
+        {% let sponsor_name_attr -%}value="{{ sponsor.name }}"{%- endlet %}
+        {% let sponsor_logo_attr -%}value="{{ sponsor.logo_url }}"{%- endlet %}
+        {% let sponsor_website_attr -%}
+        {% if let Some(website) = &sponsor.website_url -%}
+          value="{{ website }}"
+        {%- endif %}
+      {%- endlet %}
+      {{ sponsor_fields::details_fields(name_attr = sponsor_name_attr, logo_attr = sponsor_logo_attr, website_attr = sponsor_website_attr, featured_checked = sponsor.featured) -}}
     </div>
   </div>
-
-  <div class="mt-6 flex items-center justify-end gap-x-6">
-    {# Cancel button -#}
-    <button id="cancel-button"
-            type="button"
-            hx-get="/dashboard/group?tab=sponsors"
-            hx-target="body"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline">Cancel</button>
-    {# End cancel button -#}
-
-    {# Save button -#}
-    <button type="submit"
-            class="btn-primary relative
-                   {% if !can_manage_sponsors -%}
-                     opacity-50 cursor-not-allowed
-                   {% endif -%}"
-            {% if !can_manage_sponsors -%}
-              disabled title="Your role cannot update sponsors."
-            {% endif -%}>
-      {{ ui::btn_spinner(id = "group-sponsor-update-spinner", spinner_type = "2") -}}
-      Update Sponsor
-    </button>
-    {# End save button -#}
-  </div>
 </div>
+
+{{ dashboard::form_actions(cancel_href = "/dashboard/group?tab=sponsors", spinner_id = "group-sponsor-update-spinner", submit_label = "Update Sponsor", disabled = !can_manage_sponsors, disabled_title = "Your role cannot update sponsors.") -}}
 </form>
 
 {# End Update Sponsor form -#}

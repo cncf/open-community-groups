@@ -4,7 +4,6 @@ import {
   isElementHidden,
   loadScriptOnce,
   setElementHidden,
-  toggleElementHidden,
 } from "/static/js/common/dom.js";
 import { toTrimmedString } from "/static/js/common/utils.js";
 
@@ -22,7 +21,54 @@ export const BROKEN_IMAGE_PLACEHOLDER_URL = "/static/images/icons/broken_image.s
 const DEFAULT_BROKEN_IMAGE_PLACEHOLDER_BG_CLASS = "bg-stone-50";
 const REMOVE_BROKEN_IMAGE_SELECTOR = "[data-ocg-remove-broken-images]";
 const EMPTY_IMAGE_WRAPPER_SELECTOR = "img, video, iframe, object, embed";
+const MODAL_FOCUS_SELECTOR =
+  "[autofocus], button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), " +
+  'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const LEAFLET_SCRIPT_SRC = "/static/vendor/js/leaflet.v1.9.4.min.js";
+const modalFocusOrigins = new WeakMap();
+
+/**
+ * Returns the focus target for an opened modal.
+ * @param {Element} modal - Modal element.
+ * @returns {HTMLElement|null} Element that can receive focus.
+ */
+const getModalFocusTarget = (modal) => {
+  const focusTarget = modal.querySelector(MODAL_FOCUS_SELECTOR);
+  if (focusTarget instanceof HTMLElement) {
+    return focusTarget;
+  }
+
+  if (modal instanceof HTMLElement) {
+    if (!modal.hasAttribute("tabindex")) {
+      modal.setAttribute("tabindex", "-1");
+    }
+    return modal;
+  }
+
+  return null;
+};
+
+/**
+ * Moves focus into an opened modal.
+ * @param {Element} modal - Modal element.
+ * @returns {void}
+ */
+const focusOpenedModal = (modal) => {
+  getModalFocusTarget(modal)?.focus();
+};
+
+/**
+ * Restores focus to the element that opened a modal.
+ * @param {Element} modal - Modal element.
+ * @returns {void}
+ */
+const restoreModalFocus = (modal) => {
+  const focusOrigin = modalFocusOrigins.get(modal);
+  modalFocusOrigins.delete(modal);
+  if (focusOrigin instanceof HTMLElement && document.contains(focusOrigin)) {
+    focusOrigin.focus();
+  }
+};
 
 /**
  * Checks if a failed image should be removed instead of replaced.
@@ -362,29 +408,31 @@ export const resetBodyScrollLock = () => {
 };
 
 /**
- * Toggles the visibility of the mobile navigation bar and its backdrop.
- * Shows/hides both the mobile navbar and backdrop by toggling the 'hidden' class.
- */
-export const toggleMobileNavbarVisibility = () => {
-  const navbarMobile = getElementById(document, "navbar-mobile");
-  toggleElementHidden(navbarMobile);
-  const navbarBackdrop = getElementById(document, "navbar-backdrop");
-  toggleElementHidden(navbarBackdrop);
-};
-
-/**
  * Toggles the visibility of a modal by adding or removing the 'hidden' class.
  * @param {string} modalId - The ID of the modal element to toggle
+ * @param {HTMLElement|null} [trigger=null] Element that opened the modal.
  */
-export const toggleModalVisibility = (modalId) => {
+export const toggleModalVisibility = (modalId, trigger = null) => {
   const modal = getElementById(document, modalId);
   if (modal) {
     const willOpen = isElementHidden(modal);
+    const activeElement = document.activeElement;
     setElementHidden(modal, !willOpen);
+    modal.setAttribute("aria-hidden", String(!willOpen));
     if (willOpen) {
+      modalFocusOrigins.set(
+        modal,
+        trigger instanceof HTMLElement
+          ? trigger
+          : activeElement instanceof HTMLElement
+            ? activeElement
+            : null,
+      );
       lockBodyScroll();
+      focusOpenedModal(modal);
     } else {
       unlockBodyScroll();
+      restoreModalFocus(modal);
     }
   }
 };

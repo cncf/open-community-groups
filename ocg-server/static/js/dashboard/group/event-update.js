@@ -64,6 +64,12 @@ export const initializeEventUpdatePage = (root = document) => {
   const canManageEvents = readBooleanDataAttribute(pageRoot, "canManageEvents");
   const initialWaitlistCount = Number.parseInt(updateEventButton?.dataset.waitlistCount || "0", 10);
 
+  if (onlineEventDetails) {
+    onlineEventDetails.eventPast = isPastEvent;
+    onlineEventDetails.toggleAttribute("event-past", isPastEvent);
+  }
+  queryOne("sessions-section")?.toggleAttribute("event-past", isPastEvent);
+
   // Sessions need the parent event date range before their own validation runs.
   const syncSessionsDateRange = createSessionsDateRangeSync({
     queryOne,

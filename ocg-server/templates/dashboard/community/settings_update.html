@@ -1,5 +1,6 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
 
 {# Community settings update form -#}
 <form id="settings-form"
@@ -102,229 +103,113 @@
         {{ dashboard::form_title(title = "Branding", description = "Configure visual identity and copyright information.") -}}
 
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          {% let logo_value -%}value="{{ community.logo_url }}"{%- endlet %}
+          {% let banner_value -%}value="{{ community.banner_url }}"{%- endlet %}
+          {% let banner_mobile_value -%}value="{{ community.banner_mobile_url }}"{%- endlet %}
+          {% let og_image_value -%}value="{%- if let Some(og_image_url) = &community.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}
+
           {# Logo URL -#}
-          <div class="col-span-full">
-            <image-field label="Logo" name="logo_url" value="{{ community.logo_url }}" image-kind="logo" required help-prefix-text="Size required 360 x 360 px." target="logo">
-          </image-field>
+          {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", help_prefix_text = "Size required 360 x 360 px.", value_attr = logo_value, extra_attrs = "required") -}}
+          {# End logo URL -#}
+
+          {# Banner URL -#}
+          {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", value_attr = banner_value, extra_attrs = "required") -}}
+          {# End Banner URL -#}
+
+          {# Banner Mobile URL -#}
+          {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", value_attr = banner_mobile_value, extra_attrs = "required") -}}
+          {# End Banner Mobile URL -#}
+
+          {# Open Graph image URL -#}
+          {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for community, group, and event link previews when a more specific image isn't provided.", value_attr = og_image_value) -}}
+          {# End Open Graph image URL -#}
         </div>
-        {# End logo URL -#}
-
-        {# Banner URL -#}
-        <div class="col-span-full">
-          <image-field label="Banner" name="banner_url" image-kind="banner" value="{{ community.banner_url }}" help-prefix-text="Size required 2428 x 192 px." target="banner" required>
-        </image-field>
       </div>
-      {# End Banner URL -#}
+      {# End branding section -#}
 
-      {# Banner Mobile URL -#}
-      <div class="col-span-full">
-        <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" value="{{ community.banner_mobile_url }}" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" required>
-      </image-field>
-    </div>
-    {# End Banner Mobile URL -#}
+      {# Social links section -#}
+      <div class="border-b border-stone-900/10 pb-12">
+        {{ dashboard::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -}}
 
-    {# Open Graph image URL -#}
-    <div class="col-span-full">
-      <image-field label="Open Graph Image" name="og_image_url" image-kind="banner" value="{%- if let Some(og_image_url) = &community.og_image_url -%}{{ og_image_url }}{%- endif -%}" help-prefix-text="Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP." target="open_graph" legend="Used for community, group, and event link previews when a more specific image isn't provided.">
-    </image-field>
-  </div>
-  {# End Open Graph image URL -#}
+        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          {% let website_value -%}
+          {% if let Some(website_url) = &community.website_url %}value="{{ website_url }}"{% endif %}
+        {%- endlet %}
+        {% let bluesky_value -%}
+        {% if let Some(bluesky_url) = &community.bluesky_url %}value="{{ bluesky_url }}"{% endif %}
+      {%- endlet %}
+      {% let facebook_value -%}
+      {% if let Some(facebook_url) = &community.facebook_url %}value="{{ facebook_url }}"{% endif %}
+    {%- endlet %}
+    {% let flickr_value -%}
+    {% if let Some(flickr_url) = &community.flickr_url %}value="{{ flickr_url }}"{% endif %}
+  {%- endlet %}
+  {% let github_value -%}
+  {% if let Some(github_url) = &community.github_url %}value="{{ github_url }}"{% endif %}
+{%- endlet %}
+{% let instagram_value -%}
+{% if let Some(instagram_url) = &community.instagram_url %}value="{{ instagram_url }}"{% endif %}
+{%- endlet %}
+{% let linkedin_value -%}
+{% if let Some(linkedin_url) = &community.linkedin_url %}value="{{ linkedin_url }}"{% endif %}
+{%- endlet %}
+{% let slack_value -%}
+{% if let Some(slack_url) = &community.slack_url %}value="{{ slack_url }}"{% endif %}
+{%- endlet %}
+{% let twitter_value -%}
+{% if let Some(twitter_url) = &community.twitter_url %}value="{{ twitter_url }}"{% endif %}
+{%- endlet %}
+{% let wechat_value -%}
+{% if let Some(wechat_url) = &community.wechat_url %}value="{{ wechat_url }}"{% endif %}
+{%- endlet %}
+{% let youtube_value -%}
+{% if let Some(youtube_url) = &community.youtube_url %}value="{{ youtube_url }}"{% endif %}
+{%- endlet %}
+
+{# Website URL -#}
+{{ form_fields::social_url_field(name = "website_url", label = "Website", icon = "icon-link", placeholder = "https://example.com", value_attr = website_value) -}}
+{# End website URL -#}
+
+{# Bluesky URL -#}
+{{ form_fields::social_url_field(name = "bluesky_url", label = "Bluesky", icon = "icon-bluesky", placeholder = "https://bsky.app/profile/username", value_attr = bluesky_value) -}}
+{# End Bluesky URL -#}
+
+{# Facebook URL -#}
+{{ form_fields::social_url_field(name = "facebook_url", label = "Facebook", icon = "icon-facebook", placeholder = "https://facebook.com/page", value_attr = facebook_value) -}}
+{# End Facebook URL -#}
+
+{# Flickr URL -#}
+{{ form_fields::social_url_field(name = "flickr_url", label = "Flickr", icon = "icon-flickr", placeholder = "https://flickr.com/photos/account", value_attr = flickr_value) -}}
+{# End Flickr URL -#}
+
+{# GitHub URL -#}
+{{ form_fields::social_url_field(name = "github_url", label = "GitHub", icon = "icon-github", placeholder = "https://github.com/organization", value_attr = github_value) -}}
+{# End GitHub URL -#}
+
+{# Instagram URL -#}
+{{ form_fields::social_url_field(name = "instagram_url", label = "Instagram", icon = "icon-instagram", placeholder = "https://instagram.com/username", value_attr = instagram_value) -}}
+{# End Instagram URL -#}
+
+{# LinkedIn URL -#}
+{{ form_fields::social_url_field(name = "linkedin_url", label = "LinkedIn", icon = "icon-linkedin", placeholder = "https://linkedin.com/company/name", value_attr = linkedin_value) -}}
+{# End LinkedIn URL -#}
+
+{# Slack URL -#}
+{{ form_fields::social_url_field(name = "slack_url", label = "Slack", icon = "icon-slack", placeholder = "https://workspace.slack.com", value_attr = slack_value) -}}
+{# End Slack URL -#}
+
+{# Twitter URL -#}
+{{ form_fields::social_url_field(name = "twitter_url", label = "X (formerly Twitter)", icon = "icon-twitter", placeholder = "https://x.com/username", value_attr = twitter_value) -}}
+{# End Twitter URL -#}
+
+{# WeChat URL -#}
+{{ form_fields::social_url_field(name = "wechat_url", label = "WeChat", icon = "icon-wechat", placeholder = "https://wechat.com/account", value_attr = wechat_value) -}}
+{# End WeChat URL -#}
+
+{# YouTube URL -#}
+{{ form_fields::social_url_field(name = "youtube_url", label = "YouTube", icon = "icon-youtube", placeholder = "https://youtube.com/channel/id", value_attr = youtube_value) -}}
+{# End YouTube URL -#}
 </div>
-</div>
-{# End branding section -#}
-
-{# Social links section -#}
-<div class="border-b border-stone-900/10 pb-12">
-  {{ dashboard::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -}}
-
-  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-    {# Website URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="website_url" class="form-label">Website</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-link bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="website_url"
-               id="website_url"
-               class="input-primary ps-10"
-               placeholder="https://example.com"
-               {% if let Some(website_url) = &community.website_url %}value="{{ website_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End website URL -#}
-
-    {# Bluesky URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="bluesky_url" class="form-label">Bluesky</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-bluesky bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="bluesky_url"
-               id="bluesky_url"
-               class="input-primary ps-10"
-               placeholder="https://bsky.app/profile/username"
-               {% if let Some(bluesky_url) = &community.bluesky_url %}value="{{ bluesky_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End Bluesky URL -#}
-
-    {# Facebook URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="facebook_url" class="form-label">Facebook</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="facebook_url"
-               id="facebook_url"
-               class="input-primary ps-10"
-               placeholder="https://facebook.com/page"
-               {% if let Some(facebook_url) = &community.facebook_url %}value="{{ facebook_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End Facebook URL -#}
-
-    {# Flickr URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="flickr_url" class="form-label">Flickr</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-flickr bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="flickr_url"
-               id="flickr_url"
-               class="input-primary ps-10"
-               placeholder="https://flickr.com/photos/account"
-               {% if let Some(flickr_url) = &community.flickr_url %}value="{{ flickr_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End Flickr URL -#}
-
-    {# GitHub URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="github_url" class="form-label">GitHub</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-github bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="github_url"
-               id="github_url"
-               class="input-primary ps-10"
-               placeholder="https://github.com/organization"
-               {% if let Some(github_url) = &community.github_url %}value="{{ github_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End GitHub URL -#}
-
-    {# Instagram URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="instagram_url" class="form-label">Instagram</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-instagram bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="instagram_url"
-               id="instagram_url"
-               class="input-primary ps-10"
-               placeholder="https://instagram.com/username"
-               {% if let Some(instagram_url) = &community.instagram_url %}value="{{ instagram_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End Instagram URL -#}
-
-    {# LinkedIn URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="linkedin_url" class="form-label">LinkedIn</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="linkedin_url"
-               id="linkedin_url"
-               class="input-primary ps-10"
-               placeholder="https://linkedin.com/company/name"
-               {% if let Some(linkedin_url) = &community.linkedin_url %}value="{{ linkedin_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End LinkedIn URL -#}
-
-    {# Slack URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="slack_url" class="form-label">Slack</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-slack bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="slack_url"
-               id="slack_url"
-               class="input-primary ps-10"
-               placeholder="https://workspace.slack.com"
-               {% if let Some(slack_url) = &community.slack_url %}value="{{ slack_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End Slack URL -#}
-
-    {# Twitter URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="twitter_url"
-               id="twitter_url"
-               class="input-primary ps-10"
-               placeholder="https://x.com/username"
-               {% if let Some(twitter_url) = &community.twitter_url %}value="{{ twitter_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End Twitter URL -#}
-
-    {# WeChat URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="wechat_url" class="form-label">WeChat</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-wechat bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="wechat_url"
-               id="wechat_url"
-               class="input-primary ps-10"
-               placeholder="https://wechat.com/account"
-               {% if let Some(wechat_url) = &community.wechat_url %}value="{{ wechat_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End WeChat URL -#}
-
-    {# YouTube URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="youtube_url" class="form-label">YouTube</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="youtube_url"
-               id="youtube_url"
-               class="input-primary ps-10"
-               placeholder="https://youtube.com/channel/id"
-               {% if let Some(youtube_url) = &community.youtube_url %}value="{{ youtube_url }}"{% endif %}>
-      </div>
-    </div>
-    {# End YouTube URL -#}
-  </div>
 </div>
 {# End social links section -#}
 
@@ -334,29 +219,27 @@
 
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
-    <div class="col-span-full">
-      <image-field label="Banner Image" name="ad_banner_url" image-kind="banner" value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}" help-prefix-text="Size recommended 2400 x 300 px.">
-    </image-field>
-  </div>
-  {# End ad banner -#}
+    {% let ad_banner_value -%}value="{%- if let Some(ad_banner_url) = &community.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}"{%- endlet %}
+    {{ form_fields::image_field(label = "Banner Image", name = "ad_banner_url", image_kind = "banner", help_prefix_text = "Size recommended 2400 x 300 px.", value_attr = ad_banner_value) -}}
+    {# End ad banner -#}
 
-  {# Ad banner link URL -#}
-  <div class="col-span-full lg:col-span-3">
-    <label for="ad_banner_link_url" class="form-label">Banner Link URL</label>
-    <div class="mt-2">
-      <input type="url"
-             name="ad_banner_link_url"
-             id="ad_banner_link_url"
-             class="input-primary"
-             placeholder="https://example.com/landing-page"
-             {% if let Some(ad_banner_link_url) = &community.ad_banner_link_url %}
-               value="{{ ad_banner_link_url }}"
-             {% endif %}>
+    {# Ad banner link URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="ad_banner_link_url" class="form-label">Banner Link URL</label>
+      <div class="mt-2">
+        <input type="url"
+               name="ad_banner_link_url"
+               id="ad_banner_link_url"
+               class="input-primary"
+               placeholder="https://example.com/landing-page"
+               {% if let Some(ad_banner_link_url) = &community.ad_banner_link_url %}
+                 value="{{ ad_banner_link_url }}"
+               {% endif %}>
+      </div>
+      <p class="form-legend">Target URL when users click on the advertisement banner.</p>
     </div>
-    <p class="form-legend">Target URL when users click on the advertisement banner.</p>
+    {# End ad banner link URL -#}
   </div>
-  {# End ad banner link URL -#}
-</div>
 </div>
 {# End advertisement section -#}
 
@@ -377,22 +260,15 @@
     </div>
     {# End new group details -#}
 
+    {% let photos_attr -%}images="{{ community.photos_urls|json }}"{%- endlet %}
+    {% let extra_links_attr -%}items="{{ community.extra_links|json }}"{%- endlet %}
+
     {# Photo gallery -#}
-    <div class="col-span-full">
-      <gallery-field field-name="photos_urls" images="{{ community.photos_urls|json }}" max-images="0" label="Photos"></gallery-field>
-      <p class="form-legend">Photos that will be displayed in the community gallery.</p>
-    </div>
+    {{ form_fields::gallery_field(images_attr = photos_attr, helper_text = "Photos that will be displayed in the community gallery.") -}}
     {# End photo gallery -#}
 
     {# Extra links -#}
-    <div class="col-span-full">
-      <label class="form-label">Extra Links</label>
-      <div class="mt-2">
-        <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" items="{{ community.extra_links|json }}" label="Link">
-        </key-value-inputs>
-      </div>
-      <p class="form-legend">Additional custom links displayed in the footer.</p>
-    </div>
+    {{ form_fields::key_value_links_field(items_attr = extra_links_attr, helper_text = "Additional custom links displayed in the footer.") -}}
     {# End extra links -#}
   </div>
 </div>

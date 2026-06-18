@@ -1,0 +1,115 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Image upload field -#}
+{% macro image_field(label, name, image_kind, target = "", legend = "", help_prefix_text = "", value_attr = "", field_class = "col-span-full", input_class = "", extra_attrs = "") -%}
+  <div class="{{ field_class }}">
+    <image-field {% if !input_class.is_empty() %}class="{{ input_class }}"{% endif %} label="{{ label }}" name="{{ name }}" {{ value_attr|safe }} image-kind="{{ image_kind }}" {% if !help_prefix_text.is_empty() %}help-prefix-text="{{ help_prefix_text }}"{% endif %} {% if !target.is_empty() %}target="{{ target }}"{% endif %} {% if !legend.is_empty() %}legend="{{ legend }}"{% endif %} {{ extra_attrs|safe }}>
+  </image-field>
+</div>
+{% endmacro image_field -%}
+{# End image upload field -#}
+
+{# Required entity name field -#}
+{% macro entity_name_field(legend_prefix, value_attr = "", field_class = "col-span-full lg:col-span-5") -%}
+  <div class="{{ field_class }}">
+    <label for="name" class="form-label">
+      Name <span class="asterisk">*</span>
+    </label>
+    <div class="mt-2">
+      <input type="text"
+             name="name"
+             id="name"
+             maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
+             class="input-primary"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false"
+             {{ value_attr|safe }}
+             required>
+    </div>
+    <p class="form-legend">{{ legend_prefix }} Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.</p>
+  </div>
+{% endmacro entity_name_field -%}
+{# End required entity name field -#}
+
+{# Social URL field -#}
+{% macro social_url_field(name, label, icon, placeholder, value_attr = "", field_class = "col-span-full lg:col-span-3") -%}
+  <div class="{{ field_class }}">
+    <label for="{{ name }}" class="form-label">{{ label }}</label>
+    <div class="mt-2 relative">
+      <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+        <div class="svg-icon size-4 {{ icon }} bg-stone-300"></div>
+      </div>
+      <input type="url"
+             name="{{ name }}"
+             id="{{ name }}"
+             class="input-primary ps-10"
+             placeholder="{{ placeholder }}"
+             {{ value_attr|safe }}>
+    </div>
+  </div>
+{% endmacro social_url_field -%}
+{# End social URL field -#}
+
+{# Tags field -#}
+{% macro tags_field(legend, items_attr = "", field_class = "col-span-6 xl:col-span-3", label_text = "") -%}
+  <div class="{{ field_class }}">
+    {% if !label_text.is_empty() -%}
+      <label for="tags" class="form-label">{{ label_text }}</label>
+      <div class="mt-2">
+      {% endif -%}
+      <multiple-inputs field-name="tags" input-type="text" {{ items_attr|safe }} max-length="{{ crate::validation::MAX_LEN_TAG }}" label="Tag" legend="{{ legend }}">
+      </multiple-inputs>
+      {% if !label_text.is_empty() -%}
+      </div>
+    {% endif -%}
+  </div>
+{% endmacro tags_field -%}
+{# End tags field -#}
+
+{# Gallery field -#}
+{% macro gallery_field(legend = "", helper_text = "", images_attr = "", field_name = "photos_urls", max_images = "0", label = "Photos", field_class = "col-span-full") -%}
+  <div class="{{ field_class }}">
+    <gallery-field field-name="{{ field_name }}" {{ images_attr|safe }}
+    {% if !legend.is_empty() %}legend="{{ legend }}"{% endif %}
+    max-images="{{ max_images }}" label="{{ label }}"></gallery-field>
+    {% if !helper_text.is_empty() -%}
+      <p class="form-legend">{{ helper_text }}</p>
+    {% endif -%}
+  </div>
+{% endmacro gallery_field -%}
+{# End gallery field -#}
+
+{# Key-value links field -#}
+{% macro key_value_links_field(items_attr = "", helper_text = "", field_class = "col-span-full") -%}
+  <div class="{{ field_class }}">
+    <label class="form-label">Extra Links</label>
+    <div class="mt-2">
+      <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" {{ items_attr|safe }} label="Link">
+      </key-value-inputs>
+    </div>
+    {% if !helper_text.is_empty() -%}
+      <p class="form-legend">{{ helper_text }}</p>
+    {% endif -%}
+  </div>
+{% endmacro key_value_links_field -%}
+{# End key-value links field -#}
+
+{# Tags, gallery, and links section -#}
+{% macro tags_gallery_links_section(title, description, tag_legend, photo_legend, extra_links_legend, tags_items = "", photos_urls = "[]", extra_links = "{}") -%}
+  {# Additional content section -#}
+  <div class="pb-12">
+    {{ dashboard::form_title(title = title, description = description) -}}
+
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      {{ tags_field(legend = tag_legend, items_attr = tags_items) -}}
+      {% let photos_attr -%}images="{{ photos_urls|safe }}"{%- endlet %}
+      {{ gallery_field(helper_text = photo_legend, images_attr = photos_attr) -}}
+      {% let extra_links_attr -%}items="{{ extra_links|safe }}"{%- endlet %}
+      {{ key_value_links_field(items_attr = extra_links_attr, helper_text = extra_links_legend) -}}
+    </div>
+  </div>
+  {# End additional content section -#}
+{% endmacro tags_gallery_links_section -%}
+{# End tags, gallery, and links section -#}
