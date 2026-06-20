@@ -25,6 +25,63 @@ export const TEST_REGISTRATION_QUESTIONS_EVENT = {
   name: "Registration Answers Lab",
   slug: "alpha-registration-answers-lab",
 };
+export const TEST_REGISTRATION_WINDOW_EVENTS = {
+  approvalClosed: {
+    id: "55555555-5555-5555-5555-555555555905",
+    name: "Registration Window Approval Closed",
+    slug: "alpha-registration-window-approval-closed",
+  },
+  closeOnlyOpen: {
+    id: "55555555-5555-5555-5555-555555555907",
+    name: "Registration Window Close Only Open",
+    slug: "alpha-registration-window-close-only-open",
+  },
+  freeClosed: {
+    id: "55555555-5555-5555-5555-555555555904",
+    name: "Registration Window Free Closed",
+    slug: "alpha-registration-window-free-closed",
+  },
+  openOnlyClosed: {
+    id: "55555555-5555-5555-5555-555555555908",
+    name: "Registration Window Open Only Closed",
+    slug: "alpha-registration-window-open-only-closed",
+  },
+  pendingPaymentClosed: {
+    id: "55555555-5555-5555-5555-555555555911",
+    name: "Registration Window Pending Payment Closed",
+    slug: "alpha-registration-window-pending-payment-closed",
+  },
+  questionsClosed: {
+    id: "55555555-5555-5555-5555-555555555909",
+    name: "Registration Window Questions Closed",
+    slug: "alpha-registration-window-questions-closed",
+  },
+  questionsManualInviteClosed: {
+    id: "55555555-5555-5555-5555-555555555910",
+    name: "Registration Window Manual Invite Closed",
+    slug: "alpha-registration-window-manual-invite-closed",
+  },
+  ticketedClosed: {
+    id: "55555555-5555-5555-5555-555555555901",
+    name: "Registration Window Ticketed Closed",
+    slug: "alpha-registration-window-ticketed-closed",
+  },
+  ticketedFuture: {
+    id: "55555555-5555-5555-5555-555555555902",
+    name: "Registration Window Ticketed Future",
+    slug: "alpha-registration-window-ticketed-future",
+  },
+  ticketedOpen: {
+    id: "55555555-5555-5555-5555-555555555903",
+    name: "Registration Window Ticketed Open",
+    slug: "alpha-registration-window-ticketed-open",
+  },
+  waitlistClosed: {
+    id: "55555555-5555-5555-5555-555555555906",
+    name: "Registration Window Waitlist Closed",
+    slug: "alpha-registration-window-waitlist-closed",
+  },
+};
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";
