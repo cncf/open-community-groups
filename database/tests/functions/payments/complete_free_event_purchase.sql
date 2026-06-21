@@ -9,7 +9,7 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '72000000-0000-0000-0000-000000000001'
+\set allianceID '72000000-0000-0000-0000-000000000001'
 \set eventCategoryID '72000000-0000-0000-0000-000000000002'
 \set eventID '72000000-0000-0000-0000-000000000003'
 \set eventInactiveID '72000000-0000-0000-0000-000000000016'
@@ -34,17 +34,17 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'free-community', 'Free Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'free-alliance', 'Free Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
@@ -55,8 +55,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'user5ID', 'hash-5', 'user5@example.com', true, 'user-5');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Free Group', 'free-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Free Group', 'free-group');
 
 -- Event
 insert into event (
@@ -212,7 +212,7 @@ values (:'eventID', :'user5ID', true, 'invitation-pending');
 select is(
     complete_free_event_purchase(:'freePurchaseID'::uuid)::jsonb,
     jsonb_build_object(
-        'community_id', :'communityID'::uuid,
+        'alliance_id', :'allianceID'::uuid,
         'event_id', :'eventID'::uuid,
         'user_id', :'user1ID'::uuid
     ),

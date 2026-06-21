@@ -39,7 +39,7 @@ use super::{
 async fn approve_refund_request_approves_pending_refund_and_enqueues_notification() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
@@ -77,14 +77,14 @@ async fn approve_refund_request_approves_pending_refund_and_enqueues_notificatio
         })
         .returning(move |_, _, _, _, _, _| {
             Ok(CompletedEventPurchase {
-                community_id,
+                alliance_id,
                 event_id,
                 user_id: target_user_id,
             })
         });
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -125,7 +125,7 @@ async fn approve_refund_request_approves_pending_refund_and_enqueues_notificatio
     let result = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             user_id: target_user_id,
@@ -142,7 +142,7 @@ async fn approve_refund_request_approves_pending_refund_and_enqueues_notificatio
 async fn approve_refund_request_reverts_when_payment_reference_is_missing() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
@@ -181,7 +181,7 @@ async fn approve_refund_request_reverts_when_payment_reference_is_missing() {
     let err = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             user_id: target_user_id,
@@ -199,7 +199,7 @@ async fn approve_refund_request_reverts_when_payment_reference_is_missing() {
 async fn approve_refund_request_returns_before_state_transition_when_payments_are_unconfigured() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let target_user_id = Uuid::new_v4();
@@ -213,7 +213,7 @@ async fn approve_refund_request_returns_before_state_transition_when_payments_ar
     let err = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             user_id: target_user_id,
@@ -231,7 +231,7 @@ async fn approve_refund_request_returns_before_state_transition_when_payments_ar
 async fn approve_refund_request_reverts_when_provider_refund_fails() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
@@ -278,7 +278,7 @@ async fn approve_refund_request_reverts_when_provider_refund_fails() {
     let err = manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             user_id: target_user_id,
@@ -295,7 +295,7 @@ async fn approve_refund_request_reverts_when_provider_refund_fails() {
 #[tokio::test]
 async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_purchase_id = Uuid::new_v4();
     let site_settings = SiteSettings::default();
@@ -309,14 +309,14 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
         .withf(move |purchase_id| *purchase_id == event_purchase_id)
         .returning(move |_| {
             Ok(CompletedEventPurchase {
-                community_id,
+                alliance_id,
                 event_id,
                 user_id,
             })
         });
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -337,7 +337,7 @@ async fn complete_free_checkout_records_purchase_and_enqueues_notification() {
     // Run the checkout completion workflow
     let manager = sample_payments_manager(db, notifications_manager, None);
     let result = manager
-        .complete_free_checkout(community_id, event_id, event_purchase_id, user_id)
+        .complete_free_checkout(alliance_id, event_id, event_purchase_id, user_id)
         .await;
 
     // Check result matches expectations
@@ -390,7 +390,7 @@ async fn get_or_create_checkout_redirect_url_creates_session_and_persists_it() {
         .withf(move |input| {
             input.amount_minor == 2_500
                 && input.base_url.is_empty()
-                && input.community_name == "community"
+                && input.alliance_name == "alliance"
                 && input.currency_code == "usd"
                 && input.discount_code.as_deref() == Some("SPRING")
                 && input.event_id == event_id
@@ -661,7 +661,7 @@ async fn get_or_create_checkout_redirect_url_returns_existing_url_without_hittin
 #[tokio::test]
 async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let site_settings = SiteSettings::default();
     let user_id = Uuid::new_v4();
@@ -671,7 +671,7 @@ async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -686,7 +686,7 @@ async fn handle_webhook_completes_checkout_and_enqueues_welcome_notification() {
         .returning(move |_, _, _| {
             Ok(ReconcileEventPurchaseResult::Completed(
                 CompletedEventPurchase {
-                    community_id,
+                    alliance_id,
                     event_id,
                     user_id,
                 },
@@ -1160,7 +1160,7 @@ async fn handle_webhook_retries_automatic_refund_after_provider_failure() {
 async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let review_note = "Not eligible".to_string();
@@ -1181,14 +1181,14 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
         })
         .returning(move |_, _, _, _, _| {
             Ok(CompletedEventPurchase {
-                community_id,
+                alliance_id,
                 event_id,
                 user_id: target_user_id,
             })
         });
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -1211,7 +1211,7 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
     let result = manager
         .reject_refund_request(&RejectRefundRequestInput {
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             user_id: target_user_id,
@@ -1227,7 +1227,7 @@ async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
 #[tokio::test]
 async fn request_refund_records_the_refund_request() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
     let site_settings = SiteSettings::default();
@@ -1243,7 +1243,7 @@ async fn request_refund_records_the_refund_request() {
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -1251,7 +1251,7 @@ async fn request_refund_records_the_refund_request() {
     db.expect_request_event_refund()
         .times(1)
         .withf(move |cid, eid, uid, reason, template_data| {
-            *cid == community_id
+            *cid == alliance_id
                 && *eid == event_id
                 && *uid == user_id
                 && reason.as_deref() == Some("Need to cancel")
@@ -1263,7 +1263,7 @@ async fn request_refund_records_the_refund_request() {
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
     let result = manager
         .request_refund(&RequestRefundInput {
-            community_id,
+            alliance_id,
             event_id,
             user_id,
 
@@ -1278,14 +1278,14 @@ async fn request_refund_records_the_refund_request() {
 #[tokio::test]
 async fn request_refund_returns_error_when_notification_context_load_fails() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
 
     // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(sample_event_summary(event_id)));
     db.expect_get_site_settings()
         .times(1)
@@ -1296,7 +1296,7 @@ async fn request_refund_returns_error_when_notification_context_load_fails() {
     let manager = sample_payments_manager(db, MockNotificationsManager::new(), None);
     let err = manager
         .request_refund(&RequestRefundInput {
-            community_id,
+            alliance_id,
             event_id,
             user_id: Uuid::new_v4(),
 
@@ -1324,8 +1324,8 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
     EventSummary {
         attendee_approval_required: false,
         canceled: false,
-        community_display_name: "Community".to_string(),
-        community_name: "community".to_string(),
+        alliance_display_name: "Alliance".to_string(),
+        alliance_name: "alliance".to_string(),
         event_id,
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),
@@ -1416,7 +1416,7 @@ fn sample_prepared_event_checkout(
     recipient: GroupPaymentRecipient,
 ) -> PreparedEventCheckout {
     PreparedEventCheckout {
-        community_name: "community".to_string(),
+        alliance_name: "alliance".to_string(),
         event_id,
         event_slug: "event".to_string(),
         group_slug: "group".to_string(),

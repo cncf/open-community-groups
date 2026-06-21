@@ -9,7 +9,7 @@
 - Guides
   - [Public Site](/guides/public-site.md)
   - [User Dashboard](/guides/user-dashboard.md)
-  - [Community Dashboard](/guides/community-dashboard.md)
+  - [Alliance Dashboard](/guides/alliance-dashboard.md)
   - [Group Dashboard](/guides/group-dashboard.md)
   - [Payments Setup](/guides/payments-setup.md)
   - [Event Operations](/guides/event-operations.md)

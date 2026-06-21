@@ -1,8 +1,8 @@
-create table community_views (
-    community_id uuid references community on delete set null,
+create table alliance_views (
+    alliance_id uuid references alliance on delete set null,
     day date not null,
     total integer not null,
-    unique (community_id, day)
+    unique (alliance_id, day)
 );
 
 create table event_views (

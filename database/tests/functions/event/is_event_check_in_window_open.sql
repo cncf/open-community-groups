@@ -10,7 +10,7 @@ select plan(6);
 -- ============================================================================
 
 \set checkInWindowEventID '00000000-0000-0000-0000-000000000042'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000031'
 \set futureEventID '00000000-0000-0000-0000-000000000041'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
@@ -24,29 +24,29 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     'Test Group',
     'test-group',
     'A test group',
@@ -225,37 +225,37 @@ insert into event (
 
 -- Should return false for future event
 select ok(
-    not is_event_check_in_window_open(:'communityID'::uuid, :'futureEventID'::uuid),
+    not is_event_check_in_window_open(:'allianceID'::uuid, :'futureEventID'::uuid),
     'Should return false for future event'
 );
 
 -- Should return true for event within check-in window
 select ok(
-    is_event_check_in_window_open(:'communityID'::uuid, :'checkInWindowEventID'::uuid),
+    is_event_check_in_window_open(:'allianceID'::uuid, :'checkInWindowEventID'::uuid),
     'Should return true for event within check-in window'
 );
 
 -- Should return false for past event
 select ok(
-    not is_event_check_in_window_open(:'communityID'::uuid, :'pastEventID'::uuid),
+    not is_event_check_in_window_open(:'allianceID'::uuid, :'pastEventID'::uuid),
     'Should return false for past event'
 );
 
 -- Should return true for ongoing multi-day event
 select ok(
-    is_event_check_in_window_open(:'communityID'::uuid, :'multiDayEventID'::uuid),
+    is_event_check_in_window_open(:'allianceID'::uuid, :'multiDayEventID'::uuid),
     'Should return true for ongoing multi-day event'
 );
 
 -- Should return true for same-day event with ends_at
 select ok(
-    is_event_check_in_window_open(:'communityID'::uuid, :'sameDayWithEndsAtEventID'::uuid),
+    is_event_check_in_window_open(:'allianceID'::uuid, :'sameDayWithEndsAtEventID'::uuid),
     'Should return true for same-day event with ends_at'
 );
 
 -- Should return false for event without start time
 select ok(
-    not is_event_check_in_window_open(:'communityID'::uuid, :'noStartTimeEventID'::uuid),
+    not is_event_check_in_window_open(:'allianceID'::uuid, :'noStartTimeEventID'::uuid),
     'Should return false for event without start time'
 );
 

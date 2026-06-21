@@ -4,8 +4,8 @@ returns json as $$
     select coalesce(json_agg(row_to_json(invitation)), '[]'::json)
     from (
         select
-            c.display_name as community_display_name,
-            c.name as community_name,
+            c.display_name as alliance_display_name,
+            c.name as alliance_name,
             e.event_id,
             e.name as event_name,
             g.name as group_name,
@@ -16,7 +16,7 @@ returns json as $$
         from event_attendee ea
         join event e using (event_id)
         join "group" g using (group_id)
-        join community c using (community_id)
+        join alliance c using (alliance_id)
         where ea.user_id = p_user_id
         and ea.status = 'invitation-pending'
         and g.active = true

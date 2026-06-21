@@ -22,7 +22,7 @@ use crate::{
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -31,7 +31,7 @@ async fn test_list_page_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let member = sample_group_member();
@@ -54,7 +54,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -63,7 +63,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::MembersWrite
@@ -79,7 +79,7 @@ async fn test_list_page_success() {
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_group_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group.clone()));
 
     // Setup notifications manager mock
@@ -111,7 +111,7 @@ async fn test_list_page_success() {
 #[tokio::test]
 async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -120,7 +120,7 @@ async fn test_list_page_with_pagination_params() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let member = sample_group_member();
@@ -143,7 +143,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -152,7 +152,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::MembersWrite
@@ -166,7 +166,7 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_group_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group.clone()));
 
     // Setup notifications manager mock
@@ -196,7 +196,7 @@ async fn test_list_page_with_pagination_params() {
 #[tokio::test]
 async fn test_list_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -205,7 +205,7 @@ async fn test_list_page_db_error() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let group = sample_group_summary(group_id);
@@ -222,7 +222,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -231,7 +231,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::MembersWrite
@@ -247,7 +247,7 @@ async fn test_list_page_db_error() {
         .returning(move |_, _| Err(anyhow!("db error")));
     db.expect_get_group_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group.clone()));
 
     // Setup notifications manager mock
@@ -274,7 +274,7 @@ async fn test_list_page_db_error() {
 #[tokio::test]
 async fn test_send_group_custom_notification_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let member_id1 = Uuid::new_v4();
     let member_id2 = Uuid::new_v4();
@@ -286,7 +286,7 @@ async fn test_send_group_custom_notification_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let site_settings = sample_site_settings();
@@ -295,7 +295,7 @@ async fn test_send_group_custom_notification_success() {
     group_summary.slug_pretty = Some("pretty-group".to_string());
     let expected_link = format!(
         "/{}/group/{}",
-        group_summary.community_name,
+        group_summary.alliance_name,
         group_summary.public_slug()
     );
     let group_for_notifications = group_summary.clone();
@@ -329,7 +329,7 @@ async fn test_send_group_custom_notification_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::MembersWrite
@@ -348,7 +348,7 @@ async fn test_send_group_custom_notification_success() {
         .returning(move || Ok(site_settings.clone()));
     db.expect_get_group_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group_for_db.clone()));
     db.expect_track_custom_notification()
         .times(1)
@@ -407,7 +407,7 @@ async fn test_send_group_custom_notification_no_members() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
     let group_for_db = sample_group_summary(group_id);
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -415,7 +415,7 @@ async fn test_send_group_custom_notification_no_members() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let form_data = serde_qs::to_string(&GroupCustomNotification {
@@ -437,7 +437,7 @@ async fn test_send_group_custom_notification_no_members() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::MembersWrite
@@ -445,7 +445,7 @@ async fn test_send_group_custom_notification_no_members() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group_for_db.clone()));
     db.expect_list_group_members_ids()
         .times(1)

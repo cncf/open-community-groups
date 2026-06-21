@@ -10,7 +10,7 @@ select plan(44);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCanceled '00000000-0000-0000-0000-000000000043'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventInviteOnly '00000000-0000-0000-0000-000000000049'
@@ -28,7 +28,7 @@ select plan(44);
 \set inactiveGroupID '00000000-0000-0000-0000-000000000022'
 \set questionsAttendeeUserID '90400000-0000-0000-0000-000000000031'
 \set questionsCategoryID '90400000-0000-0000-0000-000000000011'
-\set questionsCommunityID '90400000-0000-0000-0000-000000000001'
+\set questionsAllianceID '90400000-0000-0000-0000-000000000001'
 \set questionsEventCategoryID '90400000-0000-0000-0000-000000000012'
 \set questionsGroupID '90400000-0000-0000-0000-000000000021'
 \set questionsRequestUserID '90400000-0000-0000-0000-000000000034'
@@ -47,29 +47,29 @@ select plan(44);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'test-alliance', 'Test Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
--- Community for registration-question attendance tests
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'questionsCommunityID', 'attend-questions-community', 'Attend Questions Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+-- Alliance for registration-question attendance tests
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'questionsAllianceID', 'attend-questions-alliance', 'Attend Questions Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Technology', :'allianceID');
 
 -- Group category for registration-question attendance tests
-insert into group_category (group_category_id, name, community_id)
-values (:'questionsCategoryID', 'Technology', :'questionsCommunityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'questionsCategoryID', 'Technology', :'questionsAllianceID');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Event category for registration-question attendance tests
-insert into event_category (event_category_id, name, community_id)
-values (:'questionsEventCategoryID', 'General', :'questionsCommunityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'questionsEventCategoryID', 'General', :'questionsAllianceID');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
@@ -92,14 +92,14 @@ values
     (:'questionsRejoinConflictUserID', 'rq-hash-6', 'rq-rejoin-conflict@example.com', true, 'Rejoin Conflict', 'registered', 'rq-rejoin-conflict');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, active, deleted)
 values
-    (:'groupID', :'communityID', :'categoryID', 'Active Group', 'active-group', true, false),
-    (:'inactiveGroupID', :'communityID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
+    (:'groupID', :'allianceID', :'categoryID', 'Active Group', 'active-group', true, false),
+    (:'inactiveGroupID', :'allianceID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
 
 -- Group for registration-question attendance tests
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'questionsGroupID', :'questionsCommunityID', :'questionsCategoryID', 'Attend Questions Group', 'attend-questions-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'questionsGroupID', :'questionsAllianceID', :'questionsCategoryID', 'Attend Questions Group', 'attend-questions-group');
 
 -- Events
 insert into event (
@@ -232,7 +232,7 @@ values
 
 -- Should register a normal attendee when capacity allows
 select is(
-    attend_event(:'communityID'::uuid, :'eventOK'::uuid, :'user1ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventOK'::uuid, :'user1ID'::uuid),
     'attendee',
     'Returns attendee when the user gets a confirmed seat'
 );
@@ -251,7 +251,7 @@ select ok(
 -- Should discard submitted answers when the event has no registration questions
 select is(
     attend_event(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'eventOK'::uuid,
         :'user4ID'::uuid,
         '{"answers": [{"question_id": "00000000-0000-0000-0000-000000009999", "value": "No question"}]}'::jsonb
@@ -273,7 +273,7 @@ select is(
 
 -- Should allow attendance for a capacity-limited event with an open seat
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user2ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventFullNoWaitlist'::uuid, :'user2ID'::uuid),
     'attendee',
     'Returns attendee when a capacity-limited event still has room'
 );
@@ -282,7 +282,7 @@ select is(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventFullNoWaitlist', :'user3ID'
+        :'allianceID', :'eventFullNoWaitlist', :'user3ID'
     ),
     'event has reached capacity',
     'Rejects new RSVP when the event is sold out and waitlist is disabled'
@@ -292,7 +292,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventFullNoWaitlist', :'user1ID'
+        :'allianceID', :'eventFullNoWaitlist', :'user1ID'
     ),
     'user is already attending this event',
     'Rejects duplicate RSVP for a confirmed attendee'
@@ -300,7 +300,7 @@ select throws_ok(
 
 -- Should confirm a pending organizer invitation even when the event is full
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user5ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventFullNoWaitlist'::uuid, :'user5ID'::uuid),
     'attendee',
     'Returns attendee when accepting a pending organizer invitation'
 );
@@ -328,7 +328,7 @@ select ok(
 
 -- Should confirm a rejected organizer invitation even when the event is full
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullNoWaitlist'::uuid, :'user6ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventFullNoWaitlist'::uuid, :'user6ID'::uuid),
     'attendee',
     'Returns attendee when reversing a rejected organizer invitation'
 );
@@ -346,7 +346,7 @@ select is(
 
 -- Should allow RSVP after an organizer invitation was canceled
 select is(
-    attend_event(:'communityID'::uuid, :'eventOK'::uuid, :'user3ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventOK'::uuid, :'user3ID'::uuid),
     'attendee',
     'Returns attendee after a canceled organizer invitation'
 );
@@ -374,7 +374,7 @@ select ok(
 
 -- Should place the user on the waitlist when the event is full and waitlist is enabled
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullWaitlist'::uuid, :'user2ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventFullWaitlist'::uuid, :'user2ID'::uuid),
     'waitlisted',
     'Returns waitlisted when the event is full and waitlist is enabled'
 );
@@ -391,7 +391,7 @@ select ok(
 
 -- Should allow waitlist join after an organizer invitation was canceled
 select is(
-    attend_event(:'communityID'::uuid, :'eventFullWaitlist'::uuid, :'user3ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventFullWaitlist'::uuid, :'user3ID'::uuid),
     'waitlisted',
     'Returns waitlisted after a canceled organizer invitation for a full event'
 );
@@ -419,7 +419,7 @@ select ok(
 -- Should allow waitlist joins without registration answers when questions exist
 select is(
     attend_event(
-        :'questionsCommunityID'::uuid,
+        :'questionsAllianceID'::uuid,
         :'eventQuestionsFullWaitlistID'::uuid,
         :'questionsWaitlistUserID'::uuid
     ),
@@ -451,7 +451,7 @@ select is(
 
 -- Should recreate attendance when an accepted request no longer has an attendee row
 select is(
-    attend_event(:'communityID'::uuid, :'eventInviteOnly'::uuid, :'user3ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventInviteOnly'::uuid, :'user3ID'::uuid),
     'attendee',
     'Returns attendee when an accepted requester rejoins'
 );
@@ -469,7 +469,7 @@ select ok(
 -- Should store answers when an accepted requester rejoins after cancellation
 select is(
     attend_event(
-        :'questionsCommunityID'::uuid,
+        :'questionsAllianceID'::uuid,
         :'eventQuestionsApprovalID'::uuid,
         :'questionsRejoinInsertUserID'::uuid,
         '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Rejoin answer"}]}'::jsonb
@@ -492,7 +492,7 @@ select is(
 -- Should replace stale answers when an accepted requester reuses a canceled row
 select is(
     attend_event(
-        :'questionsCommunityID'::uuid,
+        :'questionsAllianceID'::uuid,
         :'eventQuestionsApprovalID'::uuid,
         :'questionsRejoinConflictUserID'::uuid,
         '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Updated rejoin answer"}]}'::jsonb
@@ -514,7 +514,7 @@ select is(
 
 -- Should create a pending invitation request when approval is required
 select is(
-    attend_event(:'communityID'::uuid, :'eventInviteOnly'::uuid, :'user2ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventInviteOnly'::uuid, :'user2ID'::uuid),
     'pending-approval',
     'Returns pending approval when the event requires invitation review'
 );
@@ -545,7 +545,7 @@ select ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInviteOnly', :'user2ID'
+        :'allianceID', :'eventInviteOnly', :'user2ID'
     ),
     'user has already requested an invitation for this event',
     'Rejects duplicate invitation requests'
@@ -555,7 +555,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInviteOnly', :'user4ID'
+        :'allianceID', :'eventInviteOnly', :'user4ID'
     ),
     'invitation request was rejected for this event',
     'Rejects users whose invitation request was rejected'
@@ -565,7 +565,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventFullWaitlist', :'user2ID'
+        :'allianceID', :'eventFullWaitlist', :'user2ID'
     ),
     'user is already on the waiting list for this event',
     'Rejects duplicate waitlist joins'
@@ -575,7 +575,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventUnpublished', :'user1ID'
+        :'allianceID', :'eventUnpublished', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects unpublished events'
@@ -585,7 +585,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventCanceled', :'user1ID'
+        :'allianceID', :'eventCanceled', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects canceled events'
@@ -595,7 +595,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventDeleted', :'user1ID'
+        :'allianceID', :'eventDeleted', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects deleted events'
@@ -605,7 +605,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventPast', :'user1ID'
+        :'allianceID', :'eventPast', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects past events'
@@ -615,7 +615,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInactiveGroup', :'user1ID'
+        :'allianceID', :'eventInactiveGroup', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects events from inactive groups'
@@ -625,7 +625,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'questionsCommunityID', :'eventQuestionsID', :'questionsAttendeeUserID'
+        :'questionsAllianceID', :'eventQuestionsID', :'questionsAttendeeUserID'
     ),
     'questionnaire answers are required',
     'Should require answers when attending an event with questions'
@@ -634,7 +634,7 @@ select throws_ok(
 -- Should attend with valid registration answers
 select is(
     attend_event(
-        :'questionsCommunityID'::uuid,
+        :'questionsAllianceID'::uuid,
         :'eventQuestionsID'::uuid,
         :'questionsAttendeeUserID'::uuid,
         '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb
@@ -658,7 +658,7 @@ select is(
 -- Should keep approval-required attendance pending and store answers on the request
 select is(
     attend_event(
-        :'questionsCommunityID'::uuid,
+        :'questionsAllianceID'::uuid,
         :'eventQuestionsApprovalID'::uuid,
         :'questionsRequestUserID'::uuid,
         '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Request answer"}]}'::jsonb

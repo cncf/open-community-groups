@@ -1,6 +1,6 @@
 -- Used by attendee checkout cancellation to release an active pending purchase
 create or replace function cancel_event_checkout(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid
 )
@@ -19,7 +19,7 @@ begin
     from event e
     join "group" g on g.group_id = e.group_id
     where ep.event_id = e.event_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     and ep.event_id = p_event_id
     and ep.user_id = p_user_id
     and ep.status = 'pending'

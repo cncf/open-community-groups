@@ -11,7 +11,7 @@ select plan(4);
 
 \set anotherGroupID '00000000-0000-0000-0000-000000000031'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000041'
 \set groupID '00000000-0000-0000-0000-000000000021'
@@ -24,21 +24,21 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'categoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'categoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified, name)
@@ -101,8 +101,8 @@ select is(
 
 -- Should return empty list when wrong group_id provided
 -- Create another group and verify attendees are not returned when queried with wrong group_id
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'anotherGroupID', :'communityID', :'categoryID', 'G2', 'g2');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'anotherGroupID', :'allianceID', :'categoryID', 'G2', 'g2');
 
 select is(
     list_event_attendees_ids(:'anotherGroupID'::uuid, :'eventID'::uuid),

@@ -1,12 +1,12 @@
--- Add fixed RBAC roles for community and group management.
+-- Add fixed RBAC roles for alliance and group management.
 
--- Community roles available for community team members.
-create table community_role (
-    community_role_id text primary key,
+-- Alliance roles available for alliance team members.
+create table alliance_role (
+    alliance_role_id text primary key,
     display_name text not null unique check (btrim(display_name) <> '')
 );
 
-insert into community_role (community_role_id, display_name)
+insert into alliance_role (alliance_role_id, display_name)
 values
     ('admin', 'Admin'),
     ('groups-manager', 'Groups Manager'),
@@ -28,21 +28,21 @@ where role = 'organizer';
 delete from group_role
 where group_role_id = 'organizer';
 
--- Add explicit community-team roles for permission checks.
-alter table community_team
-add column role text references community_role;
+-- Add explicit alliance-team roles for permission checks.
+alter table alliance_team
+add column role text references alliance_role;
 
--- Set a default role for existing community team members, and make the role required.
-update community_team
+-- Set a default role for existing alliance team members, and make the role required.
+update alliance_team
 set role = 'admin'
 where role is null;
 
-alter table community_team
+alter table alliance_team
 alter column role set not null;
 
-create index community_team_role_idx on community_team (role);
+create index alliance_team_role_idx on alliance_team (role);
 
 -- Drop legacy auth functions.
-drop function if exists user_owns_community(uuid, uuid);
+drop function if exists user_owns_alliance(uuid, uuid);
 drop function if exists user_owns_group(uuid, uuid, uuid);
-drop function if exists user_owns_groups_in_community(uuid, uuid);
+drop function if exists user_owns_groups_in_alliance(uuid, uuid);

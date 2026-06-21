@@ -1,8 +1,8 @@
--- Add Bluesky social profile URLs to user, community, and group entities.
+-- Add Bluesky social profile URLs to user, alliance, and group entities.
 alter table "user"
     add column bluesky_url text check (btrim(bluesky_url) <> '');
 
-alter table community
+alter table alliance
     add column bluesky_url text check (btrim(bluesky_url) <> '');
 
 alter table "group"

@@ -7,23 +7,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const TEST_UPLOAD_ASSET_PATHS = {
   alternateBanner: path.resolve(
     __dirname,
-    "../../../ocg-server/static/images/e2e/community-secondary-banner.svg",
+    "../../../ocg-server/static/images/e2e/alliance-secondary-banner.svg",
   ),
   alternateBannerMobile: path.resolve(
     __dirname,
-    "../../../ocg-server/static/images/e2e/community-secondary-banner-mobile.svg",
+    "../../../ocg-server/static/images/e2e/alliance-secondary-banner-mobile.svg",
   ),
   alternateLogo: path.resolve(
     __dirname,
-    "../../../ocg-server/static/images/e2e/community-secondary-logo.svg",
+    "../../../ocg-server/static/images/e2e/alliance-secondary-logo.svg",
   ),
   banner: path.resolve(
     __dirname,
-    "../../../ocg-server/static/images/e2e/community-primary-banner.svg",
+    "../../../ocg-server/static/images/e2e/alliance-primary-banner.svg",
   ),
   bannerMobile: path.resolve(
     __dirname,
-    "../../../ocg-server/static/images/e2e/community-primary-banner-mobile.svg",
+    "../../../ocg-server/static/images/e2e/alliance-primary-banner-mobile.svg",
   ),
   galleryOne: path.resolve(
     __dirname,
@@ -35,7 +35,7 @@ export const TEST_UPLOAD_ASSET_PATHS = {
   ),
   logo: path.resolve(
     __dirname,
-    "../../../ocg-server/static/images/e2e/community-primary-logo.svg",
+    "../../../ocg-server/static/images/e2e/alliance-primary-logo.svg",
   ),
   sponsorLogo: path.resolve(
     __dirname,

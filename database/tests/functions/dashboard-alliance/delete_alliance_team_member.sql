@@ -1,0 +1,127 @@
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
+begin;
+select plan(7);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set allianceID '00000000-0000-0000-0000-000000000001'
+\set user1ID '00000000-0000-0000-0000-000000000011'
+\set user2ID '00000000-0000-0000-0000-000000000012'
+\set user3ID '00000000-0000-0000-0000-000000000013'
+\set user4ID '00000000-0000-0000-0000-000000000014'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Alliance
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values (
+    :'allianceID',
+    'c1',
+    'C1',
+    'Alliance 1',
+    'https://e/logo.png',
+    'https://e/banner_mobile.png',
+    'https://e/banner.png'
+);
+
+-- User
+insert into "user" (
+    user_id, auth_hash, email, name, username, email_verified
+) values (
+    :'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true
+), (
+    :'user2ID', gen_random_bytes(32), 'bob@example.com', 'Bob', 'bob', true
+), (
+    :'user3ID', gen_random_bytes(32), 'charlie@example.com', 'Charlie', 'charlie', true
+);
+
+insert into alliance_team (accepted, alliance_id, role, user_id) values
+    (true, :'allianceID', 'admin', :'user1ID'),
+    (true, :'allianceID', 'admin', :'user2ID'),
+    (false, :'allianceID', 'viewer', :'user3ID');
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Should allow deleting an accepted member when another accepted member remains
+select lives_ok(
+    $$ select delete_alliance_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000012'::uuid) $$,
+    'Should allow deleting an accepted member when another accepted member exists'
+);
+select results_eq(
+    $$ select count(*) from alliance_team where alliance_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000012'::uuid $$,
+    $$ values (0::bigint) $$,
+    'Deleted accepted membership row should be removed'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            alliance_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'alliance_team_member_removed',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            'user',
+            '00000000-0000-0000-0000-000000000012'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
+-- Should allow deleting a pending invitation when there is one accepted member left
+select lives_ok(
+    $$ select delete_alliance_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000013'::uuid) $$,
+    'Should allow deleting a pending invitation with only one accepted member left'
+);
+
+-- Should block deleting the last accepted member
+select throws_ok(
+    $$ select delete_alliance_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid) $$,
+    'cannot remove the last accepted alliance admin',
+    'Should block deleting the last accepted member'
+);
+select results_eq(
+    $$ select count(*) from alliance_team where alliance_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000011'::uuid $$,
+    $$ values (1::bigint) $$,
+    'Last accepted membership row should remain after blocked delete'
+);
+
+-- Should not allow deleting when membership does not exist
+select throws_ok(
+    $$ select delete_alliance_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000014'::uuid) $$,
+    'user is not a alliance team member',
+    'Should not allow deleting when membership does not exist'
+);
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
+select * from finish();
+rollback;

@@ -9,7 +9,7 @@ select plan(14);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79100000-0000-0000-0000-000000000001'
+\set allianceID '79100000-0000-0000-0000-000000000001'
 \set eventCategoryID '79100000-0000-0000-0000-000000000002'
 \set mainEventID '79100000-0000-0000-0000-000000000003'
 \set soldOutEventID '79100000-0000-0000-0000-000000000004'
@@ -54,17 +54,17 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'prepare-community', 'Prepare Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'prepare-alliance', 'Prepare Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
@@ -84,10 +84,10 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug, slug_pretty)
+insert into "group" (group_id, alliance_id, group_category_id, name, payment_recipient, slug, slug_pretty)
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Prepare Group',
     jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
@@ -379,14 +379,14 @@ select results_eq(
             ) as checkout
         )
         select
-            checkout->>'community_name',
+            checkout->>'alliance_name',
             checkout->>'event_slug',
             checkout->>'group_slug',
             checkout->>'group_slug_pretty',
             checkout->'recipient'->>'recipient_id'
         from prepared_checkout
     $$,
-    $$ values ('prepare-community'::text, 'main-event'::text, 'prepare-group'::text, 'prepare-group-pretty'::text, 'acct_prepare'::text) $$,
+    $$ values ('prepare-alliance'::text, 'main-event'::text, 'prepare-group'::text, 'prepare-group-pretty'::text, 'acct_prepare'::text) $$,
     'Should return the checkout route and recipient context alongside the purchase'
 );
 
@@ -460,7 +460,7 @@ select results_eq(
 -- Should return an existing completed purchase as-is
 select is(
     prepare_event_checkout_purchase(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'mainEventID'::uuid,
         :'ticketTypeBID'::uuid,
         :'completedUserID'::uuid,
@@ -469,7 +469,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'amount_minor', 2500,
-        'community_name', 'prepare-community',
+        'alliance_name', 'prepare-alliance',
         'currency_code', 'USD',
         'discount_amount_minor', 0,
         'event_id', :'mainEventID'::uuid,

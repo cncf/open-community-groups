@@ -12,7 +12,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        community::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
+        alliance::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
         filters,
         helpers::user_initials,
     },
@@ -197,8 +197,8 @@ impl From<Option<&str>> for Entity {
 /// This struct provides the lists of available options for some filters.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct FiltersOptions {
-    /// Available communities.
-    pub communities: Vec<FilterOption>,
+    /// Available alliances.
+    pub alliances: Vec<FilterOption>,
     /// Available distance options (e.g., 5km, 10km, 25km).
     pub distance: Vec<FilterOption>,
 
@@ -208,7 +208,7 @@ pub(crate) struct FiltersOptions {
     /// Available group categories.
     #[serde(default)]
     pub group_category: Option<Vec<FilterOption>>,
-    /// Available groups (only when filtering events within a community).
+    /// Available groups (only when filtering events within a alliance).
     #[serde(default)]
     pub groups: Option<Vec<FilterOption>>,
     /// Available geographic regions.

@@ -10,7 +10,7 @@ select plan(5);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set user1ID '00000000-0000-0000-0000-000000000031'
 \set user2ID '00000000-0000-0000-0000-000000000033'
@@ -19,17 +19,17 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Category
-insert into group_category (group_category_id, community_id, name) values
-    (:'categoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name) values
+    (:'categoryID', :'allianceID', 'Tech');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
+    (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, name, username, email_verified) values
@@ -63,7 +63,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             resource_type,
             resource_id,

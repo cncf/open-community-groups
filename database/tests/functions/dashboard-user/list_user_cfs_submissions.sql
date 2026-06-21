@@ -9,7 +9,7 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000041'
 \set eventID '00000000-0000-0000-0000-000000000051'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
@@ -27,21 +27,21 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
+    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name) values
+    (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'G1', 'g1');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name) values
+    (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
@@ -166,7 +166,7 @@ select is(
                 'created_at',
                 extract(epoch from '2024-01-04 00:00:00+00'::timestamptz)::bigint,
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
                 'labels',
                 jsonb_build_array(
                     jsonb_build_object(
@@ -210,7 +210,7 @@ select is(
                 'created_at',
                 extract(epoch from '2024-01-03 00:00:00+00'::timestamptz)::bigint,
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
                 'labels',
                 jsonb_build_array(
                     jsonb_build_object(
@@ -275,7 +275,7 @@ select is(
                 'created_at',
                 extract(epoch from '2024-01-03 00:00:00+00'::timestamptz)::bigint,
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
                 'labels',
                 jsonb_build_array(
                     jsonb_build_object(

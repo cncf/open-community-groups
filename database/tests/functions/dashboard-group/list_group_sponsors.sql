@@ -10,7 +10,7 @@ select plan(4);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000010'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set group2ID '00000000-0000-0000-0000-000000000003'
 \set groupID '00000000-0000-0000-0000-000000000002'
 \set sponsor1ID '00000000-0000-0000-0000-000000000061'
@@ -21,19 +21,19 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'Community 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group Category (required by group)
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Tech', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Tech', :'allianceID');
 
 -- Groups
-insert into "group" (group_id, community_id, name, slug, group_category_id)
+insert into "group" (group_id, alliance_id, name, slug, group_category_id)
 values
-    (:'groupID', :'communityID', 'G1', 'g1', :'categoryID'),
-    (:'group2ID', :'communityID', 'G2', 'g2', :'categoryID');
+    (:'groupID', :'allianceID', 'G1', 'g1', :'categoryID'),
+    (:'group2ID', :'allianceID', 'G2', 'g2', :'categoryID');
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url, featured)

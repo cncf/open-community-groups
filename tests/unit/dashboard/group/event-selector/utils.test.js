@@ -114,7 +114,7 @@ describe("event selector utils", () => {
     // The search URL includes only configured filters.
     expect(
       buildEventSearchUrl({
-        communityName: "open-source",
+        allianceName: "open-source",
         dateFrom: "2025-01-01",
         groupSlug: "maintainers",
         query: "platform",
@@ -127,7 +127,7 @@ describe("event selector utils", () => {
         "sort_direction=desc",
         "ts_query=platform",
         "group%5B%5D=maintainers",
-        "community%5B%5D=open-source",
+        "alliance%5B%5D=open-source",
       ].join("&"),
     );
   });
@@ -136,18 +136,18 @@ describe("event selector utils", () => {
     // Closest dashboard content wins when the selector is inside the page root.
     const fallbackRoot = document.createElement("div");
     fallbackRoot.innerHTML = `
-      <div id="dashboard-content" data-community="fallback" data-group-slug="fallback-group">
+      <div id="dashboard-content" data-alliance="fallback" data-group-slug="fallback-group">
       </div>
     `;
     const pageRoot = document.createElement("div");
     pageRoot.id = "dashboard-content";
-    pageRoot.dataset.community = "cncf";
+    pageRoot.dataset.alliance = "goup";
     pageRoot.dataset.groupSlug = "platform-engineering";
     const selector = document.createElement("event-selector");
     pageRoot.append(selector);
 
     expect(getDashboardSelectionContext(selector, fallbackRoot)).to.deep.equal({
-      community: "cncf",
+      alliance: "goup",
       groupSlug: "platform-engineering",
     });
 
@@ -155,7 +155,7 @@ describe("event selector utils", () => {
     expect(
       getDashboardSelectionContext(document.createElement("event-selector"), fallbackRoot),
     ).to.deep.equal({
-      community: "fallback",
+      alliance: "fallback",
       groupSlug: "fallback-group",
     });
   });
@@ -164,22 +164,22 @@ describe("event selector utils", () => {
     // Explicit selector attributes win over dashboard fallback values.
     expect(
       resolveEventSearchContext({
-        community: "cncf",
-        dashboardSelection: { community: "fallback", groupSlug: "fallback-group" },
+        alliance: "goup",
+        dashboardSelection: { alliance: "fallback", groupSlug: "fallback-group" },
         groupSlug: "platform-engineering",
       }),
     ).to.deep.equal({
-      communityName: "cncf",
+      allianceName: "goup",
       groupSlug: "platform-engineering",
     });
 
     // Missing attributes fall back to the dashboard selection context.
     expect(
       resolveEventSearchContext({
-        dashboardSelection: { community: "fallback", groupSlug: "fallback-group" },
+        dashboardSelection: { alliance: "fallback", groupSlug: "fallback-group" },
       }),
     ).to.deep.equal({
-      communityName: "fallback",
+      allianceName: "fallback",
       groupSlug: "fallback-group",
     });
   });

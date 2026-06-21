@@ -22,7 +22,7 @@ use crate::{
 #[tokio::test]
 async fn test_add_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -31,10 +31,10 @@ async fn test_add_db_error() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -73,17 +73,17 @@ async fn test_add_db_error() {
 #[tokio::test]
 async fn test_add_invalid_body() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -112,24 +112,24 @@ async fn test_add_invalid_body() {
 #[tokio::test]
 async fn test_add_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::Read,
     );
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -164,7 +164,7 @@ async fn test_add_page_success() {
 #[tokio::test]
 async fn test_add_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -173,10 +173,10 @@ async fn test_add_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -220,7 +220,7 @@ async fn test_add_success() {
 #[tokio::test]
 async fn test_delete_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -228,10 +228,10 @@ async fn test_delete_db_error() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -267,7 +267,7 @@ async fn test_delete_db_error() {
 #[tokio::test]
 async fn test_delete_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -275,10 +275,10 @@ async fn test_delete_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -319,24 +319,24 @@ async fn test_delete_success() {
 #[tokio::test]
 async fn test_list_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::Read,
     );
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -373,7 +373,7 @@ async fn test_list_page_db_error() {
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -385,17 +385,17 @@ async fn test_list_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::Read,
     );
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -437,7 +437,7 @@ async fn test_list_page_success() {
 #[tokio::test]
 async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -449,17 +449,17 @@ async fn test_list_page_with_pagination_params() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::Read,
     );
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -498,7 +498,7 @@ async fn test_list_page_with_pagination_params() {
 #[tokio::test]
 async fn test_update_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -508,10 +508,10 @@ async fn test_update_db_error() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -552,7 +552,7 @@ async fn test_update_db_error() {
 #[tokio::test]
 async fn test_update_featured_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -562,10 +562,10 @@ async fn test_update_featured_db_error() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -605,7 +605,7 @@ async fn test_update_featured_db_error() {
 #[tokio::test]
 async fn test_update_featured_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -615,10 +615,10 @@ async fn test_update_featured_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -663,7 +663,7 @@ async fn test_update_featured_success() {
 #[tokio::test]
 async fn test_update_invalid_body() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -671,10 +671,10 @@ async fn test_update_invalid_body() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -705,7 +705,7 @@ async fn test_update_invalid_body() {
 #[tokio::test]
 async fn test_update_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -715,17 +715,17 @@ async fn test_update_page_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::Read,
     );
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,
@@ -764,7 +764,7 @@ async fn test_update_page_success() {
 #[tokio::test]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let group_sponsor_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -774,10 +774,10 @@ async fn test_update_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
     expect_group_permission(
         &mut db,
-        community_id,
+        alliance_id,
         group_id,
         user_id,
         GroupPermission::SponsorsWrite,

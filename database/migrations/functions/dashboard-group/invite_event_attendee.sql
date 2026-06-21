@@ -165,7 +165,7 @@ begin
         p_actor_user_id,
         'user',
         v_target_user_id,
-        (select g.community_id from "group" g where g.group_id = p_group_id),
+        (select g.alliance_id from "group" g where g.group_id = p_group_id),
         p_group_id,
         p_event_id,
         jsonb_build_object('event_id', p_event_id, 'user_id', v_target_user_id)

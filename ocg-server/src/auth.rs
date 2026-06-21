@@ -10,7 +10,7 @@ use axum_login::{
     tower_sessions::{self, session, session_store},
 };
 use garde::Validate;
-use oauth2::{TokenResponse, reqwest as oauth2_reqwest};
+use oauth2::{RequestTokenError, TokenResponse, reqwest as oauth2_reqwest};
 use openidconnect::{self as oidc, LocalizedClaim};
 use password_auth::verify_password;
 use reqwest::header::HeaderMap;
@@ -190,11 +190,37 @@ impl AuthnBackend {
         let Some(oidc_provider) = self.oidc_providers.get(&creds.provider) else {
             bail!("oidc provider not found")
         };
-        let token_response = oidc_provider
+        let token_result = oidc_provider
             .client
             .exchange_code(oidc::AuthorizationCode::new(creds.code))?
             .request_async(&self.http_client)
-            .await?;
+            .await;
+
+        if let (
+            OidcProvider::LinkedIn,
+            Err(RequestTokenError::Parse(parse_err, body)),
+        ) = (&creds.provider, &token_result)
+        {
+            let token_response: LinkedInTokenResponse = serde_json::from_slice(body).map_err(|_| {
+                anyhow!(
+                    "failed to parse token response: {parse_err}; response body: {}",
+                    sanitize_oauth_response_body(body)
+                )
+            })?;
+            let user_summary =
+                UserSummary::from_linkedin_userinfo(&token_response.access_token).await?;
+            let user = self.get_or_sign_up_external_user(&user_summary).await?;
+
+            return Ok(Some(user));
+        }
+
+        let token_response = token_result.map_err(|err| match err {
+            RequestTokenError::Parse(parse_err, body) => anyhow!(
+                "failed to parse token response: {parse_err}; response body: {}",
+                sanitize_oauth_response_body(&body)
+            ),
+            err => anyhow!(err),
+        })?;
 
         // Extract and verify ID token claims.
         let id_token_verifier = oidc_provider.client.id_token_verifier();
@@ -205,7 +231,7 @@ impl AuthnBackend {
 
         // Get the user if they exist, otherwise sign them up
         let user_summary = match creds.provider {
-            OidcProvider::LinuxFoundation => UserSummary::from_oidc_id_token_claims(claims)?,
+            OidcProvider::LinkedIn => UserSummary::from_linkedin_id_token_claims(claims)?,
         };
         let user = self.get_or_sign_up_external_user(&user_summary).await?;
 
@@ -261,6 +287,13 @@ impl AuthnBackend {
                     user.provider = Some(merged_provider);
                 }
             }
+
+            if user_summary.photo_url.is_some() && user.photo_url != user_summary.photo_url {
+                self.db
+                    .update_user_external_profile(&user.user_id, user_summary)
+                    .await?;
+                user.photo_url = user_summary.photo_url.clone();
+            }
             Ok(user)
         } else {
             let (user, _) = self.db.sign_up_user(user_summary, true).await?;
@@ -295,17 +328,20 @@ impl AuthnBackend {
     /// Set up `Oidc` providers from configuration.
     async fn setup_oidc_providers(
         oidc_cfg: &OidcConfig,
-        http_client: oauth2_reqwest::Client,
+        _http_client: oauth2_reqwest::Client,
     ) -> Result<OidcProviders> {
         let mut providers: OidcProviders = HashMap::new();
 
         for (provider, cfg) in oidc_cfg {
-            let issuer_url = oidc::IssuerUrl::new(cfg.issuer_url.clone())?;
+            let provider_metadata = match provider {
+                OidcProvider::LinkedIn => Self::linkedin_provider_metadata(&cfg.issuer_url)?,
+            };
             let client = oidc::core::CoreClient::from_provider_metadata(
-                oidc::core::CoreProviderMetadata::discover_async(issuer_url, &http_client).await?,
+                provider_metadata,
                 oidc::ClientId::new(cfg.client_id.clone()),
                 Some(oidc::ClientSecret::new(cfg.client_secret.clone())),
             )
+            .set_auth_type(oauth2::AuthType::RequestBody)
             .set_redirect_uri(oidc::RedirectUrl::new(cfg.redirect_uri.clone())?);
 
             providers.insert(
@@ -319,6 +355,74 @@ impl AuthnBackend {
 
         Ok(providers)
     }
+
+    /// Build LinkedIn OIDC provider metadata.
+    ///
+    /// LinkedIn publishes its discovery document at `/oauth/.well-known/openid-configuration`,
+    /// but the issuer in that document is `https://www.linkedin.com`. Constructing the metadata
+    /// directly avoids relying on issuer-derived discovery URLs that do not match LinkedIn's layout.
+    fn linkedin_provider_metadata(issuer_url: &str) -> Result<oidc::core::CoreProviderMetadata> {
+        Ok(oidc::core::CoreProviderMetadata::new(
+            oidc::IssuerUrl::new(issuer_url.to_string())?,
+            oidc::AuthUrl::new("https://www.linkedin.com/oauth/v2/authorization".to_string())?,
+            oidc::JsonWebKeySetUrl::new("https://www.linkedin.com/oauth/openid/jwks".to_string())?,
+            vec![oidc::ResponseTypes::new(vec![
+                oidc::core::CoreResponseType::Code,
+            ])],
+            vec![oidc::core::CoreSubjectIdentifierType::Pairwise],
+            vec![oidc::core::CoreJwsSigningAlgorithm::RsaSsaPkcs1V15Sha256],
+            oidc::EmptyAdditionalProviderMetadata::default(),
+        )
+        .set_token_endpoint(Some(oidc::TokenUrl::new(
+            "https://www.linkedin.com/oauth/v2/accessToken".to_string(),
+        )?))
+        .set_token_endpoint_auth_methods_supported(Some(vec![
+            oidc::core::CoreClientAuthMethod::ClientSecretPost,
+        ]))
+        .set_userinfo_endpoint(Some(oidc::UserInfoUrl::new(
+            "https://api.linkedin.com/v2/userinfo".to_string(),
+        )?))
+        .set_scopes_supported(Some(vec![
+            oidc::Scope::new("openid".to_string()),
+            oidc::Scope::new("profile".to_string()),
+            oidc::Scope::new("email".to_string()),
+        ])))
+    }
+}
+
+fn sanitize_oauth_response_body(body: &[u8]) -> String {
+    let body = String::from_utf8_lossy(body);
+    let mut preview = body.chars().take(1000).collect::<String>();
+
+    for field in ["access_token", "refresh_token", "id_token", "client_secret"] {
+        preview = redact_json_field(&preview, field);
+    }
+
+    preview
+}
+
+fn redact_json_field(input: &str, field: &str) -> String {
+    let pattern = format!("\"{field}\":\"");
+    let mut output = String::with_capacity(input.len());
+    let mut rest = input;
+
+    while let Some(start) = rest.find(&pattern) {
+        let (before, after_start) = rest.split_at(start);
+        output.push_str(before);
+        output.push_str(&pattern);
+        output.push_str("[redacted]");
+
+        let value_start = pattern.len();
+        let after_value_start = &after_start[value_start..];
+        if let Some(end) = after_value_start.find('"') {
+            rest = &after_value_start[end..];
+        } else {
+            rest = "";
+        }
+    }
+
+    output.push_str(rest);
+    output
 }
 
 impl axum_login::AuthnBackend for AuthnBackend {
@@ -459,8 +563,8 @@ pub(crate) struct User {
 
     /// Whether the user belongs to any group team.
     pub belongs_to_any_group_team: Option<bool>,
-    /// Whether the user belongs to their community team.
-    pub belongs_to_community_team: Option<bool>,
+    /// Whether the user belongs to their alliance team.
+    pub belongs_to_alliance_team: Option<bool>,
     /// User's biography.
     pub bio: Option<String>,
     /// User's Bluesky URL.
@@ -534,6 +638,9 @@ pub(crate) struct UserSummary {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
     pub username: String,
 
+    /// User's profile photo URL.
+    #[garde(skip)]
+    pub photo_url: Option<String>,
     /// Whether the user has a password set.
     #[garde(skip)]
     pub has_password: Option<bool>,
@@ -550,7 +657,7 @@ impl UserSummary {
     async fn from_github_profile(access_token: &str) -> Result<Self> {
         // Setup headers for GitHub API requests.
         let mut headers = HeaderMap::new();
-        headers.insert(USER_AGENT, "open-community-groups".parse()?);
+        headers.insert(USER_AGENT, "open-alliance-groups".parse()?);
         headers.insert(
             AUTHORIZATION,
             format!("Bearer {access_token}").as_str().parse()?,
@@ -585,13 +692,14 @@ impl UserSummary {
             name: profile.name,
             provider: Some(UserProvider::from_github_username(profile.login.clone())),
             username: profile.login,
+            photo_url: None,
             has_password: Some(false),
             password: None,
         })
     }
 
-    /// Create a `UserSummary` from `Oidc` Id token claims.
-    fn from_oidc_id_token_claims(
+    /// Create a `UserSummary` from LinkedIn OIDC ID token claims.
+    fn from_linkedin_id_token_claims(
         claims: &oidc::IdTokenClaims<oidc::EmptyAdditionalClaims, oidc::core::CoreGenderClaim>,
     ) -> Result<Self> {
         // Ensure email is verified and extract user info.
@@ -601,16 +709,61 @@ impl UserSummary {
 
         let email = claims.email().ok_or_else(|| anyhow!("email missing"))?.to_string();
         let name = get_localized_claim(claims.name()).ok_or_else(|| anyhow!("name missing"))?;
-        let username =
-            get_localized_claim(claims.nickname()).ok_or_else(|| anyhow!("nickname missing"))?;
+        let subject = claims.subject().to_string();
+        let username = email
+            .split_once('@')
+            .map(|(username, _)| username)
+            .filter(|username| !username.trim().is_empty())
+            .ok_or_else(|| anyhow!("email username missing"))?
+            .to_string();
 
         Ok(Self {
             email,
             name: name.to_string(),
-            provider: Some(UserProvider::from_linuxfoundation_username(
-                username.to_string(),
-            )),
-            username: username.to_string(),
+            provider: Some(UserProvider::from_linkedin_subject(subject)),
+            username,
+            photo_url: get_localized_claim(claims.picture()).map(|picture| picture.to_string()),
+            has_password: Some(false),
+            password: None,
+        })
+    }
+
+    /// Create a `UserSummary` from LinkedIn's OIDC UserInfo endpoint.
+    async fn from_linkedin_userinfo(access_token: &str) -> Result<Self> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            AUTHORIZATION,
+            format!("Bearer {access_token}").as_str().parse()?,
+        );
+
+        let profile = reqwest::Client::new()
+            .get("https://api.linkedin.com/v2/userinfo")
+            .headers(headers)
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<LinkedInUserInfo>()
+            .await?;
+
+        if !profile.email_verified() {
+            bail!("email not verified");
+        }
+
+        let email = profile.email.ok_or_else(|| anyhow!("email missing"))?;
+        let name = profile.name.ok_or_else(|| anyhow!("name missing"))?;
+        let username = email
+            .split_once('@')
+            .map(|(username, _)| username)
+            .filter(|username| !username.trim().is_empty())
+            .ok_or_else(|| anyhow!("email username missing"))?
+            .to_string();
+
+        Ok(Self {
+            email,
+            name,
+            provider: Some(UserProvider::from_linkedin_subject(profile.sub)),
+            username,
+            photo_url: profile.picture,
             has_password: Some(false),
             password: None,
         })
@@ -624,6 +777,7 @@ impl From<User> for UserSummary {
             email: user.email,
             name: user.name,
             username: user.username,
+            photo_url: user.photo_url,
             has_password: user.has_password,
             password: None,
             provider: user.provider,
@@ -673,6 +827,30 @@ struct GitHubUserEmail {
     primary: bool,
     /// Whether this email is verified.
     verified: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct LinkedInTokenResponse {
+    access_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct LinkedInUserInfo {
+    sub: String,
+    email: Option<String>,
+    email_verified: Option<serde_json::Value>,
+    name: Option<String>,
+    picture: Option<String>,
+}
+
+impl LinkedInUserInfo {
+    fn email_verified(&self) -> bool {
+        match self.email_verified.as_ref() {
+            Some(serde_json::Value::Bool(value)) => *value,
+            Some(serde_json::Value::String(value)) => value == "true",
+            _ => false,
+        }
+    }
 }
 
 /// Default persisted registration status for regular users.

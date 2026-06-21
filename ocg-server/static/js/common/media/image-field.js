@@ -3,7 +3,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
-import { showErrorAlert } from "/static/js/common/alerts.js";
+import { showServerErrorAlert } from "/static/js/common/alerts.js";
 import "/static/js/common/svg-spinner.js";
 
 const IMAGE_KIND = {
@@ -229,9 +229,9 @@ export class ImageField extends LitWrapper {
 
       this._setValue(data.url);
     } catch (error) {
-      const ERROR_MESSAGE =
-        'Something went wrong adding the image. Please try again later.<br /><br /><div class="text-sm text-stone-500">Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
-      showErrorAlert(ERROR_MESSAGE, true);
+      const ERROR_MESSAGE = "Something went wrong adding the image.";
+      const HELP_TEXT = "Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.";
+      showServerErrorAlert(ERROR_MESSAGE, error.message || HELP_TEXT);
     } finally {
       this._isUploading = false;
       if (typeof resetCallback === "function") {

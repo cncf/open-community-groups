@@ -111,7 +111,7 @@ async fn test_events_section_success() {
 }
 
 #[tokio::test]
-async fn test_events_section_with_single_community() {
+async fn test_events_section_with_single_alliance() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
 
@@ -120,7 +120,7 @@ async fn test_events_section_with_single_community() {
     db.expect_get_filters_options()
         .times(1)
         .withf(|c, e| {
-            c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Events)
+            c == &Some("test-alliance".to_string()) && e == &Some(explore::Entity::Events)
         })
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_events()
@@ -134,7 +134,7 @@ async fn test_events_section_with_single_community() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
-        .uri("/explore/events-section?community[0]=test-community")
+        .uri("/explore/events-section?alliance[0]=test-alliance")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -237,7 +237,7 @@ async fn test_groups_section_success() {
 }
 
 #[tokio::test]
-async fn test_groups_section_with_single_community() {
+async fn test_groups_section_with_single_alliance() {
     // Setup identifiers and data structures
     let group_id = Uuid::new_v4();
 
@@ -246,7 +246,7 @@ async fn test_groups_section_with_single_community() {
     db.expect_get_filters_options()
         .times(1)
         .withf(|c, e| {
-            c == &Some("test-community".to_string()) && e == &Some(explore::Entity::Groups)
+            c == &Some("test-alliance".to_string()) && e == &Some(explore::Entity::Groups)
         })
         .returning(|_, _| Ok(sample_filters_options()));
     db.expect_search_groups()
@@ -260,7 +260,7 @@ async fn test_groups_section_with_single_community() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
-        .uri("/explore/groups-section?community[0]=test-community")
+        .uri("/explore/groups-section?alliance[0]=test-alliance")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();

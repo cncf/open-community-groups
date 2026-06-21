@@ -11,7 +11,7 @@ select plan(4);
 
 \set canceledDraftEventID '00000000-0000-0000-0000-000000000303'
 \set canceledEventID '00000000-0000-0000-0000-000000000302'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000201'
 \set groupID '00000000-0000-0000-0000-000000000101'
 \set publishedEventID '00000000-0000-0000-0000-000000000301'
@@ -21,9 +21,9 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -31,24 +31,24 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
-    'views-community',
-    'Views Community',
-    'Community for update_event_views tests',
+    :'allianceID',
+    'views-alliance',
+    'Views Alliance',
+    'Alliance for update_event_views tests',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values ('00000000-0000-0000-0000-000000000501', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values ('00000000-0000-0000-0000-000000000501', :'allianceID', 'Technology');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, active, deleted)
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     '00000000-0000-0000-0000-000000000501',
     'Views Group',
     'views-group',
@@ -57,8 +57,8 @@ values (
 );
 
 -- Event category and events
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 insert into event (
     event_id,

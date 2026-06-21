@@ -10,7 +10,7 @@ select plan(5);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
 \set regionID '00000000-0000-0000-0000-000000000012'
@@ -25,9 +25,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -38,30 +38,30 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/ad-banner-link',
     'https://example.com/ad-banner.png',
     'https://example.com/logo.png',
-    'https://example.com/community-og.png',
+    'https://example.com/alliance-og.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Region
-insert into region (region_id, name, community_id)
-values (:'regionID', 'North America', :'communityID');
+insert into region (region_id, name, alliance_id)
+values (:'regionID', 'North America', :'allianceID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Technology', :'allianceID');
 
 -- User
 insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, github_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Community meetup organizer', 'https://bsky.app/profile/alice', 'Alice Johnson', 'https://example.com/alice.png', jsonb_build_object('github', jsonb_build_object('username', 'alice-gh')), 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://github.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
+    (:'user1ID', 'alice@seattle.cloudnative.org', 'alice-organizer', false, 'test_hash', 'Alliance meetup organizer', 'https://bsky.app/profile/alice', 'Alice Johnson', 'https://example.com/alice.png', jsonb_build_object('github', jsonb_build_object('username', 'alice-gh')), 'Cloud Co', 'Manager', 'https://facebook.com/alice', 'https://github.com/alice', 'https://linkedin.com/in/alice', 'https://twitter.com/alice', 'https://alice.com'),
     (:'user2ID', 'bob@seattle.cloudnative.org', 'bob-organizer', false, 'test_hash', 'Cloud native program lead', null, 'Bob Wilson', 'https://example.com/bob.png', null, 'StartUp', 'Engineer', null, 'https://github.com/bob', 'https://linkedin.com/in/bob', null, 'https://bob.com'),
     (:'user3ID', 'charlie@seattle.cloudnative.org', 'charlie-member', false, 'test_hash', null, null, 'Charlie Brown', null, null, null, null, null, null, null, null, null),
     (:'user4ID', 'diana@seattle.cloudnative.org', 'diana-member', false, 'test_hash', null, null, 'Diana Prince', null, null, null, null, null, null, null, null, null);
@@ -71,7 +71,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     region_id,
     active,
@@ -105,7 +105,7 @@ insert into "group" (
     :'groupID',
     'Seattle Kubernetes Meetup',
     'abc1234',
-    :'communityID',
+    :'allianceID',
     :'categoryID',
     :'regionID',
     true,
@@ -167,7 +167,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     active,
     created_at
@@ -175,7 +175,7 @@ insert into "group" (
     :'groupInactiveID',
     'Inactive DevOps Group',
     'xyz9876',
-    :'communityID',
+    :'allianceID',
     :'categoryID',
     false,
     '2024-02-15 10:00:00+00'
@@ -188,7 +188,7 @@ insert into "group" (
 -- Should return complete group JSON
 select is(
     get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb,
     '{
@@ -237,22 +237,22 @@ select is(
         "wechat_url": "https://wechat.com/seattlek8s",
         "website_url": "https://seattle.kubernetes.com",
         "youtube_url": "https://youtube.com/@seattlek8s",
-        "community": {
+        "alliance": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "00000000-0000-0000-0000-000000000001",
+            "alliance_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
-            "og_image_url": "https://example.com/community-og.png"
+            "og_image_url": "https://example.com/alliance-og.png"
         },
         "organizers": [
             {
                 "user_id": "00000000-0000-0000-0000-000000000031",
                 "username": "alice-organizer",
-                "bio": "Community meetup organizer",
+                "bio": "Alliance meetup organizer",
                 "bluesky_url": "https://bsky.app/profile/alice",
                 "name": "Alice Johnson",
                 "company": "Cloud Co",
@@ -301,15 +301,15 @@ select is(
     'Should return complete group data with organizers and member count as JSON'
 );
 
--- Should use community logo when group has no logo
+-- Should use alliance logo when group has no logo
 update "group" set logo_url = null where group_id = :'groupID';
 select is(
     (get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
-    'Should use community logo when group has no logo'
+    'Should use alliance logo when group has no logo'
 );
 update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
 
@@ -317,7 +317,7 @@ update "group" set logo_url = 'https://example.com/group-logo.png' where group_i
 update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
 select is(
     (get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb)->>'slug_pretty',
     'seattle-kubernetes',
@@ -328,19 +328,19 @@ update "group" set slug_pretty = null where group_id = :'groupID';
 -- Should return null for non-existent group
 select ok(
     get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         '00000000-0000-0000-0000-000000999999'::uuid
     ) is null,
     'Should return null for non-existent group ID'
 );
 
--- Should return null when community does not match group
+-- Should return null when alliance does not match group
 select ok(
     get_group_full(
         '00000000-0000-0000-0000-000000000002'::uuid,
         :'groupID'::uuid
     ) is null,
-    'Should return null when community does not match group'
+    'Should return null when alliance does not match group'
 );
 
 -- ============================================================================

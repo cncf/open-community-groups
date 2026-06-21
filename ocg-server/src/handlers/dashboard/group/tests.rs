@@ -10,23 +10,23 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::{
-        auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+        auth::{SELECTED_ALLIANCE_ID_KEY, SELECTED_GROUP_ID_KEY},
         tests::*,
     },
     services::notifications::MockNotificationsManager,
 };
 
 #[tokio::test]
-async fn test_select_community_forbidden_when_user_has_no_groups_in_community() {
+async fn test_select_alliance_forbidden_when_user_has_no_groups_in_alliance() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let other_community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
+    let other_alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let groups = sample_user_groups_by_community(other_community_id, group_id);
+    let groups = sample_user_groups_by_alliance(other_alliance_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -38,7 +38,7 @@ async fn test_select_community_forbidden_when_user_has_no_groups_in_community() 
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission().times(0);
+    db.expect_user_has_alliance_permission().times(0);
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -52,7 +52,7 @@ async fn test_select_community_forbidden_when_user_has_no_groups_in_community() 
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/community/{community_id}/select"))
+        .uri(format!("/dashboard/group/alliance/{alliance_id}/select"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -64,15 +64,15 @@ async fn test_select_community_forbidden_when_user_has_no_groups_in_community() 
 }
 
 #[tokio::test]
-async fn test_select_community_success() {
+async fn test_select_alliance_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -84,7 +84,7 @@ async fn test_select_community_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission().times(0);
+    db.expect_user_has_alliance_permission().times(0);
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -95,8 +95,8 @@ async fn test_select_community_success() {
             record.id == session_id
                 && record
                     .data
-                    .get(SELECTED_COMMUNITY_ID_KEY)
-                    .is_some_and(|value| value == &json!(community_id))
+                    .get(SELECTED_ALLIANCE_ID_KEY)
+                    .is_some_and(|value| value == &json!(alliance_id))
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
@@ -111,7 +111,7 @@ async fn test_select_community_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
-        .uri(format!("/dashboard/group/community/{community_id}/select"))
+        .uri(format!("/dashboard/group/alliance/{alliance_id}/select"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -126,13 +126,13 @@ async fn test_select_community_success() {
 #[tokio::test]
 async fn test_select_group_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -144,14 +144,14 @@ async fn test_select_group_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_group_belongs_to_community()
+    db.expect_group_belongs_to_alliance()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_update_session()

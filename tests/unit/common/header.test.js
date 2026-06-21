@@ -202,7 +202,7 @@ describe("header", () => {
 
   it("does not scroll after swaps outside dashboard pages", () => {
     // Mark the current page as a non-dashboard path before the swap.
-    setLocationPath("/communities/cncf");
+    setLocationPath("/alliances/goup");
     document.body.innerHTML = `
       <button id="user-dropdown-button" type="button">User</button>
       <div id="user-dropdown" class="hidden"></div>

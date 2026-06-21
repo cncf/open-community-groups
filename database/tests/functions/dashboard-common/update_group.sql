@@ -11,7 +11,7 @@ select plan(20);
 
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000013'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
@@ -21,7 +21,7 @@ select plan(20);
 \set group5ID '00000000-0000-0000-0000-000000000026'
 \set groupDeletedID '00000000-0000-0000-0000-000000000022'
 \set groupID '00000000-0000-0000-0000-000000000021'
-\set nonExistentCommunityID '00000000-0000-0000-0000-000000000099'
+\set nonExistentAllianceID '00000000-0000-0000-0000-000000000099'
 \set ticketTypeID '00000000-0000-0000-0000-000000000041'
 \set ticketTypeUnpublishedID '00000000-0000-0000-0000-000000000042'
 
@@ -29,9 +29,9 @@ select plan(20);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -39,31 +39,31 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
+insert into group_category (group_category_id, name, alliance_id)
 values
-    (:'category1ID', 'Technology', :'communityID'),
-    (:'category2ID', 'Business', :'communityID');
+    (:'category1ID', 'Technology', :'allianceID'),
+    (:'category2ID', 'Business', :'allianceID');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Group
 insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     description,
     created_at
@@ -71,7 +71,7 @@ insert into "group" (
     :'groupID',
     'Original Group',
     'abc1234',
-    :'communityID',
+    :'allianceID',
     :'category1ID',
     'Original description',
     '2024-01-15 10:00:00+00'
@@ -82,7 +82,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     description,
     active,
@@ -93,7 +93,7 @@ insert into "group" (
     :'groupDeletedID',
     'Deleted Group',
     'xyz9876',
-    :'communityID',
+    :'allianceID',
     :'category1ID',
     'Deleted group description',
     false,
@@ -107,7 +107,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     description,
     tags,
@@ -117,7 +117,7 @@ insert into "group" (
     :'group3ID'::uuid,
     'Test Group for Null Arrays',
     'mno3ghi',
-    :'communityID',
+    :'allianceID',
     :'category1ID',
     'Has array fields',
     array['original', 'tags'],
@@ -130,7 +130,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     description,
     created_at
@@ -138,7 +138,7 @@ insert into "group" (
     :'group4ID'::uuid,
     'Group With Payment Recipient',
     'stu5nop',
-    :'communityID',
+    :'allianceID',
     :'category1ID',
     'Payment recipient audit coverage',
     '2024-01-15 10:00:00+00'
@@ -149,7 +149,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     description,
     payment_recipient,
@@ -158,7 +158,7 @@ insert into "group" (
     :'group5ID'::uuid,
     'Group With Unpublished Ticketed Event',
     'vwx6qrs',
-    :'communityID',
+    :'allianceID',
     :'category1ID',
     'Unpublished ticketed event coverage',
     '{"provider": "stripe", "recipient_id": "acct_456"}'::jsonb,
@@ -275,7 +275,7 @@ select lives_ok(
 
 -- Should return expected structure after update
 select is(
-    (select get_group_full(:'communityID'::uuid, :'groupID'::uuid)::jsonb - 'active' - 'created_at' - 'members_count'),
+    (select get_group_full(:'allianceID'::uuid, :'groupID'::uuid)::jsonb - 'active' - 'created_at' - 'members_count'),
     '{
         "name": "Updated Group",
         "slug": "abc1234",
@@ -285,10 +285,10 @@ select is(
             "name": "Business",
             "normalized_name": "business"
         },
-        "community": {
+        "alliance": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "00000000-0000-0000-0000-000000000001",
+            "alliance_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle"
@@ -354,7 +354,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             resource_type,
             resource_id
@@ -401,7 +401,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     description,
     banner_url,
@@ -415,7 +415,7 @@ insert into "group" (
     :'group2ID'::uuid,
     'Test Group for Empty Strings',
     'pqr4jkl',
-    :'communityID',
+    :'allianceID',
     :'category1ID',
     'Has some values',
     'https://example.com/banner.jpg',
@@ -462,7 +462,7 @@ select lives_ok(
 
 -- Should keep minimal fields after empty-string conversion
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'allianceID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Empty Strings",
         "slug": "pqr4jkl",
@@ -471,7 +471,7 @@ select is(
     'Should persist nulls after empty-string conversion'
 );
 
--- Should throw error when community_id mismatches
+-- Should throw error when alliance_id mismatches
 select throws_ok(
     $$select update_group(
         null::uuid,
@@ -480,7 +480,7 @@ select throws_ok(
         '{"name": "Won''t Work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
     )$$,
     'group not found or inactive',
-    'Should throw error when community_id does not match'
+    'Should throw error when alliance_id does not match'
 );
 
 -- Should handle explicit null values for array fields
@@ -502,7 +502,7 @@ select lives_ok(
 
 -- Should persist explicit null arrays in result
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'allianceID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Null Arrays",
         "slug": "mno3ghi",
@@ -538,7 +538,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             resource_type,
             resource_id
@@ -572,7 +572,7 @@ select results_eq(
 
 -- Should persist the normalized payment recipient after the update
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
+    (select get_group_full(:'allianceID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
     '{
         "provider": "stripe",
         "recipient_id": "acct_123"
@@ -602,7 +602,7 @@ select throws_ok(
 
 -- Should keep the stored payment recipient after rejecting the clear
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
+    (select get_group_full(:'allianceID'::uuid, :'group4ID'::uuid)::jsonb->'payment_recipient'),
     '{
         "provider": "stripe",
         "recipient_id": "acct_123"
@@ -631,7 +631,7 @@ select lives_ok(
 
 -- Should not persist a whitespace-only payment recipient id
 select is(
-    (select get_group_full(:'communityID'::uuid, :'groupID'::uuid)::jsonb->'payment_recipient'),
+    (select get_group_full(:'allianceID'::uuid, :'groupID'::uuid)::jsonb->'payment_recipient'),
     null::jsonb,
     'Should not persist a whitespace-only payment recipient id'
 );
@@ -657,7 +657,7 @@ select lives_ok(
 
 -- Should clear the stored payment recipient when only unpublished ticketed events exist
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
+    (select get_group_full(:'allianceID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
     null::jsonb,
     'Should clear the stored payment recipient when only unpublished ticketed events exist'
 );

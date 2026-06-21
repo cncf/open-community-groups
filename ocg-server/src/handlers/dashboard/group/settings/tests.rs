@@ -18,7 +18,7 @@ use crate::{
 #[tokio::test]
 async fn test_update_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -27,10 +27,10 @@ async fn test_update_page_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
-    let group = sample_group_full(community_id, group_id);
+    let group = sample_group_full(alliance_id, group_id);
     let category = sample_group_category();
     let region = sample_group_region();
 
@@ -47,7 +47,7 @@ async fn test_update_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -56,7 +56,7 @@ async fn test_update_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::SettingsWrite
@@ -64,15 +64,15 @@ async fn test_update_page_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_full()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group.clone()));
     db.expect_list_group_categories()
         .times(1)
-        .withf(move |cid| *cid == community_id)
+        .withf(move |cid| *cid == alliance_id)
         .returning(move |_| Ok(vec![category.clone()]));
     db.expect_list_regions()
         .times(1)
-        .withf(move |cid| *cid == community_id)
+        .withf(move |cid| *cid == alliance_id)
         .returning(move |_| Ok(vec![region.clone()]));
 
     // Setup notifications manager mock
@@ -102,7 +102,7 @@ async fn test_update_page_success() {
 #[tokio::test]
 async fn test_update_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -111,7 +111,7 @@ async fn test_update_page_db_error() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -128,7 +128,7 @@ async fn test_update_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -137,7 +137,7 @@ async fn test_update_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::SettingsWrite
@@ -145,7 +145,7 @@ async fn test_update_page_db_error() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_full()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
@@ -171,7 +171,7 @@ async fn test_update_page_db_error() {
 #[tokio::test]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -180,7 +180,7 @@ async fn test_update_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let update = sample_group_update();
@@ -199,7 +199,7 @@ async fn test_update_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::SettingsWrite
@@ -208,7 +208,7 @@ async fn test_update_success() {
     db.expect_update_group()
         .times(1)
         .withf(move |uid, cid, gid, group| {
-            *uid == user_id && *cid == community_id && *gid == group_id && group.name == update.name
+            *uid == user_id && *cid == alliance_id && *gid == group_id && group.name == update.name
         })
         .returning(move |_, _, _, _| Ok(()));
 
@@ -240,7 +240,7 @@ async fn test_update_success() {
 #[tokio::test]
 async fn test_update_invalid_body() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -249,7 +249,7 @@ async fn test_update_invalid_body() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -266,7 +266,7 @@ async fn test_update_invalid_body() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::SettingsWrite

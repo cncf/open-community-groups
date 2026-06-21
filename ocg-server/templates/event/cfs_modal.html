@@ -14,7 +14,7 @@
   {# Sign-in prompt -#}
   <div class="space-y-3">
     <p class="text-base text-stone-600">You need to sign in to submit a proposal for this event.</p>
-    {% let next_url = "/".to_owned() + &event.community_name + "/group/" + event.public_group_slug() + "/event/" + &event.slug -%}
+    {% let next_url = "/".to_owned() + &event.alliance_name + "/group/" + event.public_group_slug() + "/event/" + &event.slug -%}
     <div class="flex justify-center mt-9">
       <a class="btn-primary-outline-anchor inline-flex items-center"
          href="/log-in?next_url={{ next_url }}">
@@ -46,7 +46,7 @@
   {% else -%}
     {# CFS submission form -#}
     <form id="cfs-submission-form"
-          hx-post="/{{ event.community_name }}/event/{{ event.event_id }}/cfs-submissions"
+          hx-post="/{{ event.alliance_name }}/event/{{ event.event_id }}/cfs-submissions"
           hx-target="#cfs-modal-root"
           hx-swap="innerHTML"
           hx-indicator="#cfs-submit-spinner"

@@ -16,9 +16,9 @@
           src="/static/js/dashboard/event/ticketing/ticket-types-editor.js"></script>
   <script type="module"
           src="/static/js/dashboard/event/ticketing/discount-codes-editor.js"></script>
-  <script type="module" src="/static/js/dashboard/community/team-add-member.js"></script>
+  <script type="module" src="/static/js/dashboard/alliance/team-add-member.js"></script>
   <script type="module"
-          src="/static/js/dashboard/community/community-selector.js"></script>
+          src="/static/js/dashboard/alliance/alliance-selector.js"></script>
   <script type="module" src="/static/js/dashboard/group/group-selector.js"></script>
   <script type="module"
           src="/static/js/dashboard/group/event-selector/selector.js"></script>
@@ -43,19 +43,19 @@
   </div>
 
   <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
-    {# Community and group selector -#}
+    {# Alliance and group selector -#}
     <div>
-      {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_title(text = "Alliance and group", extra_styles = "py-1.5") -}}
       <div class="mt-2">
-        <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community">
+        <alliance-selector alliances="{{ alliances() |json }}" selected-alliance-id="{{ selected_alliance_id }}" select-endpoint="/dashboard/group/alliance">
         {{ dashboard::selector_loading_button() -}}
-        </community-selector>
+        </alliance-selector>
       </div>
 
-      <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}">
+      <group-selector groups="{{ selected_alliance_groups() |json }}" selected-group-id="{{ selected_group_id }}">
       <div class="my-4">{{ dashboard::selector_loading_button() -}}</div>
       </group-selector>
-      {% if !selected_community_groups().is_empty() -%}
+      {% if !selected_alliance_groups().is_empty() -%}
         {% let current_selection = current_selection_details() -%}
         {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + current_selection.1.public_slug() -%}
         <div class="mt-6 grid gap-y-0.5">
@@ -76,7 +76,7 @@
         </div>
       {% endif -%}
     </div>
-    {# End community and group selector -#}
+    {# End alliance and group selector -#}
 
     {# Analytics -#}
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
@@ -112,12 +112,12 @@
 {% block dashboard_main -%}
   {% let current_selection = current_selection_details() -%}
   <div id="dashboard-content"
-       data-community="{{ current_selection.0.name }}"
-       data-community-name="{{ current_selection.0.name }}"
-       data-community-display-name="{{ current_selection.0.display_name }}"
-       data-community-logo-url="{{ current_selection.0.logo_url }}"
-       data-community-banner-url="{{ current_selection.0.banner_url }}"
-       data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
+       data-alliance="{{ current_selection.0.name }}"
+       data-alliance-name="{{ current_selection.0.name }}"
+       data-alliance-display-name="{{ current_selection.0.display_name }}"
+       data-alliance-logo-url="{{ current_selection.0.logo_url }}"
+       data-alliance-banner-url="{{ current_selection.0.banner_url }}"
+       data-alliance-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
        data-group-name="{{ current_selection.1.name }}"
        data-group-slug="{{ current_selection.1.public_slug() }}"
        hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"

@@ -9,9 +9,9 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set activeCommunityID '00000000-0000-0000-0000-000000000001'
-\set duplicateCommunityID '00000000-0000-0000-0000-000000000002'
-\set inactiveCommunityID '00000000-0000-0000-0000-000000000003'
+\set activeAllianceID '00000000-0000-0000-0000-000000000001'
+\set duplicateAllianceID '00000000-0000-0000-0000-000000000002'
+\set inactiveAllianceID '00000000-0000-0000-0000-000000000003'
 \set activeEventCategoryID '00000000-0000-0000-0000-000000000011'
 \set activeGroupCategoryID '00000000-0000-0000-0000-000000000021'
 \set duplicateEventCategoryID '00000000-0000-0000-0000-000000000012'
@@ -39,9 +39,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
+-- Alliances
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -49,29 +49,29 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values
-    (:'activeCommunityID', 'active-community', 'Active Community', 'An active community', 'https://example.com/logo-active.png', 'https://example.com/banner-mobile-active.png', 'https://example.com/banner-active.png'),
-    (:'duplicateCommunityID', 'duplicate-community', 'Duplicate Community', 'A community for duplicate redirect tests', 'https://example.com/logo-duplicate.png', 'https://example.com/banner-mobile-duplicate.png', 'https://example.com/banner-duplicate.png'),
-    (:'inactiveCommunityID', 'inactive-community', 'Inactive Community', 'A disabled community', 'https://example.com/logo-inactive.png', 'https://example.com/banner-mobile-inactive.png', 'https://example.com/banner-inactive.png');
+    (:'activeAllianceID', 'active-alliance', 'Active Alliance', 'An active alliance', 'https://example.com/logo-active.png', 'https://example.com/banner-mobile-active.png', 'https://example.com/banner-active.png'),
+    (:'duplicateAllianceID', 'duplicate-alliance', 'Duplicate Alliance', 'A alliance for duplicate redirect tests', 'https://example.com/logo-duplicate.png', 'https://example.com/banner-mobile-duplicate.png', 'https://example.com/banner-duplicate.png'),
+    (:'inactiveAllianceID', 'inactive-alliance', 'Inactive Alliance', 'A disabled alliance', 'https://example.com/logo-inactive.png', 'https://example.com/banner-mobile-inactive.png', 'https://example.com/banner-inactive.png');
 
-update community
+update alliance
 set active = false
-where community_id = :'inactiveCommunityID'::uuid;
+where alliance_id = :'inactiveAllianceID'::uuid;
 
 -- Group categories
-insert into group_category (group_category_id, community_id, name) values
-    (:'activeGroupCategoryID', :'activeCommunityID', 'Technology'),
-    (:'duplicateGroupCategoryID', :'duplicateCommunityID', 'Technology'),
-    (:'inactiveGroupCategoryID', :'inactiveCommunityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name) values
+    (:'activeGroupCategoryID', :'activeAllianceID', 'Technology'),
+    (:'duplicateGroupCategoryID', :'duplicateAllianceID', 'Technology'),
+    (:'inactiveGroupCategoryID', :'inactiveAllianceID', 'Technology');
 
 -- Event categories
-insert into event_category (event_category_id, community_id, name) values
-    (:'activeEventCategoryID', :'activeCommunityID', 'Conference'),
-    (:'duplicateEventCategoryID', :'duplicateCommunityID', 'Conference');
+insert into event_category (event_category_id, alliance_id, name) values
+    (:'activeEventCategoryID', :'activeAllianceID', 'Conference'),
+    (:'duplicateEventCategoryID', :'duplicateAllianceID', 'Conference');
 
 -- Groups
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -81,16 +81,16 @@ insert into "group" (
     deleted,
     legacy_url
 ) values
-    (:'activeGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group', 'active-group', 'active-pretty', 'A group with a unique legacy URL', true, false, 'https://legacy.example.org/groups/active?source=legacy'),
-    (:'activeGroupSlashID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Slash', 'active-group-slash', null, 'A group with a trailing-slash legacy URL', true, false, 'https://legacy.example.org/groups/active-slash/'),
-    (:'activeGroupNullLegacyID', :'activeCommunityID', :'activeGroupCategoryID', 'Active Group Null Legacy', 'active-group-null-legacy', null, 'A group without a legacy URL', true, false, null),
-    (:'deletedGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Deleted Group', 'deleted-group', null, 'A deleted group with a legacy URL', false, true, 'https://legacy.example.org/deleted-group'),
-    (:'duplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group', 'duplicate-group', null, 'A group sharing a legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
-    (:'duplicateGroupOnlyID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', null, 'Another group sharing the same legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
-    (:'inactiveGroupID', :'inactiveCommunityID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', null, 'A group under an inactive community', true, false, 'https://legacy.example.org/inactive-group'),
-    (:'rootGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Root Group', 'root-group', null, 'A group using the site root as legacy URL', true, false, 'https://legacy.example.org'),
-    (:'scopedDuplicateGroupID', :'duplicateCommunityID', :'duplicateGroupCategoryID', 'Scoped Duplicate Group', 'scoped-duplicate-group', null, 'A group sharing a legacy URL path across communities', true, false, 'https://legacy-duplicate.example.org/groups/active'),
-    (:'sharedPathGroupID', :'activeCommunityID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', null, 'A group sharing a path with an event', true, false, 'https://legacy.example.org/shared-path');
+    (:'activeGroupID', :'activeAllianceID', :'activeGroupCategoryID', 'Active Group', 'active-group', 'active-pretty', 'A group with a unique legacy URL', true, false, 'https://legacy.example.org/groups/active?source=legacy'),
+    (:'activeGroupSlashID', :'activeAllianceID', :'activeGroupCategoryID', 'Active Group Slash', 'active-group-slash', null, 'A group with a trailing-slash legacy URL', true, false, 'https://legacy.example.org/groups/active-slash/'),
+    (:'activeGroupNullLegacyID', :'activeAllianceID', :'activeGroupCategoryID', 'Active Group Null Legacy', 'active-group-null-legacy', null, 'A group without a legacy URL', true, false, null),
+    (:'deletedGroupID', :'activeAllianceID', :'activeGroupCategoryID', 'Deleted Group', 'deleted-group', null, 'A deleted group with a legacy URL', false, true, 'https://legacy.example.org/deleted-group'),
+    (:'duplicateGroupID', :'duplicateAllianceID', :'duplicateGroupCategoryID', 'Duplicate Group', 'duplicate-group', null, 'A group sharing a legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
+    (:'duplicateGroupOnlyID', :'duplicateAllianceID', :'duplicateGroupCategoryID', 'Duplicate Group Only', 'duplicate-group-only', null, 'Another group sharing the same legacy URL', true, false, 'https://legacy.example.org/group-duplicate'),
+    (:'inactiveGroupID', :'inactiveAllianceID', :'inactiveGroupCategoryID', 'Inactive Group', 'inactive-group', null, 'A group under an inactive alliance', true, false, 'https://legacy.example.org/inactive-group'),
+    (:'rootGroupID', :'activeAllianceID', :'activeGroupCategoryID', 'Root Group', 'root-group', null, 'A group using the site root as legacy URL', true, false, 'https://legacy.example.org'),
+    (:'scopedDuplicateGroupID', :'duplicateAllianceID', :'duplicateGroupCategoryID', 'Scoped Duplicate Group', 'scoped-duplicate-group', null, 'A group sharing a legacy URL path across alliances', true, false, 'https://legacy-duplicate.example.org/groups/active'),
+    (:'sharedPathGroupID', :'activeAllianceID', :'activeGroupCategoryID', 'Shared Path Group', 'shared-path-group', null, 'A group sharing a path with an event', true, false, 'https://legacy.example.org/shared-path');
 
 -- Events
 insert into event (
@@ -122,16 +122,16 @@ insert into event (
 -- Should return all unique normalized redirect mappings ordered by legacy path
 select is(
     (
-        select jsonb_agg(row_to_json(r) order by r.community_name, r.legacy_path)
+        select jsonb_agg(row_to_json(r) order by r.alliance_name, r.legacy_path)
         from list_redirects() r
     ),
     '[
-        {"community_name": "active-community", "legacy_path": "/", "new_path": "/active-community/group/root-group"},
-        {"community_name": "active-community", "legacy_path": "/events/active", "new_path": "/active-community/group/active-group/event/active-event"},
-        {"community_name": "active-community", "legacy_path": "/events/active-slash", "new_path": "/active-community/group/active-group/event/active-event-slash"},
-        {"community_name": "active-community", "legacy_path": "/groups/active", "new_path": "/active-community/group/active-group"},
-        {"community_name": "active-community", "legacy_path": "/groups/active-slash", "new_path": "/active-community/group/active-group-slash"},
-        {"community_name": "duplicate-community", "legacy_path": "/groups/active", "new_path": "/duplicate-community/group/scoped-duplicate-group"}
+        {"alliance_name": "active-alliance", "legacy_path": "/", "new_path": "/active-alliance/group/root-group"},
+        {"alliance_name": "active-alliance", "legacy_path": "/events/active", "new_path": "/active-alliance/group/active-group/event/active-event"},
+        {"alliance_name": "active-alliance", "legacy_path": "/events/active-slash", "new_path": "/active-alliance/group/active-group/event/active-event-slash"},
+        {"alliance_name": "active-alliance", "legacy_path": "/groups/active", "new_path": "/active-alliance/group/active-group"},
+        {"alliance_name": "active-alliance", "legacy_path": "/groups/active-slash", "new_path": "/active-alliance/group/active-group-slash"},
+        {"alliance_name": "duplicate-alliance", "legacy_path": "/groups/active", "new_path": "/duplicate-alliance/group/scoped-duplicate-group"}
     ]'::jsonb,
     'Should return all unique normalized redirect mappings ordered by legacy path'
 );
@@ -141,25 +141,25 @@ select is(
     (
         select new_path
         from list_redirects()
-        where community_name = 'active-community'
+        where alliance_name = 'active-alliance'
           and legacy_path = '/groups/active'
     ),
-    '/active-community/group/active-group',
+    '/active-alliance/group/active-group',
     'Should return canonical relative paths without the base URL prefix'
 );
 
--- Should scope duplicate legacy paths by community
+-- Should scope duplicate legacy paths by alliance
 select is(
     (
-        select jsonb_agg(row_to_json(r) order by r.community_name)
+        select jsonb_agg(row_to_json(r) order by r.alliance_name)
         from list_redirects() r
         where legacy_path = '/groups/active'
     ),
     '[
-        {"community_name": "active-community", "legacy_path": "/groups/active", "new_path": "/active-community/group/active-group"},
-        {"community_name": "duplicate-community", "legacy_path": "/groups/active", "new_path": "/duplicate-community/group/scoped-duplicate-group"}
+        {"alliance_name": "active-alliance", "legacy_path": "/groups/active", "new_path": "/active-alliance/group/active-group"},
+        {"alliance_name": "duplicate-alliance", "legacy_path": "/groups/active", "new_path": "/duplicate-alliance/group/scoped-duplicate-group"}
     ]'::jsonb,
-    'Should scope duplicate legacy paths by community'
+    'Should scope duplicate legacy paths by alliance'
 );
 
 -- Should exclude duplicate group legacy paths

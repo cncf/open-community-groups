@@ -25,7 +25,7 @@ describe("qr code modal", () => {
     qrUrl = "",
     checkInUrl = "",
     eventName = "KubeCon Europe",
-    groupName = "CNCF Madrid",
+    groupName = "Goup Madrid",
     eventStart = "March 25, 2026",
   } = {}) => {
     document.body.innerHTML = `
@@ -104,7 +104,7 @@ describe("qr code modal", () => {
     );
     expect(
       document.getElementById("event-qr-code-group-name")?.textContent,
-    ).to.equal("CNCF Madrid");
+    ).to.equal("Goup Madrid");
     expect(
       document.getElementById("event-qr-code-start")?.textContent,
     ).to.equal("March 25, 2026");

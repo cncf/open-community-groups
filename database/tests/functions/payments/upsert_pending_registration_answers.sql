@@ -9,7 +9,7 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79300000-0000-0000-0000-000000000001'
+\set allianceID '79300000-0000-0000-0000-000000000001'
 \set groupCategoryID '79300000-0000-0000-0000-000000000002'
 \set eventCategoryID '79300000-0000-0000-0000-000000000003'
 \set groupID '79300000-0000-0000-0000-000000000004'
@@ -22,17 +22,17 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'pending-answers-community', 'Pending Answers Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'pending-answers-alliance', 'Pending Answers Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -42,8 +42,8 @@ values
     (:'confirmedUserID', 'hash-3', 'confirmed@example.com', true, 'confirmed-user');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Pending Answers Group', 'pending-answers-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Pending Answers Group', 'pending-answers-group');
 
 -- Event
 insert into event (

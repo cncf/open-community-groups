@@ -25,7 +25,7 @@ use super::{GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP, NewTeamMember};
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -34,7 +34,7 @@ async fn test_list_page_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let member = sample_team_member(true);
@@ -60,7 +60,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_team_members()
@@ -77,7 +77,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -108,7 +108,7 @@ async fn test_list_page_success() {
 #[tokio::test]
 async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -117,7 +117,7 @@ async fn test_list_page_with_pagination_params() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let member = sample_team_member(true);
@@ -143,7 +143,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_team_members()
@@ -158,7 +158,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -189,7 +189,7 @@ async fn test_list_page_with_pagination_params() {
 #[tokio::test]
 async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_blocked() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -198,7 +198,7 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let members = vec![sample_team_member(true), sample_team_member(true)];
@@ -209,8 +209,8 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
         total_accepted: 2,
         total_admins_accepted: 2,
     };
-    let mut community = sample_community_full(community_id);
-    community.group_team_management_restricted = true;
+    let mut alliance = sample_alliance_full(alliance_id);
+    alliance.group_team_management_restricted = true;
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -225,7 +225,7 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -242,14 +242,14 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
     db.expect_list_group_roles()
         .times(1)
         .returning(move || Ok(vec![role.clone()]));
-    db.expect_get_community_full()
+    db.expect_get_alliance_full()
         .times(1)
-        .withf(move |cid| *cid == community_id)
-        .returning(move |_| Ok(community.clone()));
+        .withf(move |cid| *cid == alliance_id)
+        .returning(move |_| Ok(alliance.clone()));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -286,7 +286,7 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
 #[tokio::test]
 async fn test_add_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let new_member_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -296,7 +296,7 @@ async fn test_add_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let form = NewTeamMember {
@@ -322,7 +322,7 @@ async fn test_add_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -339,7 +339,7 @@ async fn test_add_success() {
         .returning(move |_, _, _, _| Ok(()));
     db.expect_get_group_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group_summary_for_db.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -388,7 +388,7 @@ async fn test_add_success() {
 #[tokio::test]
 async fn test_add_forbidden_when_group_team_management_is_restricted() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let new_member_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -398,7 +398,7 @@ async fn test_add_forbidden_when_group_team_management_is_restricted() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let body = format!("role={}&user_id={}", GroupRole::Admin, new_member_id);
@@ -416,7 +416,7 @@ async fn test_add_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -425,7 +425,7 @@ async fn test_add_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -456,7 +456,7 @@ async fn test_add_forbidden_when_group_team_management_is_restricted() {
 #[tokio::test]
 async fn test_delete_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -466,7 +466,7 @@ async fn test_delete_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -483,7 +483,7 @@ async fn test_delete_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -523,7 +523,7 @@ async fn test_delete_success() {
 #[tokio::test]
 async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -532,7 +532,7 @@ async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -549,7 +549,7 @@ async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -564,7 +564,7 @@ async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -599,7 +599,7 @@ async fn test_delete_current_user_with_inherited_read_stays_logged_in() {
 #[tokio::test]
 async fn test_delete_current_user_logs_out() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -608,7 +608,7 @@ async fn test_delete_current_user_logs_out() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -625,7 +625,7 @@ async fn test_delete_current_user_logs_out() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -640,7 +640,7 @@ async fn test_delete_current_user_logs_out() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -674,7 +674,7 @@ async fn test_delete_current_user_logs_out() {
 #[tokio::test]
 async fn test_delete_forbidden_when_group_team_management_is_restricted() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -684,7 +684,7 @@ async fn test_delete_forbidden_when_group_team_management_is_restricted() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -701,7 +701,7 @@ async fn test_delete_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -710,7 +710,7 @@ async fn test_delete_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -740,7 +740,7 @@ async fn test_delete_forbidden_when_group_team_management_is_restricted() {
 #[tokio::test]
 async fn test_update_role_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -750,7 +750,7 @@ async fn test_update_role_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let form = super::NewTeamRole {
@@ -771,7 +771,7 @@ async fn test_update_role_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -815,7 +815,7 @@ async fn test_update_role_success() {
 #[tokio::test]
 async fn test_update_role_forbidden_when_group_team_management_is_restricted() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let member_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -825,7 +825,7 @@ async fn test_update_role_forbidden_when_group_team_management_is_restricted() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let body = format!("role={}", GroupRole::Admin);
@@ -843,7 +843,7 @@ async fn test_update_role_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite
@@ -852,7 +852,7 @@ async fn test_update_role_forbidden_when_group_team_management_is_restricted() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read

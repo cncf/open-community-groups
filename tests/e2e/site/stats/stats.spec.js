@@ -25,7 +25,7 @@ test.describe("site stats page", () => {
     // Verify renders totals and analytics chart containers.
     await expect(mainContent.getByText("Stats", { exact: true })).toBeVisible();
     await expect(
-      mainContent.getByText("Global growth trends across all communities.", {
+      mainContent.getByText("Global growth trends across all alliances.", {
         exact: true,
       }),
     ).toBeVisible();

@@ -47,9 +47,9 @@ mock! {
             username: &str,
         ) -> Result<Option<crate::auth::User>>;
         async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
-        async fn group_belongs_to_community(
+        async fn group_belongs_to_alliance(
             &self,
-            community_id: &Uuid,
+            alliance_id: &Uuid,
             group_id: &Uuid,
         ) -> Result<bool>;
         async fn sign_up_user(
@@ -76,15 +76,20 @@ mock! {
             user_id: &Uuid,
             provider: &crate::types::user::UserProvider,
         ) -> Result<()>;
-        async fn user_has_community_permission(
+        async fn update_user_external_profile(
             &self,
-            community_id: &Uuid,
             user_id: &Uuid,
-            permission: crate::types::permissions::CommunityPermission,
+            user_summary: &crate::auth::UserSummary,
+        ) -> Result<()>;
+        async fn user_has_alliance_permission(
+            &self,
+            alliance_id: &Uuid,
+            user_id: &Uuid,
+            permission: crate::types::permissions::AlliancePermission,
         ) -> Result<bool>;
         async fn user_has_group_permission(
             &self,
-            community_id: &Uuid,
+            alliance_id: &Uuid,
             group_id: &Uuid,
             user_id: &Uuid,
             permission: crate::types::permissions::GroupPermission,
@@ -94,24 +99,24 @@ mock! {
 
     #[async_trait]
     impl crate::db::common::DBCommon for DB {
-        async fn get_community_full(
+        async fn get_alliance_full(
             &self,
-            community_id: Uuid,
-        ) -> Result<crate::types::community::CommunityFull>;
-        async fn get_community_summary(
+            alliance_id: Uuid,
+        ) -> Result<crate::types::alliance::AllianceFull>;
+        async fn get_alliance_summary(
             &self,
-            community_id: Uuid,
-        ) -> Result<crate::types::community::CommunitySummary>;
+            alliance_id: Uuid,
+        ) -> Result<crate::types::alliance::AllianceSummary>;
         async fn get_event_full(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
             event_id: Uuid,
         )
             -> Result<crate::types::event::EventFull>;
         async fn get_event_summary(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
             event_id: Uuid,
         )
@@ -119,13 +124,13 @@ mock! {
         async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<crate::types::event::EventCfsLabel>>;
         async fn get_group_full(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
         )
             -> Result<crate::types::group::GroupFull>;
         async fn get_group_summary(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
         )
             -> Result<crate::types::group::GroupSummary>;
@@ -141,20 +146,20 @@ mock! {
     }
 
     #[async_trait]
-    impl crate::db::community::DBCommunity for DB {
-        async fn get_community_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
-        async fn get_community_name_by_id(&self, community_id: Uuid) -> Result<Option<String>>;
-        async fn get_community_recently_added_groups(
+    impl crate::db::alliance::DBAlliance for DB {
+        async fn get_alliance_id_by_name(&self, name: &str) -> Result<Option<Uuid>>;
+        async fn get_alliance_name_by_id(&self, alliance_id: Uuid) -> Result<Option<String>>;
+        async fn get_alliance_recently_added_groups(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupSummary>>;
-        async fn get_community_site_stats(
+        async fn get_alliance_site_stats(
             &self,
-            community_id: Uuid,
-        ) -> Result<crate::templates::community::Stats>;
-        async fn get_community_upcoming_events(
+            alliance_id: Uuid,
+        ) -> Result<crate::templates::alliance::Stats>;
+        async fn get_alliance_upcoming_events(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_kinds: Vec<crate::types::event::EventKind>,
         ) -> Result<Vec<crate::types::event::EventSummary>>;
     }
@@ -170,130 +175,130 @@ mock! {
         async fn update_group(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
-            group: &crate::templates::dashboard::community::groups::Group,
+            group: &crate::templates::dashboard::alliance::groups::Group,
         ) -> Result<()>;
     }
 
     #[async_trait]
-    impl crate::db::dashboard::community::DBDashboardCommunity for DB {
-        async fn activate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()>;
-        async fn add_community_team_member(
+    impl crate::db::dashboard::alliance::DBDashboardAlliance for DB {
+        async fn activate_group(&self, actor_user_id: Uuid, alliance_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn add_alliance_team_member(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             user_id: Uuid,
-            role: &crate::types::community::CommunityRole,
+            role: &crate::types::alliance::AllianceRole,
         ) -> Result<()>;
         async fn add_event_category(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
-            event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
+            alliance_id: Uuid,
+            event_category: &crate::templates::dashboard::alliance::event_categories::EventCategoryInput,
         ) -> Result<Uuid>;
         async fn add_group(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
-            group: &crate::templates::dashboard::community::groups::Group,
+            alliance_id: Uuid,
+            group: &crate::templates::dashboard::alliance::groups::Group,
         ) -> Result<Uuid>;
         async fn add_group_category(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
-            group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
+            alliance_id: Uuid,
+            group_category: &crate::templates::dashboard::alliance::group_categories::GroupCategoryInput,
         ) -> Result<Uuid>;
         async fn add_region(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
-            region: &crate::templates::dashboard::community::regions::RegionInput,
+            alliance_id: Uuid,
+            region: &crate::templates::dashboard::alliance::regions::RegionInput,
         ) -> Result<Uuid>;
-        async fn deactivate_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid)
+        async fn deactivate_group(&self, actor_user_id: Uuid, alliance_id: Uuid, group_id: Uuid)
             -> Result<()>;
-        async fn delete_community_team_member(
+        async fn delete_alliance_team_member(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
         async fn delete_event_category(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_category_id: Uuid,
         ) -> Result<()>;
-        async fn delete_group(&self, actor_user_id: Uuid, community_id: Uuid, group_id: Uuid) -> Result<()>;
+        async fn delete_group(&self, actor_user_id: Uuid, alliance_id: Uuid, group_id: Uuid) -> Result<()>;
         async fn delete_group_category(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_category_id: Uuid,
         ) -> Result<()>;
-        async fn delete_region(&self, actor_user_id: Uuid, community_id: Uuid, region_id: Uuid) -> Result<()>;
-        async fn get_community_stats(
+        async fn delete_region(&self, actor_user_id: Uuid, alliance_id: Uuid, region_id: Uuid) -> Result<()>;
+        async fn get_alliance_stats(
             &self,
-            community_id: Uuid,
-        ) -> Result<crate::templates::dashboard::community::analytics::CommunityDashboardStats>;
-        async fn list_community_audit_logs(
+            alliance_id: Uuid,
+        ) -> Result<crate::templates::dashboard::alliance::analytics::AllianceDashboardStats>;
+        async fn list_alliance_audit_logs(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             filters: &crate::templates::dashboard::audit::AuditLogFilters,
         ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
-        async fn list_community_team_members(
+        async fn list_alliance_team_members(
             &self,
-            community_id: Uuid,
-            filters: &crate::templates::dashboard::community::team::CommunityTeamFilters,
-        ) -> Result<crate::templates::dashboard::community::team::CommunityTeamOutput>;
-        async fn list_community_roles(
+            alliance_id: Uuid,
+            filters: &crate::templates::dashboard::alliance::team::AllianceTeamFilters,
+        ) -> Result<crate::templates::dashboard::alliance::team::AllianceTeamOutput>;
+        async fn list_alliance_roles(
             &self,
-        ) -> Result<Vec<crate::types::community::CommunityRoleSummary>>;
+        ) -> Result<Vec<crate::types::alliance::AllianceRoleSummary>>;
         async fn list_group_categories(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupCategory>>;
         async fn list_regions(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupRegion>>;
-        async fn list_user_communities(
+        async fn list_user_alliances(
             &self,
             user_id: &Uuid,
-        ) -> Result<Vec<crate::types::community::CommunitySummary>>;
-        async fn update_community(
+        ) -> Result<Vec<crate::types::alliance::AllianceSummary>>;
+        async fn update_alliance(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
-            community: &crate::templates::dashboard::community::settings::CommunityUpdate,
+            alliance_id: Uuid,
+            alliance: &crate::templates::dashboard::alliance::settings::AllianceUpdate,
         ) -> Result<()>;
-        async fn update_community_team_member_role(
+        async fn update_alliance_team_member_role(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             user_id: Uuid,
-            role: &crate::types::community::CommunityRole,
+            role: &crate::types::alliance::AllianceRole,
         ) -> Result<()>;
         async fn update_event_category(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_category_id: Uuid,
-            event_category: &crate::templates::dashboard::community::event_categories::EventCategoryInput,
+            event_category: &crate::templates::dashboard::alliance::event_categories::EventCategoryInput,
         ) -> Result<()>;
         async fn update_group_category(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_category_id: Uuid,
-            group_category: &crate::templates::dashboard::community::group_categories::GroupCategoryInput,
+            group_category: &crate::templates::dashboard::alliance::group_categories::GroupCategoryInput,
         ) -> Result<()>;
         async fn update_region(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             region_id: Uuid,
-            region: &crate::templates::dashboard::community::regions::RegionInput,
+            region: &crate::templates::dashboard::alliance::regions::RegionInput,
         ) -> Result<()>;
     }
 
@@ -381,7 +386,7 @@ mock! {
         ) -> Result<crate::templates::dashboard::group::submissions::CfsSubmissionNotificationData>;
         async fn get_group_payment_recipient(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
         ) -> Result<Option<crate::types::payments::GroupPaymentRecipient>>;
         async fn get_group_sponsor(
@@ -391,7 +396,7 @@ mock! {
         ) -> Result<crate::types::group::GroupSponsor>;
         async fn get_group_stats(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
         ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
         async fn invite_event_attendee(
@@ -417,7 +422,7 @@ mock! {
         ) -> Result<Vec<Uuid>>;
         async fn list_event_categories(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
         ) -> Result<Vec<crate::types::event::EventCategory>>;
         async fn list_event_approved_cfs_submissions(
             &self,
@@ -482,11 +487,11 @@ mock! {
         async fn list_user_groups(
             &self,
             user_id: &Uuid,
-        ) -> Result<Vec<crate::templates::dashboard::group::home::UserGroupsByCommunity>>;
+        ) -> Result<Vec<crate::templates::dashboard::group::home::UserGroupsByAlliance>>;
         async fn manual_check_in_event(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
@@ -570,10 +575,10 @@ mock! {
 
     #[async_trait]
     impl crate::db::dashboard::user::DBDashboardUser for DB {
-        async fn accept_community_team_invitation(
+        async fn accept_alliance_team_invitation(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
         ) -> Result<()>;
         async fn accept_event_attendee_invitation(
             &self,
@@ -600,10 +605,10 @@ mock! {
             actor_user_id: Uuid,
             session_proposal_id: Uuid,
         ) -> Result<()>;
-        async fn reject_community_team_invitation(
+        async fn reject_alliance_team_invitation(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
         ) -> Result<()>;
         async fn reject_event_attendee_invitation(
             &self,
@@ -633,11 +638,11 @@ mock! {
             user_id: Uuid,
             filters: &crate::templates::dashboard::user::submissions::CfsSubmissionsFilters,
         ) -> Result<crate::templates::dashboard::user::submissions::CfsSubmissionsOutput>;
-        async fn list_user_community_team_invitations(
+        async fn list_user_alliance_team_invitations(
             &self,
             user_id: Uuid,
         ) -> Result<Vec<
-            crate::templates::dashboard::user::invitations::CommunityTeamInvitation,
+            crate::templates::dashboard::user::invitations::AllianceTeamInvitation,
         >>;
         async fn list_user_event_invitations(
             &self,
@@ -680,7 +685,7 @@ mock! {
         async fn submit_event_registration_answers(
             &self,
             actor_user_id: Uuid,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             registration_answers: &crate::types::questionnaire::QuestionnaireAnswers,
         ) -> Result<bool>;
@@ -701,7 +706,7 @@ mock! {
     impl crate::db::event::DBEvent for DB {
         async fn add_cfs_submission(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
             session_proposal_id: Uuid,
@@ -709,53 +714,53 @@ mock! {
         ) -> Result<Uuid>;
         async fn attend_event(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
             registration_answers: Option<crate::types::questionnaire::QuestionnaireAnswers>,
         ) -> Result<crate::types::event::EventAttendanceStatus>;
         async fn check_in_event(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
             bypass_window: bool,
         ) -> Result<()>;
         async fn ensure_event_is_active(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
         ) -> Result<()>;
         async fn get_event_full_by_slug(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_slug: &str,
             event_slug: &str,
         ) -> Result<Option<crate::types::event::EventFull>>;
         async fn get_event_registration_questions(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<crate::types::questionnaire::QuestionnaireQuestion>>;
         async fn get_event_summary_by_id(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
         ) -> Result<crate::types::event::EventSummary>;
         async fn get_event_attendance(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<crate::types::event::EventAttendanceInfo>;
         async fn is_event_check_in_window_open(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
         ) -> Result<bool>;
         async fn leave_event(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<crate::types::event::EventLeaveOutcome>;
@@ -768,7 +773,7 @@ mock! {
 
     #[async_trait]
     impl crate::db::activity_tracker::DBActivityTracker for DB {
-        async fn update_community_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
+        async fn update_alliance_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
         async fn update_event_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
         async fn update_group_views(&self, data: Vec<(Uuid, String, u32)>) -> Result<()>;
     }
@@ -777,38 +782,38 @@ mock! {
     impl crate::db::group::DBGroup for DB {
         async fn get_group_full_by_slug(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_slug: &str,
         ) -> Result<Option<crate::types::group::GroupFull>>;
         async fn get_group_past_events(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_slug: &str,
             event_kinds: Vec<crate::types::event::EventKind>,
             limit: i32,
         ) -> Result<Vec<crate::types::event::EventSummary>>;
         async fn get_group_upcoming_events(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_slug: &str,
             event_kinds: Vec<crate::types::event::EventKind>,
             limit: i32,
         ) -> Result<Vec<crate::types::event::EventSummary>>;
         async fn is_group_member(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<bool>;
         async fn join_group(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
         async fn leave_group(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
@@ -957,7 +962,7 @@ mock! {
         ) -> Result<crate::types::payments::EventPurchaseSummary>;
         async fn cancel_event_checkout(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
@@ -976,7 +981,7 @@ mock! {
         ) -> Result<crate::types::payments::EventPurchaseSummary>;
         async fn prepare_event_checkout_purchase(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             input: &crate::db::payments::PrepareEventCheckoutPurchaseInput,
         ) -> Result<crate::types::payments::PreparedEventCheckout>;
         async fn reconcile_event_purchase_for_checkout_session(
@@ -1000,7 +1005,7 @@ mock! {
         ) -> Result<crate::db::payments::CompletedEventPurchase>;
         async fn request_event_refund(
             &self,
-            community_id: Uuid,
+            alliance_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
             requested_reason: Option<String>,
@@ -1018,7 +1023,7 @@ mock! {
     impl crate::db::site::DBSite for DB {
         async fn get_filters_options(
             &self,
-            community_name: Option<String>,
+            alliance_name: Option<String>,
             entity: Option<crate::templates::site::explore::Entity>,
         ) -> Result<crate::templates::site::explore::FiltersOptions>;
         async fn get_site_home_stats(&self) -> Result<crate::types::site::SiteHomeStats>;
@@ -1031,6 +1036,6 @@ mock! {
             &self,
             event_kinds: Vec<crate::types::event::EventKind>,
         ) -> Result<Vec<crate::types::event::EventSummary>>;
-        async fn list_communities(&self) -> Result<Vec<crate::types::community::CommunitySummary>>;
+        async fn list_alliances(&self) -> Result<Vec<crate::types::alliance::AllianceSummary>>;
     }
 }

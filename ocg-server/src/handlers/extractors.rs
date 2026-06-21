@@ -21,10 +21,10 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
-/// Extractor that resolves a community ID from the request path parameter.
-pub(crate) struct CommunityId(pub Uuid);
+/// Extractor that resolves a alliance ID from the request path parameter.
+pub(crate) struct AllianceId(pub Uuid);
 
-impl FromRequestParts<router::State> for CommunityId {
+impl FromRequestParts<router::State> for AllianceId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
@@ -32,32 +32,32 @@ impl FromRequestParts<router::State> for CommunityId {
         parts: &mut Parts,
         state: &router::State,
     ) -> Result<Self, Self::Rejection> {
-        // Extract community name from path parameter
+        // Extract alliance name from path parameter
         let path_params: Path<HashMap<String, String>> = Path::from_request_parts(parts, state)
             .await
             .map_err(|_| (StatusCode::BAD_REQUEST, "invalid path parameters"))?;
-        let Some(community_name) = path_params.get("community") else {
-            return Err((StatusCode::BAD_REQUEST, "missing community parameter"));
+        let Some(alliance_name) = path_params.get("alliance") else {
+            return Err((StatusCode::BAD_REQUEST, "missing alliance parameter"));
         };
 
-        // Lookup the community id in the database (cached at DB layer)
-        if community_name.is_empty() {
-            return Err((StatusCode::NOT_FOUND, "community not found"));
+        // Lookup the alliance id in the database (cached at DB layer)
+        if alliance_name.is_empty() {
+            return Err((StatusCode::NOT_FOUND, "alliance not found"));
         }
-        let Some(community_id) =
+        let Some(alliance_id) =
             state
                 .db
-                .get_community_id_by_name(community_name)
+                .get_alliance_id_by_name(alliance_name)
                 .await
                 .map_err(|err| {
-                    error!(?err, "error looking up community id");
+                    error!(?err, "error looking up alliance id");
                     (StatusCode::INTERNAL_SERVER_ERROR, "")
                 })?
         else {
-            return Err((StatusCode::NOT_FOUND, "community not found"));
+            return Err((StatusCode::NOT_FOUND, "alliance not found"));
         };
 
-        Ok(CommunityId(community_id))
+        Ok(AllianceId(alliance_id))
     }
 }
 
@@ -131,12 +131,12 @@ impl FromRequestParts<router::State> for Oidc {
     }
 }
 
-/// Extractor for the selected community ID from request context.
+/// Extractor for the selected alliance ID from request context.
 /// Returns the Uuid from request extensions populated by middleware.
 #[derive(Clone, Copy)]
-pub(crate) struct SelectedCommunityId(pub Uuid);
+pub(crate) struct SelectedAllianceId(pub Uuid);
 
-impl FromRequestParts<router::State> for SelectedCommunityId {
+impl FromRequestParts<router::State> for SelectedAllianceId {
     type Rejection = (StatusCode, &'static str);
 
     #[instrument(skip_all, err(Debug))]
@@ -144,9 +144,9 @@ impl FromRequestParts<router::State> for SelectedCommunityId {
         parts: &mut Parts,
         _state: &router::State,
     ) -> Result<Self, Self::Rejection> {
-        parts.extensions.get::<SelectedCommunityId>().copied().ok_or((
+        parts.extensions.get::<SelectedAllianceId>().copied().ok_or((
             StatusCode::INTERNAL_SERVER_ERROR,
-            "missing selected community context",
+            "missing selected alliance context",
         ))
     }
 }

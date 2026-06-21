@@ -21,7 +21,7 @@ use crate::{
             events::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
-            home::UserGroupsByCommunity,
+            home::UserGroupsByAlliance,
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
             members::{GroupMembersFilters, GroupMembersOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
@@ -159,7 +159,7 @@ pub(crate) trait DBDashboardGroup {
     /// Gets the configured payment recipient for a group.
     async fn get_group_payment_recipient(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
     ) -> Result<Option<GroupPaymentRecipient>>;
 
@@ -173,7 +173,7 @@ pub(crate) trait DBDashboardGroup {
     /// Retrieves analytics statistics for a group.
     async fn get_group_stats(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
     ) -> Result<GroupDashboardStats>;
 
@@ -206,8 +206,8 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all verified attendees user ids for an event.
     async fn list_event_attendees_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
 
-    /// Lists all event categories for a community.
-    async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
+    /// Lists all event categories for a alliance.
+    async fn list_event_categories(&self, alliance_id: Uuid) -> Result<Vec<EventCategory>>;
 
     /// Lists CFS submissions for an event.
     async fn list_event_cfs_submissions(
@@ -281,14 +281,14 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available session kinds.
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>>;
 
-    /// Lists all groups where the user is a team member, grouped by community.
-    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>>;
+    /// Lists all groups where the user is a team member, grouped by alliance.
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByAlliance>>;
 
     /// Manually checks in an attendee for an event.
     async fn manual_check_in_event(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     ) -> Result<()>;
@@ -637,7 +637,7 @@ impl DBDashboardGroup for PgDB {
     #[instrument(skip(self), err)]
     async fn get_group_payment_recipient(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
     ) -> Result<Option<GroupPaymentRecipient>> {
         self.fetch_json_opt(
@@ -645,11 +645,11 @@ impl DBDashboardGroup for PgDB {
             select (
                 select payment_recipient
                 from \"group\"
-                where community_id = $1::uuid
+                where alliance_id = $1::uuid
                 and group_id = $2::uuid
             )
             ",
-            &[&community_id, &group_id],
+            &[&alliance_id, &group_id],
         )
         .await
     }
@@ -672,25 +672,25 @@ impl DBDashboardGroup for PgDB {
     #[instrument(skip(self), err)]
     async fn get_group_stats(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
     ) -> Result<GroupDashboardStats> {
         #[cached(
             time = 3600,
             key = "(Uuid, Uuid)",
-            convert = "{ (community_id, group_id) }",
+            convert = "{ (alliance_id, group_id) }",
             sync_writes = "by_key",
             result = true
         )]
         async fn inner(
             db: Client,
-            community_id: Uuid,
+            alliance_id: Uuid,
             group_id: Uuid,
         ) -> Result<GroupDashboardStats> {
             let row = db
                 .query_one(
                     "select get_group_stats($1::uuid, $2::uuid)",
-                    &[&community_id, &group_id],
+                    &[&alliance_id, &group_id],
                 )
                 .await?;
             let stats = row.try_get::<_, Json<GroupDashboardStats>>(0)?.0;
@@ -699,7 +699,7 @@ impl DBDashboardGroup for PgDB {
         }
 
         let db = self.pool.get().await?;
-        inner(db, community_id, group_id).await
+        inner(db, alliance_id, group_id).await
     }
 
     /// [`DBDashboardGroup::invite_event_attendee`]
@@ -765,8 +765,8 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_event_categories`]
     #[instrument(skip(self), err)]
-    async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>> {
-        self.fetch_json_one("select list_event_categories($1::uuid)", &[&community_id])
+    async fn list_event_categories(&self, alliance_id: Uuid) -> Result<Vec<EventCategory>> {
+        self.fetch_json_one("select list_event_categories($1::uuid)", &[&alliance_id])
             .await
     }
 
@@ -979,7 +979,7 @@ impl DBDashboardGroup for PgDB {
 
     /// [`DBDashboardGroup::list_user_groups`]
     #[instrument(skip(self), err)]
-    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>> {
+    async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByAlliance>> {
         self.fetch_json_one("select list_user_groups($1::uuid)", &[&user_id])
             .await
     }
@@ -989,13 +989,13 @@ impl DBDashboardGroup for PgDB {
     async fn manual_check_in_event(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     ) -> Result<()> {
         self.execute(
             "select manual_check_in_event($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
-            &[&actor_user_id, &community_id, &event_id, &user_id],
+            &[&actor_user_id, &alliance_id, &event_id, &user_id],
         )
         .await
     }

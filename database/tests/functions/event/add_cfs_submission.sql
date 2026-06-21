@@ -9,8 +9,8 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set alliance2ID '00000000-0000-0000-0000-000000000002'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000041'
 \set eventClosedID '00000000-0000-0000-0000-000000000052'
 \set eventDisabledID '00000000-0000-0000-0000-000000000053'
@@ -30,23 +30,23 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'community2ID', 'c2', 'C2', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
+    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
+    (:'alliance2ID', 'c2', 'C2', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name) values
+    (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'G1', 'g1');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'G1', 'g1');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name) values
+    (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
@@ -265,7 +265,7 @@ insert into event (
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventClosedID',
         :'userID',
         :'proposalID'
@@ -278,7 +278,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventDisabledID',
         :'userID',
         :'proposalID'
@@ -291,7 +291,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventUnpublishedID',
         :'userID',
         :'proposalID'
@@ -300,24 +300,24 @@ select throws_ok(
     'Should reject submissions when event is unpublished'
 );
 
--- Should reject submissions when event belongs to another community
+-- Should reject submissions when event belongs to another alliance
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'community2ID',
+        :'alliance2ID',
         :'eventID',
         :'userID',
         :'proposalID'
     ),
     'cfs is not enabled for this event',
-    'Should reject submissions when event belongs to another community'
+    'Should reject submissions when event belongs to another alliance'
 );
 
 -- Add CFS submission
 select lives_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalID'
@@ -340,7 +340,7 @@ select is(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalID'
@@ -354,7 +354,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalPendingID'
@@ -367,7 +367,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid])',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalWithLabelsID',
@@ -381,7 +381,7 @@ select throws_ok(
 select lives_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid, %L::uuid])',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalWithLabelsID',

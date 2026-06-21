@@ -10,7 +10,7 @@ select plan(118);
 -- ============================================================================
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
-\set community1ID '00000000-0000-0000-0000-000000000001'
+\set alliance1ID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000003'
 \set event4ID '00000000-0000-0000-0000-000000000004'
 \set event5ID '00000000-0000-0000-0000-000000000005'
@@ -53,7 +53,7 @@ select plan(118);
 \set meeting5ID '00000000-0000-0000-0000-000000000305'
 \set questionsAttendeeUserID '90300000-0000-0000-0000-000000000031'
 \set questionsCategoryID '90300000-0000-0000-0000-000000000011'
-\set questionsCommunityID '90300000-0000-0000-0000-000000000001'
+\set questionsAllianceID '90300000-0000-0000-0000-000000000001'
 \set questionsEventCategoryID '90300000-0000-0000-0000-000000000012'
 \set questionsGroupID '90300000-0000-0000-0000-000000000021'
 \set questionsOrganizerUserID '90300000-0000-0000-0000-000000000030'
@@ -74,13 +74,13 @@ select plan(118);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'community1ID', 'test-community', 'Test Community', 'A test community for testing purposes', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'alliance1ID', 'test-alliance', 'Test Alliance', 'A test alliance for testing purposes', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
--- Community for registration-question update tests
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'questionsCommunityID', 'update-questions-community', 'Update Questions Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+-- Alliance for registration-question update tests
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'questionsAllianceID', 'update-questions-alliance', 'Update Questions Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, name) values
@@ -93,31 +93,31 @@ insert into "user" (user_id, auth_hash, email, username, name) values
     (:'questionsAttendeeUserID', 'rq-hash-2', 'rq-attendee@example.com', 'rq-attendee', null);
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
+insert into event_category (event_category_id, name, alliance_id)
 values
-    (:'category1ID', 'Conference', :'community1ID'),
-    (:'category2ID', 'Workshop', :'community1ID'),
-    (:'questionsEventCategoryID', 'General', :'questionsCommunityID');
+    (:'category1ID', 'Conference', :'alliance1ID'),
+    (:'category2ID', 'Workshop', :'alliance1ID'),
+    (:'questionsEventCategoryID', 'General', :'questionsAllianceID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('00000000-0000-0000-0000-000000000010', 'Technology', :'community1ID');
+insert into group_category (group_category_id, name, alliance_id)
+values ('00000000-0000-0000-0000-000000000010', 'Technology', :'alliance1ID');
 
 -- Group category for registration-question update tests
-insert into group_category (group_category_id, name, community_id)
-values (:'questionsCategoryID', 'Technology', :'questionsCommunityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'questionsCategoryID', 'Technology', :'questionsAllianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'group1ID',
-    :'community1ID',
+    :'alliance1ID',
     'Test Group',
     'abc1234',
     'A test group',
@@ -125,8 +125,8 @@ insert into "group" (
 );
 
 -- Group for registration-question update tests
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'questionsGroupID', :'questionsCommunityID', :'questionsCategoryID', 'Update Questions Group', 'update-questions-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'questionsGroupID', :'questionsAllianceID', :'questionsCategoryID', 'Update Questions Group', 'update-questions-group');
 
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
@@ -1380,10 +1380,10 @@ select lives_ok(
 select is(
     (select (
         get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels'
+        )::jsonb - 'alliance' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels'
     )),
     '{
         "attendee_count": 0,
@@ -1431,7 +1431,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             resource_type,
@@ -1998,10 +1998,10 @@ select lives_ok(
 select is(
     (select (
         get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels'
+        )::jsonb - 'alliance' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels'
     )),
     '{
         "attendee_count": 0,
@@ -2069,7 +2069,7 @@ select is(
 select ok(
     (select (
         get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
         )::jsonb->'sessions'->'2030-02-01'
@@ -2222,7 +2222,7 @@ select is(
         )
         from jsonb_array_elements(
             get_event_full(
-                :'community1ID'::uuid,
+                :'alliance1ID'::uuid,
                 :'group1ID'::uuid,
                 :'event18ID'::uuid
             )::jsonb->'cfs_labels'
@@ -2364,7 +2364,7 @@ select lives_ok(
 select is(
     (
         select get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event5ID'::uuid
         )::jsonb->>'meeting_recording_public_url'
@@ -2522,7 +2522,7 @@ select is(
     (
         with payload as (
             select get_event_full(
-                :'community1ID'::uuid,
+                :'alliance1ID'::uuid,
                 :'group1ID'::uuid,
                 :'event6ID'::uuid
             )::jsonb as event_json

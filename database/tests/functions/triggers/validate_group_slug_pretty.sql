@@ -11,8 +11,8 @@ select plan(11);
 
 \set category1ID '00000000-0000-0000-0000-000000000611'
 \set category2ID '00000000-0000-0000-0000-000000000612'
-\set community1ID '00000000-0000-0000-0000-000000000610'
-\set community2ID '00000000-0000-0000-0000-000000000620'
+\set alliance1ID '00000000-0000-0000-0000-000000000610'
+\set alliance2ID '00000000-0000-0000-0000-000000000620'
 \set groupValidID '00000000-0000-0000-0000-000000000601'
 \set groupNullPrettyID '00000000-0000-0000-0000-000000000602'
 
@@ -20,8 +20,8 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
-insert into community (
-    community_id,
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -30,19 +30,19 @@ insert into community (
     banner_url
 ) values
     (
-        :'community1ID',
+        :'alliance1ID',
         'pretty-slug-validation',
         'Pretty Slug Validation',
-        'A community for pretty slug validation tests',
+        'A alliance for pretty slug validation tests',
         'https://example.com/logo-pretty.png',
         'https://example.com/banner-mobile-pretty.png',
         'https://example.com/banner-pretty.png'
     ),
     (
-        :'community2ID',
+        :'alliance2ID',
         'pretty-slug-validation-other',
         'Pretty Slug Validation Other',
-        'Another community for pretty slug validation tests',
+        'Another alliance for pretty slug validation tests',
         'https://example.com/logo-pretty-other.png',
         'https://example.com/banner-mobile-pretty-other.png',
         'https://example.com/banner-pretty-other.png'
@@ -50,17 +50,17 @@ insert into community (
 
 insert into group_category (
     group_category_id,
-    community_id,
+    alliance_id,
     name
 ) values
     (
         :'category1ID',
-        :'community1ID',
+        :'alliance1ID',
         'Pretty Slug Category'
     ),
     (
         :'category2ID',
-        :'community2ID',
+        :'alliance2ID',
         'Pretty Slug Category Other'
     );
 
@@ -71,9 +71,9 @@ insert into group_category (
 -- Should accept strict ASCII pretty slugs
 select lives_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         :'groupValidID',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Valid',
         'prettyvalid1',
@@ -85,9 +85,9 @@ select lives_ok(
 -- Should accept groups without a pretty slug
 select lives_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug) values (%L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug) values (%L, %L, %L, %L, %L)',
         :'groupNullPrettyID',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Null',
         'prettynull1'
@@ -95,26 +95,26 @@ select lives_ok(
     'Should accept groups without a pretty slug'
 );
 
--- Should allow the same pretty slug in another community
+-- Should allow the same pretty slug in another alliance
 select lives_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000621',
-        :'community2ID',
+        :'alliance2ID',
         :'category2ID',
-        'Pretty Slug Other Community',
+        'Pretty Slug Other Alliance',
         'prettyvalidother1',
         'pretty-slug-valid'
     ),
-    'Should allow the same pretty slug in another community'
+    'Should allow the same pretty slug in another alliance'
 );
 
 -- Should reject uppercase characters
 select throws_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000603',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Uppercase',
         'prettyupper1',
@@ -128,9 +128,9 @@ select throws_ok(
 -- Should reject excessive length
 select throws_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000604',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Long',
         'prettylong1',
@@ -144,9 +144,9 @@ select throws_ok(
 -- Should reject consecutive hyphens
 select throws_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000605',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Consecutive',
         'prettyhyphen1',
@@ -160,9 +160,9 @@ select throws_ok(
 -- Should reject leading or trailing hyphens
 select throws_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000606',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Edge',
         'prettyedge1',
@@ -176,9 +176,9 @@ select throws_ok(
 -- Should reject pretty slugs matching the group's generated slug
 select throws_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000607',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Same',
         'prettysame1',
@@ -192,32 +192,32 @@ select throws_ok(
 -- Should reject pretty slugs matching another generated slug
 select throws_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000608',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Generated Collision',
         'prettygenerated1',
         'prettyvalid1'
     ),
     'P0001',
-    'Pretty slug is already used by another group in this community',
+    'Pretty slug is already used by another group in this alliance',
     'Should reject pretty slugs matching another generated slug'
 );
 
 -- Should reject pretty slugs matching another pretty slug
 select throws_ok(
     format(
-        'insert into "group" (group_id, community_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
+        'insert into "group" (group_id, alliance_id, group_category_id, name, slug, slug_pretty) values (%L, %L, %L, %L, %L, %L)',
         '00000000-0000-0000-0000-000000000609',
-        :'community1ID',
+        :'alliance1ID',
         :'category1ID',
         'Pretty Slug Pretty Collision',
         'prettypcollision1',
         'pretty-slug-valid'
     ),
     'P0001',
-    'Pretty slug is already used by another group in this community',
+    'Pretty slug is already used by another group in this alliance',
     'Should reject pretty slugs matching another pretty slug'
 );
 
@@ -229,7 +229,7 @@ select throws_ok(
         :'groupNullPrettyID'
     ),
     'P0001',
-    'Pretty slug is already used by another group in this community',
+    'Pretty slug is already used by another group in this alliance',
     'Should reject generated slugs matching another pretty slug'
 );
 

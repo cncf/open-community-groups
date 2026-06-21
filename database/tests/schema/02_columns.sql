@@ -29,7 +29,7 @@ select columns_are('audit_log', array[
 
     'actor_user_id',
     'actor_username',
-    'community_id',
+    'alliance_id',
     'details',
     'event_id',
     'group_id'
@@ -79,13 +79,13 @@ select columns_are('cfs_submission_status', array[
     'display_name'
 ]);
 
--- Test: community columns should match expected
-select columns_are('community', array[
-    'community_id',
+-- Test: alliance columns should match expected
+select columns_are('alliance', array[
+    'alliance_id',
     'active',
     'banner_mobile_url',
     'banner_url',
-    'community_site_layout_id',
+    'alliance_site_layout_id',
     'created_at',
     'description',
     'display_name',
@@ -112,54 +112,54 @@ select columns_are('community', array[
     'youtube_url'
 ]);
 
--- Test: community_redirect_settings columns should match expected
-select columns_are('community_redirect_settings', array[
-    'community_id',
+-- Test: alliance_redirect_settings columns should match expected
+select columns_are('alliance_redirect_settings', array[
+    'alliance_id',
 
     'base_legacy_url'
 ]);
 
--- Test: community_site_layout columns should match expected
-select columns_are('community_site_layout', array[
-    'community_site_layout_id'
+-- Test: alliance_site_layout columns should match expected
+select columns_are('alliance_site_layout', array[
+    'alliance_site_layout_id'
 ]);
 
--- Test: community_role columns should match expected
-select columns_are('community_role', array[
-    'community_role_id',
+-- Test: alliance_role columns should match expected
+select columns_are('alliance_role', array[
+    'alliance_role_id',
     'display_name'
 ]);
 
--- Test: community_permission columns should match expected
-select columns_are('community_permission', array[
-    'community_permission_id',
+-- Test: alliance_permission columns should match expected
+select columns_are('alliance_permission', array[
+    'alliance_permission_id',
     'display_name'
 ]);
 
--- Test: community_role_community_permission columns should match expected
-select columns_are('community_role_community_permission', array[
-    'community_permission_id',
-    'community_role_id'
+-- Test: alliance_role_alliance_permission columns should match expected
+select columns_are('alliance_role_alliance_permission', array[
+    'alliance_permission_id',
+    'alliance_role_id'
 ]);
 
--- Test: community_role_group_permission columns should match expected
-select columns_are('community_role_group_permission', array[
-    'community_role_id',
+-- Test: alliance_role_group_permission columns should match expected
+select columns_are('alliance_role_group_permission', array[
+    'alliance_role_id',
     'group_permission_id'
 ]);
 
--- Test: community_team columns should match expected
-select columns_are('community_team', array[
-    'community_id',
+-- Test: alliance_team columns should match expected
+select columns_are('alliance_team', array[
+    'alliance_id',
     'accepted',
     'created_at',
     'role',
     'user_id'
 ]);
 
--- Test: community_views columns should match expected
-select columns_are('community_views', array[
-    'community_id',
+-- Test: alliance_views columns should match expected
+select columns_are('alliance_views', array[
+    'alliance_id',
     'day',
     'total'
 ]);
@@ -303,7 +303,7 @@ select columns_are('event_attendee', array[
 -- Test: event_category columns should match expected
 select columns_are('event_category', array[
     'event_category_id',
-    'community_id',
+    'alliance_id',
     'created_at',
     'name',
     'order',
@@ -505,7 +505,7 @@ select columns_are('meeting_provider', array[
 select columns_are('group', array[
     'group_id',
     'active',
-    'community_id',
+    'alliance_id',
     'created_at',
     'deleted',
     'group_category_id',
@@ -550,7 +550,7 @@ select columns_are('group', array[
 -- Test: group_category columns should match expected
 select columns_are('group_category', array[
     'group_category_id',
-    'community_id',
+    'alliance_id',
     'created_at',
     'name',
     'normalized_name',
@@ -786,7 +786,7 @@ select columns_are('payment_provider', array[
 -- Test: region columns should match expected
 select columns_are('region', array[
     'region_id',
-    'community_id',
+    'alliance_id',
     'created_at',
     'name',
     'normalized_name',

@@ -2,8 +2,8 @@
 
 /// Common dashboard handlers.
 pub(crate) mod common;
-/// Community dashboard handlers.
-pub(crate) mod community;
+/// Alliance dashboard handlers.
+pub(crate) mod alliance;
 /// Group dashboard handlers.
 pub(crate) mod group;
 /// User dashboard handlers.

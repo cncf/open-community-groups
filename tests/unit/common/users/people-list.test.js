@@ -82,7 +82,7 @@ describe("people-list", () => {
   it("passes initials into logo-image placeholders", async () => {
     // Render the people-list fixture.
     const element = await mountLitComponent("people-list", {
-      people: [{ name: "Open Community" }],
+      people: [{ name: "Open Alliance" }],
     });
 
     // Passed initials into logo-image placeholders.

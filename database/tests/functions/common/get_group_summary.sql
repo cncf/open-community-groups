@@ -10,7 +10,7 @@ select plan(6);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set groupDeletedID '00000000-0000-0000-0000-000000000023'
 \set groupID '00000000-0000-0000-0000-000000000021'
 \set groupInactiveID '00000000-0000-0000-0000-000000000022'
@@ -20,9 +20,9 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -30,29 +30,29 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Region
-insert into region (region_id, name, community_id)
-values (:'regionID', 'North America', :'communityID');
+insert into region (region_id, name, alliance_id)
+values (:'regionID', 'North America', :'allianceID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Technology', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     region_id,
     active,
@@ -70,7 +70,7 @@ insert into "group" (
     :'groupID',
     'Seattle Kubernetes Meetup',
     'abc1234',
-    :'communityID',
+    :'allianceID',
     :'categoryID',
     :'regionID',
     true,
@@ -91,7 +91,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     active,
     created_at
@@ -99,7 +99,7 @@ insert into "group" (
     :'groupInactiveID',
     'Inactive DevOps Group',
     'xyz9876',
-    :'communityID',
+    :'allianceID',
     :'categoryID',
     false,
     '2024-02-15 10:00:00+00'
@@ -110,7 +110,7 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     active,
     deleted,
@@ -120,7 +120,7 @@ insert into "group" (
     :'groupDeletedID',
     'Deleted DevOps Group',
     'mno3ghi',
-    :'communityID',
+    :'allianceID',
     :'categoryID',
     false,
     true,
@@ -135,7 +135,7 @@ insert into "group" (
 -- Should return correct group summary JSON
 select is(
     get_group_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb,
     '{
@@ -145,8 +145,8 @@ select is(
             "name": "Technology",
             "normalized_name": "technology"
         },
-        "community_display_name": "Cloud Native Seattle",
-        "community_name": "cloud-native-seattle",
+        "alliance_display_name": "Cloud Native Seattle",
+        "alliance_name": "cloud-native-seattle",
         "created_at": 1705312800,
         "group_id": "00000000-0000-0000-0000-000000000021",
         "name": "Seattle Kubernetes Meetup",
@@ -170,15 +170,15 @@ select is(
     'Should return correct group summary data as JSON'
 );
 
--- Should use community logo when group has no logo
+-- Should use alliance logo when group has no logo
 update "group" set logo_url = null where group_id = :'groupID';
 select is(
     (get_group_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
-    'Should use community logo when group has no logo'
+    'Should use alliance logo when group has no logo'
 );
 update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
 
@@ -186,7 +186,7 @@ update "group" set logo_url = 'https://example.com/group-logo.png' where group_i
 update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
 select is(
     (get_group_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb)->>'slug_pretty',
     'seattle-kubernetes',
@@ -197,7 +197,7 @@ update "group" set slug_pretty = null where group_id = :'groupID';
 -- Should return null for non-existent group
 select ok(
     get_group_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         '00000000-0000-0000-0000-000000999999'::uuid
     ) is null,
     'Should return null for non-existent group ID'
@@ -206,19 +206,19 @@ select ok(
 -- Should return data for deleted group
 select ok(
     get_group_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupDeletedID'::uuid
     ) is not null,
     'Should return data for deleted group'
 );
 
--- Should return null when community does not match group
+-- Should return null when alliance does not match group
 select ok(
     get_group_summary(
         '00000000-0000-0000-0000-000000000002'::uuid,
         :'groupID'::uuid
     ) is null,
-    'Should return null when community does not match group'
+    'Should return null when alliance does not match group'
 );
 
 -- ============================================================================

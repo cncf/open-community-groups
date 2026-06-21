@@ -13,7 +13,7 @@ import { LitWrapper } from "/static/js/common/lit-wrapper.js";
  * Typing in the search field filters results with a debounce to reduce
  * re-render pressure while the user is typing.
  *
- * @property {Array<object>} groups List of groups for the selected community
+ * @property {Array<object>} groups List of groups for the selected alliance
  * @property {string} selectedGroupId Currently selected group identifier
  */
 export class GroupSelector extends LitWrapper {
@@ -232,7 +232,7 @@ export class GroupSelector extends LitWrapper {
         ? html`<div
             class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2"
           >
-            This group has been deactivated. Please contact to a community admin.
+            This group has been deactivated. Please contact to a alliance admin.
           </div>`
         : ""} `;
   }

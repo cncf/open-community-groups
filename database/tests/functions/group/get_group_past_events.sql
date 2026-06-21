@@ -10,7 +10,7 @@ select plan(2);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
@@ -22,21 +22,21 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Technology', :'allianceID');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
-values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'San Francisco', 'CA', 'US', 'United States');
+insert into "group" (group_id, name, slug, alliance_id, group_category_id, city, state, country_code, country_name)
+values (:'groupID', 'Test Group', 'test-group', :'allianceID', :'categoryID', 'San Francisco', 'CA', 'US', 'United States');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Tech Talks', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'Tech Talks', :'allianceID');
 
 -- Event
 insert into event (
@@ -84,7 +84,7 @@ insert into event (
 select is(
     get_group_past_events('00000000-0000-0000-0000-000000000001'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
+        get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
     ),
     'Should return published non-test past events ordered by date DESC as JSON'
 );
@@ -92,9 +92,9 @@ select is(
 -- Should resolve past events by pretty slug
 update "group" set slug_pretty = 'test-group-pretty' where group_id = :'groupID';
 select is(
-    get_group_past_events(:'communityID'::uuid, 'test-group-pretty', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
+    get_group_past_events(:'allianceID'::uuid, 'test-group-pretty', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
+        get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
     ),
     'Should resolve past events by pretty slug'
 );

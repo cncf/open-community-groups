@@ -10,8 +10,8 @@ select plan(19);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set alliance2ID '00000000-0000-0000-0000-000000000002'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventApprovalID '00000000-0000-0000-0000-000000000044'
 \set eventCanceledID '00000000-0000-0000-0000-000000000042'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
@@ -42,22 +42,22 @@ select plan(19);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'communityID', 'cncf-sea', 'CNCF Seattle', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
-    (:'community2ID', 'cncf-ny', 'CNCF NY', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
+    (:'allianceID', 'goup-sea', 'Goup Seattle', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
+    (:'alliance2ID', 'goup-ny', 'Goup NY', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Technology', :'allianceID');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Tech', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'Tech', :'allianceID');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url, active)
-values (:'groupID', 'Test Group', 'test-group', :'communityID', :'categoryID', 'https://example.com/group.png', true);
+insert into "group" (group_id, name, slug, alliance_id, group_category_id, logo_url, active)
+values (:'groupID', 'Test Group', 'test-group', :'allianceID', :'categoryID', 'https://example.com/group.png', true);
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, name)
@@ -350,7 +350,7 @@ insert into event_refund_request (
 
 -- Should return attendee status for checked-in attendee
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
     '{
         "is_checked_in": true,
         "purchase_amount_minor": null,
@@ -363,7 +363,7 @@ select is(
 
 -- Should return attendee status for attendee not checked in
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user2ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventID'::uuid, :'user2ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": 3500,
@@ -377,7 +377,7 @@ select is(
 -- Should return attendee status for a started event without an end time
 select is(
     get_event_attendance(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'eventStartedNoEndID'::uuid,
         :'user1ID'::uuid
     )::jsonb,
@@ -391,9 +391,9 @@ select is(
     'Should return attendee status for a started event without an end time'
 );
 
--- Should return none when scoped by wrong community
+-- Should return none when scoped by wrong alliance
 select is(
-    get_event_attendance(:'community2ID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
+    get_event_attendance(:'alliance2ID'::uuid, :'eventID'::uuid, :'user1ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -401,12 +401,12 @@ select is(
         "resume_checkout_url": null,
         "status": "none"
     }'::jsonb,
-    'Should return none when scoped by wrong community'
+    'Should return none when scoped by wrong alliance'
 );
 
--- Should keep purchase and refund request scoped to the validated community
+-- Should keep purchase and refund request scoped to the validated alliance
 select is(
-    get_event_attendance(:'community2ID'::uuid, :'eventID'::uuid, :'user4ID'::uuid)::jsonb,
+    get_event_attendance(:'alliance2ID'::uuid, :'eventID'::uuid, :'user4ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -414,12 +414,12 @@ select is(
         "resume_checkout_url": null,
         "status": "none"
     }'::jsonb,
-    'Should not expose purchase or refund request details outside the validated community scope'
+    'Should not expose purchase or refund request details outside the validated alliance scope'
 );
 
 -- Should only return refund state for the selected current purchase
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user4ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventID'::uuid, :'user4ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": 3000,
@@ -433,7 +433,7 @@ select is(
 -- Should return waitlisted status for waitlisted user
 select is(
     get_event_attendance(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'eventID'::uuid,
         '00000000-0000-0000-0000-000000000053'::uuid
     )::jsonb,
@@ -449,7 +449,7 @@ select is(
 
 -- Should return none for pending organizer-created invitations
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user8ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventID'::uuid, :'user8ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -462,7 +462,7 @@ select is(
 
 -- Should return pending approval status for pending invitation request
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user5ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventApprovalID'::uuid, :'user5ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -475,7 +475,7 @@ select is(
 
 -- Should return invitation approved status for accepted invitation request
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user7ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventApprovalID'::uuid, :'user7ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -488,7 +488,7 @@ select is(
 
 -- Should return rejected status for rejected invitation request
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventApprovalID'::uuid, :'user6ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventApprovalID'::uuid, :'user6ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -501,7 +501,7 @@ select is(
 
 -- Should ignore rejected invitation requests when approval is disabled
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user6ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventID'::uuid, :'user6ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -515,7 +515,7 @@ select is(
 -- Should return attendee status for attendees on canceled events
 select is(
     get_event_attendance(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'eventCanceledID'::uuid,
         :'user1ID'::uuid
     )::jsonb,
@@ -532,7 +532,7 @@ select is(
 -- Should return waitlisted status for waitlisted users on canceled events
 select is(
     get_event_attendance(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'eventCanceledID'::uuid,
         '00000000-0000-0000-0000-000000000053'::uuid
     )::jsonb,
@@ -549,7 +549,7 @@ select is(
 -- Should return none for attendees on canceled draft events
 select is(
     get_event_attendance(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'eventDraftCanceledID'::uuid,
         :'user2ID'::uuid
     )::jsonb,
@@ -566,7 +566,7 @@ select is(
 -- Should return none for non-attendee
 select is(
     get_event_attendance(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'eventID'::uuid,
         '00000000-0000-0000-0000-000000000059'::uuid
     )::jsonb,
@@ -582,14 +582,14 @@ select is(
 
 -- Should report pending registration questions in event attendance state
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventQuestionsID'::uuid, :'questionsInvitedUserID'::uuid)::jsonb->>'status',
+    get_event_attendance(:'allianceID'::uuid, :'eventQuestionsID'::uuid, :'questionsInvitedUserID'::uuid)::jsonb->>'status',
     'registration-questions-pending',
     'Should report pending registration questions in event attendance state'
 );
 
 -- Should report pending payment before pending registration questions
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventQuestionsID'::uuid, :'questionsCheckoutUserID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventQuestionsID'::uuid, :'questionsCheckoutUserID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": 1200,
@@ -602,7 +602,7 @@ select is(
 
 -- Should ignore expired pending payments before pending registration questions
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventQuestionsID'::uuid, :'questionsCheckoutExpiredUserID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventQuestionsID'::uuid, :'questionsCheckoutExpiredUserID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,

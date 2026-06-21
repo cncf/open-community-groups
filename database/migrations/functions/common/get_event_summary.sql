@@ -1,6 +1,6 @@
 -- Returns summary information about an event.
 create or replace function get_event_summary(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_group_id uuid,
     p_event_id uuid
 )
@@ -9,8 +9,8 @@ returns json as $$
     select json_strip_nulls(json_build_object(
         -- Include core summary fields
         'canceled', e.canceled,
-        'community_display_name', c.display_name,
-        'community_name', c.name,
+        'alliance_display_name', c.display_name,
+        'alliance_name', c.name,
         'event_id', e.event_id,
         'group_category_name', gc.name,
         'group_name', g.name,
@@ -66,7 +66,7 @@ returns json as $$
     )) as json_data
     from event e
     join "group" g using (group_id)
-    join community c on c.community_id = g.community_id
+    join alliance c on c.alliance_id = g.alliance_id
     join group_category gc on g.group_category_id = gc.group_category_id
     left join meeting m_event on m_event.event_id = e.event_id
     cross join lateral get_event_occupied_seat_count(e.event_id) as ea(attendee_count)
@@ -77,5 +77,5 @@ returns json as $$
     ) ew
     where e.event_id = p_event_id
     and g.group_id = p_group_id
-    and g.community_id = p_community_id;
+    and g.alliance_id = p_alliance_id;
 $$ language sql;

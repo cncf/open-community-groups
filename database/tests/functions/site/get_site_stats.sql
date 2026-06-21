@@ -9,9 +9,9 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set community3ID '00000000-0000-0000-0000-000000000003'
+\set alliance1ID '00000000-0000-0000-0000-000000000001'
+\set alliance2ID '00000000-0000-0000-0000-000000000002'
+\set alliance3ID '00000000-0000-0000-0000-000000000003'
 \set event1ID '00000000-0000-0000-0000-000000000101'
 \set event2ID '00000000-0000-0000-0000-000000000102'
 \set event3ID '00000000-0000-0000-0000-000000000103'
@@ -37,30 +37,30 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+-- Alliances
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
 values
-    (:'community1ID', 'community-one', 'Community One', 'Test community 1', 'https://example.com/logo1.png', 'https://example.com/banner_mobile1.png', 'https://example.com/banner1.png'),
-    (:'community2ID', 'community-two', 'Community Two', 'Test community 2', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
+    (:'alliance1ID', 'alliance-one', 'Alliance One', 'Test alliance 1', 'https://example.com/logo1.png', 'https://example.com/banner_mobile1.png', 'https://example.com/banner1.png'),
+    (:'alliance2ID', 'alliance-two', 'Alliance Two', 'Test alliance 2', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
--- Inactive community
-insert into community (community_id, active, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+-- Inactive alliance
+insert into alliance (alliance_id, active, name, display_name, description, logo_url, banner_mobile_url, banner_url)
 values
-    (:'community3ID', false, 'community-three', 'Community Three', 'Inactive test community', 'https://example.com/logo3.png', 'https://example.com/banner_mobile3.png', 'https://example.com/banner3.png');
+    (:'alliance3ID', false, 'alliance-three', 'Alliance Three', 'Inactive test alliance', 'https://example.com/logo3.png', 'https://example.com/banner_mobile3.png', 'https://example.com/banner3.png');
 
 -- Group Category
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategoryID', :'community1ID', 'General'),
-    (:'groupCategory2ID', :'community2ID', 'General'),
-    (:'groupCategory3ID', :'community3ID', 'General');
+    (:'groupCategoryID', :'alliance1ID', 'General'),
+    (:'groupCategory2ID', :'alliance2ID', 'General'),
+    (:'groupCategory3ID', :'alliance3ID', 'General');
 
 -- Event Category
-insert into event_category (event_category_id, community_id, name)
+insert into event_category (event_category_id, alliance_id, name)
 values
-    (:'eventCategoryID', :'community1ID', 'Meetup'),
-    (:'eventCategory2ID', :'community2ID', 'Meetup'),
-    (:'eventCategory3ID', :'community3ID', 'Meetup');
+    (:'eventCategoryID', :'alliance1ID', 'Meetup'),
+    (:'eventCategory2ID', :'alliance2ID', 'Meetup'),
+    (:'eventCategory3ID', :'alliance3ID', 'Meetup');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
@@ -75,10 +75,10 @@ values
 -- month_5: group1 (active)
 -- month_3: group2 (active)
 -- month_2: group3 (deleted)
--- month_5: group4 (active, inactive community)
+-- month_5: group4 (active, inactive alliance)
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -86,16 +86,16 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'group1ID', :'community1ID', :'groupCategoryID', 'Group One', 'group-one',
+    (:'group1ID', :'alliance1ID', :'groupCategoryID', 'Group One', 'group-one',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '10 days',
         true, false),
-    (:'group2ID', :'community2ID', :'groupCategory2ID', 'Group Two', 'group-two',
+    (:'group2ID', :'alliance2ID', :'groupCategory2ID', 'Group Two', 'group-two',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months' + interval '10 days',
         true, false),
-    (:'group3ID', :'community1ID', :'groupCategoryID', 'Group Three', 'group-three',
+    (:'group3ID', :'alliance1ID', :'groupCategoryID', 'Group Three', 'group-three',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months' + interval '10 days',
         false, true),
-    (:'group4ID', :'community3ID', :'groupCategory3ID', 'Group Four', 'group-four',
+    (:'group4ID', :'alliance3ID', :'groupCategory3ID', 'Group Four', 'group-four',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '5 months' + interval '15 days',
         true, false);
 
@@ -104,7 +104,7 @@ insert into "group" (
 -- month_3: user2 joins group1
 -- month_2: user3 joins group2
 -- month_1: user4 joins group3 (deleted group)
--- month_1: user5 joins group4 (inactive community)
+-- month_1: user5 joins group4 (inactive alliance)
 insert into group_member (group_id, user_id, created_at)
 values
     (:'group1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '5 days'),
@@ -118,7 +118,7 @@ values
 -- month_1: event2 (published)
 -- null: event3 (published, no start)
 -- month_1: event4 (unpublished)
--- month_1: event5 (published, inactive community)
+-- month_1: event5 (published, inactive alliance)
 insert into event (
     event_id,
     group_id,
@@ -155,7 +155,7 @@ insert into event (
 -- month_2: attendee3
 -- month_1: attendee4
 -- month_1: attendee5 (unpublished event)
--- month_1: attendee6 (inactive community event)
+-- month_1: attendee6 (inactive alliance event)
 insert into event_attendee (event_id, user_id, created_at)
 values
     (:'event1ID', :'user1ID', date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months' + interval '1 day'),
@@ -251,11 +251,11 @@ select is(
     'Should exclude unpublished events from totals'
 );
 
--- Should exclude data from inactive communities
+-- Should exclude data from inactive alliances
 select is(
     (get_site_stats()::jsonb->'members'->>'total')::int,
     3,
-    'Should exclude members of groups in inactive communities from totals'
+    'Should exclude members of groups in inactive alliances from totals'
 );
 
 -- ============================================================================

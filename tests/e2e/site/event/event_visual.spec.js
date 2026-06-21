@@ -4,7 +4,7 @@ import {
   expectRegionScreenshot,
   getIntroSection,
   navigateToEvent,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
   TEST_GROUP_SLUGS,
@@ -15,8 +15,8 @@ test.describe("event page visual regression @visual", () => {
     // Load the event page for the desktop snapshot.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -41,8 +41,8 @@ test.describe("event page visual regression @visual", () => {
     // Load the event page for the mobile snapshot.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 

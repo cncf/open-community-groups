@@ -358,17 +358,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 /* Jumbotron */
-.jumbotron-description a, .community-description a, .new-group-content a {
+.jumbotron-description a, .alliance-description a, .new-group-content a {
   color: var(--ocg-primary);
   font-weight: 600;
 }
 
-.community-description h1,
-.community-description h2,
-.community-description h3,
-.community-description h4,
-.community-description h5,
-.community-description h6 {
+.alliance-description h1,
+.alliance-description h2,
+.alliance-description h3,
+.alliance-description h4,
+.alliance-description h5,
+.alliance-description h6 {
   line-height: 1.75rem;
   font-weight: 600;
   margin-top: 1.5rem;
@@ -377,12 +377,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 @media (min-width: 1024px) {
-  .community-description h1,
-  .community-description h2,
-  .community-description h3,
-  .community-description h4,
-  .community-description h5,
-  .community-description h6 {
+  .alliance-description h1,
+  .alliance-description h2,
+  .alliance-description h3,
+  .alliance-description h4,
+  .alliance-description h5,
+  .alliance-description h6 {
     line-height: 2rem;
   }
 }
@@ -650,7 +650,7 @@ input:placeholder-shown {
 .icon-calendar { --icon-url: url('/static/images/icons/calendar.svg'); }
 .icon-cancel { --icon-url: url('/static/images/icons/cancel.svg'); }
 .icon-caret-down { --icon-url: url('/static/images/icons/caret_down.svg'); }
-.icon-community { --icon-url: url('/static/images/icons/community.svg'); }
+.icon-alliance { --icon-url: url('/static/images/icons/alliance.svg'); }
 .icon-eraser { --icon-url: url('/static/images/icons/eraser.svg'); }
 .icon-eye { --icon-url: url('/static/images/icons/eye.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }

@@ -37,7 +37,7 @@ declare
 begin
     -- Load the locked event state used by the update flow
     select
-        get_event_full(g.community_id, p_group_id, p_event_id)::jsonb
+        get_event_full(g.alliance_id, p_group_id, p_event_id)::jsonb
     into
         v_event_before
     from "group" g
@@ -306,7 +306,7 @@ begin
         'event',
         p_event_id,
         (
-            select g.community_id
+            select g.alliance_id
             from event e
             join "group" g on g.group_id = e.group_id
             where e.event_id = p_event_id

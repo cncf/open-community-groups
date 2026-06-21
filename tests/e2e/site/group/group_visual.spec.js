@@ -4,7 +4,7 @@ import {
   expectRegionScreenshot,
   getIntroSection,
   navigateToGroup,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
 } from "../../utils.js";
@@ -14,8 +14,8 @@ test.describe("group page visual regression @visual", () => {
     // Load the group page for the desktop snapshot.
     await navigateToGroup(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
     );
 
     // Verify desktop group content is ready.
@@ -42,8 +42,8 @@ test.describe("group page visual regression @visual", () => {
     // Load the group page for the mobile snapshot.
     await navigateToGroup(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
     );
 
     // Verify mobile group content is ready.

@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD013 MD060 -->
 
-# Open Community Groups Documentation
+# Open Alliance Groups Documentation
 
-Open Community Groups (OCG) helps communities run groups, events, and speaker programs in one
+Open Alliance Groups (OCG) helps alliances run groups, events, and speaker programs in one
 platform. These docs help you understand how OCG works, complete common tasks, and troubleshoot
 issues when something does not work as expected.
 
@@ -15,7 +15,7 @@ issues when something does not work as expected.
 | Understand role permissions                | [Choose Your Dashboard](getting-started/choose-dashboard.md#fixed-role-model) |
 | Discover groups and attend events          | [Public Site Guide](guides/public-site.md)                   |
 | Manage events, profile, proposals, and submissions | [User Dashboard Guide](guides/user-dashboard.md)             |
-| Run a community                            | [Community Dashboard Guide](guides/community-dashboard.md)   |
+| Run a alliance                            | [Alliance Dashboard Guide](guides/alliance-dashboard.md)   |
 | Run a group and events                     | [Group Dashboard Guide](guides/group-dashboard.md)           |
 | Run the full event lifecycle               | [Event Operations](guides/event-operations.md)               |
 
@@ -34,9 +34,9 @@ Speakers.
 The [user dashboard](/dashboard/user ':ignore') is where you manage your personal activity in
 OCG. It includes upcoming events, profile, invitations, session proposals, and submissions.
 
-### Community Dashboard
+### Alliance Dashboard
 
-The [community dashboard](/dashboard/community ':ignore') is for community-wide setup and
+The [alliance dashboard](/dashboard/alliance ':ignore') is for alliance-wide setup and
 management. Use it to manage identity, team access, regions, group and event categories,
 analytics, and groups.
 
@@ -62,7 +62,7 @@ it to manage events, organizers, members, sponsors, and communication.
 ### Organizer path
 
 1. [Choose Your Dashboard](getting-started/choose-dashboard.md)
-2. [Community Dashboard Guide](guides/community-dashboard.md) or
+2. [Alliance Dashboard Guide](guides/alliance-dashboard.md) or
    [Group Dashboard Guide](guides/group-dashboard.md)
 3. [Event Operations Guide](guides/event-operations.md)
 4. [Troubleshooting](support/troubleshooting.md)

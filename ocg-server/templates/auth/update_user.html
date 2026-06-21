@@ -207,6 +207,12 @@
                  class="input-primary ps-10"
                  placeholder="https://linkedin.com/in/username">
         </div>
+        {% if user.linkedin_connected -%}
+          <div class="mt-2 flex items-center gap-2 text-xs text-stone-600">
+            <div class="svg-icon size-3.5 icon-linkedin bg-primary-500"></div>
+            <span>Connected with LinkedIn</span>
+          </div>
+        {% endif -%}
       </div>
       {# End LinkedIn URL -#}
 

@@ -15,7 +15,7 @@ export class UserSearchSelector extends LitWrapper {
    * Component properties definition
    * @property {Array} selectedUsers - Array of selected user objects
    * @property {string} fieldName - Name attribute for the hidden form inputs and button label
-   * @property {string} dashboardType - Dashboard context type ("group" or "community")
+   * @property {string} dashboardType - Dashboard context type ("group" or "alliance")
    * @property {string} label - Label text for the placeholder in search input
    * @property {number} maxUsers - Maximum number of users allowed (0 = unlimited)
    * @property {number} searchDelay - Debounce delay for search in milliseconds

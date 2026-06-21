@@ -25,7 +25,7 @@ export class UserSearchField extends LitWrapper {
   /**
    * Component properties definition
    * @property {string} dashboardType - Dashboard context type ("group" or
-   *   "community")
+   *   "alliance")
    * @property {string} label - Label text used in placeholders and messages
    * @property {string} legend - Helper text displayed under the input
    * @property {string} inputId - Input ID used by external labels

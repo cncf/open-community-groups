@@ -261,7 +261,7 @@ describe("alerts", () => {
         xhr: {
           status: 204,
           getResponseHeader: (name) =>
-            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+            name === "HX-Trigger" ? "refresh-alliance-dashboard-table" : null,
         },
         successMessage: "You have successfully added the region.",
         errorMessage: "Failed",

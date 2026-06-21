@@ -1,0 +1,103 @@
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
+begin;
+select plan(3);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set allianceID '00000000-0000-0000-0000-000000000001'
+\set user1ID '00000000-0000-0000-0000-000000000011'
+\set user2ID '00000000-0000-0000-0000-000000000012'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    company,
+    email,
+    name,
+    title,
+    username,
+    email_verified,
+    photo_url
+) values
+    (:'user1ID', gen_random_bytes(32), 'Cloud Corp', 'alice@example.com', 'Alice', 'Principal Engineer', 'alice', true, 'https://e/u1.png'),
+    (:'user2ID', gen_random_bytes(32), null, 'bob@example.com', 'Bob', null, 'bob', true, 'https://e/u2.png');
+
+-- Team
+insert into alliance_team (accepted, alliance_id, role, user_id) values
+    (true, :'allianceID', 'viewer', :'user2ID'),
+    (true, :'allianceID', 'admin', :'user1ID');
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Should return expected members in alphabetical order including accepted flag
+select is(
+    list_alliance_team_members(
+        :'allianceID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'members', '[
+            {"accepted": true, "role": "admin", "user_id": "00000000-0000-0000-0000-000000000011", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
+            {"accepted": true, "role": "viewer", "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
+        ]'::jsonb,
+        'total', 2,
+        'total_accepted', 2,
+        'total_admins_accepted', 1
+    ),
+    'Should return expected members in alphabetical order including accepted flag'
+);
+
+-- Should return paginated members when limit and offset are provided
+select is(
+    list_alliance_team_members(
+        :'allianceID'::uuid,
+        '{"limit": 1, "offset": 1}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'members', '[
+            {"accepted": true, "role": "viewer", "user_id": "00000000-0000-0000-0000-000000000012", "username": "bob", "company": null, "name": "Bob", "photo_url": "https://e/u2.png", "title": null}
+        ]'::jsonb,
+        'total', 2,
+        'total_accepted', 2,
+        'total_admins_accepted', 1
+    ),
+    'Should return paginated members when limit and offset are provided'
+);
+
+-- Should return empty array for unknown alliance
+select is(
+    list_alliance_team_members(
+        '00000000-0000-0000-0000-000000000099'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'members', '[]'::jsonb,
+        'total', 0,
+        'total_accepted', 0,
+        'total_admins_accepted', 0
+    ),
+    'Should return empty array for unknown alliance'
+);
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
+select * from finish();
+rollback;

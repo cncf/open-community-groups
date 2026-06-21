@@ -9,8 +9,8 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000061'
-\set community2ID '00000000-0000-0000-0000-000000000062'
+\set allianceID '00000000-0000-0000-0000-000000000061'
+\set alliance2ID '00000000-0000-0000-0000-000000000062'
 \set eventCanceledID '00000000-0000-0000-0000-000000000066'
 \set eventCategoryID '00000000-0000-0000-0000-000000000063'
 \set eventDeletedID '00000000-0000-0000-0000-000000000067'
@@ -27,9 +27,9 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
+-- Alliances
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -37,18 +37,18 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
-    'event-community',
-    'Event Community',
-    'Test community',
+    :'allianceID',
+    'event-alliance',
+    'Event Alliance',
+    'Test alliance',
     'https://example.com/logo.png',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png'
 ), (
-    :'community2ID',
-    'other-event-community',
-    'Other Event Community',
-    'Other test community',
+    :'alliance2ID',
+    'other-event-alliance',
+    'Other Event Alliance',
+    'Other test alliance',
     'https://example.com/logo-2.png',
     'https://example.com/banner-mobile-2.png',
     'https://example.com/banner-2.png'
@@ -57,29 +57,29 @@ insert into community (
 -- Group category
 insert into group_category (
     group_category_id,
-    community_id,
+    alliance_id,
     name
 ) values (
     :'groupCategoryID',
-    :'communityID',
+    :'allianceID',
     'Technology'
 );
 
 -- Event category
 insert into event_category (
     event_category_id,
-    community_id,
+    alliance_id,
     name
 ) values (
     :'eventCategoryID',
-    :'communityID',
+    :'allianceID',
     'General'
 );
 
 -- Groups
 insert into "group" (
     active,
-    community_id,
+    alliance_id,
     deleted,
     group_category_id,
     group_id,
@@ -87,7 +87,7 @@ insert into "group" (
     slug
 ) values (
     true,
-    :'communityID',
+    :'allianceID',
     false,
     :'groupCategoryID',
     :'groupID',
@@ -95,7 +95,7 @@ insert into "group" (
     'active-group'
 ), (
     false,
-    :'communityID',
+    :'allianceID',
     false,
     :'groupCategoryID',
     :'inactiveGroupID',
@@ -220,14 +220,14 @@ select throws_ok(
     'Should reject missing event'
 );
 
--- Should reject event from another community
+-- Should reject event from another alliance
 select throws_ok(
     $$select ensure_event_is_active(
         '00000000-0000-0000-0000-000000000062'::uuid,
         '00000000-0000-0000-0000-000000000065'::uuid
     )$$,
     'event not found or inactive',
-    'Should reject event from another community'
+    'Should reject event from another alliance'
 );
 
 -- Should reject unpublished event

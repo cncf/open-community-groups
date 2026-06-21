@@ -2,36 +2,36 @@ import { expect, test } from "../../../fixtures.js";
 
 import {
   buildE2eUrl,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_IDS,
   TEST_GROUP_IDS,
   TEST_USER_IDS,
 } from "../../../utils.js";
 
 import {
-  clearCommunityInvitation,
+  clearAllianceInvitation,
   clearEventAttendeeState,
   ensureGroupInvitation,
   ensureEventInvitation,
   openUserDashboardPath,
-  resetCommunityInvitation,
+  resetAllianceInvitation,
   resetGroupInvitation,
 } from "../helpers.js";
 
 test.describe("user dashboard invitations view", () => {
-  test("invitations page shows pending community and group roles", async ({
-    adminCommunityPage,
+  test("invitations page shows pending alliance and group roles", async ({
+    adminAlliancePage,
     pending1Page,
   }) => {
     // Reset seeded invitations before checking the pending roles.
-    await resetCommunityInvitation(
-      adminCommunityPage,
+    await resetAllianceInvitation(
+      adminAlliancePage,
       TEST_USER_IDS.pending1,
       "viewer",
     );
     await resetGroupInvitation(
-      adminCommunityPage,
-      TEST_GROUP_IDS.community1.beta,
+      adminAlliancePage,
+      TEST_GROUP_IDS.alliance1.beta,
       TEST_USER_IDS.pending1,
       "events-manager",
     );
@@ -45,21 +45,21 @@ test.describe("user dashboard invitations view", () => {
     // Find the dashboard content.
     const dashboardContent = pending1Page.locator("#dashboard-content");
 
-    // Verify invitations page shows pending community and group roles.
+    // Verify invitations page shows pending alliance and group roles.
     await expect(
-      dashboardContent.getByText("Community Invitations", { exact: true }),
+      dashboardContent.getByText("Alliance Invitations", { exact: true }),
     ).toBeVisible();
     await expect(
       dashboardContent.getByText("Group Invitations", { exact: true }),
     ).toBeVisible();
 
-    // Find the community row.
-    const communityRow = dashboardContent.locator("tr", {
-      hasText: "e2e-test-community",
+    // Find the alliance row.
+    const allianceRow = dashboardContent.locator("tr", {
+      hasText: "e2e-test-alliance",
     });
-    await expect(communityRow).toContainText("viewer");
-    await expect(communityRow.getByTitle("Approve")).toBeVisible();
-    await expect(communityRow.getByTitle("Reject")).toBeVisible();
+    await expect(allianceRow).toContainText("viewer");
+    await expect(allianceRow.getByTitle("Approve")).toBeVisible();
+    await expect(allianceRow.getByTitle("Reject")).toBeVisible();
 
     // Find the group row.
     const groupRow = dashboardContent.locator("tr", {
@@ -71,18 +71,18 @@ test.describe("user dashboard invitations view", () => {
   });
 
   test("accepting pending invitations removes them from the user dashboard", async ({
-    adminCommunityPage,
+    adminAlliancePage,
     pending1Page,
   }) => {
     // Reset seeded invitations before accepting them.
-    await resetCommunityInvitation(
-      adminCommunityPage,
+    await resetAllianceInvitation(
+      adminAlliancePage,
       TEST_USER_IDS.pending1,
       "viewer",
     );
     await resetGroupInvitation(
-      adminCommunityPage,
-      TEST_GROUP_IDS.community1.beta,
+      adminAlliancePage,
+      TEST_GROUP_IDS.alliance1.beta,
       TEST_USER_IDS.pending1,
       "events-manager",
     );
@@ -95,26 +95,26 @@ test.describe("user dashboard invitations view", () => {
 
     // Find the dashboard content.
     const dashboardContent = pending1Page.locator("#dashboard-content");
-    const communityInvitationRow = dashboardContent.locator("tr", {
-      hasText: "e2e-test-community",
+    const allianceInvitationRow = dashboardContent.locator("tr", {
+      hasText: "e2e-test-alliance",
     });
-    const approveCommunityInvitationButton =
-      communityInvitationRow.getByTitle("Approve");
+    const approveAllianceInvitationButton =
+      allianceInvitationRow.getByTitle("Approve");
 
     // Verify accepting pending invitations removes them from the user dashboard.
-    await expect(approveCommunityInvitationButton).toBeVisible();
+    await expect(approveAllianceInvitationButton).toBeVisible();
 
-    // Click the approve community invitation button.
+    // Click the approve alliance invitation button.
     try {
       await Promise.all([
         pending1Page.waitForResponse(
           (response) =>
             response.request().method() === "PUT" &&
             response.ok() &&
-            response.url().includes("/dashboard/user/invitations/community/") &&
+            response.url().includes("/dashboard/user/invitations/alliance/") &&
             response.url().endsWith("/accept"),
         ),
-        approveCommunityInvitationButton.click(),
+        approveAllianceInvitationButton.click(),
       ]);
 
       // Reload the invited user dashboard.
@@ -145,20 +145,20 @@ test.describe("user dashboard invitations view", () => {
 
       // Assert how many matching elements are shown.
       await expect(
-        dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+        dashboardContent.locator("tr", { hasText: "e2e-test-alliance" }),
       ).toHaveCount(0);
       await expect(
         dashboardContent.locator("tr", { hasText: "Inactive Local Chapter" }),
       ).toHaveCount(0);
     } finally {
-      await resetCommunityInvitation(
-        adminCommunityPage,
+      await resetAllianceInvitation(
+        adminAlliancePage,
         TEST_USER_IDS.pending1,
         "viewer",
       );
       await resetGroupInvitation(
-        adminCommunityPage,
-        TEST_GROUP_IDS.community1.beta,
+        adminAlliancePage,
+        TEST_GROUP_IDS.alliance1.beta,
         TEST_USER_IDS.pending1,
         "events-manager",
       );
@@ -169,7 +169,7 @@ test.describe("user dashboard invitations view", () => {
         pending1Page,
       );
       await expect(
-        dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+        dashboardContent.locator("tr", { hasText: "e2e-test-alliance" }),
       ).toContainText("viewer");
       await expect(
         dashboardContent.locator("tr", { hasText: "Inactive Local Chapter" }),
@@ -184,7 +184,7 @@ test.describe("user dashboard invitations view", () => {
     // Ensure the seeded group invitation exists before rejecting it.
     await ensureGroupInvitation(
       organizerGroupPage,
-      TEST_GROUP_IDS.community1.alpha,
+      TEST_GROUP_IDS.alliance1.alpha,
       TEST_USER_IDS.pending2,
       "viewer",
     );
@@ -238,20 +238,20 @@ test.describe("user dashboard invitations view", () => {
     } finally {
       await ensureGroupInvitation(
         organizerGroupPage,
-        TEST_GROUP_IDS.community1.alpha,
+        TEST_GROUP_IDS.alliance1.alpha,
         TEST_USER_IDS.pending2,
         "viewer",
       );
     }
   });
 
-  test("rejecting a pending community invitation removes it from the user dashboard", async ({
-    adminCommunityPage,
+  test("rejecting a pending alliance invitation removes it from the user dashboard", async ({
+    adminAlliancePage,
     pending2Page,
   }) => {
-    // Reset a pending community invitation before rejecting it.
-    await resetCommunityInvitation(
-      adminCommunityPage,
+    // Reset a pending alliance invitation before rejecting it.
+    await resetAllianceInvitation(
+      adminAlliancePage,
       TEST_USER_IDS.pending2,
       "viewer",
     );
@@ -264,21 +264,21 @@ test.describe("user dashboard invitations view", () => {
 
     // Find the dashboard content.
     const dashboardContent = pending2Page.locator("#dashboard-content");
-    const communityInvitationRow = dashboardContent.locator("tr", {
-      hasText: "e2e-test-community",
+    const allianceInvitationRow = dashboardContent.locator("tr", {
+      hasText: "e2e-test-alliance",
     });
-    const rejectCommunityInvitationButton =
-      communityInvitationRow.getByTitle("Reject");
+    const rejectAllianceInvitationButton =
+      allianceInvitationRow.getByTitle("Reject");
 
     try {
-      // Verify rejecting a pending community invitation removes it from the user dashboard.
+      // Verify rejecting a pending alliance invitation removes it from the user dashboard.
       await expect(
-        dashboardContent.getByText("Community Invitations", { exact: true }),
+        dashboardContent.getByText("Alliance Invitations", { exact: true }),
       ).toBeVisible();
-      await expect(rejectCommunityInvitationButton).toBeVisible();
+      await expect(rejectAllianceInvitationButton).toBeVisible();
 
-      // Click the reject community invitation button.
-      await rejectCommunityInvitationButton.click();
+      // Click the reject alliance invitation button.
+      await rejectAllianceInvitationButton.click();
       await expect(pending2Page.locator(".swal2-popup")).toContainText(
         "Are you sure you would like to reject this invitation?",
       );
@@ -289,7 +289,7 @@ test.describe("user dashboard invitations view", () => {
           (response) =>
             response.request().method() === "PUT" &&
             response.ok() &&
-            response.url().includes("/dashboard/user/invitations/community/") &&
+            response.url().includes("/dashboard/user/invitations/alliance/") &&
             response.url().endsWith("/reject"),
         ),
         pending2Page.getByRole("button", { name: "Yes" }).click(),
@@ -300,11 +300,11 @@ test.describe("user dashboard invitations view", () => {
 
       // Assert how many matching elements are shown.
       await expect(
-        dashboardContent.locator("tr", { hasText: "e2e-test-community" }),
+        dashboardContent.locator("tr", { hasText: "e2e-test-alliance" }),
       ).toHaveCount(0);
     } finally {
-      await clearCommunityInvitation(
-        adminCommunityPage,
+      await clearAllianceInvitation(
+        adminAlliancePage,
         TEST_USER_IDS.pending2,
       );
     }
@@ -317,7 +317,7 @@ test.describe("user dashboard invitations view", () => {
     // Ensure the seeded event invitation exists before accepting it.
     await ensureEventInvitation(
       organizerGroupPage,
-      TEST_GROUP_IDS.community1.alpha,
+      TEST_GROUP_IDS.alliance1.alpha,
       TEST_EVENT_IDS.alpha.two,
       TEST_USER_IDS.pending1,
     );
@@ -366,7 +366,7 @@ test.describe("user dashboard invitations view", () => {
     } finally {
       await pending1Page.request.post(
         buildE2eUrl(
-          `/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.two}/attend`,
+          `/${TEST_ALLIANCE_NAME}/event/${TEST_EVENT_IDS.alpha.two}/attend`,
         ),
         { form: {} },
       );
@@ -385,7 +385,7 @@ test.describe("user dashboard invitations view", () => {
     // Ensure the seeded event invitation exists before rejecting it.
     await ensureEventInvitation(
       organizerGroupPage,
-      TEST_GROUP_IDS.community1.alpha,
+      TEST_GROUP_IDS.alliance1.alpha,
       TEST_EVENT_IDS.alpha.two,
       TEST_USER_IDS.pending1,
     );
@@ -439,7 +439,7 @@ test.describe("user dashboard invitations view", () => {
     } finally {
       await pending1Page.request.post(
         buildE2eUrl(
-          `/${TEST_COMMUNITY_NAME}/event/${TEST_EVENT_IDS.alpha.two}/attend`,
+          `/${TEST_ALLIANCE_NAME}/event/${TEST_EVENT_IDS.alpha.two}/attend`,
         ),
         { form: {} },
       );

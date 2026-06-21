@@ -42,10 +42,10 @@ insert into session_proposal (
 ) values (
     :'sessionProposalID',
     '2024-04-01 10:00:00+00',
-    'Session about Rust communities',
+    'Session about Rust alliances',
     make_interval(mins => 45),
     :'sessionProposalLevelID',
-    'Rust for Communities',
+    'Rust for Alliances',
     :'actorID'
 );
 
@@ -161,7 +161,7 @@ select is(
                 "created_at": 1711969200,
                 "details": {},
                 "resource_id": "00000000-0000-0000-0000-000000000021",
-                "resource_name": "Rust for Communities",
+                "resource_name": "Rust for Alliances",
                 "resource_type": "session_proposal"
             }
         ]'::jsonb,
@@ -187,7 +187,7 @@ select is(
                 "created_at": 1711969200,
                 "details": {},
                 "resource_id": "00000000-0000-0000-0000-000000000021",
-                "resource_name": "Rust for Communities",
+                "resource_name": "Rust for Alliances",
                 "resource_type": "session_proposal"
             }
         ]'::jsonb,
@@ -213,7 +213,7 @@ select is(
                 "created_at": 1711969200,
                 "details": {},
                 "resource_id": "00000000-0000-0000-0000-000000000021",
-                "resource_name": "Rust for Communities",
+                "resource_name": "Rust for Alliances",
                 "resource_type": "session_proposal"
             }
         ]'::jsonb,

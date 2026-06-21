@@ -31,10 +31,10 @@ mod tests;
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct SearchEventsFilters {
-    /// Community names to filter by.
+    /// Alliance names to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
-    pub community: Vec<String>,
+    pub alliance: Vec<String>,
     /// Selected event categories to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
@@ -225,10 +225,10 @@ impl Pagination for SearchEventsFilters {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct SearchGroupsFilters {
-    /// Community names to filter by.
+    /// Alliance names to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]
-    pub community: Vec<String>,
+    pub alliance: Vec<String>,
     /// Selected group categories to filter by.
     #[serde(default)]
     #[garde(length(max = MAX_ITEMS), inner(length(max = MAX_LEN_M)))]

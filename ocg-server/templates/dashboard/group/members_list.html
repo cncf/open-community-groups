@@ -5,9 +5,41 @@
 {# Members header -#}
 {{ dashboard::page_title(title = "Members", docs_href = "/docs#/guides/group-dashboard?id=members-communication") -}}
 
-<div class="flex justify-between items-end my-5">
-  <div class="text-sm text-stone-600">
-    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
+<div class="flex flex-col gap-4 my-5 lg:flex-row lg:items-end lg:justify-between">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center">
+    <div class="text-sm text-stone-600">
+      {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
+    </div>
+    <div class="relative">
+      <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+      </div>
+      <form id="members-search-form"
+            hx-get="/dashboard/group/members"
+            hx-trigger="change, submit"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner">
+        <input id="search_members"
+               name="query"
+               type="text"
+               value="{{ query|assigned_or("") }}"
+               class="input-primary peer ps-9 w-full lg:w-96"
+               placeholder="Search members"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false">
+      </form>
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button hx-get="/dashboard/group/members"
+                hx-trigger="click"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                class="cursor-pointer mt-0.5">
+          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+        </button>
+      </div>
+    </div>
   </div>
   <div>
     <button id="open-notification-modal"
@@ -25,80 +57,152 @@
 </div>
 {# End members header -#}
 
-{# Members table -#}
-<div class="relative overflow-visible">
-  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
-         role="table"
-         aria-label="Members list">
-    {# Table header -#}
-    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
-           role="rowgroup">
-      <tr>
-        <th scope="col" class="px-3 xl:px-5 py-3">Member</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Joined</th>
-      </tr>
-    </thead>
-    {# End table header -#}
-    <tbody id="members-list" role="rowgroup">
-      {% if members.is_empty() -%}
-        {# Empty state -#}
-        <tr class="bg-white border-b border-stone-200">
-          {# Mobile: 2 columns (Member, Position) -#}
-          <td class="xl:hidden px-8 py-12 text-center" colspan="2">
-            {% include "dashboard/placeholders/group_members_table.html" -%}
-          </td>
-          {# xl: 3 columns (adds Joined) -#}
-          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="3">
-            {% include "dashboard/placeholders/group_members_table.html" -%}
-          </td>
-        </tr>
-        {# End empty state -#}
-      {% else -%}
-        {% for member in members -%}
-          {# Member row -#}
-          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
-            {# Member -#}
-            <td class="px-3 xl:px-5 py-4 max-w-0">
-              <div class="flex items-center space-x-5">
-                <logo-image
-                {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                size="size-10" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
-                </logo-image>
-                <div class="min-w-0">
-                  <div class="font-medium text-stone-900 truncate mb-1">{{ member.name|assigned_or(member.username) }}</div>
-                  {% if member.name.is_some() -%}
-                    <div class="text-xs text-stone-600 truncate">{{ member.username }}</div>
-                  {% endif -%}
-                </div>
-              </div>
-            </td>
-            {# End member -#}
+{# Members cards -#}
+{% if members.is_empty() -%}
+  <div class="bg-white border border-stone-200 rounded-xl px-8 py-12 text-center mb-8">
+    {% include "dashboard/placeholders/group_members_table.html" -%}
+  </div>
+{% else -%}
+  <div id="members-list"
+       class="grid grid-cols-1 gap-5 mb-8 xl:grid-cols-2"
+       aria-label="Members list">
+    {% for member in members -%}
+      <article class="bg-white border border-stone-200 rounded-xl shadow-sm p-5 flex flex-col gap-5">
+        <div class="flex items-start gap-4">
+          <logo-image
+          {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+          size="size-14" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
+          </logo-image>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="font-semibold text-stone-900 truncate">{{ member.name|assigned_or(member.username) }}</h3>
+              {% if member.linkedin_connected -%}
+                <span class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
+                  <div class="svg-icon size-3 icon-linkedin bg-primary-500"></div>
+                  LinkedIn
+                </span>
+              {% endif -%}
+            </div>
+            {% if member.name.is_some() -%}
+              <div class="text-xs text-stone-500 truncate">@{{ member.username }}</div>
+            {% endif -%}
+            <div class="mt-2 text-sm text-stone-700">
+              {{ member.title.as_deref()|assigned_or("Member") }}
+              {% if let Some(company) = &member.company -%}
+                <span class="text-stone-400">at</span> {{ company }}
+              {% endif -%}
+            </div>
+          </div>
+        </div>
 
-            {# Position -#}
-            <td class="px-3 xl:px-5 py-4 max-w-0">
-              <div class="flex flex-col space-y-1">
-                <div class="font-medium text-stone-900 truncate">{{ member.company.as_deref() |assigned_or("-") }}</div>
-                {% if let Some(title) = &member.title -%}
-                  <div class="text-xs text-stone-600 truncate">{{ title }}</div>
+        {% if let Some(bio) = &member.bio -%}
+          <p class="text-sm text-stone-600 leading-6">{{ bio }}</p>
+        {% endif -%}
+
+        {% if let Some(interests) = &member.interests -%}
+          <div class="flex flex-wrap gap-2">
+            {% for interest in interests -%}
+              <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ interest }}</span>
+            {% endfor -%}
+          </div>
+        {% endif -%}
+
+        <dl class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Email</dt>
+            <dd class="mt-1 truncate">
+              <a class="font-medium text-primary-600 hover:text-primary-800"
+                 href="mailto:{{ member.email }}">{{ member.email }}</a>
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Joined</dt>
+            <dd class="mt-1 text-stone-700">{{ member.created_at.format("%b %d, %Y") }}</dd>
+          </div>
+          {% if member.city.is_some() || member.country.is_some() -%}
+            <div>
+              <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Location</dt>
+              <dd class="mt-1 text-stone-700 truncate">
+                {% if let Some(city) = &member.city -%}
+                  {{ city }}{% if member.country.is_some() -%}, {% endif -%}
                 {% endif -%}
-              </div>
-            </td>
-            {# End Position -#}
+                {% if let Some(country) = &member.country -%}
+                  {{ country }}
+                {% endif -%}
+              </dd>
+            </div>
+          {% endif -%}
+          {% if let Some(website_url) = &member.website_url -%}
+            <div>
+              <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Website</dt>
+              <dd class="mt-1 truncate">
+                <a class="text-primary-600 hover:text-primary-800"
+                   href="{{ website_url }}"
+                   target="_blank"
+                   rel="noopener noreferrer">{{ website_url }}</a>
+              </dd>
+            </div>
+          {% endif -%}
+        </dl>
 
-            {# Joined -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
-              {{ member.created_at.format("%b %d, %Y") }}
-            </td>
-            {# End joined -#}
-          </tr>
-          {# End member row -#}
-        {% endfor -%}
-      {% endif -%}
-    </tbody>
-  </table>
-</div>
-{# End members table -#}
+        <div class="flex flex-wrap gap-2 pt-1">
+          {% if let Some(linkedin_url) = &member.linkedin_url -%}
+            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
+               href="{{ linkedin_url }}"
+               target="_blank"
+               rel="noopener noreferrer">
+              <div class="svg-icon size-3.5 icon-linkedin bg-primary-500"></div>
+              LinkedIn profile
+            </a>
+          {% endif -%}
+          {% if let Some(github_url) = &member.github_url -%}
+            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
+               href="{{ github_url }}"
+               target="_blank"
+               rel="noopener noreferrer">
+              <div class="svg-icon size-3.5 icon-github bg-stone-600"></div>
+              GitHub
+            </a>
+          {% endif -%}
+          {% if let Some(bluesky_url) = &member.bluesky_url -%}
+            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
+               href="{{ bluesky_url }}"
+               target="_blank"
+               rel="noopener noreferrer">
+              <div class="svg-icon size-3.5 icon-bluesky bg-primary-500"></div>
+              Bluesky
+            </a>
+          {% endif -%}
+          {% if let Some(twitter_url) = &member.twitter_url -%}
+            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
+               href="{{ twitter_url }}"
+               target="_blank"
+               rel="noopener noreferrer">
+              <div class="svg-icon size-3.5 icon-twitter bg-stone-600"></div>
+              X
+            </a>
+          {% endif -%}
+          {% if let Some(facebook_url) = &member.facebook_url -%}
+            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
+               href="{{ facebook_url }}"
+               target="_blank"
+               rel="noopener noreferrer">
+              <div class="svg-icon size-3.5 icon-facebook bg-primary-500"></div>
+              Facebook
+            </a>
+          {% endif -%}
+          {% if member.linkedin_connected && member.linkedin_url.is_none() -%}
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-600">
+              <div class="svg-icon size-3.5 icon-linkedin bg-primary-500"></div>
+              LinkedIn connected
+            </span>
+          {% endif -%}
+        </div>
+      </article>
+    {% endfor -%}
+  </div>
+{% endif -%}
+{# End members cards -#}
 
 {# Pagination -#}
 {% if total > members.len() -%}

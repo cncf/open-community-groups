@@ -6,8 +6,8 @@ describe("url-utils", () => {
   it("resolves relative and absolute urls from the current origin", () => {
     // Relative paths are expanded while absolute URLs are preserved.
     expect(resolveUrl("/groups")).to.equal(`${window.location.origin}/groups`);
-    expect(resolveUrl("https://example.com/community")).to.equal(
-      "https://example.com/community",
+    expect(resolveUrl("https://example.com/alliance")).to.equal(
+      "https://example.com/alliance",
     );
   });
 

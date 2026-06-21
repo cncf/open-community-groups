@@ -10,7 +10,7 @@ select plan(2);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000031'
 \set event2ID '00000000-0000-0000-0000-000000000032'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
@@ -21,9 +21,9 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -31,10 +31,10 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A community for cloud native technologies',
+    'A alliance for cloud native technologies',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
@@ -45,26 +45,26 @@ insert into "user" (user_id, email, username, auth_hash, name)
 values (:'user1ID', 'creator@example.com', 'creator', 'hash', 'Creator User');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'categoryID', 'Conference', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     active
 ) values (
     :'groupID',
     'Seattle Kubernetes Meetup',
     'seattle-kubernetes',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     true
 );
@@ -111,8 +111,8 @@ insert into event (
 
 -- Should extend the shared event summary with dashboard information
 select is(
-    get_event_summary_dashboard(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb,
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
+    get_event_summary_dashboard(:'allianceID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb,
+    get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
         || jsonb_build_object(
             'created_by_display_name', 'Creator User',
             'created_by_username', 'creator'
@@ -122,8 +122,8 @@ select is(
 
 -- Should match the shared event summary when dashboard information is unavailable
 select is(
-    get_event_summary_dashboard(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
+    get_event_summary_dashboard(:'allianceID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
+    get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
     'Should match the shared event summary when dashboard information is unavailable'
 );
 

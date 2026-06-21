@@ -9,7 +9,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '74000000-0000-0000-0000-000000000001'
+\set allianceID '74000000-0000-0000-0000-000000000001'
 \set eventCategoryID '74000000-0000-0000-0000-000000000002'
 \set eventID '74000000-0000-0000-0000-000000000003'
 \set eventTicketTypeID '74000000-0000-0000-0000-000000000004'
@@ -26,17 +26,17 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'revert-community', 'Revert Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'revert-alliance', 'Revert Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
@@ -44,9 +44,9 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'otherUserID', 'hash-2', 'user2@example.com', true, 'other');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Refund Group', 'refund-group'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Refund Group', 'refund-group'),
+    (:'otherGroupID', :'allianceID', :'groupCategoryID', 'Other Group', 'other-group');
 
 -- Event
 insert into event (

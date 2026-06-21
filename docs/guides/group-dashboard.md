@@ -27,7 +27,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
 
 ## What This Dashboard Owns
 
-The community dashboard sets shared structure. The group dashboard is where you
+The alliance dashboard sets shared structure. The group dashboard is where you
 run the group.
 
 Main areas:
@@ -46,9 +46,9 @@ To operate here, you need:
 
 1. Logged-in session.
 2. Group-team membership.
-3. A selected community and group.
+3. A selected alliance and group.
 
-If the right community or group is not selected yet, some actions stay unavailable until you pick
+If the right alliance or group is not selected yet, some actions stay unavailable until you pick
 them.
 
 ## Roles and Permissions
@@ -63,19 +63,19 @@ Group role permissions are fixed and enforced by middleware plus database checks
 
 ![Group roles](../screenshots/dashboard-group-members-list-roles.png)
 
-Community role interaction:
+Alliance role interaction:
 
-- Community `admin` and `groups-manager` also have group write permissions inside that community.
-- Communities can restrict group team management so only community `admin` and `groups-manager`
+- Alliance `admin` and `groups-manager` also have group write permissions inside that alliance.
+- Alliances can restrict group team management so only alliance `admin` and `groups-manager`
   roles can add, update, or remove group team members.
-- Community `viewer` remains read-only at group scope.
+- Alliance `viewer` remains read-only at group scope.
 
 UI behavior:
 
 - Controls are disabled when your role does not allow that action.
 - Server-side authorization still applies.
 
-![Community disabled form](../screenshots/dashboard-group-permissions-role.png)
+![Alliance disabled form](../screenshots/dashboard-group-permissions-role.png)
 
 ## Settings: Group Identity
 
@@ -90,16 +90,16 @@ You can manage:
 - Social links.
 - Optional tags, photo gallery, and extra links.
 
-Category and region options in this form come from the defined community's
-[Group Categories](/dashboard/community?tab=group-categories ':ignore') and
-[Regions](/dashboard/community?tab=regions ':ignore') tabs.
+Category and region options in this form come from the defined alliance's
+[Group Categories](/dashboard/alliance?tab=group-categories ':ignore') and
+[Regions](/dashboard/alliance?tab=regions ':ignore') tabs.
 
 Brand inheritance model in this scope:
 
-- If a group logo is not set, OCG falls back to the community logo.
-- If a group banner or mobile banner is not set, OCG falls back to the community banner.
+- If a group logo is not set, OCG falls back to the alliance logo.
+- If a group banner or mobile banner is not set, OCG falls back to the alliance banner.
 - If a group Open Graph image is not set, group and event link previews fall
-  back to the community Open Graph image.
+  back to the alliance Open Graph image.
 
 Pretty URL slugs are optional. When set, OCG uses the pretty slug in generated
 group and event links, while the generated group slug continues to work.
@@ -110,7 +110,7 @@ Pretty URL slug rules:
 - Start and end with a letter or number.
 - Do not use consecutive hyphens.
 - Use 50 characters or fewer.
-- Use a value that is unique within the community and different from the
+- Use a value that is unique within the alliance and different from the
   generated slug.
 
 Field requirements and limits are shown inline in the settings form while editing.
@@ -308,5 +308,5 @@ Target display behavior:
 Scope note:
 
 - This screen is group-dashboard focused.
-- Some overlapping actions, such as `group_updated`, can also appear in the community dashboard
+- Some overlapping actions, such as `group_updated`, can also appear in the alliance dashboard
   audit view when they match that dashboard's accepted scope.

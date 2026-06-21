@@ -1,7 +1,7 @@
 //! HTTP handlers for the global site explore page.
 //!
 //! The explore page provides a searchable interface for discovering groups and events
-//! across all communities.
+//! across all alliances.
 
 use std::collections::HashMap;
 
@@ -139,16 +139,16 @@ async fn prepare_events_section(
     db: &DynDB,
     filters: &SearchEventsFilters,
 ) -> Result<explore::EventsSection> {
-    // Pass community_name to get_filters_options only when exactly one is selected
-    let community_name = if filters.community.len() == 1 {
-        Some(filters.community[0].clone())
+    // Pass alliance_name to get_filters_options only when exactly one is selected
+    let alliance_name = if filters.alliance.len() == 1 {
+        Some(filters.alliance[0].clone())
     } else {
         None
     };
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_name, Some(explore::Entity::Events)),
+        db.get_filters_options(alliance_name, Some(explore::Entity::Events)),
         prepare_events_result_section(db, filters)
     )?;
     let template = explore::EventsSection {
@@ -250,16 +250,16 @@ async fn prepare_groups_section(
     db: &DynDB,
     filters: &SearchGroupsFilters,
 ) -> Result<explore::GroupsSection> {
-    // Pass community_name to get_filters_options only when exactly one is selected
-    let community_name = if filters.community.len() == 1 {
-        Some(filters.community[0].clone())
+    // Pass alliance_name to get_filters_options only when exactly one is selected
+    let alliance_name = if filters.alliance.len() == 1 {
+        Some(filters.alliance[0].clone())
     } else {
         None
     };
 
     // Prepare template
     let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_name, Some(explore::Entity::Groups)),
+        db.get_filters_options(alliance_name, Some(explore::Entity::Groups)),
         prepare_groups_result_section(db, filters)
     )?;
     let template = explore::GroupsSection {

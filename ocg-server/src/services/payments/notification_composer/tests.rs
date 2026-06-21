@@ -21,7 +21,7 @@ use super::PaymentsNotificationComposer;
 #[tokio::test]
 async fn build_refund_request_template_data_returns_expected_payload() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
     let site_settings = SiteSettings::default();
@@ -30,7 +30,7 @@ async fn build_refund_request_template_data_returns_expected_payload() {
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -39,7 +39,7 @@ async fn build_refund_request_template_data_returns_expected_payload() {
     // Build the template payload
     let composer = sample_notification_composer(db, MockNotificationsManager::new());
     let template_data = composer
-        .build_refund_request_template_data(community_id, event_id)
+        .build_refund_request_template_data(alliance_id, event_id)
         .await
         .expect("refund request template data to be built");
 
@@ -58,14 +58,14 @@ async fn build_refund_request_template_data_returns_expected_payload() {
 #[tokio::test]
 async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
     let site_settings = SiteSettings::default();
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventWelcome {
         event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
+        link: "/alliance/group/group/event/event".to_string(),
         theme: SiteSettings::default().theme,
 
         dashboard_link: None,
@@ -76,7 +76,7 @@ async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -99,7 +99,7 @@ async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance
     let composer = sample_notification_composer(db, notifications_manager);
     composer
         .enqueue_checkout_completed_notification(CompletedEventPurchase {
-            community_id,
+            alliance_id,
             event_id,
             user_id,
         })
@@ -109,14 +109,14 @@ async fn enqueue_checkout_completed_notification_omits_dashboard_cancel_guidance
 #[tokio::test]
 async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
     let site_settings = SiteSettings::default();
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventWelcome {
         event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
+        link: "/alliance/group/group/event/event".to_string(),
         theme: SiteSettings::default().theme,
 
         dashboard_link: Some("/dashboard/user?tab=events".to_string()),
@@ -127,7 +127,7 @@ async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -149,21 +149,21 @@ async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
     // Enqueue the welcome notification
     let composer = sample_notification_composer(db, notifications_manager);
     composer
-        .enqueue_event_welcome_notification(community_id, event_id, user_id)
+        .enqueue_event_welcome_notification(alliance_id, event_id, user_id)
         .await;
 }
 
 #[tokio::test]
 async fn enqueue_refund_approval_notification_enqueues_expected_payload() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
     let site_settings = SiteSettings::default();
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventRefundApproved {
         event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
+        link: "/alliance/group/group/event/event".to_string(),
         theme: SiteSettings::default().theme,
     })
     .unwrap();
@@ -172,7 +172,7 @@ async fn enqueue_refund_approval_notification_enqueues_expected_payload() {
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -194,21 +194,21 @@ async fn enqueue_refund_approval_notification_enqueues_expected_payload() {
     // Enqueue the refund approval notification
     let composer = sample_notification_composer(db, notifications_manager);
     composer
-        .enqueue_refund_approval_notification(community_id, event_id, user_id)
+        .enqueue_refund_approval_notification(alliance_id, event_id, user_id)
         .await;
 }
 
 #[tokio::test]
 async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
     let site_settings = SiteSettings::default();
     let user_id = Uuid::new_v4();
     let expected_template_data = to_value(&EventRefundRejected {
         event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
+        link: "/alliance/group/group/event/event".to_string(),
         theme: SiteSettings::default().theme,
     })
     .unwrap();
@@ -217,7 +217,7 @@ async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
     let mut db = MockDB::new();
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -239,7 +239,7 @@ async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
     // Enqueue the refund rejection notification
     let composer = sample_notification_composer(db, notifications_manager);
     composer
-        .enqueue_refund_rejection_notification(community_id, event_id, user_id)
+        .enqueue_refund_rejection_notification(alliance_id, event_id, user_id)
         .await;
 }
 
@@ -250,8 +250,8 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
     EventSummary {
         attendee_approval_required: false,
         canceled: false,
-        community_display_name: "Community".to_string(),
-        community_name: "community".to_string(),
+        alliance_display_name: "Alliance".to_string(),
+        alliance_name: "alliance".to_string(),
         event_id,
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),

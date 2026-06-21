@@ -1,4 +1,4 @@
--- Add community-level restriction for group team management.
+-- Add alliance-level restriction for group team management.
 
-alter table community
+alter table alliance
 add column group_team_management_restricted boolean default false not null;

@@ -1,0 +1,141 @@
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
+begin;
+select plan(5);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set allianceID '00000000-0000-0000-0000-000000000001'
+\set inUseCategoryID '00000000-0000-0000-0000-000000000011'
+\set unusedCategoryID '00000000-0000-0000-0000-000000000012'
+\set groupID '00000000-0000-0000-0000-000000000013'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Alliance
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    logo_url,
+    banner_mobile_url,
+    banner_url
+) values (
+    :'allianceID',
+    'goup-seattle',
+    'Goup Seattle',
+    'Alliance for group category delete tests',
+    'https://example.com/logo.png',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png'
+);
+
+-- Group categories
+insert into group_category (
+    alliance_id,
+    group_category_id,
+    name
+) values
+    (:'allianceID', :'inUseCategoryID', 'Platform'),
+    (:'allianceID', :'unusedCategoryID', 'Security');
+
+-- Group using the first category
+insert into "group" (
+    alliance_id,
+    group_category_id,
+    group_id,
+    name,
+    slug
+) values (
+    :'allianceID',
+    :'inUseCategoryID',
+    :'groupID',
+    'Seattle Platform',
+    'seattle-platform'
+);
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Should block deleting category that is still referenced by groups
+select throws_ok(
+    $$ select delete_group_category(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000011'::uuid
+    ) $$,
+    'cannot delete group category in use by groups',
+    'Should block deleting group category referenced by groups'
+);
+
+-- Should delete category with no group references
+select lives_ok(
+    $$ select delete_group_category(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000012'::uuid
+    ) $$,
+    'Should delete an unused group category'
+);
+select results_eq(
+    $$
+    select count(*)::bigint
+    from group_category gc
+    where gc.group_category_id = '00000000-0000-0000-0000-000000000012'::uuid
+    $$,
+    $$ values (0::bigint) $$,
+    'Unused group category should be deleted'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            alliance_id,
+            details,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_category_deleted',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '{"name": "Security"}'::jsonb,
+            'group_category',
+            '00000000-0000-0000-0000-000000000012'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
+-- Should fail when target category does not exist
+select throws_ok(
+    $$ select delete_group_category(
+        null::uuid,
+        '00000000-0000-0000-0000-000000000001'::uuid,
+        '00000000-0000-0000-0000-000000000099'::uuid
+    ) $$,
+    'group category not found',
+    'Should fail when deleting a non-existing group category'
+);
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
+select * from finish();
+rollback;

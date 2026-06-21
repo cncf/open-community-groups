@@ -22,7 +22,7 @@ use crate::{
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -32,7 +32,7 @@ async fn test_list_page_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let session_proposal_id = Uuid::new_v4();
@@ -63,7 +63,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -72,7 +72,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -80,7 +80,7 @@ async fn test_list_page_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_list_event_cfs_labels()
         .times(1)
@@ -125,7 +125,7 @@ async fn test_list_page_success() {
 #[tokio::test]
 async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -135,7 +135,7 @@ async fn test_list_page_with_pagination_params() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
@@ -159,7 +159,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -168,7 +168,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -176,7 +176,7 @@ async fn test_list_page_with_pagination_params() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_list_event_cfs_labels()
         .times(1)
@@ -221,7 +221,7 @@ async fn test_list_page_with_pagination_params() {
 #[tokio::test]
 async fn test_list_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -231,7 +231,7 @@ async fn test_list_page_db_error() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -248,7 +248,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -257,7 +257,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -265,7 +265,7 @@ async fn test_list_page_db_error() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(|_, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
@@ -292,7 +292,7 @@ async fn test_list_page_db_error() {
 #[allow(clippy::too_many_lines)]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let cfs_submission_id = Uuid::new_v4();
@@ -304,7 +304,7 @@ async fn test_update_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
@@ -341,7 +341,7 @@ async fn test_update_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -349,7 +349,7 @@ async fn test_update_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_update_cfs_submission()
         .times(1)

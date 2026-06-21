@@ -19,8 +19,8 @@ returns json as $$
             cross join filters f
             where al.actor_user_id = p_actor_user_id
             and al.action = any(array[
-                'community_team_invitation_accepted',
-                'community_team_invitation_rejected',
+                'alliance_team_invitation_accepted',
+                'alliance_team_invitation_rejected',
                 'event_attendee_invitation_accepted',
                 'event_attendee_invitation_rejected',
                 'group_team_invitation_accepted',
@@ -68,10 +68,10 @@ returns json as $$
                         join session_proposal sp using (session_proposal_id)
                         where cs.cfs_submission_id = fl.resource_id
                     )
-                    when 'community' then (
+                    when 'alliance' then (
                         select c.display_name
-                        from community c
-                        where c.community_id = fl.resource_id
+                        from alliance c
+                        where c.alliance_id = fl.resource_id
                     )
                     when 'event' then (
                         select e.name

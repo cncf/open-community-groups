@@ -43,8 +43,8 @@ This is granted by:
 
 - Group `admin`
 - Group `events-manager`
-- Community `admin`
-- Community `groups-manager`
+- Alliance `admin`
+- Alliance `groups-manager`
 
 Read-only roles can still view event data but cannot mutate it.
 
@@ -111,13 +111,13 @@ The editor is organized so you can move from identity, to schedule, to speakers,
 In this tab, you define attendee-facing identity and enrollment posture: name, event type,
 category, description, branding assets, capacity, registration toggle, tags, and optional links.
 
-Event category options come from the defined community's
-[Event Categories](/dashboard/community?tab=event-categories ':ignore') tab.
+Event category options come from the defined alliance's
+[Event Categories](/dashboard/alliance?tab=event-categories ':ignore') tab.
 
 Publish readiness checks in this tab:
 
 - Name, type, category, and description are complete and clear.
-- Branding is consistent with group/community standards.
+- Branding is consistent with group/alliance standards.
 - Capacity and registration policy match expected demand.
 
 Ticketing also starts in `Details`:
@@ -177,9 +177,9 @@ Invitation review also lives here:
 
 Brand inheritance model in event details:
 
-- If event logo is not provided, OCG falls back to group logo, then community logo.
+- If event logo is not provided, OCG falls back to group logo, then alliance logo.
 - If event banner or mobile banner is not provided, OCG falls back to group banner, then
-  community banner.
+  alliance banner.
 
 ![Event details](../screenshots/dashboard-group-event-details.png)
 

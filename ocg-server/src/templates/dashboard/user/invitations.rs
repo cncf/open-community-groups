@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     templates::helpers::DATE_FORMAT_2,
-    types::{community::CommunityRole, group::GroupRole},
+    types::{alliance::AllianceRole, group::GroupRole},
 };
 
 // Pages templates.
@@ -16,8 +16,8 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/user/invitations_list.html")]
 pub(crate) struct ListPage {
-    /// Pending community invitations for the current user.
-    pub community_invitations: Vec<CommunityTeamInvitation>,
+    /// Pending alliance invitations for the current user.
+    pub alliance_invitations: Vec<AllianceTeamInvitation>,
     /// Pending event invitations for the current user.
     pub event_invitations: Vec<EventInvitation>,
     /// Pending group invitations for the current user.
@@ -26,15 +26,15 @@ pub(crate) struct ListPage {
 
 // Types.
 
-/// Community team invitation summary information.
+/// Alliance team invitation summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct CommunityTeamInvitation {
-    /// Community identifier.
-    pub community_id: Uuid,
-    /// Community name (slug).
-    pub community_name: String,
-    /// Role within the community.
-    pub role: CommunityRole,
+pub(crate) struct AllianceTeamInvitation {
+    /// Alliance identifier.
+    pub alliance_id: Uuid,
+    /// Alliance name (slug).
+    pub alliance_name: String,
+    /// Role within the alliance.
+    pub role: AllianceRole,
 
     /// Invitation creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
@@ -44,10 +44,10 @@ pub(crate) struct CommunityTeamInvitation {
 /// Organizer-created event invitation summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct EventInvitation {
-    /// Human-readable display name of the community.
-    pub community_display_name: String,
-    /// Community slug.
-    pub community_name: String,
+    /// Human-readable display name of the alliance.
+    pub alliance_display_name: String,
+    /// Alliance slug.
+    pub alliance_name: String,
     /// Event identifier.
     pub event_id: Uuid,
     /// Event display name.
@@ -68,8 +68,8 @@ pub(crate) struct EventInvitation {
 /// Group team invitation summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct GroupTeamInvitation {
-    /// Community name (slug).
-    pub community_name: String,
+    /// Alliance name (slug).
+    pub alliance_name: String,
     /// Group identifier.
     pub group_id: Uuid,
     /// Group name.

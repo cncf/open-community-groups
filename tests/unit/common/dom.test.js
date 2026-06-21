@@ -195,7 +195,7 @@ describe("common dom", () => {
 
   it("focuses elements by id", () => {
     // Build the focusable element.
-    document.body.innerHTML = '<input id="name-input" value="Open Community Groups">';
+    document.body.innerHTML = '<input id="name-input" value="Open Alliance Groups">';
     const input = getElementById(document, "name-input");
 
     // The helper focuses and optionally selects text.

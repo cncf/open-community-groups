@@ -1,6 +1,6 @@
 -- Get a user's attendance details for an event, including check-in status.
 create or replace function get_event_attendance(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid
 ) returns json as $$
@@ -11,7 +11,7 @@ create or replace function get_event_attendance(
         from event e
         join "group" g on g.group_id = e.group_id
         where e.event_id = p_event_id
-        and g.community_id = p_community_id
+        and g.alliance_id = p_alliance_id
         and g.active = true
         and e.deleted = false
         and e.published = true

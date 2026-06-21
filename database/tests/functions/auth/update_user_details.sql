@@ -163,7 +163,7 @@ select is(
         'user_id', :'userID'::text
     ) || '{
         "belongs_to_any_group_team": false,
-        "belongs_to_community_team": false,
+        "belongs_to_alliance_team": false,
         "email": "test@example.com",
         "email_verified": true,
         "optional_notifications_enabled": false,
@@ -230,7 +230,7 @@ select is(
         'user_id', :'user2ID'::text
     ) || '{
         "belongs_to_any_group_team": false,
-        "belongs_to_community_team": false,
+        "belongs_to_alliance_team": false,
         "email": "test2@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,
@@ -274,7 +274,7 @@ select is(
         'user_id', :'user3ID'::text
     ) || '{
         "belongs_to_any_group_team": false,
-        "belongs_to_community_team": false,
+        "belongs_to_alliance_team": false,
         "email": "test3@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,

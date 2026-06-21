@@ -10,7 +10,7 @@ select plan(4);
 -- ============================================================================
 
 \set category1ID '00000000-0000-0000-0000-000000000011'
-\set community1ID '00000000-0000-0000-0000-000000000001'
+\set alliance1ID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
@@ -23,21 +23,21 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'alliance1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'category1ID', 'Technology', :'community1ID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'category1ID', 'Technology', :'alliance1ID');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name)
-values (:'group1ID', 'Test Group', 'test-group', :'community1ID', :'category1ID', 'Los Angeles', 'CA', 'US', 'United States');
+insert into "group" (group_id, name, slug, alliance_id, group_category_id, city, state, country_code, country_name)
+values (:'group1ID', 'Test Group', 'test-group', :'alliance1ID', :'category1ID', 'Los Angeles', 'CA', 'US', 'United States');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategory1ID', 'Tech Talks', :'community1ID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategory1ID', 'Tech Talks', :'alliance1ID');
 
 -- Event
 insert into event (
@@ -84,16 +84,16 @@ insert into event (
 
 -- Should return published non-test future events ordered by date ASC as JSON
 select is(
-    get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
+    get_group_upcoming_events(:'alliance1ID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
     'Should return published non-test future events ordered by date ASC as JSON'
 );
 
 -- Should return empty array with non-existing group slug
 select is(
-    get_group_upcoming_events(:'community1ID'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
+    get_group_upcoming_events(:'alliance1ID'::uuid, 'non-existing-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     '[]'::jsonb,
     'Should return empty array with non-existing group slug'
 );
@@ -136,7 +136,7 @@ select is(
     (
         select jsonb_agg(event_item->>'event_id')
         from jsonb_array_elements(
-            get_group_upcoming_events(:'community1ID'::uuid, 'test-group', array['virtual'], 10)::jsonb
+            get_group_upcoming_events(:'alliance1ID'::uuid, 'test-group', array['virtual'], 10)::jsonb
         ) event_item
     ),
     jsonb_build_array(:'event2ID', :'event5ID'),
@@ -146,10 +146,10 @@ select is(
 -- Should resolve upcoming events by pretty slug
 update "group" set slug_pretty = 'test-group-pretty' where group_id = :'group1ID';
 select is(
-    get_group_upcoming_events(:'community1ID'::uuid, 'test-group-pretty', array['virtual'], 10)::jsonb,
+    get_group_upcoming_events(:'alliance1ID'::uuid, 'test-group-pretty', array['virtual'], 10)::jsonb,
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should resolve upcoming events by pretty slug'
 );

@@ -37,7 +37,7 @@ const renderPaidAttendanceDom = ({
     >
       <button
         data-attendance-role="attendance-checker"
-        hx-get="/test-community/event/test-event/attendance"
+        hx-get="/test-alliance/event/test-event/attendance"
       ></button>
       <button data-attendance-role="loading-btn" class="hidden">
         <span data-attendance-label>Checking...</span>
@@ -120,7 +120,7 @@ const renderPaidAttendanceDom = ({
                   value="ticket-2"
                 />
                 <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer">
-                  <span data-attendance-role="ticket-type-title">Community</span>
+                  <span data-attendance-role="ticket-type-title">Alliance</span>
                   <div class="ticket-price-badge">
                     Free
                   </div>
@@ -703,7 +703,7 @@ describe("event attendance paid modal", () => {
     });
 
     // Verify keeps modal ticket cards in visible ticket order.
-    expect(ticketTypeTitles()).to.deep.equal(["Community", "General", "Staff"]);
+    expect(ticketTypeTitles()).to.deep.equal(["Alliance", "General", "Staff"]);
   });
 
   it("omits an empty discount code from checkout params and trims a filled one", async () => {

@@ -10,7 +10,7 @@ select plan(3);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventID '00000000-0000-0000-0000-000000000101'
 \set group1CategoryID '00000000-0000-0000-0000-000000000010'
 \set group1ID '00000000-0000-0000-0000-000000000051'
@@ -23,30 +23,30 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'categoryID', 'Conference', :'allianceID');
 
 -- Group Categories
-insert into group_category (group_category_id, name, community_id) values
-    (:'group1CategoryID', 'Technology', :'communityID'),
-    (:'group2CategoryID', 'Science', :'communityID');
+insert into group_category (group_category_id, name, alliance_id) values
+    (:'group1CategoryID', 'Technology', :'allianceID'),
+    (:'group2CategoryID', 'Science', :'allianceID');
 
 -- Group 1
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'group1ID',
-    :'communityID',
+    :'allianceID',
     'Test Group 1',
     'test-group-1',
     'A test group 1',
@@ -56,14 +56,14 @@ insert into "group" (
 -- Group 2
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'group2ID',
-    :'communityID',
+    :'allianceID',
     'Test Group 2',
     'test-group-2',
     'A test group 2',

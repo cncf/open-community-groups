@@ -5,7 +5,7 @@ import {
   getExploreControlsRow,
   getExploreSearchRow,
   navigateToPath,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_GROUP_NAMES,
 } from "../../utils.js";
 
@@ -14,7 +14,7 @@ test.describe("site explore groups page visual regression @visual", () => {
     // Load the groups explore page for the desktop snapshot.
     await navigateToPath(
       page,
-      `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=groups&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Verify desktop search and group content are ready.
@@ -47,7 +47,7 @@ test.describe("site explore groups page visual regression @visual", () => {
     // Load the groups explore page for the mobile snapshot.
     await navigateToPath(
       page,
-      `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=groups&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Verify mobile search and group content are ready.

@@ -51,7 +51,7 @@
   {% let has_social_links = group.website_url.is_some() || group.bluesky_url.is_some() || group.twitter_url.is_some() || group.facebook_url.is_some() || group.linkedin_url.is_some() || group.github_url.is_some() || group.instagram_url.is_some() || group.youtube_url.is_some() || group.slack_url.is_some() || group.wechat_url.is_some() || group.flickr_url.is_some() || group.extra_links.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.community.banner_url) }}" banner-mobile-url="{{ group.banner_mobile_url.as_ref().unwrap_or(&group.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.community.display_name|json }}, "href": "/{{ group.community.name }}", "icon": "community"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.alliance.banner_url) }}" banner-mobile-url="{{ group.banner_mobile_url.as_ref().unwrap_or(&group.alliance.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.alliance.display_name|json }}, "href": "/{{ group.alliance.name }}", "icon": "alliance"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
@@ -139,7 +139,7 @@
                   <div class="svg-icon size-4 icon-vertical-dots"></div>
                 </summary>
                 <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
-                  <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.community.name }}/group/{{ group.public_slug() }}">
+                  <share-modal trigger-variant="menu-item" title="{{ group.name }}" url="/{{ group.alliance.name }}/group/{{ group.public_slug() }}">
                   </share-modal>
                 </div>
               </details>
@@ -160,7 +160,7 @@
                 <div class="flex items-center justify-between mb-4 min-h-[25px]">
                   <div class="text-base/3 uppercase font-semibold text-stone-400">Next event</div>
                   {% if let Some(next_event_card) = &next_event -%}
-                    <a href="/{{ group.community.name }}/group/{{ next_event_card.event.public_group_slug() }}/event/{{ next_event_card.event.slug }}"
+                    <a href="/{{ group.alliance.name }}/group/{{ next_event_card.event.public_group_slug() }}/event/{{ next_event_card.event.slug }}"
                        class="btn-secondary-anchor btn-mini"
                        hx-boost="true"
                        hx-target="body">See details</a>
@@ -276,10 +276,10 @@
       </div>
       {# End next event and location -#}
 
-      {% if let Some(ad_banner_url) = &group.community.ad_banner_url -%}
-        {{ ui::floating_advertisement_banner(alt = group.community.display_name.clone() + " advertisement",
+      {% if let Some(ad_banner_url) = &group.alliance.ad_banner_url -%}
+        {{ ui::floating_advertisement_banner(alt = group.alliance.display_name.clone() + " advertisement",
         image_url = ad_banner_url,
-        link_url = group.community.ad_banner_link_url.as_deref()
+        link_url = group.alliance.ad_banner_link_url.as_deref()
         ) -}}
       {% endif -%}
 
@@ -314,7 +314,7 @@
 
       {# Next events section -#}
       {% if !upcoming_events.is_empty() -%}
-        {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&community[0]=" + &group.community.name -%}
+        {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&alliance[0]=" + &group.alliance.name -%}
         <div>
           <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Upcoming Events</div>
@@ -350,7 +350,7 @@
       {% if !past_events.is_empty() -%}
         {% let past_events_date_option = Some(chrono::Utc::now() - chrono::Duration::days(1)) -%}
         {% let past_events_date_to = past_events_date_option|display_some_datetime_tz("%Y-%m-%d", chrono_tz::UTC) -%}
-        {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&community[0]=" + &group.community.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
+        {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&alliance[0]=" + &group.alliance.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
         <div>
           <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Past Events</div>

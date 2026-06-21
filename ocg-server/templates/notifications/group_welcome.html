@@ -13,7 +13,7 @@
 {% block content -%}
   <p class="default mb-30" style="margin-bottom: 30px">
     Welcome to <strong>{{ group.name }}</strong> on
-    <strong>Open Community Groups</strong>!
+    <strong>Open Alliance Groups</strong>!
     <br />
     <br />
     {% if let Some(location) = &self.group.location(90) -%}
@@ -29,12 +29,12 @@
 
   <p class="default mt-30 mb-15"
      style="margin-top: 30px;
-            margin-bottom: 15px">Thanks for being part of the community!</p>
+            margin-bottom: 15px">Thanks for being part of the alliance!</p>
 {% endblock content -%}
 
 {% block footer -%}
   You received this email notification because you joined {{ group.name }} in
-  the {{ group.community_display_name }} community. If this wasn't you, you can
+  the {{ group.alliance_display_name }} alliance. If this wasn't you, you can
   ignore this message.
 {% endblock footer -%}
 {# End group welcome notification -#}

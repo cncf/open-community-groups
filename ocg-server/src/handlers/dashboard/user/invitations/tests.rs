@@ -13,7 +13,7 @@ use crate::{
     config::HttpServerConfig,
     db::mock::MockDB,
     handlers::{
-        auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+        auth::{SELECTED_ALLIANCE_ID_KEY, SELECTED_GROUP_ID_KEY},
         tests::*,
     },
     services::notifications::{MockNotificationsManager, NotificationKind},
@@ -23,12 +23,12 @@ use crate::{
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let community_invitations = vec![sample_community_invitation(community_id)];
+    let alliance_invitations = vec![sample_alliance_invitation(alliance_id)];
     let event_invitations = vec![sample_event_invitation(Uuid::new_v4())];
     let group_invitations = vec![sample_group_invitation(Uuid::new_v4())];
 
@@ -42,10 +42,10 @@ async fn test_list_page_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_community_team_invitations()
+    db.expect_list_user_alliance_team_invitations()
         .times(1)
         .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(community_invitations.clone()));
+        .returning(move |_| Ok(alliance_invitations.clone()));
     db.expect_list_user_event_invitations()
         .times(1)
         .withf(move |uid| *uid == user_id)
@@ -77,12 +77,12 @@ async fn test_list_page_success() {
 #[tokio::test]
 async fn test_list_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let community_invitations = vec![sample_community_invitation(community_id)];
+    let alliance_invitations = vec![sample_alliance_invitation(alliance_id)];
     let event_invitations = vec![sample_event_invitation(Uuid::new_v4())];
 
     // Setup database mock
@@ -95,10 +95,10 @@ async fn test_list_page_db_error() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_community_team_invitations()
+    db.expect_list_user_alliance_team_invitations()
         .times(1)
         .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(community_invitations.clone()));
+        .returning(move |_| Ok(alliance_invitations.clone()));
     db.expect_list_user_event_invitations()
         .times(1)
         .withf(move |uid| *uid == user_id)
@@ -128,15 +128,15 @@ async fn test_list_page_db_error() {
 }
 
 #[tokio::test]
-async fn test_accept_community_team_invitation_success() {
+async fn test_accept_alliance_team_invitation_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -148,9 +148,9 @@ async fn test_accept_community_team_invitation_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_accept_community_team_invitation()
+    db.expect_accept_alliance_team_invitation()
         .times(1)
-        .withf(move |uid, cid| *uid == user_id && *cid == community_id)
+        .withf(move |uid, cid| *uid == user_id && *cid == alliance_id)
         .returning(|_, _| Ok(()));
     db.expect_list_user_groups()
         .times(1)
@@ -163,8 +163,8 @@ async fn test_accept_community_team_invitation_success() {
                 && message_matches(record, "Team invitation accepted.")
                 && record
                     .data
-                    .get(SELECTED_COMMUNITY_ID_KEY)
-                    .is_some_and(|value| value == &json!(community_id))
+                    .get(SELECTED_ALLIANCE_ID_KEY)
+                    .is_some_and(|value| value == &json!(alliance_id))
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
@@ -180,7 +180,7 @@ async fn test_accept_community_team_invitation_success() {
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/user/invitations/community/{community_id}/accept"
+            "/dashboard/user/invitations/alliance/{alliance_id}/accept"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -196,7 +196,7 @@ async fn test_accept_community_team_invitation_success() {
 #[tokio::test]
 async fn test_accept_event_attendee_invitation_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -204,7 +204,7 @@ async fn test_accept_event_attendee_invitation_success() {
     let event = sample_event_summary(event_id, Uuid::new_v4());
     let expected_link = format!(
         "https://ocg.test/{}/group/{}/event/{}",
-        event.community_name, event.group_slug, event.slug
+        event.alliance_name, event.group_slug, event.slug
     );
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let site_settings = sample_site_settings();
@@ -222,13 +222,13 @@ async fn test_accept_event_attendee_invitation_success() {
     db.expect_accept_event_attendee_invitation()
         .times(1)
         .withf(move |uid, eid| *uid == user_id && *eid == event_id)
-        .returning(move |_, _| Ok(community_id));
+        .returning(move |_, _| Ok(alliance_id));
     db.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_update_session()
         .times(1)
@@ -279,7 +279,7 @@ async fn test_accept_event_attendee_invitation_success() {
 #[tokio::test]
 async fn test_accept_event_attendee_invitation_succeeds_when_notification_context_fails() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -299,13 +299,13 @@ async fn test_accept_event_attendee_invitation_succeeds_when_notification_contex
     db.expect_accept_event_attendee_invitation()
         .times(1)
         .withf(move |uid, eid| *uid == user_id && *eid == event_id)
-        .returning(move |_, _| Ok(community_id));
+        .returning(move |_, _| Ok(alliance_id));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Err(anyhow!("event summary error")));
     db.expect_update_session()
         .times(1)
@@ -339,13 +339,13 @@ async fn test_accept_event_attendee_invitation_succeeds_when_notification_contex
 #[tokio::test]
 async fn test_accept_group_team_invitation_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -372,8 +372,8 @@ async fn test_accept_group_team_invitation_success() {
                 && message_matches(record, "Team invitation accepted.")
                 && record
                     .data
-                    .get(SELECTED_COMMUNITY_ID_KEY)
-                    .is_some_and(|value| value == &json!(community_id))
+                    .get(SELECTED_ALLIANCE_ID_KEY)
+                    .is_some_and(|value| value == &json!(alliance_id))
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
@@ -403,9 +403,9 @@ async fn test_accept_group_team_invitation_success() {
 }
 
 #[tokio::test]
-async fn test_reject_community_team_invitation_success() {
+async fn test_reject_alliance_team_invitation_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -421,9 +421,9 @@ async fn test_reject_community_team_invitation_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_reject_community_team_invitation()
+    db.expect_reject_alliance_team_invitation()
         .times(1)
-        .withf(move |uid, cid| *uid == user_id && *cid == community_id)
+        .withf(move |uid, cid| *uid == user_id && *cid == alliance_id)
         .returning(|_, _| Ok(()));
     db.expect_update_session()
         .times(1)
@@ -440,7 +440,7 @@ async fn test_reject_community_team_invitation_success() {
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/user/invitations/community/{community_id}/reject"
+            "/dashboard/user/invitations/alliance/{alliance_id}/reject"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())

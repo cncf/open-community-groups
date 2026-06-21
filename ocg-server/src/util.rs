@@ -129,7 +129,7 @@ pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> Str
     format!(
         "{}/{}/group/{}/event/{}",
         base,
-        event.community_name,
+        event.alliance_name,
         event.public_group_slug(),
         event.slug
     )
@@ -213,7 +213,7 @@ mod tests {
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
         assert!(
             unfolded.contains(
-                "URL:https://example.test/test-community/group/test-group/event/test-event"
+                "URL:https://example.test/test-alliance/group/test-group/event/test-event"
             )
         );
         assert!(unfolded.contains("X-APPLE-STRUCTURED-LOCATION;VALUE=URI"));
@@ -254,7 +254,7 @@ mod tests {
         assert!(unfolded.contains("SUMMARY:Test Event"));
         assert!(
             unfolded.contains(
-                "URL:https://example.test/test-community/group/test-group/event/test-event"
+                "URL:https://example.test/test-alliance/group/test-group/event/test-event"
             )
         );
         assert!(unfolded.contains("UID:00000000-0000-0000-0000-000000000001"));
@@ -308,10 +308,10 @@ mod tests {
         EventSummary {
             attendee_approval_required: false,
             canceled,
-            community_display_name: "Test Community".to_string(),
-            community_name: "test-community".to_string(),
+            alliance_display_name: "Test Alliance".to_string(),
+            alliance_name: "test-alliance".to_string(),
             event_id: Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap(),
-            group_category_name: "Community".to_string(),
+            group_category_name: "Alliance".to_string(),
             group_name: "Test Group".to_string(),
             group_slug: "test-group".to_string(),
             has_registration_questions: false,

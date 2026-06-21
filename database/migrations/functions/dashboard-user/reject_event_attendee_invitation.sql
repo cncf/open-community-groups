@@ -5,15 +5,15 @@ create or replace function reject_event_attendee_invitation(
 )
 returns void as $$
 declare
-    v_community_id uuid;
+    v_alliance_id uuid;
     v_group_id uuid;
 begin
     -- Resolve event scope for auditing
     select
-        g.community_id,
+        g.alliance_id,
         e.group_id
     into
-        v_community_id,
+        v_alliance_id,
         v_group_id
     from event e
     join "group" g using (group_id)
@@ -41,7 +41,7 @@ begin
         p_actor_user_id,
         'user',
         p_actor_user_id,
-        v_community_id,
+        v_alliance_id,
         v_group_id,
         p_event_id,
         jsonb_build_object('event_id', p_event_id, 'user_id', p_actor_user_id)

@@ -1,7 +1,7 @@
 -- update_group updates an existing group's information.
 create or replace function update_group(
     p_actor_user_id uuid,
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_group_id uuid,
     p_group jsonb
 )
@@ -16,7 +16,7 @@ begin
     into v_previous_payment_recipient
     from "group"
     where group_id = p_group_id
-    and community_id = p_community_id
+    and alliance_id = p_alliance_id
     and deleted = false;
 
     -- Normalize the optional payment recipient before persisting it
@@ -93,7 +93,7 @@ begin
         wechat_url = nullif(p_group->>'wechat_url', ''),
         youtube_url = nullif(p_group->>'youtube_url', '')
     where group_id = p_group_id
-    and community_id = p_community_id
+    and alliance_id = p_alliance_id
     and deleted = false;
 
     -- Ensure the target group exists and is active
@@ -107,7 +107,7 @@ begin
         p_actor_user_id,
         'group',
         p_group_id,
-        p_community_id,
+        p_alliance_id,
         p_group_id
     );
 
@@ -118,7 +118,7 @@ begin
             p_actor_user_id,
             'group',
             p_group_id,
-            p_community_id,
+            p_alliance_id,
             p_group_id
         );
     end if;

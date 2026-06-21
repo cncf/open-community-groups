@@ -10,7 +10,7 @@ select plan(5);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000002'
-\set communityID '00000000-0000-0000-0000-000000000003'
+\set allianceID '00000000-0000-0000-0000-000000000003'
 \set eventCategoryID '00000000-0000-0000-0000-000000000004'
 \set eventID '00000000-0000-0000-0000-000000000005'
 \set groupID '00000000-0000-0000-0000-000000000006'
@@ -20,21 +20,21 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Tech', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Tech', :'allianceID');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'G1', 'g1');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
 
 -- Users
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
@@ -65,11 +65,11 @@ values (:'eventID', :'invitedUserID', true, 'invitation-pending');
 -- TESTS
 -- ============================================================================
 
--- Should accept an invitation and return community scope.
+-- Should accept an invitation and return alliance scope.
 select is(
     accept_event_attendee_invitation(:'invitedUserID', :'eventID'),
-    :'communityID'::uuid,
-    'Should return community id for notification context'
+    :'allianceID'::uuid,
+    'Should return alliance id for notification context'
 );
 
 select is(
@@ -99,7 +99,7 @@ select results_eq(
         select
             action,
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             resource_id,

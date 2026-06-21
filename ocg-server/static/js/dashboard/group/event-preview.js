@@ -121,18 +121,18 @@ export const collectEventPreviewContext = (pageRoot) => {
 
   return compactObject({
     category_label: selectedOptionLabel(categorySelect),
-    community: compactObject({
+    alliance: compactObject({
       banner_url: firstValue(
-        pageRoot.dataset?.communityBannerUrl,
-        dashboardContent?.dataset?.communityBannerUrl,
+        pageRoot.dataset?.allianceBannerUrl,
+        dashboardContent?.dataset?.allianceBannerUrl,
       ),
       display_name: firstValue(
-        pageRoot.dataset?.communityDisplayName,
-        dashboardContent?.dataset?.communityDisplayName,
-        dashboardContent?.dataset?.community,
+        pageRoot.dataset?.allianceDisplayName,
+        dashboardContent?.dataset?.allianceDisplayName,
+        dashboardContent?.dataset?.alliance,
       ),
-      logo_url: firstValue(pageRoot.dataset?.communityLogoUrl, dashboardContent?.dataset?.communityLogoUrl),
-      name: firstValue(pageRoot.dataset?.communityName, dashboardContent?.dataset?.community),
+      logo_url: firstValue(pageRoot.dataset?.allianceLogoUrl, dashboardContent?.dataset?.allianceLogoUrl),
+      name: firstValue(pageRoot.dataset?.allianceName, dashboardContent?.dataset?.alliance),
     }),
     group: compactObject({
       banner_url: firstValue(pageRoot.dataset?.groupBannerUrl, dashboardContent?.dataset?.groupBannerUrl),

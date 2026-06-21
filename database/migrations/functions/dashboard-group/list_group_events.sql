@@ -11,7 +11,7 @@ returns json as $$
         ),
         -- Scope events to the target group
         group_events as (
-            select e.event_id, e.name, e.starts_at, e.group_id, g.community_id
+            select e.event_id, e.name, e.starts_at, e.group_id, g.alliance_id
             from event e
             join "group" g using (group_id)
             where e.group_id = p_group_id
@@ -56,7 +56,7 @@ returns json as $$
             select coalesce(
                 json_agg(
                     get_event_summary_dashboard(
-                        past_events.community_id,
+                        past_events.alliance_id,
                         past_events.group_id,
                         past_events.event_id
                     )
@@ -71,7 +71,7 @@ returns json as $$
             select coalesce(
                 json_agg(
                     get_event_summary_dashboard(
-                        upcoming_events.community_id,
+                        upcoming_events.alliance_id,
                         upcoming_events.group_id,
                         upcoming_events.event_id
                     )

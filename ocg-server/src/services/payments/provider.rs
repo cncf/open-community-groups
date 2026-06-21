@@ -62,8 +62,8 @@ pub(crate) struct CreateCheckoutSessionInput {
     pub amount_minor: i64,
     /// Base URL of the application.
     pub base_url: String,
-    /// Community slug used in return URLs.
-    pub community_name: String,
+    /// Alliance slug used in return URLs.
+    pub alliance_name: String,
     /// Currency code for the payment.
     pub currency_code: String,
     /// Event identifier.

@@ -17,19 +17,19 @@
 --
 -- Time series data is returned as arrays of [timestamp/value] pairs where
 -- timestamps are Unix milliseconds.
-create or replace function get_group_stats(p_community_id uuid, p_group_id uuid)
+create or replace function get_group_stats(p_alliance_id uuid, p_group_id uuid)
 returns json as $$
 with params as (
     select
-        p_community_id as community_id,
+        p_alliance_id as alliance_id,
         p_group_id as group_id,
         current_date - interval '2 years' as period_start,
         current_date - interval '1 month' as recent_views_start
 ),
 filtered_group as (
-    select g.group_id, g.community_id
+    select g.group_id, g.alliance_id
     from "group" g
-    join params p on g.group_id = p.group_id and g.community_id = p.community_id
+    join params p on g.group_id = p.group_id and g.alliance_id = p.alliance_id
     where g.active = true
         and g.deleted = false
 ),

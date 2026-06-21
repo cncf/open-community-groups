@@ -22,7 +22,7 @@ values (:'userID', 'hash', 'user@example.com', 'user');
 
 -- Audit log row
 insert into audit_log (action, actor_user_id, actor_username, resource_id, resource_type)
-values ('community_updated', :'userID', 'user', :'resourceID', 'community');
+values ('alliance_updated', :'userID', 'user', :'resourceID', 'alliance');
 
 -- ============================================================================
 -- TESTS

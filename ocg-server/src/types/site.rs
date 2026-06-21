@@ -11,8 +11,8 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct SiteHomeStats {
-    /// Number of active communities.
-    pub communities: i64,
+    /// Number of active alliances.
+    pub alliances: i64,
     /// Number of published events.
     pub events: i64,
     /// Number of event attendees.

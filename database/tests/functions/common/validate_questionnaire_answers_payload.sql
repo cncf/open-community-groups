@@ -58,7 +58,7 @@ select lives_ok(
                 "answers": [
                     {
                         "question_id": "90000000-0000-0000-0000-000000000101",
-                        "value": "Scaling communities"
+                        "value": "Scaling alliances"
                     },
                     {
                         "question_id": "90000000-0000-0000-0000-000000000102",

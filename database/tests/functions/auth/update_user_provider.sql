@@ -58,8 +58,8 @@ select lives_ok(
 select update_user_provider(
     :'userID'::uuid,
     jsonb_build_object(
-        'linuxfoundation', jsonb_build_object(
-            'username', 'lf-user'
+        'linkedin', jsonb_build_object(
+            'subject', 'linkedin-subject'
         )
     )
 );
@@ -70,8 +70,8 @@ select is(
         'github', jsonb_build_object(
             'username', 'octocat-renamed'
         ),
-        'linuxfoundation', jsonb_build_object(
-            'username', 'lf-user'
+        'linkedin', jsonb_build_object(
+            'subject', 'linkedin-subject'
         )
     ),
     'Should preserve other provider keys when merging provider metadata'

@@ -47,7 +47,7 @@ impl Page {
             &self.base_url,
             &format!(
                 "/{}/group/{}/event/{}",
-                self.event.community.name,
+                self.event.alliance.name,
                 self.event.group.public_slug(),
                 self.event.slug
             ),
@@ -60,15 +60,15 @@ impl Page {
             .group
             .og_image_url
             .as_deref()
-            .or(self.event.community.og_image_url.as_deref())
+            .or(self.event.alliance.og_image_url.as_deref())
             .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
     }
 
     /// Returns the preview description for the event page.
     pub(crate) fn preview_description(&self) -> String {
         format!(
-            "{} in {} community. Open Community Groups, where Open Source communities thrive.",
-            self.event.group.name, self.event.community.display_name
+            "{} in {} alliance. Open Alliance Groups, where Open Source alliances thrive.",
+            self.event.group.name, self.event.alliance.display_name
         )
     }
 
@@ -164,7 +164,7 @@ mod tests {
     use chrono::{DateTime, TimeZone, Utc};
     use chrono_tz::{America::Los_Angeles, Tz};
 
-    use crate::types::{community::CommunitySummary, group::GroupSummary};
+    use crate::types::{alliance::AllianceSummary, group::GroupSummary};
 
     use super::*;
 
@@ -186,12 +186,12 @@ mod tests {
     }
 
     #[test]
-    fn test_preview_description_uses_group_and_community_names() {
+    fn test_preview_description_uses_group_and_alliance_names() {
         let page = sample_page(None, chrono_tz::UTC);
 
         assert_eq!(
             page.preview_description(),
-            "Test Group in Test Community community. Open Community Groups, where Open Source communities thrive."
+            "Test Group in Test Alliance alliance. Open Alliance Groups, where Open Source alliances thrive."
         );
     }
 
@@ -201,8 +201,8 @@ mod tests {
         Page {
             base_url: "https://example.test".to_string(),
             event: EventFull {
-                community: CommunitySummary {
-                    display_name: "Test Community".to_string(),
+                alliance: AllianceSummary {
+                    display_name: "Test Alliance".to_string(),
                     ..Default::default()
                 },
                 group: GroupSummary {
@@ -215,7 +215,7 @@ mod tests {
                 ..Default::default()
             },
             page_id: PageId::Event,
-            path: "/test-community/group/test-group/event/test-event".to_string(),
+            path: "/test-alliance/group/test-group/event/test-event".to_string(),
             site_settings: SiteSettings::default(),
             user: User::default(),
         }

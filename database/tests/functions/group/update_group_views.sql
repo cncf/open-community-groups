@@ -10,7 +10,7 @@ select plan(4);
 -- ============================================================================
 
 \set inactiveGroupID '00000000-0000-0000-0000-000000000302'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set groupCategoryID '00000000-0000-0000-0000-000000000201'
 \set activeGroupID '00000000-0000-0000-0000-000000000301'
 \set unknownGroupID '00000000-0000-0000-0000-999999999999'
@@ -19,9 +19,9 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community and group category
-insert into community (
-    community_id,
+-- Alliance and group category
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -29,30 +29,30 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
-    'views-community',
-    'Views Community',
-    'Community for update_group_views tests',
+    :'allianceID',
+    'views-alliance',
+    'Views Alliance',
+    'Alliance for update_group_views tests',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Groups
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
     active,
     deleted
 ) values
-    (:'activeGroupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
-    (:'inactiveGroupID', :'communityID', :'groupCategoryID', 'Inactive Group', 'inactive-group', false, false);
+    (:'activeGroupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
+    (:'inactiveGroupID', :'allianceID', :'groupCategoryID', 'Inactive Group', 'inactive-group', false, false);
 
 -- ============================================================================
 -- TESTS

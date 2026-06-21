@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     db::{BBox, PgDB, Total},
     types::{
-        community::{CommunityFull, CommunitySummary},
+        alliance::{AllianceFull, AllianceSummary},
         event::{EventCfsLabel, EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
         search::{SearchEventsFilters, SearchGroupsFilters},
@@ -22,16 +22,16 @@ use crate::{
 /// Common database operations trait.
 #[async_trait]
 pub(crate) trait DBCommon {
-    /// Retrieves community information by its unique identifier.
-    async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull>;
+    /// Retrieves alliance information by its unique identifier.
+    async fn get_alliance_full(&self, alliance_id: Uuid) -> Result<AllianceFull>;
 
-    /// Retrieves community summary by its unique identifier.
-    async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary>;
+    /// Retrieves alliance summary by its unique identifier.
+    async fn get_alliance_summary(&self, alliance_id: Uuid) -> Result<AllianceSummary>;
 
     /// Gets full event details.
     async fn get_event_full(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventFull>;
@@ -39,16 +39,16 @@ pub(crate) trait DBCommon {
     /// Gets summary event details.
     async fn get_event_summary(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventSummary>;
 
     /// Gets group full details.
-    async fn get_group_full(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupFull>;
+    async fn get_group_full(&self, alliance_id: Uuid, group_id: Uuid) -> Result<GroupFull>;
 
     /// Gets group summary details.
-    async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary>;
+    async fn get_group_summary(&self, alliance_id: Uuid, group_id: Uuid) -> Result<GroupSummary>;
 
     /// Lists labels configured for an event.
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>>;
@@ -65,17 +65,17 @@ pub(crate) trait DBCommon {
 
 #[async_trait]
 impl DBCommon for PgDB {
-    /// [`DBCommon::get_community_full`]
+    /// [`DBCommon::get_alliance_full`]
     #[instrument(skip(self), err)]
-    async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull> {
-        self.fetch_json_one("select get_community_full($1::uuid)", &[&community_id])
+    async fn get_alliance_full(&self, alliance_id: Uuid) -> Result<AllianceFull> {
+        self.fetch_json_one("select get_alliance_full($1::uuid)", &[&alliance_id])
             .await
     }
 
-    /// [`DBCommon::get_community_summary`]
+    /// [`DBCommon::get_alliance_summary`]
     #[instrument(skip(self), err)]
-    async fn get_community_summary(&self, community_id: Uuid) -> Result<CommunitySummary> {
-        self.fetch_json_one("select get_community_summary($1::uuid)", &[&community_id])
+    async fn get_alliance_summary(&self, alliance_id: Uuid) -> Result<AllianceSummary> {
+        self.fetch_json_one("select get_alliance_summary($1::uuid)", &[&alliance_id])
             .await
     }
 
@@ -83,13 +83,13 @@ impl DBCommon for PgDB {
     #[instrument(skip(self), err)]
     async fn get_event_full(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventFull> {
         self.fetch_json_one(
             "select get_event_full($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &group_id, &event_id],
+            &[&alliance_id, &group_id, &event_id],
         )
         .await
     }
@@ -98,33 +98,33 @@ impl DBCommon for PgDB {
     #[instrument(skip(self), err)]
     async fn get_event_summary(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
         event_id: Uuid,
     ) -> Result<EventSummary> {
         self.fetch_json_one(
             "select get_event_summary($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &group_id, &event_id],
+            &[&alliance_id, &group_id, &event_id],
         )
         .await
     }
 
     /// [`DBCommon::get_group_full`]
     #[instrument(skip(self), err)]
-    async fn get_group_full(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupFull> {
+    async fn get_group_full(&self, alliance_id: Uuid, group_id: Uuid) -> Result<GroupFull> {
         self.fetch_json_one(
             "select get_group_full($1::uuid, $2::uuid)",
-            &[&community_id, &group_id],
+            &[&alliance_id, &group_id],
         )
         .await
     }
 
     /// [`DBCommon::get_group_summary`]
     #[instrument(skip(self), err)]
-    async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary> {
+    async fn get_group_summary(&self, alliance_id: Uuid, group_id: Uuid) -> Result<GroupSummary> {
         self.fetch_json_one(
             "select get_group_summary($1::uuid, $2::uuid)",
-            &[&community_id, &group_id],
+            &[&alliance_id, &group_id],
         )
         .await
     }

@@ -9,8 +9,8 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '78000000-0000-0000-0000-000000000001'
-\set communityNoReviewID '78000000-0000-0000-0000-000000000019'
+\set allianceID '78000000-0000-0000-0000-000000000001'
+\set allianceNoReviewID '78000000-0000-0000-0000-000000000019'
 \set eventCategoryID '78000000-0000-0000-0000-000000000002'
 \set eventCanceledID '78000000-0000-0000-0000-000000000022'
 \set eventCanceledTicketTypeID '78000000-0000-0000-0000-000000000023'
@@ -22,8 +22,8 @@ select plan(8);
 \set eventUnpublishedTicketTypeID '78000000-0000-0000-0000-000000000025'
 \set groupCategoryID '78000000-0000-0000-0000-000000000006'
 \set groupCategoryNoReviewID '78000000-0000-0000-0000-000000000021'
-\set communityManagerID '78000000-0000-0000-0000-000000000017'
-\set communityViewerID '78000000-0000-0000-0000-000000000018'
+\set allianceManagerID '78000000-0000-0000-0000-000000000017'
+\set allianceViewerID '78000000-0000-0000-0000-000000000018'
 \set groupID '78000000-0000-0000-0000-000000000007'
 \set groupNoTeamID '78000000-0000-0000-0000-000000000008'
 \set priceWindowID '78000000-0000-0000-0000-000000000009'
@@ -41,46 +41,46 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
 values
-    (:'communityID', 'request-community', 'Request Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png'),
-    (:'communityNoReviewID', 'no-review-community', 'No Review Community', 'Test', 'https://e/logo-2.png', 'https://e/banner-mobile-2.png', 'https://e/banner-2.png');
+    (:'allianceID', 'request-alliance', 'Request Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png'),
+    (:'allianceNoReviewID', 'no-review-alliance', 'No Review Alliance', 'Test', 'https://e/logo-2.png', 'https://e/banner-mobile-2.png', 'https://e/banner-2.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategoryID', :'communityID', 'Tech'),
-    (:'groupCategoryNoReviewID', :'communityNoReviewID', 'Tech');
+    (:'groupCategoryID', :'allianceID', 'Tech'),
+    (:'groupCategoryNoReviewID', :'allianceNoReviewID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
+insert into event_category (event_category_id, alliance_id, name)
 values
-    (:'eventCategoryID', :'communityID', 'General'),
-    (:'eventCategoryNoReviewID', :'communityNoReviewID', 'General');
+    (:'eventCategoryID', :'allianceID', 'General'),
+    (:'eventCategoryNoReviewID', :'allianceNoReviewID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'communityManagerID', 'hash-4', 'manager@example.com', true, 'community-manager'),
-    (:'communityViewerID', 'hash-5', 'viewer@example.com', true, 'community-viewer'),
+    (:'allianceManagerID', 'hash-4', 'manager@example.com', true, 'alliance-manager'),
+    (:'allianceViewerID', 'hash-5', 'viewer@example.com', true, 'alliance-viewer'),
     (:'requesterID', 'hash-1', 'requester@example.com', true, 'requester'),
     (:'teamUser1ID', 'hash-2', 'team1@example.com', true, 'organizer-1'),
     (:'teamUser2ID', 'hash-3', 'team2@example.com', true, 'organizer-2');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Refund Group', 'refund-group'),
-    (:'groupNoTeamID', :'communityNoReviewID', :'groupCategoryNoReviewID', 'No Team Group', 'no-team-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Refund Group', 'refund-group'),
+    (:'groupNoTeamID', :'allianceNoReviewID', :'groupCategoryNoReviewID', 'No Team Group', 'no-team-group');
 
 -- Group team
 insert into group_team (group_id, user_id, accepted, role) values
     (:'groupID', :'teamUser1ID', true, 'admin'),
     (:'groupID', :'teamUser2ID', true, 'viewer');
 
--- Community team
-insert into community_team (accepted, community_id, role, user_id) values
-    (true, :'communityID', 'groups-manager', :'communityManagerID'),
-    (true, :'communityID', 'viewer', :'communityViewerID');
+-- Alliance team
+insert into alliance_team (accepted, alliance_id, role, user_id) values
+    (true, :'allianceID', 'groups-manager', :'allianceManagerID'),
+    (true, :'allianceID', 'viewer', :'allianceViewerID');
 
 -- Events
 insert into event (
@@ -273,7 +273,7 @@ select results_eq(
         select
             action,
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             details->>'event_purchase_id',
@@ -302,7 +302,7 @@ select results_eq(
         order by u.username
     $$,
     $$ values
-        ('community-manager'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb),
+        ('alliance-manager'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb),
         ('organizer-1'::text, 'event-refund-requested'::text, '{"event":"refund"}'::jsonb)
     $$,
     'Should only enqueue notifications for verified users who can review refunds'

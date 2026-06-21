@@ -11,7 +11,7 @@ select plan(2);
 
 \set activeCheckoutUserID '92000000-0000-0000-0000-000000000041'
 \set categoryID '92000000-0000-0000-0000-000000000011'
-\set communityID '92000000-0000-0000-0000-000000000001'
+\set allianceID '92000000-0000-0000-0000-000000000001'
 \set confirmedUserID '92000000-0000-0000-0000-000000000042'
 \set eventCategoryID '92000000-0000-0000-0000-000000000012'
 \set expiredCheckoutUserID '92000000-0000-0000-0000-000000000043'
@@ -26,29 +26,29 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
 values (
-    :'communityID',
-    'seat-count-community',
-    'Seat Count Community',
-    'Community for occupied seat count tests',
+    :'allianceID',
+    'seat-count-alliance',
+    'Seat Count Alliance',
+    'Alliance for occupied seat count tests',
     'https://example.com/logo.png',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'categoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'categoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'Seat Count Group', 'seat-count-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'categoryID', 'Seat Count Group', 'seat-count-group');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified) values

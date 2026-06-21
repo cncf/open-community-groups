@@ -9,7 +9,7 @@ select plan(18);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
@@ -32,22 +32,22 @@ select plan(18);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
@@ -55,7 +55,7 @@ insert into "group" (
     payment_recipient
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     'Test Group',
     'test-group',
     'A test group',
@@ -66,14 +66,14 @@ insert into "group" (
 -- Group without a payment recipient
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'groupNoRecipientID',
-    :'communityID',
+    :'allianceID',
     'No Recipient Group',
     'no-recipient-group',
     'A group without a payment recipient',
@@ -409,7 +409,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             resource_type,

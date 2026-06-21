@@ -1,6 +1,6 @@
 -- Leave an event as an attendee.
 create or replace function leave_event(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid
 ) returns json as $$
@@ -11,7 +11,7 @@ declare
     v_purchase_amount_minor bigint;
     v_purchase_id uuid;
 begin
-    -- Check if event exists in the community, is active and can be left
+    -- Check if event exists in the alliance, is active and can be left
     select
         e.capacity,
         exists(
@@ -25,7 +25,7 @@ begin
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     and g.active = true
     and e.deleted = false
     and e.published = true

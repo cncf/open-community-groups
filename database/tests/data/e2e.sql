@@ -11,17 +11,17 @@ insert into site (
     theme
 ) values (
     '00000000-0000-0000-0000-000000000000',
-    'E2E Test Site',
-    'Site for E2E testing',
+    'GOUP Alliance',
+    'GOUP Alliance',
     '{"primary_color": "#0EA5E9"}'::jsonb
 );
 
 -- ============================================================================
--- COMMUNITIES
+-- ALLIANCES
 -- ============================================================================
 
-insert into community (
-    community_id,
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -30,27 +30,27 @@ insert into community (
     logo_url
 ) values (
     '11111111-1111-1111-1111-111111111111',
-    'e2e-test-community',
-    'Platform Engineering Community',
-    'Platform engineering community used for end-to-end coverage.',
-    '/static/images/e2e/community-primary-banner.svg',
-    '/static/images/e2e/community-primary-banner-mobile.svg',
-    '/static/images/e2e/community-primary-logo.svg'
+    'e2e-test-alliance',
+    'Platform Engineering Alliance',
+    'Platform engineering alliance used for end-to-end coverage.',
+    '/static/images/e2e/alliance-primary-banner.svg',
+    '/static/images/e2e/alliance-primary-banner-mobile.svg',
+    '/static/images/e2e/alliance-primary-logo.svg'
 ), (
     '11111111-1111-1111-1111-111111111112',
-    'e2e-second-community',
-    'Developer Experience Community',
-    'Developer experience community used for end-to-end coverage.',
-    '/static/images/e2e/community-secondary-banner.svg',
-    '/static/images/e2e/community-secondary-banner-mobile.svg',
-    '/static/images/e2e/community-secondary-logo.svg'
+    'e2e-second-alliance',
+    'Developer Experience Alliance',
+    'Developer experience alliance used for end-to-end coverage.',
+    '/static/images/e2e/alliance-secondary-banner.svg',
+    '/static/images/e2e/alliance-secondary-banner-mobile.svg',
+    '/static/images/e2e/alliance-secondary-logo.svg'
 );
 
 -- ============================================================================
 -- GROUP CATEGORIES
 -- ============================================================================
 
-insert into group_category (group_category_id, name, community_id)
+insert into group_category (group_category_id, name, alliance_id)
 values (
     '22222222-2222-2222-2222-222222222221',
     'E2E Category One',
@@ -69,7 +69,7 @@ values (
 -- EVENT CATEGORIES
 -- ============================================================================
 
-insert into event_category (event_category_id, name, community_id)
+insert into event_category (event_category_id, name, alliance_id)
 values (
     '33333333-3333-3333-3333-333333333331',
     'General',
@@ -88,7 +88,7 @@ values (
 -- REGIONS
 -- ============================================================================
 
-insert into region (region_id, community_id, name, "order")
+insert into region (region_id, alliance_id, name, "order")
 values (
     '22222222-2222-2222-2222-222222222301',
     '11111111-1111-1111-1111-111111111111',
@@ -105,10 +105,10 @@ values (
 -- GROUPS
 -- ============================================================================
 
--- Primary community groups used across the main e2e scenarios
+-- Primary alliance groups used across the main e2e scenarios
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -144,10 +144,10 @@ insert into "group" (
     true
 );
 
--- Secondary community groups used for cross-community coverage
+-- Secondary alliance groups used for cross-alliance coverage
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -759,10 +759,10 @@ insert into "user" (
     'c4d5e6f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d5'
 ), (
     '77777777-7777-7777-7777-777777777710',
-    'e2e-community-viewer-1',
-    'e2e-community-viewer-1@example.com',
+    'e2e-alliance-viewer-1',
+    'e2e-alliance-viewer-1@example.com',
     true,
-    'E2E Community Viewer One',
+    'E2E Alliance Viewer One',
     '$argon2id$v=19$m=19456,t=2,p=1$gZiV/M1gPc22ElAH/Jh1Hw$CWOrkoo7oJBQ/iyh7uJ0LO2aLEfrHwTWllSAxT0zRno',
     'd5e6f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e6'
 ), (
@@ -784,12 +784,12 @@ insert into "user" (
 );
 
 -- ============================================================================
--- COMMUNITY TEAM
--- Accepted roles and pending invitations for community dashboards
+-- ALLIANCE TEAM
+-- Accepted roles and pending invitations for alliance dashboards
 -- ============================================================================
 
--- Accepted admin for the primary community
-insert into community_team (community_id, user_id, accepted, role)
+-- Accepted admin for the primary alliance
+insert into alliance_team (alliance_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
     '77777777-7777-7777-7777-777777777701',
@@ -797,8 +797,8 @@ values (
     'admin'
 );
 
--- Accepted admin for the secondary community
-insert into community_team (community_id, user_id, accepted, role)
+-- Accepted admin for the secondary alliance
+insert into alliance_team (alliance_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111112',
     '77777777-7777-7777-7777-777777777702',
@@ -806,8 +806,8 @@ values (
     'admin'
 );
 
--- Groups manager for the primary community
-insert into community_team (community_id, user_id, accepted, role)
+-- Groups manager for the primary alliance
+insert into alliance_team (alliance_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
     '77777777-7777-7777-7777-777777777709',
@@ -815,8 +815,8 @@ values (
     'groups-manager'
 );
 
--- Read-only viewer for the primary community dashboard
-insert into community_team (community_id, user_id, accepted, role)
+-- Read-only viewer for the primary alliance dashboard
+insert into alliance_team (alliance_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
     '77777777-7777-7777-7777-777777777710',
@@ -824,8 +824,8 @@ values (
     'viewer'
 );
 
--- Pending invitation for the primary community team
-insert into community_team (community_id, user_id, accepted, role)
+-- Pending invitation for the primary alliance team
+insert into alliance_team (alliance_id, user_id, accepted, role)
 values (
     '11111111-1111-1111-1111-111111111111',
     '77777777-7777-7777-7777-777777777707',
@@ -981,7 +981,7 @@ insert into session_proposal (
 ), (
     '99999999-9999-9999-9999-999999999804',
     '77777777-7777-7777-7777-777777777705',
-    'Scaling Community Workshops',
+    'Scaling Alliance Workshops',
     'An approved proposal linked to a scheduled session.',
     'intermediate',
     interval '45 minutes',
@@ -1315,8 +1315,8 @@ values (
     '55555555-5555-5555-5555-555555555522',
     2,
     10,
-    'Community ticket',
-    'Free community allocation used for zero-price ticket coverage.'
+    'Alliance ticket',
+    'Free alliance allocation used for zero-price ticket coverage.'
 ), (
     '56555555-5555-5555-5555-555555555524',
     true,
@@ -1662,16 +1662,16 @@ insert into audit_log (
     resource_type,
     actor_user_id,
     actor_username,
-    community_id,
+    alliance_id,
     details,
     event_id,
     group_id
 ) values (
     '88888888-8888-8888-8888-888888888801',
-    'community_updated',
+    'alliance_updated',
     now() - interval '6 hours',
     '11111111-1111-1111-1111-111111111111',
-    'community',
+    'alliance',
     '77777777-7777-7777-7777-777777777701',
     'e2e-admin-1',
     '11111111-1111-1111-1111-111111111111',
@@ -1775,7 +1775,7 @@ values (
 ), (
     '88888888-8888-8888-8888-888888888803',
     '55555555-5555-5555-5555-555555555519',
-    'Scaling Community Workshops Session',
+    'Scaling Alliance Workshops Session',
     'virtual',
     now() + interval '45 days 1 hour',
     now() + interval '45 days 1 hour 45 minutes',

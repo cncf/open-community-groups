@@ -17,7 +17,7 @@ test.describe("group dashboard home", () => {
       organizerGroupPage.locator("#dashboard-content"),
     ).toBeVisible();
     await expect(
-      organizerGroupPage.locator("#community-selector-button"),
+      organizerGroupPage.locator("#alliance-selector-button"),
     ).toBeVisible();
     await expect(
       organizerGroupPage.locator("#group-selector-button"),
@@ -47,7 +47,7 @@ test.describe("group dashboard home", () => {
     ).toContainText("Logs");
     await expect(
       organizerGroupPage.getByRole("link", { name: "Group public site" }),
-    ).toHaveAttribute("href", /\/e2e-test-community\/group\/test-group-alpha$/);
+    ).toHaveAttribute("href", /\/e2e-test-alliance\/group\/test-group-alpha$/);
   });
 
   test("organizer can filter groups in the dashboard selector", async ({
@@ -74,7 +74,7 @@ test.describe("group dashboard home", () => {
 
     // Find the group option.
     const groupOption = organizerGroupPage.locator(
-      `#group-option-${TEST_GROUP_IDS.community1.alpha}`,
+      `#group-option-${TEST_GROUP_IDS.alliance1.alpha}`,
     );
     await expect(groupOption).toBeVisible();
     await expect(groupOption).toBeDisabled();

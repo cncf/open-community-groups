@@ -4,7 +4,7 @@ returns json as $$
     select coalesce(json_agg(row_to_json(invitation)), '[]'::json)
     from (
         select
-            c.name as community_name,
+            c.name as alliance_name,
             g.group_id,
             g.name as group_name,
             gt.role,
@@ -12,7 +12,7 @@ returns json as $$
             extract(epoch from gt.created_at)::bigint as created_at
         from group_team gt
         join "group" g using (group_id)
-        join community c using (community_id)
+        join alliance c using (alliance_id)
         where gt.user_id = p_user_id
           and gt.accepted = false
         order by gt.created_at desc

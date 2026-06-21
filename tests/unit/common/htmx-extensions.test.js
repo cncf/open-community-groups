@@ -522,7 +522,7 @@ describe("htmx extensions", () => {
           status: 201,
           responseText: "",
           getResponseHeader: (name) =>
-            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+            name === "HX-Trigger" ? "refresh-alliance-dashboard-table" : null,
         },
       },
     });
@@ -544,7 +544,7 @@ describe("htmx extensions", () => {
       status: 201,
       responseText: "",
       getResponseHeader: (name) =>
-        name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+        name === "HX-Trigger" ? "refresh-alliance-dashboard-table" : null,
     };
 
     // Handle the response before HTMX removes the source element.

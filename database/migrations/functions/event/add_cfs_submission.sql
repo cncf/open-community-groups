@@ -1,6 +1,6 @@
 -- Adds a new CFS submission for an event.
 create or replace function add_cfs_submission(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid,
     p_session_proposal_id uuid,
@@ -19,7 +19,7 @@ begin
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     and g.active = true
     and e.canceled = false
     and e.deleted = false

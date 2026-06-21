@@ -30,7 +30,7 @@ use crate::{
     handlers::{
         error::HandlerError,
         extractors::{
-            CurrentUser, OAuth2, Oidc, SelectedCommunityId, SelectedGroupId, ValidatedForm,
+            CurrentUser, OAuth2, Oidc, SelectedAllianceId, SelectedGroupId, ValidatedForm,
             ValidatedFormQs,
         },
     },
@@ -40,7 +40,7 @@ use crate::{
         auth::{User, UserDetails},
         notifications::EmailVerification,
     },
-    types::permissions::{CommunityPermission, GroupPermission},
+    types::permissions::{AlliancePermission, GroupPermission},
     validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
@@ -65,13 +65,13 @@ pub(crate) const OAUTH2_CSRF_STATE_KEY: &str = "oauth2.csrf_state";
 /// Key used to store the `Oidc` nonce in the session.
 pub(crate) const OIDC_NONCE_KEY: &str = "oidc.nonce";
 
-/// Key used to store the selected community ID in the session.
-pub(crate) const SELECTED_COMMUNITY_ID_KEY: &str = "selected_community_id";
+/// Key used to store the selected alliance ID in the session.
+pub(crate) const SELECTED_ALLIANCE_ID_KEY: &str = "selected_alliance_id";
 
 /// Key used to store the selected group ID in the session.
 pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 
-/// Defines whether syncing a community selection requires a group selection.
+/// Defines whether syncing a alliance selection requires a group selection.
 pub(crate) enum SelectedGroupPolicy {
     Optional,
     Required,
@@ -214,8 +214,8 @@ pub(crate) async fn log_in(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    // Select the first community and group as selected in the session
-    select_first_community_and_group(&db, &session, &user.user_id).await?;
+    // Select the first alliance and group as selected in the session
+    select_first_alliance_and_group(&db, &session, &user.user_id).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -524,12 +524,12 @@ where
     const OAUTH2_AUTHORIZATION_FAILED: &str = "OAuth2 authorization failed";
 
     // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await?
+    let Some(state_in_session) = session.remove::<String>(OAUTH2_CSRF_STATE_KEY).await?
     else {
         on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
-    if state_in_session.secret() != state.secret() {
+    if state_in_session != *state.secret() {
         on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     }
@@ -555,11 +555,12 @@ where
         }
     };
 
-    // Log user in
-    auth.log_in(&user).await?;
+    // Select the first alliance and group as selected in the session
+    select_first_alliance_and_group(db, &session, &user.user_id).await?;
 
-    // Select the first community and group as selected in the session
-    select_first_community_and_group(db, &session, &user.user_id).await?;
+    // Log user in last so the auth session write is not overwritten by
+    // additional session metadata writes from this callback.
+    auth.log_in(&user).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -581,18 +582,18 @@ where
     const OIDC_AUTHORIZATION_FAILED: &str = "OpenID Connect authorization failed";
 
     // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<oauth2::CsrfToken>(OAUTH2_CSRF_STATE_KEY).await?
+    let Some(state_in_session) = session.remove::<String>(OAUTH2_CSRF_STATE_KEY).await?
     else {
         on_error(OIDC_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
-    if state_in_session.secret() != state.secret() {
+    if state_in_session != *state.secret() {
         on_error(OIDC_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     }
 
     // Get oidc nonce from session
-    let Some(nonce) = session.remove::<oidc::Nonce>(OIDC_NONCE_KEY).await? else {
+    let Some(nonce) = session.remove::<String>(OIDC_NONCE_KEY).await? else {
         on_error(OIDC_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
@@ -606,7 +607,10 @@ where
     let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
-    let user = match auth.authenticate_oidc(code, nonce, provider.clone()).await {
+    let user = match auth
+        .authenticate_oidc(code, oidc::Nonce::new(nonce), provider.clone())
+        .await
+    {
         Ok(Some(user)) => user,
         Ok(None) => {
             on_error(OIDC_AUTHORIZATION_FAILED.to_string());
@@ -618,14 +622,15 @@ where
         }
     };
 
-    // Log user in
-    auth.log_in(&user).await?;
-
-    // Select the first community and group as selected in the session
-    select_first_community_and_group(db, &session, &user.user_id).await?;
+    // Select the first alliance and group as selected in the session
+    select_first_alliance_and_group(db, &session, &user.user_id).await?;
 
     // Track auth provider in the session
     session.insert(AUTH_PROVIDER_KEY, provider).await?;
+
+    // Log user in last so the auth session write is not overwritten by
+    // additional session metadata writes from this callback.
+    auth.log_in(&user).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -664,10 +669,10 @@ pub(crate) struct NextUrl {
 
 // Authorization middleware.
 
-/// Ensures the user can enter the community dashboard, falling back to the
-/// first accessible community when the selected one is no longer available.
+/// Ensures the user can enter the alliance dashboard, falling back to the
+/// first accessible alliance when the selected one is no longer available.
 #[instrument(skip_all)]
-pub(crate) async fn user_has_community_dashboard_permission(
+pub(crate) async fn user_has_alliance_dashboard_permission(
     State(db): State<DynDB>,
     mut auth_session: AuthSession,
     session: Session,
@@ -679,12 +684,12 @@ pub(crate) async fn user_has_community_dashboard_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Resolve selected community from session context, repairing it if needed
-    let community_id = match get_selected_community_id_optional(&session).await {
-        Ok(Some(community_id)) => community_id,
+    // Resolve selected alliance from session context, repairing it if needed
+    let alliance_id = match get_selected_alliance_id_optional(&session).await {
+        Ok(Some(alliance_id)) => alliance_id,
         Ok(None) => {
-            match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
-                Ok(Some(community_id)) => community_id,
+            match select_first_accessible_alliance_for_dashboard(&db, &session, &user_id).await {
+                Ok(Some(alliance_id)) => alliance_id,
                 Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
                 Err(error) => return error.into_response(),
             }
@@ -692,9 +697,9 @@ pub(crate) async fn user_has_community_dashboard_permission(
         Err(response) => return response,
     };
 
-    // Check base dashboard access in the selected community
+    // Check base dashboard access in the selected alliance
     let Ok(has_read_permission) = db
-        .user_has_community_permission(&community_id, &user_id, CommunityPermission::Read)
+        .user_has_alliance_permission(&alliance_id, &user_id, AlliancePermission::Read)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -707,18 +712,18 @@ pub(crate) async fn user_has_community_dashboard_permission(
         };
     }
 
-    // Store selected community context for downstream extractors
+    // Store selected alliance context for downstream extractors
     let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request.extensions_mut().insert(SelectedAllianceId(alliance_id));
 
     next.run(request).await.into_response()
 }
 
-/// Check if the user has a specific community permission in a path community.
+/// Check if the user has a specific alliance permission in a path alliance.
 #[instrument(skip_all)]
-pub(crate) async fn user_has_path_community_permission(
-    State((db, permission)): State<(DynDB, CommunityPermission)>,
-    Path(community_id): Path<Uuid>,
+pub(crate) async fn user_has_path_alliance_permission(
+    State((db, permission)): State<(DynDB, AlliancePermission)>,
+    Path(alliance_id): Path<Uuid>,
     auth_session: AuthSession,
     request: Request,
     next: Next,
@@ -728,9 +733,9 @@ pub(crate) async fn user_has_path_community_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Check required permission against the community id from the path
+    // Check required permission against the alliance id from the path
     let Ok(has_permission) = db
-        .user_has_community_permission(&community_id, &user.user_id, permission)
+        .user_has_alliance_permission(&alliance_id, &user.user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -757,25 +762,25 @@ pub(crate) async fn user_has_path_group_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Resolve selected community to evaluate group permission in that context
-    let community_id = match get_selected_community_id(&session).await {
-        Ok(community_id) => community_id,
+    // Resolve selected alliance to evaluate group permission in that context
+    let alliance_id = match get_selected_alliance_id(&session).await {
+        Ok(alliance_id) => alliance_id,
         Err(response) => return response,
     };
 
-    // Ensure the path group belongs to the selected community before checking permissions
-    let Ok(group_belongs_to_community) =
-        db.group_belongs_to_community(&community_id, &group_id).await
+    // Ensure the path group belongs to the selected alliance before checking permissions
+    let Ok(group_belongs_to_alliance) =
+        db.group_belongs_to_alliance(&alliance_id, &group_id).await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    if !group_belongs_to_community {
+    if !group_belongs_to_alliance {
         return StatusCode::FORBIDDEN.into_response();
     }
 
     // Check required permission against the group id from the path
     let Ok(has_permission) = db
-        .user_has_group_permission(&community_id, &group_id, &user.user_id, permission)
+        .user_has_group_permission(&alliance_id, &group_id, &user.user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -787,11 +792,11 @@ pub(crate) async fn user_has_path_group_permission(
     next.run(request).await.into_response()
 }
 
-/// Check if the user has a specific community permission in the selected
-/// community.
+/// Check if the user has a specific alliance permission in the selected
+/// alliance.
 #[instrument(skip_all)]
-pub(crate) async fn user_has_selected_community_permission(
-    State((db, permission)): State<(DynDB, CommunityPermission)>,
+pub(crate) async fn user_has_selected_alliance_permission(
+    State((db, permission)): State<(DynDB, AlliancePermission)>,
     mut auth_session: AuthSession,
     session: Session,
     request: Request,
@@ -802,12 +807,12 @@ pub(crate) async fn user_has_selected_community_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Resolve selected community from session context, repairing it if needed
-    let community_id = match get_selected_community_id_optional(&session).await {
-        Ok(Some(community_id)) => community_id,
+    // Resolve selected alliance from session context, repairing it if needed
+    let alliance_id = match get_selected_alliance_id_optional(&session).await {
+        Ok(Some(alliance_id)) => alliance_id,
         Ok(None) => {
-            match select_first_accessible_community_for_dashboard(&db, &session, &user_id).await {
-                Ok(Some(community_id)) => community_id,
+            match select_first_accessible_alliance_for_dashboard(&db, &session, &user_id).await {
+                Ok(Some(alliance_id)) => alliance_id,
                 Ok(None) => return Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response(),
                 Err(error) => return error.into_response(),
             }
@@ -815,18 +820,18 @@ pub(crate) async fn user_has_selected_community_permission(
         Err(response) => return response,
     };
 
-    // Check required permission in the selected community
+    // Check required permission in the selected alliance
     let Ok(has_permission) = db
-        .user_has_community_permission(&community_id, &user_id, permission)
+        .user_has_alliance_permission(&alliance_id, &user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
     if !has_permission {
         // Missing write permission is a normal 403 when base Read still works
-        if permission != CommunityPermission::Read {
+        if permission != AlliancePermission::Read {
             let Ok(has_read_permission) = db
-                .user_has_community_permission(&community_id, &user_id, CommunityPermission::Read)
+                .user_has_alliance_permission(&alliance_id, &user_id, AlliancePermission::Read)
                 .await
             else {
                 return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -836,7 +841,7 @@ pub(crate) async fn user_has_selected_community_permission(
             }
         }
 
-        // Missing base Read access means the selected community became stale
+        // Missing base Read access means the selected alliance became stale
         return match log_out_for_stale_dashboard_context(&mut auth_session, request.headers()).await
         {
             Ok(response) => response,
@@ -844,9 +849,9 @@ pub(crate) async fn user_has_selected_community_permission(
         };
     }
 
-    // Store selected community context for downstream extractors
+    // Store selected alliance context for downstream extractors
     let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request.extensions_mut().insert(SelectedAllianceId(alliance_id));
 
     next.run(request).await.into_response()
 }
@@ -865,21 +870,21 @@ pub(crate) async fn user_has_selected_group_permission(
         return StatusCode::FORBIDDEN.into_response();
     };
 
-    // Resolve selected community and group from session context, repairing them if needed
-    let (community_id, group_id) = match get_selected_community_and_group_ids_optional(&session)
+    // Resolve selected alliance and group from session context, repairing them if needed
+    let (alliance_id, group_id) = match get_selected_alliance_and_group_ids_optional(&session)
         .await
     {
         Ok(Some(ids)) => ids,
         Ok(None) => {
-            let selected_community_id = match get_selected_community_id_optional(&session).await {
-                Ok(selected_community_id) => selected_community_id,
+            let selected_alliance_id = match get_selected_alliance_id_optional(&session).await {
+                Ok(selected_alliance_id) => selected_alliance_id,
                 Err(response) => return response,
             };
             match select_first_accessible_group_for_dashboard(
                 &db,
                 &session,
                 &user_id,
-                selected_community_id,
+                selected_alliance_id,
             )
             .await
             {
@@ -893,7 +898,7 @@ pub(crate) async fn user_has_selected_group_permission(
 
     // Check required permission in the selected group
     let Ok(has_permission) = db
-        .user_has_group_permission(&community_id, &group_id, &user_id, permission)
+        .user_has_group_permission(&alliance_id, &group_id, &user_id, permission)
         .await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -903,7 +908,7 @@ pub(crate) async fn user_has_selected_group_permission(
         if permission != GroupPermission::Read {
             let Ok(has_read_permission) = db
                 .user_has_group_permission(
-                    &community_id,
+                    &alliance_id,
                     &group_id,
                     &user_id,
                     GroupPermission::Read,
@@ -926,9 +931,9 @@ pub(crate) async fn user_has_selected_group_permission(
         };
     }
 
-    // Store selected community and group context for downstream extractors
+    // Store selected alliance and group context for downstream extractors
     let mut request = request;
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request.extensions_mut().insert(SelectedAllianceId(alliance_id));
     request.extensions_mut().insert(SelectedGroupId(group_id));
 
     next.run(request).await.into_response()
@@ -950,29 +955,29 @@ fn get_log_in_url(next_url: Option<&str>) -> String {
     log_in_url
 }
 
-/// Resolves the selected community ID from the current session.
-async fn get_selected_community_id(session: &Session) -> Result<Uuid, Response> {
-    match get_selected_community_id_optional(session).await {
-        Ok(Some(community_id)) => Ok(community_id),
+/// Resolves the selected alliance ID from the current session.
+async fn get_selected_alliance_id(session: &Session) -> Result<Uuid, Response> {
+    match get_selected_alliance_id_optional(session).await {
+        Ok(Some(alliance_id)) => Ok(alliance_id),
         Ok(None) => Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
         Err(response) => Err(response),
     }
 }
 
-/// Resolves the selected community ID from the current session if present.
-async fn get_selected_community_id_optional(session: &Session) -> Result<Option<Uuid>, Response> {
-    match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
-        Ok(community_id) => Ok(community_id),
+/// Resolves the selected alliance ID from the current session if present.
+async fn get_selected_alliance_id_optional(session: &Session) -> Result<Option<Uuid>, Response> {
+    match session.get::<Uuid>(SELECTED_ALLIANCE_ID_KEY).await {
+        Ok(alliance_id) => Ok(alliance_id),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
     }
 }
 
-/// Resolves selected community and group IDs from the current session if present.
-async fn get_selected_community_and_group_ids_optional(
+/// Resolves selected alliance and group IDs from the current session if present.
+async fn get_selected_alliance_and_group_ids_optional(
     session: &Session,
 ) -> Result<Option<(Uuid, Uuid)>, Response> {
-    // Load selected community context from the session
-    let Some(community_id) = get_selected_community_id_optional(session).await? else {
+    // Load selected alliance context from the session
+    let Some(alliance_id) = get_selected_alliance_id_optional(session).await? else {
         return Ok(None);
     };
 
@@ -984,7 +989,7 @@ async fn get_selected_community_and_group_ids_optional(
     };
 
     // Return the complete dashboard context when both parts are present
-    Ok(Some((community_id, group_id)))
+    Ok(Some((alliance_id, group_id)))
 }
 
 /// Get the sign up url including the next url if provided.
@@ -1051,30 +1056,30 @@ fn sanitize_next_url(next_url: Option<&str>) -> Option<String> {
     Some(value.to_string())
 }
 
-/// Selects the first community dashboard the user can still access.
-async fn select_first_accessible_community_for_dashboard(
+/// Selects the first alliance dashboard the user can still access.
+async fn select_first_accessible_alliance_for_dashboard(
     db: &DynDB,
     session: &Session,
     user_id: &Uuid,
 ) -> Result<Option<Uuid>, HandlerError> {
-    // Load all community dashboards available to the user
-    let communities = db.list_user_communities(user_id).await?;
-    let Some(first_community) = communities.first() else {
+    // Load all alliance dashboards available to the user
+    let alliances = db.list_user_alliances(user_id).await?;
+    let Some(first_alliance) = alliances.first() else {
         return Ok(None);
     };
 
-    // Persist the repaired community dashboard context in the session
-    sync_selected_community_and_group(
+    // Persist the repaired alliance dashboard context in the session
+    sync_selected_alliance_and_group(
         db,
         session,
         user_id,
-        first_community.community_id,
+        first_alliance.alliance_id,
         SelectedGroupPolicy::Optional,
     )
     .await?;
 
-    // Return the selected community for downstream request context
-    Ok(Some(first_community.community_id))
+    // Return the selected alliance for downstream request context
+    Ok(Some(first_alliance.alliance_id))
 }
 
 /// Selects the first group dashboard the user can access.
@@ -1082,84 +1087,84 @@ async fn select_first_accessible_group_for_dashboard(
     db: &DynDB,
     session: &Session,
     user_id: &Uuid,
-    selected_community_id: Option<Uuid>,
+    selected_alliance_id: Option<Uuid>,
 ) -> Result<Option<(Uuid, Uuid)>, HandlerError> {
     // Load all group dashboards available to the user
-    let groups_by_community = db.list_user_groups(user_id).await?;
+    let groups_by_alliance = db.list_user_groups(user_id).await?;
 
-    // Prefer the selected community when it has at least one group
-    let selected_community = selected_community_id
-        .and_then(|community_id| {
-            groups_by_community
+    // Prefer the selected alliance when it has at least one group
+    let selected_alliance = selected_alliance_id
+        .and_then(|alliance_id| {
+            groups_by_alliance
                 .iter()
-                .find(|c| c.community.community_id == community_id)
+                .find(|c| c.alliance.alliance_id == alliance_id)
         })
         .filter(|c| !c.groups.is_empty());
 
-    // Fall back to the first community with available groups
-    let first_community = selected_community.or_else(|| {
-        groups_by_community
+    // Fall back to the first alliance with available groups
+    let first_alliance = selected_alliance.or_else(|| {
+        groups_by_alliance
             .iter()
-            .find(|community| !community.groups.is_empty())
+            .find(|alliance| !alliance.groups.is_empty())
     });
-    let Some(first_community) = first_community else {
+    let Some(first_alliance) = first_alliance else {
         return Ok(None);
     };
-    let Some(first_group) = first_community.groups.first() else {
+    let Some(first_group) = first_alliance.groups.first() else {
         return Ok(None);
     };
 
     // Persist the repaired dashboard context in the session
-    let community_id = first_community.community.community_id;
+    let alliance_id = first_alliance.alliance.alliance_id;
     let group_id = first_group.group_id;
-    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
+    session.insert(SELECTED_ALLIANCE_ID_KEY, alliance_id).await?;
     session.insert(SELECTED_GROUP_ID_KEY, group_id).await?;
 
-    Ok(Some((community_id, group_id)))
+    Ok(Some((alliance_id, group_id)))
 }
 
-/// Selects the first available community and group for the user in the session.
-pub(crate) async fn select_first_community_and_group(
+/// Selects the first available alliance and group for the user in the session.
+pub(crate) async fn select_first_alliance_and_group(
     db: &DynDB,
     session: &Session,
     user_id: &Uuid,
 ) -> Result<(), HandlerError> {
-    let groups_by_community = db.list_user_groups(user_id).await?;
-    if let Some(first_community) = groups_by_community.first() {
+    let groups_by_alliance = db.list_user_groups(user_id).await?;
+    if let Some(first_alliance) = groups_by_alliance.first() {
         session
             .insert(
-                SELECTED_COMMUNITY_ID_KEY,
-                first_community.community.community_id,
+                SELECTED_ALLIANCE_ID_KEY,
+                first_alliance.alliance.alliance_id,
             )
             .await?;
-        if let Some(first_group) = first_community.groups.first() {
+        if let Some(first_group) = first_alliance.groups.first() {
             session.insert(SELECTED_GROUP_ID_KEY, first_group.group_id).await?;
         }
     } else {
-        // User might be a community team member without groups
-        let communities = db.list_user_communities(user_id).await?;
-        if let Some(first_community) = communities.first() {
+        // User might be a alliance team member without groups
+        let alliances = db.list_user_alliances(user_id).await?;
+        if let Some(first_alliance) = alliances.first() {
             session
-                .insert(SELECTED_COMMUNITY_ID_KEY, first_community.community_id)
+                .insert(SELECTED_ALLIANCE_ID_KEY, first_alliance.alliance_id)
                 .await?;
         }
     }
     Ok(())
 }
 
-/// Syncs the selected community and first available group in the session.
-pub(crate) async fn sync_selected_community_and_group(
+/// Syncs the selected alliance and first available group in the session.
+pub(crate) async fn sync_selected_alliance_and_group(
     db: &DynDB,
     session: &Session,
     user_id: &Uuid,
-    community_id: Uuid,
+    alliance_id: Uuid,
     selected_group_policy: SelectedGroupPolicy,
 ) -> Result<(), HandlerError> {
     // Load the user's groups to keep the selected group in sync
-    let groups_by_community = db.list_user_groups(user_id).await?;
-    let first_group_id = groups_by_community
+    let groups_by_alliance = db.list_user_groups(user_id).await?;
+    let first_group_id = groups_by_alliance
         .iter()
-        .find(|c| c.community.community_id == community_id)
+        .find(|c| c.alliance.alliance_id == alliance_id)
         .and_then(|c| c.groups.first())
         .map(|g| g.group_id);
 
@@ -1167,8 +1172,8 @@ pub(crate) async fn sync_selected_community_and_group(
         return Err(HandlerError::Forbidden);
     }
 
-    // Persist the community selection and align the group selection with it
-    session.insert(SELECTED_COMMUNITY_ID_KEY, community_id).await?;
+    // Persist the alliance selection and align the group selection with it
+    session.insert(SELECTED_ALLIANCE_ID_KEY, alliance_id).await?;
     if let Some(first_group_id) = first_group_id {
         session.insert(SELECTED_GROUP_ID_KEY, first_group_id).await?;
     } else {

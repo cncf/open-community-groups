@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
   TEST_GROUP_NAMES,
@@ -15,8 +15,8 @@ test.describe("group page", () => {
     // Load the primary group page before each assertion.
     await navigateToGroup(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
     );
   });
 
@@ -41,7 +41,7 @@ test.describe("group page", () => {
       page.getByRole("link", { name: "See details" }),
     ).toHaveAttribute(
       "href",
-      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`,
+      `/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`,
     );
 
     // Verify the fallback location summary is shown.
@@ -102,16 +102,16 @@ test.describe("group page - responsive links", () => {
     // Load the group page before checking scoped explore links.
     await navigateToGroup(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
     );
 
     // Set up expected upcoming href.
     const expectedUpcomingHref =
-      `/explore?entity=events&group[0]=${TEST_GROUP_SLUGS.community1.alpha}` +
-      `&community[0]=${TEST_COMMUNITY_NAME}`;
+      `/explore?entity=events&group[0]=${TEST_GROUP_SLUGS.alliance1.alpha}` +
+      `&alliance[0]=${TEST_ALLIANCE_NAME}`;
 
-    // Verify the desktop upcoming link keeps group and community filters.
+    // Verify the desktop upcoming link keeps group and alliance filters.
     await expect(
       getSectionLink(page, "Upcoming Events", "See all events", "desktop"),
     ).toHaveAttribute("href", expectedUpcomingHref);
@@ -122,8 +122,8 @@ test.describe("group page - responsive links", () => {
     ).toHaveAttribute(
       "href",
       new RegExp(
-        String.raw`^/explore\?entity=events&group\[0\]=${TEST_GROUP_SLUGS.community1.alpha}` +
-          String.raw`&community\[0\]=${TEST_COMMUNITY_NAME}&date_from=1900-01-01` +
+        String.raw`^/explore\?entity=events&group\[0\]=${TEST_GROUP_SLUGS.alliance1.alpha}` +
+          String.raw`&alliance\[0\]=${TEST_ALLIANCE_NAME}&date_from=1900-01-01` +
           String.raw`&sort_direction=desc&date_to=\d{4}-\d{2}-\d{2}$`,
       ),
     );
@@ -135,8 +135,8 @@ test.describe("group page - responsive links", () => {
     // Load the group page before checking mobile links.
     await navigateToGroup(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
     );
 
     // Verify mobile section links are visible.

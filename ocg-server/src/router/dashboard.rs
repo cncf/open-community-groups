@@ -1,6 +1,6 @@
 //! Dashboard router setup for the OCG server.
 //!
-//! This module configures the community, group, and user dashboard sub-routers
+//! This module configures the alliance, group, and user dashboard sub-routers
 //! with their respective permission-based middleware layers.
 
 use axum::{
@@ -10,177 +10,177 @@ use axum::{
 
 use crate::{
     handlers::{auth, dashboard, dashboard::common},
-    types::permissions::{CommunityPermission, GroupPermission},
+    types::permissions::{AlliancePermission, GroupPermission},
 };
 
 use super::State;
 
-/// Sets up the community dashboard router and its routes.
+/// Sets up the alliance dashboard router and its routes.
 #[allow(clippy::too_many_lines)]
-pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
+pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
     // Setup authorization middleware helpers
-    let check_path_community_permission = |permission| {
+    let check_path_alliance_permission = |permission| {
         middleware::from_fn_with_state(
             (state.db.clone(), permission),
-            auth::user_has_path_community_permission,
+            auth::user_has_path_alliance_permission,
         )
     };
-    let check_selected_community_permission = |permission| {
+    let check_selected_alliance_permission = |permission| {
         middleware::from_fn_with_state(
             (state.db.clone(), permission),
-            auth::user_has_selected_community_permission,
+            auth::user_has_selected_alliance_permission,
         )
     };
-    let check_community_dashboard_permission = || {
+    let check_alliance_dashboard_permission = || {
         middleware::from_fn_with_state(
             state.db.clone(),
-            auth::user_has_community_dashboard_permission,
+            auth::user_has_alliance_dashboard_permission,
         )
     };
 
-    // Read-only community dashboard endpoints
+    // Read-only alliance dashboard endpoints
     let dashboard_read = Router::new()
-        .route("/analytics", get(dashboard::community::analytics::page))
+        .route("/analytics", get(dashboard::alliance::analytics::page))
         .route(
             "/event-categories",
-            get(dashboard::community::event_categories::list_page),
+            get(dashboard::alliance::event_categories::list_page),
         )
         .route(
             "/event-categories/add",
-            get(dashboard::community::event_categories::add_page),
+            get(dashboard::alliance::event_categories::add_page),
         )
         .route(
             "/event-categories/{event_category_id}/update",
-            get(dashboard::community::event_categories::update_page),
+            get(dashboard::alliance::event_categories::update_page),
         )
         .route(
             "/group-categories",
-            get(dashboard::community::group_categories::list_page),
+            get(dashboard::alliance::group_categories::list_page),
         )
         .route(
             "/group-categories/add",
-            get(dashboard::community::group_categories::add_page),
+            get(dashboard::alliance::group_categories::add_page),
         )
         .route(
             "/group-categories/{group_category_id}/update",
-            get(dashboard::community::group_categories::update_page),
+            get(dashboard::alliance::group_categories::update_page),
         )
-        .route("/groups", get(dashboard::community::groups::list_page))
-        .route("/groups/add", get(dashboard::community::groups::add_page))
+        .route("/groups", get(dashboard::alliance::groups::list_page))
+        .route("/groups/add", get(dashboard::alliance::groups::add_page))
         .route(
             "/groups/{group_id}/update",
-            get(dashboard::community::groups::update_page),
+            get(dashboard::alliance::groups::update_page),
         )
-        .route("/logs", get(dashboard::community::logs::list_page))
+        .route("/logs", get(dashboard::alliance::logs::list_page))
         .route(
             "/settings/update",
-            get(dashboard::community::settings::update_page),
+            get(dashboard::alliance::settings::update_page),
         )
-        .route("/team", get(dashboard::community::team::list_page))
-        .route("/regions", get(dashboard::community::regions::list_page))
-        .route("/regions/add", get(dashboard::community::regions::add_page))
+        .route("/team", get(dashboard::alliance::team::list_page))
+        .route("/regions", get(dashboard::alliance::regions::list_page))
+        .route("/regions/add", get(dashboard::alliance::regions::add_page))
         .route(
             "/regions/{region_id}/update",
-            get(dashboard::community::regions::update_page),
+            get(dashboard::alliance::regions::update_page),
         )
-        .route_layer(check_selected_community_permission(
-            CommunityPermission::Read,
+        .route_layer(check_selected_alliance_permission(
+            AlliancePermission::Read,
         ));
 
-    // Community groups management endpoints
+    // Alliance groups management endpoints
     let groups_management = Router::new()
-        .route("/groups/add", post(dashboard::community::groups::add))
+        .route("/groups/add", post(dashboard::alliance::groups::add))
         .route(
             "/groups/{group_id}/activate",
-            put(dashboard::community::groups::activate),
+            put(dashboard::alliance::groups::activate),
         )
         .route(
             "/groups/{group_id}/deactivate",
-            put(dashboard::community::groups::deactivate),
+            put(dashboard::alliance::groups::deactivate),
         )
         .route(
             "/groups/{group_id}/delete",
-            delete(dashboard::community::groups::delete),
+            delete(dashboard::alliance::groups::delete),
         )
         .route(
             "/groups/{group_id}/update",
-            put(dashboard::community::groups::update),
+            put(dashboard::alliance::groups::update),
         )
-        .route_layer(check_selected_community_permission(
-            CommunityPermission::GroupsWrite,
+        .route_layer(check_selected_alliance_permission(
+            AlliancePermission::GroupsWrite,
         ));
 
-    // Community settings management endpoints
+    // Alliance settings management endpoints
     let settings_management = Router::new()
         .route(
             "/settings/update",
-            put(dashboard::community::settings::update),
+            put(dashboard::alliance::settings::update),
         )
-        .route_layer(check_selected_community_permission(
-            CommunityPermission::SettingsWrite,
+        .route_layer(check_selected_alliance_permission(
+            AlliancePermission::SettingsWrite,
         ));
 
-    // Community taxonomy management endpoints
+    // Alliance taxonomy management endpoints
     let taxonomy_management = Router::new()
         .route(
             "/event-categories/add",
-            post(dashboard::community::event_categories::add),
+            post(dashboard::alliance::event_categories::add),
         )
         .route(
             "/event-categories/{event_category_id}/delete",
-            delete(dashboard::community::event_categories::delete),
+            delete(dashboard::alliance::event_categories::delete),
         )
         .route(
             "/event-categories/{event_category_id}/update",
-            put(dashboard::community::event_categories::update),
+            put(dashboard::alliance::event_categories::update),
         )
         .route(
             "/group-categories/add",
-            post(dashboard::community::group_categories::add),
+            post(dashboard::alliance::group_categories::add),
         )
         .route(
             "/group-categories/{group_category_id}/delete",
-            delete(dashboard::community::group_categories::delete),
+            delete(dashboard::alliance::group_categories::delete),
         )
         .route(
             "/group-categories/{group_category_id}/update",
-            put(dashboard::community::group_categories::update),
+            put(dashboard::alliance::group_categories::update),
         )
-        .route("/regions/add", post(dashboard::community::regions::add))
+        .route("/regions/add", post(dashboard::alliance::regions::add))
         .route(
             "/regions/{region_id}/delete",
-            delete(dashboard::community::regions::delete),
+            delete(dashboard::alliance::regions::delete),
         )
         .route(
             "/regions/{region_id}/update",
-            put(dashboard::community::regions::update),
+            put(dashboard::alliance::regions::update),
         )
-        .route_layer(check_selected_community_permission(
-            CommunityPermission::TaxonomyWrite,
+        .route_layer(check_selected_alliance_permission(
+            AlliancePermission::TaxonomyWrite,
         ));
 
-    // Community team management endpoints
+    // Alliance team management endpoints
     let team_management = Router::new()
-        .route("/team/add", post(dashboard::community::team::add))
+        .route("/team/add", post(dashboard::alliance::team::add))
         .route(
             "/team/{user_id}/delete",
-            delete(dashboard::community::team::delete),
+            delete(dashboard::alliance::team::delete),
         )
         .route(
             "/team/{user_id}/role",
-            put(dashboard::community::team::update_role),
+            put(dashboard::alliance::team::update_role),
         )
         .route("/users/search", get(common::search_user))
-        .route_layer(check_selected_community_permission(
-            CommunityPermission::TeamWrite,
+        .route_layer(check_selected_alliance_permission(
+            AlliancePermission::TeamWrite,
         ));
 
     // Setup router
     Router::new()
         .route(
             "/",
-            get(dashboard::community::home::page)
-                .route_layer(check_community_dashboard_permission()),
+            get(dashboard::alliance::home::page)
+                .route_layer(check_alliance_dashboard_permission()),
         )
         .merge(dashboard_read)
         .merge(groups_management)
@@ -188,9 +188,9 @@ pub(super) fn setup_community_dashboard_router(state: &State) -> Router<State> {
         .merge(taxonomy_management)
         .merge(team_management)
         .route(
-            "/{community_id}/select",
-            put(dashboard::community::select_community)
-                .route_layer(check_path_community_permission(CommunityPermission::Read)),
+            "/{alliance_id}/select",
+            put(dashboard::alliance::select_alliance)
+                .route_layer(check_path_alliance_permission(AlliancePermission::Read)),
         )
 }
 
@@ -402,8 +402,8 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
                 .route_layer(check_path_group_permission(GroupPermission::Read)),
         )
         .route(
-            "/community/{community_id}/select",
-            put(dashboard::group::select_community),
+            "/alliance/{alliance_id}/select",
+            put(dashboard::group::select_alliance),
         )
 }
 
@@ -414,21 +414,21 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route("/", get(dashboard::user::home::page))
         .route("/events", get(dashboard::user::events::list_page))
         .route(
-            "/events/{community_name}/{event_id}/attendance",
+            "/events/{alliance_name}/{event_id}/attendance",
             delete(dashboard::user::events::cancel_attendance),
         )
         .route(
-            "/events/{community_name}/{event_id}/registration-answers",
+            "/events/{alliance_name}/{event_id}/registration-answers",
             put(dashboard::user::events::submit_registration_answers),
         )
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(
-            "/invitations/community/{community_id}/accept",
-            put(dashboard::user::invitations::accept_community_team_invitation),
+            "/invitations/alliance/{alliance_id}/accept",
+            put(dashboard::user::invitations::accept_alliance_team_invitation),
         )
         .route(
-            "/invitations/community/{community_id}/reject",
-            put(dashboard::user::invitations::reject_community_team_invitation),
+            "/invitations/alliance/{alliance_id}/reject",
+            put(dashboard::user::invitations::reject_alliance_team_invitation),
         )
         .route(
             "/invitations/event/{event_id}/accept",

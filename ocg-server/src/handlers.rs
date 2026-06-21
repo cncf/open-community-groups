@@ -12,8 +12,8 @@ use crate::{config::HttpServerConfig, router::PUBLIC_SHARED_CACHE_HEADERS};
 
 /// Authentication handlers.
 pub(crate) mod auth;
-/// Community site handlers.
-pub(crate) mod community;
+/// Alliance site handlers.
+pub(crate) mod alliance;
 /// Dashboards handlers.
 pub(crate) mod dashboard;
 /// Error handling utilities for HTTP handlers.

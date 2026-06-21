@@ -1,6 +1,6 @@
 -- Entry point for start_checkout: reuse an active purchase or create a pending hold
 create or replace function prepare_event_checkout_purchase(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_event_ticket_type_id uuid,
     p_user_id uuid,
@@ -10,7 +10,7 @@ create or replace function prepare_event_checkout_purchase(
 )
 returns jsonb as $$
 declare
-    v_community_name text;
+    v_alliance_name text;
     v_currency_code text;
     v_discount_amount_minor bigint;
     v_event_discount_code_id uuid;
@@ -31,7 +31,7 @@ begin
     -- Lock the event first to keep a consistent event -> purchase -> attendee
     -- lock order with attend_event, then validate that checkout is allowed
     v_currency_code := prepare_event_checkout_validate_event(
-        p_community_id,
+        p_alliance_id,
         p_event_id,
         p_configured_provider
     );
@@ -48,7 +48,7 @@ begin
         g.slug_pretty,
         g.payment_recipient
     into
-        v_community_name,
+        v_alliance_name,
         v_event_slug,
         v_registration_questions,
         v_group_slug,
@@ -56,9 +56,9 @@ begin
         v_recipient
     from event e
     join "group" g on g.group_id = e.group_id
-    join community c on c.community_id = g.community_id
+    join alliance c on c.alliance_id = g.alliance_id
     where e.event_id = p_event_id
-    and g.community_id = p_community_id;
+    and g.alliance_id = p_alliance_id;
 
     -- Reuse an equivalent purchase or return an active completed purchase
     select
@@ -94,7 +94,7 @@ begin
 
             return prepare_event_checkout_get_purchase_summary(v_existing_purchase_id)
                 || jsonb_build_object(
-                    'community_name', v_community_name,
+                    'alliance_name', v_alliance_name,
                     'event_id', p_event_id,
                     'event_slug', v_event_slug,
                     'group_slug', v_group_slug,
@@ -174,7 +174,7 @@ begin
     -- Return the pending purchase summary used by the checkout flow
     return prepare_event_checkout_get_purchase_summary(v_purchase_id)
         || jsonb_build_object(
-            'community_name', v_community_name,
+            'alliance_name', v_alliance_name,
             'event_id', p_event_id,
             'event_slug', v_event_slug,
             'group_slug', v_group_slug,

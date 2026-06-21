@@ -9,7 +9,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
@@ -20,21 +20,21 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'test-alliance', 'Test Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username)
@@ -68,9 +68,9 @@ insert into event (
 -- Should insert an audit row with actor snapshot and default details
 select lives_ok(
     $$select insert_audit_log(
-        'community_updated',
+        'alliance_updated',
         '00000000-0000-0000-0000-000000000041'::uuid,
-        'community',
+        'alliance',
         '00000000-0000-0000-0000-000000000001'::uuid,
         '00000000-0000-0000-0000-000000000001'::uuid
     )$$,
@@ -85,15 +85,15 @@ select is(
         ) t
     ),
     '{
-        "action": "community_updated",
+        "action": "alliance_updated",
         "actor_user_id": "00000000-0000-0000-0000-000000000041",
         "actor_username": "user",
-        "community_id": "00000000-0000-0000-0000-000000000001",
+        "alliance_id": "00000000-0000-0000-0000-000000000001",
         "details": {},
         "event_id": null,
         "group_id": null,
         "resource_id": "00000000-0000-0000-0000-000000000001",
-        "resource_type": "community"
+        "resource_type": "alliance"
     }'::jsonb,
     'Should persist the actor snapshot and normalized details'
 );
@@ -126,7 +126,7 @@ select is(
         "action": "event_published",
         "actor_user_id": "00000000-0000-0000-0000-000000000041",
         "actor_username": "user",
-        "community_id": "00000000-0000-0000-0000-000000000001",
+        "alliance_id": "00000000-0000-0000-0000-000000000001",
         "details": {
             "recipient_count": 42,
             "subject": "Launch"

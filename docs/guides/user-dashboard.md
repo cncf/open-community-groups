@@ -91,13 +91,13 @@ Notification preferences:
 
 ## Invitations: Unlock Organizer Access
 
-When a community or group invites you to help run operations, or an organizer
+When a alliance or group invites you to help run operations, or an organizer
 invites you to attend an event, the invitation appears here. Accepting an
 invitation updates your access or confirms your event attendance.
 
 Invitation statuses:
 
-- Community and group team invites: Invitation sent, accepted, rejected.
+- Alliance and group team invites: Invitation sent, accepted, rejected.
 - Event invitations: Invitation sent, accepted, rejected.
 - Pending team invites do not grant dashboard access until accepted.
 - Invitation rows include the role that will be assigned on acceptance.
@@ -113,7 +113,7 @@ cannot connect the invitation to your login and you will not be able to accept i
 Typical post-accept behavior:
 
 1. Access is granted to the related scope.
-2. The assigned community/group role becomes active for permission checks.
+2. The assigned alliance/group role becomes active for permission checks.
 3. Event invitations become confirmed attendance and send the normal event confirmation.
 4. Pending invitation state clears.
 5. A refresh or re-login may be needed before navigation updates.

@@ -9,7 +9,7 @@ use serde_with::skip_serializing_none;
 use crate::{
     templates::{dashboard, helpers::user_initials},
     types::pagination::{self, Pagination, ToRawQuery},
-    validation::MAX_PAGINATION_LIMIT,
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -33,6 +33,8 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Text search query used to filter members.
+    pub query: Option<String>,
 }
 
 // Types.
@@ -43,17 +45,41 @@ pub struct GroupMember {
     /// Membership creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
+    /// Email address.
+    pub email: String,
     /// Username.
     pub username: String,
 
     /// Company the user represents.
     pub company: Option<String>,
+    /// User biography.
+    pub bio: Option<String>,
+    /// Bluesky profile URL.
+    pub bluesky_url: Option<String>,
+    /// City where the user is based.
+    pub city: Option<String>,
+    /// Country where the user is based.
+    pub country: Option<String>,
+    /// Facebook profile URL.
+    pub facebook_url: Option<String>,
+    /// GitHub profile URL.
+    pub github_url: Option<String>,
+    /// User interests.
+    pub interests: Option<Vec<String>>,
+    /// LinkedIn profile URL.
+    pub linkedin_url: Option<String>,
+    /// Whether the user has a connected LinkedIn provider.
+    pub linkedin_connected: bool,
     /// Full name.
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
     /// Title held by the user.
     pub title: Option<String>,
+    /// X/Twitter profile URL.
+    pub twitter_url: Option<String>,
+    /// Website URL.
+    pub website_url: Option<String>,
 }
 
 /// Filter parameters for group members pagination.
@@ -68,6 +94,9 @@ pub(crate) struct GroupMembersFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Text search query.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub query: Option<String>,
 }
 
 crate::impl_pagination_and_raw_query!(GroupMembersFilters, limit, offset);

@@ -9,7 +9,7 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79270000-0000-0000-0000-000000000001'
+\set allianceID '79270000-0000-0000-0000-000000000001'
 \set eventCategoryID '79270000-0000-0000-0000-000000000002'
 \set validEventID '79270000-0000-0000-0000-000000000003'
 \set missingRecipientEventID '79270000-0000-0000-0000-000000000004'
@@ -26,23 +26,23 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'validate-context-community', 'Validate Context Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'validate-context-alliance', 'Validate Context Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug) values
+insert into "group" (group_id, alliance_id, group_category_id, name, payment_recipient, slug) values
     (
         :'missingRecipientGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Missing Recipient Group',
         null,
@@ -50,7 +50,7 @@ insert into "group" (group_id, community_id, group_category_id, name, payment_re
     ),
     (
         :'nonStripeGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Non Stripe Group',
         jsonb_build_object('provider', 'paypal', 'recipient_id', 'merchant_non_stripe'),
@@ -58,7 +58,7 @@ insert into "group" (group_id, community_id, group_category_id, name, payment_re
     ),
     (
         :'validGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Valid Group',
         jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_validate_context'),
@@ -172,7 +172,7 @@ insert into event (
 
 -- Should return the payment currency for a valid event context
 select is(
-    prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid, 'stripe'),
+    prepare_event_checkout_validate_event(:'allianceID'::uuid, :'validEventID'::uuid, 'stripe'),
     'USD',
     'Should return the payment currency for a valid event context'
 );

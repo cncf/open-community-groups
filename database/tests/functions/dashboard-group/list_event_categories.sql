@@ -9,50 +9,50 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '00000000-0000-0000-0000-000000000001'
-\set community2ID '00000000-0000-0000-0000-000000000002'
+\set alliance1ID '00000000-0000-0000-0000-000000000001'
+\set alliance2ID '00000000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
 values
-    (:'community1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant community for cloud native technologies and practices in Seattle', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
-    (:'community2ID', 'devops-vancouver', 'DevOps Vancouver', 'Building DevOps expertise and community in Vancouver', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
+    (:'alliance1ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant alliance for cloud native technologies and practices in Seattle', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
+    (:'alliance2ID', 'devops-vancouver', 'DevOps Vancouver', 'Building DevOps expertise and alliance in Vancouver', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id, "order")
+insert into event_category (event_category_id, name, alliance_id, "order")
 values
-    ('00000000-0000-0000-0000-000000000011', 'Workshop', :'community1ID', 2),
-    ('00000000-0000-0000-0000-000000000012', 'Conference', :'community1ID', 1),
-    ('00000000-0000-0000-0000-000000000013', 'Meetup', :'community1ID', null);
+    ('00000000-0000-0000-0000-000000000011', 'Workshop', :'alliance1ID', 2),
+    ('00000000-0000-0000-0000-000000000012', 'Conference', :'alliance1ID', 1),
+    ('00000000-0000-0000-0000-000000000013', 'Meetup', :'alliance1ID', null);
 
--- Event Category (other community)
-insert into event_category (event_category_id, name, community_id)
+-- Event Category (other alliance)
+insert into event_category (event_category_id, name, alliance_id)
 values
-    ('00000000-0000-0000-0000-000000000014', 'Seminar', :'community2ID');
+    ('00000000-0000-0000-0000-000000000014', 'Seminar', :'alliance2ID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
+insert into group_category (group_category_id, name, alliance_id)
 values
-    ('00000000-0000-0000-0000-000000000021', 'Technology', :'community1ID'),
-    ('00000000-0000-0000-0000-000000000022', 'Business', :'community2ID');
+    ('00000000-0000-0000-0000-000000000021', 'Technology', :'alliance1ID'),
+    ('00000000-0000-0000-0000-000000000022', 'Business', :'alliance2ID');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values
     (
         '00000000-0000-0000-0000-000000000031',
-        :'community1ID',
+        :'alliance1ID',
         '00000000-0000-0000-0000-000000000021',
         'Kubernetes Seattle',
         'kubernetes-seattle'
     ),
     (
         '00000000-0000-0000-0000-000000000032',
-        :'community2ID',
+        :'alliance2ID',
         '00000000-0000-0000-0000-000000000022',
         'DevOps Vancouver',
         'devops-vancouver'
@@ -115,7 +115,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Should return categories for community 1 ordered by order field then name
+-- Should return categories for alliance 1 ordered by order field then name
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000001'::uuid)::jsonb,
     '[
@@ -138,10 +138,10 @@ select is(
             "slug": "meetup"
         }
     ]'::jsonb,
-    'Should return categories for community 1 ordered by order field then name'
+    'Should return categories for alliance 1 ordered by order field then name'
 );
 
--- Should return only categories for community 2
+-- Should return only categories for alliance 2
 select is(
     list_event_categories('00000000-0000-0000-0000-000000000002'::uuid)::jsonb,
     '[
@@ -152,7 +152,7 @@ select is(
             "slug": "seminar"
         }
     ]'::jsonb,
-    'Should return only categories for community 2'
+    'Should return only categories for alliance 2'
 );
 
 -- ============================================================================

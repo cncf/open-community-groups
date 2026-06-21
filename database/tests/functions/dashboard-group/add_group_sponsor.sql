@@ -9,16 +9,16 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '10000000-0000-0000-0000-000000000001'
+\set allianceID '10000000-0000-0000-0000-000000000001'
 \set groupID     '10000000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -26,22 +26,22 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-nyc',
     'Cloud Native NYC',
-    'Community for cloud native technologies in NYC',
+    'Alliance for cloud native technologies in NYC',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Group Category (required by group)
-insert into group_category (group_category_id, name, community_id)
-values ('10000000-0000-0000-0000-000000000010', 'Tech', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values ('10000000-0000-0000-0000-000000000010', 'Tech', :'allianceID');
 
 -- Group
-insert into "group" (group_id, community_id, name, slug, group_category_id)
-values (:'groupID', :'communityID', 'Group NYC', 'group-nyc', '10000000-0000-0000-0000-000000000010');
+insert into "group" (group_id, alliance_id, name, slug, group_category_id)
+values (:'groupID', :'allianceID', 'Group NYC', 'group-nyc', '10000000-0000-0000-0000-000000000010');
 
 -- ============================================================================
 -- TESTS
@@ -77,7 +77,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             resource_type,
             resource_id

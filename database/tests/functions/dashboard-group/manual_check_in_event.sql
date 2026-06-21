@@ -11,7 +11,7 @@ select plan(5);
 
 \set actorUserID '00000000-0000-0000-0000-000000000041'
 \set attendeeUserID '00000000-0000-0000-0000-000000000042'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set groupCategoryID '00000000-0000-0000-0000-000000000010'
@@ -22,17 +22,17 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
@@ -41,8 +41,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'missingUserID', 'hash-3', 'missing@example.com', true, 'missing');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Event
 insert into event (
@@ -84,7 +84,7 @@ select lives_ok(
     format(
         'select manual_check_in_event(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
         :'actorUserID',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'attendeeUserID'
     ),
@@ -110,7 +110,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             resource_type,
@@ -137,7 +137,7 @@ select throws_ok(
     format(
         'select manual_check_in_event(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
         :'actorUserID',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'missingUserID'
     ),

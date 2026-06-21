@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_IDS,
   TEST_GROUP_SLUGS,
   getAttendButton,
@@ -21,8 +21,8 @@ test.describe("event waitlist", () => {
     // Load the full event where members can join the waitlist.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       WAITLIST_EVENT_SLUG,
     );
 
@@ -87,8 +87,8 @@ test.describe("event waitlist", () => {
     // Load the waitlist event before creating a waitlisted member.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       WAITLIST_EVENT_SLUG,
     );
 
@@ -116,8 +116,8 @@ test.describe("event waitlist", () => {
     // Load the attendee account that can free the event capacity.
     await navigateToEvent(
       organizerGroupPage,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       WAITLIST_EVENT_SLUG,
     );
 
@@ -149,8 +149,8 @@ test.describe("event waitlist", () => {
     // Reload the waitlisted member after promotion.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       WAITLIST_EVENT_SLUG,
     );
 
@@ -182,8 +182,8 @@ test.describe("event waitlist", () => {
     // Reload the organizer event page before restoring attendance.
     await navigateToEvent(
       organizerGroupPage,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       WAITLIST_EVENT_SLUG,
     );
 

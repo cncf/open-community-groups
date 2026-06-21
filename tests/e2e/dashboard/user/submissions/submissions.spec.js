@@ -41,7 +41,7 @@ test.describe("user dashboard submissions view", () => {
 
     // Find the approved row.
     const approvedRow = dashboardContent.locator("tr", {
-      hasText: "Scaling Community Workshops",
+      hasText: "Scaling Alliance Workshops",
     });
     await expect(approvedRow).toContainText("Approved");
     await expect(

@@ -12,7 +12,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId},
     },
     router::serde_qs_config,
     templates::dashboard::group::invitation_requests::{
@@ -30,7 +30,7 @@ mod tests;
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
@@ -46,12 +46,12 @@ pub(crate) async fn list_page(
     };
     let (can_manage_events, event, search_results) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary(community_id, group_id, event_id),
+        db.get_event_summary(alliance_id, group_id, event_id),
         db.search_event_invitation_requests(group_id, &search_filters)
     )?;
 

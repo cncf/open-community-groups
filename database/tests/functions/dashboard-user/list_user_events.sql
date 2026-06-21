@@ -9,7 +9,7 @@ select plan(10);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000011'
 \set groupCategoryID '00000000-0000-0000-0000-000000000021'
 \set groupDeletedID '00000000-0000-0000-0000-000000000031'
@@ -50,31 +50,31 @@ select plan(10);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
     (
-        :'communityID',
-        'community-one',
-        'Community One',
-        'Test community',
+        :'allianceID',
+        'alliance-one',
+        'Alliance One',
+        'Test alliance',
         'https://e/logo.png',
         'https://e/banner-mobile.png',
         'https://e/banner.png'
     );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name) values
+    (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name) values
+    (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Groups
-insert into "group" (group_id, active, community_id, deleted, group_category_id, name, slug) values
-    (:'groupDeletedID', false, :'communityID', true, :'groupCategoryID', 'Deleted Group', 'deleted-group'),
-    (:'groupID', true, :'communityID', false, :'groupCategoryID', 'Main Group', 'main-group'),
-    (:'groupInactiveID', false, :'communityID', false, :'groupCategoryID', 'Inactive Group', 'inactive-group');
+insert into "group" (group_id, active, alliance_id, deleted, group_category_id, name, slug) values
+    (:'groupDeletedID', false, :'allianceID', true, :'groupCategoryID', 'Deleted Group', 'deleted-group'),
+    (:'groupID', true, :'allianceID', false, :'groupCategoryID', 'Main Group', 'main-group'),
+    (:'groupInactiveID', false, :'allianceID', false, :'groupCategoryID', 'Inactive Group', 'inactive-group');
 
 -- User
 insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
@@ -468,13 +468,13 @@ select is(
                 'attendance_status',
                 'attendee',
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventAID'::uuid)::jsonb,
                 'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
-                get_event_registration_questions(:'communityID'::uuid, :'eventAID'::uuid)::jsonb,
+                get_event_registration_questions(:'allianceID'::uuid, :'eventAID'::uuid)::jsonb,
                 'resume_checkout_url',
                 null,
                 'roles',
@@ -484,13 +484,13 @@ select is(
                 'attendance_status',
                 'attendee',
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
                 'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
-                get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
+                get_event_registration_questions(:'allianceID'::uuid, :'eventBID'::uuid)::jsonb,
                 'resume_checkout_url',
                 null,
                 'roles',
@@ -500,13 +500,13 @@ select is(
                 'attendance_status',
                 null,
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventCID'::uuid)::jsonb,
                 'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
-                get_event_registration_questions(:'communityID'::uuid, :'eventCID'::uuid)::jsonb,
+                get_event_registration_questions(:'allianceID'::uuid, :'eventCID'::uuid)::jsonb,
                 'resume_checkout_url',
                 null,
                 'roles',
@@ -541,13 +541,13 @@ select is(
                 'attendance_status',
                 'attendee',
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventBID'::uuid)::jsonb,
                 'has_paid_purchase',
                 false,
                 'registration_answers',
                 null,
                 'registration_questions',
-                get_event_registration_questions(:'communityID'::uuid, :'eventBID'::uuid)::jsonb,
+                get_event_registration_questions(:'allianceID'::uuid, :'eventBID'::uuid)::jsonb,
                 'resume_checkout_url',
                 null,
                 'roles',
@@ -570,13 +570,13 @@ select is(
                 'attendance_status',
                 'attendee',
                 'event',
-                get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
                 'has_paid_purchase',
                 true,
                 'registration_answers',
                 null,
                 'registration_questions',
-                get_event_registration_questions(:'communityID'::uuid, :'eventPaidID'::uuid)::jsonb,
+                get_event_registration_questions(:'allianceID'::uuid, :'eventPaidID'::uuid)::jsonb,
                 'resume_checkout_url',
                 null,
                 'roles',

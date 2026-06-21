@@ -1,18 +1,18 @@
 -- Add RBAC permission identifiers and role-to-permission grant mappings.
 
--- Canonical community permission identifiers.
-create table community_permission (
-    community_permission_id text primary key,
+-- Canonical alliance permission identifiers.
+create table alliance_permission (
+    alliance_permission_id text primary key,
     display_name text not null unique check (btrim(display_name) <> '')
 );
 
-insert into community_permission (community_permission_id, display_name)
+insert into alliance_permission (alliance_permission_id, display_name)
 values
-    ('community.groups.write', 'Groups Write'),
-    ('community.read', 'Read'),
-    ('community.settings.write', 'Settings Write'),
-    ('community.taxonomy.write', 'Taxonomy Write'),
-    ('community.team.write', 'Team Write');
+    ('alliance.groups.write', 'Groups Write'),
+    ('alliance.read', 'Read'),
+    ('alliance.settings.write', 'Settings Write'),
+    ('alliance.taxonomy.write', 'Taxonomy Write'),
+    ('alliance.team.write', 'Team Write');
 
 -- Canonical group permission identifiers.
 create table group_permission (
@@ -29,34 +29,34 @@ values
     ('group.sponsors.write', 'Sponsors Write'),
     ('group.team.write', 'Team Write');
 
--- Map community roles to community-scoped permissions.
-create table community_role_community_permission (
-    community_permission_id text not null references community_permission,
-    community_role_id text not null references community_role,
+-- Map alliance roles to alliance-scoped permissions.
+create table alliance_role_alliance_permission (
+    alliance_permission_id text not null references alliance_permission,
+    alliance_role_id text not null references alliance_role,
 
-    primary key (community_permission_id, community_role_id)
+    primary key (alliance_permission_id, alliance_role_id)
 );
 
-insert into community_role_community_permission (community_role_id, community_permission_id)
+insert into alliance_role_alliance_permission (alliance_role_id, alliance_permission_id)
 values
-    ('admin', 'community.groups.write'),
-    ('admin', 'community.read'),
-    ('admin', 'community.settings.write'),
-    ('admin', 'community.taxonomy.write'),
-    ('admin', 'community.team.write'),
-    ('groups-manager', 'community.groups.write'),
-    ('groups-manager', 'community.read'),
-    ('viewer', 'community.read');
+    ('admin', 'alliance.groups.write'),
+    ('admin', 'alliance.read'),
+    ('admin', 'alliance.settings.write'),
+    ('admin', 'alliance.taxonomy.write'),
+    ('admin', 'alliance.team.write'),
+    ('groups-manager', 'alliance.groups.write'),
+    ('groups-manager', 'alliance.read'),
+    ('viewer', 'alliance.read');
 
--- Map community roles to group-scoped permissions.
-create table community_role_group_permission (
-    community_role_id text not null references community_role,
+-- Map alliance roles to group-scoped permissions.
+create table alliance_role_group_permission (
+    alliance_role_id text not null references alliance_role,
     group_permission_id text not null references group_permission,
 
-    primary key (community_role_id, group_permission_id)
+    primary key (alliance_role_id, group_permission_id)
 );
 
-insert into community_role_group_permission (community_role_id, group_permission_id)
+insert into alliance_role_group_permission (alliance_role_id, group_permission_id)
 values
     ('admin', 'group.events.write'),
     ('admin', 'group.members.write'),

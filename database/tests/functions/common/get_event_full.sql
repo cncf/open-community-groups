@@ -10,9 +10,9 @@ select plan(14);
 -- ============================================================================
 
 \set cfsSubmissionID '00000000-0000-0000-0000-000000000082'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventCommunityLogoFallbackID '00000000-0000-0000-0000-000000000034'
+\set eventAllianceLogoFallbackID '00000000-0000-0000-0000-000000000034'
 \set eventID '00000000-0000-0000-0000-000000000031'
 \set eventGroupLogoFallbackID '00000000-0000-0000-0000-000000000035'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000000033'
@@ -49,9 +49,9 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -62,32 +62,32 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/ad-banner-link',
     'https://example.com/ad-banner.png',
     'https://example.com/logo.png',
-    'https://example.com/community-og.png',
+    'https://example.com/alliance-og.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Tech Talks', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'Tech Talks', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     active,
     created_at,
@@ -103,7 +103,7 @@ insert into "group" (
     :'groupID',
     'Seattle Kubernetes Meetup',
     'abc1234',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     true,
     '2024-03-01 10:00:00+00',
@@ -122,14 +122,14 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     active
 ) values (
     :'groupInactiveID',
     'Inactive DevOps Group',
     'xyz9876',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     false
 );
@@ -139,14 +139,14 @@ insert into "group" (
     group_id,
     name,
     slug,
-    community_id,
+    alliance_id,
     group_category_id,
     active
 ) values (
     :'groupNoLogoID',
     'Seattle Kubernetes Meetup No Logo',
     'abc5678',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     true
 );
@@ -154,7 +154,7 @@ insert into "group" (
 -- User
 insert into "user" (user_id, email, username, email_verified, auth_hash, bio, bluesky_url, name, photo_url, provider, company, title, facebook_url, github_url, linkedin_url, twitter_url, website_url)
 values
-    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native community leader', 'https://bsky.app/profile/sarahchen', 'Sarah Chen', 'https://example.com/sarah.png', jsonb_build_object('linuxfoundation', jsonb_build_object('username', 'sarah-lf')), 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://github.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
+    (:'user1ID', 'host@seattle.cloudnative.org', 'sarah-host', false, 'test_hash', 'Cloud native alliance leader', 'https://bsky.app/profile/sarahchen', 'Sarah Chen', 'https://example.com/sarah.png', jsonb_build_object('linkedin', jsonb_build_object('subject', 'sarah-linkedin-subject')), 'Microsoft', 'Principal Engineer', 'https://facebook.com/sarahchen', 'https://github.com/sarahchen', 'https://linkedin.com/in/sarahchen', 'https://twitter.com/sarahchen', 'https://sarahchen.dev'),
     (:'user2ID', 'organizer@seattle.cloudnative.org', 'mike-organizer', false, 'test_hash', 'Event organizer and speaker', 'https://bsky.app/profile/mikerod', 'Mike Rodriguez', 'https://example.com/mike.png', jsonb_build_object('github', jsonb_build_object('username', 'mike-gh')), 'AWS', 'Solutions Architect', 'https://facebook.com/mikerod', 'https://github.com/mikerod', 'https://linkedin.com/in/mikerod', 'https://twitter.com/mikerod', 'https://mikerodriguez.io'),
     (:'user3ID', 'speaker@seattle.cloudnative.org', 'alex-speaker', false, 'test_hash', 'Kubernetes expert and speaker', 'https://bsky.app/profile/alexthompson', 'Alex Thompson', 'https://example.com/alex.png', null, 'Google', 'Staff Engineer', null, 'https://github.com/alexthompson', 'https://linkedin.com/in/alexthompson', null, null);
 
@@ -721,7 +721,7 @@ insert into event (
     null
 );
 
--- Event with no logo for community-logo fallback checks
+-- Event with no logo for alliance-logo fallback checks
 insert into event (
     event_id,
     name,
@@ -735,10 +735,10 @@ insert into event (
     timezone,
     logo_url
 ) values (
-    :'eventCommunityLogoFallbackID',
-    'Community Logo Fallback Event',
-    'community-logo-fallback-event',
-    'An event with no logo in a group with no logo that should fall back to the community logo',
+    :'eventAllianceLogoFallbackID',
+    'Alliance Logo Fallback Event',
+    'alliance-logo-fallback-event',
+    'An event with no logo in a group with no logo that should fall back to the alliance logo',
     'virtual',
     :'eventCategoryID',
     :'groupNoLogoID',
@@ -832,7 +832,7 @@ insert into event_ticket_price_window (
 -- Should return complete event JSON
 select is(
     get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     )::jsonb,
@@ -904,16 +904,16 @@ select is(
         "remaining_capacity": 498,
         "waitlist_count": 0,
         "waitlist_enabled": false,
-        "community": {
+        "alliance": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "00000000-0000-0000-0000-000000000001",
+            "alliance_id": "00000000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
-            "og_image_url": "https://example.com/community-og.png"
+            "og_image_url": "https://example.com/alliance-og.png"
         },
         "group": {
             "city": "New York",
@@ -926,8 +926,8 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
-            "community_display_name": "Cloud Native Seattle",
-            "community_name": "cloud-native-seattle",
+            "alliance_display_name": "Cloud Native Seattle",
+            "alliance_name": "cloud-native-seattle",
             "group_id": "00000000-0000-0000-0000-000000000021",
             "latitude": 40.73061,
             "logo_url": "https://example.com/group-logo.png",
@@ -941,7 +941,7 @@ select is(
             {
                 "user_id": "00000000-0000-0000-0000-000000000041",
                 "username": "sarah-host",
-                "bio": "Cloud native community leader",
+                "bio": "Cloud native alliance leader",
                 "bluesky_url": "https://bsky.app/profile/sarahchen",
                 "name": "Sarah Chen",
                 "company": "Microsoft",
@@ -950,8 +950,8 @@ select is(
                 "linkedin_url": "https://linkedin.com/in/sarahchen",
                 "photo_url": "https://example.com/sarah.png",
                 "provider": {
-                    "linuxfoundation": {
-                        "username": "sarah-lf"
+                    "linkedin": {
+                        "subject": "sarah-linkedin-subject"
                     }
                 },
                 "title": "Principal Engineer",
@@ -1026,7 +1026,7 @@ select is(
                         {
                             "user_id": "00000000-0000-0000-0000-000000000041",
                             "username": "sarah-host",
-                            "bio": "Cloud native community leader",
+                            "bio": "Cloud native alliance leader",
                             "bluesky_url": "https://bsky.app/profile/sarahchen",
                             "name": "Sarah Chen",
                             "company": "Microsoft",
@@ -1036,8 +1036,8 @@ select is(
                             "linkedin_url": "https://linkedin.com/in/sarahchen",
                             "photo_url": "https://example.com/sarah.png",
                             "provider": {
-                                "linuxfoundation": {
-                                    "username": "sarah-lf"
+                                "linkedin": {
+                                    "subject": "sarah-linkedin-subject"
                                 }
                             },
                             "title": "Principal Engineer",
@@ -1098,7 +1098,7 @@ select is(
                         {
                             "user_id": "00000000-0000-0000-0000-000000000041",
                             "username": "sarah-host",
-                            "bio": "Cloud native community leader",
+                            "bio": "Cloud native alliance leader",
                             "bluesky_url": "https://bsky.app/profile/sarahchen",
                             "name": "Sarah Chen",
                             "company": "Microsoft",
@@ -1108,8 +1108,8 @@ select is(
                             "linkedin_url": "https://linkedin.com/in/sarahchen",
                             "photo_url": "https://example.com/sarah.png",
                             "provider": {
-                                "linuxfoundation": {
-                                    "username": "sarah-lf"
+                                "linkedin": {
+                                    "subject": "sarah-linkedin-subject"
                                 }
                             },
                             "title": "Principal Engineer",
@@ -1180,7 +1180,7 @@ select is(
             {
                 "user_id": "00000000-0000-0000-0000-000000000041",
                 "username": "sarah-host",
-                "bio": "Cloud native community leader",
+                "bio": "Cloud native alliance leader",
                 "bluesky_url": "https://bsky.app/profile/sarahchen",
                 "name": "Sarah Chen",
                 "company": "Microsoft",
@@ -1190,8 +1190,8 @@ select is(
                 "linkedin_url": "https://linkedin.com/in/sarahchen",
                 "photo_url": "https://example.com/sarah.png",
                 "provider": {
-                    "linuxfoundation": {
-                        "username": "sarah-lf"
+                    "linkedin": {
+                        "subject": "sarah-linkedin-subject"
                     }
                 },
                 "title": "Principal Engineer",
@@ -1222,7 +1222,7 @@ select is(
 select is(
     (
         get_event_full(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'eventUnpublishedID'::uuid
         )::jsonb
@@ -1235,7 +1235,7 @@ select is(
 select is(
     (
         get_event_full(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'eventUnpublishedID'::uuid
         )::jsonb
@@ -1249,21 +1249,21 @@ select is(
     jsonb_build_object(
         'discount_codes', (
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
         )->'discount_codes',
         'payment_currency_code', (
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
         )->'payment_currency_code',
         'ticket_types', (
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
@@ -1315,7 +1315,7 @@ select is(
         select array_agg(organizer->>'username' order by ordinality)
         from jsonb_array_elements((
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
@@ -1328,7 +1328,7 @@ select is(
 -- Should use group logo when event has no logo
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventGroupLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
@@ -1336,21 +1336,21 @@ select is(
     'Should use group logo when event has no logo'
 );
 
--- Should use community logo when event and group have no logo
+-- Should use alliance logo when event and group have no logo
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupNoLogoID'::uuid,
-        :'eventCommunityLogoFallbackID'::uuid
+        :'eventAllianceLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
-    'Should use community logo when event and group have no logo'
+    'Should use alliance logo when event and group have no logo'
 );
 
 -- Should return an empty organizers array when a legacy event has no snapshots
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventUnpublishedID'::uuid
     )::jsonb)->'organizers',
@@ -1365,7 +1365,7 @@ and user_id = :'user2ID'::uuid;
 
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     )::jsonb)->'organizers',
@@ -1392,7 +1392,7 @@ select is(
 
 select ok(
     get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         '00000000-0000-0000-0000-000000999999'::uuid
     ) is null,
@@ -1402,21 +1402,21 @@ select ok(
 -- Should return null when group does not match event
 select ok(
     get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupInactiveID'::uuid,
         :'eventID'::uuid
     ) is null,
     'Should return null when group does not match event'
 );
 
--- Should return null when community does not match event
+-- Should return null when alliance does not match event
 select ok(
     get_event_full(
         '00000000-0000-0000-0000-000000000002'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     ) is null,
-    'Should return null when community does not match event'
+    'Should return null when alliance does not match event'
 );
 
 -- Should prefer organizer recording overrides over synced meeting recordings
@@ -1424,7 +1424,7 @@ select is(
     (
         with payload as (
             select get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventRecordingOverrideID'::uuid
             )::jsonb as event_json
@@ -1501,7 +1501,7 @@ select is(
     (
         with payload as (
             select get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventRecordingOverrideID'::uuid
             )::jsonb as event_json

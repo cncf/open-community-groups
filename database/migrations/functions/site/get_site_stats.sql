@@ -26,7 +26,7 @@ filtered_groups as (
             date_trunc('month', g.created_at at time zone 'UTC')
         ) as created_month
     from "group" g
-    join community c on c.community_id = g.community_id
+    join alliance c on c.alliance_id = g.alliance_id
     where c.active = true
         and g.active = true
         and g.deleted = false

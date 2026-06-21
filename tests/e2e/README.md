@@ -1,6 +1,6 @@
 # E2E Tests
 
-End-to-end tests for Open Community Groups using Playwright.
+End-to-end tests for Open Alliance Groups using Playwright.
 
 ## Prerequisites
 
@@ -82,7 +82,7 @@ Most runs only need:
 
 Useful test data overrides:
 
-- `OCG_E2E_COMMUNITY_NAME`
+- `OCG_E2E_ALLIANCE_NAME`
 - `OCG_E2E_GROUP_SLUG`
 - `OCG_E2E_EVENT_SLUG`
 

@@ -54,7 +54,7 @@
   {% let has_social_links = event.meetup_url.is_some() || event.luma_url.is_some() -%}
 
   {# Breadcrumb -#}
-  <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.community.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.community.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.community.display_name|json }}, "href": "/{{ event.community.name }}", "icon": "community"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.community.name }}/group/{{ event.group.public_slug() }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
+  <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.alliance.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.alliance.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.alliance.display_name|json }}, "href": "/{{ event.alliance.name }}", "icon": "alliance"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.alliance.name }}/group/{{ event.group.public_slug() }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
   <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
@@ -89,7 +89,7 @@
               <div class="min-w-0 flex justify-between">
                 <div class="min-w-0 flex flex-col">
                   {# Group/Category legend -#}
-                  <a href="/{{ event.community.name }}/group/{{ event.group.public_slug() }}"
+                  <a href="/{{ event.alliance.name }}/group/{{ event.group.public_slug() }}"
                      class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline lg:-mt-1 md:mb-0.5"
                      hx-boost="true"
                      hx-target="body">{{ event.group.name }}</a>
@@ -358,7 +358,7 @@
           <div class="pt-6">
             {% if event.cfs_is_open() -%}
               <button id="open-cfs-modal"
-                      hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/cfs-modal"
+                      hx-get="/{{ event.alliance.name }}/event/{{ event.event_id }}/cfs-modal"
                       hx-target="#cfs-modal-root"
                       hx-swap="innerHTML"
                       class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center"
@@ -401,10 +401,10 @@
       {% endif -%}
       {# End Call for Speakers -#}
 
-      {% if let Some(ad_banner_url) = &event.community.ad_banner_url -%}
-        {{ ui::floating_advertisement_banner(alt = event.community.display_name.clone() + " advertisement",
+      {% if let Some(ad_banner_url) = &event.alliance.ad_banner_url -%}
+        {{ ui::floating_advertisement_banner(alt = event.alliance.display_name.clone() + " advertisement",
         image_url = ad_banner_url,
-        link_url = event.community.ad_banner_link_url.as_deref()
+        link_url = event.alliance.ad_banner_link_url.as_deref()
         ) -}}
       {% endif -%}
 

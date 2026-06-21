@@ -16,7 +16,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     templates::dashboard::group::sponsors::{self, GroupSponsorsFilters, Sponsor},
@@ -39,14 +39,14 @@ const PARTIAL_URL: &str = "/dashboard/group/sponsors";
 #[instrument(skip_all, err)]
 pub(crate) async fn add_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let can_manage_sponsors = db
         .user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::SponsorsWrite,
@@ -64,7 +64,7 @@ pub(crate) async fn add_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -72,7 +72,7 @@ pub(crate) async fn list_page(
     // Prepare list page content
     let (filters, template) = prepare_list_page(
         &db,
-        community_id,
+        alliance_id,
         group_id,
         user.user_id,
         raw_query.as_deref().unwrap_or_default(),
@@ -90,7 +90,7 @@ pub(crate) async fn list_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(group_sponsor_id): Path<Uuid>,
@@ -98,7 +98,7 @@ pub(crate) async fn update_page(
     // Prepare template
     let (can_manage_sponsors, sponsor) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::SponsorsWrite
@@ -206,7 +206,7 @@ pub(crate) struct SponsorFeatured {
 /// Prepares the sponsors list page and filters for the group dashboard.
 pub(crate) async fn prepare_list_page(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     user_id: Uuid,
     raw_query: &str,
@@ -215,7 +215,7 @@ pub(crate) async fn prepare_list_page(
     let filters: GroupSponsorsFilters = serde_qs_config().deserialize_str(raw_query)?;
     let (can_manage_sponsors, results) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user_id,
             GroupPermission::SponsorsWrite

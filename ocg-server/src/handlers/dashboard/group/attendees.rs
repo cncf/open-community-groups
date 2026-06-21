@@ -21,7 +21,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     services::{
@@ -63,7 +63,7 @@ const ATTENDEE_STATUS_CONFIRMED: &str = "confirmed";
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
@@ -79,13 +79,13 @@ pub(crate) async fn list_page(
     };
     let (can_manage_events, event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary(community_id, group_id, event_id),
-        db.get_event_registration_questions(community_id, event_id),
+        db.get_event_summary(alliance_id, group_id, event_id),
+        db.get_event_registration_questions(alliance_id, event_id),
         db.search_event_attendees(group_id, &search_filters)
     )?;
 
@@ -118,7 +118,7 @@ pub(crate) async fn list_page(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn accept_invitation_request(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -131,7 +131,7 @@ pub(crate) async fn accept_invitation_request(
     // Load attendee welcome notification context after approval succeeds
     let (site_settings, event) = match tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     ) {
         Ok(context) => context,
         Err(err) => {
@@ -174,7 +174,7 @@ pub(crate) async fn accept_invitation_request(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn approve_refund_request(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(payments_manager): State<DynPaymentsManager>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
@@ -183,7 +183,7 @@ pub(crate) async fn approve_refund_request(
     payments_manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id: user.user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             user_id,
@@ -204,7 +204,7 @@ pub(crate) async fn approve_refund_request(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn cancel_event_attendee_attendance(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -219,7 +219,7 @@ pub(crate) async fn cancel_event_attendee_attendance(
     // Load notification context after cancellation succeeds
     let (site_settings, event) = match tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     ) {
         Ok(context) => context,
         Err(err) => {
@@ -292,26 +292,26 @@ pub(crate) async fn cancel_event_attendee_invitation(
 /// Generates a QR code for event check-in.
 #[instrument(skip_all, err)]
 pub(crate) async fn generate_check_in_qr_code(
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get community name (cached) and ensure event belongs to selected group
-    let (community_name, _) = tokio::try_join!(
-        db.get_community_name_by_id(community_id),
-        db.get_event_summary(community_id, group_id, event_id)
+    // Get alliance name (cached) and ensure event belongs to selected group
+    let (alliance_name, _) = tokio::try_join!(
+        db.get_alliance_name_by_id(alliance_id),
+        db.get_event_summary(alliance_id, group_id, event_id)
     )?;
-    let Some(community_name) = community_name else {
-        return Err(anyhow::anyhow!("community not found").into());
+    let Some(alliance_name) = alliance_name else {
+        return Err(anyhow::anyhow!("alliance not found").into());
     };
 
     // Get base URL from configuration
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
 
     // Construct check-in URL
-    let check_in_url = format!("{base_url}/{community_name}/check-in/{event_id}");
+    let check_in_url = format!("{base_url}/{alliance_name}/check-in/{event_id}");
 
     // Generate QR code
     let code = qrcode::QrCode::new(check_in_url.as_bytes())
@@ -338,7 +338,7 @@ pub(crate) async fn generate_check_in_qr_code(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn invite_event_attendee(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -367,7 +367,7 @@ pub(crate) async fn invite_event_attendee(
     // Load context and enqueue the invitation notification
     let (site_settings, event) = match tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     ) {
         Ok(context) => context,
         Err(err) => {
@@ -408,16 +408,16 @@ pub(crate) async fn invite_event_attendee(
 #[instrument(skip_all, err)]
 pub(crate) async fn manual_check_in(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate event belongs to the selected group
-    db.get_event_summary(community_id, group_id, event_id).await?;
+    db.get_event_summary(alliance_id, group_id, event_id).await?;
 
     // Check-in with dashboard-specific auditing
-    db.manual_check_in_event(user.user_id, community_id, event_id, user_id)
+    db.manual_check_in_event(user.user_id, alliance_id, event_id, user_id)
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -446,7 +446,7 @@ pub(crate) async fn reject_invitation_request(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn reject_refund_request(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(payments_manager): State<DynPaymentsManager>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
@@ -455,7 +455,7 @@ pub(crate) async fn reject_refund_request(
     payments_manager
         .reject_refund_request(&RejectRefundRequestInput {
             actor_user_id: user.user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             user_id,
@@ -476,7 +476,7 @@ pub(crate) async fn reject_refund_request(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn send_event_custom_notification(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -487,7 +487,7 @@ pub(crate) async fn send_event_custom_notification(
     // Get event data and site settings
     let (site_settings, event, event_attendees_ids) = tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id),
+        db.get_event_summary_by_id(alliance_id, event_id),
         db.list_event_attendees_ids(group_id, event_id),
     )?;
 
@@ -505,7 +505,7 @@ pub(crate) async fn send_event_custom_notification(
     let link = format!(
         "{}/{}/group/{}/event/{}",
         base_url,
-        event.community_name,
+        event.alliance_name,
         event.public_group_slug(),
         event.slug
     );
@@ -543,7 +543,7 @@ pub(crate) async fn send_event_custom_notification(
 /// Downloads a CSV file with all attendees for a specific event.
 #[instrument(skip_all, err)]
 pub(crate) async fn download_csv(
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
@@ -555,7 +555,7 @@ pub(crate) async fn download_csv(
         offset: None,
     };
     let (event, search_attendees_results) = tokio::try_join!(
-        db.get_event_summary(community_id, group_id, event_id),
+        db.get_event_summary(alliance_id, group_id, event_id),
         db.search_event_attendees(group_id, &search_filters)
     )?;
 
@@ -578,7 +578,7 @@ pub(crate) async fn download_csv(
 /// Downloads a CSV file with attendees and their registration question answers.
 #[instrument(skip_all, err)]
 pub(crate) async fn download_csv_with_answers(
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
@@ -590,8 +590,8 @@ pub(crate) async fn download_csv_with_answers(
         offset: None,
     };
     let (event, registration_questions, search_attendees_results) = tokio::try_join!(
-        db.get_event_summary(community_id, group_id, event_id),
-        db.get_event_registration_questions(community_id, event_id),
+        db.get_event_summary(alliance_id, group_id, event_id),
+        db.get_event_registration_questions(alliance_id, event_id),
         db.search_event_attendees(group_id, &search_filters)
     )?;
 

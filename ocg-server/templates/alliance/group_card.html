@@ -1,0 +1,31 @@
+{% extends "common/card_small_base.html" -%}
+{% import "macros/ui.html" as ui -%}
+{% import "macros/cards.html" as cards -%}
+
+{# Alliance Group Card -#}
+{% block href -%}
+  {{- "/" -}}{{- group.alliance_name -}}/group/{{- group.public_slug() -}}
+{%- endblock href %}
+
+{% block logo -%}
+  {{ ui::logo(logo_url = group.logo_url, classes = "h-[60px] w-[60px] min-w-[60px]", size = 60) -}}
+{% endblock logo %}
+
+{% block preheader -%}
+  <span>
+    {% if let Some(region) = &group.region -%}
+      {{- region.name -}}
+    {% else -%}
+      {{- group.category.name -}}
+    {% endif -%}
+  </span>
+{%- endblock preheader %}
+
+{% block title -%}
+  {{- group.name|demoji -}}
+{%- endblock title %}
+
+{% block footer -%}
+  {{- cards::group_footer(group = group, location_max_len = 32, left_width_classes = "w-[60px] min-w-[60px]") -}}
+{%- endblock footer %}
+{# End alliance group card -#}

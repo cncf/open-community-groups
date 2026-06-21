@@ -1,5 +1,5 @@
 {
-  "name": "open-community-groups-unit-tests",
+  "name": "open-alliance-groups-unit-tests",
   "private": true,
   "scripts": {
     "test": "web-test-runner --config web-test-runner.config.mjs"

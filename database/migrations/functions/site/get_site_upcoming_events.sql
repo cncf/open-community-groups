@@ -3,16 +3,16 @@ create or replace function get_site_upcoming_events(p_event_kind_ids text[])
 returns json as $$
     select coalesce(
         json_agg(
-            get_event_summary(e.community_id, e.group_id, e.event_id)
+            get_event_summary(e.alliance_id, e.group_id, e.event_id)
             order by e.starts_at asc, e.event_id asc
         ),
         '[]'
     )
     from (
-        select e.event_id, e.group_id, g.community_id, e.starts_at
+        select e.event_id, e.group_id, g.alliance_id, e.starts_at
         from event e
         join "group" g using (group_id)
-        join community c on c.community_id = g.community_id
+        join alliance c on c.alliance_id = g.alliance_id
         where c.active = true
         and g.active = true
         and e.published = true

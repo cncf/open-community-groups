@@ -5,7 +5,7 @@ returns json as $$
         -- Collect visible upcoming events once for all participation roles.
         visible_events as (
             select
-                g.community_id,
+                g.alliance_id,
                 e.event_id,
                 e.group_id,
                 e.starts_at
@@ -92,7 +92,7 @@ returns json as $$
         event_rows as (
             select
                 max(rr.attendance_status) as attendance_status,
-                ve.community_id,
+                ve.alliance_id,
                 ve.event_id,
                 ve.group_id,
                 (max(rr.registration_answers::text) filter (where rr.registration_answers is not null))::jsonb
@@ -102,13 +102,13 @@ returns json as $$
                 ve.starts_at
             from visible_events ve
             join role_rows rr using (event_id)
-            group by ve.community_id, ve.event_id, ve.group_id, ve.starts_at
+            group by ve.alliance_id, ve.event_id, ve.group_id, ve.starts_at
         ),
         -- Select the requested page.
         event_rows_page as (
             select
                 er.attendance_status,
-                er.community_id,
+                er.alliance_id,
                 er.event_id,
                 er.group_id,
                 er.registration_answers,
@@ -129,7 +129,7 @@ returns json as $$
                     json_build_object(
                         'event',
                         get_event_summary(
-                            erp.community_id,
+                            erp.alliance_id,
                             erp.group_id,
                             erp.event_id
                         ),
@@ -159,7 +159,7 @@ returns json as $$
             )
             from event_rows_page erp
             cross join lateral (
-                select get_event_registration_questions(erp.community_id, erp.event_id)
+                select get_event_registration_questions(erp.alliance_id, erp.event_id)
                     as registration_questions
             ) rq
         ),

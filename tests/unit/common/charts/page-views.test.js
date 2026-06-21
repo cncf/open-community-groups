@@ -33,13 +33,13 @@ describe("page views", () => {
     eventListeners.restore();
   });
 
-  it("sends a beacon for visible community page views", () => {
+  it("sends a beacon for visible alliance page views", () => {
     // Track the page view event.
-    trackPageView({ entityId: "cncf", entityType: "community" });
+    trackPageView({ entityId: "goup", entityType: "alliance" });
 
-    // Sends a beacon for visible community page views.
+    // Sends a beacon for visible alliance page views.
     expect(sendBeaconMock.calls).to.have.length(1);
-    expect(sendBeaconMock.calls[0].endpoint).to.equal("/communities/cncf/views");
+    expect(sendBeaconMock.calls[0].endpoint).to.equal("/alliances/goup/views");
     expect(fetchMock.calls).to.have.length(0);
   });
 
@@ -110,7 +110,7 @@ describe("page views", () => {
 
   it("replays page views when a persisted page is shown again", () => {
     // Track the page view event.
-    trackPageView({ entityId: "cncf", entityType: "community" });
+    trackPageView({ entityId: "goup", entityType: "alliance" });
     expect(sendBeaconMock.calls).to.have.length(1);
 
     // Dispatch the new page transition event("pageshow", { persisted: true } event.
@@ -118,13 +118,13 @@ describe("page views", () => {
 
     // Assert the captured calls.
     expect(sendBeaconMock.calls).to.have.length(2);
-    expect(sendBeaconMock.calls[1].endpoint).to.equal("/communities/cncf/views");
+    expect(sendBeaconMock.calls[1].endpoint).to.equal("/alliances/goup/views");
   });
 
   it("ignores incomplete tracking payloads", () => {
     // Track the page view event.
-    trackPageView({ entityId: "", entityType: "community" });
-    trackPageView({ entityId: "cncf", entityType: "" });
+    trackPageView({ entityId: "", entityType: "alliance" });
+    trackPageView({ entityId: "goup", entityType: "" });
 
     // The request uses the expected endpoint and options.
     expect(sendBeaconMock.calls).to.have.length(0);

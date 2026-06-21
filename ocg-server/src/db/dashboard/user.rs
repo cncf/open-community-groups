@@ -12,7 +12,7 @@ use crate::{
         audit::{AuditLogFilters, AuditLogsOutput},
         user::{
             events::{UserEventsFilters, UserEventsOutput},
-            invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
+            invitations::{AllianceTeamInvitation, EventInvitation, GroupTeamInvitation},
             session_proposals::{
                 PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
                 SessionProposalsFilters, SessionProposalsOutput,
@@ -26,11 +26,11 @@ use crate::{
 /// Database trait for user dashboard operations.
 #[async_trait]
 pub(crate) trait DBDashboardUser {
-    /// Accepts a pending community team invitation.
-    async fn accept_community_team_invitation(
+    /// Accepts a pending alliance team invitation.
+    async fn accept_alliance_team_invitation(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
     ) -> Result<()>;
 
     /// Accepts a pending organizer-created event invitation.
@@ -89,11 +89,11 @@ pub(crate) trait DBDashboardUser {
         filters: &CfsSubmissionsFilters,
     ) -> Result<CfsSubmissionsOutput>;
 
-    /// Lists all pending community team invitations for the user.
-    async fn list_user_community_team_invitations(
+    /// Lists all pending alliance team invitations for the user.
+    async fn list_user_alliance_team_invitations(
         &self,
         user_id: Uuid,
-    ) -> Result<Vec<CommunityTeamInvitation>>;
+    ) -> Result<Vec<AllianceTeamInvitation>>;
 
     /// Lists all pending organizer-created event invitations for the user.
     async fn list_user_event_invitations(&self, user_id: Uuid) -> Result<Vec<EventInvitation>>;
@@ -124,11 +124,11 @@ pub(crate) trait DBDashboardUser {
         filters: &SessionProposalsFilters,
     ) -> Result<SessionProposalsOutput>;
 
-    /// Rejects a pending community team invitation.
-    async fn reject_community_team_invitation(
+    /// Rejects a pending alliance team invitation.
+    async fn reject_alliance_team_invitation(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
     ) -> Result<()>;
 
     /// Rejects a pending organizer-created event invitation.
@@ -160,7 +160,7 @@ pub(crate) trait DBDashboardUser {
     async fn submit_event_registration_answers(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
     ) -> Result<bool>;
@@ -183,16 +183,16 @@ pub(crate) trait DBDashboardUser {
 
 #[async_trait]
 impl DBDashboardUser for PgDB {
-    /// [`DBDashboardUser::accept_community_team_invitation`]
+    /// [`DBDashboardUser::accept_alliance_team_invitation`]
     #[instrument(skip(self), err)]
-    async fn accept_community_team_invitation(
+    async fn accept_alliance_team_invitation(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
     ) -> Result<()> {
         self.execute(
-            "select accept_community_team_invitation($1::uuid, $2::uuid)",
-            &[&actor_user_id, &community_id],
+            "select accept_alliance_team_invitation($1::uuid, $2::uuid)",
+            &[&actor_user_id, &alliance_id],
         )
         .await
     }
@@ -327,14 +327,14 @@ impl DBDashboardUser for PgDB {
         .await
     }
 
-    /// [`DBDashboardUser::list_user_community_team_invitations`]
+    /// [`DBDashboardUser::list_user_alliance_team_invitations`]
     #[instrument(skip(self), err)]
-    async fn list_user_community_team_invitations(
+    async fn list_user_alliance_team_invitations(
         &self,
         user_id: Uuid,
-    ) -> Result<Vec<CommunityTeamInvitation>> {
+    ) -> Result<Vec<AllianceTeamInvitation>> {
         self.fetch_json_one(
-            "select list_user_community_team_invitations($1::uuid)",
+            "select list_user_alliance_team_invitations($1::uuid)",
             &[&user_id],
         )
         .await
@@ -401,16 +401,16 @@ impl DBDashboardUser for PgDB {
         .await
     }
 
-    /// [`DBDashboardUser::reject_community_team_invitation`]
+    /// [`DBDashboardUser::reject_alliance_team_invitation`]
     #[instrument(skip(self), err)]
-    async fn reject_community_team_invitation(
+    async fn reject_alliance_team_invitation(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
     ) -> Result<()> {
         self.execute(
-            "select reject_community_team_invitation($1::uuid, $2::uuid)",
-            &[&actor_user_id, &community_id],
+            "select reject_alliance_team_invitation($1::uuid, $2::uuid)",
+            &[&actor_user_id, &alliance_id],
         )
         .await
     }
@@ -476,7 +476,7 @@ impl DBDashboardUser for PgDB {
     async fn submit_event_registration_answers(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
     ) -> Result<bool> {
@@ -484,7 +484,7 @@ impl DBDashboardUser for PgDB {
             "select submit_event_registration_answers($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
             &[
                 &actor_user_id,
-                &community_id,
+                &alliance_id,
                 &event_id,
                 &Json(registration_answers),
             ],

@@ -12,7 +12,7 @@ describe("breadcrumb-nav", () => {
   const breadcrumbItems = [
     { label: "Home", href: "/", icon: "home" },
     { label: "Groups", href: "/groups", icon: "groups" },
-    { label: "CNCF Madrid", icon: "groups", current: true },
+    { label: "Goup Madrid", icon: "groups", current: true },
   ];
 
   it("renders nothing when no items are provided", async () => {
@@ -32,7 +32,7 @@ describe("breadcrumb-nav", () => {
     });
 
     // Assert the current label and responsive banners are rendered.
-    expect(element.textContent).to.include("CNCF Madrid");
+    expect(element.textContent).to.include("Goup Madrid");
     expect(
       element.querySelector('img[src="/img/banner-desktop.png"]'),
     ).to.not.equal(null);

@@ -23,22 +23,22 @@
           {% endif -%}
           {# End GitHub login -#}
 
-          {# Linux Foundation SSO login -#}
-          {% if login.linuxfoundation -%}
+          {# LinkedIn login -#}
+          {% if login.linkedin -%}
             <div class="w-full">
-              <a href="/log-in/oidc/linuxfoundation{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+              <a href="/log-in/oidc/linkedin{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
                  class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-                <div class="svg-icon size-4 icon-lfx group-hover:bg-white transition-colors"></div>
-                <span>Linux Foundation SSO</span>
+                <div class="svg-icon size-4 icon-linkedin group-hover:bg-white transition-colors"></div>
+                <span>LinkedIn</span>
               </a>
             </div>
           {% endif -%}
-          {# End Linux Foundation SSO login -#}
+          {# End LinkedIn login -#}
         </div>
 
         {# Email login -#}
         {% if login.email -%}
-          {% if login.linuxfoundation || login.github -%}
+          {% if login.linkedin || login.github -%}
             <div class="inline-flex items-center justify-center w-full relative mb-6">
               <hr class="w-full h-px bg-stone-200 border-0">
               <div class="absolute px-3 bg-white text-xs text-stone-500 uppercase tracking-wide">OR</div>

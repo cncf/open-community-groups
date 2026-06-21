@@ -1,7 +1,7 @@
 -- Submits or updates registration answers for a user's event registration.
 create or replace function submit_event_registration_answers(
     p_actor_user_id uuid,
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_registration_answers jsonb
 )
@@ -26,7 +26,7 @@ begin
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     and g.active = true
     and e.deleted = false
     and e.published = true
@@ -90,7 +90,7 @@ begin
         p_actor_user_id,
         'user',
         p_actor_user_id,
-        p_community_id,
+        p_alliance_id,
         v_group_id,
         p_event_id,
         jsonb_build_object('event_id', p_event_id, 'user_id', p_actor_user_id)

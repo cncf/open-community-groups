@@ -11,7 +11,7 @@ select plan(3);
 
 \set categoryID '00000000-0000-0000-0000-000000000002'
 \set canceledEventID '00000000-0000-0000-0000-000000000008'
-\set communityID '00000000-0000-0000-0000-000000000003'
+\set allianceID '00000000-0000-0000-0000-000000000003'
 \set eventCategoryID '00000000-0000-0000-0000-000000000004'
 \set eventID '00000000-0000-0000-0000-000000000005'
 \set groupID '00000000-0000-0000-0000-000000000006'
@@ -25,23 +25,23 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Tech', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Tech', :'allianceID');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug, active)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, active)
 values
-    (:'groupID', :'communityID', :'categoryID', 'G1', 'g1', true),
-    (:'inactiveGroupID', :'communityID', :'categoryID', 'G2', 'g2', false);
+    (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1', true),
+    (:'inactiveGroupID', :'allianceID', :'categoryID', 'G2', 'g2', false);
 
 -- Users
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
@@ -87,7 +87,7 @@ values
 select is(
     list_user_event_invitations(:'invitedUserID'::uuid)::jsonb,
     '[
-        {"community_display_name": "C1", "community_name": "c1", "event_id": "00000000-0000-0000-0000-000000000005", "event_name": "Future Event", "group_name": "G1", "timezone": "UTC", "created_at": 1704189600, "starts_at": 4071031200}
+        {"alliance_display_name": "C1", "alliance_name": "c1", "event_id": "00000000-0000-0000-0000-000000000005", "event_name": "Future Event", "group_name": "G1", "timezone": "UTC", "created_at": 1704189600, "starts_at": 4071031200}
     ]'::jsonb,
     'Should list active pending event invitations for the user'
 );

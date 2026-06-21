@@ -196,7 +196,7 @@ begin
         p_actor_user_id,
         'event',
         v_event_id,
-        (select community_id from "group" where group_id = p_group_id),
+        (select alliance_id from "group" where group_id = p_group_id),
         p_group_id,
         v_event_id
     );

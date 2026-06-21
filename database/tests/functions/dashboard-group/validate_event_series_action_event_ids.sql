@@ -11,7 +11,7 @@ select plan(7);
 
 \set canceledEventID '00000000-0000-0000-0000-000000000033'
 \set categoryID '00000000-0000-0000-0000-000000000011'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set deletedEventID '00000000-0000-0000-0000-000000000034'
 \set event1ID '00000000-0000-0000-0000-000000000031'
 \set event2ID '00000000-0000-0000-0000-000000000032'
@@ -27,9 +27,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -37,10 +37,10 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
@@ -51,24 +51,24 @@ insert into "user" (user_id, email, username, auth_hash)
 values (:'userID', 'organizer@example.com', 'organizer', 'hash');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Meetup', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'categoryID', 'Meetup', :'allianceID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     'Test Group',
     'test-group',
     'A test group',

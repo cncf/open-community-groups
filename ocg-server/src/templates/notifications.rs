@@ -17,22 +17,22 @@ pub(crate) struct CfsSubmissionUpdated {
     pub link: String,
     /// Submission status name.
     pub status_name: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 
     /// Action required message for the speaker.
     pub action_required_message: Option<String>,
 }
 
-/// Template for community team invitation notification.
+/// Template for alliance team invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
-#[template(path = "notifications/community_team_invitation.html")]
-pub(crate) struct CommunityTeamInvitation {
-    /// Community display name.
-    pub community_name: String,
+#[template(path = "notifications/alliance_team_invitation.html")]
+pub(crate) struct AllianceTeamInvitation {
+    /// Alliance display name.
+    pub alliance_name: String,
     /// Link to manage invitations in the dashboard.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -42,7 +42,7 @@ pub(crate) struct CommunityTeamInvitation {
 pub(crate) struct EmailVerification {
     /// Verification link for the user to confirm their email address.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -56,7 +56,7 @@ pub(crate) struct EventAttendanceCanceled {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -68,7 +68,7 @@ pub(crate) struct EventCanceled {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -99,7 +99,7 @@ pub(crate) struct EventInvitation {
     pub has_registration_questions: bool,
     /// Link to manage invitations in the dashboard.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -111,7 +111,7 @@ pub(crate) struct EventPublished {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -132,7 +132,7 @@ pub(crate) struct EventRefundApproved {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -144,7 +144,7 @@ pub(crate) struct EventRefundRejected {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -156,7 +156,7 @@ pub(crate) struct EventRefundRequested {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -170,7 +170,7 @@ pub(crate) struct EventReminder {
     pub link: String,
     /// Whether to show attendance cancellation copy.
     pub show_attendance_cancellation_copy: bool,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 
     /// Link to the user dashboard events page.
@@ -186,7 +186,7 @@ pub(crate) struct EventRescheduled {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -200,7 +200,7 @@ pub(crate) struct EventSeriesCanceled {
     pub events: Vec<EventSeriesNotificationItem>,
     /// Name of the group hosting the events.
     pub group_name: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -208,15 +208,15 @@ pub(crate) struct EventSeriesCanceled {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/event_series_published.html")]
 pub(crate) struct EventSeriesPublished {
-    /// Community display name for the events.
-    pub community_display_name: String,
+    /// Alliance display name for the events.
+    pub alliance_display_name: String,
     /// Number of events included in the notification.
     pub event_count: usize,
     /// Events included in the notification.
     pub events: Vec<EventSeriesNotificationItem>,
     /// Name of the group hosting the events.
     pub group_name: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -228,7 +228,7 @@ pub(crate) struct EventWaitlistJoined {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -240,7 +240,7 @@ pub(crate) struct EventWaitlistLeft {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -254,7 +254,7 @@ pub(crate) struct EventWaitlistPromoted {
     pub has_registration_questions: bool,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 
     /// Link to the user dashboard events page.
@@ -270,7 +270,7 @@ pub(crate) struct EventWelcome {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 
     /// Link to the user dashboard events page.
@@ -303,7 +303,7 @@ pub(crate) struct GroupTeamInvitation {
     pub group: GroupSummary,
     /// Link to manage invitations in the dashboard.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -315,7 +315,7 @@ pub(crate) struct GroupWelcome {
     pub group: GroupSummary,
     /// Link to the group page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -329,7 +329,7 @@ pub(crate) struct SessionProposalCoSpeakerInvitation {
     pub session_proposal_title: String,
     /// Name of the speaker who sent the invitation.
     pub speaker_name: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -341,7 +341,7 @@ pub(crate) struct SpeakerWelcome {
     pub event: EventSummary,
     /// Link to the event page.
     pub link: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }
 
@@ -355,6 +355,6 @@ pub(crate) struct SpeakerSeriesWelcome {
     pub events: Vec<EventSeriesNotificationItem>,
     /// Name of the group hosting the events.
     pub group_name: String,
-    /// Theme configuration for the community.
+    /// Theme configuration for the alliance.
     pub theme: Theme,
 }

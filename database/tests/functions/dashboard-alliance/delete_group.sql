@@ -1,0 +1,147 @@
+-- ============================================================================
+-- SETUP
+-- ============================================================================
+
+begin;
+select plan(8);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set categoryID '00000000-0000-0000-0000-000000000011'
+\set allianceID '00000000-0000-0000-0000-000000000001'
+\set groupAlreadyDeletedID '00000000-0000-0000-0000-000000000022'
+\set groupID '00000000-0000-0000-0000-000000000021'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+
+-- Group category
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Tech', :'allianceID');
+
+-- Active group
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug
+) values (
+    :'groupID',
+    :'allianceID',
+    :'categoryID',
+    'G1',
+    'g1'
+);
+
+-- Already deleted group
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted
+) values (
+    :'groupAlreadyDeletedID',
+    :'allianceID',
+    :'categoryID',
+    'G2',
+    'g2',
+    false,
+    true
+);
+
+-- ============================================================================
+-- TESTS
+-- ============================================================================
+
+-- Should perform soft delete
+select lives_ok(
+    format(
+        'select delete_group(null::uuid, %L::uuid, %L::uuid)',
+        :'allianceID',
+        :'groupID'
+    ),
+    'Should perform soft delete'
+);
+
+select is(
+    (select deleted from "group" where group_id = :'groupID'::uuid),
+    true,
+    'Should set deleted to true'
+);
+
+select ok(
+    (select deleted_at from "group" where group_id = :'groupID'::uuid) is not null,
+    'Should set deleted_at timestamp'
+);
+
+-- Should perform soft delete (record still exists)
+select ok(
+    exists(select 1 from "group" where group_id = :'groupID'::uuid),
+    'Should perform soft delete (record still exists)'
+);
+
+-- Should set active to false when deleting
+select is(
+    (select active from "group" where group_id = :'groupID'::uuid),
+    false,
+    'Should set active to false when deleting'
+);
+
+-- Should create the expected audit row
+select results_eq(
+    $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            alliance_id,
+            group_id,
+            resource_type,
+            resource_id
+        from audit_log
+    $$,
+    $$
+        values (
+            'group_deleted',
+            null::uuid,
+            null::text,
+            '00000000-0000-0000-0000-000000000001'::uuid,
+            '00000000-0000-0000-0000-000000000021'::uuid,
+            'group',
+            '00000000-0000-0000-0000-000000000021'::uuid
+        )
+    $$,
+    'Should create the expected audit row'
+);
+
+-- Should throw error for already deleted group
+select throws_ok(
+    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
+    'group not found or inactive',
+    'Should throw error when trying to delete already deleted group'
+);
+
+-- Should throw error for wrong alliance_id
+select throws_ok(
+    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
+    'group not found or inactive',
+    'Should throw error when alliance_id does not match'
+);
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
+
+select * from finish();
+rollback;

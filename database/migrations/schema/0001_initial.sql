@@ -79,22 +79,22 @@ create index user_name_lower_idx on "user" (lower(name));
 create index user_email_lower_idx on "user" (lower(email));
 
 -- =============================================================================
--- COMMUNITY TABLES
+-- ALLIANCE TABLES
 -- =============================================================================
 
--- Site layout configurations for communities.
-create table community_site_layout (
-    community_site_layout_id text primary key
+-- Site layout configurations for alliances.
+create table alliance_site_layout (
+    alliance_site_layout_id text primary key
 );
 
-insert into community_site_layout values ('default');
+insert into alliance_site_layout values ('default');
 
--- Communities table.
-create table community (
-    community_id uuid primary key default gen_random_uuid(),
+-- Alliances table.
+create table alliance (
+    alliance_id uuid primary key default gen_random_uuid(),
     active boolean default true not null,
     banner_url text not null check (btrim(banner_url) <> ''),
-    community_site_layout_id text not null references community_site_layout default 'default',
+    alliance_site_layout_id text not null references alliance_site_layout default 'default',
     created_at timestamptz default current_timestamp not null,
     description text not null check (btrim(description) <> ''),
     display_name text not null unique check (btrim(display_name) <> ''),
@@ -119,29 +119,29 @@ create table community (
     youtube_url text check (btrim(youtube_url) <> '')
 );
 
-create index community_community_site_layout_id_idx on community (community_site_layout_id);
+create index alliance_alliance_site_layout_id_idx on alliance (alliance_site_layout_id);
 
--- Community team members.
-create table community_team (
-    community_id uuid not null references community,
+-- Alliance team members.
+create table alliance_team (
+    alliance_id uuid not null references alliance,
     accepted boolean default false not null,
     created_at timestamptz default current_timestamp not null,
     user_id uuid not null references "user",
 
-    primary key (community_id, user_id)
+    primary key (alliance_id, user_id)
 );
 
-create index community_team_community_id_idx on community_team (community_id);
-create index community_team_user_id_idx on community_team (user_id);
+create index alliance_team_alliance_id_idx on alliance_team (alliance_id);
+create index alliance_team_user_id_idx on alliance_team (user_id);
 
 -- =============================================================================
 -- GROUP TABLES
 -- =============================================================================
 
--- Regions provide geographic organization for groups within a community.
+-- Regions provide geographic organization for groups within a alliance.
 create table region (
     region_id uuid primary key default gen_random_uuid(),
-    community_id uuid not null references community,
+    alliance_id uuid not null references alliance,
     created_at timestamptz default current_timestamp not null,
     name text not null check (btrim(name) <> ''),
     normalized_name text not null check (btrim(normalized_name) <> '')
@@ -149,16 +149,16 @@ create table region (
 
     "order" integer,
 
-    unique (name, community_id),
-    unique (normalized_name, community_id)
+    unique (name, alliance_id),
+    unique (normalized_name, alliance_id)
 );
 
-create index region_community_id_idx on region (community_id);
+create index region_alliance_id_idx on region (alliance_id);
 
 -- Categories for organizing groups.
 create table group_category (
     group_category_id uuid primary key default gen_random_uuid(),
-    community_id uuid not null references community,
+    alliance_id uuid not null references alliance,
     created_at timestamptz default current_timestamp not null,
     name text not null check (btrim(name) <> ''),
     normalized_name text not null check (btrim(normalized_name) <> '')
@@ -166,11 +166,11 @@ create table group_category (
 
     "order" integer,
 
-    unique (name, community_id),
-    unique (normalized_name, community_id)
+    unique (name, alliance_id),
+    unique (normalized_name, alliance_id)
 );
 
-create index group_category_community_id_idx on group_category (community_id);
+create index group_category_alliance_id_idx on group_category (alliance_id);
 
 -- Site layout configurations for groups.
 create table group_site_layout (
@@ -183,7 +183,7 @@ insert into group_site_layout values ('default');
 create table "group" (
     group_id uuid primary key default gen_random_uuid(),
     active boolean default true not null,
-    community_id uuid not null references community,
+    alliance_id uuid not null references alliance,
     created_at timestamptz default current_timestamp not null,
     deleted boolean default false not null,
     group_category_id uuid not null references group_category,
@@ -225,16 +225,16 @@ create table "group" (
     wechat_url text check (btrim(wechat_url) <> ''),
     youtube_url text check (btrim(youtube_url) <> ''),
 
-    unique (slug, community_id),
+    unique (slug, alliance_id),
     check ((deleted = false) or (deleted = true and active = false))
 );
 
-create index group_community_id_idx on "group" (community_id);
+create index group_alliance_id_idx on "group" (alliance_id);
 create index group_group_category_id_idx on "group" (group_category_id);
 create index group_group_site_layout_id_idx on "group" (group_site_layout_id);
 create index group_location_idx on "group" using gist (location);
 create index group_region_id_idx on "group" (region_id);
-create index group_search_idx on "group" (community_id, active)
+create index group_search_idx on "group" (alliance_id, active)
     where active = true;
 create index group_tsdoc_idx on "group" using gin (tsdoc);
 
@@ -296,18 +296,18 @@ create index group_team_role_idx on group_team (role);
 -- Categories for organizing events.
 create table event_category (
     event_category_id uuid primary key default gen_random_uuid(),
-    community_id uuid not null references community,
+    alliance_id uuid not null references alliance,
     created_at timestamptz default current_timestamp not null,
     name text not null check (btrim(name) <> ''),
     slug text not null check (btrim(slug) <> ''),
 
     "order" integer,
 
-    unique (name, community_id),
-    unique (slug, community_id)
+    unique (name, alliance_id),
+    unique (slug, alliance_id)
 );
 
-create index event_category_community_id_idx on event_category (community_id);
+create index event_category_alliance_id_idx on event_category (alliance_id);
 
 -- Event types.
 create table event_kind (
@@ -594,7 +594,7 @@ create table notification_kind (
     name text not null unique check (btrim(name) <> '')
 );
 
-insert into notification_kind (name) values ('community-team-invitation');
+insert into notification_kind (name) values ('alliance-team-invitation');
 insert into notification_kind (name) values ('email-verification');
 insert into notification_kind (name) values ('event-canceled');
 insert into notification_kind (name) values ('event-custom');
@@ -776,71 +776,71 @@ begin
 end;
 $$ language plpgsql;
 
--- Trigger function to validate event category belongs to the event's community.
-create or replace function check_event_category_community()
+-- Trigger function to validate event category belongs to the event's alliance.
+create or replace function check_event_category_alliance()
 returns trigger as $$
 declare
-    v_category_community_id uuid;
-    v_group_community_id uuid;
+    v_category_alliance_id uuid;
+    v_group_alliance_id uuid;
 begin
-    -- Get event's group community
-    select community_id into v_group_community_id
+    -- Get event's group alliance
+    select alliance_id into v_group_alliance_id
     from "group"
     where group_id = NEW.group_id;
 
-    -- Get category's community
-    select community_id into v_category_community_id
+    -- Get category's alliance
+    select alliance_id into v_category_alliance_id
     from event_category
     where event_category_id = NEW.event_category_id;
 
-    -- Validate communities match
-    if v_category_community_id is distinct from v_group_community_id then
-        raise exception 'event category not found in community';
+    -- Validate alliances match
+    if v_category_alliance_id is distinct from v_group_alliance_id then
+        raise exception 'event category not found in alliance';
     end if;
 
     return NEW;
 end;
 $$ language plpgsql;
 
--- Trigger function to validate group category belongs to the group's community.
-create or replace function check_group_category_community()
+-- Trigger function to validate group category belongs to the group's alliance.
+create or replace function check_group_category_alliance()
 returns trigger as $$
 declare
-    v_category_community_id uuid;
+    v_category_alliance_id uuid;
 begin
-    -- Get category's community
-    select community_id into v_category_community_id
+    -- Get category's alliance
+    select alliance_id into v_category_alliance_id
     from group_category
     where group_category_id = NEW.group_category_id;
 
-    -- Validate communities match
-    if v_category_community_id is distinct from NEW.community_id then
-        raise exception 'group category not found in community';
+    -- Validate alliances match
+    if v_category_alliance_id is distinct from NEW.alliance_id then
+        raise exception 'group category not found in alliance';
     end if;
 
     return NEW;
 end;
 $$ language plpgsql;
 
--- Trigger function to validate region belongs to the group's community.
-create or replace function check_group_region_community()
+-- Trigger function to validate region belongs to the group's alliance.
+create or replace function check_group_region_alliance()
 returns trigger as $$
 declare
-    v_region_community_id uuid;
+    v_region_alliance_id uuid;
 begin
     -- Skip validation if region_id is null
     if NEW.region_id is null then
         return NEW;
     end if;
 
-    -- Get region's community
-    select community_id into v_region_community_id
+    -- Get region's alliance
+    select alliance_id into v_region_alliance_id
     from region
     where region_id = NEW.region_id;
 
-    -- Validate communities match
-    if v_region_community_id is distinct from NEW.community_id then
-        raise exception 'region not found in community';
+    -- Validate alliances match
+    if v_region_alliance_id is distinct from NEW.alliance_id then
+        raise exception 'region not found in alliance';
     end if;
 
     return NEW;
@@ -864,19 +864,19 @@ create trigger event_sponsor_group_check
     execute function check_event_sponsor_group();
 
 -- Trigger on event INSERT/UPDATE.
-create trigger event_category_community_check
+create trigger event_category_alliance_check
     before insert or update on event
     for each row
-    execute function check_event_category_community();
+    execute function check_event_category_alliance();
 
 -- Trigger on group INSERT/UPDATE.
-create trigger group_category_community_check
+create trigger group_category_alliance_check
     before insert or update on "group"
     for each row
-    execute function check_group_category_community();
+    execute function check_group_category_alliance();
 
 -- Trigger on group INSERT/UPDATE.
-create trigger group_region_community_check
+create trigger group_region_alliance_check
     before insert or update on "group"
     for each row
-    execute function check_group_region_community();
+    execute function check_group_region_alliance();

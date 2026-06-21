@@ -126,6 +126,6 @@ async fn test_list_page_success() {
         )),
     );
     assert!(!body.contains("id=\"audit-actor\""));
-    assert!(body.contains("Community updated"));
+    assert!(body.contains("Alliance updated"));
     assert!(body.contains("Schedule updated"));
 }

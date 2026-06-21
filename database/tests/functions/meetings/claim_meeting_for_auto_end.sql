@@ -10,7 +10,7 @@ select plan(11);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000001411'
-\set communityID '00000000-0000-0000-0000-000000001401'
+\set allianceID '00000000-0000-0000-0000-000000001401'
 \set eventCanceledID '00000000-0000-0000-0000-000000001415'
 \set eventNotOverdueID '00000000-0000-0000-0000-000000001413'
 \set eventOlderOverdueID '00000000-0000-0000-0000-000000001412'
@@ -26,21 +26,21 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'test-community', 'Test Community', 'A test community', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'categoryID', 'Conference', :'allianceID');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, description)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, description)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
 
 -- Event candidates and exclusions
 insert into event (

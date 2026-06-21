@@ -9,7 +9,7 @@ select plan(10);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79260000-0000-0000-0000-000000000001'
+\set allianceID '79260000-0000-0000-0000-000000000001'
 \set eventCategoryID '79260000-0000-0000-0000-000000000002'
 \set mainEventID '79260000-0000-0000-0000-000000000003'
 \set soldOutEventID '79260000-0000-0000-0000-000000000004'
@@ -47,17 +47,17 @@ select plan(10);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'resolve-pricing-community', 'Resolve Pricing Community', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'resolve-pricing-alliance', 'Resolve Pricing Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
@@ -75,10 +75,10 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'rejectedUserID', 'hash-12', 'rejected@example.com', true, 'rejected-user');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, payment_recipient, slug)
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Resolve Pricing Group',
     jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_resolve_pricing'),

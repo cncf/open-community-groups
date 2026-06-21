@@ -5,7 +5,7 @@ import {
   getEventInfoSection,
   getEventLogo,
   getIntroSection,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_NAME,
   TEST_EVENT_PAGE_BADGE_EVENT,
   TEST_EVENT_SLUG,
@@ -21,7 +21,7 @@ test.describe("event page", () => {
     // Load the configured event page before each public page assertion.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
+      TEST_ALLIANCE_NAME,
       TEST_GROUP_SLUG,
       TEST_EVENT_SLUG,
     );
@@ -52,7 +52,7 @@ test.describe("event page", () => {
     await expect(groupLink).toBeVisible();
     await expect(groupLink).toHaveAttribute(
       "href",
-      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUG}`,
+      `/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUG}`,
     );
   });
 
@@ -333,7 +333,7 @@ test.describe("event page - responsive", () => {
     // Load the event page for the mobile viewport.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
+      TEST_ALLIANCE_NAME,
       TEST_GROUP_SLUG,
       TEST_EVENT_SLUG,
     );
@@ -357,7 +357,7 @@ test.describe("event page - responsive", () => {
     // Load the event page for the desktop viewport.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
+      TEST_ALLIANCE_NAME,
       TEST_GROUP_SLUG,
       TEST_EVENT_SLUG,
     );
@@ -385,7 +385,7 @@ test.describe("event page - alpha event logo", () => {
     // Load the primary event page before checking the desktop logo.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
+      TEST_ALLIANCE_NAME,
       TEST_GROUP_SLUG,
       TEST_EVENT_SLUG,
     );
@@ -401,7 +401,7 @@ test.describe("event page - virtual event with recording", () => {
     // Load a future virtual event with virtual location fallback artwork.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
+      TEST_ALLIANCE_NAME,
       TEST_GROUP_SLUG,
       "alpha-event-2",
     );
@@ -418,7 +418,7 @@ test.describe("event page - virtual event with recording", () => {
     // Load a future virtual event with a recording configured.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
+      TEST_ALLIANCE_NAME,
       TEST_GROUP_SLUG,
       "alpha-event-2",
     );
@@ -434,7 +434,7 @@ test.describe("event page - test event badge", () => {
     // Load an event configured with the public test badge.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
+      TEST_ALLIANCE_NAME,
       TEST_GROUP_SLUG,
       TEST_EVENT_PAGE_BADGE_EVENT.slug,
     );

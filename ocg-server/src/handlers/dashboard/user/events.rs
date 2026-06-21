@@ -71,21 +71,21 @@ pub(crate) async fn cancel_attendance(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    Path((community_name, event_id)): Path<(String, Uuid)>,
+    Path((alliance_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve the community from the dashboard route
-    let community_id = db
-        .get_community_id_by_name(&community_name)
+    // Resolve the alliance from the dashboard route
+    let alliance_id = db
+        .get_alliance_id_by_name(&alliance_name)
         .await?
         .ok_or(HandlerError::NotFound)?;
 
     // Validate the row still represents cancelable attendance
-    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
+    let attendance = db.get_event_attendance(alliance_id, event_id, user.user_id).await?;
     match attendance.status {
         EventAttendanceStatus::Attendee => {}
         EventAttendanceStatus::RegistrationQuestionsPending => {
             // Pending registrations on ticketed events are owned by the checkout hold flow
-            let event = db.get_event_summary_by_id(community_id, event_id).await?;
+            let event = db.get_event_summary_by_id(alliance_id, event_id).await?;
             if event.is_ticketed() {
                 return Err(anyhow::anyhow!(
                     "pending registrations on ticketed events cannot be canceled from My Events"
@@ -102,12 +102,12 @@ pub(crate) async fn cancel_attendance(
     }
 
     // Cancel the user's attendance and collect any waitlist promotions
-    let leave_result = db.leave_event(community_id, event_id, user.user_id).await?;
+    let leave_result = db.leave_event(alliance_id, event_id, user.user_id).await?;
 
     // Load notification context after cancellation succeeds
     let (site_settings, event) = match tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     ) {
         Ok(context) => context,
         Err(err) => {
@@ -168,12 +168,12 @@ pub(crate) async fn submit_registration_answers(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    Path((community_name, event_id)): Path<(String, Uuid)>,
+    Path((alliance_name, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<RequiredQuestionnaireAnswersForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve the community from the dashboard route
-    let community_id = db
-        .get_community_id_by_name(&community_name)
+    // Resolve the alliance from the dashboard route
+    let alliance_id = db
+        .get_alliance_id_by_name(&alliance_name)
         .await?
         .ok_or(HandlerError::NotFound)?;
 
@@ -181,7 +181,7 @@ pub(crate) async fn submit_registration_answers(
     let became_confirmed = db
         .submit_event_registration_answers(
             user.user_id,
-            community_id,
+            alliance_id,
             event_id,
             &input.registration_answers,
         )
@@ -199,7 +199,7 @@ pub(crate) async fn submit_registration_answers(
     // Send the regular welcome notification after a pending registration becomes complete
     let (site_settings, event) = match tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     ) {
         Ok(context) => context,
         Err(err) => {

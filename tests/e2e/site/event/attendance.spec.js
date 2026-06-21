@@ -2,7 +2,7 @@ import { expect, test } from "../../fixtures.js";
 
 import {
   E2E_PAYMENTS_ENABLED,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
@@ -73,8 +73,8 @@ test.describe("event attendance", () => {
     // Load the event page before changing attendance state.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -124,8 +124,8 @@ test.describe("event attendance", () => {
     // Load the event page before changing attendance state.
     await navigateToEvent(
       pending2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_REGISTRATION_QUESTIONS_EVENT.slug,
     );
 
@@ -232,8 +232,8 @@ test.describe("event attendance", () => {
       // Load the ticketed event as a guest.
       await navigateToEvent(
         page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
@@ -255,8 +255,8 @@ test.describe("event attendance", () => {
       // Load the ticketed event before opening ticket choices.
       await navigateToEvent(
         member1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
@@ -296,8 +296,8 @@ test.describe("event attendance", () => {
       // Load the ticketed event before selecting a free ticket.
       await navigateToEvent(
         member2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
@@ -309,7 +309,7 @@ test.describe("event attendance", () => {
       const ticketModal = getTicketModal(member2Page);
       await expect(ticketModal).toBeVisible();
       await ticketModal
-        .locator("label", { hasText: "Community ticket" })
+        .locator("label", { hasText: "Alliance ticket" })
         .click();
 
       // Watch checkout request payload and response after submitting.
@@ -360,8 +360,8 @@ test.describe("event attendance", () => {
       // Load the ticketed event before entering a spaced discount code.
       await navigateToEvent(
         pending1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
@@ -373,7 +373,7 @@ test.describe("event attendance", () => {
       const ticketModal = getTicketModal(pending1Page);
       await expect(ticketModal).toBeVisible();
       await ticketModal
-        .locator("label", { hasText: "Community ticket" })
+        .locator("label", { hasText: "Alliance ticket" })
         .click();
       await ticketModal
         .locator('[data-attendance-role="discount-code-input"]')
@@ -422,8 +422,8 @@ test.describe("event attendance", () => {
       // Load the ticketed event before submitting an expired discount.
       await navigateToEvent(
         member1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
@@ -436,7 +436,7 @@ test.describe("event attendance", () => {
 
       // Select a ticket and enter an expired discount code.
       await ticketModal
-        .locator("label", { hasText: "Community ticket" })
+        .locator("label", { hasText: "Alliance ticket" })
         .click();
       await ticketModal
         .locator('[data-attendance-role="discount-code-input"]')
@@ -468,8 +468,8 @@ test.describe("event attendance", () => {
       // Load the ticketed event before submitting an unavailable discount.
       await navigateToEvent(
         member1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
@@ -482,7 +482,7 @@ test.describe("event attendance", () => {
 
       // Select a ticket and enter an exhausted discount code.
       await ticketModal
-        .locator("label", { hasText: "Community ticket" })
+        .locator("label", { hasText: "Alliance ticket" })
         .click();
       await ticketModal
         .locator('[data-attendance-role="discount-code-input"]')
@@ -516,8 +516,8 @@ test.describe("event attendance", () => {
       // Load the ticketed event before starting a paid checkout.
       await navigateToEvent(
         pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
 
@@ -538,7 +538,7 @@ test.describe("event attendance", () => {
       ) {
         const checkoutResponse = await pending2Page.request.post(
           buildE2eUrl(
-            `/${TEST_COMMUNITY_NAME}/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
+            `/${TEST_ALLIANCE_NAME}/event/${TEST_PAYMENT_EVENT_IDS.draft}/checkout`,
           ),
           {
             form: {
@@ -550,8 +550,8 @@ test.describe("event attendance", () => {
         if (!checkoutResponse.ok()) {
           await navigateToEvent(
             pending2Page,
-            TEST_COMMUNITY_NAME,
-            TEST_GROUP_SLUGS.community1.alpha,
+            TEST_ALLIANCE_NAME,
+            TEST_GROUP_SLUGS.alliance1.alpha,
             TEST_PAYMENT_EVENT_SLUGS.draft,
           );
           await waitForAttendanceState(pending2Page);
@@ -584,8 +584,8 @@ test.describe("event attendance", () => {
       // Return to the event page and verify the pending payment controls.
       await navigateToEvent(
         pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
       await expect(getAttendButton(pending2Page)).toContainText(
@@ -622,8 +622,8 @@ test.describe("event attendance", () => {
       // Return to the event page and cancel the pending checkout.
       await navigateToEvent(
         pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.draft,
       );
       await pending2Page
@@ -655,8 +655,8 @@ test.describe("event attendance", () => {
       // Load the refund-ready event with a pending request.
       await navigateToEvent(
         member1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 
@@ -676,8 +676,8 @@ test.describe("event attendance", () => {
       // Load the refund-ready event with a processing refund.
       await navigateToEvent(
         member2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 
@@ -697,8 +697,8 @@ test.describe("event attendance", () => {
       // Load the refund-ready event with a rejected refund.
       await navigateToEvent(
         pending1Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 
@@ -718,8 +718,8 @@ test.describe("event attendance", () => {
       // Load the refund-ready event before requesting a refund.
       await navigateToEvent(
         pending2Page,
-        TEST_COMMUNITY_NAME,
-        TEST_GROUP_SLUGS.community1.alpha,
+        TEST_ALLIANCE_NAME,
+        TEST_GROUP_SLUGS.alliance1.alpha,
         TEST_PAYMENT_EVENT_SLUGS.refunds,
       );
 

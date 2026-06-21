@@ -28,7 +28,7 @@ use crate::{
     config::EmailConfig,
     db::DynDB,
     templates::notifications::{
-        CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventAttendanceCanceled,
+        CfsSubmissionUpdated, AllianceTeamInvitation, EmailVerification, EventAttendanceCanceled,
         EventCanceled, EventCustom, EventInvitation, EventPublished, EventRefundApproved,
         EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
         EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,
@@ -320,9 +320,9 @@ impl DeliveryWorker {
             .ok_or_else(|| anyhow!("missing template data"))?;
 
         let (subject, body) = match notification.kind {
-            NotificationKind::CommunityTeamInvitation => {
-                let subject = "You have been invited to join a community team".to_string();
-                let template: CommunityTeamInvitation = serde_json::from_value(template_data)?;
+            NotificationKind::AllianceTeamInvitation => {
+                let subject = "You have been invited to join a alliance team".to_string();
+                let template: AllianceTeamInvitation = serde_json::from_value(template_data)?;
                 let body = template.render()?;
                 (subject, body)
             }
@@ -666,8 +666,8 @@ pub(crate) struct Notification {
 pub(crate) enum NotificationKind {
     /// Notification for a CFS submission update.
     CfsSubmissionUpdated,
-    /// Notification for a community team invitation.
-    CommunityTeamInvitation,
+    /// Notification for a alliance team invitation.
+    AllianceTeamInvitation,
     /// Notification for email verification.
     EmailVerification,
     /// Notification for a canceled event attendance.

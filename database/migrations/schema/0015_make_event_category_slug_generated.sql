@@ -10,31 +10,31 @@ begin
         raise exception 'event category name generates empty slug';
     end if;
 
-    -- Ensure generated slugs are unique per community before enforcing uniqueness.
+    -- Ensure generated slugs are unique per alliance before enforcing uniqueness.
     if exists (
         select 1
         from (
             select
-                normalized.community_id,
+                normalized.alliance_id,
                 normalized.slug,
                 count(*) as total
             from (
                 select
-                    ec.community_id,
+                    ec.alliance_id,
                     btrim(regexp_replace(lower(ec.name), '[^\w]+', '-', 'g'), '-') as slug
                 from event_category ec
             ) normalized
-            group by normalized.community_id, normalized.slug
+            group by normalized.alliance_id, normalized.slug
             having count(*) > 1
         ) collisions
     ) then
-        raise exception 'event category names generate duplicate slugs in community';
+        raise exception 'event category names generate duplicate slugs in alliance';
     end if;
 end;
 $$;
 
 alter table event_category
-    drop constraint event_category_slug_community_id_key,
+    drop constraint event_category_slug_alliance_id_key,
     drop column slug;
 
 alter table event_category
@@ -44,4 +44,4 @@ alter table event_category
         ) stored;
 
 alter table event_category
-    add constraint event_category_slug_community_id_key unique (slug, community_id);
+    add constraint event_category_slug_alliance_id_key unique (slug, alliance_id);

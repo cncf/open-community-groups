@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
-        community::CommunitySummary,
+        alliance::AllianceSummary,
         event::{EventKind, EventSummary},
         group::GroupSummary,
         site::{SiteHomeStats, SiteSettings},
@@ -19,21 +19,21 @@ use crate::{
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "site/home/page.html")]
 pub struct Page {
-    /// List of communities to display.
-    pub communities: Vec<CommunitySummary>,
+    /// List of alliances to display.
+    pub alliances: Vec<AllianceSummary>,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
-    /// List of groups recently added across all communities.
+    /// List of groups recently added across all alliances.
     pub recently_added_groups: Vec<GroupCard>,
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Site statistics.
     pub stats: SiteHomeStats,
-    /// List of upcoming in-person events across all communities.
+    /// List of upcoming in-person events across all alliances.
     pub upcoming_in_person_events: Vec<EventCard>,
-    /// List of upcoming virtual events across all communities.
+    /// List of upcoming virtual events across all alliances.
     pub upcoming_virtual_events: Vec<EventCard>,
     /// Authenticated user information.
     pub user: User,

@@ -11,7 +11,7 @@ select plan(4);
 
 \set attendeeUserID '90100000-0000-0000-0000-000000000031'
 \set categoryID '90100000-0000-0000-0000-000000000011'
-\set communityID '90100000-0000-0000-0000-000000000001'
+\set allianceID '90100000-0000-0000-0000-000000000001'
 \set eventCategoryID '90100000-0000-0000-0000-000000000012'
 \set eventAttendeeAnswersID '90100000-0000-0000-0000-000000000042'
 \set eventAttendeeNullAnswersID '90100000-0000-0000-0000-000000000044'
@@ -25,21 +25,21 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'questionnaire-community', 'Questionnaire Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'questionnaire-alliance', 'Questionnaire Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Technology', :'allianceID');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'Questionnaire Group', 'questionnaire-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'categoryID', 'Questionnaire Group', 'questionnaire-group');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)

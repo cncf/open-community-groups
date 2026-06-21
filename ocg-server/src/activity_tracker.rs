@@ -47,8 +47,8 @@ type Total = u32;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum Activity {
-    /// A single community view.
-    CommunityView { community_id: Uuid },
+    /// A single alliance view.
+    AllianceView { alliance_id: Uuid },
     /// A single event view.
     EventView { event_id: Uuid },
     /// A single group view.
@@ -165,11 +165,11 @@ impl Flusher {
     /// Main worker loop: flushes aggregated batches until the channel closes.
     async fn run(&self, mut batches_rx: mpsc::Receiver<Batches>) {
         while let Some(batches) = batches_rx.recv().await {
-            // Process community views
-            if !batches.community_views.is_empty() {
-                let data = prepare_batch_data(&batches.community_views);
-                if let Err(err) = self.db.update_community_views(data).await {
-                    error!(?err, "error writing community views to database");
+            // Process alliance views
+            if !batches.alliance_views.is_empty() {
+                let data = prepare_batch_data(&batches.alliance_views);
+                if let Err(err) = self.db.update_alliance_views(data).await {
+                    error!(?err, "error writing alliance views to database");
                 }
             }
 
@@ -205,7 +205,7 @@ fn prepare_batch_data(data: &HashMap<(EntityId, Day), Total>) -> Vec<(EntityId, 
 /// Aggregated in-memory batches.
 #[derive(Debug, Clone, Default)]
 struct Batches {
-    community_views: HashMap<(EntityId, Day), Total>,
+    alliance_views: HashMap<(EntityId, Day), Total>,
     event_views: HashMap<(EntityId, Day), Total>,
     group_views: HashMap<(EntityId, Day), Total>,
 }
@@ -223,8 +223,8 @@ impl Batches {
             .expect("format to succeed");
 
         match activity {
-            Activity::CommunityView { community_id } => {
-                *self.community_views.entry((community_id, day)).or_default() += 1;
+            Activity::AllianceView { alliance_id } => {
+                *self.alliance_views.entry((alliance_id, day)).or_default() += 1;
             }
             Activity::EventView { event_id } => {
                 *self.event_views.entry((event_id, day)).or_default() += 1;
@@ -237,7 +237,7 @@ impl Batches {
 
     /// Clears all pending data.
     fn clear(&mut self) {
-        self.community_views.clear();
+        self.alliance_views.clear();
         self.event_views.clear();
         self.group_views.clear();
     }
@@ -251,7 +251,7 @@ impl Batches {
 
     /// Returns whether there is no pending data.
     fn is_empty(&self) -> bool {
-        self.community_views.is_empty()
+        self.alliance_views.is_empty()
             && self.event_views.is_empty()
             && self.group_views.is_empty()
     }
@@ -272,9 +272,9 @@ mod tests {
     use super::*;
 
     /// Static entity IDs used for testing.
-    static COMMUNITY1_ID: LazyLock<Uuid> =
+    static ALLIANCE1_ID: LazyLock<Uuid> =
         LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000201").unwrap());
-    static COMMUNITY2_ID: LazyLock<Uuid> =
+    static ALLIANCE2_ID: LazyLock<Uuid> =
         LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000202").unwrap());
     static EVENT1_ID: LazyLock<Uuid> =
         LazyLock::new(|| Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap());
@@ -292,10 +292,10 @@ mod tests {
         let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
         let mut mock_db = MockDB::new();
         mock_db
-            .expect_update_community_views()
+            .expect_update_alliance_views()
             .with(eq(vec![
-                (*COMMUNITY1_ID, day.clone(), 2),
-                (*COMMUNITY2_ID, day.clone(), 1),
+                (*ALLIANCE1_ID, day.clone(), 2),
+                (*ALLIANCE2_ID, day.clone(), 1),
             ]))
             .times(1)
             .returning(|_| Ok(()));
@@ -319,20 +319,20 @@ mod tests {
         let cancellation_token = CancellationToken::new();
         let tracker = ActivityTrackerDB::new(mock_db, &task_tracker, &cancellation_token);
         tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
+            .track(Activity::AllianceView {
+                alliance_id: *ALLIANCE1_ID,
             })
             .await
             .unwrap();
         tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
+            .track(Activity::AllianceView {
+                alliance_id: *ALLIANCE1_ID,
             })
             .await
             .unwrap();
         tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY2_ID,
+            .track(Activity::AllianceView {
+                alliance_id: *ALLIANCE2_ID,
             })
             .await
             .unwrap();
@@ -386,8 +386,8 @@ mod tests {
         let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
         let mut mock_db = MockDB::new();
         mock_db
-            .expect_update_community_views()
-            .with(eq(vec![(*COMMUNITY1_ID, day.clone(), 1)]))
+            .expect_update_alliance_views()
+            .with(eq(vec![(*ALLIANCE1_ID, day.clone(), 1)]))
             .times(1)
             .returning(|_| Ok(()));
         mock_db
@@ -407,8 +407,8 @@ mod tests {
         let cancellation_token = CancellationToken::new();
         let tracker = ActivityTrackerDB::new(mock_db, &task_tracker, &cancellation_token);
         tracker
-            .track(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
+            .track(Activity::AllianceView {
+                alliance_id: *ALLIANCE1_ID,
             })
             .await
             .unwrap();
@@ -464,8 +464,8 @@ mod tests {
 
         // Queue activities before the aggregator starts listening
         activities_tx
-            .send(Activity::CommunityView {
-                community_id: *COMMUNITY1_ID,
+            .send(Activity::AllianceView {
+                alliance_id: *ALLIANCE1_ID,
             })
             .await
             .unwrap();
@@ -496,8 +496,8 @@ mod tests {
         // Verify all queued activities were included in the final batch
         let batches = batches_rx.recv().await.unwrap();
         assert_eq!(
-            prepare_batch_data(&batches.community_views),
-            vec![(*COMMUNITY1_ID, day.clone(), 1)]
+            prepare_batch_data(&batches.alliance_views),
+            vec![(*ALLIANCE1_ID, day.clone(), 1)]
         );
         assert_eq!(
             prepare_batch_data(&batches.event_views),

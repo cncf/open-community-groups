@@ -17,7 +17,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -45,7 +45,7 @@ const PARTIAL_URL: &str = "/dashboard/group/members";
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -53,7 +53,7 @@ pub(crate) async fn list_page(
     // Prepare list page content
     let (filters, template) = prepare_list_page(
         &db,
-        community_id,
+        alliance_id,
         group_id,
         user.user_id,
         raw_query.as_deref().unwrap_or_default(),
@@ -73,7 +73,7 @@ pub(crate) async fn list_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn send_group_custom_notification(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -83,7 +83,7 @@ pub(crate) async fn send_group_custom_notification(
     // Get group data and site settings
     let (site_settings, group, group_members_ids, team_member_ids) = tokio::try_join!(
         db.get_site_settings(),
-        db.get_group_summary(community_id, group_id),
+        db.get_group_summary(alliance_id, group_id),
         db.list_group_members_ids(group_id),
         db.list_group_team_members_ids(group_id),
     )?;
@@ -104,7 +104,7 @@ pub(crate) async fn send_group_custom_notification(
     let link = format!(
         "{}/{}/group/{}",
         base_url,
-        group.community_name,
+        group.alliance_name,
         group.public_slug()
     );
     let template_data = GroupCustom {
@@ -155,7 +155,7 @@ pub(crate) struct GroupCustomNotification {
 /// Prepares the members list page and filters for the group dashboard.
 pub(crate) async fn prepare_list_page(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     user_id: Uuid,
     raw_query: &str,
@@ -164,12 +164,12 @@ pub(crate) async fn prepare_list_page(
     let filters: GroupMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
     let (can_manage_members, group, results) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user_id,
             GroupPermission::MembersWrite
         ),
-        db.get_group_summary(community_id, group_id),
+        db.get_group_summary(alliance_id, group_id),
         db.list_group_members(group_id, &filters)
     )?;
 
@@ -184,6 +184,7 @@ pub(crate) async fn prepare_list_page(
         total: results.total,
         limit: filters.limit,
         offset: filters.offset,
+        query: filters.query.clone(),
     };
 
     Ok((filters, template))

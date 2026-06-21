@@ -7,19 +7,19 @@ create or replace function record_automatic_refund_for_event_purchase(
 )
 returns void as $$
 declare
-    v_community_id uuid;
+    v_alliance_id uuid;
     v_event_id uuid;
     v_group_id uuid;
     v_user_id uuid;
 begin
     -- Lock the refund-pending purchase before marking it as refunded
     select
-        g.community_id,
+        g.alliance_id,
         ep.event_id,
         g.group_id,
         ep.user_id
     into
-        v_community_id,
+        v_alliance_id,
         v_event_id,
         v_group_id,
         v_user_id
@@ -48,7 +48,7 @@ begin
         null,
         'event',
         v_event_id,
-        v_community_id,
+        v_alliance_id,
         v_group_id,
         v_event_id,
         jsonb_build_object(

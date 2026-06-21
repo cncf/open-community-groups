@@ -8,7 +8,7 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::types::{
-    community::CommunitySummary,
+    alliance::AllianceSummary,
     location::{LocationParts, build_location},
     payments::GroupPaymentRecipient,
     user::User,
@@ -47,10 +47,10 @@ pub struct GroupSummary {
     pub active: bool,
     /// Category this group belongs to.
     pub category: GroupCategory,
-    /// Human-readable display name of the community this group belongs to.
-    pub community_display_name: String,
-    /// Name of the community this group belongs to (slug for URLs).
-    pub community_name: String,
+    /// Human-readable display name of the alliance this group belongs to.
+    pub alliance_display_name: String,
+    /// Name of the alliance this group belongs to (slug for URLs).
+    pub alliance_name: String,
     /// UTC timestamp when the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
@@ -117,8 +117,8 @@ pub struct GroupFull {
     pub active: bool,
     /// Category this group belongs to.
     pub category: GroupCategory,
-    /// Community this group belongs to.
-    pub community: CommunitySummary,
+    /// Alliance this group belongs to.
+    pub alliance: AllianceSummary,
     /// When the group was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,

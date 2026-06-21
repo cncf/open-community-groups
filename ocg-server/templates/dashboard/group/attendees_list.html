@@ -33,7 +33,7 @@
             data-event-name="{{ event.name }}"
             data-group-name="{{ event.group_name }}"
             data-event-slug="{{ event.slug }}"
-            data-check-in-url="/{{ event.community_name }}/check-in/{{ event.event_id }}"
+            data-check-in-url="/{{ event.alliance_name }}/check-in/{{ event.event_id }}"
             data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
             {% if let Some(start_time) = &event.starts_at -%}
               data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"

@@ -15,9 +15,9 @@ add constraint group_slug_pretty_chk check (
     )
 );
 
--- Enforce pretty slug uniqueness within each community
-create unique index group_slug_pretty_community_id_key
-on "group" (slug_pretty, community_id)
+-- Enforce pretty slug uniqueness within each alliance
+create unique index group_slug_pretty_alliance_id_key
+on "group" (slug_pretty, alliance_id)
 where slug_pretty is not null;
 
 -- Validate pretty slug routing conflicts with generated slugs
@@ -27,11 +27,11 @@ begin
     if exists (
         select 1
         from "group" g
-        where g.community_id = new.community_id
+        where g.alliance_id = new.alliance_id
         and g.group_id <> new.group_id
         and g.slug_pretty = new.slug
     ) then
-        raise exception 'Pretty slug is already used by another group in this community';
+        raise exception 'Pretty slug is already used by another group in this alliance';
     end if;
 
     if new.slug_pretty is null then
@@ -62,14 +62,14 @@ begin
     if exists (
         select 1
         from "group" g
-        where g.community_id = new.community_id
+        where g.alliance_id = new.alliance_id
         and g.group_id <> new.group_id
         and (
             g.slug = new.slug_pretty
             or g.slug_pretty = new.slug_pretty
         )
     ) then
-        raise exception 'Pretty slug is already used by another group in this community';
+        raise exception 'Pretty slug is already used by another group in this alliance';
     end if;
 
     return new;
@@ -78,5 +78,5 @@ $$ language plpgsql;
 
 -- Run pretty slug validation on group inserts or updates
 create trigger group_slug_pretty_validate
-before insert or update of slug, slug_pretty, community_id on "group"
+before insert or update of slug, slug_pretty, alliance_id on "group"
 for each row execute function validate_group_slug_pretty();

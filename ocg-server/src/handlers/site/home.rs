@@ -27,14 +27,14 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
     let (
-        communities,
+        alliances,
         recently_added_groups,
         site_settings,
         stats,
         upcoming_in_person_events,
         upcoming_virtual_events,
     ) = tokio::try_join!(
-        db.list_communities(),
+        db.list_alliances(),
         db.get_site_recently_added_groups(),
         db.get_site_settings(),
         db.get_site_home_stats(),
@@ -42,7 +42,7 @@ pub(crate) async fn page(
         db.get_site_upcoming_events(vec![EventKind::Virtual, EventKind::Hybrid]),
     )?;
     let template = home::Page {
-        communities,
+        alliances,
         page_id: PageId::SiteHome,
         path: uri.path().to_string(),
         recently_added_groups: recently_added_groups

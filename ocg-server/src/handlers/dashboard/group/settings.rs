@@ -14,7 +14,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedFormQs},
     },
     templates::dashboard::group::settings::{self, GroupUpdate},
     types::permissions::GroupPermission,
@@ -29,7 +29,7 @@ mod tests;
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(payments_cfg): State<Option<PaymentsConfig>>,
@@ -37,14 +37,14 @@ pub(crate) async fn update_page(
     // Prepare template
     let (can_manage_settings, group, categories, regions) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::SettingsWrite
         ),
-        db.get_group_full(community_id, group_id),
-        db.list_group_categories(community_id),
-        db.list_regions(community_id)
+        db.get_group_full(alliance_id, group_id),
+        db.list_group_categories(alliance_id),
+        db.list_regions(alliance_id)
     )?;
     let template = settings::UpdatePage {
         can_manage_settings,
@@ -63,13 +63,13 @@ pub(crate) async fn update_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     ValidatedFormQs(group_update): ValidatedFormQs<GroupUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Update group in database
-    db.update_group(user.user_id, community_id, group_id, &group_update)
+    db.update_group(user.user_id, alliance_id, group_id, &group_update)
         .await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]).into_response())

@@ -11,8 +11,8 @@ select plan(6);
 
 \set category1ID '00000000-0000-0000-0000-000000000011'
 \set category2ID '00000000-0000-0000-0000-000000000012'
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set alliance2ID '00000000-0000-0000-0000-000000000002'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000041'
 \set event2ID '00000000-0000-0000-0000-000000000042'
 \set event3ID '00000000-0000-0000-0000-000000000043'
@@ -31,9 +31,9 @@ select plan(6);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -41,18 +41,18 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
--- Inactive community
-insert into community (
-    community_id,
+-- Inactive alliance
+insert into alliance (
+    alliance_id,
     active,
     name,
     display_name,
@@ -61,37 +61,37 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'community2ID',
+    :'alliance2ID',
     false,
-    'inactive-community',
-    'Inactive Community',
-    'An inactive test community',
+    'inactive-alliance',
+    'Inactive Alliance',
+    'An inactive test alliance',
     'https://example.com/logo2.png',
     'https://example.com/banner_mobile2.png',
     'https://example.com/banner2.png'
 );
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
+insert into group_category (group_category_id, name, alliance_id)
 values
-    (:'category1ID', 'Technology', :'communityID'),
-    (:'category2ID', 'Technology', :'community2ID');
+    (:'category1ID', 'Technology', :'allianceID'),
+    (:'category2ID', 'Technology', :'alliance2ID');
 
 -- Group
-insert into "group" (group_id, name, slug, community_id, group_category_id, city, state, country_code, country_name, logo_url)
-values (:'group1ID', 'Test Group', 'test-group', :'communityID', :'category1ID', 'New York', 'NY', 'US', 'United States', 'https://example.com/group-logo.png');
+insert into "group" (group_id, name, slug, alliance_id, group_category_id, city, state, country_code, country_name, logo_url)
+values (:'group1ID', 'Test Group', 'test-group', :'allianceID', :'category1ID', 'New York', 'NY', 'US', 'United States', 'https://example.com/group-logo.png');
 
-insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url)
-values (:'group2ID', 'Virtual Group', 'virtual-group', :'communityID', :'category1ID', 'https://example.com/virtual-group-logo.png');
+insert into "group" (group_id, name, slug, alliance_id, group_category_id, logo_url)
+values (:'group2ID', 'Virtual Group', 'virtual-group', :'allianceID', :'category1ID', 'https://example.com/virtual-group-logo.png');
 
-insert into "group" (group_id, name, slug, community_id, group_category_id, logo_url)
-values (:'group3ID', 'Inactive Community Group', 'inactive-community-group', :'community2ID', :'category2ID', 'https://example.com/inactive-community-group-logo.png');
+insert into "group" (group_id, name, slug, alliance_id, group_category_id, logo_url)
+values (:'group3ID', 'Inactive Alliance Group', 'inactive-alliance-group', :'alliance2ID', :'category2ID', 'https://example.com/inactive-alliance-group-logo.png');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
+insert into event_category (event_category_id, name, alliance_id)
 values
-    (:'eventCategory1ID', 'Tech Talks', :'communityID'),
-    (:'eventCategory2ID', 'Tech Talks', :'community2ID');
+    (:'eventCategory1ID', 'Tech Talks', :'allianceID'),
+    (:'eventCategory2ID', 'Tech Talks', :'alliance2ID');
 
 -- Event
 insert into event (
@@ -138,12 +138,12 @@ insert into event (
      :'eventCategory1ID', 'virtual', :'group2ID', true,
      now() + interval '3 months', now() + interval '3 months' + interval '2 hours',
      false, 'https://example.com/locationless-virtual-event-logo.png'),
-    -- Future event 6 (in inactive community - should be filtered out)
-    (:'event8ID', 'Inactive Community Event', 'inactive-community-event',
-     'A future event in an inactive community', false, 'UTC',
+    -- Future event 6 (in inactive alliance - should be filtered out)
+    (:'event8ID', 'Inactive Alliance Event', 'inactive-alliance-event',
+     'A future event in an inactive alliance', false, 'UTC',
      :'eventCategory2ID', 'in-person', :'group3ID', true,
      now() + interval '1 week', now() + interval '1 week' + interval '2 hours',
-     false, 'https://example.com/inactive-community-event-logo.png');
+     false, 'https://example.com/inactive-alliance-event-logo.png');
 
 -- ============================================================================
 -- TESTS
@@ -153,20 +153,20 @@ insert into event (
 select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
+        get_event_summary(:'allianceID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'allianceID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
     ),
     'Should return published non-test future events'
 );
 
--- Should not include events from inactive communities
+-- Should not include events from inactive alliances
 select ok(
     not exists (
         select 1
         from jsonb_array_elements(get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb) event_item
         where event_item->>'event_id' = :'event8ID'
     ),
-    'Should not include events from inactive communities'
+    'Should not include events from inactive alliances'
 );
 
 -- Should return only published future events matching event kind filter
@@ -174,8 +174,8 @@ delete from event where event_id = :'event5ID';
 select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
+        get_event_summary(:'allianceID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'allianceID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
     ),
     'Should return only published future events'
 );

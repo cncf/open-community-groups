@@ -11,7 +11,7 @@ use crate::{
     auth::{User, UserSummary},
     db::PgDB,
     templates::auth::UserDetails,
-    types::permissions::{CommunityPermission, GroupPermission},
+    types::permissions::{AlliancePermission, GroupPermission},
     types::user::UserProvider,
 };
 
@@ -52,10 +52,10 @@ pub(crate) trait DBAuth {
     /// Retrieves the password hash for a user.
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
 
-    /// Checks whether a group belongs to a community.
-    async fn group_belongs_to_community(
+    /// Checks whether a group belongs to a alliance.
+    async fn group_belongs_to_alliance(
         &self,
-        community_id: &Uuid,
+        alliance_id: &Uuid,
         group_id: &Uuid,
     ) -> Result<bool>;
 
@@ -78,18 +78,25 @@ pub(crate) trait DBAuth {
     /// Updates externally sourced provider metadata for a user.
     async fn update_user_provider(&self, user_id: &Uuid, provider: &UserProvider) -> Result<()>;
 
-    /// Checks whether a user has a permission in a specific community.
-    async fn user_has_community_permission(
+    /// Refreshes externally sourced profile fields for a user.
+    async fn update_user_external_profile(
         &self,
-        community_id: &Uuid,
         user_id: &Uuid,
-        permission: CommunityPermission,
+        user_summary: &UserSummary,
+    ) -> Result<()>;
+
+    /// Checks whether a user has a permission in a specific alliance.
+    async fn user_has_alliance_permission(
+        &self,
+        alliance_id: &Uuid,
+        user_id: &Uuid,
+        permission: AlliancePermission,
     ) -> Result<bool>;
 
     /// Checks whether a user has a permission in a specific group.
     async fn user_has_group_permission(
         &self,
-        community_id: &Uuid,
+        alliance_id: &Uuid,
         group_id: &Uuid,
         user_id: &Uuid,
         permission: GroupPermission,
@@ -224,9 +231,9 @@ impl DBAuth for PgDB {
     }
 
     #[instrument(skip(self), err)]
-    async fn group_belongs_to_community(
+    async fn group_belongs_to_alliance(
         &self,
-        community_id: &Uuid,
+        alliance_id: &Uuid,
         group_id: &Uuid,
     ) -> Result<bool> {
         self.fetch_scalar_one(
@@ -234,12 +241,12 @@ impl DBAuth for PgDB {
             select exists (
                 select 1
                 from "group"
-                where community_id = $1::uuid
+                where alliance_id = $1::uuid
                   and group_id = $2::uuid
                   and deleted = false
             );
             "#,
-            &[&community_id, &group_id],
+            &[&alliance_id, &group_id],
         )
         .await
     }
@@ -310,16 +317,29 @@ impl DBAuth for PgDB {
         .await
     }
 
-    #[instrument(skip(self, permission), err)]
-    async fn user_has_community_permission(
+    #[instrument(skip(self, user_summary), err)]
+    async fn update_user_external_profile(
         &self,
-        community_id: &Uuid,
         user_id: &Uuid,
-        permission: CommunityPermission,
+        user_summary: &UserSummary,
+    ) -> Result<()> {
+        self.execute(
+            "select update_user_external_profile($1::uuid, $2::jsonb);",
+            &[user_id, &Json(user_summary)],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, permission), err)]
+    async fn user_has_alliance_permission(
+        &self,
+        alliance_id: &Uuid,
+        user_id: &Uuid,
+        permission: AlliancePermission,
     ) -> Result<bool> {
         self.fetch_scalar_one(
-            "select user_has_community_permission($1::uuid, $2::uuid, $3::text);",
-            &[&community_id, &user_id, &permission.as_str()],
+            "select user_has_alliance_permission($1::uuid, $2::uuid, $3::text);",
+            &[&alliance_id, &user_id, &permission.as_str()],
         )
         .await
     }
@@ -327,14 +347,14 @@ impl DBAuth for PgDB {
     #[instrument(skip(self, permission), err)]
     async fn user_has_group_permission(
         &self,
-        community_id: &Uuid,
+        alliance_id: &Uuid,
         group_id: &Uuid,
         user_id: &Uuid,
         permission: GroupPermission,
     ) -> Result<bool> {
         self.fetch_scalar_one(
             "select user_has_group_permission($1::uuid, $2::uuid, $3::uuid, $4::text);",
-            &[&community_id, &group_id, &user_id, &permission.as_str()],
+            &[&alliance_id, &group_id, &user_id, &permission.as_str()],
         )
         .await
     }

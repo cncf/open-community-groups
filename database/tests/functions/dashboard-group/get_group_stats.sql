@@ -8,8 +8,8 @@ select plan(3);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
-\set community2ID '00000000-0000-0000-0000-000000000002'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set alliance2ID '00000000-0000-0000-0000-000000000002'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000301'
 \set event2ID '00000000-0000-0000-0000-000000000302'
 \set event3ID '00000000-0000-0000-0000-000000000303'
@@ -30,9 +30,9 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
+-- Alliances
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -40,23 +40,23 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values
-    (:'communityID', 'test-community', 'Test Community', 'Community used for group stats tests', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
-    (:'community2ID', 'other-community', 'Other Community', 'Separate community for isolation testing', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
+    (:'allianceID', 'test-alliance', 'Test Alliance', 'Alliance used for group stats tests', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
+    (:'alliance2ID', 'other-alliance', 'Other Alliance', 'Separate alliance for isolation testing', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
 
 -- Group categories
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech'),
-    (:'groupCategory2ID', :'community2ID', 'Tech2');
+insert into group_category (group_category_id, alliance_id, name) values
+    (:'groupCategoryID', :'allianceID', 'Tech'),
+    (:'groupCategory2ID', :'alliance2ID', 'Tech2');
 
 -- Event categories
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Conference'),
-    (:'eventCategory2ID', :'community2ID', 'Conference2');
+insert into event_category (event_category_id, alliance_id, name) values
+    (:'eventCategoryID', :'allianceID', 'Conference'),
+    (:'eventCategory2ID', :'alliance2ID', 'Conference2');
 
 -- Groups (using relative dates within 2-year window)
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -64,11 +64,11 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'group1ID', :'communityID', :'groupCategoryID', 'Group One', 'group-one',
+    (:'group1ID', :'allianceID', :'groupCategoryID', 'Group One', 'group-one',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '4 months', true, false),
-    (:'group2ID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two',
+    (:'group2ID', :'allianceID', :'groupCategoryID', 'Group Two', 'group-two',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '3 months', true, false),
-    (:'group3ID', :'community2ID', :'groupCategory2ID', 'Other Community Group', 'other-group',
+    (:'group3ID', :'alliance2ID', :'groupCategory2ID', 'Other Alliance Group', 'other-group',
         date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', true, false);
 
 -- Users
@@ -133,7 +133,7 @@ insert into event_views (day, event_id, total) values
 
 -- Should return complete accurate JSON for seeded group
 select is(
-    get_group_stats(:'communityID'::uuid, :'group1ID'::uuid)::jsonb,
+    get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb,
     (
         with
         -- Define the months used in test data relative to current_timestamp at UTC
@@ -230,7 +230,7 @@ select is(
 
 -- Should return empty stats for unknown group
 select is(
-    get_group_stats(:'communityID'::uuid, :'nonExistentGroupID'::uuid)::jsonb,
+    get_group_stats(:'allianceID'::uuid, :'nonExistentGroupID'::uuid)::jsonb,
     $$
     {
         "members": {
@@ -273,7 +273,7 @@ select is(
 
 -- Should only count events from the requested group
 select is(
-    (get_group_stats(:'communityID'::uuid, :'group1ID'::uuid)::jsonb->'events'->>'total')::int,
+    (get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb->'events'->>'total')::int,
     1,
     'Should only count events from the requested group'
 );

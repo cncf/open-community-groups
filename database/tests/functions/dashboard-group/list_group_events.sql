@@ -9,7 +9,7 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 \set category1ID '00000000-0000-0000-0000-000000000011'
-\set community1ID '00000000-0000-0000-0000-000000000001'
+\set alliance1ID '00000000-0000-0000-0000-000000000001'
 \set event1ID '00000000-0000-0000-0000-000000000021'
 \set event2ID '00000000-0000-0000-0000-000000000022'
 \set event3ID '00000000-0000-0000-0000-000000000023'
@@ -24,9 +24,9 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -34,31 +34,31 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
+    :'alliance1ID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance for testing purposes',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'category1ID', 'Conference', :'community1ID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'category1ID', 'Conference', :'alliance1ID');
 
 -- User
 insert into "user" (user_id, email, username, auth_hash, name)
 values (:'user1ID', 'creator@example.com', 'creator', 'hash', 'Creator User');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategory1ID', 'Technology', :'community1ID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategory1ID', 'Technology', :'alliance1ID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
@@ -70,7 +70,7 @@ insert into "group" (
 ) values 
     (
         :'group1ID',
-        :'community1ID',
+        :'alliance1ID',
         'Test Group',
         'test-group',
         'A test group',
@@ -82,7 +82,7 @@ insert into "group" (
     ),
     (
         :'group2ID',
-        :'community1ID',
+        :'alliance1ID',
         'Another Group',
         'another-group',
         'Another test group',
@@ -226,14 +226,14 @@ select is(
     jsonb_build_object(
         'past', jsonb_build_object(
             'events', jsonb_build_array(
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+                get_event_summary_dashboard(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
             ),
             'total', 1
         ),
         'upcoming', jsonb_build_object(
             'events', jsonb_build_array(
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+                get_event_summary_dashboard(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+                get_event_summary_dashboard(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
             ),
             'total', 2
         )
@@ -251,7 +251,7 @@ select is(
         'past', jsonb_build_object('events', '[]'::jsonb, 'total', 0),
         'upcoming', jsonb_build_object(
             'events', jsonb_build_array(
-                get_event_summary_dashboard(:'community1ID'::uuid, :'group2ID'::uuid, :'event4ID'::uuid)::jsonb
+                get_event_summary_dashboard(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event4ID'::uuid)::jsonb
             ),
             'total', 1
         )

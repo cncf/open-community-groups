@@ -1,7 +1,7 @@
-//! Open Community Groups server.
+//! Open Alliance Groups server.
 //!
 //! This is the main entry point for the OCG server, which provides a web-based platform
-//! for managing community groups and events.
+//! for managing alliance groups and events.
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::struct_field_names)]

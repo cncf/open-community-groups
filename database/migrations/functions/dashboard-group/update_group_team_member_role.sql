@@ -60,7 +60,7 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        (select community_id from "group" where group_id = p_group_id),
+        (select alliance_id from "group" where group_id = p_group_id),
         p_group_id,
         null,
         jsonb_build_object('role', p_role)

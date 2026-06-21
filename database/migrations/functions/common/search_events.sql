@@ -3,7 +3,7 @@ create or replace function search_events(p_filters jsonb)
 returns json as $$
 declare
     v_bbox geometry;
-    v_community_ids uuid[];
+    v_alliance_ids uuid[];
     v_date_from date := (p_filters->>'date_from');
     v_date_to date := (p_filters->>'date_to');
     v_event_category text[];
@@ -32,10 +32,10 @@ begin
             4326
         );
     end if;
-    if p_filters ? 'community' and jsonb_array_length(p_filters->'community') > 0 then
-        select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
-        from jsonb_array_elements_text(p_filters->'community') e
-        join community c on c.name = e;
+    if p_filters ? 'alliance' and jsonb_array_length(p_filters->'alliance') > 0 then
+        select coalesce(array_agg(c.alliance_id), array[]::uuid[]) into v_alliance_ids
+        from jsonb_array_elements_text(p_filters->'alliance') e
+        join alliance c on c.name = e;
     end if;
     if p_filters ? 'event_category' then
         select array_agg(lower(e::text)) into v_event_category
@@ -45,8 +45,8 @@ begin
         select coalesce(array_agg(g.group_id), array[]::uuid[]) into v_group_ids
         from jsonb_array_elements_text(p_filters->'group') e
         join "group" g on (g.slug = e or g.slug_pretty = e)
-        where v_community_ids is null
-        or g.community_id = any(v_community_ids);
+        where v_alliance_ids is null
+        or g.alliance_id = any(v_alliance_ids);
     end if;
     if p_filters ? 'group_category' then
         select array_agg(lower(e::text)) into v_group_category
@@ -83,7 +83,7 @@ begin
     return (
     with filtered_events as (
         select
-            g.community_id,
+            g.alliance_id,
             e.event_id,
             e.group_id,
             e.starts_at,
@@ -96,7 +96,7 @@ begin
             end as distance
         from event e
         join "group" g using (group_id)
-        join community c on c.community_id = g.community_id
+        join alliance c on c.alliance_id = g.alliance_id
         join group_category gc using (group_category_id)
         join event_category ec using (event_category_id)
         left join region r using (region_id)
@@ -109,8 +109,8 @@ begin
             case when v_bbox is not null then
             st_intersects(coalesce(e.location, g.location), v_bbox) else true end
         and
-            case when v_community_ids is not null then
-            g.community_id = any(v_community_ids) else true end
+            case when v_alliance_ids is not null then
+            g.alliance_id = any(v_alliance_ids) else true end
         and
             case when cardinality(v_event_category) > 0 then
             ec.slug = any(v_event_category) else true end
@@ -142,7 +142,7 @@ begin
     ),
     -- Select the requested page with the selected sort strategy
     filtered_events_page as (
-        select community_id, event_id, group_id
+        select alliance_id, event_id, group_id
         from filtered_events
         order by
             (case when v_sort_by = 'date' and v_sort_direction = 'asc' then starts_at end) asc,
@@ -192,7 +192,7 @@ begin
         (
             -- Render paginated events as summaries
             select coalesce(json_agg(
-                get_event_summary(community_id, group_id, event_id)
+                get_event_summary(alliance_id, group_id, event_id)
             ), '[]'::json)
             from filtered_events_page
         ),

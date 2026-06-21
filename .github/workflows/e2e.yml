@@ -193,7 +193,7 @@ jobs:
             login:
               email: true
               github: false
-              linuxfoundation: false
+              linkedin: false
             oauth2: {}
             oidc: {}
           EOF

@@ -10,7 +10,7 @@ select plan(4);
 -- ============================================================================
 
 \set categoryID '40000000-0000-0000-0000-000000000011'
-\set communityID '40000000-0000-0000-0000-000000000001'
+\set allianceID '40000000-0000-0000-0000-000000000001'
 \set eventID '40000000-0000-0000-0000-000000000004'
 \set groupID '40000000-0000-0000-0000-000000000002'
 \set sponsorID '40000000-0000-0000-0000-000000000003'
@@ -19,9 +19,9 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -29,30 +29,30 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-london',
     'Cloud Native London',
-    'Community for cloud native technologies in London',
+    'Alliance for cloud native technologies in London',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Group Category (required by group)
-insert into group_category (group_category_id, name, community_id)
-values ('40000000-0000-0000-0000-000000000010', 'Tech', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values ('40000000-0000-0000-0000-000000000010', 'Tech', :'allianceID');
 
 -- Group
-insert into "group" (group_id, community_id, name, slug, group_category_id)
-values (:'groupID', :'communityID', 'Group London', 'group-london', '40000000-0000-0000-0000-000000000010');
+insert into "group" (group_id, alliance_id, name, slug, group_category_id)
+values (:'groupID', :'allianceID', 'Group London', 'group-london', '40000000-0000-0000-0000-000000000010');
 
 -- Sponsor
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values (:'sponsorID', :'groupID', 'Kappa', 'https://ex.com/kappa.png', null);
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'categoryID', 'Conference', :'allianceID');
 
 -- Event
 insert into event (event_id, group_id, name, slug, description, timezone, event_category_id, event_kind_id)
@@ -104,7 +104,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             resource_type,
             resource_id

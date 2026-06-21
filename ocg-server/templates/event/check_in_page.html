@@ -143,7 +143,7 @@
 
             <form id="event-check-in-form"
                   class="flex w-full justify-center"
-                  hx-post="/{{ event.community_name }}/check-in/{{ event.event_id }}"
+                  hx-post="/{{ event.alliance_name }}/check-in/{{ event.event_id }}"
                   hx-swap="none"
                   hx-indicator="#check-in-submit-spinner"
                   hx-disabled-elt="#event-check-in-submit"
@@ -158,13 +158,13 @@
               </button>
             </form>
             <a id="view-event-details-button"
-               href="/{{ event.community_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
+               href="/{{ event.alliance_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
                class="btn-primary-outline-anchor w-1/2 justify-center relative hidden"
                hx-boost="true"
                hx-target="body">View event details</a>
           {% else %}
             <a id="view-event-details-button"
-               href="/{{ event.community_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
+               href="/{{ event.alliance_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
                class="btn-primary-outline-anchor w-1/2 justify-center relative"
                hx-boost="true"
                hx-target="body">View event details</a>

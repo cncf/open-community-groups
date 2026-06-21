@@ -10,22 +10,22 @@ select plan(17);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000009901'
-\set categoryInactiveCommunityID '00000000-0000-0000-0000-000000009914'
-\set communityID '00000000-0000-0000-0000-000000009902'
-\set communityInactiveID '00000000-0000-0000-0000-000000009915'
+\set categoryInactiveAllianceID '00000000-0000-0000-0000-000000009914'
+\set allianceID '00000000-0000-0000-0000-000000009902'
+\set allianceInactiveID '00000000-0000-0000-0000-000000009915'
 \set eventDeletedGroupID '00000000-0000-0000-0000-000000009916'
 \set eventDisabledID '00000000-0000-0000-0000-000000009903'
 \set eventDueID '00000000-0000-0000-0000-000000009904'
-\set eventInactiveCommunityID '00000000-0000-0000-0000-000000009917'
+\set eventInactiveAllianceID '00000000-0000-0000-0000-000000009917'
 \set eventInactiveGroupID '00000000-0000-0000-0000-000000009918'
 \set eventNoRecipientsID '00000000-0000-0000-0000-000000009905'
 \set eventNotDueID '00000000-0000-0000-0000-000000009906'
 \set eventSentID '00000000-0000-0000-0000-000000009907'
 \set groupCategoryID '00000000-0000-0000-0000-000000009908'
-\set groupCategoryInactiveCommunityID '00000000-0000-0000-0000-000000009919'
+\set groupCategoryInactiveAllianceID '00000000-0000-0000-0000-000000009919'
 \set groupDeletedID '00000000-0000-0000-0000-000000009920'
 \set groupID '00000000-0000-0000-0000-000000009909'
-\set groupInactiveCommunityID '00000000-0000-0000-0000-000000009921'
+\set groupInactiveAllianceID '00000000-0000-0000-0000-000000009921'
 \set groupInactiveID '00000000-0000-0000-0000-000000009922'
 \set userPreRegisteredInvitedID '00000000-0000-0000-0000-000000009923'
 \set userVerifiedAttendeeID '00000000-0000-0000-0000-000000009910'
@@ -45,9 +45,9 @@ insert into site (site_id, title, description, theme) values (
     '{"primary_color": "#2563eb"}'::jsonb
 );
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -55,18 +55,18 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
     'Reminder notification tests',
-    'https://example.com/community-logo.png',
-    'https://example.com/community-banner-mobile.png',
-    'https://example.com/community-banner.png'
+    'https://example.com/alliance-logo.png',
+    'https://example.com/alliance-banner-mobile.png',
+    'https://example.com/alliance-banner.png'
 );
 
--- Inactive community
-insert into community (
-    community_id,
+-- Inactive alliance
+insert into alliance (
+    alliance_id,
     active,
     name,
     display_name,
@@ -75,36 +75,36 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityInactiveID',
+    :'allianceInactiveID',
     false,
-    'inactive-community',
-    'Inactive Community',
-    'Inactive community used for reminder tests',
-    'https://example.com/inactive-community-logo.png',
-    'https://example.com/inactive-community-banner-mobile.png',
-    'https://example.com/inactive-community-banner.png'
+    'inactive-alliance',
+    'Inactive Alliance',
+    'Inactive alliance used for reminder tests',
+    'https://example.com/inactive-alliance-logo.png',
+    'https://example.com/inactive-alliance-banner-mobile.png',
+    'https://example.com/inactive-alliance-banner.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
--- Group category for inactive community
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryInactiveCommunityID', 'Design', :'communityInactiveID');
+-- Group category for inactive alliance
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryInactiveAllianceID', 'Design', :'allianceInactiveID');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'categoryID', 'General', :'allianceID');
 
--- Event category for inactive community
-insert into event_category (event_category_id, name, community_id)
-values (:'categoryInactiveCommunityID', 'Community', :'communityInactiveID');
+-- Event category for inactive alliance
+insert into event_category (event_category_id, name, alliance_id)
+values (:'categoryInactiveAllianceID', 'Alliance', :'allianceInactiveID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     slug_pretty,
@@ -113,7 +113,7 @@ insert into "group" (
     logo_url
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     'Test Group',
     'test-group',
     'test-group-pretty',
@@ -126,7 +126,7 @@ insert into "group" (
 insert into "group" (
     group_id,
     active,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
@@ -137,7 +137,7 @@ insert into "group" (
     (
         :'groupDeletedID',
         false,
-        :'communityID',
+        :'allianceID',
         'Deleted Group',
         'deleted-group',
         'Deleted group used for reminder tests',
@@ -148,7 +148,7 @@ insert into "group" (
     (
         :'groupInactiveID',
         false,
-        :'communityID',
+        :'allianceID',
         'Inactive Group',
         'inactive-group',
         'Inactive group used for reminder tests',
@@ -157,23 +157,23 @@ insert into "group" (
         'https://example.com/inactive-group-logo.png'
     );
 
--- Group in inactive community
+-- Group in inactive alliance
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id,
     logo_url
 ) values (
-    :'groupInactiveCommunityID',
-    :'communityInactiveID',
-    'Inactive Community Group',
-    'inactive-community-group',
-    'Group in inactive community used for reminder tests',
-    :'groupCategoryInactiveCommunityID',
-    'https://example.com/inactive-community-group-logo.png'
+    :'groupInactiveAllianceID',
+    :'allianceInactiveID',
+    'Inactive Alliance Group',
+    'inactive-alliance-group',
+    'Group in inactive alliance used for reminder tests',
+    :'groupCategoryInactiveAllianceID',
+    'https://example.com/inactive-alliance-group-logo.png'
 );
 
 -- Users
@@ -271,13 +271,13 @@ insert into event (
         'Remote'
     ),
     (
-        :'eventInactiveCommunityID',
-        :'groupInactiveCommunityID',
-        'Inactive Community Event',
-        'inactive-community-event',
-        'Due event from an inactive community',
+        :'eventInactiveAllianceID',
+        :'groupInactiveAllianceID',
+        'Inactive Alliance Event',
+        'inactive-alliance-event',
+        'Due event from an inactive alliance',
         'UTC',
-        :'categoryInactiveCommunityID',
+        :'categoryInactiveAllianceID',
         'virtual',
         current_timestamp + interval '18 hours',
         current_timestamp + interval '19 hours',
@@ -383,7 +383,7 @@ insert into event (
 insert into event_attendee (event_id, user_id, status) values
     (:'eventDueID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventDeletedGroupID', :'userVerifiedAttendeeID', 'confirmed'),
-    (:'eventInactiveCommunityID', :'userVerifiedAttendeeID', 'confirmed'),
+    (:'eventInactiveAllianceID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventInactiveGroupID', :'userVerifiedAttendeeID', 'confirmed'),
     (:'eventDueID', :'userUnverifiedID', 'confirmed'),
     (:'eventDueID', :'userPreRegisteredInvitedID', 'invitation-pending');
@@ -442,7 +442,7 @@ select is(
         where n.kind = 'event-reminder'
         limit 1
     ),
-    'https://example.test/test-community/group/test-group-pretty/event/due-event',
+    'https://example.test/test-alliance/group/test-group-pretty/event/due-event',
     'Should build reminder link using the provided base URL'
 );
 
@@ -553,7 +553,7 @@ select is(
             :'eventDeletedGroupID',
             :'eventNotDueID',
             :'eventDisabledID',
-            :'eventInactiveCommunityID',
+            :'eventInactiveAllianceID',
             :'eventInactiveGroupID',
             :'eventSentID'
         )

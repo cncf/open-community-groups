@@ -21,7 +21,7 @@ import { parseJsonAttribute } from "/static/js/common/utils.js";
  *   banner-mobile-url="/path/to/banner-mobile.jpg"
  *   items='[
  *     {"label": "Home", "href": "/", "icon": "home"},
- *     {"label": "Group", "href": "/community/group/slug", "icon": "groups"},
+ *     {"label": "Group", "href": "/alliance/group/slug", "icon": "groups"},
  *     {"label": "Event", "icon": "date", "current": true}
  *   ]'>
  * </breadcrumb-nav>

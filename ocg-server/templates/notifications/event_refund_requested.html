@@ -13,7 +13,7 @@
 {% block content -%}
   <p class="default mb-30" style="margin-bottom: 30px">
     A paid attendee has requested a refund for <strong>{{ event.name }}</strong> from
-    <strong>{{ event.group_name }}</strong> on <strong>Open Community Groups</strong>.
+    <strong>{{ event.group_name }}</strong> on <strong>Open Alliance Groups</strong>.
     <br />
     <br />
     {% if let Some(starts_at) = &event.starts_at -%}
@@ -34,6 +34,6 @@
 
 {% block footer -%}
   You received this email notification because you can manage event refunds for
-  {{ event.group_name }} in the {{ event.community_display_name }} community.
+  {{ event.group_name }} in the {{ event.alliance_display_name }} alliance.
 {% endblock footer -%}
 {# End event refund requested notification -#}

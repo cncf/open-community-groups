@@ -10,7 +10,7 @@ select plan(12);
 -- ============================================================================
 
 \set categoryID '90200000-0000-0000-0000-000000000011'
-\set communityID '90200000-0000-0000-0000-000000000001'
+\set allianceID '90200000-0000-0000-0000-000000000001'
 \set eventCategoryID '90200000-0000-0000-0000-000000000012'
 \set eventID '90200000-0000-0000-0000-000000000041'
 \set eventStartedID '90200000-0000-0000-0000-000000000042'
@@ -30,21 +30,21 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (community_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'communityID', 'answers-community', 'Answers Community', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+-- Alliance
+insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+values (:'allianceID', 'answers-alliance', 'Answers Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
 
 -- Group category
-insert into group_category (group_category_id, name, community_id)
-values (:'categoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'categoryID', 'Technology', :'allianceID');
 
 -- Event category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'General', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'categoryID', 'Answers Group', 'answers-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'categoryID', 'Answers Group', 'answers-group');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
@@ -322,7 +322,7 @@ select throws_ok(
     'Should reject users without an attendee row'
 );
 
--- Should reject events outside the route community
+-- Should reject events outside the route alliance
 select throws_ok(
     $$
         select submit_event_registration_answers(
@@ -333,7 +333,7 @@ select throws_ok(
         )
     $$,
     'event not found or inactive',
-    'Should reject events outside the route community'
+    'Should reject events outside the route alliance'
 );
 
 -- ============================================================================

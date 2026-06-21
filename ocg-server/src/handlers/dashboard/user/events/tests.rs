@@ -24,7 +24,7 @@ use crate::{
 #[tokio::test]
 async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notification() {
     // Setup identifiers and data structures.
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -44,13 +44,13 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     db.expect_get_event_attendance()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
@@ -63,11 +63,11 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
         });
     db.expect_get_event_summary_by_id()
         .times(2)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_leave_event()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(move |_, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
@@ -96,7 +96,7 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
     let request = Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/dashboard/user/events/test-community/{event_id}/attendance"
+            "/dashboard/user/events/test-alliance/{event_id}/attendance"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -117,7 +117,7 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
 #[tokio::test]
 async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notification() {
     // Setup identifiers and data structures.
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let promoted_user_id = Uuid::new_v4();
@@ -139,13 +139,13 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     db.expect_get_event_attendance()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
@@ -158,7 +158,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
         });
     db.expect_leave_event()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(move |_, _, _| {
             Ok(EventLeaveOutcome {
                 left_status: EventAttendanceStatus::Attendee,
@@ -170,7 +170,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
         .returning(move || Ok(site_settings.clone()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
 
     // Setup notifications manager mock.
@@ -183,7 +183,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
                         template.dashboard_link == "/dashboard/user?tab=events"
-                            && template.link == "/test-community/group/def5678/event/ghi9abc"
+                            && template.link == "/test-alliance/group/def5678/event/ghi9abc"
                     })
                 })
         })
@@ -198,7 +198,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
                 && notification.template_data.as_ref().is_some_and(|value| {
                     from_value::<EventWaitlistPromoted>(value.clone()).is_ok_and(|template| {
                         template.dashboard_link.as_deref() == Some("/dashboard/user?tab=events")
-                            && template.link == "/test-community/group/def5678/event/ghi9abc"
+                            && template.link == "/test-alliance/group/def5678/event/ghi9abc"
                             && template.theme.primary_color == primary_color
                     })
                 })
@@ -210,7 +210,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
     let request = Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/dashboard/user/events/test-community/{event_id}/attendance"
+            "/dashboard/user/events/test-alliance/{event_id}/attendance"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -231,7 +231,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
 #[tokio::test]
 async fn test_cancel_attendance_rejects_non_attendee_status() {
     // Setup identifiers and data structures.
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -248,13 +248,13 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     db.expect_get_event_attendance()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
@@ -276,7 +276,7 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
     let request = Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/dashboard/user/events/test-community/{event_id}/attendance"
+            "/dashboard/user/events/test-alliance/{event_id}/attendance"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -293,7 +293,7 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
 #[tokio::test]
 async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
     // Setup identifiers and data structures.
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -317,13 +317,13 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     db.expect_get_event_attendance()
         .times(1)
-        .withf(move |cid, eid, uid| *cid == community_id && *eid == event_id && *uid == user_id)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(|_, _, _| {
             Ok(EventAttendanceInfo {
                 is_checked_in: false,
@@ -336,7 +336,7 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
         });
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     db.expect_leave_event().times(0);
 
@@ -349,7 +349,7 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
     let request = Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/dashboard/user/events/test-community/{event_id}/attendance"
+            "/dashboard/user/events/test-alliance/{event_id}/attendance"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -364,7 +364,7 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
 }
 
 #[tokio::test]
-async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
+async fn test_cancel_attendance_returns_not_found_when_alliance_is_unknown() {
     // Setup identifiers and data structures.
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -382,9 +382,9 @@ async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "missing-community")
+        .withf(|name| name == "missing-alliance")
         .returning(|_| Ok(None));
 
     // Setup notifications manager mock.
@@ -396,7 +396,7 @@ async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
     let request = Request::builder()
         .method("DELETE")
         .uri(format!(
-            "/dashboard/user/events/missing-community/{event_id}/attendance"
+            "/dashboard/user/events/missing-alliance/{event_id}/attendance"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -578,7 +578,7 @@ async fn test_list_page_with_pagination_params() {
 #[tokio::test]
 async fn test_submit_registration_answers_success() {
     // Setup identifiers and data structures.
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
@@ -609,15 +609,15 @@ async fn test_submit_registration_answers_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     db.expect_submit_event_registration_answers()
         .times(1)
         .withf(move |actor_uid, cid, eid, registration_answers| {
             *actor_uid == user_id
-                && *cid == community_id
+                && *cid == alliance_id
                 && *eid == event_id
                 && registration_answers
                     .answers
@@ -630,7 +630,7 @@ async fn test_submit_registration_answers_success() {
         .returning(move || Ok(site_settings.clone()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
 
     // Setup notifications manager mock.
@@ -653,7 +653,7 @@ async fn test_submit_registration_answers_success() {
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/user/events/test-community/{event_id}/registration-answers"
+            "/dashboard/user/events/test-alliance/{event_id}/registration-answers"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -675,7 +675,7 @@ async fn test_submit_registration_answers_success() {
 #[tokio::test]
 async fn test_submit_registration_answers_update_skips_welcome_notification() {
     // Setup identifiers and data structures.
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -703,15 +703,15 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     db.expect_submit_event_registration_answers()
         .times(1)
         .withf(move |actor_uid, cid, eid, registration_answers| {
             *actor_uid == user_id
-                && *cid == community_id
+                && *cid == alliance_id
                 && *eid == event_id
                 && registration_answers
                     .answers
@@ -731,7 +731,7 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/user/events/test-community/{event_id}/registration-answers"
+            "/dashboard/user/events/test-alliance/{event_id}/registration-answers"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")

@@ -40,23 +40,23 @@
   {# Main content -#}
   <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-16">
     <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">
-      {# Communities list -#}
+      {# Alliances list -#}
       <div>
         <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-6 sm:pb-8 lg:pt-2 lg:pb-14">
-          Communities
+          Alliances
         </div>
-        {% if communities.len() > 0 -%}
+        {% if alliances.len() > 0 -%}
           <div class="flex flex-col gap-8">
-            {% for community in communities -%}
-              <a href="/{{ community.name }}"
+            {% for alliance in alliances -%}
+              <a href="/{{ alliance.name }}"
                  class="block bg-white rounded-lg border border-stone-200 hover:shadow-md transition-shadow overflow-hidden">
                 {# Mobile banner -#}
                 <div class="aspect-[61/12] sm:hidden">
                   <img class="w-full h-full object-cover"
                        height="auto"
                        width="auto"
-                       src="{{ community.banner_mobile_url }}"
-                       alt="{{ community.display_name }} banner" />
+                       src="{{ alliance.banner_mobile_url }}"
+                       alt="{{ alliance.display_name }} banner" />
                 </div>
                 {# End mobile banner -#}
 
@@ -65,19 +65,19 @@
                   <img class="w-full h-full object-cover"
                        height="auto"
                        width="auto"
-                       src="{{ community.banner_url }}"
-                       alt="{{ community.display_name }} banner" />
+                       src="{{ alliance.banner_url }}"
+                       alt="{{ alliance.display_name }} banner" />
                 </div>
                 {# End desktop banner -#}
               </a>
             {% endfor -%}
           </div>
         {% else -%}
-          {{ feedback::placeholder(title = "No communities yet",
-                    content = "Communities are being set up, check back soon.") -}}
+          {{ feedback::placeholder(title = "No alliances yet",
+                    content = "Alliances are being set up, check back soon.") -}}
         {% endif -%}
       </div>
-      {# End communities list -#}
+      {# End alliances list -#}
 
       {# Events -#}
       <div class="flex flex-col gap-y-6 sm:gap-y-8 lg:gap-y-12">

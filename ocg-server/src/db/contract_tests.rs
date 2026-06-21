@@ -11,7 +11,7 @@ use crate::{
         auth::DBAuth,
         common::DBCommon,
         dashboard::{
-            community::DBDashboardCommunity, group::DBDashboardGroup, user::DBDashboardUser,
+            alliance::DBDashboardAlliance, group::DBDashboardGroup, user::DBDashboardUser,
         },
         event::DBEvent,
         meetings::DBMeetings,
@@ -79,7 +79,7 @@ async fn db_contracts_claim_meeting_out_of_sync_deserializes() -> Result<()> {
 async fn db_contracts_get_event_attendance_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let attendance = db
-        .get_event_attendance(community_id(), event_id(), attendee_id())
+        .get_event_attendance(alliance_id(), event_id(), attendee_id())
         .await?;
 
     assert_eq!(attendance.status, EventAttendanceStatus::Attendee);
@@ -92,15 +92,15 @@ async fn db_contracts_get_event_attendance_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_full_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let event = db.get_event_full(community_id(), group_id(), event_id()).await?;
+    let event = db.get_event_full(alliance_id(), group_id(), event_id()).await?;
 
     assert_eq!(
-        event.community.ad_banner_link_url.as_deref(),
-        Some("https://example.com/community-ad")
+        event.alliance.ad_banner_link_url.as_deref(),
+        Some("https://example.com/alliance-ad")
     );
     assert_eq!(
-        event.community.ad_banner_url.as_deref(),
-        Some("https://example.com/community-ad-banner.png")
+        event.alliance.ad_banner_url.as_deref(),
+        Some("https://example.com/alliance-ad-banner.png")
     );
     assert_eq!(event.event_id, event_id());
     assert!(event.has_registration_questions);
@@ -130,7 +130,7 @@ async fn db_contracts_get_event_full_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let event = db.get_event_summary(community_id(), group_id(), event_id()).await?;
+    let event = db.get_event_summary(alliance_id(), group_id(), event_id()).await?;
 
     assert_eq!(event.event_id, event_id());
     assert!(event.has_registration_questions);
@@ -145,7 +145,7 @@ async fn db_contracts_get_event_summary_deserializes() -> Result<()> {
 async fn db_contracts_get_event_registration_questions_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let questions = db
-        .get_event_registration_questions(community_id(), event_id())
+        .get_event_registration_questions(alliance_id(), event_id())
         .await?;
 
     assert_eq!(questions.len(), 1);
@@ -160,15 +160,15 @@ async fn db_contracts_get_event_registration_questions_deserializes() -> Result<
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_full_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let group = db.get_group_full(community_id(), group_id()).await?;
+    let group = db.get_group_full(alliance_id(), group_id()).await?;
 
     assert_eq!(
-        group.community.ad_banner_link_url.as_deref(),
-        Some("https://example.com/community-ad")
+        group.alliance.ad_banner_link_url.as_deref(),
+        Some("https://example.com/alliance-ad")
     );
     assert_eq!(
-        group.community.ad_banner_url.as_deref(),
-        Some("https://example.com/community-ad-banner.png")
+        group.alliance.ad_banner_url.as_deref(),
+        Some("https://example.com/alliance-ad-banner.png")
     );
     assert_eq!(group.group_id, group_id());
     assert_eq!(group.organizers.len(), 1);
@@ -186,7 +186,7 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
 async fn db_contracts_get_group_payment_recipient_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let payment_recipient = db
-        .get_group_payment_recipient(community_id(), group_id())
+        .get_group_payment_recipient(alliance_id(), group_id())
         .await?
         .expect("contract group should have a payment recipient");
 
@@ -213,7 +213,7 @@ async fn db_contracts_get_group_sponsor_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let stats = db.get_group_stats(community_id(), group_id()).await?;
+    let stats = db.get_group_stats(alliance_id(), group_id()).await?;
 
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
@@ -227,15 +227,15 @@ async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_get_community_stats_deserializes() -> Result<()> {
+async fn db_contracts_get_alliance_stats_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let stats = db.get_community_stats(community_id()).await?;
+    let stats = db.get_alliance_stats(alliance_id()).await?;
 
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
     assert_eq!(stats.groups.total, 1);
     assert_eq!(stats.members.total, 1);
-    assert_eq!(stats.page_views.community.total_views, 0);
+    assert_eq!(stats.page_views.alliance.total_views, 0);
     assert_eq!(stats.page_views.events.total_views, 2);
     assert_eq!(stats.page_views.groups.total_views, 3);
     assert_eq!(stats.page_views.total_views, 5);
@@ -261,10 +261,10 @@ async fn db_contracts_get_site_stats_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let group = db.get_group_summary(community_id(), group_id()).await?;
+    let group = db.get_group_summary(alliance_id(), group_id()).await?;
 
     assert_eq!(group.group_id, group_id());
-    assert_eq!(group.community_name, "contract-community");
+    assert_eq!(group.alliance_name, "contract-alliance");
     assert!(group.region.is_some());
 
     Ok(())
@@ -361,6 +361,7 @@ async fn db_contracts_list_group_members_deserializes() -> Result<()> {
     let filters = GroupMembersFilters {
         limit: Some(10),
         offset: Some(0),
+        query: None,
     };
     let output = db.list_group_members(group_id(), &filters).await?;
 
@@ -495,7 +496,7 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
 async fn db_contracts_search_events_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = SearchEventsFilters {
-        community: vec!["contract-community".to_string()],
+        alliance: vec!["contract-alliance".to_string()],
 
         date_from: Some("2099-01-01".to_string()),
         date_to: Some("2099-12-31".to_string()),
@@ -562,7 +563,7 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
 async fn db_contracts_search_groups_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = SearchGroupsFilters {
-        community: vec!["contract-community".to_string()],
+        alliance: vec!["contract-alliance".to_string()],
 
         include_bbox: Some(true),
         limit: Some(10),
@@ -583,7 +584,7 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
 
 const ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c042";
 const AUTO_END_MEETING_ID: &str = "00000000-0000-0000-0000-00000000c0a3";
-const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
+const ALLIANCE_ID: &str = "00000000-0000-0000-0000-00000000c001";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
 const GROUP_SPONSOR_ID: &str = "00000000-0000-0000-0000-00000000c061";
@@ -600,8 +601,8 @@ fn auto_end_meeting_id() -> Uuid {
     parse_uuid(AUTO_END_MEETING_ID)
 }
 
-fn community_id() -> Uuid {
-    parse_uuid(COMMUNITY_ID)
+fn alliance_id() -> Uuid {
+    parse_uuid(ALLIANCE_ID)
 }
 
 fn contract_tests_db() -> Result<PgDB> {

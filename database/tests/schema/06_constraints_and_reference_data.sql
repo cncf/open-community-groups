@@ -12,18 +12,18 @@ select plan(49);
 -- Test: custom_notification table expected constraints exist
 select has_check('custom_notification');
 
--- Test: community redirect settings table expected constraints exist
+-- Test: alliance redirect settings table expected constraints exist
 select has_check(
-    'community_redirect_settings',
-    'community_redirect_settings_base_legacy_url_chk'
+    'alliance_redirect_settings',
+    'alliance_redirect_settings_base_legacy_url_chk'
 );
 
--- Test: community redirect settings should accept absolute legacy origin URLs
+-- Test: alliance redirect settings should accept absolute legacy origin URLs
 select lives_ok(
     $$
-        with inserted_community as (
-            insert into community (
-                community_id,
+        with inserted_alliance as (
+            insert into alliance (
+                alliance_id,
                 name,
                 display_name,
                 description,
@@ -34,33 +34,33 @@ select lives_ok(
                 '00000000-0000-0000-0000-000000000501',
                 'redirect-settings-valid',
                 'Redirect Settings Valid',
-                'A community with valid redirect settings',
+                'A alliance with valid redirect settings',
                 'https://example.com/logo-valid.png',
                 'https://example.com/banner-mobile-valid.png',
                 'https://example.com/banner-valid.png'
             )
-            returning community_id
+            returning alliance_id
         )
-        insert into community_redirect_settings (
-            community_id,
+        insert into alliance_redirect_settings (
+            alliance_id,
 
             base_legacy_url
         )
         select
-            community_id,
+            alliance_id,
 
             'https://legacy.example.org'
-        from inserted_community
+        from inserted_alliance
     $$,
-    'Community redirect settings should accept absolute legacy origin URLs'
+    'Alliance redirect settings should accept absolute legacy origin URLs'
 );
 
--- Test: community redirect settings should reject legacy URLs with paths
+-- Test: alliance redirect settings should reject legacy URLs with paths
 select throws_ok(
     $$
-        with inserted_community as (
-            insert into community (
-                community_id,
+        with inserted_alliance as (
+            insert into alliance (
+                alliance_id,
                 name,
                 display_name,
                 description,
@@ -71,35 +71,35 @@ select throws_ok(
                 '00000000-0000-0000-0000-000000000503',
                 'redirect-settings-path',
                 'Redirect Settings Path',
-                'A community with invalid redirect settings',
+                'A alliance with invalid redirect settings',
                 'https://example.com/logo-path.png',
                 'https://example.com/banner-mobile-path.png',
                 'https://example.com/banner-path.png'
             )
-            returning community_id
+            returning alliance_id
         )
-        insert into community_redirect_settings (
-            community_id,
+        insert into alliance_redirect_settings (
+            alliance_id,
 
             base_legacy_url
         )
         select
-            community_id,
+            alliance_id,
 
             'https://legacy.example.org/path'
-        from inserted_community
+        from inserted_alliance
     $$,
     '23514',
-    'new row for relation "community_redirect_settings" violates check constraint "community_redirect_settings_base_legacy_url_chk"',
-    'Community redirect settings should reject legacy URLs with paths'
+    'new row for relation "alliance_redirect_settings" violates check constraint "alliance_redirect_settings_base_legacy_url_chk"',
+    'Alliance redirect settings should reject legacy URLs with paths'
 );
 
--- Test: community redirect settings should reject relative legacy URLs
+-- Test: alliance redirect settings should reject relative legacy URLs
 select throws_ok(
     $$
-        with inserted_community as (
-            insert into community (
-                community_id,
+        with inserted_alliance as (
+            insert into alliance (
+                alliance_id,
                 name,
                 display_name,
                 description,
@@ -110,27 +110,27 @@ select throws_ok(
                 '00000000-0000-0000-0000-000000000502',
                 'redirect-settings-invalid',
                 'Redirect Settings Invalid',
-                'A community with invalid redirect settings',
+                'A alliance with invalid redirect settings',
                 'https://example.com/logo-invalid.png',
                 'https://example.com/banner-mobile-invalid.png',
                 'https://example.com/banner-invalid.png'
             )
-            returning community_id
+            returning alliance_id
         )
-        insert into community_redirect_settings (
-            community_id,
+        insert into alliance_redirect_settings (
+            alliance_id,
 
             base_legacy_url
         )
         select
-            community_id,
+            alliance_id,
 
             'legacy.example.org'
-        from inserted_community
+        from inserted_alliance
     $$,
     '23514',
-    'new row for relation "community_redirect_settings" violates check constraint "community_redirect_settings_base_legacy_url_chk"',
-    'Community redirect settings should reject relative legacy URLs'
+    'new row for relation "alliance_redirect_settings" violates check constraint "alliance_redirect_settings_base_legacy_url_chk"',
+    'Alliance redirect settings should reject relative legacy URLs'
 );
 
 -- Test: event table expected constraints exist
@@ -251,7 +251,7 @@ select results_eq(
     'select name, optional_notification from notification_kind order by name',
     $$ values
         ('cfs-submission-updated', false),
-        ('community-team-invitation', false),
+        ('alliance-team-invitation', false),
         ('email-verification', false),
         ('event-attendance-canceled', false),
         ('event-canceled', false),
@@ -312,56 +312,56 @@ select results_eq(
     'Session proposal statuses should exist'
 );
 
--- Test: community site layout should match expected
+-- Test: alliance site layout should match expected
 select results_eq(
-    'select * from community_site_layout',
+    'select * from alliance_site_layout',
     $$ values ('default') $$,
-    'Community site layout should have default'
+    'Alliance site layout should have default'
 );
 
--- Test: community role should match expected values
+-- Test: alliance role should match expected values
 select results_eq(
-    'select * from community_role order by community_role_id',
+    'select * from alliance_role order by alliance_role_id',
     $$ values
         ('admin', 'Admin'),
         ('groups-manager', 'Groups Manager'),
         ('viewer', 'Viewer')
     $$,
-    'Community roles should exist'
+    'Alliance roles should exist'
 );
 
--- Test: community permissions should match expected values
+-- Test: alliance permissions should match expected values
 select results_eq(
-    'select community_permission_id, display_name from community_permission order by community_permission_id',
+    'select alliance_permission_id, display_name from alliance_permission order by alliance_permission_id',
     $$ values
-        ('community.groups.write', 'Groups Write'),
-        ('community.read', 'Read'),
-        ('community.settings.write', 'Settings Write'),
-        ('community.taxonomy.write', 'Taxonomy Write'),
-        ('community.team.write', 'Team Write')
+        ('alliance.groups.write', 'Groups Write'),
+        ('alliance.read', 'Read'),
+        ('alliance.settings.write', 'Settings Write'),
+        ('alliance.taxonomy.write', 'Taxonomy Write'),
+        ('alliance.team.write', 'Team Write')
     $$,
-    'Community permissions should exist'
+    'Alliance permissions should exist'
 );
 
--- Test: community role to community permission mapping should match expected values
+-- Test: alliance role to alliance permission mapping should match expected values
 select results_eq(
-    'select community_permission_id, community_role_id from community_role_community_permission order by community_permission_id, community_role_id',
+    'select alliance_permission_id, alliance_role_id from alliance_role_alliance_permission order by alliance_permission_id, alliance_role_id',
     $$ values
-        ('community.groups.write', 'admin'),
-        ('community.groups.write', 'groups-manager'),
-        ('community.read', 'admin'),
-        ('community.read', 'groups-manager'),
-        ('community.read', 'viewer'),
-        ('community.settings.write', 'admin'),
-        ('community.taxonomy.write', 'admin'),
-        ('community.team.write', 'admin')
+        ('alliance.groups.write', 'admin'),
+        ('alliance.groups.write', 'groups-manager'),
+        ('alliance.read', 'admin'),
+        ('alliance.read', 'groups-manager'),
+        ('alliance.read', 'viewer'),
+        ('alliance.settings.write', 'admin'),
+        ('alliance.taxonomy.write', 'admin'),
+        ('alliance.team.write', 'admin')
     $$,
-    'Community role to community permission mapping should exist'
+    'Alliance role to alliance permission mapping should exist'
 );
 
--- Test: community role to group permission mapping should match expected values
+-- Test: alliance role to group permission mapping should match expected values
 select results_eq(
-    'select community_role_id, group_permission_id from community_role_group_permission order by community_role_id, group_permission_id',
+    'select alliance_role_id, group_permission_id from alliance_role_group_permission order by alliance_role_id, group_permission_id',
     $$ values
         ('admin', 'group.events.write'),
         ('admin', 'group.members.write'),
@@ -377,7 +377,7 @@ select results_eq(
         ('groups-manager', 'group.team.write'),
         ('viewer', 'group.read')
     $$,
-    'Community role to group permission mapping should exist'
+    'Alliance role to group permission mapping should exist'
 );
 
 -- Test: group permissions should match expected values

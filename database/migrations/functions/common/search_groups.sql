@@ -3,7 +3,7 @@ create or replace function search_groups(p_filters jsonb)
 returns json as $$
 declare
     v_bbox geometry;
-    v_community_ids uuid[];
+    v_alliance_ids uuid[];
     v_group_category text[];
     v_include_inactive boolean := coalesce((p_filters->>'include_inactive')::boolean, false);
     v_limit int := (p_filters->>'limit')::int;
@@ -24,10 +24,10 @@ begin
             4326
         );
     end if;
-    if p_filters ? 'community' and jsonb_array_length(p_filters->'community') > 0 then
-        select coalesce(array_agg(c.community_id), array[]::uuid[]) into v_community_ids
-        from jsonb_array_elements_text(p_filters->'community') e
-        join community c on c.name = e;
+    if p_filters ? 'alliance' and jsonb_array_length(p_filters->'alliance') > 0 then
+        select coalesce(array_agg(c.alliance_id), array[]::uuid[]) into v_alliance_ids
+        from jsonb_array_elements_text(p_filters->'alliance') e
+        join alliance c on c.name = e;
     end if;
     if p_filters ? 'group_category' then
         select array_agg(lower(e::text)) into v_group_category
@@ -60,7 +60,7 @@ begin
     return (
     with filtered_groups as (
         select
-            g.community_id,
+            g.alliance_id,
             g.created_at,
             case
                 when v_sort_by = 'distance'
@@ -72,7 +72,7 @@ begin
             g.location,
             g.name
         from "group" g
-        join community c on c.community_id = g.community_id
+        join alliance c on c.alliance_id = g.alliance_id
         join group_category gc using (group_category_id)
         left join region r using (region_id)
         where c.active = true
@@ -82,8 +82,8 @@ begin
             case when v_bbox is not null then
             st_intersects(g.location, v_bbox) else true end
         and
-            case when v_community_ids is not null then
-            g.community_id = any(v_community_ids) else true end
+            case when v_alliance_ids is not null then
+            g.alliance_id = any(v_alliance_ids) else true end
         and
             case when cardinality(v_group_category) > 0 then
             gc.normalized_name = any(v_group_category) else true end
@@ -100,7 +100,7 @@ begin
     ),
     -- Select the requested page with the selected sort strategy
     filtered_groups_page as (
-        select community_id, group_id
+        select alliance_id, group_id
         from filtered_groups
         order by
             (case when v_sort_by = 'date' then created_at end) desc,
@@ -137,7 +137,7 @@ begin
         (
             -- Render paginated groups as summaries
             select coalesce(json_agg(
-                get_group_summary(community_id, group_id)
+                get_group_summary(alliance_id, group_id)
             ), '[]'::json)
             from filtered_groups_page
         ),

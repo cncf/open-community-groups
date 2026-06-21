@@ -3,7 +3,7 @@ import { expect, test } from "../../fixtures.js";
 import { navigateToPath } from "../../utils.js";
 
 const DASHBOARD_ROUTES = [
-  "/dashboard/community",
+  "/dashboard/alliance",
   "/dashboard/group",
   "/dashboard/user",
 ];
@@ -23,21 +23,21 @@ test.describe("dashboard home", () => {
   }
 
   test.describe("mobile experience @mobile", () => {
-    test("community dashboard shows the mobile unsupported state", async ({
-      adminCommunityPage,
+    test("alliance dashboard shows the mobile unsupported state", async ({
+      adminAlliancePage,
     }) => {
-      // Load the community dashboard on a mobile viewport.
+      // Load the alliance dashboard on a mobile viewport.
       await navigateToPath(
-        adminCommunityPage,
-        "/dashboard/community?tab=groups",
+        adminAlliancePage,
+        "/dashboard/alliance?tab=groups",
       );
 
-      // Verify community dashboard shows the mobile unsupported state.
+      // Verify alliance dashboard shows the mobile unsupported state.
       await expect(
-        adminCommunityPage.getByText(MOBILE_WARNING, { exact: true }),
+        adminAlliancePage.getByText(MOBILE_WARNING, { exact: true }),
       ).toBeVisible();
       await expect(
-        adminCommunityPage.locator("#dashboard-main-content"),
+        adminAlliancePage.locator("#dashboard-main-content"),
       ).toBeHidden();
     });
 

@@ -10,11 +10,11 @@ select plan(7);
 -- ============================================================================
 
 \set categoryID '00000000-0000-0000-0000-000000000001'
-\set communityID '00000000-0000-0000-0000-000000000001'
+\set allianceID '00000000-0000-0000-0000-000000000001'
 \set groupID '00000000-0000-0000-0000-000000000001'
 \set nonExistentUserID '00000000-0000-0000-0001-999999999999'
 \set userBothTeamsID '00000000-0000-0000-0001-000000000005'
-\set userCommunityOnlyID '00000000-0000-0000-0001-000000000004'
+\set userAllianceOnlyID '00000000-0000-0000-0001-000000000004'
 \set userGroupOnlyID '00000000-0000-0000-0001-000000000003'
 \set userNoTeamsID '00000000-0000-0000-0001-000000000002'
 \set userWithTeamsID '00000000-0000-0000-0001-000000000001'
@@ -23,9 +23,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -33,10 +33,10 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'Seattle community for cloud native technologies',
+    'Seattle alliance for cloud native technologies',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
@@ -70,18 +70,18 @@ insert into "user" (
 -- Group category
 insert into group_category (
     group_category_id,
-    community_id,
+    alliance_id,
     name
 ) values (
     :'categoryID'::uuid,
-    :'communityID',
+    :'allianceID',
     'Test Category'
 );
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -90,7 +90,7 @@ insert into "group" (
     logo_url
 ) values (
     :'categoryID'::uuid,
-    :'communityID',
+    :'allianceID',
     :'categoryID'::uuid,
     'Kubernetes Study Group',
     'kubernetes-study',
@@ -112,15 +112,15 @@ insert into group_team (
     true
 );
 
--- Community team membership
-insert into community_team (
+-- Alliance team membership
+insert into alliance_team (
     accepted,
-    community_id,
+    alliance_id,
     role,
     user_id
 ) values (
     true,
-    :'communityID',
+    :'allianceID',
     'admin',
     :'userWithTeamsID'
 );
@@ -171,7 +171,7 @@ insert into group_team (
     true
 );
 
--- User with community team only
+-- User with alliance team only
 insert into "user" (
     user_id,
     email,
@@ -180,24 +180,24 @@ insert into "user" (
     name,
     auth_hash
 ) values (
-    :'userCommunityOnlyID',
-    'communityonly@example.com',
-    'communityonlyuser',
+    :'userAllianceOnlyID',
+    'allianceonly@example.com',
+    'allianceonlyuser',
     true,
-    'Community Only User',
+    'Alliance Only User',
     'test_hash_4'
 );
 
-insert into community_team (
+insert into alliance_team (
     accepted,
-    community_id,
+    alliance_id,
     role,
     user_id
 ) values (
     true,
-    :'communityID',
+    :'allianceID',
     'admin',
-    :'userCommunityOnlyID'
+    :'userAllianceOnlyID'
 );
 
 -- User with both teams
@@ -229,14 +229,14 @@ insert into group_team (
     true
 );
 
-insert into community_team (
+insert into alliance_team (
     accepted,
-    community_id,
+    alliance_id,
     role,
     user_id
 ) values (
     true,
-    :'communityID',
+    :'allianceID',
     'admin',
     :'userBothTeamsID'
 );
@@ -251,7 +251,7 @@ select is(
     '{
         "auth_hash": "test_hash",
         "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
+        "belongs_to_alliance_team": true,
         "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
@@ -276,7 +276,7 @@ select is(
     '{
         "auth_hash": "test_hash",
         "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
+        "belongs_to_alliance_team": true,
         "bluesky_url": "https://bsky.app/profile/testuser",
         "email": "test@example.com",
         "email_verified": true,
@@ -309,7 +309,7 @@ select is(
     '{
         "auth_hash": "test_hash_2",
         "belongs_to_any_group_team": false,
-        "belongs_to_community_team": false,
+        "belongs_to_alliance_team": false,
         "email": "nogroups@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,
@@ -326,7 +326,7 @@ select is(
     '{
         "auth_hash": "test_hash_3",
         "belongs_to_any_group_team": true,
-        "belongs_to_community_team": false,
+        "belongs_to_alliance_team": false,
         "email": "grouponly@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,
@@ -337,21 +337,21 @@ select is(
     'Should return correct team flags when user is only in group team'
 );
 
--- Should return belongs_to_any_group_team true when user is in community team
+-- Should return belongs_to_any_group_team true when user is in alliance team
 select is(
-    get_user_by_id(:'userCommunityOnlyID'::uuid, false)::jsonb,
+    get_user_by_id(:'userAllianceOnlyID'::uuid, false)::jsonb,
     '{
         "auth_hash": "test_hash_4",
         "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
-        "email": "communityonly@example.com",
+        "belongs_to_alliance_team": true,
+        "email": "allianceonly@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,
-        "name": "Community Only User",
+        "name": "Alliance Only User",
         "user_id": "00000000-0000-0000-0001-000000000004",
-        "username": "communityonlyuser"
+        "username": "allianceonlyuser"
     }'::jsonb,
-    'Should return belongs_to_any_group_team true when user is in community team'
+    'Should return belongs_to_any_group_team true when user is in alliance team'
 );
 
 -- Should return both team flags true when user is in both teams
@@ -360,7 +360,7 @@ select is(
     '{
         "auth_hash": "test_hash_5",
         "belongs_to_any_group_team": true,
-        "belongs_to_community_team": true,
+        "belongs_to_alliance_team": true,
         "email": "both@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,

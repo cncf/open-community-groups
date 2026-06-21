@@ -33,7 +33,7 @@ describe("event-selector", () => {
   const renderSelector = async (properties = {}) => {
     return mountLitComponent("event-selector", {
       groupId: "group-1",
-      community: "cncf",
+      alliance: "goup",
       groupSlug: "platform-engineering",
       buttonId: "copy-event-trigger",
       ...properties,
