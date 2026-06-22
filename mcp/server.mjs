@@ -242,6 +242,8 @@ async function runAction(action, args) {
   switch (action) {
     case "create_event":
       return createEvent(args);
+    case "update_event":
+      return updateEvent(args);
     case "search_groups":
       return searchGroups(args);
     case "search_events":
@@ -621,6 +623,39 @@ from created;
   return output.trim();
 }
 
+async function updateEvent(args) {
+  if (!ENABLE_MUTATIONS) {
+    throw new Error("Mutating MCP tools are disabled. Set MCP_ENABLE_MUTATIONS=true to allow event updates.");
+  }
+
+  const event = buildEventPayload(args);
+  const eventJsonBase64 = Buffer.from(JSON.stringify(event), "utf8").toString("base64");
+  const actorUserId = requireUuid(args.actor_user_id, "actor_user_id");
+  const groupId = requireUuid(args.group_id, "group_id");
+  const eventId = requireUuid(args.event_id, "event_id");
+
+  const sql = `
+with updated as (
+  select update_event(
+    '${actorUserId}'::uuid,
+    '${groupId}'::uuid,
+    '${eventId}'::uuid,
+    convert_from(decode('${eventJsonBase64}', 'base64'), 'UTF8')::jsonb,
+    '{}'::jsonb
+  ) as promoted_user_ids
+)
+select json_build_object(
+  'event_id', '${eventId}',
+  'status', 'updated',
+  'promoted_user_ids', promoted_user_ids
+)::text
+from updated;
+`;
+
+  const output = await runPsql(sql);
+  return output.trim();
+}
+
 function buildSearchFilters(args) {
   const filters = {
     limit: normalizeLimit(args.limit),
@@ -726,6 +761,8 @@ function buildEventPayload(args) {
     attendee_approval_required: Boolean(args.attendee_approval_required),
     waitlist_enabled: Boolean(args.waitlist_enabled),
     test_event: Boolean(args.test_event),
+    banner_mobile_url: args.banner_mobile_url || "",
+    banner_url: args.banner_url || "",
     event_reminder_enabled: args.event_reminder_enabled ?? true,
     cfs_enabled: false,
     cfs_labels: [],
@@ -740,6 +777,7 @@ function buildEventPayload(args) {
     meeting_requested: false,
     meetup_url: args.meetup_url || "",
     luma_url: args.luma_url || "",
+    logo_url: args.logo_url || "",
     payment_currency_code: "",
     photos_urls: [],
     registration_questions: [],

@@ -114,6 +114,7 @@ through the standard `tools/list` method.
 - `goup_release_build_background`: build `ocg-server` in the background.
 - `goup_service_status`: inspect systemd logs and local HTTP status.
 - `goup_create_event`: create an unpublished draft event through `add_event`.
+- `goup_update_event`: update an existing event through `update_event`.
 - `goup_search_groups`: list or search groups.
 - `goup_search_events`: list or search events.
 - `goup_search_members`: list or search regular group members.
