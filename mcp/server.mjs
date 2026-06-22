@@ -399,7 +399,7 @@ async function searchGroups(args) {
     and (
       args.j->>'query' is null
       or concat_ws(' ', g.name, g.slug, g.slug_pretty, g.description, g.description_short, g.city, g.state, g.country_name, gc.name)
-         ilike '%' || args.j->>'query' || '%'
+         ilike '%' || (args.j->>'query') || '%'
     )
   order by lower(g.name), g.group_id
   limit (args.j->>'limit')::int
@@ -449,7 +449,7 @@ async function searchEvents(args) {
     and (
       args.j->>'query' is null
       or concat_ws(' ', e.name, e.slug, e.description, e.description_short, e.tags, e.venue_name, e.venue_city, ec.name, ek.display_name)
-         ilike '%' || args.j->>'query' || '%'
+         ilike '%' || (args.j->>'query') || '%'
     )
   order by e.starts_at nulls last, e.created_at desc, e.event_id
   limit (args.j->>'limit')::int
@@ -493,7 +493,7 @@ async function searchMembers(args) {
     and (
       args.j->>'query' is null
       or concat_ws(' ', u.email, u.username, u.name, u.title, u.company, u.city, u.country, u.linkedin_url, g.name)
-         ilike '%' || args.j->>'query' || '%'
+         ilike '%' || (args.j->>'query') || '%'
     )
   order by lower(coalesce(u.name, u.username)), u.user_id
   limit (args.j->>'limit')::int
@@ -543,7 +543,7 @@ async function searchTeams(args) {
     and (
       args.j->>'query' is null
       or concat_ws(' ', u.email, u.username, u.name, u.title, u.company, gt.role, g.name)
-         ilike '%' || args.j->>'query' || '%'
+         ilike '%' || (args.j->>'query') || '%'
     )
 ),
 alliance_rows as (
@@ -574,7 +574,7 @@ alliance_rows as (
     and (
       args.j->>'query' is null
       or concat_ws(' ', u.email, u.username, u.name, u.title, u.company, at.role, a.name)
-         ilike '%' || args.j->>'query' || '%'
+         ilike '%' || (args.j->>'query') || '%'
     )
 ),
 rows as (
