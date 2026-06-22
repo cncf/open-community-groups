@@ -37,6 +37,7 @@ members as (
         fg.group_category_id,
         fg.group_id,
         fg.region_id,
+        gm.user_id,
 
         timezone(
             'UTC',
@@ -49,6 +50,7 @@ events as (
     select
         e.event_category_id,
         e.event_id,
+        e.event_kind_id,
         e.group_id,
         e.starts_at,
         fg.group_category_id,
@@ -88,6 +90,8 @@ attendees as (
 ),
 jobs as (
     select
+        jj.expires_at,
+        jj.job_id,
         jj.created_at,
         timezone(
             'UTC',
@@ -121,6 +125,65 @@ landscape_open_source as (
     where a.active = true
       and le.published = true
       and le.kind = 'github_project'
+),
+job_applications as (
+    select ja.created_at, ja.job_id, ja.applicant_user_id
+    from jobs_application ja
+    join jobs_job jj on jj.job_id = ja.job_id
+),
+active_member_user_ids as (
+    select distinct m.user_id
+    from members m
+    where m.created_at >= current_timestamp - interval '90 days'
+
+    union
+
+    select distinct ea.user_id
+    from event_attendee ea
+    join events e on e.event_id = ea.event_id
+    where ea.status = 'confirmed'
+      and ea.created_at >= current_timestamp - interval '90 days'
+
+    union
+
+    select distinct ja.applicant_user_id
+    from job_applications ja
+    where ja.created_at >= current_timestamp - interval '90 days'
+),
+repeat_attendees as (
+    select ea.user_id
+    from event_attendee ea
+    join events e on e.event_id = ea.event_id
+    where ea.status = 'confirmed'
+    group by ea.user_id
+    having count(distinct ea.event_id) >= 2
+),
+linkedin_connected_members as (
+    select distinct m.user_id
+    from members m
+    join "user" u on u.user_id = m.user_id
+    where coalesce(u.provider ? 'linkedin', false)
+       or nullif(u.linkedin_url, '') is not null
+),
+event_kind_counts as (
+    select coalesce(ek.display_name, e.event_kind_id) as label, count(*)::int as count
+    from events e
+    join event_kind ek on ek.event_kind_id = e.event_kind_id
+    group by coalesce(ek.display_name, e.event_kind_id)
+),
+event_category_counts as (
+    select ec.name as label, count(*)::int as count
+    from events e
+    join event_category ec on ec.event_category_id = e.event_category_id
+    group by ec.name
+),
+landscape_category_counts as (
+    select coalesce(nullif(le.category, ''), 'Uncategorized') as label, count(*)::int as count
+    from landscape_entry le
+    join alliance a on a.alliance_id = le.alliance_id
+    where a.active = true
+      and le.published = true
+    group by coalesce(nullif(le.category, ''), 'Uncategorized')
 ),
 domain_running_total_counts as (
     select
@@ -199,6 +262,81 @@ domain_monthly_counts as (
     from domain_running_total_counts
 )
 select json_strip_nulls(json_build_object(
+    'summary', json_build_object(
+        'active_members', (select count(*)::int from active_member_user_ids),
+        'upcoming_events', (
+            select count(*)::int
+            from events e
+            where e.starts_at >= current_timestamp
+        ),
+        'active_jobs', (
+            select count(*)::int
+            from jobs j
+            where j.expires_at > current_timestamp
+        ),
+        'job_interests', (select count(*)::int from job_applications),
+        'landscape_entries', (
+            (select count(*)::int from landscape_startups)
+            + (select count(*)::int from landscape_open_source)
+        ),
+        'avg_attendees_per_event', coalesce((
+            select round(count(a.event_id)::numeric / nullif(count(distinct e.event_id), 0), 1)
+            from events e
+            left join attendees a on a.event_id = e.event_id
+        ), 0)
+    ),
+    'engagement', json_build_object(
+        'repeat_attendees', (select count(*)::int from repeat_attendees),
+        'linkedin_connected_members', (select count(*)::int from linkedin_connected_members),
+        'members_per_group_avg', coalesce((
+            select round(count(m.user_id)::numeric / nullif(count(distinct fg.group_id), 0), 1)
+            from filtered_groups fg
+            left join members m on m.group_id = fg.group_id
+        ), 0),
+        'events_per_group_avg', coalesce((
+            select round(count(e.event_id)::numeric / nullif(count(distinct fg.group_id), 0), 1)
+            from filtered_groups fg
+            left join events e on e.group_id = fg.group_id
+        ), 0)
+    ),
+    'event_breakdown', json_build_object(
+        'by_kind', coalesce((
+            select json_agg(json_build_array(label, count) order by count desc, label)
+            from event_kind_counts
+        ), '[]'::json),
+        'by_category', coalesce((
+            select json_agg(json_build_array(label, count) order by count desc, label)
+            from event_category_counts
+        ), '[]'::json)
+    ),
+    'jobs_overview', json_build_object(
+        'active', (
+            select count(*)::int
+            from jobs j
+            where j.expires_at > current_timestamp
+        ),
+        'expired', (
+            select count(*)::int
+            from jobs j
+            where j.expires_at <= current_timestamp
+        ),
+        'interests', (select count(*)::int from job_applications),
+        'avg_interests_per_job', coalesce((
+            select round(count(ja.job_id)::numeric / nullif(count(distinct j.job_id), 0), 1)
+            from jobs j
+            left join job_applications ja on ja.job_id = j.job_id
+        ), 0)
+    ),
+    'landscape_overview', json_build_object(
+        'entries', (
+            (select count(*)::int from landscape_startups)
+            + (select count(*)::int from landscape_open_source)
+        ),
+        'by_category', coalesce((
+            select json_agg(json_build_array(label, count) order by count desc, label)
+            from landscape_category_counts
+        ), '[]'::json)
+    ),
     'groups', json_build_object(
         'per_month', stats_label_count_series((
             select jsonb_agg(to_jsonb(counts))

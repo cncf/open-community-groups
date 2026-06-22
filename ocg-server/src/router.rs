@@ -224,6 +224,10 @@ pub(crate) async fn setup(
             put(auth::update_user_password),
         )
         .route(
+            "/dashboard",
+            get(|| async { Redirect::to("/dashboard/user") }),
+        )
+        .route(
             "/dashboard/jobs",
             get(crate::handlers::dashboard::jobs::page).post(crate::handlers::dashboard::jobs::add),
         )
