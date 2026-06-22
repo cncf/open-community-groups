@@ -338,6 +338,54 @@ Run with auto-reload when `watchexec` is installed:
 just server-watch
 ```
 
+### Run with Docker Compose
+
+If you prefer a containerized local setup, use the development compose file.
+It starts PostgreSQL with PostGIS, runs migrations, seeds the initial local
+data, and runs the Rust server with file watching enabled.
+
+Build and start the development stack:
+
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Run it in detached mode:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+Open the app at:
+
+```text
+http://127.0.0.1:9000
+```
+
+The development server watches the repository for changes and rebuilds on
+updates to:
+
+- Rust code under `ocg-server/` and `ocg-redirector/`
+- Askama templates under `ocg-server/templates/`
+- Frontend JavaScript under `ocg-server/static/js/`
+- CSS sources under `ocg-server/static/css/`
+- Local server config under `.config/ocg/server.yml`
+
+Useful compose commands:
+
+```bash
+docker compose -f docker-compose.dev.yml logs -f server
+docker compose -f docker-compose.dev.yml up -d --build seed server
+docker compose -f docker-compose.dev.yml down
+```
+
+The database data is stored in the named `postgres-data` volume, so it
+persists across restarts. To remove the containers and the database volume:
+
+```bash
+docker compose -f docker-compose.dev.yml down -v
+```
+
 Build without running:
 
 ```bash

@@ -1,0 +1,104 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: database/Dockerfile.dev
+    environment:
+      POSTGRES_DB: ocg
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ocg"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: database/migrations/Dockerfile
+    working_dir: /workspace/database/migrations
+    environment:
+      TERN_CONF: /workspace/.config/ocg/tern.conf
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+    command:
+      - sh
+      - -lc
+      - ./migrate.sh
+    restart: "no"
+
+  seed:
+    build:
+      context: .
+      dockerfile: database/Dockerfile.dev
+    environment:
+      PGPASSWORD: postgres
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - .:/workspace
+    command:
+      - sh
+      - -lc
+      - psql -h db -U postgres -d ocg -v ON_ERROR_STOP=1 -f /workspace/database/dev-seed.sql
+    restart: "no"
+
+  server:
+    build:
+      context: .
+      dockerfile: ocg-server/Dockerfile.dev
+    working_dir: /workspace
+    environment:
+      OCG_SERVER_CONFIG: /workspace/.config/ocg/server.yml
+      OCG_CONFIG: /workspace/.config/ocg
+      CARGO_TARGET_DIR: /cargo-target
+    depends_on:
+      db:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    ports:
+      - "9000:9000"
+    volumes:
+      - .:/workspace
+      - cargo-target:/cargo-target
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+    command:
+      - watchexec
+      - --restart
+      - --watch
+      - /workspace/Cargo.toml
+      - --watch
+      - /workspace/Cargo.lock
+      - --watch
+      - /workspace/ocg-server
+      - --watch
+      - /workspace/ocg-redirector
+      - --watch
+      - /workspace/.config/ocg/server.yml
+      - --
+      - cargo
+      - run
+      - -p
+      - ocg-server
+      - --
+      - -c
+      - /workspace/.config/ocg/server.yml
+
+volumes:
+  postgres-data:
+  cargo-target:
+  cargo-registry:
+  cargo-git:
