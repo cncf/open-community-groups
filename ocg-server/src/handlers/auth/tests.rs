@@ -807,6 +807,10 @@ async fn test_oauth2_callback_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
+    db.expect_get_alliance_id_by_name()
+        .times(1)
+        .withf(|name| name == "goup")
+        .returning(|_| Ok(None));
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
@@ -848,6 +852,39 @@ async fn test_oauth2_callback_success() {
     assert!(callback_auth.login_called);
     assert_eq!(selected_alliance_id, Some(alliance_id));
     assert_eq!(selected_group_id, Some(group_id));
+}
+
+#[tokio::test]
+async fn test_auto_join_linkedin_baku_chapter_joins_missing_member() {
+    // Setup identifiers
+    let alliance_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_alliance_id_by_name()
+        .times(1)
+        .withf(|name| name == "goup")
+        .returning(move |_| Ok(Some(alliance_id)));
+    db.expect_get_group_full_by_slug()
+        .times(1)
+        .withf(move |id, slug| *id == alliance_id && slug == "baku")
+        .returning(move |_, _| Ok(Some(sample_group_full(alliance_id, group_id))));
+    db.expect_is_group_member()
+        .times(1)
+        .withf(move |id, gid, uid| *id == alliance_id && *gid == group_id && *uid == user_id)
+        .returning(|_, _, _| Ok(false));
+    db.expect_join_group()
+        .times(1)
+        .withf(move |id, gid, uid| *id == alliance_id && *gid == group_id && *uid == user_id)
+        .returning(|_, _, _| Ok(()));
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    try_auto_join_linkedin_baku_chapter(&db, &user_id)
+        .await
+        .expect("auto-join should succeed");
 }
 
 #[tokio::test]
