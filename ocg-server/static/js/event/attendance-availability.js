@@ -165,8 +165,16 @@ const renderRegistrationWindowMessage = (availability) => {
   const message = getAvailabilityStringValue(availability?.registration_window_message);
 
   document.querySelectorAll("[data-registration-window-message-display]").forEach((node) => {
+    const container = node.closest("[data-registration-window-message-container]") || node;
+    const datePanel = node.closest("[data-registration-window-date-panel]");
     node.textContent = message;
-    setElementHidden(node, !message);
+    if (message) {
+      container.title = message;
+    } else {
+      container.removeAttribute("title");
+    }
+    datePanel?.classList?.toggle("justify-center", !message);
+    setElementHidden(container, !message);
   });
 };
 
