@@ -120,9 +120,25 @@ pub(crate) trait DBDashboardGroup {
         event_ids: &[Uuid],
     ) -> Result<()>;
 
+    /// Blocks a group member's LinkedIn account.
+    async fn block_group_member_linkedin(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
+
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
     async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
     -> Result<()>;
+
+    /// Deletes a regular group member from the group.
+    async fn delete_group_member(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
 
     /// Deletes event series events atomically.
     async fn delete_event_series_events(
@@ -561,6 +577,21 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::block_group_member_linkedin`]
+    #[instrument(skip(self), err)]
+    async fn block_group_member_linkedin(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select block_group_member_linkedin($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::delete_event`]
     #[instrument(skip(self), err)]
     async fn delete_event(
@@ -572,6 +603,21 @@ where
         self.execute(
             "select delete_event($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_group_member`]
+    #[instrument(skip(self), err)]
+    async fn delete_group_member(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select delete_group_member($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &user_id],
         )
         .await
     }

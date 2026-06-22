@@ -265,6 +265,19 @@ impl AuthnBackend {
 
     /// Get an existing external-auth user or sign them up.
     async fn get_or_sign_up_external_user(&self, user_summary: &UserSummary) -> Result<User> {
+        if let Some(linkedin_subject) = user_summary
+            .provider
+            .as_ref()
+            .and_then(|provider| provider.linkedin.as_ref())
+            .map(|linkedin| linkedin.subject.as_str())
+            && self
+                .db
+                .is_linkedin_subject_blocked(linkedin_subject)
+                .await?
+        {
+            bail!("linkedin account is blocked");
+        }
+
         if let Some(mut user) = self
             .db
             .get_user_by_email_for_external_auth(&user_summary.email)

@@ -210,6 +210,26 @@
                 LinkedIn connected
               </span>
             {% endif -%}
+            {% if can_manage_members -%}
+              {% if member.linkedin_connected -%}
+                <button type="button"
+                        class="btn-tertiary px-3 py-1.5 text-xs"
+                        hx-post="/dashboard/group/members/{{ member.user_id }}/linkedin-blocklist"
+                        hx-target="#dashboard-content"
+                        hx-indicator="#dashboard-spinner"
+                        hx-confirm="Block this LinkedIn account from signing in again?">
+                  Block LinkedIn
+                </button>
+              {% endif -%}
+              <button type="button"
+                      class="btn-tertiary px-3 py-1.5 text-xs"
+                      hx-delete="/dashboard/group/members/{{ member.user_id }}/delete"
+                      hx-target="#dashboard-content"
+                      hx-indicator="#dashboard-spinner"
+                      hx-confirm="Remove this member from the group?">
+                Remove
+              </button>
+            {% endif -%}
             <span class="ms-auto text-xs text-stone-400">{{ member.created_at.format("%b %d, %Y") }}</span>
             </div>
         </div>

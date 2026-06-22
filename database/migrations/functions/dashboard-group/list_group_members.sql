@@ -62,6 +62,7 @@ returns json as $$
         members as (
             select
                 extract(epoch from fm.created_at)::bigint as created_at,
+                fm.user_id,
                 fm.email,
                 fm.username,
 

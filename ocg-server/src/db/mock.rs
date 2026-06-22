@@ -56,6 +56,7 @@ mock! {
             username: &str,
         ) -> Result<Option<crate::auth::User>>;
         async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
+        async fn is_linkedin_subject_blocked(&self, linkedin_subject: &str) -> Result<bool>;
         async fn group_belongs_to_alliance(
             &self,
             alliance_id: &Uuid,
@@ -370,12 +371,24 @@ mock! {
             group_id: Uuid,
             event_ids: &[Uuid],
         ) -> Result<()>;
+        async fn block_group_member_linkedin(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn delete_event_series_events(
             &self,
             actor_user_id: Uuid,
             group_id: Uuid,
             event_ids: &[Uuid],
+        ) -> Result<()>;
+        async fn delete_group_member(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            user_id: Uuid,
         ) -> Result<()>;
         async fn delete_group_sponsor(
             &self,

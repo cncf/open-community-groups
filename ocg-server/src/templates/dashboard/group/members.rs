@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use uuid::Uuid;
 
 use crate::{
     templates::{dashboard, helpers::user_initials},
@@ -47,6 +48,8 @@ pub struct GroupMember {
     pub created_at: DateTime<Utc>,
     /// Email address.
     pub email: String,
+    /// User identifier.
+    pub user_id: Uuid,
     /// Username.
     pub username: String,
 

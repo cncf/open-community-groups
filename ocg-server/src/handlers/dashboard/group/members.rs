@@ -3,7 +3,7 @@
 use anyhow::Result;
 use askama::Template;
 use axum::{
-    extract::{RawQuery, State},
+    extract::{Path, RawQuery, State},
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
@@ -133,6 +133,39 @@ pub(crate) async fn send_group_custom_notification(
     .await?;
 
     Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+/// Removes a regular member from the selected group.
+#[instrument(skip_all, err)]
+pub(crate) async fn delete(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.delete_group_member(user.user_id, group_id, user_id).await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
+}
+
+/// Blocks a member's LinkedIn account from future LinkedIn signup/login.
+#[instrument(skip_all, err)]
+pub(crate) async fn block_linkedin(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.block_group_member_linkedin(user.user_id, group_id, user_id)
+        .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
 }
 
 // Types.

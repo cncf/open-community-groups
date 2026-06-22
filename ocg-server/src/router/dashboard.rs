@@ -365,6 +365,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     // Group member management endpoints
     let members_management = Router::new()
         .route(
+            "/members/{user_id}/delete",
+            delete(dashboard::group::members::delete),
+        )
+        .route(
+            "/members/{user_id}/linkedin-blocklist",
+            post(dashboard::group::members::block_linkedin),
+        )
+        .route(
             "/notifications",
             post(dashboard::group::members::send_group_custom_notification),
         )

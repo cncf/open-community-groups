@@ -303,6 +303,10 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
     let incoming_provider = sample_linkedin_user_provider();
     let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
 
+    db.expect_is_linkedin_subject_blocked()
+        .times(1)
+        .withf(|subject| subject == "test-user-linkedin-subject")
+        .returning(|_| Ok(false));
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
@@ -431,6 +435,10 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
     let activated_user = sample_user();
     let user_summary = sample_external_user_summary(Some(sample_linkedin_user_provider()));
 
+    db.expect_is_linkedin_subject_blocked()
+        .times(1)
+        .withf(|subject| subject == "test-user-linkedin-subject")
+        .returning(|_| Ok(false));
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
@@ -453,6 +461,32 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
 
     // Check result
     assert_eq!(user.registration_status, "registered");
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_rejects_blocked_linkedin_subject() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let user_summary = sample_external_user_summary(Some(sample_linkedin_user_provider()));
+
+    db.expect_is_linkedin_subject_blocked()
+        .times(1)
+        .withf(|subject| subject == "test-user-linkedin-subject")
+        .returning(|_| Ok(true));
+    db.expect_get_user_by_email_for_external_auth().times(0);
+    db.expect_update_user_provider().times(0);
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let err = backend
+        .get_or_sign_up_external_user(&user_summary)
+        .await
+        .unwrap_err();
+
+    // Check result
+    assert!(err.to_string().contains("linkedin account is blocked"));
 }
 
 #[tokio::test]

@@ -839,6 +839,7 @@ pub(crate) fn sample_group_member() -> GroupMember {
     GroupMember {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
         email: "member@example.test".to_string(),
+        user_id: Uuid::new_v4(),
         username: "member".to_string(),
 
         bio: Some("Builds alliance tooling.".to_string()),
