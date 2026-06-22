@@ -74,6 +74,15 @@ log:
 
 # Meetings providers configuration (multiple providers can be enabled simultaneously)
 meetings:
+  # Google Meet provider configuration (set enabled to true to enable)
+  googleMeet:
+    enabled: false
+    calendarId: primary
+    clientId: ""
+    clientSecret: ""
+    maxParticipants: 100
+    refreshToken: ""
+
   # Zoom provider configuration (set enabled to true to enable)
   zoom:
     enabled: false

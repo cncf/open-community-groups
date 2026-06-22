@@ -652,6 +652,11 @@ fn build_meetings_max_participants(
 ) -> HashMap<MeetingProvider, i32> {
     let mut map = HashMap::new();
     if let Some(cfg) = meetings_cfg
+        && let Some(google_meet) = &cfg.google_meet
+    {
+        map.insert(MeetingProvider::GoogleMeet, google_meet.max_participants);
+    }
+    if let Some(cfg) = meetings_cfg
         && let Some(zoom) = &cfg.zoom
     {
         map.insert(MeetingProvider::Zoom, zoom.max_participants);

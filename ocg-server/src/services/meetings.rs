@@ -20,6 +20,7 @@ use crate::{config::MeetingsZoomConfig, db::DynDB};
 #[cfg(test)]
 mod tests;
 
+pub(crate) mod google;
 pub(crate) mod zoom;
 
 /// Time after which claimed meeting processing requires manual review.
@@ -536,6 +537,7 @@ impl MeetingsSyncWorker {
     async fn assign_provider_host_user(&self, meeting: &Meeting) -> Result<Meeting, SyncError> {
         match meeting.provider {
             MeetingProvider::Zoom => self.assign_zoom_host_user(meeting).await,
+            MeetingProvider::GoogleMeet => Ok(meeting.clone()),
         }
     }
 
@@ -660,6 +662,9 @@ impl Meeting {
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum MeetingProvider {
+    #[serde(rename = "google_meet")]
+    #[strum(serialize = "google_meet")]
+    GoogleMeet,
     #[default]
     Zoom,
 }

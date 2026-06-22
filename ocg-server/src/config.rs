@@ -75,6 +75,12 @@ impl Config {
     /// Validate configuration consistency after loading from all sources.
     fn validate(&self) -> Result<()> {
         if let Some(meetings_cfg) = &self.meetings
+            && let Some(google_cfg) = &meetings_cfg.google_meet
+        {
+            google_cfg.validate()?;
+        }
+
+        if let Some(meetings_cfg) = &self.meetings
             && let Some(zoom_cfg) = &meetings_cfg.zoom
         {
             zoom_cfg.validate()?;
@@ -135,6 +141,8 @@ pub(crate) struct ImageStorageConfigS3 {
 /// Meetings configuration (multiple providers supported).
 #[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 pub(crate) struct MeetingsConfig {
+    /// Google Meet provider configuration.
+    pub google_meet: Option<MeetingsGoogleMeetConfig>,
     /// Zoom provider configuration.
     pub zoom: Option<MeetingsZoomConfig>,
 }
@@ -143,6 +151,55 @@ impl MeetingsConfig {
     /// Check if at least one meetings provider is enabled.
     pub(crate) fn meetings_enabled(&self) -> bool {
         self.zoom.as_ref().is_some_and(|z| z.enabled)
+            || self.google_meet.as_ref().is_some_and(|g| g.enabled)
+    }
+}
+
+/// Google Meet configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct MeetingsGoogleMeetConfig {
+    /// Google Calendar identifier where events with Meet links are created.
+    pub calendar_id: String,
+    /// OAuth client identifier.
+    pub client_id: String,
+    /// OAuth client secret.
+    pub client_secret: String,
+    /// Whether this provider is enabled.
+    pub enabled: bool,
+    /// Maximum number of participants allowed in a meeting.
+    pub max_participants: i32,
+    /// OAuth refresh token for the admin calendar account.
+    pub refresh_token: String,
+}
+
+impl MeetingsGoogleMeetConfig {
+    /// Validate Google Meet configuration.
+    fn validate(&self) -> Result<()> {
+        if !self.enabled {
+            return Ok(());
+        }
+
+        if self.calendar_id.trim().is_empty() {
+            bail!("meetings.google_meet.calendar_id cannot be empty when google_meet is enabled");
+        }
+
+        if self.client_id.trim().is_empty() {
+            bail!("meetings.google_meet.client_id cannot be empty when google_meet is enabled");
+        }
+
+        if self.client_secret.trim().is_empty() {
+            bail!("meetings.google_meet.client_secret cannot be empty when google_meet is enabled");
+        }
+
+        if self.refresh_token.trim().is_empty() {
+            bail!("meetings.google_meet.refresh_token cannot be empty when google_meet is enabled");
+        }
+
+        if self.max_participants < 1 {
+            bail!("meetings.google_meet.max_participants must be >= 1");
+        }
+
+        Ok(())
     }
 }
 

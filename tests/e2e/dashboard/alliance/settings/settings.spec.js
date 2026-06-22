@@ -118,9 +118,8 @@ test.describe("alliance dashboard settings view", () => {
       bannerMobileUrl:
         "/static/images/e2e/alliance-secondary-banner-mobile.svg",
       bannerUrl: "/static/images/e2e/alliance-secondary-banner.svg",
-      description:
-        "Updated platform engineering alliance details for settings coverage.",
-      displayName: `Platform Engineering Alliance ${Date.now()}`,
+      description: "Updated GOUP Alliance details for settings coverage.",
+      displayName: `GOUP Alliance ${Date.now()}`,
       logoUrl: "/static/images/e2e/alliance-secondary-logo.svg",
     };
 

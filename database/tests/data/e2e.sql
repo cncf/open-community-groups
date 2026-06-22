@@ -31,8 +31,8 @@ insert into alliance (
 ) values (
     '11111111-1111-1111-1111-111111111111',
     'e2e-test-alliance',
-    'Platform Engineering Alliance',
-    'Platform engineering alliance used for end-to-end coverage.',
+    'GOUP Alliance',
+    'GOUP Alliance used for end-to-end coverage.',
     '/static/images/e2e/alliance-primary-banner.svg',
     '/static/images/e2e/alliance-primary-banner-mobile.svg',
     '/static/images/e2e/alliance-primary-logo.svg'

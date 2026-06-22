@@ -27,12 +27,12 @@ export const TEST_REGISTRATION_QUESTIONS_EVENT = {
 };
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
-export const TEST_ALLIANCE_TITLE = "Platform Engineering Alliance";
+export const TEST_ALLIANCE_TITLE = "GOUP Alliance";
 export const TEST_ALLIANCE_TITLE_2 = "Developer Experience Alliance";
 
 /** Alliance details for assertions. */
 export const TEST_ALLIANCE_DESCRIPTION =
-  "Platform engineering alliance used for end-to-end coverage.";
+  "GOUP Alliance used for end-to-end coverage.";
 export const TEST_ALLIANCE_BANNER_URL =
   "/static/images/e2e/alliance-primary-banner.svg";
 export const TEST_ALLIANCE_BANNER_MOBILE_URL =

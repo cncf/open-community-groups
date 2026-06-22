@@ -46,6 +46,12 @@ SMTP_PASSWORD="${OCG_SMTP_PASSWORD:-}"
 EMAIL_FROM_ADDRESS="${OCG_EMAIL_FROM_ADDRESS:-no-reply@goup.vc}"
 EMAIL_FROM_NAME="${OCG_EMAIL_FROM_NAME:-GOUP Alliance}"
 ADMIN_EMAIL="${OCG_ADMIN_EMAIL:-}"
+GOOGLE_MEET_ENABLED="${OCG_GOOGLE_MEET_ENABLED:-false}"
+GOOGLE_MEET_CALENDAR_ID="${OCG_GOOGLE_MEET_CALENDAR_ID:-primary}"
+GOOGLE_MEET_CLIENT_ID="${OCG_GOOGLE_MEET_CLIENT_ID:-}"
+GOOGLE_MEET_CLIENT_SECRET="${OCG_GOOGLE_MEET_CLIENT_SECRET:-}"
+GOOGLE_MEET_REFRESH_TOKEN="${OCG_GOOGLE_MEET_REFRESH_TOKEN:-}"
+GOOGLE_MEET_MAX_PARTICIPANTS="${OCG_GOOGLE_MEET_MAX_PARTICIPANTS:-100}"
 
 usage() {
     cat <<'EOF'
@@ -63,6 +69,15 @@ Common optional environment:
   OCG_DB_NAME                  DB name. Default: ocg
   OCG_DB_USER                  DB user. Default: ocg
   OCG_ADMIN_EMAIL              Existing user email to grant alliance admin.
+  OCG_GOOGLE_MEET_ENABLED      Enable automatic Google Meet creation. Default: false
+  OCG_GOOGLE_MEET_CALENDAR_ID  Google Calendar ID. Default: primary
+  OCG_GOOGLE_MEET_CLIENT_ID    Google OAuth client ID.
+  OCG_GOOGLE_MEET_CLIENT_SECRET
+                               Google OAuth client secret.
+  OCG_GOOGLE_MEET_REFRESH_TOKEN
+                               Google OAuth refresh token.
+  OCG_GOOGLE_MEET_MAX_PARTICIPANTS
+                               Google Meet participant limit. Default: 100
   BOOTSTRAP_INSTALL_DEPS       Install missing EC2 dependencies. Default: true
   BOOTSTRAP_INSTALL_POSTGRES_SERVER
                                Also install local PostgreSQL/PostGIS packages when available.
@@ -339,6 +354,12 @@ require_cmd psql
 require_cmd tern
 
 log "Writing configuration"
+if [[ "$GOOGLE_MEET_ENABLED" == "true" ]]; then
+    [[ -n "$GOOGLE_MEET_CLIENT_ID" ]] || die "set OCG_GOOGLE_MEET_CLIENT_ID when OCG_GOOGLE_MEET_ENABLED=true"
+    [[ -n "$GOOGLE_MEET_CLIENT_SECRET" ]] || die "set OCG_GOOGLE_MEET_CLIENT_SECRET when OCG_GOOGLE_MEET_ENABLED=true"
+    [[ -n "$GOOGLE_MEET_REFRESH_TOKEN" ]] || die "set OCG_GOOGLE_MEET_REFRESH_TOKEN when OCG_GOOGLE_MEET_ENABLED=true"
+fi
+
 write_file_once "$TERN_CONFIG" 600 <<EOF
 [database]
 host = $DB_HOST
@@ -376,6 +397,16 @@ images:
 
 log:
   format: json
+
+meetings:
+  google_meet:
+    calendar_id: "$GOOGLE_MEET_CALENDAR_ID"
+    client_id: "$GOOGLE_MEET_CLIENT_ID"
+    client_secret: "$GOOGLE_MEET_CLIENT_SECRET"
+    enabled: $GOOGLE_MEET_ENABLED
+    max_participants: $GOOGLE_MEET_MAX_PARTICIPANTS
+    refresh_token: "$GOOGLE_MEET_REFRESH_TOKEN"
+  zoom: null
 
 server:
   addr: $SERVER_ADDR
