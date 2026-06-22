@@ -64,139 +64,154 @@
   </div>
 {% else -%}
   <div id="members-list"
-       class="grid grid-cols-1 gap-5 mb-8 xl:grid-cols-2"
+       class="grid grid-cols-1 gap-5 mb-8 xl:grid-cols-2 2xl:grid-cols-3"
        aria-label="Members list">
     {% for member in members -%}
-      <article class="bg-white border border-stone-200 rounded-xl shadow-sm p-5 flex flex-col gap-5">
-        <div class="flex items-start gap-4">
-          <logo-image
-          {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-          size="size-14" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
-          </logo-image>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="font-semibold text-stone-900 truncate">{{ member.name|assigned_or(member.username) }}</h3>
+      <article class="group overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-md">
+        <div class="h-1 bg-gradient-to-r from-primary-500 via-primary-300 to-stone-100"></div>
+        <div class="flex h-full flex-col gap-5 p-5">
+          <div class="flex items-start gap-4">
+            <div class="relative shrink-0">
+              <div class="rounded-2xl bg-stone-50 p-1 ring-1 ring-stone-200/80 transition-colors group-hover:ring-primary-200">
+                <logo-image
+                {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                size="size-16" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
+                </logo-image>
+              </div>
               {% if member.linkedin_connected -%}
-                <span class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">
-                  <div class="svg-icon size-3 icon-linkedin bg-primary-500"></div>
-                  LinkedIn
+                <span class="absolute -bottom-1 -right-1 inline-flex size-6 items-center justify-center rounded-full border-2 border-white bg-primary-600 shadow-sm"
+                      title="LinkedIn connected">
+                  <div class="svg-icon size-3.5 icon-linkedin bg-white"></div>
                 </span>
               {% endif -%}
             </div>
-            {% if member.name.is_some() -%}
-              <div class="text-xs text-stone-500 truncate">@{{ member.username }}</div>
-            {% endif -%}
-            <div class="mt-2 text-sm text-stone-700">
-              {{ member.title.as_deref()|assigned_or("Member") }}
-              {% if let Some(company) = &member.company -%}
-                <span class="text-stone-400">at</span> {{ company }}
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <h3 class="truncate text-lg font-semibold leading-6 text-stone-950">
+                    {{ member.name|assigned_or(member.username) }}
+                  </h3>
+                  <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-500">
+                    <span class="truncate">@{{ member.username }}</span>
+                    <span class="text-stone-300">•</span>
+                    <span>Joined {{ member.created_at.format("%b %Y") }}</span>
+                  </div>
+                </div>
+                {% if member.linkedin_connected -%}
+                  <span class="hidden shrink-0 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 sm:inline-flex">Verified</span>
+                {% endif -%}
+              </div>
+              <div class="mt-3 text-sm leading-5 text-stone-700">
+                <span class="font-medium text-stone-900">{{ member.title.as_deref()|assigned_or("Member") }}</span>
+                {% if let Some(company) = &member.company -%}
+                  <span class="text-stone-400"> at </span><span>{{ company }}</span>
+                {% endif -%}
+              </div>
+            </div>
+          </div>
+
+          {% if let Some(bio) = &member.bio -%}
+            <p class="line-clamp-3 text-sm leading-6 text-stone-600">{{ bio }}</p>
+          {% endif -%}
+
+          {% if let Some(interests) = &member.interests -%}
+            <div class="flex flex-wrap gap-2">
+              {% for interest in interests -%}
+                <span class="rounded-full bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-inset ring-stone-200">{{ interest }}</span>
+              {% endfor -%}
+            </div>
+          {% endif -%}
+
+          <div class="mt-auto rounded-2xl bg-stone-50/80 p-4 ring-1 ring-inset ring-stone-200/80">
+            <dl class="grid grid-cols-1 gap-3 text-sm">
+              <div class="min-w-0">
+                <dt class="text-[0.68rem] font-semibold uppercase tracking-wide text-stone-400">Email</dt>
+                <dd class="mt-1 truncate">
+                  <a class="font-medium text-primary-700 hover:text-primary-900"
+                     href="mailto:{{ member.email }}">{{ member.email }}</a>
+                </dd>
+              </div>
+              {% if member.city.is_some() || member.country.is_some() -%}
+                <div class="min-w-0">
+                  <dt class="text-[0.68rem] font-semibold uppercase tracking-wide text-stone-400">Location</dt>
+                  <dd class="mt-1 truncate text-stone-700">
+                    {% if let Some(city) = &member.city -%}
+                      {{ city }}{% if member.country.is_some() -%}, {% endif -%}
+                    {% endif -%}
+                    {% if let Some(country) = &member.country -%}
+                      {{ country }}
+                    {% endif -%}
+                  </dd>
+                </div>
               {% endif -%}
+              {% if let Some(website_url) = &member.website_url -%}
+                <div class="min-w-0">
+                  <dt class="text-[0.68rem] font-semibold uppercase tracking-wide text-stone-400">Website</dt>
+                  <dd class="mt-1 truncate">
+                    <a class="font-medium text-primary-700 hover:text-primary-900"
+                       href="{{ website_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer">{{ website_url }}</a>
+                  </dd>
+                </div>
+              {% endif -%}
+            </dl>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4">
+            {% if let Some(linkedin_url) = &member.linkedin_url -%}
+              <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-primary-50 hover:ring-primary-200"
+                 href="{{ linkedin_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="LinkedIn profile">
+                <div class="svg-icon size-4 icon-linkedin bg-primary-600"></div>
+              </a>
+            {% endif -%}
+            {% if let Some(github_url) = &member.github_url -%}
+              <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+                 href="{{ github_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="GitHub">
+                <div class="svg-icon size-4 icon-github bg-stone-700"></div>
+              </a>
+            {% endif -%}
+            {% if let Some(bluesky_url) = &member.bluesky_url -%}
+              <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-primary-50 hover:ring-primary-200"
+                 href="{{ bluesky_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="Bluesky">
+                <div class="svg-icon size-4 icon-bluesky bg-primary-600"></div>
+              </a>
+            {% endif -%}
+            {% if let Some(twitter_url) = &member.twitter_url -%}
+              <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+                 href="{{ twitter_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="X">
+                <div class="svg-icon size-4 icon-twitter bg-stone-700"></div>
+              </a>
+            {% endif -%}
+            {% if let Some(facebook_url) = &member.facebook_url -%}
+              <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-primary-50 hover:ring-primary-200"
+                 href="{{ facebook_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="Facebook">
+                <div class="svg-icon size-4 icon-facebook bg-primary-600"></div>
+              </a>
+            {% endif -%}
+            {% if member.linkedin_connected && member.linkedin_url.is_none() -%}
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700">
+                <div class="svg-icon size-3.5 icon-linkedin bg-primary-600"></div>
+                LinkedIn connected
+              </span>
+            {% endif -%}
+            <span class="ms-auto text-xs text-stone-400">{{ member.created_at.format("%b %d, %Y") }}</span>
             </div>
-          </div>
-        </div>
-
-        {% if let Some(bio) = &member.bio -%}
-          <p class="text-sm text-stone-600 leading-6">{{ bio }}</p>
-        {% endif -%}
-
-        {% if let Some(interests) = &member.interests -%}
-          <div class="flex flex-wrap gap-2">
-            {% for interest in interests -%}
-              <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ interest }}</span>
-            {% endfor -%}
-          </div>
-        {% endif -%}
-
-        <dl class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-          <div>
-            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Email</dt>
-            <dd class="mt-1 truncate">
-              <a class="font-medium text-primary-600 hover:text-primary-800"
-                 href="mailto:{{ member.email }}">{{ member.email }}</a>
-            </dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Joined</dt>
-            <dd class="mt-1 text-stone-700">{{ member.created_at.format("%b %d, %Y") }}</dd>
-          </div>
-          {% if member.city.is_some() || member.country.is_some() -%}
-            <div>
-              <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Location</dt>
-              <dd class="mt-1 text-stone-700 truncate">
-                {% if let Some(city) = &member.city -%}
-                  {{ city }}{% if member.country.is_some() -%}, {% endif -%}
-                {% endif -%}
-                {% if let Some(country) = &member.country -%}
-                  {{ country }}
-                {% endif -%}
-              </dd>
-            </div>
-          {% endif -%}
-          {% if let Some(website_url) = &member.website_url -%}
-            <div>
-              <dt class="text-xs font-medium uppercase tracking-wide text-stone-400">Website</dt>
-              <dd class="mt-1 truncate">
-                <a class="text-primary-600 hover:text-primary-800"
-                   href="{{ website_url }}"
-                   target="_blank"
-                   rel="noopener noreferrer">{{ website_url }}</a>
-              </dd>
-            </div>
-          {% endif -%}
-        </dl>
-
-        <div class="flex flex-wrap gap-2 pt-1">
-          {% if let Some(linkedin_url) = &member.linkedin_url -%}
-            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
-               href="{{ linkedin_url }}"
-               target="_blank"
-               rel="noopener noreferrer">
-              <div class="svg-icon size-3.5 icon-linkedin bg-primary-500"></div>
-              LinkedIn profile
-            </a>
-          {% endif -%}
-          {% if let Some(github_url) = &member.github_url -%}
-            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
-               href="{{ github_url }}"
-               target="_blank"
-               rel="noopener noreferrer">
-              <div class="svg-icon size-3.5 icon-github bg-stone-600"></div>
-              GitHub
-            </a>
-          {% endif -%}
-          {% if let Some(bluesky_url) = &member.bluesky_url -%}
-            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
-               href="{{ bluesky_url }}"
-               target="_blank"
-               rel="noopener noreferrer">
-              <div class="svg-icon size-3.5 icon-bluesky bg-primary-500"></div>
-              Bluesky
-            </a>
-          {% endif -%}
-          {% if let Some(twitter_url) = &member.twitter_url -%}
-            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
-               href="{{ twitter_url }}"
-               target="_blank"
-               rel="noopener noreferrer">
-              <div class="svg-icon size-3.5 icon-twitter bg-stone-600"></div>
-              X
-            </a>
-          {% endif -%}
-          {% if let Some(facebook_url) = &member.facebook_url -%}
-            <a class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-700 hover:border-primary-300 hover:text-primary-700"
-               href="{{ facebook_url }}"
-               target="_blank"
-               rel="noopener noreferrer">
-              <div class="svg-icon size-3.5 icon-facebook bg-primary-500"></div>
-              Facebook
-            </a>
-          {% endif -%}
-          {% if member.linkedin_connected && member.linkedin_url.is_none() -%}
-            <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1 text-xs font-medium text-stone-600">
-              <div class="svg-icon size-3.5 icon-linkedin bg-primary-500"></div>
-              LinkedIn connected
-            </span>
-          {% endif -%}
         </div>
       </article>
     {% endfor -%}
