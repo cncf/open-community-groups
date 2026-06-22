@@ -8,12 +8,14 @@ insert into site (
     site_id,
     title,
     description,
-    theme
+    theme,
+    favicon_url
 ) values (
     '00000000-0000-0000-0000-000000000000',
     'GOUP Alliance',
     'GOUP Alliance',
-    '{"primary_color": "#0EA5E9"}'::jsonb
+    '{"primary_color": "#0EA5E9"}'::jsonb,
+    '/static/images/favicon.png'
 );
 
 -- ============================================================================
