@@ -92,6 +92,10 @@ Helpful details:
 
 - The RSVP button may take a moment to update after the page loads.
 - RSVP actions are available only before the event start time.
+- If organizers configured a registration window, the event page shows when registration opens or
+  closes. RSVP, starting ticket checkout, invitation requests, waitlist joining, and
+  registration-question answers are disabled outside that window. If you already have an active
+  ticket hold, you can complete payment and required registration questions until the hold expires.
 - Canceling RSVP is immediate through `Cancel attendance`.
 - After RSVP, OCG sends a confirmation message with a calendar file attached.
 - If organizers configured registration questions, clicking `Attend event` or `Buy ticket` opens
@@ -111,10 +115,13 @@ When an event has a capacity limit, the button behavior depends on organizer set
 - Logged-out visitors are asked to sign in before they can RSVP or join the waitlist.
 - If you later leave the waitlist, that change is immediate.
 - If a seat opens because someone leaves, capacity increases, or organizers remove the capacity
-  limit, OCG can promote you automatically and send a promotion notification.
-- If organizers remove the capacity limit entirely, everyone still on the waitlist is promoted.
+  limit, OCG can promote you automatically while registration is open and send a promotion
+  notification.
+- If organizers remove the capacity limit entirely, everyone still on the waitlist is promoted
+  while registration is open.
 - If a waitlist promotion or organizer invitation requires registration questions, finish them from
   `My Events` before your registration is complete.
+- Organizer invitations can still be completed outside the public registration window.
 
 For invitation-review events:
 

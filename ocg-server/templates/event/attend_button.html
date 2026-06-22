@@ -6,6 +6,13 @@
      data-attendance-container
      data-canceled="{{ event.canceled }}"
      data-is-ticketed="{{ event.is_ticketed() }}"
+     data-registration-window-open="{{ event.registration_window_is_open() }}"
+     {% if let Some(registration_window_message) = event.registration_window_message() %}
+       data-registration-window-message="{{ registration_window_message }}"
+     {% endif %}
+     {% if let Some(registration_window_title) = event.registration_window_unavailable_title() %}
+       data-registration-window-unavailable-title="{{ registration_window_title }}"
+     {% endif %}
      data-ticket-purchase-available="{{ event.has_sellable_ticket_types() }}"
      data-availability-url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}/availability"
      data-attendee-approval-required="{{ event.attendee_approval_required }}"
@@ -247,10 +254,10 @@
                                  name="event_ticket_type_id"
                                  value="{{ ticket_type.event_ticket_type_id }}"
                                  class="sr-only"
-                                 {% if !ticket_type.is_sellable_now() %}disabled{% endif %}>
+                                 {% if !ticket_type.is_sellable_now() || !event.registration_window_is_open() %}disabled{% endif %}>
                           <div data-attendance-role="ticket-type-card-body"
                                class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200
-                                      {% if ticket_type.is_sellable_now() %}
+                                      {% if ticket_type.is_sellable_now() && event.registration_window_is_open() %}
                                         bg-white cursor-pointer hover:border-primary-300
                                       {% else %}
                                         bg-stone-50 cursor-not-allowed opacity-60
@@ -287,7 +294,7 @@
                                         class="inline-flex h-2 w-2 rounded-full bg-red-500"></span>
                                   <span data-attendance-role="ticket-type-status-label"
                                         class="text-stone-500">Sold out</span>
-                                {% else if ticket_type.is_sellable_now() -%}
+                                {% else if ticket_type.is_sellable_now() && event.registration_window_is_open() -%}
                                   <span data-attendance-role="ticket-type-status-dot"
                                         class="inline-flex h-2 w-2 rounded-full bg-green-500"></span>
                                   {% if let Some(current_price) = &ticket_type.current_price -%}
@@ -309,7 +316,13 @@
                                   <span data-attendance-role="ticket-type-status-dot"
                                         class="inline-flex h-2 w-2 rounded-full bg-stone-300"></span>
                                   <span data-attendance-role="ticket-type-status-label"
-                                        class="text-stone-500">Not on sale</span>
+                                        class="text-stone-500">
+                                    {% if event.registration_window_is_open() -%}
+                                      Not on sale
+                                    {% else -%}
+                                      Registration not open
+                                    {% endif -%}
+                                  </span>
                                 {% endif -%}
                               </div>
                             </div>
@@ -330,7 +343,7 @@
                                maxlength="{{ crate::validation::MAX_LEN_S }}"
                                class="input-primary"
                                placeholder="Discount code"
-                               {% if event.sellable_ticket_types().is_empty() %}disabled{% endif %}>
+                               {% if event.sellable_ticket_types().is_empty() || !event.registration_window_is_open() %}disabled{% endif %}>
                       </div>
                     </div>
                   </div>
@@ -349,8 +362,10 @@
                           data-attendance-role="checkout-btn"
                           type="submit"
                           class="btn-primary relative inline-flex items-center justify-center
-                                 {% if event.sellable_ticket_types().is_empty() %}opacity-50 cursor-not-allowed{% endif %}"
-                          {% if event.sellable_ticket_types().is_empty() %}disabled{% endif %}>
+                                 {% if event.sellable_ticket_types().is_empty() || !event.registration_window_is_open() %}
+                                   opacity-50 cursor-not-allowed
+                                 {% endif %}"
+                          {% if event.sellable_ticket_types().is_empty() || !event.registration_window_is_open() %}disabled{% endif %}>
                     <span data-attendance-role="checkout-btn-spinner"
                           class="absolute inset-0 hidden items-center justify-center">{{ ui::spinner(size = "size-4") -}}</span>
                     <span data-attendance-role="checkout-btn-label">Continue to payment</span>

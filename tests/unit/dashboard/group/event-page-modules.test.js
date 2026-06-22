@@ -29,6 +29,8 @@ const sharedEventFormsMarkup = () => `
   <form id="cfs-form"></form>
   <input id="starts_at" />
   <input id="ends_at" />
+  <input id="registration_starts_at" />
+  <input id="registration_ends_at" />
   <input id="toggle_registration_required" type="checkbox" />
   <input id="registration_required" type="hidden" value="false" />
   <input id="toggle_test_event" type="checkbox" />
@@ -56,8 +58,10 @@ const mountAddPageShell = () => {
       <button id="add-event-button" type="button"></button>
       <button id="cancel-button" type="button"></button>
       <button data-section="details" data-active="true" class="active">Details</button>
+      <button data-section="date-venue" data-active="false">Date & Venue</button>
       <button data-section="sessions" data-active="false">Sessions</button>
       <section data-content="details"></section>
+      <section data-content="date-venue" class="hidden"></section>
       <section data-content="sessions" class="hidden"></section>
     </div>
   `;
@@ -77,9 +81,11 @@ const mountUpdatePageShell = ({
          data-can-manage-events="${String(canManageEvents)}">
       ${sharedEventFormsMarkup()}
       <button data-section="details" data-active="true" class="active">Details</button>
+      <button data-section="date-venue" data-active="false">Date & Venue</button>
       <button data-section="submissions" data-active="false">Submissions</button>
       <button data-section="attendees" data-active="false">Attendees</button>
       <section data-content="details"></section>
+      <section data-content="date-venue" class="hidden"></section>
       <section data-content="submissions" class="hidden"></section>
       <section data-content="attendees" class="hidden"></section>
       <div class="inert-form" inert></div>
@@ -217,6 +223,8 @@ describe("event page modules", () => {
         parameters: {
           starts_at: "2026-05-10T09:30",
           ends_at: "2026-05-10T11:00",
+          registration_starts_at: "2026-04-10T09:30",
+          registration_ends_at: "2026-05-09T18:00",
           "sessions[0][starts_at]": "2026-05-10T10:00",
         },
       },
@@ -232,9 +240,171 @@ describe("event page modules", () => {
     expect(requestEvent.detail.parameters.ends_at).to.equal(
       "2026-05-10T11:00:00",
     );
+    expect(requestEvent.detail.parameters.registration_starts_at).to.equal(
+      "2026-04-10T09:30:00",
+    );
+    expect(requestEvent.detail.parameters.registration_ends_at).to.equal(
+      "2026-05-09T18:00:00",
+    );
     expect(requestEvent.detail.parameters["sessions[0][starts_at]"]).to.equal(
       "2026-05-10T10:00:00",
     );
+  });
+
+  it("allows registration close dates without an event start", async () => {
+    // Mount the add page shell.
+    mountAddPageShell();
+
+    // Configure a close-only registration window for a dateless event.
+    const startsAt = document.getElementById("starts_at");
+    const registrationEndsAt = document.getElementById("registration_ends_at");
+    registrationEndsAt.value = "2099-05-10T10:00";
+
+    const reportCalls = [];
+    startsAt.reportValidity = () => {
+      reportCalls.push(startsAt.validationMessage);
+      return false;
+    };
+    registrationEndsAt.reportValidity = () => {
+      reportCalls.push(registrationEndsAt.validationMessage);
+      return false;
+    };
+
+    // Initialize and dispatch the save request.
+    initializeEventAddPage();
+    const requestEvent = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        elt: document.getElementById("add-event-button"),
+      },
+    });
+    document.getElementById("add-event-button").dispatchEvent(requestEvent);
+    await waitForAnimationFrames(1);
+    await waitForMicrotask();
+
+    // Close-only windows are valid for dateless events.
+    expect(requestEvent.defaultPrevented).to.equal(false);
+    expect(reportCalls).to.deep.equal([]);
+  });
+
+  it("blocks registration close dates after the event start", async () => {
+    // Mount the add page shell.
+    mountAddPageShell();
+
+    // Configure an event start with a later registration close.
+    document.getElementById("starts_at").value = "2099-05-10T09:30";
+    const registrationEndsAt = document.getElementById("registration_ends_at");
+    registrationEndsAt.value = "2099-05-10T10:00";
+
+    const reportCalls = [];
+    registrationEndsAt.reportValidity = () => {
+      reportCalls.push(registrationEndsAt.validationMessage);
+      return false;
+    };
+
+    // Initialize and dispatch the save request.
+    initializeEventAddPage();
+    const requestEvent = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        elt: document.getElementById("add-event-button"),
+      },
+    });
+    document.getElementById("add-event-button").dispatchEvent(requestEvent);
+    await waitForAnimationFrames(1);
+    await waitForMicrotask();
+
+    // Registration cannot close after the event starts.
+    expect(requestEvent.defaultPrevented).to.equal(true);
+    expect(reportCalls).to.deep.equal([
+      "Registration close date cannot be after the event start date.",
+    ]);
+    expect(
+      document
+        .querySelector('[data-section="date-venue"]')
+        .classList.contains("active"),
+    ).to.equal(true);
+  });
+
+  it("blocks open-only registration windows that open after the event start", async () => {
+    // Mount the add page shell.
+    mountAddPageShell();
+
+    // Configure an event start with a later registration open and no close.
+    document.getElementById("starts_at").value = "2099-05-10T09:30";
+    const registrationStartsAt = document.getElementById(
+      "registration_starts_at",
+    );
+    registrationStartsAt.value = "2099-05-10T10:00";
+
+    const reportCalls = [];
+    registrationStartsAt.reportValidity = () => {
+      reportCalls.push(registrationStartsAt.validationMessage);
+      return false;
+    };
+
+    // Initialize and dispatch the save request.
+    initializeEventAddPage();
+    const requestEvent = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        elt: document.getElementById("add-event-button"),
+      },
+    });
+    document.getElementById("add-event-button").dispatchEvent(requestEvent);
+    await waitForAnimationFrames(1);
+    await waitForMicrotask();
+
+    // Registration cannot open after the implicit close at event start.
+    expect(requestEvent.defaultPrevented).to.equal(true);
+    expect(reportCalls).to.deep.equal([
+      "Registration open date cannot be after the event start date.",
+    ]);
+    expect(
+      document
+        .querySelector('[data-section="date-venue"]')
+        .classList.contains("active"),
+    ).to.equal(true);
+  });
+
+  it("blocks registration open dates on or after registration close dates", async () => {
+    // Mount the add page shell.
+    mountAddPageShell();
+
+    // Configure a zero-length registration window before the event start.
+    document.getElementById("starts_at").value = "2099-05-10T09:30";
+    document.getElementById("registration_starts_at").value =
+      "2099-05-09T12:00";
+    const registrationEndsAt = document.getElementById("registration_ends_at");
+    registrationEndsAt.value = "2099-05-09T12:00";
+
+    const reportCalls = [];
+    registrationEndsAt.reportValidity = () => {
+      reportCalls.push(registrationEndsAt.validationMessage);
+      return false;
+    };
+
+    // Initialize and dispatch the save request.
+    initializeEventAddPage();
+    const requestEvent = new CustomEvent("htmx:beforeRequest", {
+      bubbles: true,
+      cancelable: true,
+      detail: {
+        elt: document.getElementById("add-event-button"),
+      },
+    });
+    document.getElementById("add-event-button").dispatchEvent(requestEvent);
+    await waitForAnimationFrames(1);
+    await waitForMicrotask();
+
+    // Registration open must be before registration close.
+    expect(requestEvent.defaultPrevented).to.equal(true);
+    expect(reportCalls).to.deep.equal([
+      "Registration close date must be after registration open date.",
+    ]);
   });
 
   it("reports the first invalid add page select when saving", async () => {

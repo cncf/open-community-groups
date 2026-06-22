@@ -8,9 +8,12 @@ declare
     v_attendee_count int;
     v_available_slots int;
     v_capacity int;
-    v_promoted_user_ids uuid[] := '{}';
-    v_registration_questions jsonb;
     v_has_registration_questions boolean;
+    v_promoted_user_ids uuid[] := '{}';
+    v_registration_ends_at timestamptz;
+    v_registration_questions jsonb;
+    v_registration_starts_at timestamptz;
+    v_starts_at timestamptz;
     v_waitlist_entry record;
     v_waitlist_count int;
 begin
@@ -22,15 +25,30 @@ begin
     -- Lock event row and load capacity and registration question configuration
     select
         e.capacity,
-        e.registration_questions
+        e.registration_ends_at,
+        e.registration_questions,
+        e.registration_starts_at,
+        e.starts_at
     into
         v_capacity,
-        v_registration_questions
+        v_registration_ends_at,
+        v_registration_questions,
+        v_registration_starts_at,
+        v_starts_at
     from event e
     where e.event_id = p_event_id
     for update of e;
 
     if not found then
+        return array[]::uuid[];
+    end if;
+
+    -- Stop automatic promotion outside the public registration window
+    if not is_registration_window_open(
+        v_registration_starts_at,
+        v_registration_ends_at,
+        v_starts_at
+    ) then
         return array[]::uuid[];
     end if;
 

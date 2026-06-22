@@ -37,7 +37,19 @@ If organizers did not enable a waitlist, the event is sold out.
 
 If organizers enabled a waitlist, you can join it from the event page and may be promoted
 automatically if someone leaves, capacity increases, or organizers remove the
-capacity limit later.
+capacity limit later while registration is open.
+
+## Why Is Registration Disabled?
+
+Organizers may configure a registration window. Before it opens and after it closes, RSVP,
+starting ticket checkout, invitation requests, waitlist joining, and registration-question answers
+are disabled. The event page shows the open or close time when a window is configured.
+
+If you started checkout before registration closed, the active ticket hold can still be completed
+until it expires.
+
+Organizer-created manual invitations are an exception. If organizers invite you directly, you can
+accept and answer required registration questions outside the public registration window.
 
 ## How Do Refunds Work For Paid Events?
 

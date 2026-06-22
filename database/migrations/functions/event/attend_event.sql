@@ -8,13 +8,18 @@ create or replace function attend_event(
 declare
     v_attendee_approval_required boolean;
     v_attendee_count int;
+    v_attendee_manually_invited boolean;
     v_attendee_status text;
     v_capacity int;
     v_group_id uuid;
     v_has_registration_questions boolean;
     v_invitation_request_status text;
     v_registration_answers jsonb;
+    v_registration_ends_at timestamptz;
     v_registration_questions jsonb;
+    v_registration_starts_at timestamptz;
+    v_registration_window_open boolean;
+    v_starts_at timestamptz;
     v_waitlist_enabled boolean;
 begin
     -- Check if event exists in the community, is active and can be attended
@@ -22,13 +27,19 @@ begin
         e.attendee_approval_required,
         e.capacity,
         e.group_id,
+        e.registration_ends_at,
         e.registration_questions,
+        e.registration_starts_at,
+        e.starts_at,
         e.waitlist_enabled
     into
         v_attendee_approval_required,
         v_capacity,
         v_group_id,
+        v_registration_ends_at,
         v_registration_questions,
+        v_registration_starts_at,
+        v_starts_at,
         v_waitlist_enabled
     from event e
     join "group" g on g.group_id = e.group_id
@@ -50,9 +61,19 @@ begin
     -- Track question requirements so waitlist joins can skip answer validation
     -- until promotion, while attendee and invitation paths still enforce answers.
     v_has_registration_questions := jsonb_array_length(coalesce(v_registration_questions, '[]'::jsonb)) > 0;
+    v_registration_window_open := is_registration_window_open(
+        v_registration_starts_at,
+        v_registration_ends_at,
+        v_starts_at
+    );
 
     -- Lock any existing attendee lifecycle row before deciding the RSVP path
-    select ea.status into v_attendee_status
+    select
+        ea.manually_invited,
+        ea.status
+    into
+        v_attendee_manually_invited,
+        v_attendee_status
     from event_attendee ea
     where ea.event_id = p_event_id
     and ea.user_id = p_user_id
@@ -69,6 +90,12 @@ begin
         'invitation-rejected',
         'registration-questions-pending'
     ) then
+        -- Only manual invitation rows can be accepted after public registration closes
+        if not coalesce(v_attendee_manually_invited, false)
+           and not v_registration_window_open then
+            raise exception 'event registration is not open';
+        end if;
+
         -- These lifecycle rows confirm attendance, so validate answers here
         if v_has_registration_questions then
             perform validate_questionnaire_answers_payload(v_registration_questions, p_registration_answers);
@@ -96,6 +123,11 @@ begin
         );
 
         return 'attendee';
+    end if;
+
+    -- New self-service attendance paths must start while public registration is open
+    if not v_registration_window_open then
+        raise exception 'event registration is not open';
     end if;
 
     -- Route approval-required events through the invitation request flow

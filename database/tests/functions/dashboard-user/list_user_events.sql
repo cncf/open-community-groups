@@ -701,11 +701,30 @@ select is(
     'Should return empty result for users without events'
 );
 
--- Should include pending registration events in the user dashboard
+-- Should include manually invited pending registration events in the user dashboard
 select is(
-    list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb #>> '{events,0,attendance_status}',
-    'registration-questions-pending',
-    'Should include pending registration events in the user dashboard'
+    (
+        list_user_events(:'questionsInvitedUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
+        -> 'events'
+        -> 0
+    ) - 'event',
+    jsonb_build_object(
+        'attendance_status',
+        'registration-questions-pending',
+        'has_paid_purchase',
+        false,
+        'manually_invited',
+        true,
+        'registration_answers',
+        null,
+        'registration_questions',
+        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
+        'resume_checkout_url',
+        null,
+        'roles',
+        jsonb_build_array('attendee')
+    ),
+    'Should include manually invited pending registration events in the user dashboard'
 );
 
 -- Should return registration questions for pending users
@@ -720,16 +739,31 @@ select is(
     'Should return registration questions for pending users'
 );
 
--- Should return registration questions for confirmed attendees
+-- Should return registration questions and answers for confirmed attendees
 select is(
-    jsonb_array_length(
+    (
         list_user_events(:'questionsAttendeeUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
         -> 'events'
         -> 0
-        -> 'registration_questions'
-    )::text,
-    '1',
-    'Should return registration questions for confirmed attendees'
+    ) - 'event',
+    jsonb_build_object(
+        'attendance_status',
+        'attendee',
+        'has_paid_purchase',
+        false,
+        'registration_answers',
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Attendee answer"}]}',
+            :'registrationQuestionID'
+        )::jsonb,
+        'registration_questions',
+        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
+        'resume_checkout_url',
+        null,
+        'roles',
+        jsonb_build_array('attendee')
+    ),
+    'Should return registration questions and answers for confirmed attendees'
 );
 
 -- Should report active pending checkout before pending registration questions
@@ -738,12 +772,19 @@ select is(
         list_user_events(:'questionsCheckoutUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
         -> 'events'
         -> 0
-    ) - 'event' - 'registration_answers' - 'registration_questions',
+    ) - 'event',
     jsonb_build_object(
         'attendance_status',
         'pending-payment',
         'has_paid_purchase',
         false,
+        'registration_answers',
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Checkout answer"}]}',
+            :'registrationQuestionID'
+        )::jsonb,
+        'registration_questions',
+        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
         'resume_checkout_url',
         'https://example.test/checkout/resume',
         'roles',
@@ -758,12 +799,19 @@ select is(
         list_user_events(:'questionsCheckoutExpiredUserID'::uuid, '{"limit": 10, "offset": 0}'::jsonb)::jsonb
         -> 'events'
         -> 0
-    ) - 'event' - 'registration_answers' - 'registration_questions',
+    ) - 'event',
     jsonb_build_object(
         'attendance_status',
         'registration-questions-pending',
         'has_paid_purchase',
         false,
+        'registration_answers',
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Expired answer"}]}',
+            :'registrationQuestionID'
+        )::jsonb,
+        'registration_questions',
+        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
         'resume_checkout_url',
         null,
         'roles',

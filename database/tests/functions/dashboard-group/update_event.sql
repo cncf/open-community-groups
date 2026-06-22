@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(23);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,7 @@ select plan(21);
 \set event11ID '3a390000-0000-0000-0000-000000000007'
 \set event12ID '3a390000-0000-0000-0000-000000000008'
 \set event18ID '3a390000-0000-0000-0000-000000000009'
+\set eventWaitlistWindowID '3a390000-0000-0000-0000-000000000021'
 \set group1ID '3a390000-0000-0000-0000-000000000010'
 \set label1ID '3a390000-0000-0000-0000-000000000011'
 \set label2ID '3a390000-0000-0000-0000-000000000012'
@@ -27,6 +28,7 @@ select plan(21);
 \set user1ID '3a390000-0000-0000-0000-000000000009'
 \set user2ID '3a390000-0000-0000-0000-000000000017'
 \set user3ID '3a390000-0000-0000-0000-000000000018'
+\set waitlistUserID '3a390000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -55,7 +57,8 @@ insert into community (
 insert into "user" (user_id, auth_hash, email, username, name) values
     (:'user1ID', 'hash1', 'host1@example.com', 'host1', 'Host One'),
     (:'user2ID', 'hash2', 'host2@example.com', 'host2', 'Host Two'),
-    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One');
+    (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One'),
+    (:'waitlistUserID', 'hash4', 'waitlist@example.com', 'waitlist', 'Waitlist User');
 
 -- Event Category
 insert into event_category (event_category_id, name, community_id)
@@ -268,6 +271,39 @@ insert into event (
     '2030-01-15 12:00:00+00'
 );
 
+-- Live event used for update-driven waitlist promotion checks
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    starts_at,
+    ends_at,
+    registration_starts_at,
+    published,
+    capacity,
+    waitlist_enabled
+) values (
+    :'eventWaitlistWindowID',
+    :'group1ID',
+    'Open Only Waitlist Event',
+    'open-only-waitlist-event',
+    'Event seeded for registration window waitlist update tests',
+    'UTC',
+    :'category1ID',
+    'in-person',
+    date_trunc('second', current_timestamp - interval '1 hour'),
+    date_trunc('second', current_timestamp + interval '1 hour'),
+    date_trunc('second', current_timestamp - interval '2 hours'),
+    true,
+    1,
+    true
+);
+
 -- CFS labels seeded for update and upsert checks
 insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
     (:'label1ID', :'event12ID', '#CCFBF1', 'track / backend'),
@@ -279,6 +315,13 @@ insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
 -- Attendee used by reminder evaluation checks
 insert into event_attendee (event_id, user_id)
 values (:'event10ID', :'user1ID');
+
+-- Occupied seat and waitlist entry used by update-driven promotion checks
+insert into event_attendee (event_id, user_id)
+values (:'eventWaitlistWindowID', :'user2ID');
+
+insert into event_waitlist (event_id, user_id, created_at)
+values (:'eventWaitlistWindowID', :'waitlistUserID', current_timestamp - interval '30 minutes');
 
 -- ============================================================================
 -- TESTS
@@ -807,6 +850,60 @@ select is(
     (select event_reminder_evaluated_for_starts_at from event where event_id = :'event11ID'),
     null::timestamptz,
     'Should keep reminder unevaluated when starts_at remains unchanged inside 24 hours'
+);
+
+-- Should not promote waitlist entries after an open-only registration window reaches the event start
+select is(
+    update_event(
+        null::uuid,
+        :'group1ID'::uuid,
+        :'eventWaitlistWindowID'::uuid,
+        jsonb_build_object(
+            'name', 'Open Only Waitlist Event Updated',
+            'description', 'Event seeded for registration window waitlist update tests',
+            'timezone', 'UTC',
+            'category_id', :'category1ID',
+            'kind_id', 'in-person',
+            'capacity', 2,
+            'starts_at', to_char(
+                (
+                    select starts_at
+                    from event
+                    where event_id = :'eventWaitlistWindowID'::uuid
+                ) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'ends_at', to_char(
+                (
+                    select ends_at
+                    from event
+                    where event_id = :'eventWaitlistWindowID'::uuid
+                ) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'registration_starts_at', to_char(
+                (
+                    select registration_starts_at
+                    from event
+                    where event_id = :'eventWaitlistWindowID'::uuid
+                ) at time zone 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS'
+            ),
+            'waitlist_enabled', true
+        )
+    )::jsonb,
+    '[]'::jsonb,
+    'Should not promote waitlist entries after an open-only registration window reaches the event start'
+);
+
+select is(
+    (
+        select jsonb_agg(user_id order by created_at asc, user_id asc)
+        from event_waitlist
+        where event_id = :'eventWaitlistWindowID'::uuid
+    ),
+    format('["%s"]', :'waitlistUserID')::jsonb,
+    'Should keep waitlist entries queued after an open-only registration window reaches the event start'
 );
 
 -- ============================================================================

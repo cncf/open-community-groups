@@ -333,12 +333,18 @@ pub(crate) struct Event {
     /// Recurrence pattern selected for new event creation.
     #[garde(skip)]
     pub recurrence_pattern: Option<EventRecurrencePattern>,
+    /// Registration end time.
+    #[garde(skip)]
+    pub registration_ends_at: Option<NaiveDateTime>,
     /// Whether the registration questions section was submitted.
     #[garde(skip)]
     pub registration_questions_present: Option<bool>,
     /// Whether registration is required.
     #[garde(skip)]
     pub registration_required: Option<bool>,
+    /// Registration start time.
+    #[garde(skip)]
+    pub registration_starts_at: Option<NaiveDateTime>,
     /// Event sessions.
     #[garde(dive)]
     pub sessions: Option<Vec<Session>>,

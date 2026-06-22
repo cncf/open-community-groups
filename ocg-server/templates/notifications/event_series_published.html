@@ -42,6 +42,10 @@
         {{ location }}
         <br />
       {% endif -%}
+      {% if let Some(registration_window_message) = item.event.registration_window_message() -%}
+        Registration: {{ registration_window_message }}
+        <br />
+      {% endif -%}
     </p>
   {% endfor -%}
 

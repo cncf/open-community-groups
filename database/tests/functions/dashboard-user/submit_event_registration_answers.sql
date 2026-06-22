@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(12);
+select plan(16);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,8 +13,12 @@ select plan(12);
 \set eventCategoryID '4a150000-0000-0000-0000-000000000002'
 \set eventID '4a150000-0000-0000-0000-000000000003'
 \set eventNoQuestionsID '4a150000-0000-0000-0000-000000000004'
+\set eventRegistrationClosedID '4a150000-0000-0000-0000-000000000021'
 \set eventStartedID '4a150000-0000-0000-0000-000000000005'
+\set eventTicketedRegistrationClosedID '4a150000-0000-0000-0000-000000000024'
 \set eventTicketedID '4a150000-0000-0000-0000-000000000006'
+\set eventTicketedRegistrationClosedPriceWindowID '4a150000-0000-0000-0000-000000000027'
+\set eventTicketedRegistrationClosedTicketTypeID '4a150000-0000-0000-0000-000000000025'
 \set eventTicketTypeID '4a150000-0000-0000-0000-000000000007'
 \set groupCategoryID '4a150000-0000-0000-0000-000000000008'
 \set groupID '4a150000-0000-0000-0000-000000000009'
@@ -29,6 +33,10 @@ select plan(12);
 \set ticketedPendingUserID '4a150000-0000-0000-0000-000000000018'
 \set unknownCommunityID '4a150000-0000-0000-0000-000000000019'
 \set updateUserID '4a150000-0000-0000-0000-000000000020'
+\set windowCheckoutPurchaseID '4a150000-0000-0000-0000-000000000028'
+\set windowCheckoutUserID '4a150000-0000-0000-0000-000000000026'
+\set windowManualUserID '4a150000-0000-0000-0000-000000000022'
+\set windowSelfUserID '4a150000-0000-0000-0000-000000000023'
 
 -- ============================================================================
 -- SEED DATA
@@ -98,6 +106,24 @@ insert into "user" (
     'ticketed-pending@example.com',
     true,
     'ticketed-pending'
+), (
+    :'windowManualUserID',
+    'hash-6',
+    'window-manual@example.com',
+    true,
+    'window-manual'
+), (
+    :'windowSelfUserID',
+    'hash-7',
+    'window-self@example.com',
+    true,
+    'window-self'
+), (
+    :'windowCheckoutUserID',
+    'hash-8',
+    'window-checkout@example.com',
+    true,
+    'window-checkout'
 );
 
 -- Group
@@ -117,7 +143,8 @@ insert into event (
     published,
     starts_at,
     payment_currency_code,
-    registration_questions
+    registration_questions,
+    registration_ends_at
 ) values (
     :'eventID',
     :'groupID',
@@ -148,7 +175,8 @@ insert into event (
         :'questionID',
         :'optionStandardID',
         :'optionVegetarianID'
-    )::jsonb
+    )::jsonb,
+    null
 ), (
     :'eventStartedID',
     :'groupID',
@@ -174,7 +202,8 @@ insert into event (
             ]
         $json$,
         :'questionID'
-    )::jsonb
+    )::jsonb,
+    null
 ), (
     :'eventNoQuestionsID',
     :'groupID',
@@ -187,7 +216,8 @@ insert into event (
     true,
     now() + interval '7 days',
     null,
-    '[]'::jsonb
+    '[]'::jsonb,
+    null
 ), (
     :'eventTicketedID',
     :'groupID',
@@ -218,12 +248,85 @@ insert into event (
         :'questionID',
         :'optionStandardID',
         :'optionVegetarianID'
-    )::jsonb
+    )::jsonb,
+    null
+), (
+    :'eventRegistrationClosedID',
+    :'groupID',
+    'Closed Answers Event',
+    'closed-answers-event',
+    'Desc',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    true,
+    now() + interval '7 days',
+    null,
+    format(
+        $json$
+            [
+                {
+                    "id": "%s",
+                    "kind": "single-select",
+                    "prompt": "Meal",
+                    "required": true,
+                    "options": [
+                        {"id": "%s", "label": "Standard"},
+                        {"id": "%s", "label": "Vegetarian"}
+                    ]
+                }
+            ]
+        $json$,
+        :'questionID',
+        :'optionStandardID',
+        :'optionVegetarianID'
+    )::jsonb,
+    current_timestamp - interval '1 hour'
+), (
+    :'eventTicketedRegistrationClosedID',
+    :'groupID',
+    'Closed Ticketed Answers Event',
+    'closed-ticketed-answers-event',
+    'Desc',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    true,
+    now() + interval '7 days',
+    'USD',
+    format(
+        $json$
+            [
+                {
+                    "id": "%s",
+                    "kind": "single-select",
+                    "prompt": "Meal",
+                    "required": true,
+                    "options": [
+                        {"id": "%s", "label": "Standard"},
+                        {"id": "%s", "label": "Vegetarian"}
+                    ]
+                }
+            ]
+        $json$,
+        :'questionID',
+        :'optionStandardID',
+        :'optionVegetarianID'
+    )::jsonb,
+    current_timestamp - interval '1 hour'
 );
 
 -- Event tickets
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventTicketedID', 1, 10, 'General admission');
+values
+    (:'eventTicketTypeID', :'eventTicketedID', 1, 10, 'General admission'),
+    (
+        :'eventTicketedRegistrationClosedTicketTypeID',
+        :'eventTicketedRegistrationClosedID',
+        1,
+        10,
+        'General admission'
+    );
 
 -- Ticket price windows
 insert into event_ticket_price_window (
@@ -234,6 +337,10 @@ insert into event_ticket_price_window (
     :'priceWindowID',
     1000,
     :'eventTicketTypeID'
+), (
+    :'eventTicketedRegistrationClosedPriceWindowID',
+    1000,
+    :'eventTicketedRegistrationClosedTicketTypeID'
 );
 
 -- Event attendees
@@ -260,7 +367,31 @@ values
         'confirmed'
     ),
     (:'eventNoQuestionsID', :'pendingUserID', null, 'confirmed'),
-    (:'eventTicketedID', :'ticketedPendingUserID', null, 'registration-questions-pending');
+    (:'eventTicketedID', :'ticketedPendingUserID', null, 'registration-questions-pending'),
+    (
+        :'eventTicketedRegistrationClosedID',
+        :'windowCheckoutUserID',
+        null,
+        'registration-questions-pending'
+    ),
+    (
+        :'eventRegistrationClosedID',
+        :'windowSelfUserID',
+        format(
+            '{"answers": [{"question_id": "%s", "value": "%s"}]}',
+            :'questionID',
+            :'optionStandardID'
+        )::jsonb,
+        'confirmed'
+    );
+
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (
+    :'eventRegistrationClosedID',
+    :'windowManualUserID',
+    true,
+    'registration-questions-pending'
+);
 
 -- Event purchases
 insert into event_purchase (
@@ -283,6 +414,16 @@ insert into event_purchase (
     'pending',
     'General admission',
     :'ticketedPendingUserID'
+), (
+    :'windowCheckoutPurchaseID',
+    1000,
+    'USD',
+    :'eventTicketedRegistrationClosedID',
+    :'eventTicketedRegistrationClosedTicketTypeID',
+    now() + interval '10 minutes',
+    'pending',
+    'General admission',
+    :'windowCheckoutUserID'
 );
 
 -- ============================================================================
@@ -416,6 +557,94 @@ select results_eq(
         :'optionVegetarianID'
     ),
     'Should store ticketed answers but leave pending attendance unconfirmed'
+);
+
+-- Should reject self-service answer updates after the registration window closes
+select throws_ok(
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'windowSelfUserID',
+        :'communityID',
+        :'eventRegistrationClosedID',
+        :'questionID',
+        :'optionVegetarianID'
+    ),
+    'event registration is not open',
+    'Should reject registration answer updates after the registration window closes'
+);
+
+-- Should allow active checkout holds to answer after the registration window closes
+select results_eq(
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'windowCheckoutUserID',
+        :'communityID',
+        :'eventTicketedRegistrationClosedID',
+        :'questionID',
+        :'optionVegetarianID'
+    ),
+    $$ values (false) $$,
+    'Should allow active checkout holds to answer after the registration window closes'
+);
+
+-- Should store active checkout hold answers after the registration window closes
+select results_eq(
+    format(
+        $$
+            select status, registration_answers
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'eventTicketedRegistrationClosedID',
+        :'windowCheckoutUserID'
+    ),
+    format(
+        $$
+            values (
+                'registration-questions-pending'::text,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'questionID',
+        :'optionVegetarianID'
+    ),
+    'Should store active checkout hold answers after the registration window closes'
+);
+
+-- Should allow manually invited users to answer after the registration window closes
+select results_eq(
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'windowManualUserID',
+        :'communityID',
+        :'eventRegistrationClosedID',
+        :'questionID',
+        :'optionVegetarianID'
+    ),
+    $$ values (true) $$,
+    'Should allow manually invited users to answer after the registration window closes'
 );
 
 -- Should report confirmed attendee answer updates do not become newly confirmed

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(276);
+select plan(277);
 
 -- ============================================================================
 -- VARIABLES
@@ -179,6 +179,10 @@ select has_function('is_event_check_in_window_open', array['uuid', 'uuid']::name
 select has_function('is_event_meeting_in_sync', array['jsonb', 'jsonb']::name[]);
 select has_function('is_group_member', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('is_open_graph_image', array['text']::name[]);
+select has_function(
+    'is_registration_window_open',
+    array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone']::name[]
+);
 select has_function('is_session_meeting_in_sync', array['jsonb', 'jsonb', 'jsonb', 'jsonb']::name[]);
 select has_function('join_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('jsonb_geography_point', array['jsonb']::name[]);

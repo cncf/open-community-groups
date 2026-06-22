@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(54);
+select plan(57);
 
 -- ============================================================================
 -- VARIABLES
@@ -156,6 +156,9 @@ select has_check('event', 'event_meeting_conflict_chk');
 select has_check('event', 'event_meeting_kind_chk');
 select has_check('event', 'event_meeting_provider_required_chk');
 select has_check('event', 'event_meeting_requested_times_chk');
+select has_check('event', 'event_registration_end_before_event_start_chk');
+select has_check('event', 'event_registration_start_before_event_start_chk');
+select has_check('event', 'event_registration_window_order_chk');
 select has_check('event', 'event_waitlist_capacity_required_chk');
 
 -- Test: event invitation request table expected constraints exist

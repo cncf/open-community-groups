@@ -672,6 +672,257 @@ insert into event (
     false
 );
 
+-- Registration window fixtures for Playwright coverage.
+insert into event (
+    event_id, name, slug, description, description_short, timezone,
+    event_category_id, event_kind_id, group_id, payment_currency_code, published,
+    test_event, starts_at, ends_at, capacity, registration_required,
+    waitlist_enabled, attendee_approval_required, registration_starts_at,
+    registration_ends_at, registration_questions
+) values (
+    '55555555-5555-5555-5555-555555555901',
+    'Registration Window Ticketed Closed',
+    'alpha-registration-window-ticketed-closed',
+    'Ticketed event with a closed registration window.',
+    'Ticketed event with closed registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '100 days',
+    now() + interval '100 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    now() - interval '10 days',
+    now() - interval '1 day',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555902',
+    'Registration Window Ticketed Future',
+    'alpha-registration-window-ticketed-future',
+    'Ticketed event with registration opening later.',
+    'Ticketed event with future registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '101 days',
+    now() + interval '101 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    now() + interval '1 day',
+    now() + interval '30 days',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555903',
+    'Registration Window Ticketed Open',
+    'alpha-registration-window-ticketed-open',
+    'Ticketed event with registration currently open.',
+    'Ticketed event with open registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '102 days',
+    now() + interval '102 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    now() - interval '1 day',
+    now() + interval '30 days',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555904',
+    'Registration Window Free Closed',
+    'alpha-registration-window-free-closed',
+    'Free event with a closed registration window.',
+    'Free event with closed registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '103 days',
+    now() + interval '103 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    null,
+    now() - interval '1 day',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555905',
+    'Registration Window Approval Closed',
+    'alpha-registration-window-approval-closed',
+    'Approval-required event with a closed registration window.',
+    'Approval-required event with closed registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '104 days',
+    now() + interval '104 days 2 hours',
+    null,
+    true,
+    false,
+    true,
+    null,
+    now() - interval '1 day',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555906',
+    'Registration Window Waitlist Closed',
+    'alpha-registration-window-waitlist-closed',
+    'Full waitlist event with a closed registration window.',
+    'Waitlist event with closed registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '105 days',
+    now() + interval '105 days 2 hours',
+    1,
+    true,
+    true,
+    false,
+    null,
+    now() - interval '1 day',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555907',
+    'Registration Window Close Only Open',
+    'alpha-registration-window-close-only-open',
+    'Free event with only a future registration close date.',
+    'Free event with close-only registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '106 days',
+    now() + interval '106 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    null,
+    now() + interval '30 days',
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555908',
+    'Registration Window Open Only Closed',
+    'alpha-registration-window-open-only-closed',
+    'Live event where open-only registration closed at event start.',
+    'Free event with open-only registration closed at event start.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() - interval '1 day',
+    now() + interval '30 days',
+    null,
+    true,
+    false,
+    false,
+    now() - interval '10 days',
+    null,
+    '[]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555909',
+    'Registration Window Questions Closed',
+    'alpha-registration-window-questions-closed',
+    'Registration questions event with a closed registration window.',
+    'Questions event with closed registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '107 days',
+    now() + interval '107 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    null,
+    now() - interval '1 day',
+    '[{"id":"57555555-5555-5555-5555-555555555909","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555910',
+    'Registration Window Manual Invite Closed',
+    'alpha-registration-window-manual-invite-closed',
+    'Registration questions event with a manual invite after closing.',
+    'Manual invite event with closed registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    null,
+    true,
+    true,
+    now() + interval '108 days',
+    now() + interval '108 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    null,
+    now() - interval '1 day',
+    '[{"id":"57555555-5555-5555-5555-555555555910","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb
+), (
+    '55555555-5555-5555-5555-555555555911',
+    'Registration Window Pending Payment Closed',
+    'alpha-registration-window-pending-payment-closed',
+    'Ticketed questions event with an active pending checkout after closing.',
+    'Pending payment event with closed registration.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'USD',
+    true,
+    true,
+    now() + interval '109 days',
+    now() + interval '109 days 2 hours',
+    null,
+    true,
+    false,
+    false,
+    null,
+    now() - interval '1 day',
+    '[{"id":"57555555-5555-5555-5555-555555555911","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb
+);
+
 update event
 set payment_currency_code = 'USD'
 where event_id in (
@@ -1211,6 +1462,29 @@ values (
     '77777777-7777-7777-7777-777777777712'
 );
 
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (
+    '55555555-5555-5555-5555-555555555906',
+    '77777777-7777-7777-7777-777777777703',
+    false,
+    'confirmed'
+), (
+    '55555555-5555-5555-5555-555555555909',
+    '77777777-7777-7777-7777-777777777706',
+    false,
+    'registration-questions-pending'
+), (
+    '55555555-5555-5555-5555-555555555910',
+    '77777777-7777-7777-7777-777777777706',
+    true,
+    'registration-questions-pending'
+), (
+    '55555555-5555-5555-5555-555555555911',
+    '77777777-7777-7777-7777-777777777706',
+    false,
+    'registration-questions-pending'
+);
+
 insert into event_attendee (event_id, user_id, registration_answers)
 values (
     '55555555-5555-5555-5555-555555555525',
@@ -1351,6 +1625,38 @@ values (
     30,
     'Observability summit pass',
     'Sellable tier used to show a price badge on the homepage in-person events list.'
+), (
+    '56555555-5555-5555-5555-555555555901',
+    true,
+    '55555555-5555-5555-5555-555555555901',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for closed registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555902',
+    true,
+    '55555555-5555-5555-5555-555555555902',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for future registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555903',
+    true,
+    '55555555-5555-5555-5555-555555555903',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for open registration window coverage.'
+), (
+    '56555555-5555-5555-5555-555555555911',
+    true,
+    '55555555-5555-5555-5555-555555555911',
+    1,
+    30,
+    'Registration window pass',
+    'Sellable pass used for pending payment dashboard coverage.'
 );
 
 insert into event_ticket_price_window (
@@ -1400,6 +1706,30 @@ values (
     '57555555-5555-5555-5555-555555555527',
     2000,
     '56555555-5555-5555-5555-555555555526',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555901',
+    2500,
+    '56555555-5555-5555-5555-555555555901',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555902',
+    2500,
+    '56555555-5555-5555-5555-555555555902',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555903',
+    2500,
+    '56555555-5555-5555-5555-555555555903',
+    null,
+    null
+), (
+    '57555555-5555-5555-5555-555555555911',
+    2500,
+    '56555555-5555-5555-5555-555555555911',
     null,
     null
 );
@@ -1598,6 +1928,37 @@ values (
     'refund-requested',
     'VIP pass',
     '77777777-7777-7777-7777-777777777712'
+);
+
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555911',
+    2500,
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555911',
+    '56555555-5555-5555-5555-555555555911',
+    now() + interval '2 days',
+    'stripe',
+    'cs_e2e_registration_window_pending',
+    'https://example.test/checkout/registration-window-pending',
+    'pending',
+    'Registration window pass',
+    '77777777-7777-7777-7777-777777777706'
 );
 
 -- ============================================================================

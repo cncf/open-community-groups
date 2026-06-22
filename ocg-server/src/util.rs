@@ -339,6 +339,8 @@ mod tests {
             meeting_provider: None,
             payment_currency_code: None,
             popover_html: None,
+            registration_ends_at: None,
+            registration_starts_at: None,
             remaining_capacity: Some(15),
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),
             ticket_types: None,

@@ -96,6 +96,7 @@ Copying is intentionally partial so stale logistics are not carried forward:
 Time-bound and meeting-specific fields are intentionally not carried forward.
 
 - Start/end dates are cleared.
+- Registration window dates are cleared.
 - Sessions are not copied.
 - Meeting links are not copied.
 - Some older host/speaker fields may need manual cleanup.
@@ -162,8 +163,8 @@ are free text, single select, and multi select. Select questions use organizer-d
 and each question can be marked required.
 
 Registration questions are copied when you create an event from an existing event. After attendees
-submit answers, the questions become read-only so existing attendee answers cannot drift away from
-the question definitions.
+submit answers, or while active checkout holds exist, the questions become read-only so existing
+attendee answers and in-progress checkouts cannot drift away from the question definitions.
 
 Invitation review also lives here:
 
@@ -188,6 +189,7 @@ Brand inheritance model in event details:
 This tab controls delivery constraints:
 
 - Timezone, start, and end.
+- Optional registration open and close dates.
 - Recurrence for creating linked copies of a new event.
 - Venue data for in-person/hybrid events.
 - Online event details for virtual/hybrid events.
@@ -197,6 +199,23 @@ Timezone should be set first, then date/time. That avoids accidental scheduling 
 CFS windows aligned with the intended audience clock.
 
 ?> Set timezone first, then start/end timestamps, to avoid accidental schedule drift.
+
+Registration windows are optional, but when configured they become the source of truth for
+attendee-facing registration:
+
+- `Registration Opens` controls when attendees can self-register, buy tickets, request invitations,
+  join the waitlist, or submit registration-question answers. It cannot be after the event start
+  time.
+- `Registration Closes` controls when those actions stop. It cannot be after the event start time.
+  When both fields are set, it must be after `Registration Opens`.
+- If only an open time is set, registration stays open until the event starts.
+- If only a close time is set, registration is open immediately and closes at that time.
+- Public event pages and notification templates show the configured window.
+- Manual organizer invitations are an override. Invitees can accept and answer required
+  registration questions outside the public window.
+- Active ticket checkout holds are also an override for completion only. Registration close stops
+  new checkout starts, but attendees already holding a ticket can finish payment and required
+  registration questions until the hold expires.
 
 When `Send Event Reminder` is enabled, OCG sends reminder messages about 24 hours before start
 time.
@@ -210,9 +229,9 @@ When adding a new event, recurrence can create multiple linked events at once:
 
 For recurring events, set `Additional Events` to the number of extra linked events to create.
 The maximum is `12`. OCG creates each occurrence as a separate individual event, sharing one
-series identifier, and shifts event dates, CFS windows, sessions, ticket windows, and discount
-windows by the same schedule offset. Monthly recurrence skips months that do not contain the same
-ordinal weekday.
+series identifier, and shifts event dates, registration windows, CFS windows, sessions, ticket
+windows, and discount windows by the same schedule offset. Monthly recurrence skips months that do
+not contain the same ordinal weekday.
 
 After creation, each occurrence has its own event page, editor, attendees, submissions, sessions,
 tickets, and operational state. `Publish`, `Unpublish`, `Cancel`, and `Delete` can target the
@@ -328,21 +347,22 @@ Organizer behavior:
 Capacity behavior:
 
 - If an attendee leaves and the event has a capacity limit, OCG automatically promotes the oldest
-  waitlisted person.
+  waitlisted person while registration is open.
 - If you raise event capacity on a published event and seats become available, OCG also promotes from
-  the waitlist automatically.
+  the waitlist automatically while registration is open.
 - If you later disable the waitlist, OCG stops accepting new waitlist sign-ups. People who were
-  already on the waitlist remain queued and may still be promoted automatically when attendee spots
-  open up, for example after a cancellation or a capacity increase.
+  already on the waitlist remain queued and may still be promoted automatically when registration is
+  open and attendee spots open up, for example after a cancellation or a capacity increase.
 - If you clear `Capacity` and disable waitlist, OCG treats the event as unlimited-capacity and
-  immediately promotes everyone still on the waitlist.
+  immediately promotes everyone still on the waitlist when registration is open.
 - Attendee cancellation notifications and any promotion notifications caused by attendance
   cancellation are part of that mutation. If OCG cannot queue a required notification, the
   attendance cancellation is not saved.
 - Promotion notifications caused by saving event capacity changes are part of that mutation. If OCG
   cannot queue a required promotion notification, the event update is not saved.
 - Organizer-created manual invitations bypass capacity when the invitee accepts. Use them when an
-  organizer intentionally wants to admit someone even if the event is full.
+  organizer intentionally wants to admit someone even if the event is full or outside the public
+  registration window.
 
 Member-facing behavior:
 
@@ -362,6 +382,8 @@ Member-facing behavior:
 Paid-attendance behavior:
 
 - Paid tickets require payment before attendance is created.
+- Checkout can only start while registration is open. If registration closes before a pending
+  payment is completed, an active ticket hold can still be fulfilled until the hold expires.
 - If checkout is interrupted, the public event page shows a `Complete payment` state while the
   hold is still active.
 - Attendees can use `Cancel checkout` before payment completes to release the hold and choose a

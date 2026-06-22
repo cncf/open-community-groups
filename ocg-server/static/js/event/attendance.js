@@ -494,7 +494,7 @@ const renderAttendanceCheckResponse = (container, event) => {
   }
 
   if (response.status === "registration-questions-pending") {
-    showRegistrationQuestionsPendingState(container, meta);
+    showRegistrationQuestionsPendingState(container, meta, response);
     return;
   }
 
@@ -504,7 +504,7 @@ const renderAttendanceCheckResponse = (container, event) => {
   }
 
   if (response.status === "invitation-approved") {
-    showInvitationApprovedAttendanceState(container, meta);
+    showInvitationApprovedAttendanceState(container, meta, response);
     return;
   }
 
