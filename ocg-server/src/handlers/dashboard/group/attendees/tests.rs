@@ -14,7 +14,12 @@ use uuid::Uuid;
 use crate::{
     config::HttpServerConfig,
     db::mock::MockDB,
-    handlers::{dashboard::group::attendees::EventCustomNotification, tests::*},
+    handlers::{
+        dashboard::group::attendees::{
+            EventCustomNotification, EventCustomNotificationRecipientScope,
+        },
+        tests::*,
+    },
     services::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::MockPaymentsManager,
@@ -617,13 +622,13 @@ async fn test_download_csv_success() {
     rejected_invitation.status = "invitation-rejected".to_string();
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 2,
         attendees: vec![
             attendee,
             attendee_without_name,
             pending_invitation,
             rejected_invitation,
         ],
-        notification_recipient_total: 2,
         total: 4,
     };
 
@@ -777,8 +782,8 @@ async fn test_download_csv_with_answers_success() {
         },
     ];
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 2,
         attendees: vec![attendee, attendee_without_answers, pending_invitation],
-        notification_recipient_total: 2,
         total: 3,
     };
 
@@ -1445,11 +1450,17 @@ async fn test_list_page_success() {
     );
     let mut attendee = sample_attendee();
     attendee.manually_invited = true;
+    let pending_questions_attendee_id = Uuid::new_v4();
+    let mut pending_questions_attendee = sample_attendee();
+    pending_questions_attendee.checked_in = false;
+    pending_questions_attendee.manually_invited = false;
+    pending_questions_attendee.status = "registration-questions-pending".to_string();
+    pending_questions_attendee.user_id = pending_questions_attendee_id;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
-        attendees: vec![attendee.clone()],
-        notification_recipient_total: 1,
-        total: 1,
+        all_attendees_email_recipient_total: 2,
+        attendees: vec![attendee.clone(), pending_questions_attendee],
+        total: 2,
     };
 
     // Setup database mock
@@ -1518,7 +1529,86 @@ async fn test_list_page_success() {
     let body = std::str::from_utf8(&bytes).unwrap();
     assert!(body.contains("name=\"subject\""));
     assert!(body.contains("value=\"Test Group: Sample Event\""));
+    assert!(body.contains("data-notification-recipient-total=\"2\""));
+    assert!(body.contains("data-notification-scope=\"all\""));
+    assert!(
+        !body.contains(
+            "No attendees with verified email addresses and email notifications enabled."
+        )
+    );
+    assert!(body.contains(&format!(
+        "data-recipient-id=\"{pending_questions_attendee_id}\""
+    )));
     assert!(body.contains("Invited"));
+}
+
+#[tokio::test]
+async fn test_list_page_db_error() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Err(anyhow!("db error")));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!("/dashboard/group/events/{event_id}/attendees"))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -1540,8 +1630,8 @@ async fn test_list_page_with_pagination_params() {
     let attendee = sample_attendee();
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 0,
         attendees: vec![attendee.clone()],
-        notification_recipient_total: 0,
         total: 1,
     };
 
@@ -1611,7 +1701,113 @@ async fn test_list_page_with_pagination_params() {
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
     let body = std::str::from_utf8(&bytes).unwrap();
-    assert!(body.contains("No confirmed attendees with verified email addresses."));
+    assert!(
+        body.contains(
+            "No attendees with verified email addresses and email notifications enabled."
+        )
+    );
+}
+
+#[tokio::test]
+async fn test_list_page_with_search_query() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut attendee = sample_attendee();
+    attendee.email = "ana@example.test".to_string();
+    attendee.name = Some("Ana Lopez".to_string());
+    attendee.company = Some("Example Co".to_string());
+    let event = sample_event_summary(event_id, group_id);
+    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 1,
+        attendees: vec![attendee],
+        total: 1,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, filters| {
+            *gid == group_id
+                && filters.event_id == event_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+                && filters.ts_query.as_deref() == Some("ana")
+        })
+        .returning(move |_, _| Ok(output.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees?ts_query=ana"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("name=\"ts_query\""));
+    assert!(body.contains("value=\"ana\""));
+    assert!(body.contains("Ana Lopez"));
+    assert!(body.contains("ana@example.test"));
+    assert!(body.contains("Example Co"));
+    assert!(body.contains("refresh-event-attendees"));
 }
 
 #[tokio::test]
@@ -1685,75 +1881,6 @@ async fn test_manual_check_in_success() {
 
     // Check response matches expectations
     assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
-}
-
-#[tokio::test]
-async fn test_list_page_db_error() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let auth_hash = "hash".to_string();
-    let session_record = sample_session_record(
-        session_id,
-        user_id,
-        &auth_hash,
-        Some(community_id),
-        Some(group_id),
-    );
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_session()
-        .times(1)
-        .withf(move |id| *id == session_id)
-        .returning(move |_| Ok(Some(session_record.clone())));
-    db.expect_get_user_by_id()
-        .times(1)
-        .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::Read
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_user_has_group_permission()
-        .times(1)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Err(anyhow!("db error")));
-
-    // Setup notifications manager mock
-    let nm = MockNotificationsManager::new();
-
-    // Setup router and send request
-    let router = TestRouterBuilder::new(db, nm).build().await;
-    let request = Request::builder()
-        .method("GET")
-        .uri(format!("/dashboard/group/events/{event_id}/attendees"))
-        .header(COOKIE, format!("id={session_id}"))
-        .body(Body::empty())
-        .unwrap();
-    let response = router.oneshot(request).await.unwrap();
-    let (parts, body) = response.into_parts();
-    let bytes = to_bytes(body, usize::MAX).await.unwrap();
-
-    // Check response matches expectations
-    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]
@@ -1941,6 +2068,8 @@ async fn test_send_event_custom_notification_success() {
     let notification_subject = "Event Update";
     let form_data = serde_qs::to_string(&EventCustomNotification {
         body: notification_body.to_string(),
+        recipient_scope: EventCustomNotificationRecipientScope::All,
+        recipient_user_ids: vec![],
         subject: notification_subject.to_string(),
     })
     .unwrap();
@@ -1971,10 +2100,15 @@ async fn test_send_event_custom_notification_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_list_event_attendees_ids()
+    db.expect_resolve_event_custom_notification_recipient_ids()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(vec![attendee_id1, attendee_id2]));
+        .withf(move |gid, eid, recipient_scope, requested_user_ids| {
+            *gid == group_id
+                && *eid == event_id
+                && recipient_scope == "all-attendees"
+                && requested_user_ids.is_none()
+        })
+        .returning(move |_, _, _, _| Ok(vec![attendee_id1, attendee_id2]));
     db.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
@@ -2028,11 +2162,129 @@ async fn test_send_event_custom_notification_success() {
 }
 
 #[tokio::test]
-async fn test_send_event_custom_notification_no_recipients() {
+#[allow(clippy::too_many_lines)]
+async fn test_send_event_custom_notification_selected_recipients_success() {
     // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
+    let filtered_out_attendee_id = Uuid::new_v4();
+    let selected_attendee_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let event = sample_event_summary(event_id, group_id);
+    let site_settings = sample_site_settings();
+    let notification_body = "Hello, selected attendees!";
+    let notification_subject = "Selected Update";
+    let requested_recipient_ids = vec![selected_attendee_id, filtered_out_attendee_id];
+    let expected_requested_recipient_ids = requested_recipient_ids.clone();
+    let form_data = serde_qs::to_string(&EventCustomNotification {
+        body: notification_body.to_string(),
+        recipient_scope: EventCustomNotificationRecipientScope::Selected,
+        recipient_user_ids: requested_recipient_ids,
+        subject: notification_subject.to_string(),
+    })
+    .unwrap();
+
+    // Create copies for expectation closures
+    let event_for_db = event.clone();
+    let event_for_notifications = event.clone();
+    let site_settings_for_notifications = site_settings.clone();
+    let track_body = notification_body.to_string();
+    let track_subject = notification_subject.to_string();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_resolve_event_custom_notification_recipient_ids()
+        .times(1)
+        .withf(move |gid, eid, recipient_scope, requested_user_ids| {
+            *gid == group_id
+                && *eid == event_id
+                && recipient_scope == "selected-attendees"
+                && requested_user_ids.as_ref() == Some(&expected_requested_recipient_ids)
+        })
+        .returning(move |_, _, _, _| Ok(vec![selected_attendee_id]));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_for_db.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    db.expect_enqueue_tracked_custom_notification()
+        .times(1)
+        .withf(move |notification, tracking| {
+            matches!(notification.kind, NotificationKind::EventCustom)
+                && notification.recipients == vec![selected_attendee_id]
+                && notification.template_data.as_ref().is_some_and(|value| {
+                    serde_json::from_value::<EventCustom>(value.clone()).is_ok_and(|template| {
+                        template.subject == notification_subject
+                            && template.body == notification_body
+                            && template.event.name == event_for_notifications.name
+                            && template.theme.primary_color
+                                == site_settings_for_notifications.theme.primary_color
+                    })
+                })
+                && tracking.created_by == user_id
+                && tracking.event_id == Some(event_id)
+                && tracking.group_id == Some(group_id)
+                && tracking.recipient_count == 1
+                && tracking.subject == track_subject
+                && tracking.body == track_body
+        })
+        .returning(|_, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/dashboard/group/notifications/{event_id}"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form_data))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_response(&parts, &bytes, StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn test_send_event_custom_notification_selected_recipients_requires_selection() {
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -2045,6 +2297,79 @@ async fn test_send_event_custom_notification_no_recipients() {
     );
     let form_data = serde_qs::to_string(&EventCustomNotification {
         body: "Body".to_string(),
+        recipient_scope: EventCustomNotificationRecipientScope::Selected,
+        recipient_user_ids: vec![],
+        subject: "Subject".to_string(),
+    })
+    .unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/dashboard/group/notifications/{event_id}"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form_data))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "Select at least one attendee."
+    );
+}
+
+#[tokio::test]
+async fn test_send_event_custom_notification_selected_recipients_no_eligible_recipients() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let requested_attendee_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let requested_attendee_ids = vec![requested_attendee_id];
+    let expected_requested_attendee_ids = requested_attendee_ids.clone();
+    let form_data = serde_qs::to_string(&EventCustomNotification {
+        body: "Body".to_string(),
+        recipient_scope: EventCustomNotificationRecipientScope::Selected,
+        recipient_user_ids: requested_attendee_ids,
         subject: "Subject".to_string(),
     })
     .unwrap();
@@ -2072,10 +2397,15 @@ async fn test_send_event_custom_notification_no_recipients() {
         .times(1)
         .withf(move |cid, eid| *cid == community_id && *eid == event_id)
         .returning(move |_, _| Ok(sample_event_summary(event_id, group_id)));
-    db.expect_list_event_attendees_ids()
+    db.expect_resolve_event_custom_notification_recipient_ids()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(vec![]));
+        .withf(move |gid, eid, recipient_scope, requested_user_ids| {
+            *gid == group_id
+                && *eid == event_id
+                && recipient_scope == "selected-attendees"
+                && requested_user_ids.as_ref() == Some(&expected_requested_attendee_ids)
+        })
+        .returning(move |_, _, _, _| Ok(vec![]));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -2100,6 +2430,90 @@ async fn test_send_event_custom_notification_no_recipients() {
     assert_eq!(parts.status, StatusCode::BAD_REQUEST);
     assert_eq!(
         String::from_utf8(bytes.to_vec()).unwrap(),
-        "No confirmed attendees with verified email addresses."
+        "No selected attendees can receive this email."
+    );
+}
+
+#[tokio::test]
+async fn test_send_event_custom_notification_no_recipients() {
+    // Setup identifiers and data structures
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let form_data = serde_qs::to_string(&EventCustomNotification {
+        body: "Body".to_string(),
+        recipient_scope: EventCustomNotificationRecipientScope::All,
+        recipient_user_ids: vec![],
+        subject: "Subject".to_string(),
+    })
+    .unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(sample_event_summary(event_id, group_id)));
+    db.expect_resolve_event_custom_notification_recipient_ids()
+        .times(1)
+        .withf(move |gid, eid, recipient_scope, requested_user_ids| {
+            *gid == group_id
+                && *eid == event_id
+                && recipient_scope == "all-attendees"
+                && requested_user_ids.is_none()
+        })
+        .returning(move |_, _, _, _| Ok(vec![]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!("/dashboard/group/notifications/{event_id}"))
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(form_data))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        String::from_utf8(bytes.to_vec()).unwrap(),
+        "No attendees with verified email addresses and email notifications enabled."
     );
 }

@@ -16,7 +16,7 @@ use crate::{
         audit::{AuditLogFilters, AuditLogsOutput},
         group::{
             analytics::GroupDashboardStats,
-            attendees::{AttendeesFilters, AttendeesOutput},
+            attendees::{AttendeesOutput, SearchEventAttendeesFilters},
             events::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
@@ -319,11 +319,21 @@ pub(crate) trait DBDashboardGroup {
         user_id: Uuid,
     ) -> Result<()>;
 
+    /// Resolves custom email recipient user ids for an event and recipient scope.
+    /// Selected scopes are constrained to `requested_user_ids`.
+    async fn resolve_event_custom_notification_recipient_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        recipient_scope: &str,
+        requested_user_ids: Option<Vec<Uuid>>,
+    ) -> Result<Vec<Uuid>>;
+
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &AttendeesFilters,
+        filters: &SearchEventAttendeesFilters,
     ) -> Result<AttendeesOutput>;
 
     /// Searches invitation requests for a group's event using filters.
@@ -1060,12 +1070,28 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::resolve_event_custom_notification_recipient_ids`]
+    #[instrument(skip(self, requested_user_ids), err)]
+    async fn resolve_event_custom_notification_recipient_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        recipient_scope: &str,
+        requested_user_ids: Option<Vec<Uuid>>,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select resolve_event_custom_notification_recipient_ids($1::uuid, $2::uuid, $3::text, $4::uuid[])",
+            &[&group_id, &event_id, &recipient_scope, &requested_user_ids],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::search_event_attendees`]
     #[instrument(skip(self, filters), err)]
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &AttendeesFilters,
+        filters: &SearchEventAttendeesFilters,
     ) -> Result<AttendeesOutput> {
         self.fetch_json_one(
             "select search_event_attendees($1::uuid, $2::jsonb)",
