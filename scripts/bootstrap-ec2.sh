@@ -119,6 +119,7 @@ install_debian_deps() {
         build-essential
         pkg-config
         libssl-dev
+        perl
         postgresql-client
         golang-go
     )
@@ -145,6 +146,8 @@ install_rhel_deps() {
         make
         pkgconf-pkg-config
         openssl-devel
+        perl-FindBin
+        perl-core
         golang
     )
 
