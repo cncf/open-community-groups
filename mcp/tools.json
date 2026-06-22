@@ -1,0 +1,446 @@
+[
+  {
+    "name": "goup_deploy_after_pull",
+    "title": "GOUP EC2 Deploy After Pull",
+    "description": "Commands to run after pulling new GOUP code on EC2.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "output": {
+      "text": "cd ~/goup.vc\ngit pull\n\ncd database/migrations\nTERN_CONF=\"$HOME/.config/ocg/tern.conf\" ./migrate.sh\n\ncd ~/goup.vc\nnohup env CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &\ntail -f ~/goup-build.log\n\nsudo systemctl restart ocg-server\nsudo systemctl status ocg-server --no-pager\ncurl -I http://127.0.0.1:9000"
+    }
+  },
+  {
+    "name": "goup_run_migrations",
+    "title": "GOUP Run Database Migrations",
+    "description": "Run GOUP tern migrations on the configured database.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "output": {
+      "text": "cd ~/goup.vc/database/migrations\nTERN_CONF=\"$HOME/.config/ocg/tern.conf\" ./migrate.sh"
+    }
+  },
+  {
+    "name": "goup_release_build_background",
+    "title": "GOUP Background Release Build",
+    "description": "Build the ocg-server release binary in the background and stream the log.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "output": {
+      "text": "cd ~/goup.vc\nnohup env CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &\ntail -f ~/goup-build.log"
+    }
+  },
+  {
+    "name": "goup_service_status",
+    "title": "GOUP Service Status",
+    "description": "Check the deployed GOUP systemd service and local HTTP health.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "output": {
+      "text": "sudo systemctl status ocg-server --no-pager\nsudo journalctl -u ocg-server -n 100 --no-pager\ncurl -I http://127.0.0.1:9000"
+    }
+  },
+  {
+    "name": "goup_create_event",
+    "title": "GOUP Create Draft Event",
+    "description": "Create an unpublished draft event in GOUP through the database add_event function. Requires MCP_ENABLE_MUTATIONS=true and database access through DATABASE_URL or TERN_CONF.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actor_user_id": {
+          "type": "string",
+          "description": "User ID that should be recorded as the event creator."
+        },
+        "group_id": {
+          "type": "string",
+          "description": "Group ID where the event will be created."
+        },
+        "category_id": {
+          "type": "string",
+          "description": "Event category ID from the same alliance as the group."
+        },
+        "kind_id": {
+          "type": "string",
+          "enum": ["in-person", "virtual", "hybrid"],
+          "description": "Event type."
+        },
+        "name": {
+          "type": "string",
+          "description": "Event name."
+        },
+        "description": {
+          "type": "string",
+          "description": "Full event description."
+        },
+        "description_short": {
+          "type": "string",
+          "description": "Optional short description for event cards."
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone, for example Asia/Baku."
+        },
+        "starts_at": {
+          "type": "string",
+          "description": "Local start datetime in the event timezone, for example 2026-07-01T18:00:00."
+        },
+        "ends_at": {
+          "type": "string",
+          "description": "Local end datetime in the event timezone, for example 2026-07-01T20:00:00."
+        },
+        "capacity": {
+          "type": "integer",
+          "description": "Optional attendee capacity."
+        },
+        "registration_required": {
+          "type": "boolean",
+          "description": "Whether attendees must register."
+        },
+        "attendee_approval_required": {
+          "type": "boolean",
+          "description": "Whether registrations require organizer approval."
+        },
+        "waitlist_enabled": {
+          "type": "boolean",
+          "description": "Whether the waitlist is enabled when capacity is full."
+        },
+        "meeting_join_url": {
+          "type": "string",
+          "description": "Optional manual meeting link."
+        },
+        "venue_name": {
+          "type": "string",
+          "description": "Optional venue name."
+        },
+        "venue_city": {
+          "type": "string",
+          "description": "Optional venue city."
+        },
+        "venue_country_name": {
+          "type": "string",
+          "description": "Optional venue country name."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional event tags."
+        }
+      },
+      "required": [
+        "actor_user_id",
+        "group_id",
+        "category_id",
+        "kind_id",
+        "name",
+        "description",
+        "timezone",
+        "starts_at",
+        "ends_at"
+      ],
+      "additionalProperties": false
+    },
+    "action": "create_event"
+  },
+  {
+    "name": "goup_search_groups",
+    "title": "GOUP Search Groups",
+    "description": "List or search GOUP groups by alliance, name, slug, category, location, or description.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Optional search text."
+        },
+        "alliance_id": {
+          "type": "string",
+          "description": "Optional alliance UUID filter."
+        },
+        "alliance_name": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter, for example goup."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results, 1 to 100. Defaults to 20."
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": "search_groups"
+  },
+  {
+    "name": "goup_search_events",
+    "title": "GOUP Search Events",
+    "description": "List or search GOUP events by alliance, group, publish status, title, venue, category, or type.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Optional search text."
+        },
+        "alliance_id": {
+          "type": "string",
+          "description": "Optional alliance UUID filter."
+        },
+        "alliance_name": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter."
+        },
+        "group_id": {
+          "type": "string",
+          "description": "Optional group UUID filter."
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Optional publish status filter."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results, 1 to 100. Defaults to 20."
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": "search_events"
+  },
+  {
+    "name": "goup_search_members",
+    "title": "GOUP Search Members",
+    "description": "List or search regular group members by alliance, group, profile, company, location, or email.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Optional search text."
+        },
+        "alliance_id": {
+          "type": "string",
+          "description": "Optional alliance UUID filter."
+        },
+        "alliance_name": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter."
+        },
+        "group_id": {
+          "type": "string",
+          "description": "Optional group UUID filter."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results, 1 to 100. Defaults to 20."
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": "search_members"
+  },
+  {
+    "name": "goup_search_teams",
+    "title": "GOUP Search Teams",
+    "description": "List or search group and alliance team members by role, user profile, alliance, or group.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Optional search text."
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["alliance", "group", "all"],
+          "description": "Team scope to search. Defaults to all."
+        },
+        "alliance_id": {
+          "type": "string",
+          "description": "Optional alliance UUID filter."
+        },
+        "alliance_name": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter."
+        },
+        "group_id": {
+          "type": "string",
+          "description": "Optional group UUID filter. Only applies to group teams."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results, 1 to 100. Defaults to 20."
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": "search_teams"
+  },
+  {
+    "name": "goup_search_jobs",
+    "title": "GOUP Search Jobs",
+    "description": "Search published, non-expired GOUP jobs by title, company, summary, tags, location, and remote status.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Optional search text."
+        },
+        "location": {
+          "type": "string",
+          "description": "Optional location filter."
+        },
+        "remote": {
+          "type": "boolean",
+          "description": "Optional remote-friendly filter."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results, 1 to 100. Defaults to 20."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Pagination offset. Defaults to 0."
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": "search_jobs"
+  },
+  {
+    "name": "goup_search_landscape",
+    "title": "GOUP Search Landscape",
+    "description": "Search published GOUP landscape entries for startups, open source projects, and tools.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Optional search text."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Optional kind filter, for example startup or open_source."
+        },
+        "category": {
+          "type": "string",
+          "description": "Optional category filter."
+        },
+        "alliance": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter."
+        },
+        "alliance_name": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter alias."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results, 1 to 100. Defaults to 20."
+        },
+        "offset": {
+          "type": "integer",
+          "description": "Pagination offset. Defaults to 0."
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": "search_landscape"
+  },
+  {
+    "name": "goup_search_wiki",
+    "title": "GOUP Search Wiki",
+    "description": "List or search GOUP wiki sections and feed sources.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Optional search text across source names, URLs, and section names."
+        },
+        "section": {
+          "type": "string",
+          "description": "Optional section filter: ai, opensource, or entrepreneurship."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results, 1 to 100. Defaults to 20."
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": "search_wiki"
+  },
+  {
+    "name": "goup_submit_talk",
+    "title": "GOUP Submit Talk",
+    "description": "Create a session proposal and submit it to an event CFS. Requires MCP_ENABLE_MUTATIONS=true and an open CFS window.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actor_user_id": {
+          "type": "string",
+          "description": "Speaker user ID."
+        },
+        "alliance_id": {
+          "type": "string",
+          "description": "Alliance ID for the target event."
+        },
+        "event_id": {
+          "type": "string",
+          "description": "Target event ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Talk title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Talk abstract or description."
+        },
+        "duration_minutes": {
+          "type": "integer",
+          "description": "Talk duration in minutes, 5 to 480."
+        },
+        "session_proposal_level_id": {
+          "type": "string",
+          "enum": ["beginner", "intermediate", "advanced"],
+          "description": "Talk level. Defaults to intermediate."
+        },
+        "co_speaker_user_id": {
+          "type": "string",
+          "description": "Optional co-speaker user ID."
+        },
+        "label_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional CFS label IDs."
+        }
+      },
+      "required": [
+        "actor_user_id",
+        "alliance_id",
+        "event_id",
+        "title",
+        "description",
+        "duration_minutes"
+      ],
+      "additionalProperties": false
+    },
+    "action": "submit_talk"
+  }
+]

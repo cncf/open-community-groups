@@ -312,6 +312,23 @@ Build a release binary:
 cargo build --release -p ocg-server
 ```
 
+### Remote MCP Server
+
+The `mcp/` directory contains a lightweight remote MCP server for GOUP
+operational tools. It supports MCP JSON-RPC over HTTP at `/mcp`, lists tools via
+the standard `tools/list` method, and loads tools from `mcp/tools.json`.
+
+Run it locally:
+
+```bash
+cd mcp
+npm start
+```
+
+For remote deployments, protect it with `MCP_BEARER_TOKEN` and expose it behind
+HTTPS. See [`mcp/README.md`](./mcp/README.md) for setup, client config, and how
+to add more tools.
+
 ### Tests and Checks
 
 Run Rust server tests:
@@ -407,6 +424,36 @@ OCG_LINKEDIN_CLIENT_ID='replace-with-linkedin-client-id' \
 OCG_LINKEDIN_CLIENT_SECRET='replace-with-linkedin-client-secret' \
 OCG_ADMIN_EMAIL='you@example.com' \
 ./scripts/bootstrap-ec2.sh
+```
+
+### Update an Existing EC2 Deployment
+
+After pulling new code on EC2, run migrations before restarting whenever files
+under `database/migrations` changed:
+
+```bash
+cd ~/goup.vc
+git pull
+
+cd database/migrations
+TERN_CONF="$HOME/.config/ocg/tern.conf" ./migrate.sh
+```
+
+Build the release binary in the background so it keeps running if the SSH
+session disconnects:
+
+```bash
+cd ~/goup.vc
+nohup env CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &
+tail -f ~/goup-build.log
+```
+
+Restart the deployed service after the build finishes successfully:
+
+```bash
+sudo systemctl restart ocg-server
+sudo systemctl status ocg-server --no-pager
+curl -I http://127.0.0.1:9000
 ```
 
 For small EC2 instances, keep builds single-threaded:
