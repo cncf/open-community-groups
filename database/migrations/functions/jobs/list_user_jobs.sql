@@ -23,7 +23,11 @@ begin
     )
     select
         counted.total,
-        coalesce(jsonb_agg(job_summary_json(paged) order by paged.created_at desc, paged.job_id desc), '[]'::jsonb)
+        coalesce(
+            jsonb_agg(job_summary_json(paged) order by paged.created_at desc, paged.job_id desc)
+                filter (where paged.job_id is not null),
+            '[]'::jsonb
+        )
     into v_total, v_jobs
     from counted
     left join paged on true

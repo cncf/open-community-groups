@@ -17,7 +17,7 @@ use crate::{
 
 /// Public jobs search filters.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct JobsFilters {
     /// Free-text search query.
     #[garde(length(max = MAX_LEN_M))]
@@ -40,9 +40,21 @@ pub(crate) struct JobsFilters {
 
 crate::impl_pagination_and_raw_query!(JobsFilters, limit, offset);
 
+impl Default for JobsFilters {
+    fn default() -> Self {
+        Self {
+            query: None,
+            location: None,
+            remote: None,
+            limit: Some(20),
+            offset: Some(0),
+        }
+    }
+}
+
 /// User jobs dashboard filters.
 #[skip_serializing_none]
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct DashboardJobsFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
@@ -55,6 +67,15 @@ pub(crate) struct DashboardJobsFilters {
 }
 
 crate::impl_pagination_and_raw_query!(DashboardJobsFilters, limit, offset);
+
+impl Default for DashboardJobsFilters {
+    fn default() -> Self {
+        Self {
+            limit: dashboard::default_limit(),
+            offset: dashboard::default_offset(),
+        }
+    }
+}
 
 /// Job form input.
 #[skip_serializing_none]
