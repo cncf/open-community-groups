@@ -6,6 +6,15 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
+    <script>
+      (() => {
+        const theme = localStorage.getItem("ocg-theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (theme === "dark" || (!theme && prefersDark)) {
+          document.documentElement.classList.add("ocg-dark");
+        }
+      })();
+    </script>
     {# Page title -#}
     {% block head_title -%}
       <title>Open Alliance Groups</title>
