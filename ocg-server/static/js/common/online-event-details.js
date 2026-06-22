@@ -108,7 +108,7 @@ export class OnlineEventDetails extends LitWrapper {
     this.meetingPassword = "";
     this.meetingError = "";
     this.fieldNamePrefix = "";
-    this.meetingProviderId = DEFAULT_MEETING_PROVIDER;
+    this.meetingProviderId = "";
     this.meetingRecordingRawUrls = [];
     this.meetingRecordingPublished = false;
     this.meetingMaxParticipants = {};
@@ -121,7 +121,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._rawRecordingUrls = [];
     this._recordingRequested = true;
     this._createMeeting = false;
-    this._providerId = DEFAULT_MEETING_PROVIDER;
+    this._providerId = "";
     this._hosts = [];
     this._capacityWarning = "";
     this.disabled = false;
@@ -166,7 +166,7 @@ export class OnlineEventDetails extends LitWrapper {
       : [];
     this._recordingRequested = this.meetingRecordingRequested !== false;
     this._createMeeting = this.meetingRequested;
-    this._providerId = this.meetingProviderId || DEFAULT_MEETING_PROVIDER;
+    this._providerId = this._normalizeProviderId(this.meetingProviderId);
     this._hosts = Array.isArray(this.meetingHosts) ? [...this.meetingHosts] : [];
     this._mode = startsInAutomaticMode ? "automatic" : "manual";
     this._checkMeetingCapacity();
@@ -772,7 +772,7 @@ export class OnlineEventDetails extends LitWrapper {
       meeting_recording_requested: this._recordingRequested !== false,
       meeting_recording_url: (this._recordingUrl || "").trim(),
       meeting_requested: isAutomatic,
-      meeting_provider_id: isAutomatic ? (this._providerId || DEFAULT_MEETING_PROVIDER).trim() : "",
+      meeting_provider_id: isAutomatic ? this._normalizeProviderId(this._providerId).trim() : "",
     };
 
     if (this._supportsJoinInstructions()) {
@@ -794,7 +794,7 @@ export class OnlineEventDetails extends LitWrapper {
     this._rawRecordingUrls = [];
     this._recordingRequested = true;
     this._createMeeting = false;
-    this._providerId = DEFAULT_MEETING_PROVIDER;
+    this._providerId = this._getDefaultProviderId();
     this._hosts = [];
     this.requestUpdate();
   }
@@ -884,6 +884,51 @@ export class OnlineEventDetails extends LitWrapper {
     }
 
     return null;
+  }
+
+  _getProviderOptions() {
+    const configuredProviders =
+      this.meetingMaxParticipants && typeof this.meetingMaxParticipants === "object"
+        ? Object.keys(this.meetingMaxParticipants).filter((providerId) => providerId.trim() !== "")
+        : [];
+    const providerIds = configuredProviders.length > 0 ? configuredProviders : [DEFAULT_MEETING_PROVIDER];
+
+    if (this._providerId && !providerIds.includes(this._providerId)) {
+      providerIds.push(this._providerId);
+    }
+
+    return providerIds.map((providerId) => ({
+      id: providerId,
+      label: this._getProviderLabel(providerId),
+    }));
+  }
+
+  _getProviderLabel(providerId) {
+    switch (providerId) {
+      case "google_meet":
+        return "Google Meet";
+      case "zoom":
+        return "Zoom";
+      default:
+        return providerId
+          .split("_")
+          .filter(Boolean)
+          .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+          .join(" ");
+    }
+  }
+
+  _getDefaultProviderId() {
+    return this._getProviderOptions()[0]?.id || DEFAULT_MEETING_PROVIDER;
+  }
+
+  _normalizeProviderId(providerId) {
+    const requestedProviderId = (providerId || "").trim();
+    const providerOptions = this._getProviderOptions();
+    if (requestedProviderId && providerOptions.some((option) => option.id === requestedProviderId)) {
+      return requestedProviderId;
+    }
+    return providerOptions[0]?.id || DEFAULT_MEETING_PROVIDER;
   }
 
   _checkMeetingCapacity() {
@@ -1179,14 +1224,18 @@ export class OnlineEventDetails extends LitWrapper {
                       ? "bg-stone-100 text-stone-500 cursor-not-allowed"
                       : ""}"
                     @change="${(event) => {
-                      this._providerId = event.target.value || DEFAULT_MEETING_PROVIDER;
+                      this._providerId = this._normalizeProviderId(event.target.value);
                       this._checkMeetingCapacity();
                     }}"
                     ?disabled=${this.disabled}
                   >
-                    <option value="zoom" .selected="${this._providerId === DEFAULT_MEETING_PROVIDER}">
-                      Zoom
-                    </option>
+                    ${this._getProviderOptions().map(
+                      (provider) => html`
+                        <option value="${provider.id}" .selected="${this._providerId === provider.id}">
+                          ${provider.label}
+                        </option>
+                      `,
+                    )}
                   </select>
                 </div>
                 <div class="space-y-2 lg:w-1/2">

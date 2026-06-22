@@ -27,7 +27,8 @@ use crate::{
     services::{
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
         meetings::{
-            DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider,
+            DynMeetingsProvider, MeetingProvider, MeetingsManager,
+            google::GoogleMeetMeetingsProvider, zoom::ZoomMeetingsProvider,
         },
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
         payments::{
@@ -184,6 +185,16 @@ fn setup_image_storage(cfg: &Config, db: Arc<PgDB>) -> DynImageStorage {
 fn start_meetings_workers(cfg: &Config, db: Arc<PgDB>, background_tasks: &BackgroundTasks) {
     // Collect the meetings providers enabled in the configuration
     let mut meetings_providers = HashMap::new();
+
+    if let Some(ref meetings_cfg) = cfg.meetings
+        && let Some(ref google_cfg) = meetings_cfg.google_meet
+        && google_cfg.enabled
+    {
+        meetings_providers.insert(
+            MeetingProvider::GoogleMeet,
+            Arc::new(GoogleMeetMeetingsProvider::new(google_cfg)) as DynMeetingsProvider,
+        );
+    }
 
     if let Some(ref meetings_cfg) = cfg.meetings
         && let Some(ref zoom_cfg) = meetings_cfg.zoom

@@ -263,6 +263,7 @@ select has_check('meeting', 'meeting_recording_urls_not_empty_chk');
 select results_eq(
     'select * from meeting_provider order by meeting_provider_id',
     $$ values
+        ('google_meet', 'Google Meet'),
         ('zoom', 'Zoom')
     $$,
     'Meeting providers should exist'

@@ -13,7 +13,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    config::{PaymentsConfig, PaymentsStripeConfig},
+    config::{MeetingsConfig, MeetingsGoogleMeetConfig, PaymentsConfig, PaymentsStripeConfig},
     db::mock::MockDB,
     handlers::tests::*,
     services::{
@@ -33,6 +33,28 @@ use crate::{
         permissions::GroupPermission,
     },
 };
+
+#[test]
+fn test_build_meetings_max_participants_includes_google_meet() {
+    let cfg = MeetingsConfig {
+        google_meet: Some(MeetingsGoogleMeetConfig {
+            calendar_id: "primary".to_string(),
+            client_id: "client-id".to_string(),
+            client_secret: "client-secret".to_string(),
+            enabled: true,
+            max_participants: 250,
+            refresh_token: "refresh-token".to_string(),
+        }),
+        zoom: None,
+    };
+
+    let max_participants = super::build_meetings_max_participants(Some(&cfg));
+
+    assert_eq!(
+        max_participants.get(&MeetingProvider::GoogleMeet),
+        Some(&250)
+    );
+}
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]

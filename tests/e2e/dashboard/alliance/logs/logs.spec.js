@@ -28,7 +28,7 @@ test.describe("alliance dashboard logs view", () => {
     const auditLogRow = dashboardContent.locator("tr.audit-log-row").first();
     await expect(auditLogRow).toContainText("Alliance updated");
     await expect(auditLogRow).toContainText("e2e-admin-1");
-    await expect(auditLogRow).toContainText("Platform Engineering Alliance");
+    await expect(auditLogRow).toContainText("GOUP Alliance");
 
     // Open the filters modal and verify the active filters.
     await adminAlliancePage.getByRole("button", { name: "Filters" }).click();
@@ -90,9 +90,7 @@ test.describe("alliance dashboard logs view", () => {
     await expect(
       dashboardContent.locator("tr.audit-log-row").first(),
     ).toBeVisible();
-    await expect(dashboardContent).toContainText(
-      "Platform Engineering Alliance",
-    );
+    await expect(dashboardContent).toContainText("GOUP Alliance");
     await expect(
       dashboardContent
         .locator("tr.audit-log-row", {

@@ -35,16 +35,16 @@ use crate::{
     },
     templates::{
         dashboard::{
-            audit::{AuditLogRecord, AuditLogsOutput},
             alliance::{
                 analytics::{
-                    AttendeesStats, AllianceDashboardStats, AlliancePageViewsStats, EventsStats,
+                    AllianceDashboardStats, AlliancePageViewsStats, AttendeesStats, EventsStats,
                     GroupsStats, MembersStats, PageViewsStats as AlliancePageViewsEntry,
                 },
                 groups::Group,
                 settings::AllianceUpdate,
                 team::AllianceTeamMember,
             },
+            audit::{AuditLogRecord, AuditLogsOutput},
             group::{
                 analytics::{
                     GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats,
@@ -1373,6 +1373,7 @@ pub(crate) fn sample_invitation_request() -> InvitationRequest {
 /// Sample Zoom meetings configuration used in handler tests.
 pub(crate) fn sample_zoom_meetings_cfg(secret: &str) -> MeetingsConfig {
     MeetingsConfig {
+        google_meet: None,
         zoom: Some(MeetingsZoomConfig {
             account_id: "account-id".to_string(),
             client_id: "client-id".to_string(),

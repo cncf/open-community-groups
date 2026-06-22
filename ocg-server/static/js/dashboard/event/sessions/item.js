@@ -546,6 +546,7 @@ class SessionItem extends LitWrapper {
                         ?meeting-requested=${this.data.meeting_requested}
                         ?meeting-in-sync=${this.data.meeting_in_sync}
                         meeting-password=${this.data.meeting_password || ""}
+                        meeting-provider-id=${this.data.meeting_provider_id || this.data.meeting_provider || ""}
                         meeting-error=${this.data.meeting_error || ""}
                         starts-at=${this.data.starts_at || ""}
                         ends-at=${this.data.ends_at || ""}
