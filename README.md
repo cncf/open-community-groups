@@ -329,6 +329,23 @@ For remote deployments, protect it with `MCP_BEARER_TOKEN` and expose it behind
 HTTPS. See [`mcp/README.md`](./mcp/README.md) for setup, client config, and how
 to add more tools.
 
+To set up the remote MCP server on EC2 with a generated bearer token and a
+systemd service:
+
+```bash
+./scripts/setup-mcp-ec2.sh
+```
+
+Enable mutating tools, such as event creation and talk submission, only when the
+endpoint is protected behind HTTPS:
+
+```bash
+MCP_ENABLE_MUTATIONS=true ./scripts/setup-mcp-ec2.sh
+```
+
+The script writes `~/.config/ocg/mcp.env`, starts the `goup-mcp` service, and
+prints the NGINX `/mcp` proxy block plus the Cursor/client MCP configuration.
+
 ### Tests and Checks
 
 Run Rust server tests:

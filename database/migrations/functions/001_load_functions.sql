@@ -49,6 +49,7 @@
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}
 
+{{ template "jobs/job_application_summary_json.sql" }}
 {{ template "jobs/job_summary_json.sql" }}
 {{ template "jobs/add_job.sql" }}
 {{ template "jobs/add_job_application.sql" }}

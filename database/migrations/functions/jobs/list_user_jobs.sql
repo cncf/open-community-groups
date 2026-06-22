@@ -24,8 +24,21 @@ begin
     select
         counted.total,
         coalesce(
-            jsonb_agg(job_summary_json(paged) order by paged.created_at desc, paged.job_id desc)
-                filter (where paged.job_id is not null),
+            jsonb_agg(
+                job_summary_json(paged)
+                || jsonb_build_object(
+                    'applications',
+                    coalesce(
+                        (
+                            select jsonb_agg(job_application_summary_json(ja) order by ja.created_at desc)
+                            from jobs_application ja
+                            where ja.job_id = paged.job_id
+                        ),
+                        '[]'::jsonb
+                    )
+                )
+                order by paged.created_at desc, paged.job_id desc
+            ) filter (where paged.job_id is not null),
             '[]'::jsonb
         )
     into v_total, v_jobs

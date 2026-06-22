@@ -134,6 +134,35 @@ pub(crate) struct DashboardJobsOutput {
     pub total: usize,
 }
 
+/// Applicant interest saved for a job.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct JobApplicationSummary {
+    /// Application identifier.
+    pub job_application_id: Uuid,
+    /// Applicant user identifier.
+    pub applicant_user_id: Uuid,
+    /// Applicant username.
+    pub applicant_username: String,
+    /// Applicant email.
+    pub applicant_email: String,
+    /// Applicant display name.
+    pub applicant_name: Option<String>,
+    /// Applicant profile photo URL.
+    pub applicant_photo_url: Option<String>,
+    /// Applicant title.
+    pub applicant_title: Option<String>,
+    /// Applicant company.
+    pub applicant_company: Option<String>,
+    /// Applicant LinkedIn URL.
+    pub applicant_linkedin_url: Option<String>,
+    /// Optional note to the job poster.
+    pub note: Option<String>,
+    /// Time the applicant saved interest.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+}
+
 /// Public job summary.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +193,9 @@ pub(crate) struct JobSummary {
     /// Number of applications.
     #[serde(default)]
     pub application_count: i32,
+    /// Saved-interest applicants. Only populated on the poster dashboard.
+    #[serde(default)]
+    pub applications: Vec<JobApplicationSummary>,
     /// Poster user identifier.
     pub posted_by_user_id: Uuid,
     /// Poster username.

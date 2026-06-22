@@ -22,7 +22,24 @@ curl http://127.0.0.1:8787/tools
 
 ## Run Remotely
 
-Set a bearer token before exposing the server publicly:
+Use the EC2 setup helper from the repository root:
+
+```bash
+./scripts/setup-mcp-ec2.sh
+```
+
+The script generates or reuses a bearer token, writes `~/.config/ocg/mcp.env`,
+installs a `goup-mcp` systemd service, starts it, and prints both an NGINX
+`/mcp` proxy snippet and a Cursor/client config.
+
+Enable mutation tools only when the MCP endpoint is protected:
+
+```bash
+MCP_ENABLE_MUTATIONS=true ./scripts/setup-mcp-ec2.sh
+```
+
+Manual background startup is also supported. Set a bearer token before exposing
+the server publicly:
 
 ```bash
 cd ~/goup.vc/mcp
@@ -39,6 +56,12 @@ MCP_ENABLE_MUTATIONS=true
 
 The event creation tool uses `psql` and reads database connection details from
 `DATABASE_URL`, `TERN_CONF`, or `$HOME/.config/ocg/tern.conf`.
+
+Authentication is done with an HTTP bearer token. Clients must send:
+
+```text
+Authorization: Bearer <token>
+```
 
 Put it behind HTTPS, then configure your MCP client with the remote URL:
 
