@@ -15,7 +15,7 @@ insert into site (
     'GOUP Alliance',
     'GOUP Alliance',
     '{"primary_color": "#0EA5E9"}'::jsonb,
-    '/static/images/favicon.png'
+    '/static/images/favicon.png?v=20260622'
 );
 
 -- ============================================================================

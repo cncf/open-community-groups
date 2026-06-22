@@ -63,7 +63,7 @@ pub(crate) const CACHE_CONTROL_PUBLIC_SHARED: &str =
 pub(crate) const CACHE_CONTROL_PUBLIC_SHARED: &str = "public, max-age=0";
 
 /// Cache-Control header value for favicon redirects.
-const CACHE_CONTROL_FAVICON_REDIRECT: &str = "public, max-age=604800";
+const CACHE_CONTROL_FAVICON_REDIRECT: &str = "no-cache";
 
 /// Cache-Control header value for default static asset responses.
 #[cfg(any(not(debug_assertions), test))]

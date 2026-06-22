@@ -250,6 +250,18 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
                     }
                 }
             }
+            Ok(Event::CData(text)) => {
+                if in_item
+                    && let Some(tag) = current_tag.as_deref()
+                    && let Ok(decoded) = text.decode()
+                {
+                    match tag {
+                        b"title" if title.is_empty() => title = decoded.into_owned(),
+                        b"link" if link.is_empty() => link = decoded.into_owned(),
+                        _ => {}
+                    }
+                }
+            }
             Ok(Event::End(event)) => {
                 let name = event.name().as_ref().to_vec();
                 if name.as_slice() == b"item" || name.as_slice() == b"entry" {
