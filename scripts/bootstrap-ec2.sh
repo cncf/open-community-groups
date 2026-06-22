@@ -197,7 +197,7 @@ install_tern() {
     require_cmd go
     log "Installing tern"
     install -d "${GOBIN:-$HOME/go/bin}"
-    GOBIN="${GOBIN:-$HOME/go/bin}" go install github.com/jackc/tern/v2@latest
+    GOBIN="${GOBIN:-$HOME/go/bin}" go install github.com/jackc/tern/v2@v2.3.2
     export PATH="$HOME/go/bin:$PATH"
 }
 
