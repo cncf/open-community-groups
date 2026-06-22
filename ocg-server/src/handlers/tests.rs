@@ -1155,6 +1155,34 @@ pub(crate) fn sample_site_settings() -> SiteSettings {
 /// Sample site stats for stats page tests.
 pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
     crate::templates::site::stats::SiteStats {
+        summary: crate::templates::site::stats::SiteStatsSummary {
+            active_members: 0,
+            upcoming_events: 0,
+            active_jobs: 0,
+            job_interests: 0,
+            landscape_entries: 0,
+            avg_attendees_per_event: 0.0,
+        },
+        engagement: crate::templates::site::stats::SiteEngagementStats {
+            repeat_attendees: 0,
+            linkedin_connected_members: 0,
+            members_per_group_avg: 0.0,
+            events_per_group_avg: 0.0,
+        },
+        event_breakdown: crate::templates::site::stats::SiteEventBreakdown {
+            by_kind: vec![],
+            by_category: vec![],
+        },
+        jobs_overview: crate::templates::site::stats::SiteJobsOverview {
+            active: 0,
+            expired: 0,
+            interests: 0,
+            avg_interests_per_job: 0.0,
+        },
+        landscape_overview: crate::templates::site::stats::SiteLandscapeOverview {
+            entries: 0,
+            by_category: vec![],
+        },
         attendees: crate::templates::site::stats::SiteStatsSection {
             per_month: vec![],
             running_total: vec![],
