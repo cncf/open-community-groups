@@ -18,7 +18,7 @@ use password_auth::verify_password;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Deserialize;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -48,6 +48,12 @@ mod tests;
 
 /// Key used to store the authentication provider in the session.
 pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
+
+/// Alliance slug used for LinkedIn auto-join.
+const LINKEDIN_AUTO_JOIN_ALLIANCE_NAME: &str = "goup";
+
+/// Group slug used for LinkedIn auto-join.
+const LINKEDIN_AUTO_JOIN_GROUP_SLUG: &str = "baku";
 
 /// URL for the log in page.
 pub(crate) const LOG_IN_URL: &str = "/log-in";
@@ -547,6 +553,9 @@ where
         }
     };
 
+    // LinkedIn users should automatically join the Baku chapter when it exists.
+    auto_join_linkedin_baku_chapter(db, &user.user_id).await;
+
     // Select the first alliance and group as selected in the session
     select_first_alliance_and_group(db, &session, &user.user_id).await?;
 
@@ -556,6 +565,40 @@ where
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
+}
+
+/// Best-effort auto-join for users signing in with LinkedIn.
+async fn auto_join_linkedin_baku_chapter(db: &DynDB, user_id: &Uuid) {
+    if let Err(err) = try_auto_join_linkedin_baku_chapter(db, user_id).await {
+        warn!(%err, %user_id, "failed to auto-join linkedin user to Baku chapter");
+    }
+}
+
+/// Adds a LinkedIn user to the configured Baku chapter when it exists.
+async fn try_auto_join_linkedin_baku_chapter(
+    db: &DynDB,
+    user_id: &Uuid,
+) -> Result<(), HandlerError> {
+    let Some(alliance_id) = db
+        .get_alliance_id_by_name(LINKEDIN_AUTO_JOIN_ALLIANCE_NAME)
+        .await?
+    else {
+        return Ok(());
+    };
+
+    let Some(group) = db
+        .get_group_full_by_slug(alliance_id, LINKEDIN_AUTO_JOIN_GROUP_SLUG)
+        .await?
+    else {
+        return Ok(());
+    };
+
+    if db.is_group_member(alliance_id, group.group_id, *user_id).await? {
+        return Ok(());
+    }
+
+    db.join_group(alliance_id, group.group_id, *user_id).await?;
+    Ok(())
 }
 
 async fn oidc_callback_with_auth<A, F>(
