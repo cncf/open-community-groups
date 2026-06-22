@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use cached::proc_macro::cached;
+use cached::cached;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 
@@ -85,11 +85,10 @@ where
     #[instrument(skip(self), err)]
     async fn get_site_settings(&self) -> Result<SiteSettings> {
         #[cached(
-            time = 300,
+            ttl = 300,
             key = "String",
             convert = r#"{ String::from("site_settings") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<SiteSettings> {
             let row = db.query_one("select get_site_settings()", &[]).await?;
@@ -123,11 +122,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_communities(&self) -> Result<Vec<CommunitySummary>> {
         #[cached(
-            time = 300,
+            ttl = 300,
             key = "String",
             convert = r#"{ String::from("communities") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<CommunitySummary>> {
             let row = db.query_one("select list_communities();", &[]).await?;

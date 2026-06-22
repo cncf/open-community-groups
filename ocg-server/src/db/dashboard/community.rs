@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use cached::proc_macro::cached;
+use cached::cached;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -391,11 +391,10 @@ where
     #[instrument(skip(self), err)]
     async fn get_community_stats(&self, community_id: Uuid) -> Result<CommunityDashboardStats> {
         #[cached(
-            time = 3600,
+            ttl = 3600,
             key = "Uuid",
             convert = "{ community_id }",
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>, community_id: Uuid) -> Result<CommunityDashboardStats> {
             let row = db
@@ -428,11 +427,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_community_roles(&self) -> Result<Vec<CommunityRoleSummary>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("community_roles") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<CommunityRoleSummary>> {
             let row = db.query_one("select list_community_roles()", &[]).await?;

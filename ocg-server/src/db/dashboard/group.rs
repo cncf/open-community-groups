@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use cached::proc_macro::cached;
+use cached::cached;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -688,11 +688,10 @@ where
         group_id: Uuid,
     ) -> Result<GroupDashboardStats> {
         #[cached(
-            time = 3600,
+            ttl = 3600,
             key = "(Uuid, Uuid)",
             convert = "{ (community_id, group_id) }",
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(
             db: PgClient<'_>,
@@ -800,11 +799,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("event_kinds") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<EventKind>> {
             let row = db.query_one("select list_event_kinds()", &[]).await?;
@@ -894,11 +892,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("group_roles") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<GroupRoleSummary>> {
             let row = db.query_one("select list_group_roles()", &[]).await?;
@@ -951,11 +948,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_payment_currency_codes(&self) -> Result<Vec<String>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("payment_currency_codes") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<String>> {
             let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
@@ -972,11 +968,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("session_kinds") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<SessionKind>> {
             let row = db.query_one("select list_session_kinds()", &[]).await?;

@@ -270,7 +270,7 @@ fn static_dist_path(asset_path: &str) -> Result<PathBuf> {
 fn calculate_hash(content: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(content);
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 /// Helper function to copy a directory recursively.
