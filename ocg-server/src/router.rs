@@ -33,8 +33,9 @@ use crate::{
     config::{HttpServerConfig, MeetingsConfig, PaymentsConfig},
     db::DynDB,
     handlers::{
+        alliance,
         auth::{self, LOG_IN_URL},
-        alliance, event, group, images, meetings, payments, site,
+        event, group, images, meetings, payments, site,
     },
     services::{
         images::DynImageStorage, notifications::DynNotificationsManager,
@@ -203,10 +204,7 @@ pub(crate) async fn setup(
             "/{alliance}/event/{event_id}/cfs-submissions",
             post(event::submit_cfs_submission),
         )
-        .route(
-            "/{alliance}/group/{group_id}/join",
-            post(group::join_group),
-        )
+        .route("/{alliance}/group/{group_id}/join", post(group::join_group))
         .route(
             "/{alliance}/group/{group_id}/leave",
             delete(group::leave_group),
@@ -215,6 +213,7 @@ pub(crate) async fn setup(
             "/{alliance}/group/{group_id}/membership",
             get(group::membership_status),
         )
+        .route("/jobs/{job_id}/apply", post(site::jobs::apply))
         // Protected dashboard routes
         .route(
             "/dashboard/account/update/details",
@@ -223,6 +222,23 @@ pub(crate) async fn setup(
         .route(
             "/dashboard/account/update/password",
             put(auth::update_user_password),
+        )
+        .route(
+            "/dashboard/jobs",
+            get(crate::handlers::dashboard::jobs::page).post(crate::handlers::dashboard::jobs::add),
+        )
+        .route(
+            "/dashboard/jobs/{job_id}",
+            put(crate::handlers::dashboard::jobs::update)
+                .delete(crate::handlers::dashboard::jobs::delete),
+        )
+        .route(
+            "/dashboard/jobs/{job_id}/publish",
+            put(crate::handlers::dashboard::jobs::publish),
+        )
+        .route(
+            "/dashboard/jobs/{job_id}/unpublish",
+            put(crate::handlers::dashboard::jobs::unpublish),
         )
         .nest("/dashboard/alliance", alliance_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
@@ -268,6 +284,8 @@ pub(crate) async fn setup(
         .route("/images/og/{file_name}", get(images::serve_open_graph))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))
+        .route("/jobs", get(site::jobs::page))
+        .route("/jobs/{slug}", get(site::jobs::details))
         .route("/stats", get(site::stats::page))
         // Alliance-prefixed public routes
         .route("/{alliance}", get(alliance::page))
@@ -285,10 +303,7 @@ pub(crate) async fn setup(
             get(event::page),
         )
         // Page view tracking routes
-        .route(
-            "/alliances/{alliance_id}/views",
-            post(alliance::track_view),
-        )
+        .route("/alliances/{alliance_id}/views", post(alliance::track_view))
         .route("/events/{event_id}/views", post(event::track_view))
         .route("/groups/{group_id}/views", post(group::track_view))
         .fallback(site::not_found::page);

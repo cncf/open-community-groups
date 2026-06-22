@@ -1,0 +1,205 @@
+{% extends "dashboard/dashboard_base.html" -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/pagination.html" as pagination -%}
+{% import "macros/ui.html" as ui -%}
+
+{% block menu -%}
+  <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
+    <div class="font-semibold text-stone-900 text-sm lg:text-lg">Jobs Dashboard</div>
+  </div>
+
+  <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
+    <div class="leading-10 grid gap-y-0.5">
+      {{ dashboard::menu_title(text = "Jobs", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "My Jobs", icon = "search", is_active = true, href = "/dashboard/jobs") -}}
+      {{ dashboard::menu_item(name = "Public Jobs", icon = "external-link", is_active = false, href = "/jobs") -}}
+    </div>
+    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+      {{ dashboard::menu_title(text = "GOUP", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "User Dashboard", icon = "user-small", is_active = false, href = "/dashboard/user") -}}
+    </div>
+  </div>
+{% endblock menu -%}
+
+{% block dashboard_main -%}
+  <div class="p-4 sm:p-6 lg:p-12">
+    {{ dashboard::page_title(title = "Jobs", description = "Post and manage roles shown on the GOUP jobs board.") -}}
+
+    {% if !messages.is_empty() -%}
+      <div class="mt-6">{{ feedback::alerts(messages) -}}</div>
+    {% endif -%}
+
+    <section class="mt-8 rounded-2xl border border-stone-200 bg-stone-50 p-5">
+      <h2 class="text-lg font-semibold text-stone-950">Post a job</h2>
+      <form class="mt-4 grid gap-4"
+            action="/dashboard/jobs"
+            method="post"
+            hx-post="/dashboard/jobs"
+            hx-target="body">
+        <div class="grid gap-4 lg:grid-cols-2">
+          <div>
+            <label class="label" for="new-job-title">Title</label>
+            <input id="new-job-title" name="title" class="input" required />
+          </div>
+          <div>
+            <label class="label" for="new-job-company">Company</label>
+            <input id="new-job-company" name="company_name" class="input" required />
+          </div>
+        </div>
+        <div>
+          <label class="label" for="new-job-summary">Summary</label>
+          <input id="new-job-summary" name="summary" class="input" required maxlength="500" />
+        </div>
+        <div>
+          <label class="label" for="new-job-description">Description</label>
+          <textarea id="new-job-description" name="description" rows="6" class="input" required></textarea>
+        </div>
+        <div class="grid gap-4 lg:grid-cols-3">
+          <div>
+            <label class="label" for="new-job-apply-url">Apply URL</label>
+            <input id="new-job-apply-url" name="apply_url" class="input" required />
+          </div>
+          <div>
+            <label class="label" for="new-job-location">Location</label>
+            <input id="new-job-location" name="location" class="input" />
+          </div>
+          <div>
+            <label class="label" for="new-job-tags">Tags</label>
+            <input id="new-job-tags" name="tags" class="input" placeholder="Rust, Platform, DevOps" />
+          </div>
+        </div>
+        <label class="inline-flex items-center gap-2 text-sm text-stone-700">
+          <input type="checkbox"
+                 name="remote"
+                 value="true"
+                 class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
+          Remote-friendly role
+        </label>
+        <div>
+          <button class="btn-primary" type="submit">Post job</button>
+        </div>
+      </form>
+    </section>
+
+    <div class="my-8 flex items-center justify-between">
+      <div class="text-sm text-stone-600">
+        {{ pagination::range_display(offset = filters.offset.unwrap_or(0), count = jobs.len(), total = total, label = "job") }}
+      </div>
+    </div>
+
+    {% if jobs.is_empty() -%}
+      <div class="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
+        <h2 class="text-lg font-semibold text-stone-900">No jobs posted yet</h2>
+        <p class="mt-2 text-sm text-stone-600">Use the form above to add your first role.</p>
+      </div>
+    {% else -%}
+      <div class="grid gap-5">
+        {% for job in jobs -%}
+          <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div class="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 class="text-lg font-semibold text-stone-950">{{ job.title }}</h2>
+                  {% if job.published -%}
+                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Published</span>
+                  {% else -%}
+                    <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">Draft</span>
+                  {% endif -%}
+                </div>
+                <p class="mt-1 text-sm text-stone-600">{{ job.company_name }} · {{ job.application_count }} application{% if job.application_count != 1 %}s{% endif %}</p>
+              </div>
+              <a class="text-sm font-semibold text-primary-700 hover:text-primary-900"
+                 href="/jobs/{{ job.slug }}">View</a>
+            </div>
+
+            <form class="grid gap-4"
+                  hx-put="/dashboard/jobs/{{ job.job_id }}"
+                  hx-target="body">
+              <div class="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <label class="label" for="job-title-{{ job.job_id }}">Title</label>
+                  <input id="job-title-{{ job.job_id }}" name="title" class="input" value="{{ job.title }}" required />
+                </div>
+                <div>
+                  <label class="label" for="job-company-{{ job.job_id }}">Company</label>
+                  <input id="job-company-{{ job.job_id }}"
+                         name="company_name"
+                         class="input"
+                         value="{{ job.company_name }}"
+                         required />
+                </div>
+              </div>
+              <div>
+                <label class="label" for="job-summary-{{ job.job_id }}">Summary</label>
+                <input id="job-summary-{{ job.job_id }}"
+                       name="summary"
+                       class="input"
+                       value="{{ job.summary }}"
+                       required
+                       maxlength="500" />
+              </div>
+              <div>
+                <label class="label" for="job-description-{{ job.job_id }}">Description</label>
+                <textarea id="job-description-{{ job.job_id }}" name="description" rows="5" class="input" required>{{ job.description }}</textarea>
+              </div>
+              <div class="grid gap-4 lg:grid-cols-3">
+                <div>
+                  <label class="label" for="job-apply-url-{{ job.job_id }}">Apply URL</label>
+                  <input id="job-apply-url-{{ job.job_id }}"
+                         name="apply_url"
+                         class="input"
+                         value="{{ job.apply_url }}"
+                         required />
+                </div>
+                <div>
+                  <label class="label" for="job-location-{{ job.job_id }}">Location</label>
+                  <input id="job-location-{{ job.job_id }}"
+                         name="location"
+                         class="input"
+                         value="{{ job.location.as_deref().unwrap_or("") }}" />
+                </div>
+                <div>
+                  <label class="label" for="job-tags-{{ job.job_id }}">Tags</label>
+                  <input id="job-tags-{{ job.job_id }}"
+                         name="tags"
+                         class="input"
+                         value="{{ job.tags.join(", ") }}" />
+                </div>
+              </div>
+              <label class="inline-flex items-center gap-2 text-sm text-stone-700">
+                <input type="checkbox"
+                       name="remote"
+                       value="true"
+                       {% if job.remote %}checked{% endif %}
+                       class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
+                Remote-friendly role
+              </label>
+              <div class="flex flex-wrap gap-2">
+                <button class="btn-primary" type="submit">Save changes</button>
+                {% if job.published -%}
+                  <button class="btn-secondary"
+                          type="button"
+                          hx-put="/dashboard/jobs/{{ job.job_id }}/unpublish"
+                          hx-target="body">Unpublish</button>
+                {% else -%}
+                  <button class="btn-secondary"
+                          type="button"
+                          hx-put="/dashboard/jobs/{{ job.job_id }}/publish"
+                          hx-target="body">Publish</button>
+                {% endif -%}
+                <button class="btn-tertiary"
+                        type="button"
+                        hx-delete="/dashboard/jobs/{{ job.job_id }}"
+                        hx-confirm="Delete this job?"
+                        hx-target="body">Delete</button>
+              </div>
+            </form>
+          </article>
+        {% endfor -%}
+      </div>
+
+      {{ pagination::navigation_links(links = navigation_links, hx_target = "body") }}
+    {% endif -%}
+  </div>
+{% endblock dashboard_main -%}

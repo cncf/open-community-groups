@@ -9,9 +9,9 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tokio_postgres::types::{FromSql, Json, ToSql};
 
 use crate::db::{
-    activity_tracker::DBActivityTracker, auth::DBAuth, common::DBCommon, alliance::DBAlliance,
-    dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, meetings::DBMeetings,
-    notifications::DBNotifications, payments::DBPayments, site::DBSite,
+    activity_tracker::DBActivityTracker, alliance::DBAlliance, auth::DBAuth, common::DBCommon,
+    dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, jobs::DBJobs,
+    meetings::DBMeetings, notifications::DBNotifications, payments::DBPayments, site::DBSite,
 };
 
 /// Module containing authentication database operations.
@@ -42,6 +42,9 @@ pub(crate) mod group;
 /// Module containing database functionality for storing images.
 pub(crate) mod images;
 
+/// Module containing database functionality for jobs.
+pub(crate) mod jobs;
+
 /// Module containing database functionality for managing meetings.
 pub(crate) mod meetings;
 
@@ -71,6 +74,7 @@ pub(crate) trait DBOperations:
     + DBEvent
     + DBGroup
     + DBImages
+    + DBJobs
     + DBMeetings
     + DBNotifications
     + DBPayments
@@ -89,6 +93,7 @@ impl<T> DBOperations for T where
         + DBEvent
         + DBGroup
         + DBImages
+        + DBJobs
         + DBMeetings
         + DBNotifications
         + DBPayments

@@ -6,10 +6,10 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Authentication pages templates.
-pub(crate) mod auth;
 /// Alliance site templates.
 pub(crate) mod alliance;
+/// Authentication pages templates.
+pub(crate) mod auth;
 /// Dashboard templates.
 pub(crate) mod dashboard;
 /// Event page templates.
@@ -35,10 +35,12 @@ pub(crate) enum PageId {
     Event,
     Group,
     GroupDashboard,
+    JobsDashboard,
     LogIn,
     SignUp,
     SiteExplore,
     SiteHome,
+    SiteJobs,
     SiteNotFound,
     SiteStats,
     UserDashboard,
