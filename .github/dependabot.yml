@@ -15,6 +15,24 @@ updates:
       - "*"
     multi-ecosystem-group: "backend"
 
+  - package-ecosystem: "npm"
+    directory: "/mcp"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "backend"
+
+  - package-ecosystem: "npm"
+    directory: "/tests/unit"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "backend"
+
+  - package-ecosystem: "npm"
+    directory: "/tests/e2e"
+    patterns:
+      - "*"
+    multi-ecosystem-group: "backend"
+
   - package-ecosystem: "docker"
     directory: "/database/migrations"
     patterns:

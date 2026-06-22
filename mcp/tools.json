@@ -155,6 +155,146 @@
     "action": "create_event"
   },
   {
+    "name": "goup_update_event",
+    "title": "GOUP Update Draft Event",
+    "description": "Update an existing GOUP event through the database update_event function. Requires MCP_ENABLE_MUTATIONS=true and database access through DATABASE_URL or TERN_CONF.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actor_user_id": {
+          "type": "string",
+          "description": "User ID that should be recorded as the event updater."
+        },
+        "group_id": {
+          "type": "string",
+          "description": "Group ID that owns the event."
+        },
+        "event_id": {
+          "type": "string",
+          "description": "Event ID to update."
+        },
+        "category_id": {
+          "type": "string",
+          "description": "Event category ID from the same alliance as the group."
+        },
+        "kind_id": {
+          "type": "string",
+          "enum": ["in-person", "virtual", "hybrid"],
+          "description": "Event type."
+        },
+        "name": {
+          "type": "string",
+          "description": "Event name."
+        },
+        "description": {
+          "type": "string",
+          "description": "Full event description."
+        },
+        "description_short": {
+          "type": "string",
+          "description": "Optional short description for event cards."
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone, for example Asia/Baku."
+        },
+        "starts_at": {
+          "type": "string",
+          "description": "Local start datetime in the event timezone, for example 2026-07-01T18:00:00."
+        },
+        "ends_at": {
+          "type": "string",
+          "description": "Local end datetime in the event timezone, for example 2026-07-01T20:00:00."
+        },
+        "capacity": {
+          "type": "integer",
+          "description": "Optional attendee capacity."
+        },
+        "registration_required": {
+          "type": "boolean",
+          "description": "Whether attendees must register."
+        },
+        "attendee_approval_required": {
+          "type": "boolean",
+          "description": "Whether registrations require organizer approval."
+        },
+        "waitlist_enabled": {
+          "type": "boolean",
+          "description": "Whether the waitlist is enabled when capacity is full."
+        },
+        "event_reminder_enabled": {
+          "type": "boolean",
+          "description": "Whether reminder notifications are enabled."
+        },
+        "meeting_join_url": {
+          "type": "string",
+          "description": "Optional manual meeting link."
+        },
+        "logo_url": {
+          "type": "string",
+          "description": "Optional event logo URL."
+        },
+        "banner_url": {
+          "type": "string",
+          "description": "Optional event desktop banner URL."
+        },
+        "banner_mobile_url": {
+          "type": "string",
+          "description": "Optional event mobile banner URL."
+        },
+        "venue_name": {
+          "type": "string",
+          "description": "Optional venue name."
+        },
+        "venue_address": {
+          "type": "string",
+          "description": "Optional venue street address."
+        },
+        "venue_city": {
+          "type": "string",
+          "description": "Optional venue city."
+        },
+        "venue_country_code": {
+          "type": "string",
+          "description": "Optional venue country code."
+        },
+        "venue_country_name": {
+          "type": "string",
+          "description": "Optional venue country name."
+        },
+        "venue_state": {
+          "type": "string",
+          "description": "Optional venue state or region."
+        },
+        "venue_zip_code": {
+          "type": "string",
+          "description": "Optional venue postal code."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional event tags."
+        }
+      },
+      "required": [
+        "actor_user_id",
+        "group_id",
+        "event_id",
+        "category_id",
+        "kind_id",
+        "name",
+        "description",
+        "timezone",
+        "starts_at",
+        "ends_at"
+      ],
+      "additionalProperties": false
+    },
+    "action": "update_event"
+  },
+  {
     "name": "goup_search_groups",
     "title": "GOUP Search Groups",
     "description": "List or search GOUP groups by alliance, name, slug, category, location, or description.",

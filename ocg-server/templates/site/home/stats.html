@@ -2,24 +2,24 @@
 
 {# Stats -#}
 {# Desktop -#}
-<div class="hidden lg:flex w-full flex-row justify-around items-center border-4 border-double border-stone-200 bg-white rounded-lg p-10 mx-auto">
+<div class="hidden w-full flex-row items-center justify-around rounded-[2rem] border border-white/70 bg-white/85 p-8 shadow-xl shadow-stone-200/60 backdrop-blur lg:flex">
   {# Groups stats -#}
   {{ stats_macros::stat_block(kind = "groups", title = "Groups", value = stats.groups) -}}
   {# End groups stats -#}
 
-  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+  <div class="inline-block h-[56px] min-h-[1em] w-px self-stretch bg-stone-200"></div>
 
   {# Members stats -#}
   {{ stats_macros::stat_block(kind = "members", title = "Members", value = stats.groups_members) -}}
   {# End members stats -#}
 
-  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+  <div class="inline-block h-[56px] min-h-[1em] w-px self-stretch bg-stone-200"></div>
 
   {# Events stats -#}
   {{ stats_macros::stat_block(kind = "events", title = "Events", value = stats.events) -}}
   {# End events stats -#}
 
-  <div class="inline-block h-[50px] min-h-[1em] w-0.5 self-stretch bg-neutral-200"></div>
+  <div class="inline-block h-[56px] min-h-[1em] w-px self-stretch bg-stone-200"></div>
 
   {# Attendees stats -#}
   {{ stats_macros::stat_block(kind = "attendees", title = "Attendees", value = stats.events_attendees) -}}
@@ -28,7 +28,7 @@
 {# End desktop -#}
 
 {# Mobile -#}
-<div class="grid grid-cols-2 gap-x-0 gap-y-8 justify-around lg:hidden w-full border-4 border-double border-stone-200 rounded-lg py-6 mx-auto bg-white">
+<div class="grid w-full grid-cols-2 justify-around gap-x-0 gap-y-8 rounded-[1.5rem] border border-white/70 bg-white/85 py-6 shadow-xl shadow-stone-200/60 backdrop-blur lg:hidden">
   {# Groups stats -#}
   {{ stats_macros::stat_block(kind = "groups", title = "Groups", value = stats.groups, extra_styles = Some("place-self-center w-[130px] -ms-4") ) -}}
   {# End groups stats -#}

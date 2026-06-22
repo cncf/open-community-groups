@@ -16,6 +16,7 @@ jobs:
       dependencies: ${{ steps.filter.outputs.dependencies }}
       javascript: ${{ steps.filter.outputs.javascript }}
       markdown: ${{ steps.filter.outputs.markdown }}
+      mcp: ${{ steps.filter.outputs.mcp }}
       server: ${{ steps.filter.outputs.server }}
       templates: ${{ steps.filter.outputs.templates }}
     steps:
@@ -55,6 +56,9 @@ jobs:
             markdown:
               - '.github/workflows/ci.yml'
               - '**/*.md'
+            mcp:
+              - '.github/workflows/ci.yml'
+              - 'mcp/**'
             server:
               - '.github/workflows/ci.yml'
               - '.rustfmt.toml'
@@ -73,8 +77,7 @@ jobs:
     permissions:
       checks: write
       contents: read
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -86,8 +89,7 @@ jobs:
   check-js-files-format:
     needs: changes
     if: needs.changes.outputs.javascript == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -100,8 +102,7 @@ jobs:
   lint-and-test-server:
     needs: changes
     if: needs.changes.outputs.server == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -124,21 +125,19 @@ jobs:
   lint-markdown-files:
     needs: changes
     if: needs.changes.outputs.markdown == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Run markdownlint
         uses: DavidAnson/markdownlint-cli2-action@v22
         with:
-          globs: 'docs/**/*.md'
+          globs: '**/*.md'
 
   lint-templates:
     needs: changes
     if: needs.changes.outputs.templates == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -147,7 +146,7 @@ jobs:
       - name: Run djlint
         run: |
           djlint \
-            --reformat \
+            --check \
             --configuration ocg-server/templates/.djlintrc \
             ocg-server/templates
 
@@ -157,11 +156,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
-    container: ghcr.io/cncf/open-alliance-groups/db-tests
     services:
       postgres:
-        image: ghcr.io/cncf/open-alliance-groups/postgres-db-tests
+        image: postgis/postgis:17-3.5
         env:
           POSTGRES_USER: tests
           POSTGRES_PASSWORD: tests
@@ -172,14 +169,35 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+      - name: Install PostgreSQL, pgTAP, and tern clients
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client pgtap
+          curl -sL https://github.com/jackc/tern/releases/download/v2.3.2/tern_2.3.2_linux_amd64.tar.gz -o tern.tar.gz
+          tar -xzf tern.tar.gz
+          sudo mv tern /usr/local/bin/tern
+      - name: Install pgTAP extension in PostgreSQL service
+        run: |
+          docker exec -u root ${{ job.services.postgres.id }} sh -lc \
+            'apt-get update && (apt-get install -y postgresql-17-pgtap || apt-get install -y pgtap)'
+      - name: Create database test tern config
+        run: |
+          cat >/tmp/ocg-tern-tests.conf <<EOF
+          [database]
+          host = 127.0.0.1
+          port = ${{ job.services.postgres.ports[5432] }}
+          database = tests
+          user = tests
+          password = tests
+          EOF
       - name: Apply database migrations
         working-directory: ./database/migrations
-        run: TERN_CONF=../../../.github/workflows/tern.conf PGPORT=${{ job.services.postgres.ports[5432] }} ./migrate.sh
+        run: TERN_CONF=/tmp/ocg-tern-tests.conf ./migrate.sh
       - name: Install pgtap database extension
-        run: PGPASSWORD=tests psql -h postgres -p ${{ job.services.postgres.ports[5432] }} -U tests tests -c 'create extension pgtap;'
+        run: PGPASSWORD=tests psql -h 127.0.0.1 -p ${{ job.services.postgres.ports[5432] }} -U tests tests -c 'create extension pgtap;'
       - name: Run database tests
         working-directory: ./database/tests
-        run: PGPASSWORD=tests pg_prove --host postgres --dbname tests --username tests --verbose schema/*.sql functions/*/*.sql
+        run: PGPASSWORD=tests pg_prove --host 127.0.0.1 --port ${{ job.services.postgres.ports[5432] }} --dbname tests --username tests --verbose schema/*.sql functions/*/*.sql
 
   test-database-contracts:
     needs: changes
@@ -187,10 +205,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read
     services:
       postgres:
-        image: ghcr.io/cncf/open-alliance-groups/postgres-db-tests
+        image: postgis/postgis:17-3.5
         env:
           POSTGRES_USER: tests
           POSTGRES_PASSWORD: tests
@@ -242,8 +259,7 @@ jobs:
   test-frontend:
     needs: changes
     if: needs.changes.outputs.javascript == 'true'
-    runs-on:
-      labels: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -262,3 +278,19 @@ jobs:
       - name: Run frontend unit tests
         working-directory: tests/unit
         run: npm test
+
+  test-mcp:
+    needs: changes
+    if: needs.changes.outputs.mcp == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Check MCP server syntax
+        run: node --check mcp/server.mjs
+      - name: Validate MCP tool catalog
+        run: node -e "JSON.parse(require('fs').readFileSync('mcp/tools.json', 'utf8'))"

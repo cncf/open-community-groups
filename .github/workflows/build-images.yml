@@ -4,93 +4,54 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
-  OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
-  OCI_CLI_KEY_CONTENT: ${{ secrets.OCI_CLI_KEY_CONTENT }}
-  OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
-  OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
-  OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository }}
 
 jobs:
-  build-ocg-dbmigrator-image:
-    if: github.ref == 'refs/heads/main'
+  build-images:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: dbmigrator
+            dockerfile: database/migrations/Dockerfile
+          - image: redirector
+            dockerfile: ocg-redirector/Dockerfile
+          - image: server
+            dockerfile: ocg-server/Dockerfile
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-      - name: Login to OCI Registry
-        id: login-ocir
-        uses: oracle-actions/login-ocir@v1.3.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
-      - name: Get ocg-dbmigrator OCIR repository
-        id: get-ocir-repository-dbmigrator
-        uses: oracle-actions/get-ocir-repository@v1.3.0
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          name: ocg/dbmigrator
-          compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
-      - name: Build and push ocg-dbmigrator image
-        env:
-          OCIR_REPOSITORY: ${{ steps.get-ocir-repository-dbmigrator.outputs.repo_path }}
-        run: |
-          docker build \
-            -f database/migrations/Dockerfile \
-            -t $OCIR_REPOSITORY:$GITHUB_SHA \
-            .
-          docker push $OCIR_REPOSITORY:$GITHUB_SHA
-
-  build-ocg-redirector-image:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Login to OCI Registry
-        id: login-ocir
-        uses: oracle-actions/login-ocir@v1.3.0
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Build and push ${{ matrix.image }} image
+        uses: docker/build-push-action@v6
         with:
-          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
-      - name: Get ocg-redirector OCIR repository
-        id: get-ocir-repository-redirector
-        uses: oracle-actions/get-ocir-repository@v1.3.0
-        with:
-          name: ocg/redirector
-          compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
-      - name: Build and push ocg-redirector image
-        env:
-          OCIR_REPOSITORY: ${{ steps.get-ocir-repository-redirector.outputs.repo_path }}
-        run: |
-          docker build \
-            -f ocg-redirector/Dockerfile \
-            -t $OCIR_REPOSITORY:$GITHUB_SHA \
-            .
-          docker push $OCIR_REPOSITORY:$GITHUB_SHA
-
-  build-ocg-server-image:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-      - name: Login to OCI Registry
-        id: login-ocir
-        uses: oracle-actions/login-ocir@v1.3.0
-        with:
-          auth_token: ${{ secrets.OCI_AUTH_TOKEN }}
-      - name: Get ocg-server OCIR repository
-        id: get-ocir-repository-server
-        uses: oracle-actions/get-ocir-repository@v1.3.0
-        with:
-          name: ocg/server
-          compartment: ${{ secrets.OCI_COMPARTMENT_OCID }}
-      - name: Build and push ocg-server image
-        env:
-          OCIR_REPOSITORY: ${{ steps.get-ocir-repository-server.outputs.repo_path }}
-        run: |
-          docker build \
-            --build-arg OCG_COMMIT_SHA=$GITHUB_SHA \
-            -f ocg-server/Dockerfile \
-            -t $OCIR_REPOSITORY:$GITHUB_SHA \
-            .
-          docker push $OCIR_REPOSITORY:$GITHUB_SHA
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          build-args: |
+            OCG_COMMIT_SHA=${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
