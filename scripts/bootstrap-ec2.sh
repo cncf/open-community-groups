@@ -139,7 +139,6 @@ install_rhel_deps() {
 
     local packages=(
         ca-certificates
-        curl
         git
         gcc
         gcc-c++
@@ -150,6 +149,10 @@ install_rhel_deps() {
     )
 
     sudo_cmd "$package_manager" install -y "${packages[@]}"
+
+    if ! command -v curl >/dev/null 2>&1; then
+        install_first_available_package "$package_manager" curl-minimal curl
+    fi
 
     if ! command -v psql >/dev/null 2>&1; then
         install_first_available_package "$package_manager" postgresql16 postgresql15 postgresql14 postgresql
