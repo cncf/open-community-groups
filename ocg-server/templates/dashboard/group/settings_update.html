@@ -13,7 +13,7 @@
       data-success-message="You have successfully updated the group."
       data-error-message="Something went wrong updating the group. Please try again later.">
   <div class="space-y-12">
-    {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/group-dashboard?id=settings-group-identity", description = "Information about the group.") -}}
+    {{ dashboard::page_title(title = "Group Details", description = "Information about the group.") -}}
 
     {% if !can_manage_settings -%}
       {{ dashboard::permission_warning(message = "Your role cannot update group settings.") -}}

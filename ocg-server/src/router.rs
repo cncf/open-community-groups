@@ -244,7 +244,6 @@ pub(crate) async fn setup(
             "/apple-touch-icon.png",
             get(|| async { StatusCode::NOT_FOUND }),
         )
-        .route("/docs", get(site::docs::page))
         .route("/explore", get(site::explore::page))
         .route(
             "/explore/events-section",

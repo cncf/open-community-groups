@@ -15,7 +15,7 @@
       data-error-message="Something went wrong updating the settings. Please try again later.">
 
   <div class="space-y-12">
-    {{ dashboard::page_title(title = "General Settings", docs_href = "/docs#/guides/alliance-dashboard?id=settings-alliance-identity", description = "Configure core alliance information and basic settings.") -}}
+    {{ dashboard::page_title(title = "General Settings", description = "Configure core alliance information and basic settings.") -}}
 
     {% if !can_manage_settings -%}
       {{ dashboard::permission_warning(message = "Your role cannot update alliance settings.") -}}

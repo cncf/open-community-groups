@@ -96,22 +96,10 @@
 {# End form title #}
 
 {# Page title #}
-{% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "") -%}
+{% macro page_title(title, description = "", button = "") -%}
   <div>
     <div class="flex items-center justify-between gap-3">
       <div class="text-xl lg:text-2xl font-medium text-stone-900">{{ title }}</div>
-      <a href="{{ docs_href }}"
-         target="_blank"
-         rel="noopener noreferrer"
-         hx-boost="false"
-         class="group inline-flex size-7 shrink-0 self-center items-center justify-center rounded-full border border-primary-500 bg-white transition-colors hover:bg-primary-500 focus:outline-none focus:ring-4 focus:ring-primary-300"
-         aria-label="{% if docs_aria_label.is_empty() -%}
-                       Open documentation
-                     {% else -%}
-                       {{ docs_aria_label }}
-                     {% endif -%}">
-        <div class="svg-icon size-4 icon-question bg-primary-500 transition-colors group-hover:bg-white"></div>
-      </a>
     </div>
     {% if !description.is_empty() -%}
       <div class="mt-1 flex flex-wrap items-center gap-3">

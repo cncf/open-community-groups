@@ -12,12 +12,6 @@ use which::which;
 /// Environment variable that may provide the current commit SHA.
 const COMMIT_SHA_ENV_VAR: &str = "OCG_COMMIT_SHA";
 
-/// Path to the documentation source directory.
-const DOCS_PATH: &str = "../docs";
-
-/// Path to the generated documentation static files directory.
-const DOCS_STATIC_DIST_PATH: &str = "dist/static/docs";
-
 /// Static asset directories whose files should be content hashed.
 const HASHED_ASSET_DIRS: [&str; 2] = ["css", "js"];
 
@@ -49,7 +43,6 @@ struct HashedAsset {
 
 fn main() -> Result<()> {
     // Rerun this build script if changes are detected in the following paths.
-    println!("cargo:rerun-if-changed={DOCS_PATH}");
     println!("cargo:rerun-if-changed=static");
     println!("cargo:rerun-if-changed=templates");
     println!("cargo:rerun-if-env-changed={COMMIT_SHA_ENV_VAR}");
@@ -97,9 +90,6 @@ fn main() -> Result<()> {
 
     // Replace assets paths references with their hashed versions
     replace_hashed_assets_refs(Path::new(TEMPLATES_DIST_PATH), &assets_manifest)?;
-
-    // Copy documentation to the dist directory
-    copy_dir(Path::new(DOCS_PATH), Path::new(DOCS_STATIC_DIST_PATH))?;
 
     Ok(())
 }
