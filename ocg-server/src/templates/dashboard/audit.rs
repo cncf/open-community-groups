@@ -24,8 +24,6 @@ use crate::{
 pub(crate) struct ListPage {
     /// Available action filter options.
     pub action_options: Vec<AuditActionOption>,
-    /// Documentation link for the page.
-    pub docs_href: String,
     /// Partial route used by the filters form.
     pub filter_url: String,
     /// Audit rows to display.
@@ -73,7 +71,6 @@ impl ListPage {
 
         Self {
             action_options,
-            docs_href: scope.docs_href().to_string(),
             filter_url: scope.filter_url().to_string(),
             logs: output.logs.into_iter().map(AuditLogEntry::from).collect(),
             navigation_links,
@@ -577,15 +574,6 @@ impl AuditScope {
                 value: definition.value.to_string(),
             })
             .collect()
-    }
-
-    /// Returns the documentation link for the scope.
-    fn docs_href(self) -> &'static str {
-        match self {
-            AuditScope::Alliance => "/docs#/guides/alliance-dashboard?id=audit-logs",
-            AuditScope::Group => "/docs#/guides/group-dashboard?id=audit-logs",
-            AuditScope::User => "/docs#/guides/user-dashboard?id=audit-logs",
-        }
     }
 
     /// Returns the partial route used to filter the scope.

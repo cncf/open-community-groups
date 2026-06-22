@@ -14,7 +14,7 @@
       data-success-message="You have successfully updated the group."
       data-error-message="Something went wrong updating the group. Please try again later.">
   <div class="space-y-12">
-    {{ dashboard::page_title(title = "Group Details", docs_href = "/docs#/guides/alliance-dashboard?id=groups-portfolio", description = "Please update as many details about this group as possible.") -}}
+    {{ dashboard::page_title(title = "Group Details", description = "Please update as many details about this group as possible.") -}}
 
     {% if !can_manage_groups -%}
       {{ dashboard::permission_warning(message = "Your role cannot update groups.") -}}

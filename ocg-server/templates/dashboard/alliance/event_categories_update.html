@@ -14,7 +14,7 @@
       data-error-message="Something went wrong updating the event category. Please try again later.">
   <div class="space-y-12">
     <div class="border-b border-stone-900/10 pb-12 space-y-12">
-      {{ dashboard::page_title(title = "Event Category Details", docs_href = "/docs#/guides/alliance-dashboard?id=event-categories-event-taxonomy", description = "Update the event category for this alliance.") -}}
+      {{ dashboard::page_title(title = "Event Category Details", description = "Update the event category for this alliance.") -}}
 
       {% if !can_manage_taxonomy -%}
         {{ dashboard::permission_warning(message = "Your role cannot update event categories.") -}}

@@ -26,7 +26,7 @@ test.describe("site header", () => {
     ).toHaveAttribute("href", "/stats");
     await expect(
       navigation.getByRole("link", { name: "Docs" }),
-    ).toHaveAttribute("href", "/docs");
+    ).toHaveCount(0);
   });
 
   test("guest user menu links point to authentication pages", async ({

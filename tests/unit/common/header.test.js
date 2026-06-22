@@ -143,12 +143,12 @@ describe("header", () => {
   });
 
   it("shows spinner loading on non-boosted dropdown links", () => {
-    // Build the DOM fixture with user dropdown button, user dropdown, and docs link.
+    // Build the DOM fixture with user dropdown button, user dropdown, and external link.
     document.body.innerHTML = `
       <button id="user-dropdown-button" type="button">User</button>
       <div id="user-dropdown">
-        <a id="docs-link" hx-boost="false">
-          Docs
+        <a id="external-link" hx-boost="false">
+          External
           <span class="hx-spinner"></span>
         </a>
       </div>
@@ -158,7 +158,7 @@ describe("header", () => {
     initUserDropdown();
 
     // Clicking a non-boosted dropdown link keeps the menu open and shows loading.
-    const link = document.getElementById("docs-link");
+    const link = document.getElementById("external-link");
     const dropdown = document.getElementById("user-dropdown");
     link.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
@@ -432,17 +432,17 @@ describe("header", () => {
   });
 
   it("shows loading on non-boosted header nav link clicks", async () => {
-    // Build the DOM fixture with user dropdown button, user dropdown, and docs link.
+    // Build the DOM fixture with user dropdown button, user dropdown, and external link.
     document.body.innerHTML = `
       <button id="user-dropdown-button" type="button">User</button>
       <div id="user-dropdown" class="hidden"></div>
       <a
-        id="docs-link"
-        href="/docs"
+        id="external-link"
+        href="https://example.com"
         hx-boost="false"
         data-header-nav-link
       >
-        Docs
+        External
       </a>
     `;
 
@@ -450,7 +450,7 @@ describe("header", () => {
     initUserDropdown();
 
     // Click the non-boosted nav link and prevent real navigation.
-    const link = document.getElementById("docs-link");
+    const link = document.getElementById("external-link");
     document.addEventListener("click", (event) => event.preventDefault(), {
       once: true,
     });
