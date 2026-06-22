@@ -9,7 +9,7 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '6a010000-0000-0000-0000-000000000001'
+\set allianceID '6a010000-0000-0000-0000-000000000001'
 \set groupCategoryID '6a010000-0000-0000-0000-000000000002'
 \set groupID '6a010000-0000-0000-0000-000000000003'
 \set memberID '6a010000-0000-0000-0000-000000000004'
@@ -23,9 +23,9 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -34,23 +34,23 @@ insert into community (
     logo_url,
     og_image_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png',
-    'https://example.com/community-og.png'
+    'https://example.com/alliance-og.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Region
-insert into region (region_id, name, community_id)
-values (:'regionID', 'North America', :'communityID');
+insert into region (region_id, name, alliance_id)
+values (:'regionID', 'North America', :'allianceID');
 
 -- Users
 insert into "user" (
@@ -87,7 +87,7 @@ values
         true,
         'organizer2',
         '2024-01-01 00:00:00',
-        'Community events coordinator',
+        'Alliance events coordinator',
         'Dev Inc',
         'Jane Smith',
         'https://example.com/jane.png',
@@ -110,7 +110,7 @@ values
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -133,7 +133,7 @@ insert into "group" (
     github_url
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Kubernetes NYC',
     'abc1234',
@@ -201,7 +201,7 @@ insert into group_sponsor (
 
 -- Should return correct group data as JSON
 select is(
-    get_group_full_by_slug(:'communityID'::uuid, 'abc1234')::jsonb - '{created_at}'::text[],
+    get_group_full_by_slug(:'allianceID'::uuid, 'abc1234')::jsonb - '{created_at}'::text[],
     format(
         $json$
     {
@@ -233,14 +233,14 @@ select is(
         "longitude": -74.006,
         "og_image_url": "https://example.com/group-og.png",
         "banner_url": "https://example.com/k8s-banner.png",
-        "community": {
+        "alliance": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "%s",
+            "alliance_id": "%s",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle",
-            "og_image_url": "https://example.com/community-og.png"
+            "og_image_url": "https://example.com/alliance-og.png"
         },
         "github_url": "https://github.com/k8snyc",
         "organizers": [
@@ -258,7 +258,7 @@ select is(
                 "company": "Dev Inc",
                 "user_id": "%s",
                 "username": "organizer2",
-                "bio": "Community events coordinator",
+                "bio": "Alliance events coordinator",
                 "name": "Jane Smith",
                 "photo_url": "https://example.com/jane.png"
             }
@@ -287,7 +287,7 @@ select is(
         :'groupID',
         :'sponsor1ID',
         :'sponsor2ID',
-        :'communityID',
+        :'allianceID',
         :'organizer1ID',
         :'organizer2ID',
         :'regionID',
@@ -298,14 +298,14 @@ select is(
 
 -- Should return null with non-existing group slug
 select ok(
-    get_group_full_by_slug(:'communityID'::uuid, 'non-existing-group') is null,
+    get_group_full_by_slug(:'allianceID'::uuid, 'non-existing-group') is null,
     'Should return null with non-existing group slug'
 );
 
 -- Should resolve group by pretty slug
 update "group" set slug_pretty = 'kubernetes-nyc' where group_id = :'groupID';
 select is(
-    get_group_full_by_slug(:'communityID'::uuid, 'kubernetes-nyc')::jsonb->>'group_id',
+    get_group_full_by_slug(:'allianceID'::uuid, 'kubernetes-nyc')::jsonb->>'group_id',
     :'groupID',
     'Should resolve group by pretty slug'
 );

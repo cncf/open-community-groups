@@ -9,7 +9,7 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a330000-0000-0000-0000-000000000001'
+\set allianceID '3a330000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a330000-0000-0000-0000-000000000002'
 \set eventID '3a330000-0000-0000-0000-000000000003'
 \set groupCategoryID '3a330000-0000-0000-0000-000000000004'
@@ -27,9 +27,9 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -37,22 +37,22 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'event-association-community',
-    'Event Association Community',
-    'A test community for event associations',
+    :'allianceID',
+    'event-association-alliance',
+    'Event Association Alliance',
+    'A test alliance for event associations',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
@@ -61,10 +61,10 @@ insert into "user" (user_id, auth_hash, email, email_verified, username, name) v
     (:'user3ID', gen_random_bytes(32), 'user3@example.com', true, 'user3', 'User 3');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Association Group', 'association-group'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Other Group', 'other-group');
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Association Group', 'association-group'),
+    (:'otherGroupID', :'allianceID', :'groupCategoryID', 'Other Group', 'other-group');
 
 -- Group sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url) values

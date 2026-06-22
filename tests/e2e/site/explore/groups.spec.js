@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_GROUP_NAMES,
   navigateToPath,
 } from "../../utils.js";
@@ -10,10 +10,10 @@ test.describe("site explore groups page", () => {
   test("supports searching groups and switching to map view", async ({
     page,
   }) => {
-    // Load the groups explore page with the community filter applied.
+    // Load the groups explore page with the alliance filter applied.
     await navigateToPath(
       page,
-      `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=groups&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Find the Search groups control.
@@ -69,10 +69,10 @@ test.describe("site explore groups page", () => {
   test("shows an empty state when no groups match the search", async ({
     page,
   }) => {
-    // Load the groups explore page with the community filter applied.
+    // Load the groups explore page with the alliance filter applied.
     await navigateToPath(
       page,
-      `/explore?entity=groups&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=groups&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Submit a group search that has no matches.

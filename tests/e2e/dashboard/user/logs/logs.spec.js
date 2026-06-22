@@ -110,12 +110,12 @@ test.describe("user dashboard logs view", () => {
     const filtersModal = member1Page.locator("#audit-log-filters-modal");
     await filtersModal
       .locator("#audit-action")
-      .selectOption("community_team_invitation_accepted");
+      .selectOption("alliance_team_invitation_accepted");
     await filtersModal.getByRole("button", { name: "Apply" }).click();
 
     // Verify member can apply empty log filters and reset them.
     await expect(member1Page).toHaveURL(
-      /\/dashboard\/user\?tab=logs&action=community_team_invitation_accepted/,
+      /\/dashboard\/user\?tab=logs&action=alliance_team_invitation_accepted/,
     );
     await expect(
       dashboardContent.locator("td:visible", {

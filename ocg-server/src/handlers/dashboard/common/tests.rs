@@ -12,13 +12,13 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    types::permissions::CommunityPermission,
+    types::permissions::AlliancePermission,
 };
 
 #[tokio::test]
 async fn test_search_user_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let session_user_id = Uuid::new_v4();
     let search_user_id = Uuid::new_v4();
@@ -27,7 +27,7 @@ async fn test_search_user_success() {
         session_id,
         session_user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         None,
     );
     let expected_users = vec![sample_dashboard_user(search_user_id)];
@@ -43,12 +43,12 @@ async fn test_search_user_success() {
         .times(1)
         .withf(move |id| *id == session_user_id)
         .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *uid == session_user_id
-                && permission == CommunityPermission::TeamWrite
+                && permission == AlliancePermission::TeamWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_search_user()
@@ -63,7 +63,7 @@ async fn test_search_user_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
-        .uri("/dashboard/community/users/search?q=john")
+        .uri("/dashboard/alliance/users/search?q=john")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
@@ -85,7 +85,7 @@ async fn test_search_user_success() {
 #[tokio::test]
 async fn test_search_user_missing_query() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let session_user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -93,7 +93,7 @@ async fn test_search_user_missing_query() {
         session_id,
         session_user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         None,
     );
 
@@ -107,12 +107,12 @@ async fn test_search_user_missing_query() {
         .times(1)
         .withf(move |id| *id == session_user_id)
         .returning(move |_| Ok(Some(sample_auth_user(session_user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *uid == session_user_id
-                && permission == CommunityPermission::TeamWrite
+                && permission == AlliancePermission::TeamWrite
         })
         .returning(|_, _, _| Ok(true));
 
@@ -123,7 +123,7 @@ async fn test_search_user_missing_query() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
-        .uri("/dashboard/community/users/search")
+        .uri("/dashboard/alliance/users/search")
         .header(HOST, "example.test")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())

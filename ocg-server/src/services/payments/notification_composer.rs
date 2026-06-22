@@ -46,12 +46,12 @@ impl PaymentsNotificationComposer {
     /// Build the notification template payload for a refund request.
     pub(super) async fn build_refund_request_template_data(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
     ) -> Result<Value> {
         // Load the event summary and site theme used by the refund request template
         let (event, site_settings) = tokio::try_join!(
-            self.db.get_event_summary_by_id(community_id, event_id),
+            self.db.get_event_summary_by_id(alliance_id, event_id),
             self.db.get_site_settings(),
         )?;
 
@@ -77,7 +77,7 @@ impl PaymentsNotificationComposer {
         completed_purchase: CompletedEventPurchase,
     ) {
         self.enqueue_event_welcome_notification_with_self_service(
-            completed_purchase.community_id,
+            completed_purchase.alliance_id,
             completed_purchase.event_id,
             completed_purchase.user_id,
             EventWelcomeSelfService::EventPageRefund,
@@ -88,12 +88,12 @@ impl PaymentsNotificationComposer {
     /// Enqueue the attendee welcome notification with dashboard cancellation guidance.
     pub(super) async fn enqueue_event_welcome_notification(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     ) {
         self.enqueue_event_welcome_notification_with_self_service(
-            community_id,
+            alliance_id,
             event_id,
             user_id,
             EventWelcomeSelfService::DashboardCancellation,
@@ -104,14 +104,14 @@ impl PaymentsNotificationComposer {
     /// Enqueue the attendee welcome notification with context-specific self-service guidance.
     async fn enqueue_event_welcome_notification_with_self_service(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
         self_service: EventWelcomeSelfService,
     ) {
         // Skip notification delivery when the event context cannot be loaded
         let Some((event, site_settings)) = self
-            .load_event_notification_context(community_id, event_id, "event welcome")
+            .load_event_notification_context(alliance_id, event_id, "event welcome")
             .await
         else {
             return;
@@ -140,13 +140,13 @@ impl PaymentsNotificationComposer {
     /// Enqueue the attendee notification for an approved refund request.
     pub(super) async fn enqueue_refund_approval_notification(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     ) {
         // Skip notification delivery when the event context cannot be loaded
         let Some((event, site_settings)) = self
-            .load_event_notification_context(community_id, event_id, "refund approval")
+            .load_event_notification_context(alliance_id, event_id, "refund approval")
             .await
         else {
             return;
@@ -172,13 +172,13 @@ impl PaymentsNotificationComposer {
     /// Enqueue the attendee notification for a rejected refund request.
     pub(super) async fn enqueue_refund_rejection_notification(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     ) {
         // Skip notification delivery when the event context cannot be loaded
         let Some((event, site_settings)) = self
-            .load_event_notification_context(community_id, event_id, "refund rejection")
+            .load_event_notification_context(alliance_id, event_id, "refund rejection")
             .await
         else {
             return;
@@ -212,7 +212,7 @@ impl PaymentsNotificationComposer {
     /// Loads the shared event and site settings used by payments notifications.
     async fn load_event_notification_context(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         notification_kind: &str,
     ) -> Option<(
@@ -221,7 +221,7 @@ impl PaymentsNotificationComposer {
     )> {
         // Load the shared event and site context required by payments notifications
         match tokio::try_join!(
-            self.db.get_event_summary_by_id(community_id, event_id),
+            self.db.get_event_summary_by_id(alliance_id, event_id),
             self.db.get_site_settings(),
         ) {
             Ok(context) => Some(context),

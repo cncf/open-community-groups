@@ -19,7 +19,7 @@ use crate::{
     handlers::{
         auth::log_out_for_stale_dashboard_context,
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -41,7 +41,7 @@ const PARTIAL_URL: &str = "/dashboard/group/team";
 
 // Tooltip text for disabled group team management controls.
 const GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP: &str =
-    "Only community admins and groups managers can manage this group's team.";
+    "Only alliance admins and groups managers can manage this group's team.";
 const GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP: &str =
     "Your role cannot manage this group's team.";
 
@@ -51,7 +51,7 @@ const GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP: &str =
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -59,7 +59,7 @@ pub(crate) async fn list_page(
     // Prepare list page content
     let (filters, template) = prepare_list_page(
         &db,
-        community_id,
+        alliance_id,
         group_id,
         user.user_id,
         raw_query.as_deref().unwrap_or_default(),
@@ -79,7 +79,7 @@ pub(crate) async fn list_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -94,7 +94,7 @@ pub(crate) async fn add(
     if let Err(err) = async {
         let (site_settings, group) = tokio::try_join!(
             db.get_site_settings(),
-            db.get_group_summary(community_id, group_id)
+            db.get_group_summary(alliance_id, group_id)
         )?;
         let template_data = GroupTeamInvitation {
             group,
@@ -116,7 +116,7 @@ pub(crate) async fn add(
     {
         warn!(
             error = %err,
-            %community_id,
+            %alliance_id,
             %group_id,
             user_id = %member.user_id,
             "failed to enqueue group team invitation notification"
@@ -134,7 +134,7 @@ pub(crate) async fn add(
 pub(crate) async fn delete(
     mut auth_session: AuthSession,
     headers: HeaderMap,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(user_id): Path<Uuid>,
@@ -147,12 +147,12 @@ pub(crate) async fn delete(
     // Remove team member from database
     db.delete_group_team_member(user.user_id, group_id, user_id).await?;
 
-    // The user may still inherit group read access from a community role
+    // The user may still inherit group read access from a alliance role
     // so only log out when selected group read access is actually gone
     if user_id == user.user_id {
         let has_read_permission = db
             .user_has_group_permission(
-                &community_id,
+                &alliance_id,
                 &group_id,
                 &user.user_id,
                 GroupPermission::Read,
@@ -215,7 +215,7 @@ pub(crate) struct NewTeamRole {
 /// Prepares the team list page and filters for the group dashboard.
 pub(crate) async fn prepare_list_page(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     user_id: Uuid,
     raw_query: &str,
@@ -226,7 +226,7 @@ pub(crate) async fn prepare_list_page(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles(),
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user_id,
             GroupPermission::TeamWrite
@@ -239,8 +239,8 @@ pub(crate) async fn prepare_list_page(
     let manage_team_disabled_message = if can_manage_team {
         None
     } else {
-        let community = db.get_community_full(community_id).await?;
-        let message = if community.group_team_management_restricted {
+        let alliance = db.get_alliance_full(alliance_id).await?;
+        let message = if alliance.group_team_management_restricted {
             GROUP_TEAM_MANAGEMENT_RESTRICTED_TOOLTIP
         } else {
             GROUP_TEAM_MANAGEMENT_INSUFFICIENT_ROLE_TOOLTIP

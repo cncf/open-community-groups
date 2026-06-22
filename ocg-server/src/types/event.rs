@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::{
     services::meetings::MeetingProvider,
     types::{
-        community::CommunitySummary,
+        alliance::AllianceSummary,
         group::GroupSummary,
         location::{LocationParts, build_location},
         payments::{
@@ -42,10 +42,10 @@ pub struct EventSummary {
     pub attendee_approval_required: bool,
     /// Whether the event has been canceled.
     pub canceled: bool,
-    /// Human-readable display name of the community this event belongs to.
-    pub community_display_name: String,
-    /// Name of the community this event belongs to (slug for URLs).
-    pub community_name: String,
+    /// Human-readable display name of the alliance this event belongs to.
+    pub alliance_display_name: String,
+    /// Name of the alliance this event belongs to (slug for URLs).
+    pub alliance_name: String,
     /// Unique identifier for the event.
     pub event_id: Uuid,
     /// Category of the hosting group.
@@ -216,8 +216,8 @@ pub struct EventFull {
     /// Call for speakers labels.
     #[serde(default)]
     pub cfs_labels: Vec<EventCfsLabel>,
-    /// Community this event belongs to.
-    pub community: CommunitySummary,
+    /// Alliance this event belongs to.
+    pub alliance: AllianceSummary,
     /// When the event was created.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
@@ -523,8 +523,8 @@ impl From<&EventFull> for EventSummary {
         EventSummary {
             attendee_approval_required: event.attendee_approval_required,
             canceled: event.canceled,
-            community_display_name: event.community.display_name.clone(),
-            community_name: event.community.name.clone(),
+            alliance_display_name: event.alliance.display_name.clone(),
+            alliance_name: event.alliance.name.clone(),
             event_id: event.event_id,
             group_category_name: event.group.category.name.clone(),
             group_name: event.group.name.clone(),

@@ -34,7 +34,7 @@ pub(crate) trait PaymentsManager {
     /// Completes a free checkout and enqueues the attendee welcome notification.
     async fn complete_free_checkout(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         event_purchase_id: Uuid,
         user_id: Uuid,
@@ -156,7 +156,7 @@ impl PgPaymentsManager {
 
         // Notify the attendee about the approved refund
         self.notification_composer
-            .enqueue_refund_approval_notification(input.community_id, input.event_id, input.user_id)
+            .enqueue_refund_approval_notification(input.alliance_id, input.event_id, input.user_id)
             .await;
 
         Ok(())
@@ -165,7 +165,7 @@ impl PgPaymentsManager {
     /// Completes a free checkout and enqueues the attendee welcome notification.
     pub(crate) async fn complete_free_checkout(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         event_purchase_id: Uuid,
         user_id: Uuid,
@@ -173,7 +173,7 @@ impl PgPaymentsManager {
         // Finalize the free purchase before notifying the attendee
         self.db.complete_free_event_purchase(event_purchase_id).await?;
         self.notification_composer
-            .enqueue_event_welcome_notification(community_id, event_id, user_id)
+            .enqueue_event_welcome_notification(alliance_id, event_id, user_id)
             .await;
 
         Ok(())
@@ -203,7 +203,7 @@ impl PgPaymentsManager {
             .create_checkout_session(&CreateCheckoutSessionInput {
                 amount_minor: prepared_checkout.purchase.amount_minor,
                 base_url: self.server_cfg.base_url.clone(),
-                community_name: prepared_checkout.community_name.clone(),
+                alliance_name: prepared_checkout.alliance_name.clone(),
                 currency_code: prepared_checkout.purchase.currency_code.clone(),
                 event_id: prepared_checkout.event_id,
                 event_slug: prepared_checkout.event_slug.clone(),
@@ -285,7 +285,7 @@ impl PgPaymentsManager {
         // Notify the attendee about the rejected refund
         self.notification_composer
             .enqueue_refund_rejection_notification(
-                input.community_id,
+                input.alliance_id,
                 input.event_id,
                 input.user_id,
             )
@@ -299,13 +299,13 @@ impl PgPaymentsManager {
         // Build the organizer notification payload before recording the refund request
         let template_data = self
             .notification_composer
-            .build_refund_request_template_data(input.community_id, input.event_id)
+            .build_refund_request_template_data(input.alliance_id, input.event_id)
             .await?;
 
         // Record the attendee's refund request with the notification payload
         self.db
             .request_event_refund(
-                input.community_id,
+                input.alliance_id,
                 input.event_id,
                 input.user_id,
                 input.requested_reason.clone(),
@@ -372,14 +372,14 @@ impl PaymentsManager for PgPaymentsManager {
     /// [`PaymentsManager::complete_free_checkout`].
     async fn complete_free_checkout(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         event_purchase_id: Uuid,
         user_id: Uuid,
     ) -> Result<()> {
         PgPaymentsManager::complete_free_checkout(
             self,
-            community_id,
+            alliance_id,
             event_id,
             event_purchase_id,
             user_id,
@@ -422,8 +422,8 @@ impl PaymentsManager for PgPaymentsManager {
 pub(crate) struct ApproveRefundRequestInput {
     /// User approving the refund request.
     pub actor_user_id: Uuid,
-    /// Community containing the event.
-    pub community_id: Uuid,
+    /// Alliance containing the event.
+    pub alliance_id: Uuid,
     /// Event containing the purchase.
     pub event_id: Uuid,
     /// Group containing the event.
@@ -449,8 +449,8 @@ pub(crate) enum HandleWebhookError {
 /// Parameters used to request an attendee refund.
 #[derive(Clone, Debug)]
 pub(crate) struct RequestRefundInput {
-    /// Community containing the event.
-    pub community_id: Uuid,
+    /// Alliance containing the event.
+    pub alliance_id: Uuid,
     /// Event for the refund request.
     pub event_id: Uuid,
     /// Attendee requesting the refund.
@@ -465,8 +465,8 @@ pub(crate) struct RequestRefundInput {
 pub(crate) struct RejectRefundRequestInput {
     /// User rejecting the refund request.
     pub actor_user_id: Uuid,
-    /// Community containing the event.
-    pub community_id: Uuid,
+    /// Alliance containing the event.
+    pub alliance_id: Uuid,
     /// Event containing the purchase.
     pub event_id: Uuid,
     /// Group containing the event.

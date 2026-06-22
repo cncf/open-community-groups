@@ -95,12 +95,12 @@ impl ListPage {
 
 // Scopes and actions catalog.
 
-/// Scopes for community-only audit actions.
-const COMMUNITY_SCOPES: &[AuditScope] = &[AuditScope::Community];
-/// Scopes for shared community and group audit actions.
-const COMMUNITY_GROUP_SCOPES: &[AuditScope] = &[AuditScope::Community, AuditScope::Group];
-/// Scopes for shared community and user audit actions.
-const COMMUNITY_USER_SCOPES: &[AuditScope] = &[AuditScope::Community, AuditScope::User];
+/// Scopes for alliance-only audit actions.
+const ALLIANCE_SCOPES: &[AuditScope] = &[AuditScope::Alliance];
+/// Scopes for shared alliance and group audit actions.
+const ALLIANCE_GROUP_SCOPES: &[AuditScope] = &[AuditScope::Alliance, AuditScope::Group];
+/// Scopes for shared alliance and user audit actions.
+const ALLIANCE_USER_SCOPES: &[AuditScope] = &[AuditScope::Alliance, AuditScope::User];
 /// Scopes for group-only audit actions.
 const GROUP_SCOPES: &[AuditScope] = &[AuditScope::Group];
 /// Scopes for shared group and user audit actions.
@@ -116,34 +116,34 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "cfs_submission_updated",
     },
     AuditActionDefinition {
-        label: "Community team invitation accepted",
-        scopes: COMMUNITY_USER_SCOPES,
-        value: "community_team_invitation_accepted",
+        label: "Alliance team invitation accepted",
+        scopes: ALLIANCE_USER_SCOPES,
+        value: "alliance_team_invitation_accepted",
     },
     AuditActionDefinition {
-        label: "Community team invitation rejected",
-        scopes: COMMUNITY_USER_SCOPES,
-        value: "community_team_invitation_rejected",
+        label: "Alliance team invitation rejected",
+        scopes: ALLIANCE_USER_SCOPES,
+        value: "alliance_team_invitation_rejected",
     },
     AuditActionDefinition {
-        label: "Community team member added",
-        scopes: COMMUNITY_SCOPES,
-        value: "community_team_member_added",
+        label: "Alliance team member added",
+        scopes: ALLIANCE_SCOPES,
+        value: "alliance_team_member_added",
     },
     AuditActionDefinition {
-        label: "Community team member removed",
-        scopes: COMMUNITY_SCOPES,
-        value: "community_team_member_removed",
+        label: "Alliance team member removed",
+        scopes: ALLIANCE_SCOPES,
+        value: "alliance_team_member_removed",
     },
     AuditActionDefinition {
-        label: "Community team member role updated",
-        scopes: COMMUNITY_SCOPES,
-        value: "community_team_member_role_updated",
+        label: "Alliance team member role updated",
+        scopes: ALLIANCE_SCOPES,
+        value: "alliance_team_member_role_updated",
     },
     AuditActionDefinition {
-        label: "Community updated",
-        scopes: COMMUNITY_SCOPES,
-        value: "community_updated",
+        label: "Alliance updated",
+        scopes: ALLIANCE_SCOPES,
+        value: "alliance_updated",
     },
     AuditActionDefinition {
         label: "Event added",
@@ -187,17 +187,17 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
     },
     AuditActionDefinition {
         label: "Event category added",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "event_category_added",
     },
     AuditActionDefinition {
         label: "Event category deleted",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "event_category_deleted",
     },
     AuditActionDefinition {
         label: "Event category updated",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "event_category_updated",
     },
     AuditActionDefinition {
@@ -257,27 +257,27 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
     },
     AuditActionDefinition {
         label: "Group activated",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "group_activated",
     },
     AuditActionDefinition {
         label: "Group added",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "group_added",
     },
     AuditActionDefinition {
         label: "Group category added",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "group_category_added",
     },
     AuditActionDefinition {
         label: "Group category deleted",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "group_category_deleted",
     },
     AuditActionDefinition {
         label: "Group category updated",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "group_category_updated",
     },
     AuditActionDefinition {
@@ -287,17 +287,17 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
     },
     AuditActionDefinition {
         label: "Group deactivated",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "group_deactivated",
     },
     AuditActionDefinition {
         label: "Group deleted",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "group_deleted",
     },
     AuditActionDefinition {
         label: "Group payment recipient updated",
-        scopes: COMMUNITY_GROUP_SCOPES,
+        scopes: ALLIANCE_GROUP_SCOPES,
         value: "group_payment_recipient_updated",
     },
     AuditActionDefinition {
@@ -342,22 +342,22 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
     },
     AuditActionDefinition {
         label: "Group updated",
-        scopes: COMMUNITY_GROUP_SCOPES,
+        scopes: ALLIANCE_GROUP_SCOPES,
         value: "group_updated",
     },
     AuditActionDefinition {
         label: "Region added",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "region_added",
     },
     AuditActionDefinition {
         label: "Region deleted",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "region_deleted",
     },
     AuditActionDefinition {
         label: "Region updated",
-        scopes: COMMUNITY_SCOPES,
+        scopes: ALLIANCE_SCOPES,
         value: "region_updated",
     },
     AuditActionDefinition {
@@ -497,7 +497,7 @@ pub(crate) struct AuditLogFilters {
     /// Raw action key used to filter results.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub action: Option<String>,
-    /// Actor username filter used in community and group dashboards.
+    /// Actor username filter used in alliance and group dashboards.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub actor: Option<String>,
     /// Inclusive start date filter.
@@ -557,8 +557,8 @@ pub(crate) struct AuditLogsOutput {
 /// Dashboard scope for an audit log screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum AuditScope {
-    /// Community dashboard logs.
-    Community,
+    /// Alliance dashboard logs.
+    Alliance,
     /// Group dashboard logs.
     Group,
     /// User dashboard logs.
@@ -582,7 +582,7 @@ impl AuditScope {
     /// Returns the documentation link for the scope.
     fn docs_href(self) -> &'static str {
         match self {
-            AuditScope::Community => "/docs#/guides/community-dashboard?id=audit-logs",
+            AuditScope::Alliance => "/docs#/guides/alliance-dashboard?id=audit-logs",
             AuditScope::Group => "/docs#/guides/group-dashboard?id=audit-logs",
             AuditScope::User => "/docs#/guides/user-dashboard?id=audit-logs",
         }
@@ -591,7 +591,7 @@ impl AuditScope {
     /// Returns the partial route used to filter the scope.
     fn filter_url(self) -> &'static str {
         match self {
-            AuditScope::Community => "/dashboard/community/logs",
+            AuditScope::Alliance => "/dashboard/alliance/logs",
             AuditScope::Group => "/dashboard/group/logs",
             AuditScope::User => "/dashboard/user/logs",
         }
@@ -600,7 +600,7 @@ impl AuditScope {
     /// Returns the human-readable description for the scope.
     fn page_description(self) -> &'static str {
         match self {
-            AuditScope::Community => "Review activity recorded from this community dashboard.",
+            AuditScope::Alliance => "Review activity recorded from this alliance dashboard.",
             AuditScope::Group => "Review activity recorded from this group dashboard.",
             AuditScope::User => "Review actions you performed from your user dashboard.",
         }
@@ -609,7 +609,7 @@ impl AuditScope {
     /// Returns the full dashboard URL used to reset the scope.
     fn reset_url(self) -> &'static str {
         match self {
-            AuditScope::Community => "/dashboard/community?tab=logs",
+            AuditScope::Alliance => "/dashboard/alliance?tab=logs",
             AuditScope::Group => "/dashboard/group?tab=logs",
             AuditScope::User => "/dashboard/user?tab=logs",
         }
@@ -674,7 +674,7 @@ fn render_detail_value(value: &Value) -> String {
 fn resource_type_label(resource_type: &str) -> &'static str {
     match resource_type {
         "cfs_submission" => "CFS submission",
-        "community" => "Community",
+        "alliance" => "Alliance",
         "event" => "Event",
         "event_category" => "Event category",
         "group" => "Group",

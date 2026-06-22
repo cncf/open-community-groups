@@ -1,7 +1,7 @@
 -- Manually checks in an event attendee and records the action.
 create or replace function manual_check_in_event(
     p_actor_user_id uuid,
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid
 )
@@ -16,7 +16,7 @@ begin
     where e.event_id = p_event_id;
 
     -- Perform the check-in using the shared event logic
-    perform check_in_event(p_community_id, p_event_id, p_user_id, true);
+    perform check_in_event(p_alliance_id, p_event_id, p_user_id, true);
 
     -- Track the manual check-in
     perform insert_audit_log(
@@ -24,7 +24,7 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        p_community_id,
+        p_alliance_id,
         v_group_id,
         p_event_id
     );

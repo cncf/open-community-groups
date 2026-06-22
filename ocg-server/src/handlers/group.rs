@@ -29,7 +29,7 @@ use crate::{
     types::{event::EventKind, group::GroupFull},
 };
 
-use super::{error::HandlerError, extractors::CommunityId};
+use super::{error::HandlerError, extractors::AllianceId};
 
 #[cfg(test)]
 mod tests;
@@ -41,24 +41,24 @@ mod tests;
 pub(crate) async fn page(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
-    Path((community_name, group_slug)): Path<(String, String)>,
+    Path((alliance_name, group_slug)): Path<(String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get community and site settings
-    let (community_id, site_settings) = tokio::try_join!(
-        db.get_community_id_by_name(&community_name),
+    // Get alliance and site settings
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
         db.get_site_settings()
     )?;
-    let Some(community_id) = community_id else {
+    let Some(alliance_id) = alliance_id else {
         return not_found::render(site_settings);
     };
 
     // Fetch the group page data
     let event_kinds = vec![EventKind::InPerson, EventKind::Virtual, EventKind::Hybrid];
     let (group, past_events, upcoming_events) = tokio::try_join!(
-        db.get_group_full_by_slug(community_id, &group_slug),
-        db.get_group_past_events(community_id, &group_slug, event_kinds.clone(), 9),
-        db.get_group_upcoming_events(community_id, &group_slug, event_kinds, 9)
+        db.get_group_full_by_slug(alliance_id, &group_slug),
+        db.get_group_past_events(alliance_id, &group_slug, event_kinds.clone(), 9),
+        db.get_group_upcoming_events(alliance_id, &group_slug, event_kinds, 9)
     )?;
     let Some(mut group) = group else {
         return not_found::render(site_settings);
@@ -66,7 +66,7 @@ pub(crate) async fn page(
 
     // Redirect generated group slugs to their pretty URL
     if should_redirect_to_pretty_group_slug(&group, &group_slug) {
-        let url = public_group_url(&community_name, group.public_slug(), &uri);
+        let url = public_group_url(&alliance_name, group.public_slug(), &uri);
         return Ok(Redirect::temporary(&url).into_response());
     }
 
@@ -100,8 +100,8 @@ pub(crate) async fn page(
 // Helpers.
 
 /// Builds a public group URL with the original query string, if present.
-fn public_group_url(community_name: &str, group_slug: &str, uri: &Uri) -> String {
-    let mut url = format!("/{community_name}/group/{group_slug}");
+fn public_group_url(alliance_name: &str, group_slug: &str, uri: &Uri) -> String {
+    let mut url = format!("/{alliance_name}/group/{group_slug}");
     if let Some(query) = uri.query() {
         url.push('?');
         url.push_str(query);
@@ -124,24 +124,24 @@ pub(crate) async fn join_group(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Join the group
-    db.join_group(community_id, group_id, user.user_id).await?;
+    db.join_group(alliance_id, group_id, user.user_id).await?;
 
     // Enqueue welcome notification best-effort after the membership mutation
     if let Err(err) = async {
         let (site_settings, group) = tokio::try_join!(
             db.get_site_settings(),
-            db.get_group_summary(community_id, group_id)
+            db.get_group_summary(alliance_id, group_id)
         )?;
         let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
         let template_data = GroupWelcome {
             link: format!(
                 "{}/{}/group/{}",
                 base_url,
-                group.community_name,
+                group.alliance_name,
                 group.public_slug()
             ),
             group,
@@ -159,7 +159,7 @@ pub(crate) async fn join_group(
     {
         warn!(
             error = %err,
-            %community_id,
+            %alliance_id,
             %group_id,
             user_id = %user.user_id,
             "failed to enqueue group welcome notification"
@@ -174,11 +174,11 @@ pub(crate) async fn join_group(
 pub(crate) async fn leave_group(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Leave the group
-    db.leave_group(community_id, group_id, user.user_id).await?;
+    db.leave_group(alliance_id, group_id, user.user_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -188,11 +188,11 @@ pub(crate) async fn leave_group(
 pub(crate) async fn membership_status(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check membership
-    let is_member = db.is_group_member(community_id, group_id, user.user_id).await?;
+    let is_member = db.is_group_member(alliance_id, group_id, user.user_id).await?;
 
     Ok(Json(json!({
         "is_member": is_member

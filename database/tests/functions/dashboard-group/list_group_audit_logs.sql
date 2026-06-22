@@ -22,7 +22,7 @@ select plan(5);
 \set audit9ID '3a1f0000-0000-0000-0000-000000000110'
 \set audit10ID '3a1f0000-0000-0000-0000-000000000111'
 \set audit11ID '3a1f0000-0000-0000-0000-000000000112'
-\set communityID '3a1f0000-0000-0000-0000-000000000001'
+\set allianceID '3a1f0000-0000-0000-0000-000000000001'
 \set groupCategoryID '3a1f0000-0000-0000-0000-000000000021'
 \set groupID '3a1f0000-0000-0000-0000-000000000031'
 \set otherGroupID '3a1f0000-0000-0000-0000-000000000032'
@@ -42,9 +42,9 @@ values
     (:'wildcardActorID', gen_random_bytes(32), 'userx1@example.com', true, 'User X1', 'userx1'),
     (:'targetUserID', gen_random_bytes(32), 'sara@example.com', true, 'Sara', 'sara');
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     banner_mobile_url,
     banner_url,
     description,
@@ -52,24 +52,24 @@ insert into community (
     logo_url,
     name
 ) values (
-    :'communityID',
-    'https://e/community-mobile.png',
-    'https://e/community.png',
-    'Community 1',
-    'Community One',
-    'https://e/community-logo.png',
-    'community-one'
+    :'allianceID',
+    'https://e/alliance-mobile.png',
+    'https://e/alliance.png',
+    'Alliance 1',
+    'Alliance One',
+    'https://e/alliance-logo.png',
+    'alliance-one'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Platform', 'platform'),
-    (:'otherGroupID', :'communityID', :'groupCategoryID', 'Infra', 'infra');
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Platform', 'platform'),
+    (:'otherGroupID', :'allianceID', :'groupCategoryID', 'Infra', 'infra');
 
 -- Audit log rows
 insert into audit_log (
@@ -77,7 +77,7 @@ insert into audit_log (
     action,
     actor_user_id,
     actor_username,
-    community_id,
+    alliance_id,
     created_at,
     details,
     group_id,
@@ -89,7 +89,7 @@ insert into audit_log (
         'group_updated',
         :'actor1ID',
         'alice',
-        :'communityID',
+        :'allianceID',
         '2024-03-01 10:00:00+00',
         '{}'::jsonb,
         :'groupID',
@@ -101,7 +101,7 @@ insert into audit_log (
         'group_team_member_added',
         :'actor2ID',
         'bob',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 10:00:00+00',
         '{"role": "admin"}',
         :'groupID',
@@ -113,7 +113,7 @@ insert into audit_log (
         'event_invitation_request_accepted',
         :'actor2ID',
         'bob',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 11:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000051"}',
         :'groupID',
@@ -125,7 +125,7 @@ insert into audit_log (
         'event_invitation_request_rejected',
         :'actor1ID',
         'alice',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 12:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000052"}',
         :'groupID',
@@ -137,7 +137,7 @@ insert into audit_log (
         'event_attendee_invitation_accepted',
         :'targetUserID',
         'sara',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 13:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000053"}',
         :'groupID',
@@ -149,7 +149,7 @@ insert into audit_log (
         'event_attendee_invitation_rejected',
         :'targetUserID',
         'sara',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 14:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000054"}',
         :'groupID',
@@ -161,7 +161,7 @@ insert into audit_log (
         'event_attendee_invitation_sent',
         :'actor2ID',
         'bob',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 15:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000055"}',
         :'groupID',
@@ -173,7 +173,7 @@ insert into audit_log (
         'event_attendee_invitation_canceled',
         :'actor1ID',
         'alice',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 16:00:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000056"}',
         :'groupID',
@@ -185,7 +185,7 @@ insert into audit_log (
         'event_attendee_attendance_canceled',
         :'actor1ID',
         'alice',
-        :'communityID',
+        :'allianceID',
         '2024-03-02 16:30:00+00',
         '{"event_id": "3a1f0000-0000-0000-0000-000000000057"}',
         :'groupID',
@@ -197,7 +197,7 @@ insert into audit_log (
         'event_added',
         :'actor1ID',
         'alice',
-        :'communityID',
+        :'allianceID',
         '2024-03-03 10:00:00+00',
         '{}'::jsonb,
         :'otherGroupID',
@@ -206,22 +206,22 @@ insert into audit_log (
     ),
     (
         :'audit4ID',
-        'community_updated',
+        'alliance_updated',
         :'actor1ID',
         'alice',
-        :'communityID',
+        :'allianceID',
         '2024-03-04 10:00:00+00',
         '{}'::jsonb,
         :'groupID',
-        :'communityID',
-        'community'
+        :'allianceID',
+        'alliance'
     ),
     (
         :'wildcardAuditID',
         'group_updated',
         :'wildcardActorID',
         'userx1',
-        :'communityID',
+        :'allianceID',
         '2024-03-05 10:00:00+00',
         '{}'::jsonb,
         :'groupID',

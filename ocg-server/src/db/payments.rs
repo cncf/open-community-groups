@@ -49,7 +49,7 @@ pub(crate) trait DBPayments {
     /// Cancels an attendee's active pending checkout.
     async fn cancel_event_checkout(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     ) -> Result<()>;
@@ -76,7 +76,7 @@ pub(crate) trait DBPayments {
     /// Prepares a checkout purchase for an attendee ticket purchase.
     async fn prepare_event_checkout_purchase(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         input: &PrepareEventCheckoutPurchaseInput,
     ) -> Result<PreparedEventCheckout>;
 
@@ -108,7 +108,7 @@ pub(crate) trait DBPayments {
     /// Creates a refund request for an attendee purchase.
     async fn request_event_refund(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
         requested_reason: Option<String>,
@@ -209,13 +209,13 @@ where
     #[instrument(skip(self), err)]
     async fn cancel_event_checkout(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     ) -> Result<()> {
         self.execute(
             "select cancel_event_checkout($1::uuid, $2::uuid, $3::uuid)",
-            &[&community_id, &event_id, &user_id],
+            &[&alliance_id, &event_id, &user_id],
         )
         .await
     }
@@ -264,7 +264,7 @@ where
     #[instrument(skip(self, input), err)]
     async fn prepare_event_checkout_purchase(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         input: &PrepareEventCheckoutPurchaseInput,
     ) -> Result<PreparedEventCheckout> {
         self.fetch_json_one(
@@ -280,7 +280,7 @@ where
             )
             ",
             &[
-                &community_id,
+                &alliance_id,
                 &input.event_id,
                 &input.event_ticket_type_id,
                 &input.user_id,
@@ -363,7 +363,7 @@ where
     #[instrument(skip(self, requested_reason, notification_template_data), err)]
     async fn request_event_refund(
         &self,
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
         requested_reason: Option<String>,
@@ -380,7 +380,7 @@ where
             )
             ",
             &[
-                &community_id,
+                &alliance_id,
                 &event_id,
                 &user_id,
                 &requested_reason,
@@ -412,7 +412,7 @@ where
 #[serde(rename_all = "snake_case", tag = "outcome")]
 enum ReconcileEventPurchaseForCheckoutSessionOutput {
     Completed {
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
     },
@@ -439,11 +439,11 @@ impl From<ReconcileEventPurchaseForCheckoutSessionOutput> for ReconcileEventPurc
     fn from(value: ReconcileEventPurchaseForCheckoutSessionOutput) -> Self {
         match value {
             ReconcileEventPurchaseForCheckoutSessionOutput::Completed {
-                community_id,
+                alliance_id,
                 event_id,
                 user_id,
             } => Self::Completed(CompletedEventPurchase {
-                community_id,
+                alliance_id,
                 event_id,
                 user_id,
             }),
@@ -464,8 +464,8 @@ impl From<ReconcileEventPurchaseForCheckoutSessionOutput> for ReconcileEventPurc
 /// Data returned when a purchase is completed.
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct CompletedEventPurchase {
-    /// Community identifier.
-    pub community_id: Uuid,
+    /// Alliance identifier.
+    pub alliance_id: Uuid,
     /// Event identifier.
     pub event_id: Uuid,
     /// User identifier.
@@ -510,14 +510,14 @@ mod tests {
 
     #[test]
     fn reconcile_event_purchase_for_checkout_session_output_maps_completed() {
-        let community_id = Uuid::new_v4();
+        let alliance_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let user_id = Uuid::new_v4();
 
         let output: ReconcileEventPurchaseForCheckoutSessionOutput =
             serde_json::from_value(json!({
                 "outcome": "completed",
-                "community_id": community_id,
+                "alliance_id": alliance_id,
                 "event_id": event_id,
                 "user_id": user_id
             }))
@@ -525,7 +525,7 @@ mod tests {
 
         match ReconcileEventPurchaseResult::from(output) {
             ReconcileEventPurchaseResult::Completed(completed) => {
-                assert_eq!(completed.community_id, community_id);
+                assert_eq!(completed.alliance_id, alliance_id);
                 assert_eq!(completed.event_id, event_id);
                 assert_eq!(completed.user_id, user_id);
             }

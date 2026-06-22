@@ -9,8 +9,8 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set community2ID '5e070000-0000-0000-0000-000000000001'
-\set communityID '5e070000-0000-0000-0000-000000000002'
+\set alliance2ID '5e070000-0000-0000-0000-000000000001'
+\set allianceID '5e070000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e070000-0000-0000-0000-000000000003'
 \set eventID '5e070000-0000-0000-0000-000000000004'
 \set groupCategoryID '5e070000-0000-0000-0000-000000000005'
@@ -24,9 +24,9 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
+-- Alliances
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -34,40 +34,40 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'event-summary-community',
+    :'allianceID',
+    'event-summary-alliance',
     'Event Summary',
-    'Community for summary tests',
+    'Alliance for summary tests',
     'https://example.test/banner-mobile.png',
     'https://example.test/banner.png',
     'https://example.test/logo.png'
 ), (
-    :'community2ID',
-    'other-community',
-    'Other Community',
-    'Another community',
+    :'alliance2ID',
+    'other-alliance',
+    'Other Alliance',
+    'Another alliance',
     'https://example.test/other-banner-mobile.png',
     'https://example.test/other-banner.png',
     'https://example.test/other.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name, created_at)
-values (:'groupCategoryID', :'communityID', 'Event Category', '2025-01-01 00:00:00');
+insert into group_category (group_category_id, alliance_id, name, created_at)
+values (:'groupCategoryID', :'allianceID', 'Event Category', '2025-01-01 00:00:00');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Summary Events');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Summary Events');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'test_hash', 'summary-user@example.test', true, 'summary-user');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, group_site_layout_id)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, group_site_layout_id)
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Summary Group',
     'summary-group',
@@ -143,21 +143,21 @@ values (:'eventID', :'userID', true, '2025-06-02 00:00:00', '2025-06-02 00:00:00
 
 -- Should return the same payload as get_event_summary
 select is(
-    get_event_summary_by_id(:'communityID'::uuid, :'eventID'::uuid)::jsonb,
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+    get_event_summary_by_id(:'allianceID'::uuid, :'eventID'::uuid)::jsonb,
+    get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
     'Should return the same payload as get_event_summary'
 );
 
 -- Should return null for missing event
 select ok(
-    get_event_summary_by_id(:'communityID'::uuid, :'nonExistingEventID'::uuid) is null,
+    get_event_summary_by_id(:'allianceID'::uuid, :'nonExistingEventID'::uuid) is null,
     'Should return null when the event does not exist'
 );
 
--- Should return null when community mismatches
+-- Should return null when alliance mismatches
 select ok(
-    get_event_summary_by_id(:'community2ID'::uuid, :'eventID'::uuid) is null,
-    'Should return null when the event belongs to another community'
+    get_event_summary_by_id(:'alliance2ID'::uuid, :'eventID'::uuid) is null,
+    'Should return null when the event belongs to another alliance'
 );
 
 -- ============================================================================

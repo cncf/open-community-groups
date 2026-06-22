@@ -12,10 +12,10 @@ Check:
 2. You accepted the related invitation in
    [User Dashboard -> Invitations](/dashboard/user?tab=invitations ':ignore').
 3. You selected the required context:
-   - [Community dashboard](/dashboard/community ':ignore'): selected community.
-   - [Group dashboard](/dashboard/group ':ignore'): selected community and group.
+   - [Alliance dashboard](/dashboard/alliance ':ignore'): selected alliance.
+   - [Group dashboard](/dashboard/group ':ignore'): selected alliance and group.
 
-If actions still fail, re-select the community/group from dashboard selectors and refresh.
+If actions still fail, re-select the alliance/group from dashboard selectors and refresh.
 
 ![Group team area](../screenshots/dashboard-user-invitations.png)
 
@@ -25,8 +25,8 @@ Disabled controls usually indicate role-based authorization, not a UI bug.
 
 Examples:
 
-- Community `viewer` cannot modify settings/taxonomy/team/groups.
-- Community `groups-manager` cannot modify community settings/taxonomy/team.
+- Alliance `viewer` cannot modify settings/taxonomy/team/groups.
+- Alliance `groups-manager` cannot modify alliance settings/taxonomy/team.
 - Group `events-manager` can manage events but cannot manage members/settings/sponsors/team.
 - Group `viewer` is read-only.
 
@@ -110,7 +110,7 @@ Check:
 
 ## Team Member Remove Action Is Disabled
 
-For community/group team tables:
+For alliance/group team tables:
 
 - You cannot remove or demote the final accepted `admin`.
 

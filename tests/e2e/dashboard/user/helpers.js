@@ -1,12 +1,12 @@
 import { expect } from "../../fixtures.js";
 import {
   buildE2eUrl,
-  TEST_COMMUNITY_NAME,
-  TEST_COMMUNITY_IDS,
+  TEST_ALLIANCE_NAME,
+  TEST_ALLIANCE_IDS,
   TEST_GROUP_SLUGS,
   navigateToPath,
   navigateToEvent,
-  selectCommunityContext,
+  selectAllianceContext,
   selectGroupContext,
 } from "../../utils.js";
 import { fillMarkdownEditor } from "../form-helpers.js";
@@ -62,15 +62,15 @@ export const restoreCoSpeakerInvitation = async (
   expect(restoreInvitationResponse.ok()).toBeTruthy();
 };
 
-export const resetCommunityInvitation = async (page, userId, role) => {
-  await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
+export const resetAllianceInvitation = async (page, userId, role) => {
+  await selectAllianceContext(page, TEST_ALLIANCE_IDS.alliance1);
 
   await page.request.delete(
-    buildE2eUrl(`/dashboard/community/team/${userId}/delete`),
+    buildE2eUrl(`/dashboard/alliance/team/${userId}/delete`),
   );
 
   const addResponse = await page.request.post(
-    buildE2eUrl("/dashboard/community/team/add"),
+    buildE2eUrl("/dashboard/alliance/team/add"),
     {
       form: {
         role,
@@ -81,16 +81,16 @@ export const resetCommunityInvitation = async (page, userId, role) => {
   expect(addResponse.ok()).toBeTruthy();
 };
 
-export const clearCommunityInvitation = async (page, userId) => {
-  await selectCommunityContext(page, TEST_COMMUNITY_IDS.community1);
+export const clearAllianceInvitation = async (page, userId) => {
+  await selectAllianceContext(page, TEST_ALLIANCE_IDS.alliance1);
 
   await page.request.delete(
-    buildE2eUrl(`/dashboard/community/team/${userId}/delete`),
+    buildE2eUrl(`/dashboard/alliance/team/${userId}/delete`),
   );
 };
 
 export const resetGroupInvitation = async (page, groupId, userId, role) => {
-  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
+  await selectGroupContext(page, TEST_ALLIANCE_IDS.alliance1, groupId);
 
   await page.request.delete(
     buildE2eUrl(`/dashboard/group/team/${userId}/delete`),
@@ -109,7 +109,7 @@ export const resetGroupInvitation = async (page, groupId, userId, role) => {
 };
 
 export const ensureGroupInvitation = async (page, groupId, userId, role) => {
-  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
+  await selectGroupContext(page, TEST_ALLIANCE_IDS.alliance1, groupId);
 
   const addResponse = await page.request.post(
     buildE2eUrl("/dashboard/group/team/add"),
@@ -138,7 +138,7 @@ export const clearEventAttendeeState = async (page, eventId, userId) => {
 };
 
 export const ensureEventInvitation = async (page, groupId, eventId, userId) => {
-  await selectGroupContext(page, TEST_COMMUNITY_IDS.community1, groupId);
+  await selectGroupContext(page, TEST_ALLIANCE_IDS.alliance1, groupId);
   await clearEventAttendeeState(page, eventId, userId);
 
   const inviteResponse = await page.request.post(
@@ -191,8 +191,8 @@ export const createSessionProposal = async (page, title) => {
 export const submitProposalToOpenCfsEvent = async (page, proposalTitle) => {
   await navigateToEvent(
     page,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
+    TEST_ALLIANCE_NAME,
+    TEST_GROUP_SLUGS.alliance1.alpha,
     "alpha-cfs-summit",
   );
 

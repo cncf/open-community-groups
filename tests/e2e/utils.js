@@ -2,12 +2,12 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { expect } from "@playwright/test";
 
-export const TEST_COMMUNITY_NAME =
-  process.env.OCG_E2E_COMMUNITY_NAME || "e2e-test-community";
-export const TEST_COMMUNITY_NAME_2 = "e2e-second-community";
-export const TEST_COMMUNITY_IDS = {
-  community1: "11111111-1111-1111-1111-111111111111",
-  community2: "11111111-1111-1111-1111-111111111112",
+export const TEST_ALLIANCE_NAME =
+  process.env.OCG_E2E_ALLIANCE_NAME || "e2e-test-alliance";
+export const TEST_ALLIANCE_NAME_2 = "e2e-second-alliance";
+export const TEST_ALLIANCE_IDS = {
+  alliance1: "11111111-1111-1111-1111-111111111111",
+  alliance2: "11111111-1111-1111-1111-111111111112",
 };
 export const TEST_GROUP_SLUG =
   process.env.OCG_E2E_GROUP_SLUG || "test-group-alpha";
@@ -27,18 +27,18 @@ export const TEST_REGISTRATION_QUESTIONS_EVENT = {
 };
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
-export const TEST_COMMUNITY_TITLE = "Platform Engineering Community";
-export const TEST_COMMUNITY_TITLE_2 = "Developer Experience Community";
+export const TEST_ALLIANCE_TITLE = "Platform Engineering Alliance";
+export const TEST_ALLIANCE_TITLE_2 = "Developer Experience Alliance";
 
-/** Community details for assertions. */
-export const TEST_COMMUNITY_DESCRIPTION =
-  "Platform engineering community used for end-to-end coverage.";
-export const TEST_COMMUNITY_BANNER_URL =
-  "/static/images/e2e/community-primary-banner.svg";
-export const TEST_COMMUNITY_BANNER_MOBILE_URL =
-  "/static/images/e2e/community-primary-banner-mobile.svg";
+/** Alliance details for assertions. */
+export const TEST_ALLIANCE_DESCRIPTION =
+  "Platform engineering alliance used for end-to-end coverage.";
+export const TEST_ALLIANCE_BANNER_URL =
+  "/static/images/e2e/alliance-primary-banner.svg";
+export const TEST_ALLIANCE_BANNER_MOBILE_URL =
+  "/static/images/e2e/alliance-primary-banner-mobile.svg";
 
-/** Group names organized by community. */
+/** Group names organized by alliance. */
 export const TEST_GROUP_NAMES = {
   alpha: "Platform Ops Meetup",
   beta: "Inactive Local Chapter",
@@ -64,28 +64,28 @@ export const TEST_EVENT_NAMES = {
   ],
 };
 
-/** Group slugs organized by community. */
+/** Group slugs organized by alliance. */
 export const TEST_GROUP_SLUGS = {
-  community1: {
+  alliance1: {
     alpha: "test-group-alpha",
     beta: "test-group-beta",
     gamma: "test-group-gamma",
   },
-  community2: {
+  alliance2: {
     delta: "second-group-delta",
     epsilon: "second-group-epsilon",
     zeta: "second-group-zeta",
   },
 };
 
-/** Group ids organized by community. */
+/** Group ids organized by alliance. */
 export const TEST_GROUP_IDS = {
-  community1: {
+  alliance1: {
     alpha: "44444444-4444-4444-4444-444444444441",
     beta: "44444444-4444-4444-4444-444444444442",
     gamma: "44444444-4444-4444-4444-444444444443",
   },
-  community2: {
+  alliance2: {
     delta: "44444444-4444-4444-4444-444444444444",
     epsilon: "44444444-4444-4444-4444-444444444445",
     zeta: "44444444-4444-4444-4444-444444444446",
@@ -140,7 +140,7 @@ export const TEST_EVENT_SLUGS = {
 
 /** Pre-seeded user ids for state resets and dashboard assertions. */
 export const TEST_USER_IDS = {
-  communityGroupsManager1: "77777777-7777-7777-7777-777777777709",
+  allianceGroupsManager1: "77777777-7777-7777-7777-777777777709",
   member2: "77777777-7777-7777-7777-777777777706",
   pending1: "77777777-7777-7777-7777-777777777707",
   pending2: "77777777-7777-7777-7777-777777777708",
@@ -160,8 +160,8 @@ export const TEST_USER_CREDENTIALS = {
     username: "e2e-groups-manager-1",
     password: "Password123!",
   },
-  communityViewer1: {
-    username: "e2e-community-viewer-1",
+  allianceViewer1: {
+    username: "e2e-alliance-viewer-1",
     password: "Password123!",
   },
   eventsManager1: {
@@ -371,7 +371,7 @@ const getClippedScreenshotBox = async (page, regionBox, snapshotDimensions) => {
 export const buildE2eUrl = (path) => buildUrl(path);
 
 /**
- * Selects a site or community stats container.
+ * Selects a site or alliance stats container.
  */
 export const getStatsContainer = (page, pageKind, viewport) => {
   const selector =
@@ -413,9 +413,9 @@ export const getSectionLink = (page, heading, linkName, viewport) => {
 };
 
 /**
- * Selects a community banner variant on the site home page.
+ * Selects a alliance banner variant on the site home page.
  */
-export const getCommunityBanner = (page, displayName, viewport) => {
+export const getAllianceBanner = (page, displayName, viewport) => {
   const selector =
     viewport === "desktop"
       ? "div.hidden.sm\\:block"
@@ -474,7 +474,7 @@ export const getEventLogo = (page) =>
   getIntroSection(page).locator("img").first();
 
 /**
- * Selects the stable intro section used by community, group, and event pages.
+ * Selects the stable intro section used by alliance, group, and event pages.
  */
 export const getIntroSection = (page) =>
   page
@@ -482,10 +482,10 @@ export const getIntroSection = (page) =>
     .locator("xpath=ancestor::div[parent::div[contains(@class,'gap-y-6')]][1]");
 
 /**
- * Selects the community about block without including the following sections.
+ * Selects the alliance about block without including the following sections.
  */
-export const getCommunityAboutSection = (page) =>
-  page.locator(".community-description").locator("..");
+export const getAllianceAboutSection = (page) =>
+  page.locator(".alliance-description").locator("..");
 
 /**
  * Selects the stable home jumbotron content without outer container padding.
@@ -541,31 +541,31 @@ export const navigateToSiteExplore = async (page) => {
 };
 
 /**
- * Navigates to a community home page.
+ * Navigates to a alliance home page.
  */
-export const navigateToCommunityHome = async (page, communityName) => {
-  await navigateToUrl(page, buildUrl(`/${communityName}`));
+export const navigateToAllianceHome = async (page, allianceName) => {
+  await navigateToUrl(page, buildUrl(`/${allianceName}`));
 };
 
 /**
- * Navigates to a specific group page within a community.
+ * Navigates to a specific group page within a alliance.
  */
-export const navigateToGroup = async (page, communityName, groupSlug) => {
-  await navigateToUrl(page, buildUrl(`/${communityName}/group/${groupSlug}`));
+export const navigateToGroup = async (page, allianceName, groupSlug) => {
+  await navigateToUrl(page, buildUrl(`/${allianceName}/group/${groupSlug}`));
 };
 
 /**
- * Navigates to a specific event page within a community.
+ * Navigates to a specific event page within a alliance.
  */
 export const navigateToEvent = async (
   page,
-  communityName,
+  allianceName,
   groupSlug,
   eventSlug,
 ) => {
   await navigateToUrl(
     page,
-    buildUrl(`/${communityName}/group/${groupSlug}/event/${eventSlug}`),
+    buildUrl(`/${allianceName}/group/${groupSlug}/event/${eventSlug}`),
   );
 };
 
@@ -706,11 +706,11 @@ export const logInWithSeededUser = async (page, credentials) => {
 };
 
 /**
- * Selects a community dashboard context for the logged-in user.
+ * Selects a alliance dashboard context for the logged-in user.
  */
-export const selectCommunityContext = async (page, communityId) => {
+export const selectAllianceContext = async (page, allianceId) => {
   const response = await page.request.put(
-    buildUrl(`/dashboard/community/${communityId}/select`),
+    buildUrl(`/dashboard/alliance/${allianceId}/select`),
   );
 
   expect(response.ok()).toBeTruthy();
@@ -719,11 +719,11 @@ export const selectCommunityContext = async (page, communityId) => {
 /**
  * Selects a group dashboard context for the logged-in user.
  */
-export const selectGroupContext = async (page, communityId, groupId) => {
-  const communityResponse = await page.request.put(
-    buildUrl(`/dashboard/group/community/${communityId}/select`),
+export const selectGroupContext = async (page, allianceId, groupId) => {
+  const allianceResponse = await page.request.put(
+    buildUrl(`/dashboard/group/alliance/${allianceId}/select`),
   );
-  expect(communityResponse.ok()).toBeTruthy();
+  expect(allianceResponse.ok()).toBeTruthy();
 
   const groupResponse = await page.request.put(
     buildUrl(`/dashboard/group/${groupId}/select`),

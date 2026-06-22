@@ -102,12 +102,12 @@ describe("common utils", () => {
     });
 
     // Set and clear the text input through the helper.
-    setTextValue("title", "Community Call");
+    setTextValue("title", "Alliance Call");
     setTextValue("title", null);
 
     // The helper emits input events and clears null text values.
     expect(input.value).to.equal("");
-    expect(values).to.deep.equal(["Community Call", ""]);
+    expect(values).to.deep.equal(["Alliance Call", ""]);
   });
 
   it("sets select values only when the option exists", () => {

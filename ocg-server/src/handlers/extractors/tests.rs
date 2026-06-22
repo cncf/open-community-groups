@@ -30,34 +30,34 @@ use crate::{
 use super::*;
 
 #[tokio::test]
-async fn test_community_id_extractor_success() {
+async fn test_alliance_id_extractor_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     let db: DynDB = Arc::new(db);
 
     // Setup services mocks
     let is: DynImageStorage = Arc::new(MockImageStorage::new());
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
-    // Setup router with test endpoint that uses CommunityId extractor
+    // Setup router with test endpoint that uses AllianceId extractor
     let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
-            "/{community}/test",
-            get(|CommunityId(id): CommunityId| async move { id.to_string() }),
+            "/{alliance}/test",
+            get(|AllianceId(id): AllianceId| async move { id.to_string() }),
         )
         .with_state(state);
 
-    // Send request with community in path
+    // Send request with alliance in path
     let request = Request::builder()
-        .uri("/test-community/test")
+        .uri("/test-alliance/test")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -66,14 +66,14 @@ async fn test_community_id_extractor_success() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(bytes.as_ref(), community_id.to_string().as_bytes());
+    assert_eq!(bytes.as_ref(), alliance_id.to_string().as_bytes());
 }
 
 #[tokio::test]
-async fn test_community_id_extractor_unknown_community() {
+async fn test_alliance_id_extractor_unknown_alliance() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
         .withf(|name| name == "unknown")
         .returning(|_| Ok(None));
@@ -83,12 +83,12 @@ async fn test_community_id_extractor_unknown_community() {
     let is: DynImageStorage = Arc::new(MockImageStorage::new());
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
-    // Setup router with test endpoint that uses CommunityId extractor
+    // Setup router with test endpoint that uses AllianceId extractor
     let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
-            "/{community}/test",
-            get(|CommunityId(_id): CommunityId| async { StatusCode::OK }),
+            "/{alliance}/test",
+            get(|AllianceId(_id): AllianceId| async { StatusCode::OK }),
         )
         .with_state(state);
 
@@ -100,16 +100,16 @@ async fn test_community_id_extractor_unknown_community() {
 
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
-    assert_eq!(bytes.as_ref(), b"community not found");
+    assert_eq!(bytes.as_ref(), b"alliance not found");
 }
 
 #[tokio::test]
-async fn test_community_id_extractor_db_error() {
+async fn test_alliance_id_extractor_db_error() {
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
+        .withf(|name| name == "test-alliance")
         .returning(|_| Err(anyhow!("db error")));
     let db: DynDB = Arc::new(db);
 
@@ -117,18 +117,18 @@ async fn test_community_id_extractor_db_error() {
     let is: DynImageStorage = Arc::new(MockImageStorage::new());
     let nm: DynNotificationsManager = Arc::new(MockNotificationsManager::new());
 
-    // Setup router with test endpoint that uses CommunityId extractor
+    // Setup router with test endpoint that uses AllianceId extractor
     let state = test_state(db, is, nm);
     let router = Router::new()
         .route(
-            "/{community}/test",
-            get(|CommunityId(_id): CommunityId| async { StatusCode::OK }),
+            "/{alliance}/test",
+            get(|AllianceId(_id): AllianceId| async { StatusCode::OK }),
         )
         .with_state(state);
 
     // Send request
     let request = Request::builder()
-        .uri("/test-community/test")
+        .uri("/test-alliance/test")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -507,7 +507,7 @@ async fn test_oidc_extractor_missing_auth_session() {
 
     // Send request
     let request = Request::builder()
-        .uri("/log-in/oidc/linuxfoundation")
+        .uri("/log-in/oidc/linkedin")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -547,7 +547,7 @@ async fn test_oidc_extractor_unsupported_provider() {
 
     // Send request
     let request = Request::builder()
-        .uri("/log-in/oidc/linuxfoundation")
+        .uri("/log-in/oidc/linkedin")
         .body(Body::empty())
         .unwrap();
     let response = router.oneshot(request).await.unwrap();
@@ -560,7 +560,7 @@ async fn test_oidc_extractor_unsupported_provider() {
 }
 
 #[tokio::test]
-async fn test_selected_community_id_extractor_missing_context() {
+async fn test_selected_alliance_id_extractor_missing_context() {
     // Setup database mock
     let db: DynDB = Arc::new(MockDB::new());
 
@@ -574,20 +574,20 @@ async fn test_selected_community_id_extractor_missing_context() {
     let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
-    let result = SelectedCommunityId::from_request_parts(&mut parts, &state).await;
+    let result = SelectedAllianceId::from_request_parts(&mut parts, &state).await;
     assert!(matches!(
         result,
         Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            "missing selected community context"
+            "missing selected alliance context"
         ))
     ));
 }
 
 #[tokio::test]
-async fn test_selected_community_id_extractor_success() {
+async fn test_selected_alliance_id_extractor_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
 
     // Setup database mock
     let db: DynDB = Arc::new(MockDB::new());
@@ -598,16 +598,16 @@ async fn test_selected_community_id_extractor_success() {
 
     // Setup request parts and state
     let mut request = Request::builder().uri("/").body(Body::empty()).unwrap();
-    request.extensions_mut().insert(SelectedCommunityId(community_id));
+    request.extensions_mut().insert(SelectedAllianceId(alliance_id));
     let (mut parts, _) = request.into_parts();
     let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
-    let SelectedCommunityId(extracted) =
-        SelectedCommunityId::from_request_parts(&mut parts, &state)
+    let SelectedAllianceId(extracted) =
+        SelectedAllianceId::from_request_parts(&mut parts, &state)
             .await
             .expect("extractor should succeed");
-    assert_eq!(extracted, community_id);
+    assert_eq!(extracted, alliance_id);
 }
 
 #[tokio::test]

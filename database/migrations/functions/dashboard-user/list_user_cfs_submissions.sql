@@ -13,7 +13,7 @@ returns json as $$
             select
                 cs.cfs_submission_id,
                 extract(epoch from cs.created_at)::bigint as created_at,
-                get_event_summary(g.community_id, g.group_id, e.event_id) as event,
+                get_event_summary(g.alliance_id, g.group_id, e.event_id) as event,
                 json_strip_nulls(json_build_object(
                     'description', sp.description,
                     'duration_minutes', floor(extract(epoch from sp.duration) / 60)::int,

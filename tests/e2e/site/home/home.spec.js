@@ -2,21 +2,21 @@ import { expect, test } from "@playwright/test";
 
 import {
   E2E_PAYMENTS_ENABLED,
-  TEST_COMMUNITY_NAME,
-  TEST_COMMUNITY_NAME_2,
-  TEST_COMMUNITY_TITLE,
-  TEST_COMMUNITY_TITLE_2,
+  TEST_ALLIANCE_NAME,
+  TEST_ALLIANCE_NAME_2,
+  TEST_ALLIANCE_TITLE,
+  TEST_ALLIANCE_TITLE_2,
   TEST_EVENT_NAMES,
   TEST_SITE_TITLE,
-  getCommunityBanner,
+  getAllianceBanner,
   getSectionLink,
   getStatsContainer,
   getStatValue,
   navigateToSiteHome,
 } from "../../utils.js";
 
-// Site home explore links are currently hardcoded to cncf in shared templates.
-const SITE_HOME_EXPLORE_COMMUNITY_NAME = "cncf";
+// Site home explore links are currently hardcoded to goup in shared templates.
+const SITE_HOME_EXPLORE_ALLIANCE_NAME = "goup";
 
 test.describe("site home page", () => {
   test.describe("default viewport", () => {
@@ -57,28 +57,28 @@ test.describe("site home page", () => {
       }
     });
 
-    test("communities section lists community cards with correct links", async ({
+    test("alliances section lists alliance cards with correct links", async ({
       page,
     }) => {
-      // Verify community cards link to their public community pages.
-      await expect(page.getByText("Communities")).toBeVisible();
+      // Verify alliance cards link to their public alliance pages.
+      await expect(page.getByText("Alliances")).toBeVisible();
 
-      // Target the first community card link.
-      const community1Link = page
+      // Target the first alliance card link.
+      const alliance1Link = page
         .getByRole("link")
-        .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE} banner`) });
-      await expect(community1Link).toHaveAttribute(
+        .filter({ has: page.getByAltText(`${TEST_ALLIANCE_TITLE} banner`) });
+      await expect(alliance1Link).toHaveAttribute(
         "href",
-        `/${TEST_COMMUNITY_NAME}`,
+        `/${TEST_ALLIANCE_NAME}`,
       );
 
-      // Target the second community card link.
-      const community2Link = page
+      // Target the second alliance card link.
+      const alliance2Link = page
         .getByRole("link")
-        .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE_2} banner`) });
-      await expect(community2Link).toHaveAttribute(
+        .filter({ has: page.getByAltText(`${TEST_ALLIANCE_TITLE_2} banner`) });
+      await expect(alliance2Link).toHaveAttribute(
         "href",
-        `/${TEST_COMMUNITY_NAME_2}`,
+        `/${TEST_ALLIANCE_NAME_2}`,
       );
     });
 
@@ -196,49 +196,49 @@ test.describe("site home page", () => {
       await expect(desktopStats).toBeVisible();
     });
 
-    test("community cards render on desktop with correct links", async ({
+    test("alliance cards render on desktop with correct links", async ({
       page,
     }) => {
-      // Target the first desktop community card.
-      const community1Link = page
+      // Target the first desktop alliance card.
+      const alliance1Link = page
         .getByRole("link")
-        .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE} banner`) })
+        .filter({ has: page.getByAltText(`${TEST_ALLIANCE_TITLE} banner`) })
         .first();
 
-      // Verify desktop community cards link to public community pages.
-      await expect(community1Link).toHaveAttribute(
+      // Verify desktop alliance cards link to public alliance pages.
+      await expect(alliance1Link).toHaveAttribute(
         "href",
-        `/${TEST_COMMUNITY_NAME}`,
+        `/${TEST_ALLIANCE_NAME}`,
       );
 
-      // Set up community2 link.
-      const community2Link = page
+      // Set up alliance2 link.
+      const alliance2Link = page
         .getByRole("link")
-        .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE_2} banner`) })
+        .filter({ has: page.getByAltText(`${TEST_ALLIANCE_TITLE_2} banner`) })
         .first();
-      await expect(community2Link).toHaveAttribute(
+      await expect(alliance2Link).toHaveAttribute(
         "href",
-        `/${TEST_COMMUNITY_NAME_2}`,
+        `/${TEST_ALLIANCE_NAME_2}`,
       );
     });
 
-    test("community banners use display name in alt text", async ({ page }) => {
-      // Verify desktop community banners use display names in alt text.
+    test("alliance banners use display name in alt text", async ({ page }) => {
+      // Verify desktop alliance banners use display names in alt text.
       await expect(
-        getCommunityBanner(page, TEST_COMMUNITY_TITLE, "desktop"),
+        getAllianceBanner(page, TEST_ALLIANCE_TITLE, "desktop"),
       ).toBeVisible();
 
-      // Verify the second community banner also uses its display name.
+      // Verify the second alliance banner also uses its display name.
       await expect(
-        getCommunityBanner(page, TEST_COMMUNITY_TITLE_2, "desktop"),
+        getAllianceBanner(page, TEST_ALLIANCE_TITLE_2, "desktop"),
       ).toBeVisible();
     });
 
     test("desktop banner renders on large viewports", async ({ page }) => {
-      // Target desktop and mobile banner variants for one community.
-      const desktopBanner = getCommunityBanner(
+      // Target desktop and mobile banner variants for one alliance.
+      const desktopBanner = getAllianceBanner(
         page,
-        TEST_COMMUNITY_TITLE,
+        TEST_ALLIANCE_TITLE,
         "desktop",
       );
 
@@ -246,9 +246,9 @@ test.describe("site home page", () => {
       await expect(desktopBanner).toBeVisible();
 
       // Target the matching mobile banner variant.
-      const mobileBanner = getCommunityBanner(
+      const mobileBanner = getAllianceBanner(
         page,
-        TEST_COMMUNITY_TITLE,
+        TEST_ALLIANCE_TITLE,
         "mobile",
       );
       await expect(mobileBanner).toBeHidden();
@@ -269,7 +269,7 @@ test.describe("site home page", () => {
       await expect(desktopLink).toBeVisible();
       await expect(desktopLink).toHaveAttribute(
         "href",
-        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=events`,
+        `/explore?alliance[0]=${SITE_HOME_EXPLORE_ALLIANCE_NAME}&entity=events`,
       );
     });
 
@@ -287,7 +287,7 @@ test.describe("site home page", () => {
       // Verify the desktop groups link points to the filtered explore page.
       await expect(desktopLink).toHaveAttribute(
         "href",
-        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=groups`,
+        `/explore?alliance[0]=${SITE_HOME_EXPLORE_ALLIANCE_NAME}&entity=groups`,
       );
     });
 
@@ -319,35 +319,35 @@ test.describe("site home page", () => {
       await expect(mobileStats).toBeVisible();
     });
 
-    test("community cards render on mobile with correct links", async ({
+    test("alliance cards render on mobile with correct links", async ({
       page,
     }) => {
-      // Target the mobile banner for the first community card.
-      const mobileBanner = getCommunityBanner(
+      // Target the mobile banner for the first alliance card.
+      const mobileBanner = getAllianceBanner(
         page,
-        TEST_COMMUNITY_TITLE,
+        TEST_ALLIANCE_TITLE,
         "mobile",
       );
 
-      // Verify the mobile community card links to its public page.
+      // Verify the mobile alliance card links to its public page.
       await expect(mobileBanner).toBeVisible();
 
-      // Target the mobile community card link.
-      const community1Link = page
+      // Target the mobile alliance card link.
+      const alliance1Link = page
         .getByRole("link")
-        .filter({ has: page.getByAltText(`${TEST_COMMUNITY_TITLE} banner`) })
+        .filter({ has: page.getByAltText(`${TEST_ALLIANCE_TITLE} banner`) })
         .first();
-      await expect(community1Link).toHaveAttribute(
+      await expect(alliance1Link).toHaveAttribute(
         "href",
-        `/${TEST_COMMUNITY_NAME}`,
+        `/${TEST_ALLIANCE_NAME}`,
       );
     });
 
     test("mobile banner renders on small viewports", async ({ page }) => {
-      // Target mobile and desktop banner variants for one community.
-      const mobileBanner = getCommunityBanner(
+      // Target mobile and desktop banner variants for one alliance.
+      const mobileBanner = getAllianceBanner(
         page,
-        TEST_COMMUNITY_TITLE,
+        TEST_ALLIANCE_TITLE,
         "mobile",
       );
 
@@ -355,9 +355,9 @@ test.describe("site home page", () => {
       await expect(mobileBanner).toBeVisible();
 
       // Target the matching desktop banner variant.
-      const desktopBanner = getCommunityBanner(
+      const desktopBanner = getAllianceBanner(
         page,
-        TEST_COMMUNITY_TITLE,
+        TEST_ALLIANCE_TITLE,
         "desktop",
       );
       await expect(desktopBanner).toBeHidden();
@@ -378,7 +378,7 @@ test.describe("site home page", () => {
       await expect(mobileLink).toBeVisible();
       await expect(mobileLink).toHaveAttribute(
         "href",
-        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=events`,
+        `/explore?alliance[0]=${SITE_HOME_EXPLORE_ALLIANCE_NAME}&entity=events`,
       );
     });
 
@@ -396,7 +396,7 @@ test.describe("site home page", () => {
       // Verify the mobile groups link points to the filtered explore page.
       await expect(mobileLink).toHaveAttribute(
         "href",
-        `/explore?community[0]=${SITE_HOME_EXPLORE_COMMUNITY_NAME}&entity=groups`,
+        `/explore?alliance[0]=${SITE_HOME_EXPLORE_ALLIANCE_NAME}&entity=groups`,
       );
     });
 

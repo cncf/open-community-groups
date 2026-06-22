@@ -10,7 +10,7 @@ select plan(8);
 -- ============================================================================
 
 \set actorUserID '79400000-0000-0000-0000-000000000001'
-\set communityID '79400000-0000-0000-0000-000000000002'
+\set allianceID '79400000-0000-0000-0000-000000000002'
 \set discountCodeID '79400000-0000-0000-0000-000000000003'
 \set eventCategoryID '79400000-0000-0000-0000-000000000004'
 \set eventID '79400000-0000-0000-0000-000000000005'
@@ -33,9 +33,9 @@ select plan(8);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -43,9 +43,9 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'approve-community',
-    'Approve Community',
+    :'allianceID',
+    'approve-alliance',
+    'Approve Alliance',
     'Test',
     'https://e/banner-mobile.png',
     'https://e/banner.png',
@@ -53,12 +53,12 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -93,8 +93,8 @@ values
     );
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Approve Group', 'approve-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Approve Group', 'approve-group');
 
 -- Event
 insert into event (
@@ -264,7 +264,7 @@ select is(
         'Looks good'
     )::jsonb,
     jsonb_build_object(
-        'community_id', :'communityID'::uuid,
+        'alliance_id', :'allianceID'::uuid,
         'event_id', :'eventID'::uuid,
         'user_id', :'userID'::uuid
     ),
@@ -306,7 +306,7 @@ select results_eq(
         select
             action,
             actor_user_id,
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             details->>'event_purchase_id',
@@ -323,7 +323,7 @@ select results_eq(
         %L,
         're_test_123',
         %L
-    ) $$, :'actorUserID', :'communityID', :'eventID', :'groupID', :'purchaseID', :'userID'),
+    ) $$, :'actorUserID', :'allianceID', :'eventID', :'groupID', :'purchaseID', :'userID'),
     'Should create the expected refund audit row'
 );
 
@@ -352,7 +352,7 @@ select is(
         null
     )::jsonb,
     jsonb_build_object(
-        'community_id', :'communityID'::uuid,
+        'alliance_id', :'allianceID'::uuid,
         'event_id', :'eventID'::uuid,
         'user_id', :'noDiscountUserID'::uuid
     ),

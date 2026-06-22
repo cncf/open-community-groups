@@ -40,7 +40,7 @@ class EventSelector extends LitWrapper {
    * - selectedEventId: currently applied event uuid
    * - selectedEvent: preloaded event payload to render selected label
    * - groupId: optional override group uuid
-   * - community: community slug for event search
+   * - alliance: alliance slug for event search
    * - groupSlug: group slug for event search
    * - buttonId: optional button id to control focus interactions
    * - _isOpen: dropdown visibility flag
@@ -62,7 +62,7 @@ class EventSelector extends LitWrapper {
       },
     },
     groupId: { type: String, attribute: "group-id" },
-    community: { type: String, attribute: "community" },
+    alliance: { type: String, attribute: "alliance" },
     groupSlug: { type: String, attribute: "group-slug" },
     buttonId: { type: String, attribute: "button-id" },
     _isOpen: { state: true },
@@ -79,7 +79,7 @@ class EventSelector extends LitWrapper {
     this.selectedEventId = "";
     this.selectedEvent = null;
     this.groupId = "";
-    this.community = "";
+    this.alliance = "";
     this.groupSlug = "";
     this.buttonId = "";
     this._isOpen = false;
@@ -119,7 +119,7 @@ class EventSelector extends LitWrapper {
       this._hasFetched = false;
       this._primaryResults = [];
     }
-    if (changed.has("groupId") || changed.has("community") || changed.has("groupSlug")) {
+    if (changed.has("groupId") || changed.has("alliance") || changed.has("groupSlug")) {
       this._hasFetched = false;
       this._primaryResults = [];
     }
@@ -349,7 +349,7 @@ class EventSelector extends LitWrapper {
 
   /**
    * Gets the group dashboard selection context from DOM.
-   * @returns {{community: string, groupSlug: string}}
+   * @returns {{alliance: string, groupSlug: string}}
    */
   _getDashboardSelection() {
     return getDashboardSelectionContext(this);
@@ -362,7 +362,7 @@ class EventSelector extends LitWrapper {
    */
   async _requestEvents(config) {
     const searchContext = resolveEventSearchContext({
-      community: this.community,
+      alliance: this.alliance,
       dashboardSelection: this._getDashboardSelection(),
       groupSlug: this.groupSlug,
     });

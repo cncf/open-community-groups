@@ -9,8 +9,8 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '9a010000-0000-0000-0000-000000000001'
-\set community2ID '9a010000-0000-0000-0000-000000000002'
+\set alliance1ID '9a010000-0000-0000-0000-000000000001'
+\set alliance2ID '9a010000-0000-0000-0000-000000000002'
 \set eventCategory1ID '9a010000-0000-0000-0000-000000000003'
 \set eventCategory2ID '9a010000-0000-0000-0000-000000000004'
 \set eventCategory3ID '9a010000-0000-0000-0000-000000000005'
@@ -25,9 +25,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -36,47 +36,47 @@ insert into community (
     logo_url
 ) values
     (
-        :'community1ID',
-        'alpha-community',
-        'Alpha Community',
-        'First community',
+        :'alliance1ID',
+        'alpha-alliance',
+        'Alpha Alliance',
+        'First alliance',
         'https://example.com/alpha-banner_mobile.png',
         'https://example.com/alpha-banner.png',
         'https://example.com/alpha-logo.png'
     ),
     (
-        :'community2ID',
+        :'alliance2ID',
         'cloud-native-seattle',
         'Cloud Native Seattle',
-        'A vibrant community',
+        'A vibrant alliance',
         'https://example.com/cns-banner_mobile.png',
         'https://example.com/cns-banner.png',
         'https://example.com/cns-logo.png'
     );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name, "order")
+insert into group_category (group_category_id, alliance_id, name, "order")
 values
-    (:'groupCategory1ID', :'community2ID', 'Technology', 1),
-    (:'groupCategory2ID', :'community2ID', 'Business', 2);
+    (:'groupCategory1ID', :'alliance2ID', 'Technology', 1),
+    (:'groupCategory2ID', :'alliance2ID', 'Business', 2);
 
 -- Region
-insert into region (region_id, name, community_id, "order")
+insert into region (region_id, name, alliance_id, "order")
 values
-    (:'region1ID', 'North America', :'community2ID', 1),
-    (:'region2ID', 'Europe', :'community2ID', 2);
+    (:'region1ID', 'North America', :'alliance2ID', 1),
+    (:'region2ID', 'Europe', :'alliance2ID', 2);
 
 -- Event category
-insert into event_category (event_category_id, community_id, name, "order")
+insert into event_category (event_category_id, alliance_id, name, "order")
 values
-    (:'eventCategory1ID', :'community2ID', 'Tech Talks', 1),
-    (:'eventCategory2ID', :'community2ID', 'Workshops', 2),
-    (:'eventCategory3ID', :'community2ID', 'Conferences', 3);
+    (:'eventCategory1ID', :'alliance2ID', 'Tech Talks', 1),
+    (:'eventCategory2ID', :'alliance2ID', 'Workshops', 2),
+    (:'eventCategory3ID', :'alliance2ID', 'Conferences', 3);
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -85,21 +85,21 @@ insert into "group" (
     slug_pretty
 )
 values
-    (:'group1ID', :'community2ID', :'groupCategory1ID',
+    (:'group1ID', :'alliance2ID', :'groupCategory1ID',
         'Alpha Group', 'alpha-group', true, 'First group', 'alpha-group-pretty'),
-    (:'group2ID', :'community2ID', :'groupCategory2ID',
+    (:'group2ID', :'alliance2ID', :'groupCategory2ID',
         'Beta Group', 'beta-group', true, 'Second group', null);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return communities and distance options when no community_name is provided
+-- Should return alliances and distance options when no alliance_name is provided
 select is(
     get_filters_options()::jsonb,
     '{
-        "communities": [
-            {"name": "Alpha Community", "value": "alpha-community"},
+        "alliances": [
+            {"name": "Alpha Alliance", "value": "alpha-alliance"},
             {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
         ],
         "distance": [
@@ -110,15 +110,15 @@ select is(
             {"name": "1000 km", "value": "1000000"}
         ]
     }'::jsonb,
-    'Should return communities and distance options when no community_name is provided'
+    'Should return alliances and distance options when no alliance_name is provided'
 );
 
--- Should return community filters but not groups when entity_kind is groups
+-- Should return alliance filters but not groups when entity_kind is groups
 select is(
     get_filters_options('cloud-native-seattle', 'groups')::jsonb,
     '{
-        "communities": [
-            {"name": "Alpha Community", "value": "alpha-community"},
+        "alliances": [
+            {"name": "Alpha Alliance", "value": "alpha-alliance"},
             {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
         ],
         "distance": [
@@ -142,15 +142,15 @@ select is(
             {"name": "Europe", "value": "europe"}
         ]
     }'::jsonb,
-    'Should return community filters but not groups when entity_kind is groups'
+    'Should return alliance filters but not groups when entity_kind is groups'
 );
 
 -- Should return all filter options including groups when entity_kind is events
 select is(
     get_filters_options('cloud-native-seattle', 'events')::jsonb,
     '{
-        "communities": [
-            {"name": "Alpha Community", "value": "alpha-community"},
+        "alliances": [
+            {"name": "Alpha Alliance", "value": "alpha-alliance"},
             {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
         ],
         "distance": [
@@ -181,12 +181,12 @@ select is(
     'Should return all filter options including groups when entity_kind is events'
 );
 
--- Should return communities, distance and empty arrays for non-existing community
+-- Should return alliances, distance and empty arrays for non-existing alliance
 select is(
-    get_filters_options('non-existent-community', 'events')::jsonb,
+    get_filters_options('non-existent-alliance', 'events')::jsonb,
     '{
-        "communities": [
-            {"name": "Alpha Community", "value": "alpha-community"},
+        "alliances": [
+            {"name": "Alpha Alliance", "value": "alpha-alliance"},
             {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
         ],
         "distance": [
@@ -201,15 +201,15 @@ select is(
         "groups": [],
         "region": []
     }'::jsonb,
-    'Should return communities, distance and empty arrays for non-existing community'
+    'Should return alliances, distance and empty arrays for non-existing alliance'
 );
 
--- Should not return groups when entity_kind is events but no community is provided
+-- Should not return groups when entity_kind is events but no alliance is provided
 select is(
     get_filters_options(null, 'events')::jsonb,
     '{
-        "communities": [
-            {"name": "Alpha Community", "value": "alpha-community"},
+        "alliances": [
+            {"name": "Alpha Alliance", "value": "alpha-alliance"},
             {"name": "Cloud Native Seattle", "value": "cloud-native-seattle"}
         ],
         "distance": [
@@ -220,7 +220,7 @@ select is(
             {"name": "1000 km", "value": "1000000"}
         ]
     }'::jsonb,
-    'Should not return groups when entity_kind is events but no community is provided'
+    'Should not return groups when entity_kind is events but no alliance is provided'
 );
 
 -- ============================================================================

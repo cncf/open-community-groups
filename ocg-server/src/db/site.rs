@@ -11,7 +11,7 @@ use crate::{
     templates::site::explore::{Entity, FiltersOptions},
     templates::site::stats::SiteStats,
     types::{
-        community::CommunitySummary,
+        alliance::AllianceSummary,
         event::{EventKind, EventSummary},
         group::GroupSummary,
         site::{SiteHomeStats, SiteSettings},
@@ -22,19 +22,19 @@ use crate::{
 #[async_trait]
 #[allow(dead_code)]
 pub(crate) trait DBSite {
-    /// Retrieves filters options for the explore page. When a `community_name` is
-    /// provided, community-specific filters are included. When `entity` is 'Events`
-    /// and a community name is provided, groups are also included.
+    /// Retrieves filters options for the explore page. When a `alliance_name` is
+    /// provided, alliance-specific filters are included. When `entity` is 'Events`
+    /// and a alliance name is provided, groups are also included.
     async fn get_filters_options(
         &self,
-        community_name: Option<String>,
+        alliance_name: Option<String>,
         entity: Option<Entity>,
     ) -> Result<FiltersOptions>;
 
     /// Retrieves the site home stats.
     async fn get_site_home_stats(&self) -> Result<SiteHomeStats>;
 
-    /// Retrieves the most recently added groups across all communities.
+    /// Retrieves the most recently added groups across all alliances.
     async fn get_site_recently_added_groups(&self) -> Result<Vec<GroupSummary>>;
 
     /// Retrieves the site settings.
@@ -43,14 +43,14 @@ pub(crate) trait DBSite {
     /// Retrieves the site stats for the stats page.
     async fn get_site_stats(&self) -> Result<SiteStats>;
 
-    /// Retrieves upcoming events across all communities.
+    /// Retrieves upcoming events across all alliances.
     async fn get_site_upcoming_events(
         &self,
         event_kinds: Vec<EventKind>,
     ) -> Result<Vec<EventSummary>>;
 
-    /// Lists all active communities.
-    async fn list_communities(&self) -> Result<Vec<CommunitySummary>>;
+    /// Lists all active alliances.
+    async fn list_alliances(&self) -> Result<Vec<AllianceSummary>>;
 }
 
 #[async_trait]
@@ -61,12 +61,12 @@ where
     #[instrument(skip(self), err)]
     async fn get_filters_options(
         &self,
-        community_name: Option<String>,
+        alliance_name: Option<String>,
         entity: Option<Entity>,
     ) -> Result<FiltersOptions> {
         self.fetch_json_one(
             "select get_filters_options($1::text, $2::text)",
-            &[&community_name, &entity.map(|e| e.to_string())],
+            &[&alliance_name, &entity.map(|e| e.to_string())],
         )
         .await
     }
@@ -121,19 +121,19 @@ where
     }
 
     #[instrument(skip(self), err)]
-    async fn list_communities(&self) -> Result<Vec<CommunitySummary>> {
+    async fn list_alliances(&self) -> Result<Vec<AllianceSummary>> {
         #[cached(
             time = 300,
             key = "String",
-            convert = r#"{ String::from("communities") }"#,
+            convert = r#"{ String::from("alliances") }"#,
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: PgClient<'_>) -> Result<Vec<CommunitySummary>> {
-            let row = db.query_one("select list_communities();", &[]).await?;
-            let communities = row.try_get::<_, Json<Vec<CommunitySummary>>>(0)?.0;
+        async fn inner(db: PgClient<'_>) -> Result<Vec<AllianceSummary>> {
+            let row = db.query_one("select list_alliances();", &[]).await?;
+            let alliances = row.try_get::<_, Json<Vec<AllianceSummary>>>(0)?.0;
 
-            Ok(communities)
+            Ok(alliances)
         }
 
         let db = self.client().await?;

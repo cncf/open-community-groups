@@ -9,7 +9,7 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a0a0000-0000-0000-0000-000000000001'
+\set allianceID '3a0a0000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a0a0000-0000-0000-0000-000000000002'
 \set eventID '3a0a0000-0000-0000-0000-000000000003'
 \set eventNoMeetingID '3a0a0000-0000-0000-0000-000000000004'
@@ -23,9 +23,9 @@ select plan(12);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -33,34 +33,34 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'Conference', :'allianceID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     'Kubernetes Study Group',
     'kubernetes-study-group',
     'A study group focused on Kubernetes best practices and implementation',
@@ -219,7 +219,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             resource_type,
@@ -239,7 +239,7 @@ select results_eq(
             %L::uuid
         )
         $$,
-        :'communityID', :'groupID', :'eventID', :'eventID'
+        :'allianceID', :'groupID', :'eventID', :'eventID'
     ),
     'Should create the expected audit row'
 );

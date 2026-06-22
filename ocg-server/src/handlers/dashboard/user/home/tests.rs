@@ -117,13 +117,13 @@ async fn test_page_events_tab_success() {
 #[tokio::test]
 async fn test_page_invitations_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let community_invitations = vec![sample_community_invitation(community_id)];
+    let alliance_invitations = vec![sample_alliance_invitation(alliance_id)];
     let event_invitations = vec![sample_event_invitation(Uuid::new_v4())];
     let group_invitations = vec![sample_group_invitation(group_id)];
 
@@ -137,10 +137,10 @@ async fn test_page_invitations_tab_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_community_team_invitations()
+    db.expect_list_user_alliance_team_invitations()
         .times(1)
         .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(community_invitations.clone()));
+        .returning(move |_| Ok(alliance_invitations.clone()));
     db.expect_list_user_event_invitations()
         .times(1)
         .withf(move |uid| *uid == user_id)

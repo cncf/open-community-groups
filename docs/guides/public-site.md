@@ -2,7 +2,7 @@
 
 # Public Site Guide
 
-The public site is where people discover communities, join groups, RSVP to
+The public site is where people discover alliances, join groups, RSVP to
 events, check in, and, when enabled, submit talks to Call for Speakers.
 
 If you are not sure where to start, this is the best place to begin.
@@ -25,13 +25,13 @@ If you prefer a faster task-oriented run-through first, use
 
 | Page           | Path                                                 | Why it matters                                                   |
 | -------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Home           | [/](/ ':ignore')                                     | Platform overview, featured communities, curated upcoming events |
+| Home           | [/](/ ':ignore')                                     | Platform overview, featured alliances, curated upcoming events |
 | Explore        | [/explore](/explore ':ignore')                       | Search and filter events or groups with multiple views           |
 | Stats          | [/stats](/stats ':ignore')                           | Platform-level growth and trend visibility                       |
-| Community page | `/{community}`                                       | Community identity, activity, and top-level context              |
-| Group page     | `/{community}/group/{group_slug}`                    | Membership entry point and group-specific event stream           |
-| Event page     | `/{community}/group/{group_slug}/event/{event_slug}` | RSVP, schedule, CFS, and delivery details                        |
-| Check-in page  | `/{community}/check-in/{event_id}`                   | Event-day attendance confirmation                                |
+| Alliance page | `/{alliance}`                                       | Alliance identity, activity, and top-level context              |
+| Group page     | `/{alliance}/group/{group_slug}`                    | Membership entry point and group-specific event stream           |
+| Event page     | `/{alliance}/group/{group_slug}/event/{event_slug}` | RSVP, schedule, CFS, and delivery details                        |
+| Check-in page  | `/{alliance}/check-in/{event_id}`                   | Event-day attendance confirmation                                |
 
 ![Home page overview](../screenshots/home-page.png)
 
@@ -40,10 +40,10 @@ If you prefer a faster task-oriented run-through first, use
 [Explore](/explore ':ignore') is designed to help you move from
 "too many options" to a confident choice.
 
-For events, begin broad and narrow in this order: community, type, category,
+For events, begin broad and narrow in this order: alliance, type, category,
 and date range. Keeping this order avoids over-filtering too early.
 
-?> Start with community, then add type, category, and date range only if you
+?> Start with alliance, then add type, category, and date range only if you
 need to narrow results further.
 
 Explore gives you multiple view styles, and the available options depend on
@@ -66,7 +66,7 @@ Quick guide:
 
 ## Join Groups
 
-Joining a group is how you stay connected to a community over time. Events
+Joining a group is how you stay connected to a alliance over time. Events
 come and go, but groups are where ongoing participation happens.
 
 On the group page, `Join group` adds you as a member. If you later step back,
@@ -74,7 +74,7 @@ On the group page, `Join group` adds you as a member. If you later step back,
 
 Helpful details:
 
-- Logged-out users are prompted to sign in with Linux Foundation SSO.
+- Logged-out users are prompted to sign in with LinkedIn.
 - The join button may take a moment to update after the page loads.
 - After you join, OCG sends a welcome message with a link back to the group page.
 

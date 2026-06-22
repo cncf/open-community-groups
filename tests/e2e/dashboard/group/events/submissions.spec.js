@@ -84,7 +84,7 @@ test.describe("group dashboard submissions tab", () => {
 
     // Find the approved row.
     const approvedRow = eventsManagerGroupPage.locator("tr", {
-      hasText: "Scaling Community Workshops",
+      hasText: "Scaling Alliance Workshops",
     });
     await expect(approvedRow).toContainText("Platform");
     await expect(approvedRow).toContainText("Workshop");

@@ -10,7 +10,7 @@ select plan(9);
 -- ============================================================================
 
 \set actorUserID '3a3e0000-0000-0000-0000-000000000001'
-\set communityID '3a3e0000-0000-0000-0000-000000000002'
+\set allianceID '3a3e0000-0000-0000-0000-000000000002'
 \set groupCategoryID '3a3e0000-0000-0000-0000-000000000003'
 \set groupID '3a3e0000-0000-0000-0000-000000000004'
 \set sponsorID '3a3e0000-0000-0000-0000-000000000005'
@@ -20,9 +20,9 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -30,24 +30,24 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-paris',
     'Cloud Native Paris',
-    'Community for cloud native technologies in Paris',
+    'Alliance for cloud native technologies in Paris',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Group Paris', 'group-paris'),
-    (:'wrongGroupID', :'communityID', :'groupCategoryID', 'Group Lyon', 'group-lyon');
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Group Paris', 'group-paris'),
+    (:'wrongGroupID', :'allianceID', :'groupCategoryID', 'Group Lyon', 'group-lyon');
 
 -- Sponsor
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url, featured)
@@ -80,7 +80,7 @@ select results_eq(
         select
             action,
             actor_user_id,
-            community_id,
+            alliance_id,
             group_id,
             resource_type,
             resource_id
@@ -98,7 +98,7 @@ select results_eq(
             %L::uuid
         )
         $$,
-        :'actorUserID', :'communityID', :'groupID', :'sponsorID'
+        :'actorUserID', :'allianceID', :'groupID', :'sponsorID'
     ),
     'Should create the expected audit row'
 );

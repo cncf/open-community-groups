@@ -16,6 +16,7 @@ begin
         auth_hash = encode(gen_random_bytes(32), 'hex'),
         email_verified = true,
         name = p_user->>'name',
+        photo_url = p_user->>'photo_url',
         provider = p_user->'provider',
         registration_status = 'registered',
         username = v_username

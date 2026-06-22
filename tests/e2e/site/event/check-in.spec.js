@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
@@ -18,7 +18,7 @@ import {
 const navigateToCheckInPage = async (page) => {
   await navigateToPath(
     page,
-    `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`,
+    `/${TEST_ALLIANCE_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`,
   );
 };
 
@@ -74,8 +74,8 @@ test.describe("public event check-in page", () => {
     // Load the event page and ensure the member starts as an attendee.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -107,8 +107,8 @@ test.describe("public event check-in page", () => {
     // Return to the event page before cleaning up attendance.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -126,8 +126,8 @@ test.describe("public event check-in page", () => {
     // Load the event page and register the member before check-in.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -166,8 +166,8 @@ test.describe("public event check-in page", () => {
     // Return to the event page before cleaning up attendance.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 

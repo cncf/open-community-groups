@@ -289,8 +289,8 @@ pub struct GroupPaymentRecipient {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PreparedEventCheckout {
-    /// Community slug used in attendee-facing routes.
-    pub community_name: String,
+    /// Alliance slug used in attendee-facing routes.
+    pub alliance_name: String,
     /// Event identifier.
     pub event_id: Uuid,
     /// Event slug used in attendee-facing routes.

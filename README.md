@@ -1,6 +1,6 @@
-# Open Community Groups
+# Open Alliance Groups
 
-**Open Community Groups** is an open source events platform for communities and
+**Open Alliance Groups** is an open source events platform for alliances and
 organizations.
 
 <!-- markdownlint-disable MD013 -->
@@ -15,21 +15,21 @@ organizations.
 
 ### Discovery
 
-- Browse communities, groups, and events from a public site
+- Browse alliances, groups, and events from a public site
 - Explore events in list or calendar views
 - Explore groups in list or map views
-- Search and filter by community, category, region, date, and event type
+- Search and filter by alliance, category, region, date, and event type
 - View platform stats for groups, members, events, and attendees
 
-### Communities and Groups
+### Alliances and Groups
 
-- Community dashboards for branding, taxonomy, teams, analytics, and groups
-- Dedicated site for each community
+- Alliance dashboards for branding, taxonomy, teams, analytics, and groups
+- Dedicated site for each alliance
 - Dedicated site for each group
 - Group dashboards for settings, events, members, sponsors, analytics, and teams
 - Member management and group-wide communication
-- Multi-community support from a single deployment
-- Role-based community and group access with audit logs
+- Multi-alliance support from a single deployment
+- Role-based alliance and group access with audit logs
 - Shared regions and categories for organizing groups and events
 - Sponsor profiles that can be reused across group and event pages
 
@@ -66,8 +66,8 @@ organizations.
 ### Users
 
 - Email/password login with email verification
-- GitHub and Linux Foundation social login options
-- Invitation inbox for community and group team access
+- GitHub and LinkedIn social login options
+- Invitation inbox for alliance and group team access
 - Personal dashboard for upcoming events, profile, invitations, proposals,
   submissions, and audit history
 - User profiles with photos, social links, interests, and location
@@ -83,9 +83,9 @@ Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
 
 ## Code of Conduct
 
-This project follows the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/master/code-of-conduct.md).
+This project follows the [Goup Code of Conduct](https://github.com/goup/foundation/blob/master/code-of-conduct.md).
 
 ## License
 
-Open Community Groups is an Open Source project licensed under the
+Open Alliance Groups is an Open Source project licensed under the
 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).

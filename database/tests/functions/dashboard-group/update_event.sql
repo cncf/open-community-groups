@@ -10,7 +10,7 @@ select plan(21);
 -- ============================================================================
 \set category1ID '3a390000-0000-0000-0000-000000000001'
 \set category2ID '3a390000-0000-0000-0000-000000000002'
-\set community1ID '3a390000-0000-0000-0000-000000000003'
+\set alliance1ID '3a390000-0000-0000-0000-000000000003'
 \set event1ID '3a390000-0000-0000-0000-000000000004'
 \set event4ID '3a390000-0000-0000-0000-000000000005'
 \set event10ID '3a390000-0000-0000-0000-000000000006'
@@ -32,9 +32,9 @@ select plan(21);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -42,10 +42,10 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
+    :'alliance1ID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance for testing purposes',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
@@ -58,26 +58,26 @@ insert into "user" (user_id, auth_hash, email, username, name) values
     (:'user3ID', 'hash3', 'speaker1@example.com', 'speaker1', 'Speaker One');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
+insert into event_category (event_category_id, name, alliance_id)
 values
-    (:'category1ID', 'Conference', :'community1ID'),
-    (:'category2ID', 'Workshop', :'community1ID');
+    (:'category1ID', 'Conference', :'alliance1ID'),
+    (:'category2ID', 'Workshop', :'alliance1ID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('3a390000-0000-0000-0000-000000000006', 'Technology', :'community1ID');
+insert into group_category (group_category_id, name, alliance_id)
+values ('3a390000-0000-0000-0000-000000000006', 'Technology', :'alliance1ID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'group1ID',
-    :'community1ID',
+    :'alliance1ID',
     'Test Group',
     'abc1234',
     'A test group',
@@ -308,10 +308,10 @@ select lives_ok(
 select is(
     (select (
         get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels'
+        )::jsonb - 'alliance' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'cfs_labels'
     )),
     '{
         "attendee_count": 0,
@@ -359,7 +359,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             resource_type,
@@ -462,10 +462,10 @@ select lives_ok(
 select is(
     (select (
         get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels'
+        )::jsonb - 'alliance' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'cfs_labels'
     )),
     '{
         "attendee_count": 0,
@@ -533,7 +533,7 @@ select is(
 select ok(
     (select (
         get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event1ID'::uuid
         )::jsonb->'sessions'->'2030-02-01'
@@ -686,7 +686,7 @@ select is(
         )
         from jsonb_array_elements(
             get_event_full(
-                :'community1ID'::uuid,
+                :'alliance1ID'::uuid,
                 :'group1ID'::uuid,
                 :'event18ID'::uuid
             )::jsonb->'cfs_labels'

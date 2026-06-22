@@ -9,7 +9,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79320000-0000-0000-0000-000000000001'
+\set allianceID '79320000-0000-0000-0000-000000000001'
 \set eventCategoryID '79320000-0000-0000-0000-000000000002'
 \set eventDiscountCodeID '79320000-0000-0000-0000-000000000003'
 \set eventID '79320000-0000-0000-0000-000000000004'
@@ -29,9 +29,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -39,9 +39,9 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'refund-free-community',
-    'Refund Free Community',
+    :'allianceID',
+    'refund-free-alliance',
+    'Refund Free Alliance',
     'Test',
     'https://e/banner-mobile.png',
     'https://e/banner.png',
@@ -49,12 +49,12 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -82,10 +82,10 @@ values
     );
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Refund Free Group',
     'refund-free-group'

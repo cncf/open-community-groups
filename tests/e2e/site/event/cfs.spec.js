@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_GROUP_SLUGS,
   navigateToEvent,
 } from "../../utils.js";
@@ -15,8 +15,8 @@ test.describe("event page call for speakers", () => {
     // Load the event page with an open call for speakers.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       CFS_EVENT_SLUG,
     );
 
@@ -36,8 +36,8 @@ test.describe("event page call for speakers", () => {
     // Load the CFS event as a guest.
     await navigateToEvent(
       page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       CFS_EVENT_SLUG,
     );
 
@@ -54,23 +54,23 @@ test.describe("event page call for speakers", () => {
   });
 
   test("logged in users without proposals see a link to manage session proposals", async ({
-    adminCommunityPage,
+    adminAlliancePage,
   }) => {
     // Load the CFS event as a logged-in user without proposals.
     await navigateToEvent(
-      adminCommunityPage,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      adminAlliancePage,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       CFS_EVENT_SLUG,
     );
 
     // Open the proposal submission modal.
-    await adminCommunityPage
+    await adminAlliancePage
       .getByRole("button", { name: "Submit session proposal" })
       .click();
 
     // Target the empty proposal modal and manage link.
-    const modal = adminCommunityPage.getByRole("dialog", {
+    const modal = adminAlliancePage.getByRole("dialog", {
       name: "Submit a proposal",
     });
     const manageLink = modal.getByRole("link", {
@@ -95,8 +95,8 @@ test.describe("event page call for speakers", () => {
     // Load the CFS event as a member with proposal options.
     await navigateToEvent(
       member1Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       CFS_EVENT_SLUG,
     );
 

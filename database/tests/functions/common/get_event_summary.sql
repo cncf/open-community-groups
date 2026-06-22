@@ -12,9 +12,9 @@ select plan(11);
 \set activeCheckoutUserID '0c090000-0000-0000-0000-000000000001'
 \set attendee1ID '0c090000-0000-0000-0000-000000000002'
 \set attendee2ID '0c090000-0000-0000-0000-000000000003'
-\set communityID '0c090000-0000-0000-0000-000000000004'
+\set allianceID '0c090000-0000-0000-0000-000000000004'
 \set eventCategoryID '0c090000-0000-0000-0000-000000000005'
-\set eventCommunityLogoFallbackID '0c090000-0000-0000-0000-000000000006'
+\set eventAllianceLogoFallbackID '0c090000-0000-0000-0000-000000000006'
 \set eventGroupLogoFallbackID '0c090000-0000-0000-0000-000000000007'
 \set eventID '0c090000-0000-0000-0000-000000000008'
 \set eventPaidID '0c090000-0000-0000-0000-000000000009'
@@ -30,7 +30,7 @@ select plan(11);
 \set questionsWaitlistUserID '0c090000-0000-0000-0000-000000000013'
 \set ticketPriceWindowID '0c090000-0000-0000-0000-000000000014'
 \set ticketTypeID '0c090000-0000-0000-0000-000000000015'
-\set unknownCommunityID '0c090000-0000-0000-0000-000000000016'
+\set unknownAllianceID '0c090000-0000-0000-0000-000000000016'
 \set unknownEventID '0c090000-0000-0000-0000-000000000017'
 \set unknownGroupID '0c090000-0000-0000-0000-000000000018'
 \set waitlistUserID '0c090000-0000-0000-0000-000000000019'
@@ -39,9 +39,9 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -49,22 +49,22 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Tech Talks');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Tech Talks');
 
 -- Attendees for remaining capacity verification
 insert into "user" (
@@ -144,7 +144,7 @@ insert into "user" (
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -153,7 +153,7 @@ insert into "group" (
     logo_url
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Seattle Kubernetes Meetup',
     'abc1234',
@@ -165,7 +165,7 @@ insert into "group" (
 -- Group without logo
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -173,7 +173,7 @@ insert into "group" (
     active
 ) values (
     :'groupNoLogoID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Seattle Kubernetes Meetup No Logo',
     'abc5678',
@@ -294,8 +294,8 @@ insert into event (
 
     null
 ), (
-    :'eventCommunityLogoFallbackID',
-    'KubeCon Seattle 2024 Community Logo',
+    :'eventAllianceLogoFallbackID',
+    'KubeCon Seattle 2024 Alliance Logo',
     'def5680',
     'Annual Kubernetes conference featuring workshops, talks, and hands-on sessions with industry experts',
     'Annual Kubernetes conference short summary',
@@ -475,14 +475,14 @@ values (:'eventID', :'waitlistUserID');
 -- Should return correct event summary data as JSON
 select is(
     get_event_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     )::jsonb,
     format('{
         "canceled": false,
-        "community_display_name": "Cloud Native Seattle",
-        "community_name": "cloud-native-seattle",
+        "alliance_display_name": "Cloud Native Seattle",
+        "alliance_name": "cloud-native-seattle",
         "event_id": "%s",
         "group_category_name": "Technology",
         "group_name": "Seattle Kubernetes Meetup",
@@ -525,7 +525,7 @@ select is(
 select is(
     (
         get_event_summary(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'eventQuestionsID'::uuid
         )::jsonb
@@ -539,14 +539,14 @@ select is(
     jsonb_build_object(
         'payment_currency_code', (
             get_event_summary(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
         )->'payment_currency_code',
         'ticket_types', (
             get_event_summary(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
@@ -586,7 +586,7 @@ update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID
 select is(
     (
         get_event_summary(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'eventID'::uuid
         )::jsonb
@@ -599,7 +599,7 @@ update "group" set slug_pretty = null where group_id = :'groupID';
 -- Should use group logo when event has no logo
 select is(
     (get_event_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventGroupLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
@@ -607,21 +607,21 @@ select is(
     'Should use group logo when event has no logo'
 );
 
--- Should use community logo when event and group have no logo
+-- Should use alliance logo when event and group have no logo
 select is(
     (get_event_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupNoLogoID'::uuid,
-        :'eventCommunityLogoFallbackID'::uuid
+        :'eventAllianceLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
-    'Should use community logo when event and group have no logo'
+    'Should use alliance logo when event and group have no logo'
 );
 
 -- Should return null for non-existent event ID
 select ok(
     get_event_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'unknownEventID'::uuid
     ) is null,
@@ -631,33 +631,33 @@ select ok(
 -- Should return null when group does not match event
 select ok(
     get_event_summary(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'unknownGroupID'::uuid,
         :'eventID'::uuid
     ) is null,
     'Should return null when group does not match event'
 );
 
--- Should return null when community does not match event
+-- Should return null when alliance does not match event
 select ok(
     get_event_summary(
-        :'unknownCommunityID'::uuid,
+        :'unknownAllianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     ) is null,
-    'Should return null when community does not match event'
+    'Should return null when alliance does not match event'
 );
 
 -- Should count pending registration rows in event capacity summaries
 select is(
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid)::jsonb->>'remaining_capacity',
+    get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventQuestionsID'::uuid)::jsonb->>'remaining_capacity',
     '0',
     'Should count pending registration rows in event capacity summaries'
 );
 
 -- Should exclude expired checkout holds from event capacity summaries
 select is(
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb->>'remaining_capacity',
+    get_event_summary(:'allianceID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb->>'remaining_capacity',
     '19',
     'Should exclude expired checkout holds from event capacity summaries'
 );

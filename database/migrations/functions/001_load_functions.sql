@@ -11,17 +11,18 @@
 {{ template "auth/get_user_by_username.sql" }}
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
+{{ template "auth/update_user_external_profile.sql" }}
 {{ template "auth/update_user_password.sql" }}
 {{ template "auth/update_user_provider.sql" }}
-{{ template "auth/user_has_community_permission.sql" }}
+{{ template "auth/user_has_alliance_permission.sql" }}
 {{ template "auth/user_has_group_permission.sql" }}
 {{ template "auth/verify_email.sql" }}
 
 {{ template "common/escape_ilike_pattern.sql" }}
 {{ template "common/generate_slug.sql" }}
 {{ template "common/generate_slug_from_source.sql" }}
-{{ template "common/get_community_full.sql" }}
-{{ template "common/get_community_summary.sql" }} -- Do not sort alphabetically, has dependency
+{{ template "common/get_alliance_full.sql" }}
+{{ template "common/get_alliance_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_occupied_seat_count.sql" }} -- Dependency for event capacity counts
 {{ template "common/list_event_discount_codes.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
@@ -42,45 +43,45 @@
 {{ template "common/insert_audit_log.sql" }}
 {{ template "common/is_open_graph_image.sql" }}
 {{ template "common/list_event_cfs_labels.sql" }}
-{{ template "common/list_redirect_communities.sql" }}
+{{ template "common/list_redirect_alliances.sql" }}
 {{ template "common/list_redirects.sql" }}
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}
 
-{{ template "community/get_community_id_by_name.sql" }}
-{{ template "community/get_community_name_by_id.sql" }}
-{{ template "community/get_community_recently_added_groups.sql" }}
-{{ template "community/get_community_site_stats.sql" }}
-{{ template "community/get_community_upcoming_events.sql" }}
-{{ template "community/update_community_views.sql" }}
+{{ template "alliance/get_alliance_id_by_name.sql" }}
+{{ template "alliance/get_alliance_name_by_id.sql" }}
+{{ template "alliance/get_alliance_recently_added_groups.sql" }}
+{{ template "alliance/get_alliance_site_stats.sql" }}
+{{ template "alliance/get_alliance_upcoming_events.sql" }}
+{{ template "alliance/update_alliance_views.sql" }}
 
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
 
-{{ template "dashboard-community/activate_group.sql" }}
-{{ template "dashboard-community/add_community_team_member.sql" }}
-{{ template "dashboard-community/add_event_category.sql" }}
-{{ template "dashboard-community/add_group.sql" }}
-{{ template "dashboard-community/add_group_category.sql" }}
-{{ template "dashboard-community/add_region.sql" }}
-{{ template "dashboard-community/deactivate_group.sql" }}
-{{ template "dashboard-community/delete_community_team_member.sql" }}
-{{ template "dashboard-community/delete_event_category.sql" }}
-{{ template "dashboard-community/delete_group.sql" }}
-{{ template "dashboard-community/delete_group_category.sql" }}
-{{ template "dashboard-community/delete_region.sql" }}
-{{ template "dashboard-community/get_community_stats.sql" }}
-{{ template "dashboard-community/list_community_audit_logs.sql" }}
-{{ template "dashboard-community/list_community_roles.sql" }}
-{{ template "dashboard-community/list_community_team_members.sql" }}
-{{ template "dashboard-community/list_group_categories.sql" }}
-{{ template "dashboard-community/list_regions.sql" }}
-{{ template "dashboard-community/list_user_communities.sql" }}
-{{ template "dashboard-community/update_community.sql" }}
-{{ template "dashboard-community/update_community_team_member_role.sql" }}
-{{ template "dashboard-community/update_event_category.sql" }}
-{{ template "dashboard-community/update_group_category.sql" }}
-{{ template "dashboard-community/update_region.sql" }}
+{{ template "dashboard-alliance/activate_group.sql" }}
+{{ template "dashboard-alliance/add_alliance_team_member.sql" }}
+{{ template "dashboard-alliance/add_event_category.sql" }}
+{{ template "dashboard-alliance/add_group.sql" }}
+{{ template "dashboard-alliance/add_group_category.sql" }}
+{{ template "dashboard-alliance/add_region.sql" }}
+{{ template "dashboard-alliance/deactivate_group.sql" }}
+{{ template "dashboard-alliance/delete_alliance_team_member.sql" }}
+{{ template "dashboard-alliance/delete_event_category.sql" }}
+{{ template "dashboard-alliance/delete_group.sql" }}
+{{ template "dashboard-alliance/delete_group_category.sql" }}
+{{ template "dashboard-alliance/delete_region.sql" }}
+{{ template "dashboard-alliance/get_alliance_stats.sql" }}
+{{ template "dashboard-alliance/list_alliance_audit_logs.sql" }}
+{{ template "dashboard-alliance/list_alliance_roles.sql" }}
+{{ template "dashboard-alliance/list_alliance_team_members.sql" }}
+{{ template "dashboard-alliance/list_group_categories.sql" }}
+{{ template "dashboard-alliance/list_regions.sql" }}
+{{ template "dashboard-alliance/list_user_alliances.sql" }}
+{{ template "dashboard-alliance/update_alliance.sql" }}
+{{ template "dashboard-alliance/update_alliance_team_member_role.sql" }}
+{{ template "dashboard-alliance/update_event_category.sql" }}
+{{ template "dashboard-alliance/update_group_category.sql" }}
+{{ template "dashboard-alliance/update_region.sql" }}
 
 {{ template "dashboard-group/get_event_ticket_capacity.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/list_payment_currency_codes.sql" }} -- Dependency for payment currency validation and dashboard forms
@@ -155,7 +156,7 @@
 {{ template "dashboard-group/update_group_team_member_role.sql" }}
 {{ template "dashboard-group/update_event.sql" }}
 
-{{ template "dashboard-user/accept_community_team_invitation.sql" }}
+{{ template "dashboard-user/accept_alliance_team_invitation.sql" }}
 {{ template "dashboard-user/accept_event_attendee_invitation.sql" }}
 {{ template "dashboard-user/accept_group_team_invitation.sql" }}
 {{ template "dashboard-user/accept_session_proposal_co_speaker_invitation.sql" }}
@@ -164,13 +165,13 @@
 {{ template "dashboard-user/list_session_proposal_levels.sql" }}
 {{ template "dashboard-user/list_user_audit_logs.sql" }}
 {{ template "dashboard-user/list_user_cfs_submissions.sql" }}
-{{ template "dashboard-user/list_user_community_team_invitations.sql" }}
+{{ template "dashboard-user/list_user_alliance_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_event_invitations.sql" }}
 {{ template "dashboard-user/list_user_events.sql" }}
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_pending_session_proposal_co_speaker_invitations.sql" }}
 {{ template "dashboard-user/list_user_session_proposals.sql" }}
-{{ template "dashboard-user/reject_community_team_invitation.sql" }}
+{{ template "dashboard-user/reject_alliance_team_invitation.sql" }}
 {{ template "dashboard-user/reject_event_attendee_invitation.sql" }}
 {{ template "dashboard-user/reject_group_team_invitation.sql" }}
 {{ template "dashboard-user/reject_session_proposal_co_speaker_invitation.sql" }}
@@ -255,7 +256,7 @@
 {{ template "site/get_site_settings.sql" }}
 {{ template "site/get_site_stats.sql" }}
 {{ template "site/get_site_upcoming_events.sql" }}
-{{ template "site/list_communities.sql" }}
+{{ template "site/list_alliances.sql" }}
 
 {{ template "triggers/check_session_within_event_bounds.sql" }}
 {{ template "triggers/prevent_audit_log_mutation.sql" }}

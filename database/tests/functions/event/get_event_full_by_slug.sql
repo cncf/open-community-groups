@@ -9,7 +9,7 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '5e060000-0000-0000-0000-000000000001'
+\set allianceID '5e060000-0000-0000-0000-000000000001'
 \set eventCanceledID '5e060000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e060000-0000-0000-0000-000000000003'
 \set eventDeletedID '5e060000-0000-0000-0000-000000000004'
@@ -31,9 +31,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -41,22 +41,22 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A test community',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Tech Talks');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Tech Talks');
 
 -- Users
 insert into "user" (
@@ -92,7 +92,7 @@ values
         'host2@example.com',
         true,
         'host2',
-        'Community host and emcee',
+        'Alliance host and emcee',
         'Dev Inc',
         '2024-01-01 00:00:00',
         'Jane Smith',
@@ -105,7 +105,7 @@ values
         'organizer1@example.com',
         true,
         'organizer1',
-        'Community programs lead',
+        'Alliance programs lead',
         'Cloud Co',
         '2024-01-01 00:00:00',
         'Alice Johnson',
@@ -129,7 +129,7 @@ values
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -138,7 +138,7 @@ insert into "group" (
     logo_url
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Test Group',
     'abc1234',
@@ -397,56 +397,56 @@ values
 
 -- Should return the same payload as get_event_full
 select is(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'def5678')::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+    get_event_full_by_slug(:'allianceID'::uuid, 'abc1234', 'def5678')::jsonb,
+    get_event_full(:'allianceID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
     'Should return the same payload as get_event_full'
 );
 
 -- Should return null with non-existing event slug
 select ok(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'non-existing-event') is null,
+    get_event_full_by_slug(:'allianceID'::uuid, 'abc1234', 'non-existing-event') is null,
     'Should return null with non-existing event slug'
 );
 
 -- Should return a canceled event when it remains published
 select is(
     get_event_full_by_slug(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         'abc1234',
         'canceled-tech-conference-2024'
     )::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventCanceledID'::uuid)::jsonb,
+    get_event_full(:'allianceID'::uuid, :'groupID'::uuid, :'eventCanceledID'::uuid)::jsonb,
     'Should return a canceled event when it remains published'
 );
 
 -- Should return null with canceled draft event slug
 select ok(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'canceled-draft-tech-conference-2024') is null,
+    get_event_full_by_slug(:'allianceID'::uuid, 'abc1234', 'canceled-draft-tech-conference-2024') is null,
     'Should return null with canceled draft event slug'
 );
 
 -- Should return null with deleted event slug
 select ok(
-    get_event_full_by_slug(:'communityID'::uuid, 'abc1234', 'deleted-tech-conference-2024') is null,
+    get_event_full_by_slug(:'allianceID'::uuid, 'abc1234', 'deleted-tech-conference-2024') is null,
     'Should return null with deleted event slug'
 );
 
 -- Should return the same paid-event payload as get_event_full
 select is(
     get_event_full_by_slug(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         'abc1234',
         'paid-tech-conference-2024'
     )::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
+    get_event_full(:'allianceID'::uuid, :'groupID'::uuid, :'eventPaidID'::uuid)::jsonb,
     'Should return the same paid-event payload as get_event_full'
 );
 
 -- Should resolve event by group pretty slug
 update "group" set slug_pretty = 'test-group-pretty' where group_id = :'groupID';
 select is(
-    get_event_full_by_slug(:'communityID'::uuid, 'test-group-pretty', 'def5678')::jsonb,
-    get_event_full(:'communityID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
+    get_event_full_by_slug(:'allianceID'::uuid, 'test-group-pretty', 'def5678')::jsonb,
+    get_event_full(:'allianceID'::uuid, :'groupID'::uuid, :'eventID'::uuid)::jsonb,
     'Should resolve event by group pretty slug'
 );
 

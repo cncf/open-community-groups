@@ -1,0 +1,18 @@
+-- Returns summary information about a alliance.
+create or replace function get_alliance_summary(p_alliance_id uuid)
+returns json as $$
+    select json_strip_nulls(json_build_object(
+        'banner_mobile_url', banner_mobile_url,
+        'banner_url', banner_url,
+        'alliance_id', alliance_id,
+        'display_name', display_name,
+        'logo_url', logo_url,
+        'name', name,
+
+        'ad_banner_link_url', ad_banner_link_url,
+        'ad_banner_url', ad_banner_url,
+        'og_image_url', og_image_url
+    ))
+    from alliance
+    where alliance_id = p_alliance_id;
+$$ language sql;

@@ -1,4 +1,4 @@
-# Open Community Groups chart default configuration values
+# Open Alliance Groups chart default configuration values
 
 imagePullSecrets: []
 imageTag: ""
@@ -161,11 +161,11 @@ server:
   # Login options enabled
   login:
     # Enable email login
-    email: true
+    email: false
     # Enable GitHub login
     github: false
-    # Enable Linux Foundation login
-    linuxfoundation: false
+    # Enable LinkedIn login
+    linkedin: true
 
   # OAuth2 configuration
   oauth2:
@@ -188,16 +188,16 @@ server:
 
   # OIDC configuration
   oidc:
-    # Linux Foundation SSO provider configuration
-    linuxfoundation:
+    # LinkedIn provider configuration
+    linkedin:
       # Client ID
       clientId: ""
       # Client secret
       clientSecret: ""
       # Issuer URL
-      issuerUrl: https://{YOUR_OIDC_PROVIDER_ISSUER_URL}
+      issuerUrl: https://www.linkedin.com
       # Redirect URI
-      redirectUri: "https://{YOUR_OCG_HOSTNAME}/log-in/oidc/linuxfoundation/callback"
+      redirectUri: "https://{YOUR_OCG_HOSTNAME}/log-in/oidc/linkedin/callback"
       # Scopes
       scopes:
         - openid

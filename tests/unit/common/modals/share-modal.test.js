@@ -60,13 +60,13 @@ describe("share-modal", () => {
   it("normalizes relative urls and renders the share trigger", async () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {
-      title: "Open Community Groups",
-      url: "/groups/cncf",
+      title: "Open Alliance Groups",
+      url: "/groups/goup",
     });
 
     // Normalized relative urls and renders the share trigger.
     expect(element._getFullUrl()).to.equal(
-      `${window.location.origin}/groups/cncf`,
+      `${window.location.origin}/groups/goup`,
     );
     expect(element.textContent).to.include("Share");
   });
@@ -75,8 +75,8 @@ describe("share-modal", () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {
       triggerVariant: "menu-item",
-      title: "Open Community Groups",
-      url: "/groups/cncf",
+      title: "Open Alliance Groups",
+      url: "/groups/goup",
     });
 
     // The rendered text shows the scenario data.
@@ -89,8 +89,8 @@ describe("share-modal", () => {
   it("opens and closes the modal while updating body scroll state", async () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {
-      title: "Open Community Groups",
-      url: "/groups/cncf",
+      title: "Open Alliance Groups",
+      url: "/groups/goup",
     });
 
     // Open the modal dialog.
@@ -126,8 +126,8 @@ describe("share-modal", () => {
     const dropdown = document.querySelector("[data-event-actions-menu]");
     const element = document.createElement("share-modal");
     element.triggerVariant = "menu-item";
-    element.title = "Open Community Groups";
-    element.url = "/groups/cncf";
+    element.title = "Open Alliance Groups";
+    element.url = "/groups/goup";
     dropdown.append(element);
     await element.updateComplete;
 
@@ -144,8 +144,8 @@ describe("share-modal", () => {
   it("copies the share url and shows a success alert", async () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {
-      title: "Open Community Groups",
-      url: "/groups/cncf",
+      title: "Open Alliance Groups",
+      url: "/groups/goup",
     });
 
     // Copy the current share URL from the open modal.
@@ -155,7 +155,7 @@ describe("share-modal", () => {
 
     // Successful copy closes the modal and shows a success alert.
     expect(clipboardCalls).to.deep.equal([
-      `${window.location.origin}/groups/cncf`,
+      `${window.location.origin}/groups/goup`,
     ]);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0]).to.include({
@@ -168,8 +168,8 @@ describe("share-modal", () => {
   it("shows an error alert when copying fails", async () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {
-      title: "Open Community Groups",
-      url: "/groups/cncf",
+      title: "Open Alliance Groups",
+      url: "/groups/goup",
     });
 
     // Mock clipboard failure for the copy action.
@@ -199,8 +199,8 @@ describe("share-modal", () => {
   it("uses sharer.js when a platform button is clicked", async () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {
-      title: "Open Community Groups",
-      url: "/groups/cncf",
+      title: "Open Alliance Groups",
+      url: "/groups/goup",
     });
 
     // Track Sharer construction and share calls.

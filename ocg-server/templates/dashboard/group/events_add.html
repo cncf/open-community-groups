@@ -21,9 +21,9 @@
     <event-selector button-id="copy-event-selector" group-id="{{ group_id }}"></event-selector>
     <p class="form-legend mt-3">
       Start and end dates are left blank, and sessions are not copied so you can set a
-      new schedule. Meeting links are not carried over. When copying from events imported from the previous community platform,
+      new schedule. Meeting links are not carried over. When copying from events imported from the previous alliance platform,
       some fields like event's hosts and speakers won't be copied. Note that this only
-      applies to events that have not been created from Open Community Groups.
+      applies to events that have not been created from Open Alliance Groups.
     </p>
   </div>
 
@@ -157,15 +157,15 @@
               {# End Event category -#}
 
               {# Logo URL -#}
-              {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
+              {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the group logo, then the alliance logo if needed.", field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
               {# End Logo URL -#}
 
               {# Banner URL -#}
-              {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
+              {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the alliance banner if needed.", input_class = "w-full block") -}}
               {# End Banner URL -#}
 
               {# Banner Mobile URL -#}
-              {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", input_class = "w-full block") -}}
+              {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the alliance banner if needed.", input_class = "w-full block") -}}
               {# End Banner Mobile URL -#}
 
               {# Short Description -#}

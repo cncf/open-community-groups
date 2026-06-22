@@ -9,8 +9,8 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set community2ID '9a060000-0000-0000-0000-000000000001'
-\set communityID '9a060000-0000-0000-0000-000000000002'
+\set alliance2ID '9a060000-0000-0000-0000-000000000001'
+\set allianceID '9a060000-0000-0000-0000-000000000002'
 \set event1ID '9a060000-0000-0000-0000-000000000003'
 \set event2ID '9a060000-0000-0000-0000-000000000004'
 \set event3ID '9a060000-0000-0000-0000-000000000005'
@@ -31,9 +31,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -41,18 +41,18 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'site-upcoming-events',
     'Site Upcoming Events',
-    'Community used for site upcoming events tests',
+    'Alliance used for site upcoming events tests',
     'https://example.com/site-upcoming-events-banner-mobile.png',
     'https://example.com/site-upcoming-events-banner.png',
     'https://example.com/site-upcoming-events-logo.png'
 );
 
--- Inactive community
-insert into community (
-    community_id,
+-- Inactive alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -61,10 +61,10 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'community2ID',
+    :'alliance2ID',
     'inactive-site-upcoming-events',
     'Inactive Site Upcoming Events',
-    'Inactive community used for site upcoming events tests',
+    'Inactive alliance used for site upcoming events tests',
     false,
     'https://example.com/inactive-site-upcoming-events-banner-mobile.png',
     'https://example.com/banner2.png',
@@ -72,15 +72,15 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategory1ID', :'communityID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Technology');
+    (:'groupCategory1ID', :'allianceID', 'Technology'),
+    (:'groupCategory2ID', :'alliance2ID', 'Technology');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -91,7 +91,7 @@ insert into "group" (
     state
 ) values (
     :'group1ID',
-    :'communityID',
+    :'allianceID',
     :'groupCategory1ID',
     'Test Group',
     'test-group',
@@ -104,14 +104,14 @@ insert into "group" (
 
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
     logo_url
 ) values (
     :'group2ID',
-    :'communityID',
+    :'allianceID',
     :'groupCategory1ID',
     'Virtual Group',
     'virtual-group',
@@ -120,25 +120,25 @@ insert into "group" (
 
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
     logo_url
 ) values (
     :'group3ID',
-    :'community2ID',
+    :'alliance2ID',
     :'groupCategory2ID',
-    'Inactive Community Group',
-    'inactive-community-group',
-    'https://example.com/inactive-community-group-logo.png'
+    'Inactive Alliance Group',
+    'inactive-alliance-group',
+    'https://example.com/inactive-alliance-group-logo.png'
 );
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
+insert into event_category (event_category_id, alliance_id, name)
 values
-    (:'eventCategory1ID', :'communityID', 'Tech Talks'),
-    (:'eventCategory2ID', :'community2ID', 'Tech Talks');
+    (:'eventCategory1ID', :'allianceID', 'Tech Talks'),
+    (:'eventCategory2ID', :'alliance2ID', 'Tech Talks');
 
 -- Event
 insert into event (
@@ -187,12 +187,12 @@ insert into event (
      :'eventCategory1ID', 'virtual', :'group2ID', true,
      now() + interval '3 months', now() + interval '3 months' + interval '2 hours',
      false, 'https://example.com/locationless-virtual-event-logo.png'),
-    -- Future event 6 (in inactive community - should be filtered out)
-    (:'event8ID', 'Inactive Community Event', 'inactive-community-event',
-     'A future event in an inactive community', false, 'UTC',
+    -- Future event 6 (in inactive alliance - should be filtered out)
+    (:'event8ID', 'Inactive Alliance Event', 'inactive-alliance-event',
+     'A future event in an inactive alliance', false, 'UTC',
      :'eventCategory2ID', 'in-person', :'group3ID', true,
      now() + interval '1 week', now() + interval '1 week' + interval '2 hours',
-     false, 'https://example.com/inactive-community-event-logo.png');
+     false, 'https://example.com/inactive-alliance-event-logo.png');
 
 -- ============================================================================
 -- TESTS
@@ -202,20 +202,20 @@ insert into event (
 select is(
     get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
     jsonb_build_array(
-        get_event_summary(:'communityID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'communityID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
+        get_event_summary(:'allianceID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'allianceID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
     ),
     'Should return published non-test future events'
 );
 
--- Should not include events from inactive communities
+-- Should not include events from inactive alliances
 select ok(
     not exists (
         select 1
         from jsonb_array_elements(get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb) event_item
         where event_item->>'event_id' = :'event8ID'
     ),
-    'Should not include events from inactive communities'
+    'Should not include events from inactive alliances'
 );
 
 -- Should return empty array when no events match the filter

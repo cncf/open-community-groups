@@ -9,8 +9,8 @@ select plan(13);
 -- VARIABLES
 -- ============================================================================
 
-\set community2ID '5e010000-0000-0000-0000-000000000001'
-\set communityID '5e010000-0000-0000-0000-000000000002'
+\set alliance2ID '5e010000-0000-0000-0000-000000000001'
+\set allianceID '5e010000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e010000-0000-0000-0000-000000000003'
 \set eventClosedID '5e010000-0000-0000-0000-000000000004'
 \set eventDisabledID '5e010000-0000-0000-0000-000000000005'
@@ -35,9 +35,9 @@ select plan(13);
 -- Allow malformed legacy CFS rows for window guard coverage
 alter table event drop constraint event_cfs_fields_chk;
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -45,30 +45,30 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'cfs-community',
-    'CFS Community',
-    'Community for CFS submission tests',
+    :'allianceID',
+    'cfs-alliance',
+    'CFS Alliance',
+    'Alliance for CFS submission tests',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 ), (
-    :'community2ID',
-    'other-cfs-community',
-    'Other CFS Community',
-    'Other community for CFS submission tests',
+    :'alliance2ID',
+    'other-cfs-alliance',
+    'Other CFS Alliance',
+    'Other alliance for CFS submission tests',
     'https://example.com/other-banner-mobile.png',
     'https://example.com/other-banner.png',
     'https://example.com/other-logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Users
 insert into "user" (
@@ -88,8 +88,8 @@ insert into "user" (
 );
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'CFS Group', 'cfs-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'CFS Group', 'cfs-group');
 
 -- Session proposal
 insert into session_proposal (
@@ -339,7 +339,7 @@ insert into event (
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventClosedID',
         :'userID',
         :'proposalID'
@@ -352,7 +352,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventDisabledID',
         :'userID',
         :'proposalID'
@@ -365,7 +365,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventWindowNotConfiguredID',
         :'userID',
         :'proposalID'
@@ -379,7 +379,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventUnpublishedID',
         :'userID',
         :'proposalID'
@@ -388,25 +388,25 @@ select throws_ok(
     'Should reject submissions when event is unpublished'
 );
 
--- Visibility filtering masks other-community events, so the generic message is intentional.
--- Should reject submissions when event belongs to another community
+-- Visibility filtering masks other-alliance events, so the generic message is intentional.
+-- Should reject submissions when event belongs to another alliance
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'community2ID',
+        :'alliance2ID',
         :'eventID',
         :'userID',
         :'proposalID'
     ),
     'cfs is not enabled for this event',
-    'Should reject submissions when event belongs to another community'
+    'Should reject submissions when event belongs to another alliance'
 );
 
 -- Should reject submissions for missing proposals
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'missingProposalID'
@@ -419,7 +419,7 @@ select throws_ok(
 select lives_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalID'
@@ -442,7 +442,7 @@ select is(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalID'
@@ -456,7 +456,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalPendingID'
@@ -469,7 +469,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid])',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalWithLabelsID',
@@ -483,7 +483,7 @@ select throws_ok(
 select lives_ok(
     format(
         'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid, %L::uuid])',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'userID',
         :'proposalWithLabelsID',

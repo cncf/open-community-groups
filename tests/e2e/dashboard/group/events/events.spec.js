@@ -3,7 +3,7 @@ import { expect, test } from "../../../fixtures.js";
 import {
   E2E_MEETINGS_ENABLED,
   E2E_PAYMENTS_ENABLED,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
@@ -1391,7 +1391,7 @@ test.describe("group dashboard events view", () => {
 
     // Configure ticketing values and related capacity side effects.
     await addTicketType(organizerGroupPage, {
-      title: "Free community pass",
+      title: "Free alliance pass",
       description: "Free tier used for zero-price coverage.",
       seatsTotal: "12",
       priceWindows: [{ amount: "0" }],
@@ -1506,7 +1506,7 @@ test.describe("group dashboard events view", () => {
       organizerGroupPage.locator(
         '#ticket-types-ui [data-ticketing-role="table-body"]',
       ),
-    ).toContainText("Free community pass");
+    ).toContainText("Free alliance pass");
     await expect(
       organizerGroupPage.locator(
         '#ticket-types-ui [data-ticketing-role="table-body"]',
@@ -1592,7 +1592,7 @@ test.describe("group dashboard events view", () => {
       organizerGroupPage.locator(
         '#ticket-types-ui [data-ticketing-role="table-body"]',
       ),
-    ).toContainText("Community ticket");
+    ).toContainText("Alliance ticket");
     await expect(
       organizerGroupPage.locator(
         '#ticket-types-ui [data-ticketing-role="table-body"]',
@@ -2256,7 +2256,7 @@ test.describe("group dashboard events view", () => {
     organizerGroupPage,
   }) => {
     // Target the seeded CFS event that can be restored after updates.
-    const cfsSummitPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alphaDashboard[0]}`;
+    const cfsSummitPath = `/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/event/${TEST_EVENT_SLUGS.alphaDashboard[0]}`;
 
     // Shift date-time fixture values while preserving input field format.
     const shiftDateTimeLocalMinutes = (value, minutes) => {
@@ -2409,7 +2409,7 @@ test.describe("group dashboard events view", () => {
     organizerGroupPage,
   }) => {
     // Target the seeded event with sessions before removing its dates.
-    const alphaEventPath = `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`;
+    const alphaEventPath = `/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/event/${TEST_EVENT_SLUGS.alpha[0]}`;
 
     // Load the seeded event with sessions before removing dates.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");

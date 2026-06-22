@@ -9,7 +9,7 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a410000-0000-0000-0000-000000000001'
+\set allianceID '3a410000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a410000-0000-0000-0000-000000000002'
 \set eventID '3a410000-0000-0000-0000-000000000003'
 \set eventManualOverCapacityID '3a410000-0000-0000-0000-000000000004'
@@ -28,9 +28,9 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -38,26 +38,26 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'capacity-community',
-    'Capacity Community',
-    'A test community for event capacity',
+    :'allianceID',
+    'capacity-alliance',
+    'Capacity Alliance',
+    'A test alliance for event capacity',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Capacity Group', 'capacity-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Capacity Group', 'capacity-group');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values

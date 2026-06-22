@@ -34,7 +34,7 @@ use crate::{
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
-        community, event, group, images, meetings, payments, site,
+        alliance, event, group, images, meetings, payments, site,
     },
     services::{
         images::DynImageStorage, notifications::DynNotificationsManager,
@@ -167,52 +167,52 @@ pub(crate) async fn setup(
     let auth_layer = crate::auth::setup_layer(server_cfg, db).await?;
 
     // Setup sub-routers
-    let community_dashboard_router = dashboard::setup_community_dashboard_router(&state);
+    let alliance_dashboard_router = dashboard::setup_alliance_dashboard_router(&state);
     let group_dashboard_router = dashboard::setup_group_dashboard_router(&state);
     let user_dashboard_router = dashboard::setup_user_dashboard_router();
 
     // Setup router
     // Routes that require login are placed before the login_required middleware layer.
     let mut router = Router::new()
-        // Community-prefixed protected routes
+        // Alliance-prefixed protected routes
         .route(
-            "/{community}/check-in/{event_id}",
+            "/{alliance}/check-in/{event_id}",
             get(event::check_in_page).post(event::check_in),
         )
         .route(
-            "/{community}/event/{event_id}/attend",
+            "/{alliance}/event/{event_id}/attend",
             post(event::attend_event),
         )
         .route(
-            "/{community}/event/{event_id}/checkout",
+            "/{alliance}/event/{event_id}/checkout",
             delete(event::cancel_checkout).post(event::start_checkout),
         )
         .route(
-            "/{community}/event/{event_id}/attendance",
+            "/{alliance}/event/{event_id}/attendance",
             get(event::attendance_status),
         )
         .route(
-            "/{community}/event/{event_id}/leave",
+            "/{alliance}/event/{event_id}/leave",
             delete(event::leave_event),
         )
         .route(
-            "/{community}/event/{event_id}/refund-request",
+            "/{alliance}/event/{event_id}/refund-request",
             post(event::request_refund),
         )
         .route(
-            "/{community}/event/{event_id}/cfs-submissions",
+            "/{alliance}/event/{event_id}/cfs-submissions",
             post(event::submit_cfs_submission),
         )
         .route(
-            "/{community}/group/{group_id}/join",
+            "/{alliance}/group/{group_id}/join",
             post(group::join_group),
         )
         .route(
-            "/{community}/group/{group_id}/leave",
+            "/{alliance}/group/{group_id}/leave",
             delete(group::leave_group),
         )
         .route(
-            "/{community}/group/{group_id}/membership",
+            "/{alliance}/group/{group_id}/membership",
             get(group::membership_status),
         )
         // Protected dashboard routes
@@ -224,7 +224,7 @@ pub(crate) async fn setup(
             "/dashboard/account/update/password",
             put(auth::update_user_password),
         )
-        .nest("/dashboard/community", community_dashboard_router)
+        .nest("/dashboard/alliance", alliance_dashboard_router)
         .nest("/dashboard/group", group_dashboard_router)
         .nest("/dashboard/user", user_dashboard_router)
         // Protected image upload
@@ -234,7 +234,7 @@ pub(crate) async fn setup(
             login_url = LOG_IN_URL,
             redirect_field = "next_url"
         ))
-        // Global site routes (no community prefix)
+        // Global site routes (no alliance prefix)
         .route("/", get(site::home::page))
         .route(
             "/apple-touch-icon-precomposed.png",
@@ -270,25 +270,25 @@ pub(crate) async fn setup(
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))
         .route("/stats", get(site::stats::page))
-        // Community-prefixed public routes
-        .route("/{community}", get(community::page))
-        .route("/{community}/group/{group_slug}", get(group::page))
+        // Alliance-prefixed public routes
+        .route("/{alliance}", get(alliance::page))
+        .route("/{alliance}/group/{group_slug}", get(group::page))
         .route(
-            "/{community}/event/{event_id}/cfs-modal",
+            "/{alliance}/event/{event_id}/cfs-modal",
             get(event::cfs_modal),
         )
         .route(
-            "/{community}/group/{group_slug}/event/{event_slug}/availability",
+            "/{alliance}/group/{group_slug}/event/{event_slug}/availability",
             get(event::availability),
         )
         .route(
-            "/{community}/group/{group_slug}/event/{event_slug}",
+            "/{alliance}/group/{group_slug}/event/{event_slug}",
             get(event::page),
         )
         // Page view tracking routes
         .route(
-            "/communities/{community_id}/views",
-            post(community::track_view),
+            "/alliances/{alliance_id}/views",
+            post(alliance::track_view),
         )
         .route("/events/{event_id}/views", post(event::track_view))
         .route("/groups/{group_id}/views", post(group::track_view))
@@ -309,7 +309,7 @@ pub(crate) async fn setup(
                 get(auth::oauth2_callback),
             );
     }
-    if server_cfg.login.linuxfoundation {
+    if server_cfg.login.linkedin {
         router = router
             .route("/log-in/oidc/{provider}", get(auth::oidc_redirect))
             .route("/log-in/oidc/{provider}/callback", get(auth::oidc_callback));

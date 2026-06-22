@@ -17,8 +17,8 @@ type Total = u32;
 /// Database interface required by the activity tracker.
 #[async_trait]
 pub(crate) trait DBActivityTracker {
-    /// Updates community page views counters.
-    async fn update_community_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()>;
+    /// Updates alliance page views counters.
+    async fn update_alliance_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()>;
 
     /// Updates event page views counters.
     async fn update_event_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()>;
@@ -36,8 +36,8 @@ where
     T: PgExecutor + Send + Sync,
 {
     #[instrument(skip(self), err)]
-    async fn update_community_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
-        self.execute("select update_community_views($1::jsonb)", &[&Json(&data)])
+    async fn update_alliance_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
+        self.execute("select update_alliance_views($1::jsonb)", &[&Json(&data)])
             .await
     }
 

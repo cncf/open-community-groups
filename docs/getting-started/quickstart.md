@@ -9,7 +9,7 @@ group, RSVP'd to an event, and seen which dashboards are available to you.
 
 ## Optional: Sign In
 
-Open [Log in](/log-in ':ignore'), choose `Linux Foundation SSO`, complete
+Open [Log in](/log-in ':ignore'), choose `LinkedIn`, complete
 authentication, and return to the [home page](/ ':ignore').
 
 !> You can skip sign-in if you only want to browse public pages.
@@ -25,9 +25,9 @@ long term.
 
 A practical pattern is:
 
-?> Start broad, then narrow: community first, then one or two filters.
+?> Start broad, then narrow: alliance first, then one or two filters.
 
-1. Narrow by community first.
+1. Narrow by alliance first.
 2. Add one or two filters (type, region, category).
 3. Choose the view that fits your goal:
    - `Events`: `List` for scanning and `Calendar` for planning.
@@ -92,13 +92,13 @@ review controls, see [Event Operations](../guides/event-operations.md).
 ## Validate Your Dashboard Access
 
 Open your avatar menu in the top-right corner to confirm which dashboard scopes
-your account has right now. This step requires logging in with Linux Foundation
+your account has right now. This step requires logging in with LinkedIn
 SSO.
 
 - [User Dashboard](/dashboard/user ':ignore') is available to all logged-in
   users.
-- [Community Dashboard](/dashboard/community ':ignore') appears when you have
-  community-team access.
+- [Alliance Dashboard](/dashboard/alliance ':ignore') appears when you have
+  alliance-team access.
 - [Group Dashboard](/dashboard/group ':ignore') appears when you have
   group-team access.
 

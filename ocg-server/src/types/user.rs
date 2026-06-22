@@ -65,8 +65,8 @@ pub(crate) struct UserSummary {
 pub(crate) struct UserProvider {
     /// GitHub metadata.
     pub github: Option<GitHubUserProvider>,
-    /// Linux Foundation SSO metadata.
-    pub linuxfoundation: Option<LinuxFoundationUserProvider>,
+    /// LinkedIn metadata.
+    pub linkedin: Option<LinkedInUserProvider>,
 }
 
 impl UserProvider {
@@ -74,15 +74,15 @@ impl UserProvider {
     pub(crate) fn from_github_username(username: String) -> Self {
         Self {
             github: Some(GitHubUserProvider { username }),
-            linuxfoundation: None,
+            linkedin: None,
         }
     }
 
-    /// Build provider metadata for a Linux Foundation SSO account.
-    pub(crate) fn from_linuxfoundation_username(username: String) -> Self {
+    /// Build provider metadata for a LinkedIn account.
+    pub(crate) fn from_linkedin_subject(subject: String) -> Self {
         Self {
             github: None,
-            linuxfoundation: Some(LinuxFoundationUserProvider { username }),
+            linkedin: Some(LinkedInUserProvider { subject }),
         }
     }
 
@@ -91,8 +91,8 @@ impl UserProvider {
         if let Some(github) = other.github {
             self.github = Some(github);
         }
-        if let Some(linuxfoundation) = other.linuxfoundation {
-            self.linuxfoundation = Some(linuxfoundation);
+        if let Some(linkedin) = other.linkedin {
+            self.linkedin = Some(linkedin);
         }
     }
 }
@@ -104,9 +104,9 @@ pub(crate) struct GitHubUserProvider {
     pub username: String,
 }
 
-/// Linux Foundation-specific user metadata.
+/// LinkedIn-specific user metadata.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct LinuxFoundationUserProvider {
-    /// Username on Linux Foundation SSO.
-    pub username: String,
+pub(crate) struct LinkedInUserProvider {
+    /// Stable LinkedIn OIDC subject identifier.
+    pub subject: String,
 }

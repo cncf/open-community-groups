@@ -1,6 +1,6 @@
 -- Returns summary information about a group.
 create or replace function get_group_summary(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_group_id uuid
 )
 returns json as $$
@@ -14,8 +14,8 @@ returns json as $$
             'normalized_name', gc.normalized_name,
             'order', gc.order
         ),
-        'community_display_name', c.display_name,
-        'community_name', c.name,
+        'alliance_display_name', c.display_name,
+        'alliance_name', c.name,
         'created_at', floor(extract(epoch from g.created_at)),
         'group_id', g.group_id,
         'name', g.name,
@@ -44,9 +44,9 @@ returns json as $$
         'state', g.state
     )) as json_data
     from "group" g
-    join community c using (community_id)
+    join alliance c using (alliance_id)
     join group_category gc using (group_category_id)
     left join region r using (region_id)
     where g.group_id = p_group_id
-    and g.community_id = p_community_id;
+    and g.alliance_id = p_alliance_id;
 $$ language sql;

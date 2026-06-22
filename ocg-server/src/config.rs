@@ -330,8 +330,8 @@ pub(crate) struct LoginOptions {
     pub email: bool,
     /// Enable GitHub login.
     pub github: bool,
-    /// Enable Linux Foundation login.
-    pub linuxfoundation: bool,
+    /// Enable LinkedIn login.
+    pub linkedin: bool,
 }
 
 /// Type alias for the `OAuth2` configuration section.
@@ -369,8 +369,8 @@ pub(crate) type OidcConfig = HashMap<OidcProvider, OidcProviderConfig>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum OidcProvider {
-    /// Linux Foundation as an OIDC provider.
-    LinuxFoundation,
+    /// LinkedIn as an OIDC provider.
+    LinkedIn,
 }
 
 /// OIDC provider configuration.

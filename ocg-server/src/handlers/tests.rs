@@ -26,7 +26,7 @@ use crate::{
         dashboard::common::User as DashboardUser,
         mock::MockDB,
     },
-    handlers::auth::{SELECTED_COMMUNITY_ID_KEY, SELECTED_GROUP_ID_KEY},
+    handlers::auth::{SELECTED_ALLIANCE_ID_KEY, SELECTED_GROUP_ID_KEY},
     router,
     services::{
         images::{DynImageStorage, MockImageStorage},
@@ -36,14 +36,14 @@ use crate::{
     templates::{
         dashboard::{
             audit::{AuditLogRecord, AuditLogsOutput},
-            community::{
+            alliance::{
                 analytics::{
-                    AttendeesStats, CommunityDashboardStats, CommunityPageViewsStats, EventsStats,
-                    GroupsStats, MembersStats, PageViewsStats as CommunityPageViewsEntry,
+                    AttendeesStats, AllianceDashboardStats, AlliancePageViewsStats, EventsStats,
+                    GroupsStats, MembersStats, PageViewsStats as AlliancePageViewsEntry,
                 },
                 groups::Group,
-                settings::CommunityUpdate,
-                team::CommunityTeamMember,
+                settings::AllianceUpdate,
+                team::AllianceTeamMember,
             },
             group::{
                 analytics::{
@@ -52,7 +52,7 @@ use crate::{
                 },
                 attendees::Attendee,
                 events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
-                home::UserGroupsByCommunity,
+                home::UserGroupsByAlliance,
                 invitation_requests::InvitationRequest,
                 members::GroupMember,
                 settings::GroupUpdate,
@@ -65,7 +65,7 @@ use crate::{
                 waitlist::WaitlistEntry,
             },
             user::{
-                invitations::{CommunityTeamInvitation, EventInvitation, GroupTeamInvitation},
+                invitations::{AllianceTeamInvitation, EventInvitation, GroupTeamInvitation},
                 session_proposals::{
                     PendingCoSpeakerInvitation, SessionProposal as UserSessionProposal,
                     SessionProposalLevel as UserSessionProposalLevel,
@@ -79,7 +79,7 @@ use crate::{
         event::SessionProposal as EventSessionProposal,
     },
     types::{
-        community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
+        alliance::{AllianceFull, AllianceRole, AllianceRoleSummary, AllianceSummary},
         event::{
             EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary,
         },
@@ -88,7 +88,7 @@ use crate::{
             GroupSponsor, GroupSummary,
         },
         payments::{EventPurchaseStatus, EventPurchaseSummary},
-        permissions::{CommunityPermission, GroupPermission},
+        permissions::{AlliancePermission, GroupPermission},
         site::{SiteSettings, Theme},
         user::{User as TemplateUser, UserSummary},
     },
@@ -175,16 +175,16 @@ pub(crate) fn assert_non_empty_response(parts: &Parts, bytes: &[u8], status: Sta
     assert!(!bytes.is_empty());
 }
 
-/// Expect an authenticated session scoped to a community.
-pub(crate) fn expect_authenticated_community_session(
+/// Expect an authenticated session scoped to a alliance.
+pub(crate) fn expect_authenticated_alliance_session(
     db: &mut MockDB,
     session_id: session::Id,
     user_id: Uuid,
-    community_id: Uuid,
+    alliance_id: Uuid,
 ) {
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     db.expect_get_session()
         .times(1)
@@ -201,7 +201,7 @@ pub(crate) fn expect_authenticated_group_session(
     db: &mut MockDB,
     session_id: session::Id,
     user_id: Uuid,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
 ) {
     let auth_hash = "hash".to_string();
@@ -209,7 +209,7 @@ pub(crate) fn expect_authenticated_group_session(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -223,17 +223,17 @@ pub(crate) fn expect_authenticated_group_session(
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
 }
 
-/// Expect a successful community permission check.
-pub(crate) fn expect_community_permission(
+/// Expect a successful alliance permission check.
+pub(crate) fn expect_alliance_permission(
     db: &mut MockDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     user_id: Uuid,
-    expected_permission: CommunityPermission,
+    expected_permission: AlliancePermission,
 ) {
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == expected_permission
+            *cid == alliance_id && *uid == user_id && permission == expected_permission
         })
         .returning(|_, _, _| Ok(true));
 }
@@ -241,7 +241,7 @@ pub(crate) fn expect_community_permission(
 /// Expect a successful group permission check.
 pub(crate) fn expect_group_permission(
     db: &mut MockDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     user_id: Uuid,
     expected_permission: GroupPermission,
@@ -249,7 +249,7 @@ pub(crate) fn expect_group_permission(
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == expected_permission
@@ -303,12 +303,12 @@ pub(crate) fn sample_attendee() -> Attendee {
 pub(crate) fn sample_audit_logs_output() -> AuditLogsOutput {
     AuditLogsOutput {
         logs: vec![AuditLogRecord {
-            action: "community_updated".to_string(),
+            action: "alliance_updated".to_string(),
             audit_log_id: Uuid::new_v4(),
             created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
             details: BTreeMap::from([("subject".to_string(), json!("Schedule updated"))]),
             resource_id: Uuid::new_v4(),
-            resource_type: "community".to_string(),
+            resource_type: "alliance".to_string(),
 
             actor_username: Some("test-user".to_string()),
             resource_name: Some("Test".to_string()),
@@ -345,31 +345,31 @@ pub(crate) fn sample_bbox() -> BBox {
     }
 }
 
-/// Sample community used across tests.
-pub(crate) fn sample_community_full(community_id: Uuid) -> CommunityFull {
-    CommunityFull {
+/// Sample alliance used across tests.
+pub(crate) fn sample_alliance_full(alliance_id: Uuid) -> AllianceFull {
+    AllianceFull {
         active: true,
         banner_url: "https://example.test/banner.png".to_string(),
-        community_id,
-        community_site_layout_id: "default".to_string(),
+        alliance_id,
+        alliance_site_layout_id: "default".to_string(),
         created_at: 0,
-        description: "Test community".to_string(),
+        description: "Test alliance".to_string(),
         display_name: "Test".to_string(),
         group_team_management_restricted: false,
-        logo_url: "/static/images/placeholder_cncf.png".to_string(),
+        logo_url: "/static/images/placeholder_goup.png".to_string(),
         name: "test".to_string(),
         ..Default::default()
     }
 }
 
-/// Sample community summary used across tests.
-pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
-    CommunitySummary {
+/// Sample alliance summary used across tests.
+pub(crate) fn sample_alliance_summary(alliance_id: Uuid) -> AllianceSummary {
+    AllianceSummary {
         banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
         banner_url: "https://example.test/banner.png".to_string(),
-        community_id,
+        alliance_id,
         display_name: "Test".to_string(),
-        logo_url: "/static/images/placeholder_cncf.png".to_string(),
+        logo_url: "/static/images/placeholder_goup.png".to_string(),
         name: "test".to_string(),
         ad_banner_link_url: None,
         ad_banner_url: None,
@@ -377,29 +377,29 @@ pub(crate) fn sample_community_summary(community_id: Uuid) -> CommunitySummary {
     }
 }
 
-/// Sample community invitation for dashboard user tests.
-pub(crate) fn sample_community_invitation(community_id: Uuid) -> CommunityTeamInvitation {
-    CommunityTeamInvitation {
-        community_id,
-        community_name: "test-community".to_string(),
-        role: CommunityRole::Admin,
+/// Sample alliance invitation for dashboard user tests.
+pub(crate) fn sample_alliance_invitation(alliance_id: Uuid) -> AllianceTeamInvitation {
+    AllianceTeamInvitation {
+        alliance_id,
+        alliance_name: "test-alliance".to_string(),
+        role: AllianceRole::Admin,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
     }
 }
 
-/// Sample community role summary used in dashboards.
-pub(crate) fn sample_community_role_summary() -> CommunityRoleSummary {
-    CommunityRoleSummary {
-        community_role_id: "admin".to_string(),
+/// Sample alliance role summary used in dashboards.
+pub(crate) fn sample_alliance_role_summary() -> AllianceRoleSummary {
+    AllianceRoleSummary {
+        alliance_role_id: "admin".to_string(),
         display_name: "Admin".to_string(),
     }
 }
 
-/// Sample community team member entry.
-pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMember {
-    CommunityTeamMember {
+/// Sample alliance team member entry.
+pub(crate) fn sample_alliance_team_member(accepted: bool) -> AllianceTeamMember {
+    AllianceTeamMember {
         accepted,
-        role: Some(CommunityRole::Admin),
+        role: Some(AllianceRole::Admin),
         user_id: Uuid::new_v4(),
         username: "team-member".to_string(),
 
@@ -410,9 +410,9 @@ pub(crate) fn sample_community_team_member(accepted: bool) -> CommunityTeamMembe
     }
 }
 
-/// Sample community stats used in analytics tests.
-pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
-    CommunityDashboardStats {
+/// Sample alliance stats used in analytics tests.
+pub(crate) fn sample_alliance_stats() -> AllianceDashboardStats {
+    AllianceDashboardStats {
         attendees: AttendeesStats {
             per_month: vec![("2024-01".to_string(), 5)],
             per_month_by_event_category: HashMap::from([(
@@ -472,23 +472,23 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
             total_by_category: vec![],
             total_by_region: vec![],
         },
-        page_views: CommunityPageViewsStats {
-            community: CommunityPageViewsEntry {
+        page_views: AlliancePageViewsStats {
+            alliance: AlliancePageViewsEntry {
                 per_day_views: vec![("2024-01-10".to_string(), 2), ("2024-01-20".to_string(), 2)],
                 per_month_views: vec![("2024-01".to_string(), 4)],
                 total_views: 4,
             },
-            events: CommunityPageViewsEntry {
+            events: AlliancePageViewsEntry {
                 per_day_views: vec![("2024-01-11".to_string(), 5), ("2024-01-21".to_string(), 7)],
                 per_month_views: vec![("2024-01".to_string(), 12)],
                 total_views: 12,
             },
-            groups: CommunityPageViewsEntry {
+            groups: AlliancePageViewsEntry {
                 per_day_views: vec![("2024-01-12".to_string(), 4), ("2024-01-22".to_string(), 5)],
                 per_month_views: vec![("2024-01".to_string(), 9)],
                 total_views: 9,
             },
-            total: CommunityPageViewsEntry {
+            total: AlliancePageViewsEntry {
                 per_day_views: vec![
                     ("2024-01-10".to_string(), 2),
                     ("2024-01-11".to_string(), 5),
@@ -505,9 +505,9 @@ pub(crate) fn sample_community_stats() -> CommunityDashboardStats {
     }
 }
 
-/// Sample community update payload for dashboard community settings tests.
-pub(crate) fn sample_community_update() -> CommunityUpdate {
-    CommunityUpdate {
+/// Sample alliance update payload for dashboard alliance settings tests.
+pub(crate) fn sample_alliance_update() -> AllianceUpdate {
+    AllianceUpdate {
         banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
         banner_url: "https://example.test/banner.png".to_string(),
         description: "Updated description".to_string(),
@@ -588,7 +588,7 @@ pub(crate) fn sample_event_form() -> GroupEventForm {
 }
 
 /// Sample full event with hosts, sponsors, and schedule.
-pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uuid) -> EventFull {
+pub(crate) fn sample_event_full(alliance_id: Uuid, event_id: Uuid, group_id: Uuid) -> EventFull {
     let starts_at = Utc::now() + chrono::Duration::hours(1);
     let mut sessions = BTreeMap::new();
     sessions.insert(starts_at.date_naive(), Vec::new());
@@ -596,7 +596,7 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
     EventFull {
         canceled: false,
         category_name: "Cloud Native".to_string(),
-        community: sample_community_summary(community_id),
+        alliance: sample_alliance_summary(alliance_id),
         created_at: Utc::now(),
         description: "A detailed event description".to_string(),
         event_id,
@@ -634,8 +634,8 @@ pub(crate) fn sample_event_full(community_id: Uuid, event_id: Uuid, group_id: Uu
 /// Sample event invitation used in dashboard user invitation tests.
 pub(crate) fn sample_event_invitation(event_id: Uuid) -> EventInvitation {
     EventInvitation {
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
+        alliance_display_name: "Test Alliance".to_string(),
+        alliance_name: "test-alliance".to_string(),
         event_id,
         event_name: "Test Event".to_string(),
         group_name: "Test Group".to_string(),
@@ -660,8 +660,8 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
     EventSummary {
         attendee_approval_required: false,
         canceled: false,
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
+        alliance_display_name: "Test Alliance".to_string(),
+        alliance_name: "test-alliance".to_string(),
         event_id,
         group_category_name: "Meetup".to_string(),
         group_name: "Test Group".to_string(),
@@ -789,7 +789,7 @@ pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents
     }
 }
 
-/// Sample group form payload for community dashboard tests.
+/// Sample group form payload for alliance dashboard tests.
 pub(crate) fn sample_group_form(category_id: Uuid) -> Group {
     Group {
         category_id,
@@ -800,11 +800,11 @@ pub(crate) fn sample_group_form(category_id: Uuid) -> Group {
 }
 
 /// Sample full group record used in group pages.
-pub(crate) fn sample_group_full(community_id: Uuid, group_id: Uuid) -> GroupFull {
+pub(crate) fn sample_group_full(alliance_id: Uuid, group_id: Uuid) -> GroupFull {
     GroupFull {
         active: true,
         category: sample_group_category(),
-        community: sample_community_summary(community_id),
+        alliance: sample_alliance_summary(alliance_id),
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
         group_id,
         logo_url: "https://example.test/logo.png".to_string(),
@@ -826,7 +826,7 @@ pub(crate) fn sample_group_full(community_id: Uuid, group_id: Uuid) -> GroupFull
 /// Sample group team invitation used by user dashboard tests.
 pub(crate) fn sample_group_invitation(group_id: Uuid) -> GroupTeamInvitation {
     GroupTeamInvitation {
-        community_name: "test-community".to_string(),
+        alliance_name: "test-alliance".to_string(),
         group_id,
         group_name: "Test Group".to_string(),
         role: GroupRole::Admin,
@@ -838,12 +838,24 @@ pub(crate) fn sample_group_invitation(group_id: Uuid) -> GroupTeamInvitation {
 pub(crate) fn sample_group_member() -> GroupMember {
     GroupMember {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+        email: "member@example.test".to_string(),
         username: "member".to_string(),
 
+        bio: Some("Builds alliance tooling.".to_string()),
+        bluesky_url: Some("https://bsky.app/profile/member.example".to_string()),
+        city: Some("Baku".to_string()),
         company: Some("Example".to_string()),
+        country: Some("Azerbaijan".to_string()),
+        facebook_url: Some("https://facebook.com/member".to_string()),
+        github_url: Some("https://github.com/member".to_string()),
+        interests: Some(vec!["rust".to_string(), "alliance".to_string()]),
+        linkedin_connected: true,
+        linkedin_url: Some("https://linkedin.com/in/member".to_string()),
         name: Some("Group Member".to_string()),
         photo_url: Some("https://example.test/photo.png".to_string()),
         title: Some("Engineer".to_string()),
+        twitter_url: Some("https://x.com/member".to_string()),
+        website_url: Some("https://member.example".to_string()),
     }
 }
 
@@ -939,8 +951,8 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
     GroupSummary {
         active: true,
         category: sample_group_category(),
-        community_display_name: "Test Community".to_string(),
-        community_name: "test-community".to_string(),
+        alliance_display_name: "Test Alliance".to_string(),
+        alliance_name: "test-alliance".to_string(),
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
         group_id,
         logo_url: "https://example.test/logo.png".to_string(),
@@ -1095,7 +1107,7 @@ pub(crate) fn sample_session_record(
     session_id: session::Id,
     user_id: Uuid,
     auth_hash: &str,
-    selected_community_id: Option<Uuid>,
+    selected_alliance_id: Option<Uuid>,
     selected_group_id: Option<Uuid>,
 ) -> session::Record {
     let mut data = HashMap::new();
@@ -1106,8 +1118,8 @@ pub(crate) fn sample_session_record(
             "auth_hash": auth_hash.as_bytes(),
         }),
     );
-    if let Some(community_id) = selected_community_id {
-        data.insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
+    if let Some(alliance_id) = selected_alliance_id {
+        data.insert(SELECTED_ALLIANCE_ID_KEY.to_string(), json!(alliance_id));
     }
     if let Some(group_id) = selected_group_id {
         data.insert(SELECTED_GROUP_ID_KEY.to_string(), json!(group_id));
@@ -1278,34 +1290,34 @@ pub(crate) fn sample_user_cfs_submission(
     }
 }
 
-/// Sample user communities used in dashboard community tests.
-pub(crate) fn sample_user_communities(community_id: Uuid) -> Vec<CommunitySummary> {
-    vec![CommunitySummary {
+/// Sample user alliances used in dashboard alliance tests.
+pub(crate) fn sample_user_alliances(alliance_id: Uuid) -> Vec<AllianceSummary> {
+    vec![AllianceSummary {
         banner_mobile_url: "https://example.com/banner_mobile.png".to_string(),
         banner_url: "https://example.com/banner.png".to_string(),
-        community_id,
-        display_name: "Test Community".to_string(),
+        alliance_id,
+        display_name: "Test Alliance".to_string(),
         logo_url: "https://example.com/logo.png".to_string(),
-        name: "test-community".to_string(),
+        name: "test-alliance".to_string(),
         ad_banner_link_url: None,
         ad_banner_url: None,
         og_image_url: None,
     }]
 }
 
-/// Sample user groups by community used in dashboard group tests.
-pub(crate) fn sample_user_groups_by_community(
-    community_id: Uuid,
+/// Sample user groups by alliance used in dashboard group tests.
+pub(crate) fn sample_user_groups_by_alliance(
+    alliance_id: Uuid,
     group_id: Uuid,
-) -> Vec<UserGroupsByCommunity> {
-    vec![UserGroupsByCommunity {
-        community: CommunitySummary {
+) -> Vec<UserGroupsByAlliance> {
+    vec![UserGroupsByAlliance {
+        alliance: AllianceSummary {
             banner_mobile_url: "https://example.com/banner_mobile.png".to_string(),
             banner_url: "https://example.com/banner.png".to_string(),
-            community_id,
-            display_name: "Test Community".to_string(),
+            alliance_id,
+            display_name: "Test Alliance".to_string(),
             logo_url: "https://example.com/logo.png".to_string(),
-            name: "test-community".to_string(),
+            name: "test-alliance".to_string(),
             ad_banner_link_url: None,
             ad_banner_url: None,
             og_image_url: None,

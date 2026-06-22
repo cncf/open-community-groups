@@ -9,8 +9,8 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '3a190000-0000-0000-0000-000000000001'
-\set community2ID '3a190000-0000-0000-0000-000000000002'
+\set alliance1ID '3a190000-0000-0000-0000-000000000001'
+\set alliance2ID '3a190000-0000-0000-0000-000000000002'
 \set eventCategoryConferenceID '3a190000-0000-0000-0000-000000000003'
 \set eventCategoryMeetupID '3a190000-0000-0000-0000-000000000004'
 \set eventCategorySeminarID '3a190000-0000-0000-0000-000000000005'
@@ -28,9 +28,9 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -38,49 +38,49 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'community1ID',
+    :'alliance1ID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 ), (
-    :'community2ID',
+    :'alliance2ID',
     'devops-vancouver',
     'DevOps Vancouver',
-    'Building DevOps expertise and community in Vancouver',
+    'Building DevOps expertise and alliance in Vancouver',
     'https://example.com/banner-mobile-2.png',
     'https://example.com/banner-2.png',
     'https://example.com/logo-2.png'
 );
 
 -- Group categories
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategoryTechnologyID', :'community1ID', 'Technology'),
-    (:'groupCategoryBusinessID', :'community2ID', 'Business');
+    (:'groupCategoryTechnologyID', :'alliance1ID', 'Technology'),
+    (:'groupCategoryBusinessID', :'alliance2ID', 'Business');
 
 -- Event categories
-insert into event_category (event_category_id, community_id, name, "order")
+insert into event_category (event_category_id, alliance_id, name, "order")
 values
-    (:'eventCategoryWorkshopID', :'community1ID', 'Workshop', 2),
-    (:'eventCategoryConferenceID', :'community1ID', 'Conference', 1),
-    (:'eventCategoryMeetupID', :'community1ID', 'Meetup', null),
-    (:'eventCategorySeminarID', :'community2ID', 'Seminar', null);
+    (:'eventCategoryWorkshopID', :'alliance1ID', 'Workshop', 2),
+    (:'eventCategoryConferenceID', :'alliance1ID', 'Conference', 1),
+    (:'eventCategoryMeetupID', :'alliance1ID', 'Meetup', null),
+    (:'eventCategorySeminarID', :'alliance2ID', 'Seminar', null);
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values
     (
         :'groupKubernetesID',
-        :'community1ID',
+        :'alliance1ID',
         :'groupCategoryTechnologyID',
         'Kubernetes Seattle',
         'kubernetes-seattle'
     ), (
         :'groupDevopsID',
-        :'community2ID',
+        :'alliance2ID',
         :'groupCategoryBusinessID',
         'DevOps Vancouver',
         'devops-vancouver'
@@ -143,9 +143,9 @@ values
 -- TESTS
 -- ============================================================================
 
--- Should return categories for community 1 ordered by order field then name
+-- Should return categories for alliance 1 ordered by order field then name
 select is(
-    list_event_categories(:'community1ID'::uuid)::jsonb,
+    list_event_categories(:'alliance1ID'::uuid)::jsonb,
     jsonb_build_array(
         jsonb_build_object(
             'events_count', 2,
@@ -166,12 +166,12 @@ select is(
             'slug', 'meetup'
         )
     ),
-    'Should return categories for community 1 ordered by order field then name'
+    'Should return categories for alliance 1 ordered by order field then name'
 );
 
--- Should return only categories for community 2
+-- Should return only categories for alliance 2
 select is(
-    list_event_categories(:'community2ID'::uuid)::jsonb,
+    list_event_categories(:'alliance2ID'::uuid)::jsonb,
     jsonb_build_array(
         jsonb_build_object(
             'events_count', 1,
@@ -180,7 +180,7 @@ select is(
             'slug', 'seminar'
         )
     ),
-    'Should return only categories for community 2'
+    'Should return only categories for alliance 2'
 );
 
 -- ============================================================================

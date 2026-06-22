@@ -1,10 +1,10 @@
 {% import "macros/explore.html" as explore -%}
 
-{# Community -#}
-{% if filters_options.communities.len() > 0 -%}
-  <collapsible-filter title="Community" name="community" options="{{ filters_options.communities|json }}" selected="{{ filters.community|json }}" viewType="rows" maxVisibleItems="5" singleSelection resetDependentFilters></collapsible-filter>
+{# Alliance -#}
+{% if filters_options.alliances.len() > 0 -%}
+  <collapsible-filter title="Alliance" name="alliance" options="{{ filters_options.alliances|json }}" selected="{{ filters.alliance|json }}" viewType="rows" maxVisibleItems="5" singleSelection resetDependentFilters></collapsible-filter>
 {% endif -%}
-{# End community -#}
+{# End alliance -#}
 
 {# Group category -#}
 {% if let Some(group_category) = &filters_options.group_category -%}

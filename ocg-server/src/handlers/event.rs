@@ -54,7 +54,7 @@ use crate::{
     },
 };
 
-use super::{error::HandlerError, extractors::CommunityId};
+use super::{error::HandlerError, extractors::AllianceId};
 
 #[cfg(test)]
 mod tests;
@@ -66,21 +66,21 @@ mod tests;
 pub(crate) async fn page(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
-    Path((community_name, group_slug, event_slug)): Path<(String, String, String)>,
+    Path((alliance_name, group_slug, event_slug)): Path<(String, String, String)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get community and site settings
-    let (community_id, site_settings) = tokio::try_join!(
-        db.get_community_id_by_name(&community_name),
+    // Get alliance and site settings
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
         db.get_site_settings()
     )?;
-    let Some(community_id) = community_id else {
+    let Some(alliance_id) = alliance_id else {
         return not_found::render(site_settings);
     };
 
     // Fetch event page data
     let event = db
-        .get_event_full_by_slug(community_id, &group_slug, &event_slug)
+        .get_event_full_by_slug(alliance_id, &group_slug, &event_slug)
         .await?;
     let Some(mut event) = event else {
         return not_found::render(site_settings);
@@ -89,7 +89,7 @@ pub(crate) async fn page(
     // Redirect generated group slugs to their pretty URL
     if should_redirect_to_pretty_group_slug(&event, &group_slug) {
         let url = public_event_url(
-            &community_name,
+            &alliance_name,
             event.group.public_slug(),
             &event.slug,
             &uri,
@@ -118,7 +118,7 @@ pub(crate) async fn page(
 pub(crate) async fn check_in_page(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -127,10 +127,10 @@ pub(crate) async fn check_in_page(
 
     // Get site settings and event details
     let (event, site_settings, attendance, check_in_window_open) = tokio::try_join!(
-        db.get_event_summary_by_id(community_id, event_id),
+        db.get_event_summary_by_id(alliance_id, event_id),
         db.get_site_settings(),
-        db.get_event_attendance(community_id, event_id, user.user_id),
-        db.is_event_check_in_window_open(community_id, event_id),
+        db.get_event_attendance(alliance_id, event_id, user.user_id),
+        db.is_event_check_in_window_open(alliance_id, event_id),
     )?;
 
     // Prepare template
@@ -153,7 +153,7 @@ pub(crate) async fn check_in_page(
 pub(crate) async fn cfs_modal(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
@@ -162,7 +162,7 @@ pub(crate) async fn cfs_modal(
 
     // Get event details, labels and user's session proposals
     let (event, labels, session_proposals) = tokio::try_join!(
-        db.get_event_summary_by_id(community_id, event_id),
+        db.get_event_summary_by_id(alliance_id, event_id),
         db.list_event_cfs_labels(event_id),
         async {
             if let Some(user_id) = user_id {
@@ -191,12 +191,12 @@ pub(crate) async fn cfs_modal(
 #[instrument(skip_all)]
 pub(crate) async fn availability(
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, group_slug, event_slug)): Path<(String, String, String)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get current public event availability
     let event = db
-        .get_event_full_by_slug(community_id, &group_slug, &event_slug)
+        .get_event_full_by_slug(alliance_id, &group_slug, &event_slug)
         .await?
         .ok_or(HandlerError::NotFound)?;
 
@@ -219,15 +219,15 @@ pub(crate) async fn attend_event(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<OptionalQuestionnaireAnswersForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate that the event is still attendee-visible before checking ticketing
-    ensure_attendee_event_is_active(&db, community_id, event_id).await?;
+    ensure_attendee_event_is_active(&db, alliance_id, event_id).await?;
 
     // Require checkout before users can RSVP to ticketed events
-    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    let event = db.get_event_summary_by_id(alliance_id, event_id).await?;
     if event.is_ticketed() {
         return Err(anyhow::anyhow!("ticketed events must be purchased before attending").into());
     }
@@ -239,7 +239,7 @@ pub(crate) async fn attend_event(
     if !waitlist_join_without_answers {
         // Get registration questions and validate answers
         let registration_questions =
-            db.get_event_registration_questions(community_id, event_id).await?;
+            db.get_event_registration_questions(alliance_id, event_id).await?;
         validate_registration_answers(
             input.registration_answers.as_ref(),
             &registration_questions,
@@ -249,7 +249,7 @@ pub(crate) async fn attend_event(
     // Attend event
     let attend_result = db
         .attend_event(
-            community_id,
+            alliance_id,
             event_id,
             user.user_id,
             input.registration_answers,
@@ -267,7 +267,7 @@ pub(crate) async fn attend_event(
     // Get site settings and event details for notifications
     let (site_settings, event) = match tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     ) {
         Ok(context) => context,
         Err(err) => {
@@ -331,18 +331,18 @@ pub(crate) async fn attend_event(
 pub(crate) async fn attendance_status(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load attendance status without failing when the event is stale or inactive
-    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
+    let attendance = db.get_event_attendance(alliance_id, event_id, user.user_id).await?;
     let can_request_refund = if attendance.status == EventAttendanceStatus::Attendee
         && attendance
             .purchase_amount_minor
             .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
         && attendance.refund_request_status.is_none()
     {
-        let event = db.get_event_summary_by_id(community_id, event_id).await?;
+        let event = db.get_event_summary_by_id(alliance_id, event_id).await?;
         attendance.can_request_refund(event.starts_at)
     } else {
         false
@@ -363,10 +363,10 @@ pub(crate) async fn attendance_status(
 pub(crate) async fn cancel_checkout(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.cancel_event_checkout(community_id, event_id, user.user_id).await?;
+    db.cancel_event_checkout(alliance_id, event_id, user.user_id).await?;
 
     Ok((
         StatusCode::OK,
@@ -381,11 +381,11 @@ pub(crate) async fn cancel_checkout(
 pub(crate) async fn check_in(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check in event (bypass_window = false for user self check-in)
-    db.check_in_event(community_id, event_id, user.user_id, false).await?;
+    db.check_in_event(alliance_id, event_id, user.user_id, false).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -397,7 +397,7 @@ pub(crate) async fn leave_event(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Leave event and enqueue required attendee cancellation notifications
@@ -407,14 +407,14 @@ pub(crate) async fn leave_event(
         .transaction(|tx| {
             Box::pin(async move {
                 // Leave the event and collect any waitlist promotions
-                let leave_result = tx.leave_event(community_id, event_id, user.user_id).await?;
+                let leave_result = tx.leave_event(alliance_id, event_id, user.user_id).await?;
 
                 // Enqueue required cancellation and promotion notifications before committing
                 if leave_result.left_status == EventAttendanceStatus::Attendee {
                     enqueue_event_attendance_cancellation_notifications(
                         tx,
                         &required_notification_server_cfg,
-                        community_id,
+                        alliance_id,
                         event_id,
                         user.user_id,
                         leave_result.promoted_user_ids.clone(),
@@ -439,7 +439,7 @@ pub(crate) async fn leave_event(
             // Get site settings and event details for notifications
             let (site_settings, event) = match tokio::try_join!(
                 db.get_site_settings(),
-                db.get_event_summary_by_id(community_id, event_id)
+                db.get_event_summary_by_id(alliance_id, event_id)
             ) {
                 Ok(context) => context,
                 Err(err) => {
@@ -477,13 +477,13 @@ pub(crate) async fn leave_event(
 pub(crate) async fn request_refund(
     CurrentUser(user): CurrentUser,
     State(payments_manager): State<DynPaymentsManager>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<RefundRequestInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     payments_manager
         .request_refund(&RequestRefundInput {
-            community_id,
+            alliance_id,
             event_id,
             user_id: user.user_id,
 
@@ -508,16 +508,16 @@ pub(crate) async fn start_checkout(
     State(db): State<DynDB>,
     State(payments_cfg): State<Option<PaymentsConfig>>,
     State(payments_manager): State<DynPaymentsManager>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<CheckoutInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event
-    load_checkoutable_event(&db, community_id, event_id).await?;
+    load_checkoutable_event(&db, alliance_id, event_id).await?;
 
     // Get registration questions and validate answers
     let registration_questions =
-        db.get_event_registration_questions(community_id, event_id).await?;
+        db.get_event_registration_questions(alliance_id, event_id).await?;
     validate_registration_answers(
         input.registration_answers.registration_answers.as_ref(),
         &registration_questions,
@@ -526,7 +526,7 @@ pub(crate) async fn start_checkout(
     // Reserve a purchase hold for the attendee
     let prepared_checkout = create_checkout_hold(
         &db,
-        community_id,
+        alliance_id,
         event_id,
         payments_cfg.as_ref(),
         user.user_id,
@@ -548,7 +548,7 @@ pub(crate) async fn start_checkout(
     if prepared_checkout.purchase.amount_minor == 0 {
         payments_manager
             .complete_free_checkout(
-                community_id,
+                alliance_id,
                 event_id,
                 prepared_checkout.purchase.event_purchase_id,
                 user.user_id,
@@ -584,7 +584,7 @@ pub(crate) async fn start_checkout(
 pub(crate) async fn submit_cfs_submission(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
+    AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
     ValidatedFormQs(input): ValidatedFormQs<CfsSubmissionInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -598,7 +598,7 @@ pub(crate) async fn submit_cfs_submission(
 
     // Add CFS submission to database
     db.add_cfs_submission(
-        community_id,
+        alliance_id,
         event_id,
         user_id,
         input.session_proposal_id,
@@ -608,7 +608,7 @@ pub(crate) async fn submit_cfs_submission(
 
     // Prepare template
     let (event, labels, session_proposals) = tokio::try_join!(
-        db.get_event_summary_by_id(community_id, event_id),
+        db.get_event_summary_by_id(alliance_id, event_id),
         db.list_event_cfs_labels(event_id),
         db.list_user_session_proposals_for_cfs_event(user_id, event_id),
     )?;
@@ -780,7 +780,7 @@ pub(crate) struct RefundRequestInput {
 /// Creates or reuses a pending checkout hold for the attendee.
 async fn create_checkout_hold(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     event_id: Uuid,
     payments_cfg: Option<&PaymentsConfig>,
     user_id: Uuid,
@@ -793,7 +793,7 @@ async fn create_checkout_hold(
 
     // Prepare the attendee's current checkout purchase state
     db.prepare_event_checkout_purchase(
-        community_id,
+        alliance_id,
         &PrepareEventCheckoutPurchaseInput {
             configured_provider: payments_cfg.map(PaymentsConfig::provider),
             discount_code: input.discount_code.clone(),
@@ -810,10 +810,10 @@ async fn create_checkout_hold(
 /// Ensures attendee-facing event flows only continue for active events.
 async fn ensure_attendee_event_is_active(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     event_id: Uuid,
 ) -> Result<(), HandlerError> {
-    db.ensure_event_is_active(community_id, event_id)
+    db.ensure_event_is_active(alliance_id, event_id)
         .await
         .map_err(|err| match HandlerError::from(err) {
             HandlerError::Other(err) if err.to_string() == "event not found or inactive" => {
@@ -842,14 +842,14 @@ fn get_checkout_status_response(
 /// Loads an event and ensures it currently supports attendee checkout.
 async fn load_checkoutable_event(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     event_id: Uuid,
 ) -> Result<EventSummary, HandlerError> {
     // Stop checkout when the event is no longer attendee-visible
-    ensure_attendee_event_is_active(db, community_id, event_id).await?;
+    ensure_attendee_event_is_active(db, alliance_id, event_id).await?;
 
     // Ensure the event actually offers attendee-purchasable tickets
-    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    let event = db.get_event_summary_by_id(alliance_id, event_id).await?;
     if !event.is_ticketed() {
         return Err(anyhow::anyhow!("event does not use ticket purchases").into());
     }
@@ -863,8 +863,8 @@ async fn load_checkoutable_event(
 }
 
 /// Builds a public event URL with the original query string, if present.
-fn public_event_url(community_name: &str, group_slug: &str, event_slug: &str, uri: &Uri) -> String {
-    let mut url = format!("/{community_name}/group/{group_slug}/event/{event_slug}");
+fn public_event_url(alliance_name: &str, group_slug: &str, event_slug: &str, uri: &Uri) -> String {
+    let mut url = format!("/{alliance_name}/group/{group_slug}/event/{event_slug}");
     if let Some(query) = uri.query() {
         url.push('?');
         url.push_str(query);

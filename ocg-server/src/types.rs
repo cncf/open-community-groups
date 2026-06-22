@@ -1,6 +1,6 @@
 //! Type definitions used across the application.
 
-pub mod community;
+pub mod alliance;
 pub mod event;
 pub mod group;
 pub mod location;

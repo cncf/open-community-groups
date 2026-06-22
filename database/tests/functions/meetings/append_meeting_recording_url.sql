@@ -9,7 +9,7 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '7a020000-0000-0000-0000-000000000001'
+\set allianceID '7a020000-0000-0000-0000-000000000001'
 \set eventCategoryID '7a020000-0000-0000-0000-000000000002'
 \set eventID '7a020000-0000-0000-0000-000000000003'
 \set groupCategoryID '7a020000-0000-0000-0000-000000000004'
@@ -20,9 +20,9 @@ select plan(11);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -30,34 +30,34 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Event Category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Conference');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group Category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
     description
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Test Group',
     'test-group',

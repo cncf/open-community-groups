@@ -1,14 +1,14 @@
 import { expect, test } from "../../fixtures.js";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_GROUP_IDS,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
   navigateToGroup,
 } from "../../utils.js";
 
-const groupId = TEST_GROUP_IDS.community1.alpha;
+const groupId = TEST_GROUP_IDS.alliance1.alpha;
 
 // Return the public membership container for the current group page.
 const getMembershipContainer = (page) => page.locator("#membership-container");
@@ -61,8 +61,8 @@ test.describe("group membership", () => {
     // Load the group page and resolve the current membership state.
     await navigateToGroup(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
     );
 
     // Verify the group page is ready before joining.

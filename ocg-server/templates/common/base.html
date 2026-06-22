@@ -1,20 +1,20 @@
 {# Variables for explore URLs #}
-{# TODO: Hardcoded community until we add more #}
-{% let explore_events = "/explore?community[0]=cncf&entity=events" %}
-{% let explore_groups = "/explore?community[0]=cncf&entity=groups" %}
+{# TODO: Hardcoded alliance until we add more #}
+{% let explore_events = "/explore?alliance[0]=goup&entity=events" %}
+{% let explore_groups = "/explore?alliance[0]=goup&entity=groups" %}
 {# End variables for explore URLs #}
 <!DOCTYPE html>
 <html lang="en" class="h-full min-h-screen">
   <head>
     {# Page title -#}
     {% block head_title -%}
-      <title>Open Community Groups</title>
+      <title>Open Alliance Groups</title>
     {% endblock head_title -%}
     {# End page title -#}
     {% block head_description -%}
       <meta name="description" content="{{ site_settings.title }}">
     {% endblock head_description -%}
-    <meta name="keywords" content="community, groups, events">
+    <meta name="keywords" content="alliance, groups, events">
     <meta name="ocg-commit-sha" content="{{ crate::router::COMMIT_SHA }}">
 
     {% block canonical_link -%}
@@ -23,7 +23,7 @@
     {#- OG tags #}
     {% block open_graph_meta -%}
       <meta property="og:type" content="website">
-      <meta property="og:title" content="Open Community Groups">
+      <meta property="og:title" content="Open Alliance Groups">
       <meta property="og:description" content="{{ site_settings.title }}">
       {% if let Some(og_image_url) = &site_settings.og_image_url -%}
         <meta property="og:image" content="{{ og_image_url }}">
@@ -34,7 +34,7 @@
     {#- Twitter tags #}
     {% block twitter_meta -%}
       <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Open Community Groups">
+      <meta name="twitter:title" content="Open Alliance Groups">
       <meta name="twitter:description" content="{{ site_settings.title }}">
       {% if let Some(og_image_url) = &site_settings.og_image_url -%}
         <meta name="twitter:image" content="{{ og_image_url }}">

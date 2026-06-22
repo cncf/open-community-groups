@@ -9,21 +9,21 @@ select plan(131);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0a0e0000-0000-0000-0000-000000000001'
+\set allianceID '0a0e0000-0000-0000-0000-000000000001'
 \set deletedGroupID '0a0e0000-0000-0000-0000-000000000002'
 \set groupCategoryID '0a0e0000-0000-0000-0000-000000000003'
 \set groupID '0a0e0000-0000-0000-0000-000000000004'
-\set otherCommunityGroupID '0a0e0000-0000-0000-0000-000000000005'
-\set otherCommunityID '0a0e0000-0000-0000-0000-000000000006'
+\set otherAllianceGroupID '0a0e0000-0000-0000-0000-000000000005'
+\set otherAllianceID '0a0e0000-0000-0000-0000-000000000006'
 \set otherGroupCategoryID '0a0e0000-0000-0000-0000-000000000007'
 \set otherGroupID '0a0e0000-0000-0000-0000-000000000008'
-\set restrictedCommunityID '0a0e0000-0000-0000-0000-000000000009'
+\set restrictedAllianceID '0a0e0000-0000-0000-0000-000000000009'
 \set restrictedGroupCategoryID '0a0e0000-0000-0000-0000-000000000010'
 \set restrictedGroupID '0a0e0000-0000-0000-0000-000000000011'
-\set userCommunityAdminID '0a0e0000-0000-0000-0000-000000000012'
-\set userCommunityGroupsManagerID '0a0e0000-0000-0000-0000-000000000013'
-\set userCommunityPendingGroupsManagerID '0a0e0000-0000-0000-0000-000000000014'
-\set userCommunityViewerID '0a0e0000-0000-0000-0000-000000000015'
+\set userAllianceAdminID '0a0e0000-0000-0000-0000-000000000012'
+\set userAllianceGroupsManagerID '0a0e0000-0000-0000-0000-000000000013'
+\set userAlliancePendingGroupsManagerID '0a0e0000-0000-0000-0000-000000000014'
+\set userAllianceViewerID '0a0e0000-0000-0000-0000-000000000015'
 \set userDualRoleID '0a0e0000-0000-0000-0000-000000000016'
 \set userEventsManagerID '0a0e0000-0000-0000-0000-000000000017'
 \set userGroupAdminID '0a0e0000-0000-0000-0000-000000000018'
@@ -36,9 +36,9 @@ select plan(131);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -47,28 +47,28 @@ insert into community (
     group_team_management_restricted,
     logo_url
 ) values (
-    :'communityID',
-    'group-permission-community',
-    'Group Permission Community',
-    'Test community',
+    :'allianceID',
+    'group-permission-alliance',
+    'Group Permission Alliance',
+    'Test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     false,
     'https://example.com/logo.png'
 ), (
-    :'otherCommunityID',
-    'group-permission-other-community',
-    'Group Permission Other Community',
-    'Other test community',
+    :'otherAllianceID',
+    'group-permission-other-alliance',
+    'Group Permission Other Alliance',
+    'Other test alliance',
     'https://example.com/other-banner-mobile.png',
     'https://example.com/other-banner.png',
     false,
     'https://example.com/other-logo.png'
 ), (
-    :'restrictedCommunityID',
-    'group-permission-restricted-community',
-    'Group Permission Restricted Community',
-    'Restricted test community',
+    :'restrictedAllianceID',
+    'group-permission-restricted-alliance',
+    'Group Permission Restricted Alliance',
+    'Restricted test alliance',
     'https://example.com/restricted-banner-mobile.png',
     'https://example.com/restricted-banner.png',
     true,
@@ -76,11 +76,11 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'otherGroupCategoryID', :'otherCommunityID', 'Platform Engineering'),
-    (:'restrictedGroupCategoryID', :'restrictedCommunityID', 'Technology');
+    (:'groupCategoryID', :'allianceID', 'Technology'),
+    (:'otherGroupCategoryID', :'otherAllianceID', 'Platform Engineering'),
+    (:'restrictedGroupCategoryID', :'restrictedAllianceID', 'Technology');
 
 -- Users
 insert into "user" (
@@ -112,33 +112,33 @@ insert into "user" (
     true,
     'groupviewer'
 ), (
-    :'userCommunityAdminID',
-    'Community Admin',
+    :'userAllianceAdminID',
+    'Alliance Admin',
     gen_random_bytes(32),
-    'community-admin@example.com',
+    'alliance-admin@example.com',
     true,
-    'communityadmin'
+    'allianceadmin'
 ), (
-    :'userCommunityGroupsManagerID',
-    'Community Groups Manager',
+    :'userAllianceGroupsManagerID',
+    'Alliance Groups Manager',
     gen_random_bytes(32),
-    'community-groups-manager@example.com',
+    'alliance-groups-manager@example.com',
     true,
-    'communitygroupsmanager'
+    'alliancegroupsmanager'
 ), (
-    :'userCommunityPendingGroupsManagerID',
-    'Community Pending Groups Manager',
+    :'userAlliancePendingGroupsManagerID',
+    'Alliance Pending Groups Manager',
     gen_random_bytes(32),
-    'community-pending-groups-manager@example.com',
+    'alliance-pending-groups-manager@example.com',
     true,
-    'communitypendinggroupsmanager'
+    'alliancependinggroupsmanager'
 ), (
-    :'userCommunityViewerID',
-    'Community Viewer',
+    :'userAllianceViewerID',
+    'Alliance Viewer',
     gen_random_bytes(32),
-    'community-viewer@example.com',
+    'alliance-viewer@example.com',
     true,
-    'communityviewer'
+    'allianceviewer'
 ), (
     :'userDualRoleID',
     'Dual Role',
@@ -172,45 +172,45 @@ insert into "user" (
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     description,
     slug
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Kubernetes Study Group',
     'Weekly Kubernetes study and discussion group',
     'kubernetes-study'
 ), (
     :'otherGroupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Open Source Study Group',
     'Weekly open source study and discussion group',
     'open-source-study'
 ), (
     :'deletedGroupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Deleted Study Group',
     'Deleted group used for permission checks',
     'deleted-study'
 ), (
-    :'otherCommunityGroupID',
-    :'otherCommunityID',
+    :'otherAllianceGroupID',
+    :'otherAllianceID',
     :'otherGroupCategoryID',
     'Internal Developer Platform',
-    'Platform engineering group in a different community',
+    'Platform engineering group in a different alliance',
     'internal-developer-platform'
 ), (
     :'restrictedGroupID',
-    :'restrictedCommunityID',
+    :'restrictedAllianceID',
     :'restrictedGroupCategoryID',
     'Restricted Kubernetes Study Group',
-    'Weekly Kubernetes study and discussion group in a restricted community',
+    'Weekly Kubernetes study and discussion group in a restricted alliance',
     'restricted-kubernetes-study'
 );
 
@@ -263,7 +263,7 @@ insert into group_team (
     :'userOtherGroupAdminID'
 ), (
     true,
-    :'otherCommunityGroupID',
+    :'otherAllianceGroupID',
     'admin',
     :'userOtherGroupAdminID'
 ), (
@@ -273,47 +273,47 @@ insert into group_team (
     :'userGroupAdminID'
 );
 
--- Community team memberships
-insert into community_team (
+-- Alliance team memberships
+insert into alliance_team (
     accepted,
-    community_id,
+    alliance_id,
     role,
     user_id
 ) values (
     true,
-    :'communityID',
+    :'allianceID',
     'admin',
-    :'userCommunityAdminID'
+    :'userAllianceAdminID'
 ), (
     true,
-    :'communityID',
+    :'allianceID',
     'groups-manager',
-    :'userCommunityGroupsManagerID'
+    :'userAllianceGroupsManagerID'
 ), (
     true,
-    :'communityID',
+    :'allianceID',
     'viewer',
-    :'userCommunityViewerID'
+    :'userAllianceViewerID'
 ), (
     false,
-    :'communityID',
+    :'allianceID',
     'groups-manager',
-    :'userCommunityPendingGroupsManagerID'
+    :'userAlliancePendingGroupsManagerID'
 ), (
     true,
-    :'communityID',
+    :'allianceID',
     'groups-manager',
     :'userDualRoleID'
 ), (
     true,
-    :'restrictedCommunityID',
+    :'restrictedAllianceID',
     'admin',
-    :'userCommunityAdminID'
+    :'userAllianceAdminID'
 ), (
     true,
-    :'restrictedCommunityID',
+    :'restrictedAllianceID',
     'groups-manager',
-    :'userCommunityGroupsManagerID'
+    :'userAllianceGroupsManagerID'
 );
 
 -- ============================================================================
@@ -360,17 +360,17 @@ select is(
 -- Should enforce the full group role-permission matrix
 with actors (
     actor,
-    community_id,
+    alliance_id,
     group_id,
     user_id,
     allowed_permissions
 ) as (
     values
         (
-            'community-admin',
-            :'communityID'::uuid,
+            'alliance-admin',
+            :'allianceID'::uuid,
             :'groupID'::uuid,
-            :'userCommunityAdminID'::uuid,
+            :'userAllianceAdminID'::uuid,
             array[
                 'group.events.write',
                 'group.members.write',
@@ -381,10 +381,10 @@ with actors (
             ]::text[]
         ),
         (
-            'community-admin-other-group',
-            :'communityID'::uuid,
+            'alliance-admin-other-group',
+            :'allianceID'::uuid,
             :'otherGroupID'::uuid,
-            :'userCommunityAdminID'::uuid,
+            :'userAllianceAdminID'::uuid,
             array[
                 'group.events.write',
                 'group.members.write',
@@ -395,10 +395,10 @@ with actors (
             ]::text[]
         ),
         (
-            'community-groups-manager',
-            :'communityID'::uuid,
+            'alliance-groups-manager',
+            :'allianceID'::uuid,
             :'groupID'::uuid,
-            :'userCommunityGroupsManagerID'::uuid,
+            :'userAllianceGroupsManagerID'::uuid,
             array[
                 'group.events.write',
                 'group.members.write',
@@ -409,38 +409,38 @@ with actors (
             ]::text[]
         ),
         (
-            'community-pending-groups-manager',
-            :'communityID'::uuid,
+            'alliance-pending-groups-manager',
+            :'allianceID'::uuid,
             :'groupID'::uuid,
-            :'userCommunityPendingGroupsManagerID'::uuid,
+            :'userAlliancePendingGroupsManagerID'::uuid,
             array[]::text[]
         ),
         (
-            'community-viewer',
-            :'communityID'::uuid,
+            'alliance-viewer',
+            :'allianceID'::uuid,
             :'groupID'::uuid,
-            :'userCommunityViewerID'::uuid,
+            :'userAllianceViewerID'::uuid,
             array[
                 'group.read'
             ]::text[]
         ),
         (
-            'deleted-group-community-admin',
-            :'communityID'::uuid,
+            'deleted-group-alliance-admin',
+            :'allianceID'::uuid,
             :'deletedGroupID'::uuid,
-            :'userCommunityAdminID'::uuid,
+            :'userAllianceAdminID'::uuid,
             array[]::text[]
         ),
         (
             'deleted-group-group-admin',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'deletedGroupID'::uuid,
             :'userGroupAdminID'::uuid,
             array[]::text[]
         ),
         (
             'dual-role-viewer-and-groups-manager',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'userDualRoleID'::uuid,
             array[
@@ -454,7 +454,7 @@ with actors (
         ),
         (
             'group-admin',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'userGroupAdminID'::uuid,
             array[
@@ -468,7 +468,7 @@ with actors (
         ),
         (
             'group-events-manager',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'userEventsManagerID'::uuid,
             array[
@@ -478,14 +478,14 @@ with actors (
         ),
         (
             'group-pending-admin',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'userPendingGroupAdminID'::uuid,
             array[]::text[]
         ),
         (
             'group-viewer',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'userGroupViewerID'::uuid,
             array[
@@ -493,9 +493,9 @@ with actors (
             ]::text[]
         ),
         (
-            'other-community-group-admin',
-            :'otherCommunityID'::uuid,
-            :'otherCommunityGroupID'::uuid,
+            'other-alliance-group-admin',
+            :'otherAllianceID'::uuid,
+            :'otherAllianceGroupID'::uuid,
             :'userOtherGroupAdminID'::uuid,
             array[
                 'group.events.write',
@@ -508,35 +508,35 @@ with actors (
         ),
         (
             'other-group-admin-out-of-scope',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'userOtherGroupAdminID'::uuid,
             array[]::text[]
         ),
         (
             'regular-user',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'userRegularID'::uuid,
             array[]::text[]
         ),
         (
-            'wrong-community-community-admin',
-            :'otherCommunityID'::uuid,
+            'wrong-alliance-alliance-admin',
+            :'otherAllianceID'::uuid,
             :'groupID'::uuid,
-            :'userCommunityAdminID'::uuid,
+            :'userAllianceAdminID'::uuid,
             array[]::text[]
         ),
         (
-            'wrong-community-group-admin',
-            :'otherCommunityID'::uuid,
+            'wrong-alliance-group-admin',
+            :'otherAllianceID'::uuid,
             :'groupID'::uuid,
             :'userGroupAdminID'::uuid,
             array[]::text[]
         ),
         (
             'wrong-group-group-admin',
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'otherGroupID'::uuid,
             :'userGroupAdminID'::uuid,
             array[]::text[]
@@ -555,7 +555,7 @@ with actors (
 ), test_cases as (
     select
         a.actor,
-        a.community_id,
+        a.alliance_id,
         a.group_id,
         a.user_id,
         p.permission,
@@ -564,13 +564,13 @@ with actors (
     cross join permissions p
 )
 select is(
-    user_has_group_permission(community_id, group_id, user_id, permission),
+    user_has_group_permission(alliance_id, group_id, user_id, permission),
     expected,
     format(
-        'Actor=%s user_id=%s community_id=%s group_id=%s permission=%s should be %s',
+        'Actor=%s user_id=%s alliance_id=%s group_id=%s permission=%s should be %s',
         actor,
         user_id,
-        community_id,
+        alliance_id,
         group_id,
         permission,
         case when expected then 'allowed' else 'blocked' end
@@ -579,52 +579,52 @@ select is(
 from test_cases
 order by actor, permission;
 
--- Should block group admins from managing teams in restricted communities
+-- Should block group admins from managing teams in restricted alliances
 select is(
     user_has_group_permission(
-        :'restrictedCommunityID'::uuid,
+        :'restrictedAllianceID'::uuid,
         :'restrictedGroupID'::uuid,
         :'userGroupAdminID'::uuid,
         'group.team.write'
     ),
     false,
-    'Group admin should not manage group team when community restriction is enabled'
+    'Group admin should not manage group team when alliance restriction is enabled'
 );
 
--- Should allow community admins to manage teams in restricted communities
+-- Should allow alliance admins to manage teams in restricted alliances
 select is(
     user_has_group_permission(
-        :'restrictedCommunityID'::uuid,
+        :'restrictedAllianceID'::uuid,
         :'restrictedGroupID'::uuid,
-        :'userCommunityAdminID'::uuid,
+        :'userAllianceAdminID'::uuid,
         'group.team.write'
     ),
     true,
-    'Community admin should manage group team when community restriction is enabled'
+    'Alliance admin should manage group team when alliance restriction is enabled'
 );
 
--- Should allow community groups managers to manage teams in restricted communities
+-- Should allow alliance groups managers to manage teams in restricted alliances
 select is(
     user_has_group_permission(
-        :'restrictedCommunityID'::uuid,
+        :'restrictedAllianceID'::uuid,
         :'restrictedGroupID'::uuid,
-        :'userCommunityGroupsManagerID'::uuid,
+        :'userAllianceGroupsManagerID'::uuid,
         'group.team.write'
     ),
     true,
-    'Community groups manager should manage group team when community restriction is enabled'
+    'Alliance groups manager should manage group team when alliance restriction is enabled'
 );
 
--- Should keep group admin non-team permissions unchanged in restricted communities
+-- Should keep group admin non-team permissions unchanged in restricted alliances
 select is(
     user_has_group_permission(
-        :'restrictedCommunityID'::uuid,
+        :'restrictedAllianceID'::uuid,
         :'restrictedGroupID'::uuid,
         :'userGroupAdminID'::uuid,
         'group.events.write'
     ),
     true,
-    'Group admin event permissions should remain unchanged when community restriction is enabled'
+    'Group admin event permissions should remain unchanged when alliance restriction is enabled'
 );
 
 -- ============================================================================

@@ -23,7 +23,7 @@ begin
             p_actor_user_id,
             'group_sponsor',
             p_group_sponsor_id,
-            (select community_id from "group" where group_id = p_group_id),
+            (select alliance_id from "group" where group_id = p_group_id),
             p_group_id
         );
     end if;

@@ -1,6 +1,6 @@
 -- Returns full information about a group.
 create or replace function get_group_full(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_group_id uuid
 )
 returns json as $$
@@ -62,8 +62,8 @@ returns json as $$
         'website_url', g.website_url,
         'youtube_url', g.youtube_url,
 
-        -- Include community summary and related collections
-        'community', get_community_summary(g.community_id),
+        -- Include alliance summary and related collections
+        'alliance', get_alliance_summary(g.alliance_id),
         'organizers', (
             select coalesce(json_agg(json_strip_nulls(json_build_object(
                 'user_id', u.user_id,
@@ -106,9 +106,9 @@ returns json as $$
         )
     )) as json_data
     from "group" g
-    join community c using (community_id)
+    join alliance c using (alliance_id)
     join group_category gc using (group_category_id)
     left join region r using (region_id)
     where g.group_id = p_group_id
-    and g.community_id = p_community_id;
+    and g.alliance_id = p_alliance_id;
 $$ language sql;

@@ -9,12 +9,12 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0a050000-0000-0000-0000-000000000001'
+\set allianceID '0a050000-0000-0000-0000-000000000001'
 \set groupCategoryID '0a050000-0000-0000-0000-000000000002'
 \set groupID '0a050000-0000-0000-0000-000000000003'
 \set nonExistentUserID '0a050000-0000-0000-0000-000000000004'
 \set userBothTeamsID '0a050000-0000-0000-0000-000000000005'
-\set userCommunityOnlyID '0a050000-0000-0000-0000-000000000006'
+\set userAllianceOnlyID '0a050000-0000-0000-0000-000000000006'
 \set userGroupOnlyID '0a050000-0000-0000-0000-000000000007'
 \set userNoTeamsID '0a050000-0000-0000-0000-000000000008'
 \set userWithTeamsID '0a050000-0000-0000-0000-000000000009'
@@ -23,9 +23,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -33,18 +33,18 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'get-user-by-id-community',
-    'Get User By ID Community',
-    'Test community',
+    :'allianceID',
+    'get-user-by-id-alliance',
+    'Get User By ID Alliance',
+    'Test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Users
 insert into "user" (
@@ -70,16 +70,16 @@ insert into "user" (
     null,
     'bothuser'
 ), (
-    :'userCommunityOnlyID',
-    'Community Only User',
+    :'userAllianceOnlyID',
+    'Alliance Only User',
     'test_hash_4',
     null,
-    'communityonly@example.com',
+    'allianceonly@example.com',
     true,
     null,
     null,
     null,
-    'communityonlyuser'
+    'allianceonlyuser'
 ), (
     :'userGroupOnlyID',
     'Group Only User',
@@ -118,7 +118,7 @@ insert into "user" (
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     description,
@@ -127,7 +127,7 @@ insert into "group" (
     website_url
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Kubernetes Study Group',
     'Weekly Kubernetes study and discussion group',
@@ -143,12 +143,12 @@ values
     (:'groupID', :'userGroupOnlyID', 'admin', true),
     (:'groupID', :'userWithTeamsID', 'admin', true);
 
--- Community team memberships
-insert into community_team (accepted, community_id, role, user_id)
+-- Alliance team memberships
+insert into alliance_team (accepted, alliance_id, role, user_id)
 values
-    (true, :'communityID', 'admin', :'userBothTeamsID'),
-    (true, :'communityID', 'admin', :'userCommunityOnlyID'),
-    (true, :'communityID', 'admin', :'userWithTeamsID');
+    (true, :'allianceID', 'admin', :'userBothTeamsID'),
+    (true, :'allianceID', 'admin', :'userAllianceOnlyID'),
+    (true, :'allianceID', 'admin', :'userWithTeamsID');
 
 -- ============================================================================
 -- TESTS
@@ -160,7 +160,7 @@ select is(
     jsonb_build_object(
         'auth_hash', 'test_hash',
         'belongs_to_any_group_team', true,
-        'belongs_to_community_team', true,
+        'belongs_to_alliance_team', true,
         'bluesky_url', 'https://bsky.app/profile/testuser',
         'email', 'test@example.com',
         'email_verified', true,
@@ -181,7 +181,7 @@ select is(
     jsonb_build_object(
         'auth_hash', 'test_hash',
         'belongs_to_any_group_team', true,
-        'belongs_to_community_team', true,
+        'belongs_to_alliance_team', true,
         'bluesky_url', 'https://bsky.app/profile/testuser',
         'email', 'test@example.com',
         'email_verified', true,
@@ -210,7 +210,7 @@ select is(
     jsonb_build_object(
         'auth_hash', 'test_hash_2',
         'belongs_to_any_group_team', false,
-        'belongs_to_community_team', false,
+        'belongs_to_alliance_team', false,
         'email', 'nogroups@example.com',
         'email_verified', true,
         'name', 'No Groups User',
@@ -227,7 +227,7 @@ select is(
     jsonb_build_object(
         'auth_hash', 'test_hash_3',
         'belongs_to_any_group_team', true,
-        'belongs_to_community_team', false,
+        'belongs_to_alliance_team', false,
         'email', 'grouponly@example.com',
         'email_verified', true,
         'name', 'Group Only User',
@@ -238,21 +238,21 @@ select is(
     'Should return correct team flags when user is only in group team'
 );
 
--- Should return belongs_to_any_group_team true when user is in community team
+-- Should return belongs_to_any_group_team true when user is in alliance team
 select is(
-    get_user_by_id(:'userCommunityOnlyID'::uuid, false)::jsonb,
+    get_user_by_id(:'userAllianceOnlyID'::uuid, false)::jsonb,
     jsonb_build_object(
         'auth_hash', 'test_hash_4',
         'belongs_to_any_group_team', true,
-        'belongs_to_community_team', true,
-        'email', 'communityonly@example.com',
+        'belongs_to_alliance_team', true,
+        'email', 'allianceonly@example.com',
         'email_verified', true,
-        'name', 'Community Only User',
+        'name', 'Alliance Only User',
         'optional_notifications_enabled', true,
-        'user_id', :'userCommunityOnlyID'::uuid,
-        'username', 'communityonlyuser'
+        'user_id', :'userAllianceOnlyID'::uuid,
+        'username', 'allianceonlyuser'
     ),
-    'Should return belongs_to_any_group_team true when user is in community team'
+    'Should return belongs_to_any_group_team true when user is in alliance team'
 );
 
 -- Should return both team flags true when user is in both teams
@@ -261,7 +261,7 @@ select is(
     jsonb_build_object(
         'auth_hash', 'test_hash_5',
         'belongs_to_any_group_team', true,
-        'belongs_to_community_team', true,
+        'belongs_to_alliance_team', true,
         'email', 'both@example.com',
         'email_verified', true,
         'name', 'Both Teams User',

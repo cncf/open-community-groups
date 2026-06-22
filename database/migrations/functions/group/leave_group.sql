@@ -1,6 +1,6 @@
 -- Leave a group as a member.
 create or replace function leave_group(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_group_id uuid,
     p_user_id uuid
 ) returns void as $$
@@ -10,7 +10,7 @@ begin
         select 1
         from "group"
         where group_id = p_group_id
-        and community_id = p_community_id
+        and alliance_id = p_alliance_id
         and active = true
         and deleted = false
     ) then

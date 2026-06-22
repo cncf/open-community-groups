@@ -1,13 +1,13 @@
 apiVersion: v2
 name: ocg
-description: Open Community Groups
+description: Open Alliance Groups
 type: application
 version: 0.1.1-1
 appVersion: 0.1.0
 kubeVersion: ">= 1.19.0-0"
 keywords:
-  - cncf
-  - community
+  - goup
+  - alliance
   - groups
 maintainers:
   - name: Sergio

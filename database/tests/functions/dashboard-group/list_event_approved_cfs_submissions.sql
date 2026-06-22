@@ -9,7 +9,7 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a170000-0000-0000-0000-000000000001'
+\set allianceID '3a170000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a170000-0000-0000-0000-000000000002'
 \set eventID '3a170000-0000-0000-0000-000000000003'
 \set eventNoApprovedID '3a170000-0000-0000-0000-000000000004'
@@ -31,9 +31,9 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -41,22 +41,22 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Users
 insert into "user" (
@@ -90,8 +90,8 @@ insert into "user" (
 );
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Session proposals
 insert into session_proposal (

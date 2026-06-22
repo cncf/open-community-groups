@@ -14,7 +14,7 @@ use crate::{
         OidcProviderConfig,
     },
     db::{DynDB, mock::MockDB},
-    types::user::{GitHubUserProvider, LinuxFoundationUserProvider, UserProvider},
+    types::user::{GitHubUserProvider, LinkedInUserProvider, UserProvider},
 };
 
 use super::*;
@@ -115,7 +115,7 @@ async fn authenticate_maps_oidc_backend_error_to_auth_error() {
         Credentials::Oidc(OidcCredentials {
             code: "code".to_string(),
             nonce: oidc::Nonce::new("nonce".to_string()),
-            provider: OidcProvider::LinuxFoundation,
+            provider: OidcProvider::LinkedIn,
         }),
     )
     .await;
@@ -157,7 +157,7 @@ async fn authenticate_oidc_returns_error_when_provider_missing() {
         .authenticate_oidc(OidcCredentials {
             code: "code".to_string(),
             nonce: oidc::Nonce::new("nonce".to_string()),
-            provider: OidcProvider::LinuxFoundation,
+            provider: OidcProvider::LinkedIn,
         })
         .await;
 
@@ -300,7 +300,7 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
     let mut db = MockDB::new();
     let existing_user = sample_user();
     let existing_user_id = existing_user.user_id;
-    let incoming_provider = sample_linuxfoundation_user_provider();
+    let incoming_provider = sample_linkedin_user_provider();
     let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
 
     db.expect_get_user_by_email_for_external_auth()
@@ -327,8 +327,8 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
             github: Some(GitHubUserProvider {
                 username: "test-user-gh".to_string(),
             }),
-            linuxfoundation: Some(LinuxFoundationUserProvider {
-                username: "test-user-lf".to_string(),
+            linkedin: Some(LinkedInUserProvider {
+                subject: "test-user-linkedin-subject".to_string(),
             }),
         })
     );
@@ -429,7 +429,7 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
     pre_registered_user.registration_status = "pre-registered".to_string();
     let pre_registered_user_id = pre_registered_user.user_id;
     let activated_user = sample_user();
-    let user_summary = sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
+    let user_summary = sample_external_user_summary(Some(sample_linkedin_user_provider()));
 
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
@@ -440,7 +440,7 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
         .withf(move |user_id, summary| {
             *user_id == pre_registered_user_id
                 && summary.email == "user@example.com"
-                && summary.provider == Some(sample_linuxfoundation_user_provider())
+                && summary.provider == Some(sample_linkedin_user_provider())
         })
         .returning(move |_, _| Ok(activated_user.clone()));
     db.expect_update_user_provider().times(0);
@@ -525,7 +525,7 @@ async fn setup_oidc_providers_rejects_invalid_issuer_url() {
     let mut oidc_cfg: OidcConfig = HashMap::new();
     let mut provider_cfg = sample_oidc_provider_config();
     provider_cfg.issuer_url = "invalid-url".to_string();
-    oidc_cfg.insert(OidcProvider::LinuxFoundation, provider_cfg);
+    oidc_cfg.insert(OidcProvider::LinkedIn, provider_cfg);
     let http_client = oauth2_reqwest::ClientBuilder::new().build().unwrap();
 
     // Execute provider setup
@@ -622,6 +622,7 @@ fn user_summary_debug_does_not_expose_password() {
         email: "user@example.com".to_string(),
         name: "Test User".to_string(),
         username: "test-user".to_string(),
+        photo_url: None,
         has_password: Some(true),
         password: Some("private-password-hash".to_string()),
         provider: Some(sample_user_provider()),
@@ -636,7 +637,7 @@ fn user_summary_debug_does_not_expose_password() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
+fn user_summary_from_linkedin_id_token_claims_extracts_verified_user() {
     // Setup valid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -646,7 +647,7 @@ fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims).unwrap();
+    let result = UserSummary::from_linkedin_id_token_claims(&claims).unwrap();
 
     // Check result
     assert_eq!(result.email, "user@example.com");
@@ -655,23 +656,23 @@ fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
         result.provider,
         Some(UserProvider {
             github: None,
-            linuxfoundation: Some(LinuxFoundationUserProvider {
-                username: "test-user".to_string(),
+            linkedin: Some(LinkedInUserProvider {
+                subject: "subject".to_string(),
             }),
         })
     );
-    assert_eq!(result.username, "test-user");
+    assert_eq!(result.username, "user");
     assert_eq!(result.has_password, Some(false));
     assert!(result.password.is_none());
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_email() {
+fn user_summary_from_linkedin_id_token_claims_rejects_missing_email() {
     // Setup invalid claims
     let claims = sample_oidc_claims(None, Some(true), Some("Test User"), Some("test-user"));
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = UserSummary::from_linkedin_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -679,7 +680,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_email() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
+fn user_summary_from_linkedin_id_token_claims_rejects_missing_name() {
     // Setup invalid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -689,7 +690,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = UserSummary::from_linkedin_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -697,25 +698,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_name() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_nickname() {
-    // Setup invalid claims
-    let claims = sample_oidc_claims(
-        Some("user@example.com"),
-        Some(true),
-        Some("Test User"),
-        None,
-    );
-
-    // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
-
-    // Check result
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("nickname missing"));
-}
-
-#[test]
-fn user_summary_from_oidc_id_token_claims_rejects_missing_email_verified() {
+fn user_summary_from_linkedin_id_token_claims_rejects_missing_email_verified() {
     // Setup invalid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -725,7 +708,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_email_verified() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = UserSummary::from_linkedin_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -733,7 +716,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_missing_email_verified() {
 }
 
 #[test]
-fn user_summary_from_oidc_id_token_claims_rejects_unverified_email() {
+fn user_summary_from_linkedin_id_token_claims_rejects_unverified_email() {
     // Setup invalid claims
     let claims = sample_oidc_claims(
         Some("user@example.com"),
@@ -743,7 +726,7 @@ fn user_summary_from_oidc_id_token_claims_rejects_unverified_email() {
     );
 
     // Execute conversion
-    let result = UserSummary::from_oidc_id_token_claims(&claims);
+    let result = UserSummary::from_linkedin_id_token_claims(&claims);
 
     // Check result
     assert!(result.is_err());
@@ -852,6 +835,7 @@ fn sample_external_user_summary(provider: Option<UserProvider>) -> UserSummary {
         email: "user@example.com".to_string(),
         name: "Test User".to_string(),
         username: "test-user".to_string(),
+        photo_url: None,
         has_password: Some(false),
         password: None,
         provider,
@@ -863,15 +847,15 @@ fn sample_user_provider() -> UserProvider {
         github: Some(GitHubUserProvider {
             username: "test-user-gh".to_string(),
         }),
-        linuxfoundation: None,
+        linkedin: None,
     }
 }
 
-fn sample_linuxfoundation_user_provider() -> UserProvider {
+fn sample_linkedin_user_provider() -> UserProvider {
     UserProvider {
         github: None,
-        linuxfoundation: Some(LinuxFoundationUserProvider {
-            username: "test-user-lf".to_string(),
+        linkedin: Some(LinkedInUserProvider {
+            subject: "test-user-linkedin-subject".to_string(),
         }),
     }
 }

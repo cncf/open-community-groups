@@ -22,7 +22,7 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
     assert_eq!(
         form_fields.get("cancel_url"),
         Some(
-            &"https://ocg.example.org/community/group/pretty-group/event/event?payment=canceled"
+            &"https://ocg.example.org/alliance/group/pretty-group/event/event?payment=canceled"
                 .to_string()
         )
     );
@@ -49,7 +49,7 @@ fn build_checkout_session_form_fields_populates_checkout_metadata() {
     assert_eq!(
         form_fields.get("success_url"),
         Some(
-            &"https://ocg.example.org/community/group/pretty-group/event/event?payment=success"
+            &"https://ocg.example.org/alliance/group/pretty-group/event/event?payment=success"
                 .to_string()
         )
     );
@@ -270,7 +270,7 @@ fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
     CreateCheckoutSessionInput {
         amount_minor: 2_500,
         base_url: "https://ocg.example.org".to_string(),
-        community_name: "community".to_string(),
+        alliance_name: "alliance".to_string(),
         currency_code: "USD".to_string(),
         event_id: Uuid::new_v4(),
         event_slug: "event".to_string(),

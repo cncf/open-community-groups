@@ -96,8 +96,8 @@ pub(crate) struct User {
     pub auth_provider: Option<String>,
     /// Whether the user belongs to any group team.
     pub belongs_to_any_group_team: Option<bool>,
-    /// Whether the user belongs to their community team.
-    pub belongs_to_community_team: Option<bool>,
+    /// Whether the user belongs to their alliance team.
+    pub belongs_to_alliance_team: Option<bool>,
     /// Display name of the user, if any.
     pub name: Option<String>,
     /// Username, if any.
@@ -112,7 +112,7 @@ impl User {
             logged_in: auth_session_user.is_some(),
             auth_provider: auth_session.session.get(AUTH_PROVIDER_KEY).await?,
             belongs_to_any_group_team: auth_session_user.and_then(|u| u.belongs_to_any_group_team),
-            belongs_to_community_team: auth_session_user.and_then(|u| u.belongs_to_community_team),
+            belongs_to_alliance_team: auth_session_user.and_then(|u| u.belongs_to_alliance_team),
             name: auth_session_user.map(|u| u.name.clone()),
             username: auth_session_user.map(|u| u.username.clone()),
         };
@@ -158,6 +158,10 @@ pub(crate) struct UserDetails {
     /// User's `LinkedIn` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
+    /// Whether the user authenticated with LinkedIn.
+    #[serde(default)]
+    #[garde(skip)]
+    pub linkedin_connected: bool,
     /// User's photo URL.
     #[garde(custom(image_url_opt))]
     pub photo_url: Option<String>,
@@ -188,6 +192,11 @@ impl From<crate::auth::User> for UserDetails {
             facebook_url: user.facebook_url,
             github_url: user.github_url,
             interests: user.interests,
+            linkedin_connected: user
+                .provider
+                .as_ref()
+                .and_then(|provider| provider.linkedin.as_ref())
+                .is_some(),
             linkedin_url: user.linkedin_url,
             photo_url: user.photo_url,
             timezone: user.timezone,

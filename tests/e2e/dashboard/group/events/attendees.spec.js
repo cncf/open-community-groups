@@ -5,7 +5,7 @@ import { expect, test } from "../../../fixtures.js";
 import {
   buildE2eUrl,
   E2E_PAYMENTS_ENABLED,
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_IDS,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
@@ -234,8 +234,8 @@ test.describe("group dashboard attendees tab", () => {
     // Load the public event page before creating attendance.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -326,8 +326,8 @@ test.describe("group dashboard attendees tab", () => {
     // Return to the public event page to restore attendance state.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -359,8 +359,8 @@ test.describe("group dashboard attendees tab", () => {
     // Load the public event page before creating attendance.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -465,15 +465,15 @@ test.describe("group dashboard attendees tab", () => {
     // Verify the checked-in attendee can access the check-in page.
     await navigateToPath(
       member2Page,
-      `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`,
+      `/${TEST_ALLIANCE_NAME}/check-in/${TEST_EVENT_IDS.alpha.one}`,
     );
     await expect(member2Page.getByText("You're checked in")).toBeVisible();
 
     // Return to the public event page to restore attendance state.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_EVENT_SLUGS.alpha[0],
     );
 
@@ -848,7 +848,7 @@ test.describe("group dashboard attendees tab", () => {
       // form-encoded body, so send an empty form payload with each request.
       for (const requesterPage of [pending1Page, pending2Page]) {
         const requestResponse = await requesterPage.request.post(
-          buildE2eUrl(`/${TEST_COMMUNITY_NAME}/event/${eventId}/attend`),
+          buildE2eUrl(`/${TEST_ALLIANCE_NAME}/event/${eventId}/attend`),
           { form: {} },
         );
         expect(requestResponse.ok()).toBeTruthy();
@@ -1331,7 +1331,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(modal.locator("#event-qr-code-link")).toHaveAttribute(
       "href",
       buildE2eUrl(
-        `/${TEST_COMMUNITY_NAME}/check-in/${TEST_EVENT_IDS.alpha.waitlistLab}`,
+        `/${TEST_ALLIANCE_NAME}/check-in/${TEST_EVENT_IDS.alpha.waitlistLab}`,
       ),
     );
     await expect(modal.locator("#event-qr-code-image")).toHaveAttribute(

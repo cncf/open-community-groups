@@ -1,4 +1,4 @@
-# Open Community Groups - Development Tasks
+# Open Alliance Groups - Development Tasks
 #
 # Configuration: Set these environment variables
 #

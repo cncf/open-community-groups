@@ -9,7 +9,7 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a350000-0000-0000-0000-000000000001'
+\set allianceID '3a350000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a350000-0000-0000-0000-000000000002'
 \set eventID '3a350000-0000-0000-0000-000000000003'
 \set eventProtectedID '3a350000-0000-0000-0000-000000000004'
@@ -29,9 +29,9 @@ select plan(9);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -39,30 +39,30 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'ticket-type-community',
-    'Ticket Type Community',
-    'A test community for ticket types',
+    :'allianceID',
+    'ticket-type-alliance',
+    'Ticket Type Alliance',
+    'A test alliance for ticket types',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- User
 insert into "user" (user_id, auth_hash, email, username, email_verified)
 values (:'userID', 'test_hash', 'ticket-user@example.test', 'ticket-user', true);
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Ticket Group', 'ticket-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Ticket Group', 'ticket-group');
 
 -- Events
 insert into event (

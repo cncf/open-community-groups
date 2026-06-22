@@ -11,7 +11,7 @@ select plan(5);
 
 \set activePurchaseID '79280000-0000-0000-0000-000000000009'
 \set activeUserID '79280000-0000-0000-0000-000000000012'
-\set communityID '79280000-0000-0000-0000-000000000001'
+\set allianceID '79280000-0000-0000-0000-000000000001'
 \set completedPurchaseID '79280000-0000-0000-0000-000000000010'
 \set completedUserID '79280000-0000-0000-0000-000000000013'
 \set eventCategoryID '79280000-0000-0000-0000-000000000002'
@@ -29,9 +29,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -39,9 +39,9 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'release-attendee-hold-community',
-    'Release Attendee Hold Community',
+    :'allianceID',
+    'release-attendee-hold-alliance',
+    'Release Attendee Hold Alliance',
     'Test',
     'https://e/banner-mobile.png',
     'https://e/banner.png',
@@ -49,12 +49,12 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -98,7 +98,7 @@ values
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -106,7 +106,7 @@ insert into "group" (
 )
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Release Attendee Hold Group',
     'release-attendee-hold-group',

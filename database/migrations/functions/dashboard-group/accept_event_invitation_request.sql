@@ -10,16 +10,16 @@ declare
     v_attendee_count int;
     v_attendee_status text;
     v_capacity int;
-    v_community_id uuid;
+    v_alliance_id uuid;
     v_registration_answers jsonb;
 begin
     -- Lock the event and verify it belongs to the selected group
     select
         e.capacity,
-        g.community_id
+        g.alliance_id
     into
         v_capacity,
-        v_community_id
+        v_alliance_id
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
@@ -112,7 +112,7 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        v_community_id,
+        v_alliance_id,
         p_group_id,
         p_event_id,
         jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)

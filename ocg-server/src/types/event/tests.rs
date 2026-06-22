@@ -24,7 +24,7 @@ fn event_attendance_info_can_request_refund_allows_tbd_events() {
 
 #[test]
 fn event_full_to_summary_maps_event_fields() {
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let event_series_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -32,10 +32,10 @@ fn event_full_to_summary_maps_event_fields() {
     let ends_at = starts_at + Duration::hours(2);
     let event = EventFull {
         canceled: true,
-        community: CommunitySummary {
-            community_id,
-            display_name: "Community Display".to_string(),
-            name: "community".to_string(),
+        alliance: AllianceSummary {
+            alliance_id,
+            display_name: "Alliance Display".to_string(),
+            name: "alliance".to_string(),
             ..Default::default()
         },
         description_short: Some("Short description".to_string()),
@@ -73,8 +73,8 @@ fn event_full_to_summary_maps_event_fields() {
     let summary = EventSummary::from(&event);
 
     assert!(summary.canceled);
-    assert_eq!(summary.community_display_name, "Community Display");
-    assert_eq!(summary.community_name, "community");
+    assert_eq!(summary.alliance_display_name, "Alliance Display");
+    assert_eq!(summary.alliance_name, "alliance");
     assert_eq!(
         summary.description_short.as_deref(),
         Some("Short description")
@@ -572,8 +572,8 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
     EventSummary {
         attendee_approval_required: false,
         canceled: false,
-        community_display_name: "Community".to_string(),
-        community_name: "community".to_string(),
+        alliance_display_name: "Alliance".to_string(),
+        alliance_name: "alliance".to_string(),
         event_id: Uuid::nil(),
         group_category_name: "Technology".to_string(),
         group_name: "Group".to_string(),

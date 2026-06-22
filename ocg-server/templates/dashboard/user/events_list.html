@@ -54,7 +54,7 @@ description = "Upcoming events where you'll participate.") -}}
                 class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
               <div class="flex items-center">
                 <div class="min-w-0">
-                  <a href="/{{ item.event.community_name }}/group/{{ item.event.public_group_slug() }}/event/{{ item.event.slug }}"
+                  <a href="/{{ item.event.alliance_name }}/group/{{ item.event.public_group_slug() }}/event/{{ item.event.slug }}"
                      target="_blank"
                      rel="noopener noreferrer"
                      class="block max-w-full truncate md:whitespace-normal md:line-clamp-2 xl:line-clamp-1 hover:underline text-left leading-5 font-medium text-stone-900">
@@ -164,7 +164,7 @@ description = "Upcoming events where you'll participate.") -}}
                     <li>
                       <button id="cancel-attendance-{{ item.event.event_id }}"
                               {% if item.can_cancel_attendance() -%}
-                                hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
+                                hx-delete="/dashboard/user/events/{{ item.event.alliance_name }}/{{ item.event.event_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel your attendance?" data-confirm-text="Yes" data-success-message="You have successfully canceled your attendance." data-error-message="Something went wrong canceling your attendance. Please try again later."
                               {% else -%}
                                 disabled title="This attendance cannot be canceled from My Events."
                               {% endif -%}
@@ -216,7 +216,7 @@ description = "Upcoming events where you'll participate.") -}}
         {# End modal header -#}
         {# Modal form -#}
         <form data-user-event-questions-form
-              hx-put="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/registration-answers"
+              hx-put="/dashboard/user/events/{{ item.event.alliance_name }}/{{ item.event.event_id }}/registration-answers"
               hx-indicator="#dashboard-spinner"
               hx-disabled-elt="find button[type='submit']"
               class="modal-body p-4 md:p-6 space-y-7">

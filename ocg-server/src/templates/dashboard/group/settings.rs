@@ -25,5 +25,5 @@ pub(crate) struct UpdatePage {
 
 // Types.
 
-/// Group update form data (alias for the Group type from community dashboard).
-pub(crate) use crate::templates::dashboard::community::groups::Group as GroupUpdate;
+/// Group update form data (alias for the Group type from alliance dashboard).
+pub(crate) use crate::templates::dashboard::alliance::groups::Group as GroupUpdate;

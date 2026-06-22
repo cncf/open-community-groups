@@ -11,7 +11,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId},
+        extractors::{SelectedAllianceId, SelectedGroupId},
     },
     templates::dashboard::group::analytics,
 };
@@ -24,11 +24,11 @@ mod tests;
 /// Displays the group analytics dashboard.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let stats = db.get_group_stats(community_id, group_id).await?;
+    let stats = db.get_group_stats(alliance_id, group_id).await?;
     let page = analytics::Page { stats };
 
     Ok(Html(page.render()?))

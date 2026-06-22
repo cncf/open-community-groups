@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support multiple communities in a single site (#284)
+- Support multiple alliances in a single site (#284)
 - Call for speakers feature (#324)
 - Session proposals co-speaker invitation workflow (#338)
 - Site stats page (#318)
@@ -28,8 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allow updating all fields for past events (#328)
 - Improve how notifications template data is stored (#258)
 - Move attendees to event page (#304)
-- Use community and group logos as default (#305)
-- Only feature communities with content in home page (#302)
+- Use alliance and group logos as default (#305)
+- Only feature alliances with content in home page (#302)
 - Some database improvements (#333)
 - Some improvements getting pending notifications (#257)
 - Some improvements listing user groups (#303)
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Display inactive groups in community dashboard (#313)
+- Display inactive groups in alliance dashboard (#313)
 - Capacity cannot be below current attendees count (#309)
 - Events must have a start date to be published (#310)
 - Fix issue in Helm chart (#290)
@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Hide map view on events search (#254)
-- Improve location handling in community site (#253)
+- Improve location handling in alliance site (#253)
 - Remove banner from event and group (#249)
 - Improve management of groups and events location (#247)
 - Improve input validation and integrity checks (#246)

@@ -1,6 +1,6 @@
 -- Used by prepare_event_checkout_purchase to validate event state and return currency
 create or replace function prepare_event_checkout_validate_event(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_configured_provider text
 )
@@ -37,7 +37,7 @@ begin
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     for update of e;
 
     -- Reject events whose current state no longer allows starting checkout

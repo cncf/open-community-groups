@@ -7,14 +7,14 @@ use async_trait::async_trait;
 use crate::db::PgExecutor;
 
 use common::DBDashboardCommon;
-use community::DBDashboardCommunity;
+use alliance::DBDashboardAlliance;
 use group::DBDashboardGroup;
 use user::DBDashboardUser;
 
 /// Common dashboard database operations.
 pub(crate) mod common;
-/// Community dashboard database operations.
-pub(crate) mod community;
+/// Alliance dashboard database operations.
+pub(crate) mod alliance;
 /// Group dashboard database operations.
 pub(crate) mod group;
 /// User dashboard database operations.
@@ -23,7 +23,7 @@ pub(crate) mod user;
 /// Unified database trait for all dashboards operations.
 #[async_trait]
 pub(crate) trait DBDashboard:
-    DBDashboardCommon + DBDashboardCommunity + DBDashboardGroup + DBDashboardUser
+    DBDashboardCommon + DBDashboardAlliance + DBDashboardGroup + DBDashboardUser
 {
 }
 

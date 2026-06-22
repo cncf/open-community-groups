@@ -10,7 +10,7 @@ select plan(2);
 -- ============================================================================
 
 \set activeCheckoutUserID '0c070000-0000-0000-0000-000000000001'
-\set communityID '0c070000-0000-0000-0000-000000000002'
+\set allianceID '0c070000-0000-0000-0000-000000000002'
 \set confirmedUserID '0c070000-0000-0000-0000-000000000003'
 \set eventCategoryID '0c070000-0000-0000-0000-000000000004'
 \set expiredCheckoutUserID '0c070000-0000-0000-0000-000000000005'
@@ -28,9 +28,9 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -38,26 +38,26 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'seat-count-community',
-    'Seat Count Community',
-    'Community for occupied seat count tests',
+    :'allianceID',
+    'seat-count-alliance',
+    'Seat Count Alliance',
+    'Alliance for occupied seat count tests',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Seat Count Group', 'seat-count-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Seat Count Group', 'seat-count-group');
 
 -- Users
 insert into "user" (

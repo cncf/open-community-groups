@@ -91,13 +91,13 @@ describe("event form helpers", () => {
 
     // Verify updates gallery images and tags with sanitized.
     setGalleryImages([" one.png ", "", "two.png", null]);
-    setTags([" frontend ", "", "community "]);
+    setTags([" frontend ", "", "alliance "]);
 
     // Verify updates gallery images and tags with sanitized values.
     expect(galleryImages).to.deep.equal(["one.png", "two.png"]);
     expect(tags.items).to.deep.equal([
       { id: 0, value: "frontend" },
-      { id: 1, value: "community" },
+      { id: 1, value: "alliance" },
     ]);
     expect(tags._nextId).to.equal(2);
     expect(tagsUpdated).to.equal(1);
@@ -160,7 +160,7 @@ describe("event form helpers", () => {
       { user_id: "2", username: "bob" },
       { foo: "bar" },
     ]);
-    setSponsors([{ name: "ACME", level: 2 }, { name: "Community" }]);
+    setSponsors([{ name: "ACME", level: 2 }, { name: "Alliance" }]);
 
     // Normalized hosts and sponsors are applied to their components.
     expect(hosts.selectedUsers).to.deep.equal([
@@ -170,7 +170,7 @@ describe("event form helpers", () => {
     expect(hostsUpdated).to.equal(1);
     expect(sponsors.selectedSponsors).to.deep.equal([
       { name: "ACME", level: "2" },
-      { name: "Community", level: "" },
+      { name: "Alliance", level: "" },
     ]);
     expect(sponsorsUpdated).to.equal(1);
   });

@@ -19,7 +19,7 @@ select indexes_are('attachment', array[
 select indexes_are('audit_log', array[
     'audit_log_pkey',
     'audit_log_actor_user_id_created_at_idx',
-    'audit_log_community_id_created_at_idx',
+    'audit_log_alliance_id_created_at_idx',
     'audit_log_created_at_idx',
     'audit_log_group_id_created_at_idx',
     'audit_log_resource_type_resource_id_created_at_idx'
@@ -58,59 +58,59 @@ select indexes_are('cfs_submission_status', array[
     'cfs_submission_status_display_name_key'
 ]);
 
--- Test: community indexes should match expected
-select indexes_are('community', array[
-    'community_pkey',
-    'community_community_site_layout_id_idx',
-    'community_display_name_key',
-    'community_name_key',
-    'community_og_image_url_idx'
+-- Test: alliance indexes should match expected
+select indexes_are('alliance', array[
+    'alliance_pkey',
+    'alliance_alliance_site_layout_id_idx',
+    'alliance_display_name_key',
+    'alliance_name_key',
+    'alliance_og_image_url_idx'
 ]);
 
--- Test: community_redirect_settings indexes should match expected
-select indexes_are('community_redirect_settings', array[
-    'community_redirect_settings_pkey'
+-- Test: alliance_redirect_settings indexes should match expected
+select indexes_are('alliance_redirect_settings', array[
+    'alliance_redirect_settings_pkey'
 ]);
 
--- Test: community_site_layout indexes should match expected
-select indexes_are('community_site_layout', array[
-    'community_site_layout_pkey'
+-- Test: alliance_site_layout indexes should match expected
+select indexes_are('alliance_site_layout', array[
+    'alliance_site_layout_pkey'
 ]);
 
--- Test: community_role indexes should match expected
-select indexes_are('community_role', array[
-    'community_role_pkey',
-    'community_role_display_name_key'
+-- Test: alliance_role indexes should match expected
+select indexes_are('alliance_role', array[
+    'alliance_role_pkey',
+    'alliance_role_display_name_key'
 ]);
 
--- Test: community_permission indexes should match expected
-select indexes_are('community_permission', array[
-    'community_permission_pkey',
-    'community_permission_display_name_key'
+-- Test: alliance_permission indexes should match expected
+select indexes_are('alliance_permission', array[
+    'alliance_permission_pkey',
+    'alliance_permission_display_name_key'
 ]);
 
--- Test: community_role_community_permission indexes should match expected
-select indexes_are('community_role_community_permission', array[
-    'community_role_community_permission_pkey'
+-- Test: alliance_role_alliance_permission indexes should match expected
+select indexes_are('alliance_role_alliance_permission', array[
+    'alliance_role_alliance_permission_pkey'
 ]);
 
--- Test: community_role_group_permission indexes should match expected
-select indexes_are('community_role_group_permission', array[
-    'community_role_group_permission_pkey'
+-- Test: alliance_role_group_permission indexes should match expected
+select indexes_are('alliance_role_group_permission', array[
+    'alliance_role_group_permission_pkey'
 ]);
 
--- Test: community_team indexes should match expected
-select indexes_are('community_team', array[
-    'community_team_pkey',
-    'community_team_community_id_idx',
-    'community_team_role_idx',
-    'community_team_user_id_idx',
-    'community_team_pending_user_created_at_idx'
+-- Test: alliance_team indexes should match expected
+select indexes_are('alliance_team', array[
+    'alliance_team_pkey',
+    'alliance_team_alliance_id_idx',
+    'alliance_team_role_idx',
+    'alliance_team_user_id_idx',
+    'alliance_team_pending_user_created_at_idx'
 ]);
 
--- Test: community_views indexes should match expected
-select indexes_are('community_views', array[
-    'community_views_community_id_day_key'
+-- Test: alliance_views indexes should match expected
+select indexes_are('alliance_views', array[
+    'alliance_views_alliance_id_day_key'
 ]);
 
 -- Test: custom_notification indexes should match expected
@@ -165,9 +165,9 @@ select indexes_are('event_attendee', array[
 -- Test: event_category indexes should match expected
 select indexes_are('event_category', array[
     'event_category_pkey',
-    'event_category_name_community_id_key',
-    'event_category_slug_community_id_key',
-    'event_category_community_id_idx'
+    'event_category_name_alliance_id_key',
+    'event_category_slug_alliance_id_key',
+    'event_category_alliance_id_idx'
 ]);
 
 -- Test: event_discount_code indexes should match expected
@@ -246,9 +246,9 @@ select indexes_are('event_cfs_label', array[
 -- Test: group indexes should match expected
 select indexes_are('group', array[
     'group_pkey',
-    'group_slug_community_id_key',
-    'group_slug_pretty_community_id_key',
-    'group_community_id_idx',
+    'group_slug_alliance_id_key',
+    'group_slug_pretty_alliance_id_key',
+    'group_alliance_id_idx',
     'group_group_category_id_idx',
     'group_region_id_idx',
     'group_group_site_layout_id_idx',
@@ -257,15 +257,15 @@ select indexes_are('group', array[
     'group_tsdoc_idx',
     'group_og_image_url_idx',
     'group_active_created_at_idx',
-    'group_community_active_created_at_idx'
+    'group_alliance_active_created_at_idx'
 ]);
 
 -- Test: group_category indexes should match expected
 select indexes_are('group_category', array[
     'group_category_pkey',
-    'group_category_name_community_id_key',
-    'group_category_normalized_name_community_id_key',
-    'group_category_community_id_idx'
+    'group_category_name_alliance_id_key',
+    'group_category_normalized_name_alliance_id_key',
+    'group_category_alliance_id_idx'
 ]);
 
 -- Test: group_member indexes should match expected
@@ -422,9 +422,9 @@ select indexes_are('payment_provider', array[
 -- Test: region indexes should match expected
 select indexes_are('region', array[
     'region_pkey',
-    'region_name_community_id_key',
-    'region_normalized_name_community_id_key',
-    'region_community_id_idx'
+    'region_name_alliance_id_key',
+    'region_normalized_name_alliance_id_key',
+    'region_alliance_id_idx'
 ]);
 
 -- Test: session indexes should match expected

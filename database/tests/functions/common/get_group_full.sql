@@ -9,14 +9,14 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0c0a0000-0000-0000-0000-000000000001'
+\set allianceID '0c0a0000-0000-0000-0000-000000000001'
 \set groupCategoryID '0c0a0000-0000-0000-0000-000000000002'
 \set groupID '0c0a0000-0000-0000-0000-000000000003'
 \set groupInactiveID '0c0a0000-0000-0000-0000-000000000004'
 \set regionID '0c0a0000-0000-0000-0000-000000000005'
 \set sponsor1ID '0c0a0000-0000-0000-0000-000000000006'
 \set sponsor2ID '0c0a0000-0000-0000-0000-000000000007'
-\set unknownCommunityID '0c0a0000-0000-0000-0000-000000000008'
+\set unknownAllianceID '0c0a0000-0000-0000-0000-000000000008'
 \set unknownGroupID '0c0a0000-0000-0000-0000-000000000009'
 \set user1ID '0c0a0000-0000-0000-0000-00000000000a'
 \set user2ID '0c0a0000-0000-0000-0000-00000000000b'
@@ -27,9 +27,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -41,26 +41,26 @@ insert into community (
     ad_banner_url,
     og_image_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png',
 
     'https://example.com/ad-banner-link',
     'https://example.com/ad-banner.png',
-    'https://example.com/community-og.png'
+    'https://example.com/alliance-og.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Region
-insert into region (region_id, community_id, name)
-values (:'regionID', :'communityID', 'North America');
+insert into region (region_id, alliance_id, name)
+values (:'regionID', :'allianceID', 'North America');
 
 -- User
 insert into "user" (
@@ -87,7 +87,7 @@ insert into "user" (
     'alice@seattle.cloudnative.org',
     false,
     'alice-organizer',
-    'Community meetup organizer',
+    'Alliance meetup organizer',
     'https://bsky.app/profile/alice',
     'Cloud Co',
     'https://facebook.com/alice',
@@ -158,7 +158,7 @@ insert into "user" (
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -193,7 +193,7 @@ insert into "group" (
     created_at
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Seattle Kubernetes Meetup',
     'abc1234',
@@ -271,7 +271,7 @@ values
 -- Group (inactive)
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -280,7 +280,7 @@ insert into "group" (
     created_at
 ) values (
     :'groupInactiveID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Inactive DevOps Group',
     'xyz9876',
@@ -296,7 +296,7 @@ insert into "group" (
 -- Should return complete group JSON
 select is(
     get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb,
     '{
@@ -345,22 +345,22 @@ select is(
         "wechat_url": "https://wechat.com/seattlek8s",
         "website_url": "https://seattle.kubernetes.com",
         "youtube_url": "https://youtube.com/@seattlek8s",
-        "community": {
+        "alliance": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "0c0a0000-0000-0000-0000-000000000001",
+            "alliance_id": "0c0a0000-0000-0000-0000-000000000001",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
-            "og_image_url": "https://example.com/community-og.png"
+            "og_image_url": "https://example.com/alliance-og.png"
         },
         "organizers": [
             {
                 "user_id": "0c0a0000-0000-0000-0000-00000000000a",
                 "username": "alice-organizer",
-                "bio": "Community meetup organizer",
+                "bio": "Alliance meetup organizer",
                 "bluesky_url": "https://bsky.app/profile/alice",
                 "name": "Alice Johnson",
                 "company": "Cloud Co",
@@ -409,15 +409,15 @@ select is(
     'Should return complete group data with organizers and member count as JSON'
 );
 
--- Should use community logo when group has no logo
+-- Should use alliance logo when group has no logo
 update "group" set logo_url = null where group_id = :'groupID';
 select is(
     (get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
-    'Should use community logo when group has no logo'
+    'Should use alliance logo when group has no logo'
 );
 update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
 
@@ -425,7 +425,7 @@ update "group" set logo_url = 'https://example.com/group-logo.png' where group_i
 update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
 select is(
     (get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid
     )::jsonb)->>'slug_pretty',
     'seattle-kubernetes',
@@ -436,19 +436,19 @@ update "group" set slug_pretty = null where group_id = :'groupID';
 -- Should return null for non-existent group
 select ok(
     get_group_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'unknownGroupID'::uuid
     ) is null,
     'Should return null for non-existent group ID'
 );
 
--- Should return null when community does not match group
+-- Should return null when alliance does not match group
 select ok(
     get_group_full(
-        :'unknownCommunityID'::uuid,
+        :'unknownAllianceID'::uuid,
         :'groupID'::uuid
     ) is null,
-    'Should return null when community does not match group'
+    'Should return null when alliance does not match group'
 );
 
 -- ============================================================================

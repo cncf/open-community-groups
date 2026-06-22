@@ -10,9 +10,9 @@ select plan(14);
 -- ============================================================================
 
 \set cfsSubmissionID '0c060000-0000-0000-0000-000000000001'
-\set communityID '0c060000-0000-0000-0000-000000000002'
+\set allianceID '0c060000-0000-0000-0000-000000000002'
 \set eventCategoryID '0c060000-0000-0000-0000-000000000003'
-\set eventCommunityLogoFallbackID '0c060000-0000-0000-0000-000000000004'
+\set eventAllianceLogoFallbackID '0c060000-0000-0000-0000-000000000004'
 \set eventGroupLogoFallbackID '0c060000-0000-0000-0000-000000000005'
 \set eventID '0c060000-0000-0000-0000-000000000006'
 \set eventInactiveGroupID '0c060000-0000-0000-0000-000000000007'
@@ -42,7 +42,7 @@ select plan(14);
 \set ticketDiscountCodeID '0c060000-0000-0000-0000-00000000001f'
 \set ticketPriceWindowID '0c060000-0000-0000-0000-000000000020'
 \set ticketTypeID '0c060000-0000-0000-0000-000000000021'
-\set unknownCommunityID '0c060000-0000-0000-0000-000000000022'
+\set unknownAllianceID '0c060000-0000-0000-0000-000000000022'
 \set unknownEventID '0c060000-0000-0000-0000-000000000023'
 \set user1ID '0c060000-0000-0000-0000-000000000024'
 \set user2ID '0c060000-0000-0000-0000-000000000025'
@@ -52,9 +52,9 @@ select plan(14);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -66,26 +66,26 @@ insert into community (
     ad_banner_url,
     og_image_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png',
 
     'https://example.com/ad-banner-link',
     'https://example.com/ad-banner.png',
-    'https://example.com/community-og.png'
+    'https://example.com/alliance-og.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Tech Talks');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Tech Talks');
 
 -- Users
 insert into "user" (
@@ -114,7 +114,7 @@ insert into "user" (
     false,
     'sarah-host',
 
-    'Cloud native community leader',
+    'Cloud native alliance leader',
     'https://bsky.app/profile/sarahchen',
     'Microsoft',
     'https://facebook.com/sarahchen',
@@ -169,7 +169,7 @@ insert into "user" (
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -185,7 +185,7 @@ insert into "group" (
     state
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Seattle Kubernetes Meetup',
     'abc1234',
@@ -204,7 +204,7 @@ insert into "group" (
 -- Group (inactive)
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -212,7 +212,7 @@ insert into "group" (
     active
 ) values (
     :'groupInactiveID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Inactive DevOps Group',
     'xyz9876',
@@ -223,7 +223,7 @@ insert into "group" (
 -- Group without logo
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -231,7 +231,7 @@ insert into "group" (
     active
 ) values (
     :'groupNoLogoID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Seattle Kubernetes Meetup No Logo',
     'abc5678',
@@ -850,7 +850,7 @@ insert into event (
     null
 );
 
--- Event with no logo for community-logo fallback checks
+-- Event with no logo for alliance-logo fallback checks
 insert into event (
     event_id,
     name,
@@ -864,10 +864,10 @@ insert into event (
     timezone,
     logo_url
 ) values (
-    :'eventCommunityLogoFallbackID',
-    'Community Logo Fallback Event',
-    'community-logo-fallback-event',
-    'An event with no logo in a group with no logo that should fall back to the community logo',
+    :'eventAllianceLogoFallbackID',
+    'Alliance Logo Fallback Event',
+    'alliance-logo-fallback-event',
+    'An event with no logo in a group with no logo that should fall back to the alliance logo',
     'virtual',
     :'eventCategoryID',
     :'groupNoLogoID',
@@ -961,7 +961,7 @@ insert into event_ticket_price_window (
 -- Should return complete event JSON
 select is(
     get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     )::jsonb,
@@ -1033,16 +1033,16 @@ select is(
         "remaining_capacity": 498,
         "waitlist_count": 0,
         "waitlist_enabled": false,
-        "community": {
+        "alliance": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "community_id": "0c060000-0000-0000-0000-000000000002",
+            "alliance_id": "0c060000-0000-0000-0000-000000000002",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",
-            "og_image_url": "https://example.com/community-og.png"
+            "og_image_url": "https://example.com/alliance-og.png"
         },
         "group": {
             "city": "New York",
@@ -1055,8 +1055,8 @@ select is(
                 "name": "Technology",
                 "normalized_name": "technology"
             },
-            "community_display_name": "Cloud Native Seattle",
-            "community_name": "cloud-native-seattle",
+            "alliance_display_name": "Cloud Native Seattle",
+            "alliance_name": "cloud-native-seattle",
             "group_id": "0c060000-0000-0000-0000-00000000000e",
             "latitude": 40.73061,
             "logo_url": "https://example.com/group-logo.png",
@@ -1070,7 +1070,7 @@ select is(
             {
                 "user_id": "0c060000-0000-0000-0000-000000000024",
                 "username": "sarah-host",
-                "bio": "Cloud native community leader",
+                "bio": "Cloud native alliance leader",
                 "bluesky_url": "https://bsky.app/profile/sarahchen",
                 "name": "Sarah Chen",
                 "company": "Microsoft",
@@ -1155,7 +1155,7 @@ select is(
                         {
                             "user_id": "0c060000-0000-0000-0000-000000000024",
                             "username": "sarah-host",
-                            "bio": "Cloud native community leader",
+                            "bio": "Cloud native alliance leader",
                             "bluesky_url": "https://bsky.app/profile/sarahchen",
                             "name": "Sarah Chen",
                             "company": "Microsoft",
@@ -1227,7 +1227,7 @@ select is(
                         {
                             "user_id": "0c060000-0000-0000-0000-000000000024",
                             "username": "sarah-host",
-                            "bio": "Cloud native community leader",
+                            "bio": "Cloud native alliance leader",
                             "bluesky_url": "https://bsky.app/profile/sarahchen",
                             "name": "Sarah Chen",
                             "company": "Microsoft",
@@ -1309,7 +1309,7 @@ select is(
             {
                 "user_id": "0c060000-0000-0000-0000-000000000024",
                 "username": "sarah-host",
-                "bio": "Cloud native community leader",
+                "bio": "Cloud native alliance leader",
                 "bluesky_url": "https://bsky.app/profile/sarahchen",
                 "name": "Sarah Chen",
                 "company": "Microsoft",
@@ -1351,7 +1351,7 @@ select is(
 select is(
     (
         get_event_full(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'eventUnpublishedID'::uuid
         )::jsonb
@@ -1364,7 +1364,7 @@ select is(
 select is(
     (
         get_event_full(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'eventUnpublishedID'::uuid
         )::jsonb
@@ -1378,21 +1378,21 @@ select is(
     jsonb_build_object(
         'discount_codes', (
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
         )->'discount_codes',
         'payment_currency_code', (
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
         )->'payment_currency_code',
         'ticket_types', (
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
@@ -1444,7 +1444,7 @@ select is(
         select array_agg(organizer->>'username' order by ordinality)
         from jsonb_array_elements((
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventPaidID'::uuid
             )::jsonb
@@ -1457,7 +1457,7 @@ select is(
 -- Should use group logo when event has no logo
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventGroupLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
@@ -1465,21 +1465,21 @@ select is(
     'Should use group logo when event has no logo'
 );
 
--- Should use community logo when event and group have no logo
+-- Should use alliance logo when event and group have no logo
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupNoLogoID'::uuid,
-        :'eventCommunityLogoFallbackID'::uuid
+        :'eventAllianceLogoFallbackID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
-    'Should use community logo when event and group have no logo'
+    'Should use alliance logo when event and group have no logo'
 );
 
 -- Should return an empty organizers array when a legacy event has no snapshots
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventUnpublishedID'::uuid
     )::jsonb)->'organizers',
@@ -1494,7 +1494,7 @@ and user_id = :'user2ID'::uuid;
 
 select is(
     (get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     )::jsonb)->'organizers',
@@ -1521,7 +1521,7 @@ select is(
 
 select ok(
     get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'unknownEventID'::uuid
     ) is null,
@@ -1531,21 +1531,21 @@ select ok(
 -- Should return null when group does not match event
 select ok(
     get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupInactiveID'::uuid,
         :'eventID'::uuid
     ) is null,
     'Should return null when group does not match event'
 );
 
--- Should return null when community does not match event
+-- Should return null when alliance does not match event
 select ok(
     get_event_full(
-        :'unknownCommunityID'::uuid,
+        :'unknownAllianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
     ) is null,
-    'Should return null when community does not match event'
+    'Should return null when alliance does not match event'
 );
 
 -- Should prefer organizer recording overrides over synced meeting recordings
@@ -1553,7 +1553,7 @@ select is(
     (
         with payload as (
             select get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventRecordingOverrideID'::uuid
             )::jsonb as event_json
@@ -1630,7 +1630,7 @@ select is(
     (
         with payload as (
             select get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventRecordingOverrideID'::uuid
             )::jsonb as event_json

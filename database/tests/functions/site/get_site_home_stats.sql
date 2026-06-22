@@ -9,9 +9,9 @@ select plan(1);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '9a020000-0000-0000-0000-000000000001'
-\set community2ID '9a020000-0000-0000-0000-000000000002'
-\set community3ID '9a020000-0000-0000-0000-000000000003'
+\set allianceID '9a020000-0000-0000-0000-000000000001'
+\set alliance2ID '9a020000-0000-0000-0000-000000000002'
+\set alliance3ID '9a020000-0000-0000-0000-000000000003'
 \set eventID '9a020000-0000-0000-0000-000000000004'
 \set event2ID '9a020000-0000-0000-0000-000000000005'
 \set event3ID '9a020000-0000-0000-0000-000000000006'
@@ -34,9 +34,9 @@ select plan(1);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -46,30 +46,30 @@ insert into community (
     logo_url
 ) values
     (
-        :'communityID',
+        :'allianceID',
         'site-home-stats-primary',
         'Site Home Stats Primary',
-        'Primary community for home stats tests',
+        'Primary alliance for home stats tests',
         true,
         'https://example.com/site-home-stats-primary-banner-mobile.png',
         'https://example.com/site-home-stats-primary-banner.png',
         'https://example.com/site-home-stats-primary-logo.png'
     ),
     (
-        :'community2ID',
+        :'alliance2ID',
         'site-home-stats-secondary',
         'Site Home Stats Secondary',
-        'Secondary community for home stats tests',
+        'Secondary alliance for home stats tests',
         true,
         'https://example.com/site-home-stats-secondary-banner-mobile.png',
         'https://example.com/site-home-stats-secondary-banner.png',
         'https://example.com/site-home-stats-secondary-logo.png'
     ),
     (
-        :'community3ID',
+        :'alliance3ID',
         'inactive-site-home-stats',
         'Inactive Site Home Stats',
-        'Inactive community for home stats tests',
+        'Inactive alliance for home stats tests',
         false,
         'https://example.com/inactive-site-home-stats-banner-mobile.png',
         'https://example.com/inactive-site-home-stats-banner.png',
@@ -77,16 +77,16 @@ insert into community (
     );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'groupCategory2ID', :'community3ID', 'Technology');
+    (:'groupCategoryID', :'allianceID', 'Technology'),
+    (:'groupCategory2ID', :'alliance3ID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
+insert into event_category (event_category_id, alliance_id, name)
 values
-    (:'eventCategoryID', :'communityID', 'Meetups'),
-    (:'eventCategory2ID', :'community3ID', 'Meetups');
+    (:'eventCategoryID', :'allianceID', 'Meetups'),
+    (:'eventCategory2ID', :'alliance3ID', 'Meetups');
 
 -- Users
 insert into "user" (
@@ -109,7 +109,7 @@ values
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -117,14 +117,14 @@ insert into "group" (
     deleted
 )
 values
-    (:'groupID', :'communityID', :'groupCategoryID',
+    (:'groupID', :'allianceID', :'groupCategoryID',
         'Home Stats Group One', 'home-stats-group-one', true, false),
-    (:'group2ID', :'communityID', :'groupCategoryID',
+    (:'group2ID', :'allianceID', :'groupCategoryID',
         'Home Stats Group Two', 'home-stats-group-two', true, false),
-    (:'group3ID', :'communityID', :'groupCategoryID',
+    (:'group3ID', :'allianceID', :'groupCategoryID',
         'Deleted Home Stats Group', 'deleted-home-stats-group', false, true),
-    (:'group4ID', :'community3ID', :'groupCategory2ID',
-        'Inactive Community Home Stats Group', 'inactive-community-home-stats-group', true, false);
+    (:'group4ID', :'alliance3ID', :'groupCategory2ID',
+        'Inactive Alliance Home Stats Group', 'inactive-alliance-home-stats-group', true, false);
 
 -- Event
 insert into event (
@@ -156,8 +156,8 @@ insert into event (
     (:'event5ID', 'Test Home Stats Event', 'test-home-stats-event',
         'Test event for home stats tests', true, 'UTC', :'eventCategoryID',
         'in-person', :'groupID', false, false, true),
-    (:'event6ID', 'Inactive Community Home Stats Event',
-        'inactive-community-home-stats-event', 'Inactive community event for home stats tests',
+    (:'event6ID', 'Inactive Alliance Home Stats Event',
+        'inactive-alliance-home-stats-event', 'Inactive alliance event for home stats tests',
         false, 'UTC', :'eventCategory2ID', 'in-person', :'group4ID', false, false, true);
 
 -- Group Member
@@ -185,27 +185,27 @@ values
 -- TESTS
 -- ============================================================================
 
--- Should exclude inactive communities, deleted groups and unpublished/canceled/deleted events
+-- Should exclude inactive alliances, deleted groups and unpublished/canceled/deleted events
 -- Data setup:
--- - 3 communities: 2 active (community, community2), 1 inactive (community3)
--- - 4 groups: 2 active (group, group2), 1 deleted (group3), 1 in inactive community (group4)
+-- - 3 alliances: 2 active (alliance, alliance2), 1 inactive (alliance3)
+-- - 4 groups: 2 active (group, group2), 1 deleted (group3), 1 in inactive alliance (group4)
 -- - 6 events: 1 published (event), 1 unpublished (event2), 1 canceled (event3),
---   1 deleted (event4), 1 test event (event5), 1 in inactive community (event6)
+--   1 deleted (event4), 1 test event (event5), 1 in inactive alliance (event6)
 -- - 5 group members: 3 in active groups, 1 in deleted group, 1 in inactive
---   community group (should be excluded)
+--   alliance group (should be excluded)
 -- - 8 event attendees: 2 confirmed in published event, 1 non-confirmed in
 --   published event (should be excluded), 5 in excluded events (should be excluded)
--- Expected: communities=2, groups=2, events=1, groups_members=3, events_attendees=2
+-- Expected: alliances=2, groups=2, events=1, groups_members=3, events_attendees=2
 select is(
     get_site_home_stats()::jsonb,
     '{
-        "communities": 2,
+        "alliances": 2,
         "events": 1,
         "events_attendees": 2,
         "groups": 2,
         "groups_members": 3
     }'::jsonb,
-    'Should exclude inactive communities, deleted groups and unpublished/canceled/deleted events'
+    'Should exclude inactive alliances, deleted groups and unpublished/canceled/deleted events'
 );
 
 -- ============================================================================

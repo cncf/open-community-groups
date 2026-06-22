@@ -71,10 +71,10 @@
                      spellcheck="false"
                      data-group-generated-slug="{{ group.slug }}"
                      value="{%- if let Some(slug_pretty) = &group.slug_pretty -%}{{ slug_pretty }}{%- endif -%}"
-                     title="Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number. Must be unique within the community and different from the generated slug.">
+                     title="Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number. Must be unique within the alliance and different from the generated slug.">
             </div>
             <p class="form-legend">
-              Optional public URL slug for nicer group links. Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number. Maximum {{ crate::validation::MAX_LEN_GROUP_PRETTY_SLUG }} characters. Must be unique within the community and different from the generated slug. Existing generated slug URLs will still work.
+              Optional public URL slug for nicer group links. Use lowercase ASCII letters, numbers, and single hyphens only. Start and end with a letter or number. Maximum {{ crate::validation::MAX_LEN_GROUP_PRETTY_SLUG }} characters. Must be unique within the alliance and different from the generated slug. Existing generated slug URLs will still work.
             </p>
           </div>
           {# End pretty URL slug -#}
@@ -123,19 +123,19 @@
           {% let og_image_value -%}value="{%- if let Some(og_image_url) = &group.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}
 
           {# Logo URL -#}
-          {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the community logo.", value_attr = logo_value, field_class = "col-span-full lg:col-span-3", input_class = "w-full block") -}}
+          {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the alliance logo.", value_attr = logo_value, field_class = "col-span-full lg:col-span-3", input_class = "w-full block") -}}
           {# End Logo URL -#}
 
           {# Banner URL -#}
-          {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the community banner.", value_attr = banner_value, input_class = "w-full block") -}}
+          {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.", value_attr = banner_value, input_class = "w-full block") -}}
           {# End Banner URL -#}
 
           {# Banner Mobile URL -#}
-          {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the community banner.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
+          {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
           {# End Banner Mobile URL -#}
 
           {# Open Graph image URL -#}
-          {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for group and event link previews. If this image isn't provided, we'll fall back to the community Open Graph image if set.", value_attr = og_image_value, input_class = "w-full block") -}}
+          {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for group and event link previews. If this image isn't provided, we'll fall back to the alliance Open Graph image if set.", value_attr = og_image_value, input_class = "w-full block") -}}
           {# End Open Graph image URL -#}
 
           {# Short Description -#}

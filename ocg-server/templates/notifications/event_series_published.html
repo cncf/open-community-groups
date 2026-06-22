@@ -21,10 +21,10 @@
   <p class="default mb-30">
     {% if event_count == 1 -%}
       <strong>{{ group_name }}</strong> published {{ event_count }} new event on
-      <strong>Open Community Groups</strong>.
+      <strong>Open Alliance Groups</strong>.
     {% else -%}
       <strong>{{ group_name }}</strong> published {{ event_count }} new events on
-      <strong>Open Community Groups</strong>.
+      <strong>Open Alliance Groups</strong>.
     {% endif -%}
   </p>
 
@@ -52,6 +52,6 @@
 
 {% block footer -%}
   You received this email notification because you're a member of {{ group_name }}
-  in the {{ community_display_name }} community.
+  in the {{ alliance_display_name }} alliance.
 {% endblock footer -%}
 {# End event series published notification -#}

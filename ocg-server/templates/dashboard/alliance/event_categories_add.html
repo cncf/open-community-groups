@@ -1,0 +1,30 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
+
+{# Add Event Category form -#}
+<form id="event-category-form"
+      hx-post="/dashboard/alliance/event-categories/add"
+      hx-ext="no-empty-vals"
+      hx-target="#dashboard-content"
+      hx-history="false"
+      hx-indicator="#dashboard-spinner, #alliance-event-category-create-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully added the event category."
+      data-error-message="Something went wrong adding the event category. Please try again later.">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::page_title(title = "Event Category Details", docs_href = "/docs#/guides/alliance-dashboard?id=event-categories-event-taxonomy", description = "Add a new event category for this alliance.") -}}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-4xl">
+        {{ form_fields::entity_name_field(legend_prefix = "Category display name.") -}}
+      </div>
+    </div>
+  </div>
+
+  {{ dashboard::form_actions(cancel_href = "/dashboard/alliance?tab=event-categories",
+    spinner_id = "alliance-event-category-create-spinner",
+    submit_label = "Add Event Category") -}}
+</form>
+
+{# End Add Event Category form -#}

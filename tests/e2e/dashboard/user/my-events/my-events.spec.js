@@ -1,7 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_NAMES,
   TEST_GROUP_SLUGS,
   TEST_REGISTRATION_QUESTIONS_EVENT,
@@ -87,8 +87,8 @@ test.describe("user dashboard my events view", () => {
     // Load the registration-questions event before creating attendance.
     await navigateToEvent(
       pending2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       TEST_REGISTRATION_QUESTIONS_EVENT.slug,
     );
 
@@ -165,7 +165,7 @@ test.describe("user dashboard my events view", () => {
           response
             .url()
             .includes(
-              `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/registration-answers`,
+              `/dashboard/user/events/${TEST_ALLIANCE_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/registration-answers`,
             ) &&
           response.ok(),
       ),
@@ -190,7 +190,7 @@ test.describe("user dashboard my events view", () => {
           response
             .url()
             .includes(
-              `/dashboard/user/events/${TEST_COMMUNITY_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attendance`,
+              `/dashboard/user/events/${TEST_ALLIANCE_NAME}/${TEST_REGISTRATION_QUESTIONS_EVENT.id}/attendance`,
             ) &&
           response.ok(),
       ),

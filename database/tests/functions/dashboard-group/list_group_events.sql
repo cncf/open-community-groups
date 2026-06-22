@@ -8,7 +8,7 @@ select plan(3);
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
-\set community1ID '3a200000-0000-0000-0000-000000000001'
+\set alliance1ID '3a200000-0000-0000-0000-000000000001'
 \set event1ID '3a200000-0000-0000-0000-000000000002'
 \set event2ID '3a200000-0000-0000-0000-000000000003'
 \set event3ID '3a200000-0000-0000-0000-000000000004'
@@ -25,9 +25,9 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -35,31 +35,31 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
+    :'alliance1ID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance for testing purposes',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
 );
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Conference', :'community1ID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'Conference', :'alliance1ID');
 
 -- User
 insert into "user" (user_id, email, username, auth_hash, name)
 values (:'user1ID', 'creator@example.com', 'creator', 'hash', 'Creator User');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategory1ID', 'Technology', :'community1ID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategory1ID', 'Technology', :'alliance1ID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
@@ -71,7 +71,7 @@ insert into "group" (
 ) values 
     (
         :'group1ID',
-        :'community1ID',
+        :'alliance1ID',
         'Test Group',
         'test-group',
         'A test group',
@@ -83,7 +83,7 @@ insert into "group" (
     ),
     (
         :'group2ID',
-        :'community1ID',
+        :'alliance1ID',
         'Another Group',
         'another-group',
         'Another test group',
@@ -230,8 +230,8 @@ select is(
             "events": [
                 {
                     "canceled": false,
-                    "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "alliance_display_name": "Test Alliance",
+                    "alliance_name": "test-alliance",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Test Group",
@@ -258,8 +258,8 @@ select is(
             "events": [
                 {
                     "canceled": false,
-                    "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "alliance_display_name": "Test Alliance",
+                    "alliance_name": "test-alliance",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Test Group",
@@ -285,8 +285,8 @@ select is(
                 },
                 {
                     "canceled": false,
-                    "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "alliance_display_name": "Test Alliance",
+                    "alliance_name": "test-alliance",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Test Group",
@@ -331,8 +331,8 @@ select is(
             "events": [
                 {
                     "canceled": false,
-                    "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "alliance_display_name": "Test Alliance",
+                    "alliance_name": "test-alliance",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Another Group",

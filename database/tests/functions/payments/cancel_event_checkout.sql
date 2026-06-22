@@ -9,14 +9,14 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79310000-0000-0000-0000-000000000001'
+\set allianceID '79310000-0000-0000-0000-000000000001'
 \set discountCodeID '79310000-0000-0000-0000-000000000002'
 \set eventCategoryID '79310000-0000-0000-0000-000000000003'
 \set eventID '79310000-0000-0000-0000-000000000004'
 \set eventTicketTypeID '79310000-0000-0000-0000-000000000005'
 \set groupCategoryID '79310000-0000-0000-0000-000000000006'
 \set groupID '79310000-0000-0000-0000-000000000007'
-\set otherCommunityID '79310000-0000-0000-0000-000000000008'
+\set otherAllianceID '79310000-0000-0000-0000-000000000008'
 \set pendingPurchaseID '79310000-0000-0000-0000-000000000009'
 \set priceWindowID '79310000-0000-0000-0000-000000000010'
 \set userID '79310000-0000-0000-0000-000000000011'
@@ -25,9 +25,9 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
+-- Alliances
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -37,18 +37,18 @@ insert into community (
 )
 values
     (
-        :'communityID',
-        'cancel-checkout-community',
-        'Cancel Checkout Community',
+        :'allianceID',
+        'cancel-checkout-alliance',
+        'Cancel Checkout Alliance',
         'Test',
         'https://e/banner-mobile.png',
         'https://e/banner.png',
         'https://e/logo.png'
     ),
     (
-        :'otherCommunityID',
-        'other-cancel-checkout-community',
-        'Other Cancel Checkout Community',
+        :'otherAllianceID',
+        'other-cancel-checkout-alliance',
+        'Other Cancel Checkout Alliance',
         'Test',
         'https://e/banner-mobile.png',
         'https://e/banner.png',
@@ -56,12 +56,12 @@ values
     );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- User
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -70,7 +70,7 @@ values (:'userID', 'hash-1', 'buyer@example.com', true, 'buyer');
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -78,7 +78,7 @@ insert into "group" (
 )
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Cancel Checkout Group',
     'cancel-checkout-group',
@@ -208,17 +208,17 @@ values (
 -- TESTS
 -- ============================================================================
 
--- Should ignore checkouts outside the requested community
+-- Should ignore checkouts outside the requested alliance
 select lives_ok(
     format($$select cancel_event_checkout(
         %L::uuid,
         %L::uuid,
         %L::uuid
-    )$$, :'otherCommunityID', :'eventID', :'userID'),
-    'Should ignore checkouts outside the requested community'
+    )$$, :'otherAllianceID', :'eventID', :'userID'),
+    'Should ignore checkouts outside the requested alliance'
 );
 
--- Should leave unmatched community checkout state unchanged
+-- Should leave unmatched alliance checkout state unchanged
 select results_eq(
     format($$
         select
@@ -240,7 +240,7 @@ select results_eq(
             )
     $$, :'discountCodeID', :'pendingPurchaseID', :'eventID', :'userID'),
     $$ values (0::int, 'pending'::text, 1::int) $$,
-    'Should leave unmatched community checkout state unchanged'
+    'Should leave unmatched alliance checkout state unchanged'
 );
 
 -- Should cancel the attendee's active pending checkout
@@ -249,7 +249,7 @@ select lives_ok(
         %L::uuid,
         %L::uuid,
         %L::uuid
-    )$$, :'communityID', :'eventID', :'userID'),
+    )$$, :'allianceID', :'eventID', :'userID'),
     'Should cancel the attendee active pending checkout'
 );
 

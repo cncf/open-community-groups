@@ -1,0 +1,513 @@
+use anyhow::anyhow;
+use axum::{
+    body::{Body, to_bytes},
+    http::{
+        Request, StatusCode,
+        header::{CONTENT_TYPE, COOKIE, HOST},
+    },
+};
+use axum_login::tower_sessions::session;
+use tower::ServiceExt;
+use uuid::Uuid;
+
+use crate::{
+    db::mock::MockDB,
+    handlers::{auth::LOG_IN_URL, tests::*},
+    services::notifications::{MockNotificationsManager, NotificationKind},
+    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    templates::notifications::AllianceTeamInvitation as AllianceTeamInvitationTemplate,
+    types::alliance::AllianceRole,
+    types::permissions::AlliancePermission,
+};
+
+use super::NewTeamMember;
+
+#[tokio::test]
+async fn test_list_page_success() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
+    let members = vec![
+        sample_alliance_team_member(true),
+        sample_alliance_team_member(false),
+    ];
+    let role = crate::types::alliance::AllianceRoleSummary {
+        alliance_role_id: "admin".to_string(),
+        display_name: "Admin".to_string(),
+    };
+    let output = crate::templates::dashboard::alliance::team::AllianceTeamOutput {
+        members: members.clone(),
+        total: members.len(),
+        total_accepted: 1,
+        total_admins_accepted: 1,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
+        })
+        .returning(|_, _, _| Ok(true));
+    db.expect_list_alliance_team_members()
+        .times(1)
+        .withf(move |cid, filters| {
+            *cid == alliance_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(move |_, _| Ok(output.clone()));
+    db.expect_list_alliance_roles()
+        .times(1)
+        .returning(move || Ok(vec![role.clone()]));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::TeamWrite
+        })
+        .returning(move |_, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/alliance/team")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("At least one accepted admin is required."));
+}
+
+#[tokio::test]
+async fn test_list_page_with_pagination_params() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
+    let members = vec![
+        sample_alliance_team_member(true),
+        sample_alliance_team_member(true),
+    ];
+    let role = crate::types::alliance::AllianceRoleSummary {
+        alliance_role_id: "admin".to_string(),
+        display_name: "Admin".to_string(),
+    };
+    let output = crate::templates::dashboard::alliance::team::AllianceTeamOutput {
+        members: members.clone(),
+        total: members.len(),
+        total_accepted: 2,
+        total_admins_accepted: 2,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
+        })
+        .returning(|_, _, _| Ok(true));
+    db.expect_list_alliance_team_members()
+        .times(1)
+        .withf(move |cid, filters| {
+            *cid == alliance_id && filters.limit == Some(5) && filters.offset == Some(10)
+        })
+        .returning(move |_, _| Ok(output.clone()));
+    db.expect_list_alliance_roles()
+        .times(1)
+        .returning(move || Ok(vec![role.clone()]));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::TeamWrite
+        })
+        .returning(move |_, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/alliance/team?limit=5&offset=10")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(!body.contains("At least one accepted admin is required."));
+}
+
+#[tokio::test]
+async fn test_list_page_db_error() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
+        })
+        .returning(|_, _, _| Ok(true));
+    db.expect_list_alliance_team_members()
+        .times(1)
+        .withf(move |cid, filters| {
+            *cid == alliance_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(move |_, _| Err(anyhow!("db error")));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/alliance/team")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_add_success() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let new_member_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
+    let alliance = sample_alliance_summary(alliance_id);
+    let alliance_for_db = alliance.clone();
+    let site_settings = sample_site_settings();
+    let site_settings_for_assertions = site_settings.clone();
+    let new_member_form = NewTeamMember {
+        role: AllianceRole::Admin,
+        user_id: new_member_id,
+    };
+    let body = serde_qs::to_string(&new_member_form).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::TeamWrite
+        })
+        .returning(move |_, _, _| Ok(true));
+    db.expect_add_alliance_team_member()
+        .times(1)
+        .withf(move |actor_user_id, cid, uid, role| {
+            *actor_user_id == user_id
+                && *cid == alliance_id
+                && *uid == new_member_id
+                && *role == AllianceRole::Admin
+        })
+        .returning(move |_, _, _, _| Ok(()));
+    db.expect_get_alliance_summary()
+        .times(1)
+        .withf(move |cid| *cid == alliance_id)
+        .returning(move |_| Ok(alliance_for_db.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::AllianceTeamInvitation)
+                && notification.recipients == vec![new_member_id]
+                && notification.template_data.as_ref().is_some_and(|data| {
+                    serde_json::from_value::<AllianceTeamInvitationTemplate>(data.clone())
+                        .is_ok_and(|template| {
+                            template.alliance_name == alliance.display_name
+                                && template.link == "/dashboard/user?tab=invitations"
+                                && template.theme.primary_color
+                                    == site_settings_for_assertions.theme.primary_color
+                        })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/alliance/team/add")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::CREATED,
+        "refresh-alliance-dashboard-table",
+    );
+}
+
+#[tokio::test]
+async fn test_add_db_error() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let new_member_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
+    let new_member_form = NewTeamMember {
+        role: AllianceRole::Admin,
+        user_id: new_member_id,
+    };
+    let body = serde_qs::to_string(&new_member_form).unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::TeamWrite
+        })
+        .returning(move |_, _, _| Ok(true));
+    db.expect_add_alliance_team_member()
+        .times(1)
+        .withf(move |actor_user_id, cid, uid, role| {
+            *actor_user_id == user_id
+                && *cid == alliance_id
+                && *uid == new_member_id
+                && *role == AllianceRole::Admin
+        })
+        .returning(move |_, _, _, _| Err(anyhow!("db error")));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("POST")
+        .uri("/dashboard/alliance/team/add")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+        .body(Body::from(body))
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_delete_success() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::TeamWrite
+        })
+        .returning(move |_, _, _| Ok(true));
+    db.expect_delete_alliance_team_member()
+        .times(1)
+        .withf(move |actor_user_id, cid, uid| {
+            *actor_user_id == user_id && *cid == alliance_id && *uid == member_id
+        })
+        .returning(move |_, _, _| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/dashboard/alliance/team/{member_id}/delete"))
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-alliance-dashboard-table",
+    );
+}
+
+#[tokio::test]
+async fn test_delete_current_user_logs_out() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_alliance_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::TeamWrite
+        })
+        .returning(move |_, _, _| Ok(true));
+    db.expect_delete_alliance_team_member()
+        .times(1)
+        .withf(move |actor_user_id, cid, uid| {
+            *actor_user_id == user_id && *cid == alliance_id && *uid == user_id
+        })
+        .returning(move |_, _, _| Ok(()));
+    db.expect_delete_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(|_| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!("/dashboard/alliance/team/{user_id}/delete"))
+        .header(HOST, "example.test")
+        .header("HX-Request", "true")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_empty_hx_redirect_response(&parts, &bytes, StatusCode::OK, LOG_IN_URL);
+}

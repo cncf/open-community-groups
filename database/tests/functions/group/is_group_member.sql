@@ -10,7 +10,7 @@ select plan(4);
 -- ============================================================================
 
 \set activeGroupID '6a040000-0000-0000-0000-000000000001'
-\set communityID '6a040000-0000-0000-0000-000000000002'
+\set allianceID '6a040000-0000-0000-0000-000000000002'
 \set groupCategoryID '6a040000-0000-0000-0000-000000000003'
 \set inactiveGroupID '6a040000-0000-0000-0000-000000000004'
 \set unknownGroupID '6a040000-0000-0000-0000-000000000005'
@@ -21,9 +21,9 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -31,18 +31,18 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -53,16 +53,16 @@ values
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
     active
 ) values
-    (:'activeGroupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group', true),
+    (:'activeGroupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group', true),
     (
         :'inactiveGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Inactive Group',
         'inactive-group',
@@ -83,25 +83,25 @@ values (:'inactiveGroupID', :'user1ID');
 
 -- Should return true for existing group member
 select ok(
-    is_group_member(:'communityID'::uuid, :'activeGroupID'::uuid, :'user1ID'::uuid),
+    is_group_member(:'allianceID'::uuid, :'activeGroupID'::uuid, :'user1ID'::uuid),
     'Should return true for existing group member'
 );
 
 -- Should return false for non-member
 select ok(
-    not is_group_member(:'communityID'::uuid, :'activeGroupID'::uuid, :'user2ID'::uuid),
+    not is_group_member(:'allianceID'::uuid, :'activeGroupID'::uuid, :'user2ID'::uuid),
     'Should return false for non-member'
 );
 
 -- Should return false for invalid group
 select ok(
-    not is_group_member(:'communityID'::uuid, :'unknownGroupID'::uuid, :'user1ID'::uuid),
+    not is_group_member(:'allianceID'::uuid, :'unknownGroupID'::uuid, :'user1ID'::uuid),
     'Should return false for invalid group'
 );
 
 -- Should return false for inactive group even if user is a member
 select ok(
-    not is_group_member(:'communityID'::uuid, :'inactiveGroupID'::uuid, :'user1ID'::uuid),
+    not is_group_member(:'allianceID'::uuid, :'inactiveGroupID'::uuid, :'user1ID'::uuid),
     'Should return false for inactive group even if user is a member'
 );
 

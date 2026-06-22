@@ -9,9 +9,9 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '3a290000-0000-0000-0000-000000000001'
-\set community2ID '3a290000-0000-0000-0000-000000000002'
-\set communityAdminUserID '3a290000-0000-0000-0000-000000000003'
+\set alliance1ID '3a290000-0000-0000-0000-000000000001'
+\set alliance2ID '3a290000-0000-0000-0000-000000000002'
+\set allianceAdminUserID '3a290000-0000-0000-0000-000000000003'
 \set dualRoleUserID '3a290000-0000-0000-0000-000000000004'
 \set group1ID '3a290000-0000-0000-0000-000000000005'
 \set group2ID '3a290000-0000-0000-0000-000000000006'
@@ -21,16 +21,16 @@ select plan(5);
 \set groupCategory1ID '3a290000-0000-0000-0000-000000000010'
 \set groupCategory2ID '3a290000-0000-0000-0000-000000000011'
 \set groupMemberUserID '3a290000-0000-0000-0000-000000000012'
-\set multiCommunityUserID '3a290000-0000-0000-0000-000000000013'
+\set multiAllianceUserID '3a290000-0000-0000-0000-000000000013'
 \set regularUserID '3a290000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -39,23 +39,23 @@ insert into community (
     logo_url,
     og_image_url
 ) values (
-    :'community1ID',
+    :'alliance1ID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png',
-    'https://example.com/community-og.png'
+    'https://example.com/alliance-og.png'
 ), (
-    :'community2ID',
+    :'alliance2ID',
     'devops-nyc',
     'DevOps NYC',
     'DevOps practitioners in New York City',
     'https://example.com/banner_mobile2.png',
     'https://example.com/banner2.png',
     'https://example.com/logo2.png',
-    'https://example.com/community-og2.png'
+    'https://example.com/alliance-og2.png'
 );
 
 -- Users
@@ -67,12 +67,12 @@ insert into "user" (
     username,
     name
 ) values (
-    :'communityAdminUserID',
+    :'allianceAdminUserID',
     gen_random_bytes(32),
-    'communityadmin@example.com',
+    'allianceadmin@example.com',
     true,
-    'communityadmin',
-    'Community Admin User'
+    'allianceadmin',
+    'Alliance Admin User'
 ), (
     :'dualRoleUserID',
     gen_random_bytes(32),
@@ -88,12 +88,12 @@ insert into "user" (
     'groupmember',
     'Group Member User'
 ), (
-    :'multiCommunityUserID',
+    :'multiAllianceUserID',
     gen_random_bytes(32),
-    'multicommunity@example.com',
+    'multialliance@example.com',
     true,
-    'multicommunity',
-    'Multi Community User'
+    'multialliance',
+    'Multi Alliance User'
 ), (
     :'regularUserID',
     gen_random_bytes(32),
@@ -106,17 +106,17 @@ insert into "user" (
 -- Group categories
 insert into group_category (
     group_category_id,
-    community_id,
+    alliance_id,
     name,
     "order"
 ) values
-    (:'groupCategory1ID', :'community1ID', 'Test Category', 1),
-    (:'groupCategory2ID', :'community2ID', 'DevOps Category', 1);
+    (:'groupCategory1ID', :'alliance1ID', 'Test Category', 1),
+    (:'groupCategory2ID', :'alliance2ID', 'DevOps Category', 1);
 
 -- Groups
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -127,7 +127,7 @@ insert into "group" (
     slug_pretty
 ) values (
     :'group1ID',
-    :'community1ID',
+    :'alliance1ID',
     :'groupCategory1ID',
     'Group A',
     'abc1234',
@@ -138,7 +138,7 @@ insert into "group" (
     'group-a'
 ), (
     :'group2ID',
-    :'community1ID',
+    :'alliance1ID',
     :'groupCategory1ID',
     'Group B',
     'def5678',
@@ -149,7 +149,7 @@ insert into "group" (
     null
 ), (
     :'group3ID',
-    :'community1ID',
+    :'alliance1ID',
     :'groupCategory1ID',
     'Group C',
     'ghi9abc',
@@ -160,7 +160,7 @@ insert into "group" (
     null
 ), (
     :'group4ID',
-    :'community1ID',
+    :'alliance1ID',
     :'groupCategory1ID',
     'Group D (Deleted)',
     'jkl2def',
@@ -171,7 +171,7 @@ insert into "group" (
     null
 ), (
     :'group5ID',
-    :'community2ID',
+    :'alliance2ID',
     :'groupCategory2ID',
     'NYC DevOps Meetup',
     'mno3ghi',
@@ -188,17 +188,17 @@ update "group" set deleted = true, active = false where group_id = :'group4ID';
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted) values
     (:'group1ID', :'groupMemberUserID', 'admin', true),
-    (:'group1ID', :'multiCommunityUserID', 'admin', true),
+    (:'group1ID', :'multiAllianceUserID', 'admin', true),
     (:'group2ID', :'groupMemberUserID', 'admin', true),
-    (:'group5ID', :'multiCommunityUserID', 'admin', true);
+    (:'group5ID', :'multiAllianceUserID', 'admin', true);
 
--- Community Team
-insert into community_team (accepted, community_id, role, user_id) values
-    (true, :'community1ID', 'admin', :'communityAdminUserID');
+-- Alliance Team
+insert into alliance_team (accepted, alliance_id, role, user_id) values
+    (true, :'alliance1ID', 'admin', :'allianceAdminUserID');
 
--- Community Team (dual membership)
-insert into community_team (accepted, community_id, role, user_id) values
-    (true, :'community1ID', 'admin', :'dualRoleUserID');
+-- Alliance Team (dual membership)
+insert into alliance_team (accepted, alliance_id, role, user_id) values
+    (true, :'alliance1ID', 'admin', :'dualRoleUserID');
 insert into group_team (group_id, user_id, role, accepted) values
     (:'group2ID', :'dualRoleUserID', 'admin', true);
 
@@ -219,14 +219,14 @@ select is(
     list_user_groups(:'groupMemberUserID'::uuid)::jsonb,
     '[
         {
-            "community": {
+            "alliance": {
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
-                "community_id": "3a290000-0000-0000-0000-000000000001",
+                "alliance_id": "3a290000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "name": "cloud-native-seattle",
-                "og_image_url": "https://example.com/community-og.png"
+                "og_image_url": "https://example.com/alliance-og.png"
             },
             "groups": [
                 {
@@ -245,22 +245,22 @@ select is(
             ]
         }
     ]'::jsonb,
-    'Group team member (not in community team) should see only groups A and B where they are members'
+    'Group team member (not in alliance team) should see only groups A and B where they are members'
 );
 
--- Should see all non-deleted groups for community team member
+-- Should see all non-deleted groups for alliance team member
 select is(
-    list_user_groups(:'communityAdminUserID'::uuid)::jsonb,
+    list_user_groups(:'allianceAdminUserID'::uuid)::jsonb,
     '[
         {
-            "community": {
+            "alliance": {
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
-                "community_id": "3a290000-0000-0000-0000-000000000001",
+                "alliance_id": "3a290000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "name": "cloud-native-seattle",
-                "og_image_url": "https://example.com/community-og.png"
+                "og_image_url": "https://example.com/alliance-og.png"
             },
             "groups": [
                 {
@@ -285,7 +285,7 @@ select is(
             ]
         }
     ]'::jsonb,
-    'Community team member (not in any group teams) should see all three non-deleted groups (A, B, C)'
+    'Alliance team member (not in any group teams) should see all three non-deleted groups (A, B, C)'
 );
 
 -- Should see all groups without duplicates for dual role user
@@ -293,14 +293,14 @@ select is(
     list_user_groups(:'dualRoleUserID'::uuid)::jsonb,
     '[
         {
-            "community": {
+            "alliance": {
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
-                "community_id": "3a290000-0000-0000-0000-000000000001",
+                "alliance_id": "3a290000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "name": "cloud-native-seattle",
-                "og_image_url": "https://example.com/community-og.png"
+                "og_image_url": "https://example.com/alliance-og.png"
             },
             "groups": [
                 {
@@ -325,22 +325,22 @@ select is(
             ]
         }
     ]'::jsonb,
-    'User with both community and group team memberships should see all groups without duplicates (Group B not duplicated)'
+    'User with both alliance and group team memberships should see all groups without duplicates (Group B not duplicated)'
 );
 
--- Should see groups from multiple communities sorted by community name
+-- Should see groups from multiple alliances sorted by alliance name
 select is(
-    list_user_groups(:'multiCommunityUserID'::uuid)::jsonb,
+    list_user_groups(:'multiAllianceUserID'::uuid)::jsonb,
     '[
         {
-            "community": {
+            "alliance": {
                 "banner_mobile_url": "https://example.com/banner_mobile.png",
                 "banner_url": "https://example.com/banner.png",
-                "community_id": "3a290000-0000-0000-0000-000000000001",
+                "alliance_id": "3a290000-0000-0000-0000-000000000001",
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "name": "cloud-native-seattle",
-                "og_image_url": "https://example.com/community-og.png"
+                "og_image_url": "https://example.com/alliance-og.png"
             },
             "groups": [
                 {
@@ -353,14 +353,14 @@ select is(
             ]
         },
         {
-            "community": {
+            "alliance": {
                 "banner_mobile_url": "https://example.com/banner_mobile2.png",
                 "banner_url": "https://example.com/banner2.png",
-                "community_id": "3a290000-0000-0000-0000-000000000002",
+                "alliance_id": "3a290000-0000-0000-0000-000000000002",
                 "display_name": "DevOps NYC",
                 "logo_url": "https://example.com/logo2.png",
                 "name": "devops-nyc",
-                "og_image_url": "https://example.com/community-og2.png"
+                "og_image_url": "https://example.com/alliance-og2.png"
             },
             "groups": [
                 {
@@ -372,7 +372,7 @@ select is(
             ]
         }
     ]'::jsonb,
-    'User with group team memberships in multiple communities should see groups from both communities sorted by community name'
+    'User with group team memberships in multiple alliances should see groups from both alliances sorted by alliance name'
 );
 
 -- ============================================================================

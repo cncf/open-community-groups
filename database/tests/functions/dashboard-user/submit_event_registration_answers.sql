@@ -9,7 +9,7 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '4a150000-0000-0000-0000-000000000001'
+\set allianceID '4a150000-0000-0000-0000-000000000001'
 \set eventCategoryID '4a150000-0000-0000-0000-000000000002'
 \set eventID '4a150000-0000-0000-0000-000000000003'
 \set eventNoQuestionsID '4a150000-0000-0000-0000-000000000004'
@@ -27,16 +27,16 @@ select plan(12);
 \set questionID '4a150000-0000-0000-0000-000000000016'
 \set startedEventUserID '4a150000-0000-0000-0000-000000000017'
 \set ticketedPendingUserID '4a150000-0000-0000-0000-000000000018'
-\set unknownCommunityID '4a150000-0000-0000-0000-000000000019'
+\set unknownAllianceID '4a150000-0000-0000-0000-000000000019'
 \set updateUserID '4a150000-0000-0000-0000-000000000020'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -44,22 +44,22 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'answers-community',
-    'Answers Community',
-    'Community for testing registration answers',
+    :'allianceID',
+    'answers-alliance',
+    'Answers Alliance',
+    'Alliance for testing registration answers',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (
@@ -101,8 +101,8 @@ insert into "user" (
 );
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Answers Group', 'answers-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Answers Group', 'answers-group');
 
 -- Events
 insert into event (
@@ -301,7 +301,7 @@ select results_eq(
             )
         $$,
         :'pendingUserID',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'questionID',
         :'optionVegetarianID'
@@ -342,7 +342,7 @@ select results_eq(
         select
             action,
             actor_user_id,
-            community_id,
+            alliance_id,
             details,
             event_id,
             group_id,
@@ -367,7 +367,7 @@ select results_eq(
             'user'
         )
         $$,
-        :'pendingUserID', :'communityID', :'eventID', :'pendingUserID', :'eventID', :'groupID', :'pendingUserID'
+        :'pendingUserID', :'allianceID', :'eventID', :'pendingUserID', :'eventID', :'groupID', :'pendingUserID'
     ),
     'Should create the expected audit row'
 );
@@ -384,7 +384,7 @@ select results_eq(
             )
         $$,
         :'ticketedPendingUserID',
-        :'communityID',
+        :'allianceID',
         :'eventTicketedID',
         :'questionID',
         :'optionVegetarianID'
@@ -430,7 +430,7 @@ select results_eq(
             )
         $$,
         :'updateUserID',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'questionID',
         :'optionVegetarianID'
@@ -451,7 +451,7 @@ select throws_ok(
             )
         $$,
         :'startedEventUserID',
-        :'communityID',
+        :'allianceID',
         :'eventStartedID',
         :'questionID'
     ),
@@ -471,7 +471,7 @@ select throws_ok(
             )
         $$,
         :'startedEventUserID',
-        :'communityID',
+        :'allianceID',
         :'eventStartedID'
     ),
     'registration answers can only be submitted before the event starts',
@@ -490,7 +490,7 @@ select throws_ok(
             )
         $$,
         :'pendingUserID',
-        :'communityID',
+        :'allianceID',
         :'eventNoQuestionsID'
     ),
     'event does not have registration questions',
@@ -509,7 +509,7 @@ select throws_ok(
             )
         $$,
         :'updateUserID',
-        :'communityID',
+        :'allianceID',
         :'eventID'
     ),
     'required questionnaire answer is missing',
@@ -528,7 +528,7 @@ select throws_ok(
             )
         $$,
         :'nonAttendeeUserID',
-        :'communityID',
+        :'allianceID',
         :'eventID',
         :'questionID',
         :'optionStandardID'
@@ -537,7 +537,7 @@ select throws_ok(
     'Should reject users without an attendee row'
 );
 
--- Should reject events outside the route community
+-- Should reject events outside the route alliance
 select throws_ok(
     format(
         $$
@@ -549,13 +549,13 @@ select throws_ok(
             )
         $$,
         :'updateUserID',
-        :'unknownCommunityID',
+        :'unknownAllianceID',
         :'eventID',
         :'questionID',
         :'optionStandardID'
     ),
     'event not found or inactive',
-    'Should reject events outside the route community'
+    'Should reject events outside the route alliance'
 );
 
 -- ============================================================================

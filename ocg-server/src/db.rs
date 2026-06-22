@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tokio_postgres::types::{FromSql, Json, ToSql};
 
 use crate::db::{
-    activity_tracker::DBActivityTracker, auth::DBAuth, common::DBCommon, community::DBCommunity,
+    activity_tracker::DBActivityTracker, auth::DBAuth, common::DBCommon, alliance::DBAlliance,
     dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, meetings::DBMeetings,
     notifications::DBNotifications, payments::DBPayments, site::DBSite,
 };
@@ -24,8 +24,8 @@ pub(crate) mod common;
 #[cfg(test)]
 mod contract_tests;
 
-/// Module containing database functionality for the community site.
-pub(crate) mod community;
+/// Module containing database functionality for the alliance site.
+pub(crate) mod alliance;
 
 /// Module containing database functionality for dashboards.
 pub(crate) mod dashboard;
@@ -66,7 +66,7 @@ pub(crate) trait DBOperations:
     DBAuth
     + DBActivityTracker
     + DBCommon
-    + DBCommunity
+    + DBAlliance
     + DBDashboard
     + DBEvent
     + DBGroup
@@ -84,7 +84,7 @@ impl<T> DBOperations for T where
     T: DBAuth
         + DBActivityTracker
         + DBCommon
-        + DBCommunity
+        + DBAlliance
         + DBDashboard
         + DBEvent
         + DBGroup

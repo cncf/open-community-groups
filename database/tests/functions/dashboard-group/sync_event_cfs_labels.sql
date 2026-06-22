@@ -9,7 +9,7 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a310000-0000-0000-0000-000000000001'
+\set allianceID '3a310000-0000-0000-0000-000000000001'
 \set event2ID '3a310000-0000-0000-0000-000000000002'
 \set eventCategoryID '3a310000-0000-0000-0000-000000000003'
 \set eventID '3a310000-0000-0000-0000-000000000004'
@@ -23,9 +23,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -33,26 +33,26 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'cfs-label-community',
-    'CFS Label Community',
-    'A test community for CFS labels',
+    :'allianceID',
+    'cfs-label-alliance',
+    'CFS Label Alliance',
+    'A test alliance for CFS labels',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'CFS Label Group', 'cfs-label-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'CFS Label Group', 'cfs-label-group');
 
 -- Events
 insert into event (

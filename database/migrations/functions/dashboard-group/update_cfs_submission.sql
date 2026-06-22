@@ -127,7 +127,7 @@ begin
         'cfs_submission',
         p_cfs_submission_id,
         (
-            select g.community_id
+            select g.alliance_id
             from event e
             join "group" g on g.group_id = e.group_id
             where e.event_id = p_event_id

@@ -37,7 +37,7 @@ use crate::{
 #[tokio::test]
 async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -48,7 +48,7 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
@@ -67,7 +67,7 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -85,7 +85,7 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
         .returning(move || Ok(site_settings.clone()));
     tx.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     tx.expect_enqueue_notification()
         .times(1)
@@ -132,7 +132,7 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
 #[tokio::test]
 async fn test_approve_refund_request_returns_no_content_when_payments_manager_succeeds() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let target_user_id = Uuid::new_v4();
@@ -143,7 +143,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -160,7 +160,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -174,7 +174,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
-                && input.community_id == community_id
+                && input.alliance_id == alliance_id
                 && input.event_id == event_id
                 && input.group_id == group_id
                 && input.review_note.is_none()
@@ -215,7 +215,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
 #[tokio::test]
 async fn test_approve_refund_request_returns_internal_server_error_when_payments_manager_fails() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let target_user_id = Uuid::new_v4();
@@ -226,7 +226,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -243,7 +243,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -257,7 +257,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
-                && input.community_id == community_id
+                && input.alliance_id == alliance_id
                 && input.event_id == event_id
                 && input.group_id == group_id
                 && input.review_note.is_none()
@@ -294,7 +294,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
 #[allow(clippy::too_many_lines)]
 async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_notifications() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let promoted_user_id = Uuid::new_v4();
@@ -306,7 +306,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let mut event = sample_event_summary(event_id, group_id);
@@ -329,7 +329,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -352,7 +352,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
         .returning(move || Ok(site_settings_for_notifications.clone()));
     tx.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event_for_notifications.clone()));
     tx.expect_enqueue_notification()
         .times(1)
@@ -363,7 +363,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                     from_value::<EventAttendanceCanceled>(value.clone()).is_ok_and(|template| {
                         template.dashboard_link == "https://ocg.test/dashboard/user?tab=events"
                             && template.link
-                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                                == "https://ocg.test/test-alliance/group/def5678/event/ghi9abc"
                     })
                 })
         })
@@ -380,7 +380,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
                             == Some("https://ocg.test/dashboard/user?tab=events")
                             && template.has_registration_questions
                             && template.link
-                                == "https://ocg.test/test-community/group/def5678/event/ghi9abc"
+                                == "https://ocg.test/test-alliance/group/def5678/event/ghi9abc"
                             && template.theme.primary_color == primary_color
                     })
                 })
@@ -422,7 +422,7 @@ async fn test_cancel_event_attendee_attendance_promotes_waitlist_and_enqueues_no
 #[tokio::test]
 async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqueue_fails() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -433,7 +433,7 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
@@ -452,7 +452,7 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -475,7 +475,7 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
         .returning(move || Ok(site_settings.clone()));
     tx.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
     tx.expect_enqueue_notification()
         .times(1)
@@ -516,7 +516,7 @@ async fn test_cancel_event_attendee_attendance_rolls_back_when_notification_enqu
 #[tokio::test]
 async fn test_cancel_event_attendee_invitation_returns_no_content() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -527,7 +527,7 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -544,7 +544,7 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -586,7 +586,7 @@ async fn test_cancel_event_attendee_invitation_returns_no_content() {
 #[tokio::test]
 async fn test_download_csv_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -596,7 +596,7 @@ async fn test_download_csv_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let mut attendee = sample_attendee();
@@ -640,7 +640,7 @@ async fn test_download_csv_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -657,7 +657,7 @@ async fn test_download_csv_success() {
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
 
     // Setup notifications manager mock
@@ -695,7 +695,7 @@ async fn test_download_csv_success() {
 #[allow(clippy::too_many_lines)]
 async fn test_download_csv_with_answers_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let multi_option_id_1 = Uuid::new_v4();
@@ -711,7 +711,7 @@ async fn test_download_csv_with_answers_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let mut attendee = sample_attendee();
@@ -795,7 +795,7 @@ async fn test_download_csv_with_answers_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -812,11 +812,11 @@ async fn test_download_csv_with_answers_success() {
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_get_event_registration_questions()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(registration_questions.clone()));
 
     // Setup notifications manager mock
@@ -857,7 +857,7 @@ async fn test_download_csv_with_answers_success() {
 #[tokio::test]
 async fn test_generate_check_in_qr_code_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -867,7 +867,7 @@ async fn test_generate_check_in_qr_code_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
@@ -885,19 +885,19 @@ async fn test_generate_check_in_qr_code_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_community_name_by_id()
+    db.expect_get_alliance_name_by_id()
         .times(1)
-        .withf(move |cid| *cid == community_id)
+        .withf(move |cid| *cid == alliance_id)
         .returning(|_| Ok(Some("test".to_string())));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
 
     // Setup notifications manager mock (not used by this handler)
@@ -942,7 +942,7 @@ async fn test_generate_check_in_qr_code_success() {
 #[tokio::test]
 async fn test_invite_event_attendee_returns_bad_request_when_target_conflicts() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let invited_user_id = Uuid::new_v4();
@@ -953,7 +953,7 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_conflicts() 
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -970,7 +970,7 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_conflicts() 
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1010,7 +1010,7 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_conflicts() 
 #[tokio::test]
 async fn test_invite_event_attendee_returns_bad_request_when_target_missing() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -1020,7 +1020,7 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_missing() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -1037,7 +1037,7 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_missing() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1075,7 +1075,7 @@ async fn test_invite_event_attendee_returns_bad_request_when_target_missing() {
 #[tokio::test]
 async fn test_invite_event_attendee_returns_created_and_sends_notification() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let invited_user_id = Uuid::new_v4();
@@ -1089,7 +1089,7 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let site_settings = sample_site_settings();
@@ -1107,7 +1107,7 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1128,7 +1128,7 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
         .returning(move || Ok(site_settings.clone()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
 
     // Setup notifications manager mock
@@ -1179,7 +1179,7 @@ async fn test_invite_event_attendee_returns_created_and_sends_notification() {
 #[tokio::test]
 async fn test_invite_event_attendee_returns_created_when_notification_context_fails() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let invited_user_id = Uuid::new_v4();
@@ -1190,7 +1190,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -1207,7 +1207,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1228,7 +1228,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
         .returning(|| Ok(sample_site_settings()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Err(anyhow!("event summary error")));
 
     // Setup notifications manager mock
@@ -1262,7 +1262,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_context_fa
 #[tokio::test]
 async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fails() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let invited_user_id = Uuid::new_v4();
@@ -1275,7 +1275,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let site_settings = sample_site_settings();
@@ -1293,7 +1293,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1314,7 +1314,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
         .returning(move || Ok(site_settings.clone()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
 
     // Setup notifications manager mock
@@ -1364,7 +1364,7 @@ async fn test_invite_event_attendee_returns_created_when_notification_enqueue_fa
 #[tokio::test]
 async fn test_invite_event_attendee_returns_unprocessable_entity_when_email_is_invalid() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -1374,7 +1374,7 @@ async fn test_invite_event_attendee_returns_unprocessable_entity_when_email_is_i
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -1391,7 +1391,7 @@ async fn test_invite_event_attendee_returns_unprocessable_entity_when_email_is_i
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1430,7 +1430,7 @@ async fn test_invite_event_attendee_returns_unprocessable_entity_when_email_is_i
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -1440,7 +1440,7 @@ async fn test_list_page_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let mut attendee = sample_attendee();
@@ -1465,7 +1465,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -1474,7 +1474,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1491,11 +1491,11 @@ async fn test_list_page_success() {
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_get_event_registration_questions()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Ok(vec![]));
 
     // Setup notifications manager mock
@@ -1524,7 +1524,7 @@ async fn test_list_page_success() {
 #[tokio::test]
 async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -1534,7 +1534,7 @@ async fn test_list_page_with_pagination_params() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let attendee = sample_attendee();
@@ -1558,7 +1558,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -1567,7 +1567,7 @@ async fn test_list_page_with_pagination_params() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1584,11 +1584,11 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_get_event_registration_questions()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Ok(vec![]));
 
     // Setup notifications manager mock
@@ -1617,7 +1617,7 @@ async fn test_list_page_with_pagination_params() {
 #[tokio::test]
 async fn test_manual_check_in_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let target_user_id = Uuid::new_v4();
@@ -1628,7 +1628,7 @@ async fn test_manual_check_in_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let event = sample_event_summary(event_id, group_id);
@@ -1646,7 +1646,7 @@ async fn test_manual_check_in_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1654,13 +1654,13 @@ async fn test_manual_check_in_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_manual_check_in_event()
         .times(1)
         .withf(move |actor_uid, cid, eid, uid| {
             *actor_uid == user_id
-                && *cid == community_id
+                && *cid == alliance_id
                 && *eid == event_id
                 && *uid == target_user_id
         })
@@ -1690,7 +1690,7 @@ async fn test_manual_check_in_success() {
 #[tokio::test]
 async fn test_list_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -1700,7 +1700,7 @@ async fn test_list_page_db_error() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -1717,7 +1717,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -1726,7 +1726,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1734,7 +1734,7 @@ async fn test_list_page_db_error() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary()
         .times(1)
-        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
@@ -1759,7 +1759,7 @@ async fn test_list_page_db_error() {
 #[tokio::test]
 async fn test_reject_invitation_request_returns_no_content() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -1770,7 +1770,7 @@ async fn test_reject_invitation_request_returns_no_content() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -1787,7 +1787,7 @@ async fn test_reject_invitation_request_returns_no_content() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1829,7 +1829,7 @@ async fn test_reject_invitation_request_returns_no_content() {
 #[tokio::test]
 async fn test_reject_refund_request_returns_no_content_when_payments_manager_succeeds() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let target_user_id = Uuid::new_v4();
@@ -1840,7 +1840,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -1857,7 +1857,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1871,7 +1871,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
-                && input.community_id == community_id
+                && input.alliance_id == alliance_id
                 && input.event_id == event_id
                 && input.group_id == group_id
                 && input.review_note.is_none()
@@ -1913,7 +1913,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
 #[allow(clippy::too_many_lines)]
 async fn test_send_event_custom_notification_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let attendee_id1 = Uuid::new_v4();
@@ -1925,7 +1925,7 @@ async fn test_send_event_custom_notification_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let site_settings = sample_site_settings();
@@ -1933,7 +1933,7 @@ async fn test_send_event_custom_notification_success() {
     let event = sample_event_summary(event_id, group_id);
     let expected_link = format!(
         "/{}/group/{}/event/{}",
-        event.community_name, event.group_slug, event.slug
+        event.alliance_name, event.group_slug, event.slug
     );
     let event_for_notifications = event.clone();
     let event_for_db = event.clone();
@@ -1965,7 +1965,7 @@ async fn test_send_event_custom_notification_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -1977,7 +1977,7 @@ async fn test_send_event_custom_notification_success() {
         .returning(move |_, _| Ok(vec![attendee_id1, attendee_id2]));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event_for_db.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -2032,7 +2032,7 @@ async fn test_send_event_custom_notification_no_recipients() {
     // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -2040,7 +2040,7 @@ async fn test_send_event_custom_notification_no_recipients() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let form_data = serde_qs::to_string(&EventCustomNotification {
@@ -2062,7 +2062,7 @@ async fn test_send_event_custom_notification_no_recipients() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -2070,7 +2070,7 @@ async fn test_send_event_custom_notification_no_recipients() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(sample_event_summary(event_id, group_id)));
     db.expect_list_event_attendees_ids()
         .times(1)

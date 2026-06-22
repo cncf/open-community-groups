@@ -2,11 +2,11 @@ import { test as base, expect } from "@playwright/test";
 
 import {
   buildE2eUrl,
-  TEST_COMMUNITY_IDS,
+  TEST_ALLIANCE_IDS,
   TEST_GROUP_IDS,
   TEST_USER_CREDENTIALS,
   logInWithSeededUser,
-  selectCommunityContext,
+  selectAllianceContext,
   selectGroupContext,
 } from "./utils.js";
 
@@ -82,21 +82,21 @@ const authenticatedPageFixture =
   };
 
 export const test = base.extend({
-  adminCommunityPage: authenticatedPageFixture(
+  adminAlliancePage: authenticatedPageFixture(
     TEST_USER_CREDENTIALS.admin1,
-    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
+    (page) => selectAllianceContext(page, TEST_ALLIANCE_IDS.alliance1),
   ),
-  communityViewerPage: authenticatedPageFixture(
-    TEST_USER_CREDENTIALS.communityViewer1,
-    (page) => selectCommunityContext(page, TEST_COMMUNITY_IDS.community1),
+  allianceViewerPage: authenticatedPageFixture(
+    TEST_USER_CREDENTIALS.allianceViewer1,
+    (page) => selectAllianceContext(page, TEST_ALLIANCE_IDS.alliance1),
   ),
   organizerGroupPage: authenticatedPageFixture(
     TEST_USER_CREDENTIALS.organizer1,
     (page) =>
       selectGroupContext(
         page,
-        TEST_COMMUNITY_IDS.community1,
-        TEST_GROUP_IDS.community1.alpha,
+        TEST_ALLIANCE_IDS.alliance1,
+        TEST_GROUP_IDS.alliance1.alpha,
       ),
   ),
   organizerGroupWithoutPaymentsPage: authenticatedPageFixture(
@@ -104,8 +104,8 @@ export const test = base.extend({
     (page) =>
       selectGroupContext(
         page,
-        TEST_COMMUNITY_IDS.community2,
-        TEST_GROUP_IDS.community2.delta,
+        TEST_ALLIANCE_IDS.alliance2,
+        TEST_GROUP_IDS.alliance2.delta,
       ),
   ),
   eventsManagerGroupPage: authenticatedPageFixture(
@@ -113,8 +113,8 @@ export const test = base.extend({
     (page) =>
       selectGroupContext(
         page,
-        TEST_COMMUNITY_IDS.community1,
-        TEST_GROUP_IDS.community1.alpha,
+        TEST_ALLIANCE_IDS.alliance1,
+        TEST_GROUP_IDS.alliance1.alpha,
       ),
   ),
   groupViewerPage: authenticatedPageFixture(
@@ -122,8 +122,8 @@ export const test = base.extend({
     (page) =>
       selectGroupContext(
         page,
-        TEST_COMMUNITY_IDS.community1,
-        TEST_GROUP_IDS.community1.alpha,
+        TEST_ALLIANCE_IDS.alliance1,
+        TEST_GROUP_IDS.alliance1.alpha,
       ),
   ),
   member1Page: authenticatedPageFixture(TEST_USER_CREDENTIALS.member1),

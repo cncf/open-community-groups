@@ -9,7 +9,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID 'ab070000-0000-0000-0000-000000000001'
+\set allianceID 'ab070000-0000-0000-0000-000000000001'
 \set event2ID 'ab070000-0000-0000-0000-000000000002'
 \set eventCategoryID 'ab070000-0000-0000-0000-000000000003'
 \set eventID 'ab070000-0000-0000-0000-000000000004'
@@ -29,9 +29,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -39,32 +39,32 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'cfs-submission-community',
-    'CFS Submission Community',
-    'A community for CFS submission trigger tests',
+    :'allianceID',
+    'cfs-submission-alliance',
+    'CFS Submission Alliance',
+    'A alliance for CFS submission trigger tests',
     'https://example.com/cfs-banner-mobile.png',
     'https://example.com/cfs-banner.png',
     'https://example.com/cfs-logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- User
 insert into "user" (user_id, auth_hash, email, email_verified, name, username)
 values (:'userID', gen_random_bytes(32), 'alice@example.com', true, 'Alice', 'alice');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'CFS Submission Group',
     'cfs-submission-group'

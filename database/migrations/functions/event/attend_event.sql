@@ -1,6 +1,6 @@
 -- Attend an event as an attendee.
 create or replace function attend_event(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid,
     p_registration_answers jsonb default null
@@ -17,7 +17,7 @@ declare
     v_registration_questions jsonb;
     v_waitlist_enabled boolean;
 begin
-    -- Check if event exists in the community, is active and can be attended
+    -- Check if event exists in the alliance, is active and can be attended
     select
         e.attendee_approval_required,
         e.capacity,
@@ -33,7 +33,7 @@ begin
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     and g.active = true
     and e.deleted = false
     and e.published = true
@@ -89,7 +89,7 @@ begin
             p_user_id,
             'user',
             p_user_id,
-            p_community_id,
+            p_alliance_id,
             v_group_id,
             p_event_id,
             jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)

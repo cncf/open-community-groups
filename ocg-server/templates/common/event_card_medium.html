@@ -3,7 +3,7 @@
 {% import "macros/cards.html" as cards -%}
 
 {# Event card -#}
-<a href="/{{ event.community_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
+<a href="/{{ event.alliance_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
    hx-boost="true"
    hx-target="body"
    class="group select-none cursor-pointer h-full">
@@ -30,7 +30,7 @@
             {# Event group name -#}
             <div class="card-header">
               {% block preheader %}
-                <span class="hidden text-primary-500 sm:inline">{{ event.community_display_name }}</span>
+                <span class="hidden text-primary-500 sm:inline">{{ event.alliance_display_name }}</span>
                 <span class="px-1 hidden sm:inline">·</span>
                 <span>{{ event.group_name }}</span>
                 <span class="px-1 hidden sm:inline">·</span>

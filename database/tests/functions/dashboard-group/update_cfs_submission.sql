@@ -9,7 +9,7 @@ select plan(18);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a380000-0000-0000-0000-000000000001'
+\set allianceID '3a380000-0000-0000-0000-000000000001'
 \set event2ID '3a380000-0000-0000-0000-000000000002'
 \set eventCategoryID '3a380000-0000-0000-0000-000000000003'
 \set eventID '3a380000-0000-0000-0000-000000000004'
@@ -31,9 +31,9 @@ select plan(18);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -41,26 +41,26 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'cfs-submission-community',
-    'CFS Submission Community',
-    'A test community for CFS submissions',
+    :'allianceID',
+    'cfs-submission-alliance',
+    'CFS Submission Alliance',
+    'A test alliance for CFS submissions',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name) values
-    (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name) values
+    (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'CFS Group', 'cfs-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'CFS Group', 'cfs-group');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name) values
-    (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name) values
+    (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
@@ -231,7 +231,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             resource_type,
@@ -252,7 +252,7 @@ select results_eq(
         )
         $$,
         :'reviewerID',
-        :'communityID',
+        :'allianceID',
         :'groupID',
         :'eventID',
         :'submissionID'

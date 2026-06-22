@@ -52,7 +52,7 @@ pub(crate) struct LocationParts<'a> {
     country_code: Option<&'a str>,
     /// Full country name.
     country_name: Option<&'a str>,
-    /// Location name (e.g., "Community Center", "Conference Hall").
+    /// Location name (e.g., "Alliance Center", "Conference Hall").
     name: Option<&'a str>,
     /// State or province.
     state: Option<&'a str>,
@@ -88,7 +88,7 @@ impl<'a> LocationParts<'a> {
         self
     }
 
-    /// Sets the location name (e.g., "Community Center").
+    /// Sets the location name (e.g., "Alliance Center").
     pub(crate) fn name(mut self, name: Option<&'a str>) -> Self {
         self.name = name;
         self

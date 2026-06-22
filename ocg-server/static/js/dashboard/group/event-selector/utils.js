@@ -177,14 +177,14 @@ export const getLoadedQueryEventSearchState = (events) => ({
  * Gets the group dashboard selection context from DOM.
  * @param {Element} element Selector element.
  * @param {Document|Element} documentRoot Document fallback root.
- * @returns {{community: string, groupSlug: string}}
+ * @returns {{alliance: string, groupSlug: string}}
  */
 export const getDashboardSelectionContext = (element, documentRoot = document) => {
   const container =
     element?.closest?.("#dashboard-content") || documentRoot?.querySelector?.("#dashboard-content");
 
   return {
-    community: container?.dataset?.community || "",
+    alliance: container?.dataset?.alliance || "",
     groupSlug: container?.dataset?.groupSlug || "",
   };
 };
@@ -192,14 +192,14 @@ export const getDashboardSelectionContext = (element, documentRoot = document) =
 /**
  * Resolves event search context from selector attributes and dashboard fallback.
  * @param {Object} context Search context values.
- * @returns {{communityName: string, groupSlug: string}}
+ * @returns {{allianceName: string, groupSlug: string}}
  */
 export const resolveEventSearchContext = ({
-  community = "",
+  alliance = "",
   dashboardSelection = {},
   groupSlug = "",
 } = {}) => ({
-  communityName: community || dashboardSelection.community || "",
+  allianceName: alliance || dashboardSelection.alliance || "",
   groupSlug: groupSlug || dashboardSelection.groupSlug || "",
 });
 
@@ -209,7 +209,7 @@ export const resolveEventSearchContext = ({
  * @returns {string} Event search URL.
  */
 export const buildEventSearchUrl = ({
-  communityName = "",
+  allianceName = "",
   dateFrom = "",
   dateTo = "",
   groupSlug = "",
@@ -224,7 +224,7 @@ export const buildEventSearchUrl = ({
   if (sortDirection) params.set("sort_direction", sortDirection);
   if (query) params.set("ts_query", query);
   if (groupSlug) params.append("group[]", groupSlug);
-  if (communityName) params.append("community[]", communityName);
+  if (allianceName) params.append("alliance[]", allianceName);
   return `/explore/events/search?${params.toString()}`;
 };
 

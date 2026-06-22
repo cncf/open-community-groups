@@ -9,7 +9,7 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '79270000-0000-0000-0000-000000000001'
+\set allianceID '79270000-0000-0000-0000-000000000001'
 \set eventCategoryID '79270000-0000-0000-0000-000000000002'
 \set groupCategoryID '79270000-0000-0000-0000-000000000011'
 \set inactiveEventID '79270000-0000-0000-0000-000000000007'
@@ -26,9 +26,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -36,9 +36,9 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'validate-context-community',
-    'Validate Context Community',
+    :'allianceID',
+    'validate-context-alliance',
+    'Validate Context Alliance',
     'Test',
     'https://e/banner-mobile.png',
     'https://e/banner.png',
@@ -46,17 +46,17 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Groups
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -65,7 +65,7 @@ insert into "group" (
 values
     (
         :'missingRecipientGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Missing Recipient Group',
         'missing-recipient-group',
@@ -73,7 +73,7 @@ values
     ),
     (
         :'nonStripeGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Non Stripe Group',
         'non-stripe-group',
@@ -81,7 +81,7 @@ values
     ),
     (
         :'validGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Valid Group',
         'valid-group',
@@ -195,7 +195,7 @@ insert into event (
 
 -- Should return the payment currency for a valid event context
 select is(
-    prepare_event_checkout_validate_event(:'communityID'::uuid, :'validEventID'::uuid, 'stripe'),
+    prepare_event_checkout_validate_event(:'allianceID'::uuid, :'validEventID'::uuid, 'stripe'),
     'USD',
     'Should return the payment currency for a valid event context'
 );
@@ -206,7 +206,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         'stripe'
-    )$$, :'communityID', :'missingRecipientEventID'),
+    )$$, :'allianceID', :'missingRecipientEventID'),
     'group payments recipient is not configured',
     'Should reject groups without a configured payments recipient'
 );
@@ -217,7 +217,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         null
-    )$$, :'communityID', :'validEventID'),
+    )$$, :'allianceID', :'validEventID'),
     'payments are not configured on this server',
     'Should reject events when payments are not configured on the server'
 );
@@ -228,7 +228,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         'stripe'
-    )$$, :'communityID', :'nonStripeEventID'),
+    )$$, :'allianceID', :'nonStripeEventID'),
     'group payments recipient is not configured for the server payments provider',
     'Should reject groups whose payments recipient does not match the server provider'
 );
@@ -239,7 +239,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         'stripe'
-    )$$, :'communityID', :'missingCurrencyEventID'),
+    )$$, :'allianceID', :'missingCurrencyEventID'),
     'ticketed event is missing payment_currency_code',
     'Should reject ticketed events without a payment currency'
 );
@@ -250,7 +250,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         'stripe'
-    )$$, :'communityID', :'inactiveEventID'),
+    )$$, :'allianceID', :'inactiveEventID'),
     'event not found or inactive',
     'Should reject inactive events'
 );
@@ -261,7 +261,7 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         'stripe'
-    )$$, :'communityID', :'invalidCurrencyEventID'),
+    )$$, :'allianceID', :'invalidCurrencyEventID'),
     'payment_currency_code must be a supported currency code',
     'Should reject events whose currency code is unsupported'
 );

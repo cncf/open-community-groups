@@ -1,9 +1,0 @@
-{% import "macros/dashboard.html" as dashboard -%}
-
-{# Community Groups No Results Placeholder -#}
-{% call dashboard::empty_state("No groups found matching your search.", title_margin = "mb-4") -%}
-<p class="text-sm lg:text-md text-stone-700">
-  Try adjusting your search terms or clear the filter to see all groups.
-</p>
-{% endcall -%}
-{# End community groups no results placeholder -#}

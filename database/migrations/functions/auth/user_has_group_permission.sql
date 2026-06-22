@@ -1,7 +1,7 @@
 -- user_has_group_permission checks whether a user has a specific
--- group capability for a group in a given community.
+-- group capability for a group in a given alliance.
 create or replace function user_has_group_permission(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_group_id uuid,
     p_user_id uuid,
     p_permission text
@@ -10,9 +10,9 @@ create or replace function user_has_group_permission(
         select 1
         from group_team gt
         join "group" g on g.group_id = gt.group_id
-        join community c on c.community_id = g.community_id
+        join alliance c on c.alliance_id = g.alliance_id
         join group_role_group_permission grp on grp.group_role_id = gt.role
-        where g.community_id = p_community_id
+        where g.alliance_id = p_alliance_id
           and g.deleted = false
           and gt.group_id = p_group_id
           and gt.user_id = p_user_id
@@ -25,10 +25,10 @@ create or replace function user_has_group_permission(
     )
     or exists (
         select 1
-        from community_team ct
-        join "group" g on g.community_id = ct.community_id
-        join community_role_group_permission crgp on crgp.community_role_id = ct.role
-        where ct.community_id = p_community_id
+        from alliance_team ct
+        join "group" g on g.alliance_id = ct.alliance_id
+        join alliance_role_group_permission crgp on crgp.alliance_role_id = ct.role
+        where ct.alliance_id = p_alliance_id
           and g.deleted = false
           and g.group_id = p_group_id
           and ct.user_id = p_user_id

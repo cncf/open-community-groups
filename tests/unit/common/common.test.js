@@ -248,7 +248,7 @@ describe("common utilities", () => {
     scrollToMock = mockScrollTo();
 
     // Non-dashboard paths do not trigger dashboard scrolling.
-    setLocationPath("/communities/cncf");
+    setLocationPath("/alliances/goup");
     expect(isDashboardPath()).to.equal(false);
     scrollToDashboardTop();
     expect(scrollToMock.calls).to.deep.equal([]);
@@ -325,7 +325,7 @@ describe("common utilities", () => {
 
   it("formats initials, datetimes, and empty-object checks", () => {
     // Initials are derived from names with fallback text.
-    expect(computeUserInitials("Open Community", "ocg")).to.equal("OC");
+    expect(computeUserInitials("Open Alliance", "ocg")).to.equal("OC");
     expect(computeUserInitials("Single", "ocg", 1)).to.equal("S");
     expect(computeUserInitials("", "ocg")).to.equal("O");
 

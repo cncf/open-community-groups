@@ -2,7 +2,7 @@
 -- the purchase is still refundable, creates the pending refund request, marks
 -- the purchase as refund-requested, and enqueues organizer notifications
 create or replace function request_event_refund(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid,
     p_requested_reason text,
@@ -29,7 +29,7 @@ begin
     join "group" g on g.group_id = e.group_id
     where ep.event_id = p_event_id
     and ep.user_id = p_user_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     and ep.amount_minor > 0
     and ep.status in ('completed', 'refund-requested')
     and e.deleted = false
@@ -84,7 +84,7 @@ begin
         p_user_id,
         'event',
         p_event_id,
-        p_community_id,
+        p_alliance_id,
         v_group_id,
         p_event_id,
         jsonb_build_object(
@@ -109,14 +109,14 @@ begin
             union
 
             select ct.user_id
-            from community_team ct
+            from alliance_team ct
             join "user" u using (user_id)
-            where ct.community_id = p_community_id
+            where ct.alliance_id = p_alliance_id
             and ct.accepted = true
             and u.email_verified = true
         ) candidate
         where user_has_group_permission(
-            p_community_id,
+            p_alliance_id,
             v_group_id,
             candidate.user_id,
             'group.events.write'

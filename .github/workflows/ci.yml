@@ -158,10 +158,10 @@ jobs:
     permissions:
       contents: read
       packages: read
-    container: ghcr.io/cncf/open-community-groups/db-tests
+    container: ghcr.io/cncf/open-alliance-groups/db-tests
     services:
       postgres:
-        image: ghcr.io/cncf/open-community-groups/postgres-db-tests
+        image: ghcr.io/cncf/open-alliance-groups/postgres-db-tests
         env:
           POSTGRES_USER: tests
           POSTGRES_PASSWORD: tests
@@ -190,7 +190,7 @@ jobs:
       packages: read
     services:
       postgres:
-        image: ghcr.io/cncf/open-community-groups/postgres-db-tests
+        image: ghcr.io/cncf/open-alliance-groups/postgres-db-tests
         env:
           POSTGRES_USER: tests
           POSTGRES_PASSWORD: tests

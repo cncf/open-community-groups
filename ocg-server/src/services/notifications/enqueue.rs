@@ -33,7 +33,7 @@ const MIN_RESCHEDULE_SHIFT: TimeDelta = TimeDelta::minutes(15);
 pub(crate) async fn enqueue_event_attendance_cancellation_notifications(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     event_id: Uuid,
     canceled_user_id: Uuid,
     promoted_user_ids: Vec<Uuid>,
@@ -41,7 +41,7 @@ pub(crate) async fn enqueue_event_attendance_cancellation_notifications(
     // Fetch notification context after the attendance mutation
     let (site_settings, event) = tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     )?;
 
     // Confirm the canceled attendance to the attendee
@@ -76,13 +76,13 @@ pub(crate) async fn enqueue_event_attendance_cancellation_notifications(
 pub(crate) async fn enqueue_event_canceled_notification(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     event_id: Uuid,
 ) -> Result<()> {
     // Fetch event full and attendee IDs concurrently
     let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
-        db.get_event_full(community_id, group_id, event_id),
+        db.get_event_full(alliance_id, group_id, event_id),
         db.list_event_attendees_ids(group_id, event_id),
         db.list_event_waitlist_ids(group_id, event_id)
     )?;
@@ -120,13 +120,13 @@ pub(crate) async fn enqueue_event_canceled_notification(
 pub(crate) async fn enqueue_event_published_notifications(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     event_id: Uuid,
 ) -> Result<()> {
     // Fetch event full and group member IDs concurrently
     let (event_full, group_member_ids, team_member_ids) = tokio::try_join!(
-        db.get_event_full(community_id, group_id, event_id),
+        db.get_event_full(alliance_id, group_id, event_id),
         db.list_group_members_ids(group_id),
         db.list_group_team_members_ids(group_id)
     )?;
@@ -190,7 +190,7 @@ pub(crate) async fn enqueue_event_published_notifications(
 pub(crate) async fn enqueue_event_rescheduled_notification(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     event_id: Uuid,
     before: &EventSummary,
@@ -201,7 +201,7 @@ pub(crate) async fn enqueue_event_rescheduled_notification(
     }
 
     // Fetch updated event summary to compare start times and detect reschedule
-    let after = db.get_event_summary(community_id, group_id, event_id).await?;
+    let after = db.get_event_summary(alliance_id, group_id, event_id).await?;
     let should_notify = match (before.published, before.starts_at, after.starts_at) {
         (true, Some(b_starts_at), Some(a_starts_at)) if a_starts_at > Utc::now() => {
             (a_starts_at - b_starts_at).abs() >= MIN_RESCHEDULE_SHIFT
@@ -214,7 +214,7 @@ pub(crate) async fn enqueue_event_rescheduled_notification(
 
     // Fetch event full and attendee IDs concurrently
     let (event_full, attendee_ids) = tokio::try_join!(
-        db.get_event_full(community_id, group_id, event_id),
+        db.get_event_full(alliance_id, group_id, event_id),
         db.list_event_attendees_ids(group_id, event_id)
     )?;
 
@@ -248,7 +248,7 @@ pub(crate) async fn enqueue_event_rescheduled_notification(
 pub(crate) async fn enqueue_event_series_canceled_notifications(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     event_ids: &[Uuid],
 ) -> Result<()> {
@@ -259,7 +259,7 @@ pub(crate) async fn enqueue_event_series_canceled_notifications(
     for event_id in event_ids {
         // Fetch event full and affected user IDs for this canceled occurrence
         let (event_full, attendee_ids, waitlist_ids) = tokio::try_join!(
-            db.get_event_full(community_id, group_id, *event_id),
+            db.get_event_full(alliance_id, group_id, *event_id),
             db.list_event_attendees_ids(group_id, *event_id),
             db.list_event_waitlist_ids(group_id, *event_id)
         )?;
@@ -317,7 +317,7 @@ pub(crate) async fn enqueue_event_series_canceled_notifications(
 pub(crate) async fn enqueue_event_series_published_notifications(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     event_ids: &[Uuid],
 ) -> Result<()> {
@@ -338,7 +338,7 @@ pub(crate) async fn enqueue_event_series_published_notifications(
     let mut speaker_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
     for event_id in event_ids {
         // Map members and speakers to the published occurrence relevant to them
-        let event_full = db.get_event_full(community_id, group_id, *event_id).await?;
+        let event_full = db.get_event_full(alliance_id, group_id, *event_id).await?;
 
         // Test events in a series should stay out of publication broadcasts
         if event_full.test_event {
@@ -367,10 +367,10 @@ pub(crate) async fn enqueue_event_series_published_notifications(
     // Enqueue group member notifications about the published event series
     let site_settings = db.get_site_settings().await?;
     for group in group_recipients_by_events(member_events) {
-        let Some(community_display_name) = group
+        let Some(alliance_display_name) = group
             .events
             .first()
-            .map(|event| event.event.community_display_name.clone())
+            .map(|event| event.event.alliance_display_name.clone())
         else {
             continue;
         };
@@ -379,7 +379,7 @@ pub(crate) async fn enqueue_event_series_published_notifications(
             continue;
         };
         let template_data = EventSeriesPublished {
-            community_display_name,
+            alliance_display_name,
             event_count: group.events.len(),
             events: group.events,
             group_name,
@@ -422,7 +422,7 @@ pub(crate) async fn enqueue_event_series_published_notifications(
 pub(crate) async fn enqueue_event_waitlist_promoted_notification(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     event_id: Uuid,
     before: &EventSummary,
@@ -435,7 +435,7 @@ pub(crate) async fn enqueue_event_waitlist_promoted_notification(
     // Fetch notification context and updated event summary concurrently
     let (site_settings, event) = tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary(community_id, group_id, event_id)
+        db.get_event_summary(alliance_id, group_id, event_id)
     )?;
     if !should_send_waitlist_promoted_notification(&event, &promoted_user_ids) {
         return Ok(());
@@ -457,7 +457,7 @@ pub(crate) async fn enqueue_event_waitlist_promoted_notification(
 pub(crate) async fn enqueue_event_welcome_notification(
     db: &dyn DBOperations,
     server_cfg: &HttpServerConfig,
-    community_id: Uuid,
+    alliance_id: Uuid,
     event_id: Uuid,
     user_id: Uuid,
     include_dashboard_link: bool,
@@ -465,7 +465,7 @@ pub(crate) async fn enqueue_event_welcome_notification(
     // Fetch notification context after the attendance mutation
     let (site_settings, event) = tokio::try_join!(
         db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
+        db.get_event_summary_by_id(alliance_id, event_id)
     )?;
 
     // Build and enqueue the attendee welcome notification
@@ -563,7 +563,7 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn test_enqueue_event_series_canceled_notifications_groups_by_recipient_event_set() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
+        let alliance_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let related_event_id = Uuid::new_v4();
@@ -574,12 +574,12 @@ mod tests {
         let speaker_id = Uuid::new_v4();
         let test_event_recipient_id = Uuid::new_v4();
         let event =
-            sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
+            sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
         let related_event =
-            sample_event_full_with_speakers(community_id, related_event_id, group_id, &[]);
+            sample_event_full_with_speakers(alliance_id, related_event_id, group_id, &[]);
         let test_event = EventFull {
             test_event: true,
-            ..sample_event_full_with_speakers(community_id, test_event_id, group_id, &[])
+            ..sample_event_full_with_speakers(alliance_id, test_event_id, group_id, &[])
         };
         let notifications = Arc::new(Mutex::new(Vec::new()));
 
@@ -588,7 +588,7 @@ mod tests {
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
+                *cid == alliance_id && *gid == group_id && *eid == event_id
             })
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_event_attendees_ids()
@@ -602,7 +602,7 @@ mod tests {
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == related_event_id
+                *cid == alliance_id && *gid == group_id && *eid == related_event_id
             })
             .returning(move |_, _, _| Ok(related_event.clone()));
         db.expect_list_event_attendees_ids()
@@ -616,7 +616,7 @@ mod tests {
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == test_event_id
+                *cid == alliance_id && *gid == group_id && *eid == test_event_id
             })
             .returning(move |_, _, _| Ok(test_event.clone()));
         db.expect_list_event_attendees_ids()
@@ -645,7 +645,7 @@ mod tests {
         enqueue_event_series_canceled_notifications(
             &db,
             &sample_server_cfg(),
-            community_id,
+            alliance_id,
             group_id,
             &[event_id, related_event_id, test_event_id],
         )
@@ -697,7 +697,7 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn test_enqueue_event_series_published_notifications_groups_members_and_speakers() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
+        let alliance_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let related_event_id = Uuid::new_v4();
@@ -706,9 +706,9 @@ mod tests {
         let related_event_speaker_id = Uuid::new_v4();
         let team_member_id = Uuid::new_v4();
         let event =
-            sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
+            sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
         let related_event = sample_event_full_with_speakers(
-            community_id,
+            alliance_id,
             related_event_id,
             group_id,
             &[speaker_id, related_event_speaker_id],
@@ -728,13 +728,13 @@ mod tests {
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
+                *cid == alliance_id && *gid == group_id && *eid == event_id
             })
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == related_event_id
+                *cid == alliance_id && *gid == group_id && *eid == related_event_id
             })
             .returning(move |_, _, _| Ok(related_event.clone()));
         db.expect_get_site_settings()
@@ -755,7 +755,7 @@ mod tests {
         enqueue_event_series_published_notifications(
             &db,
             &sample_server_cfg(),
-            community_id,
+            alliance_id,
             group_id,
             &[event_id, related_event_id],
         )
@@ -814,7 +814,7 @@ mod tests {
     #[tokio::test]
     async fn test_enqueue_event_published_notifications_sends_members_and_speakers_separately() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
+        let alliance_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let member_id = Uuid::new_v4();
@@ -822,7 +822,7 @@ mod tests {
         let speaker_member_id = Uuid::new_v4();
         let team_member_id = Uuid::new_v4();
         let event = sample_event_full_with_speakers(
-            community_id,
+            alliance_id,
             event_id,
             group_id,
             &[speaker_id, speaker_member_id],
@@ -834,7 +834,7 @@ mod tests {
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
+                *cid == alliance_id && *gid == group_id && *eid == event_id
             })
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_group_members_ids()
@@ -863,7 +863,7 @@ mod tests {
         enqueue_event_published_notifications(
             &db,
             &sample_server_cfg(),
-            community_id,
+            alliance_id,
             group_id,
             event_id,
         )
@@ -900,7 +900,7 @@ mod tests {
     #[tokio::test]
     async fn test_enqueue_event_rescheduled_notification_skips_small_shift() {
         // Setup identifiers and data structures
-        let community_id = Uuid::new_v4();
+        let alliance_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let before = sample_future_event_summary(event_id, group_id);
@@ -914,7 +914,7 @@ mod tests {
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
+                *cid == alliance_id && *gid == group_id && *eid == event_id
             })
             .returning(move |_, _, _| Ok(after.clone()));
 
@@ -922,7 +922,7 @@ mod tests {
         enqueue_event_rescheduled_notification(
             &db,
             &sample_server_cfg(),
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             &before,
@@ -935,7 +935,7 @@ mod tests {
     async fn test_enqueue_event_rescheduled_notification_sends_to_attendees_and_speakers() {
         // Setup identifiers and data structures
         let attendee_id = Uuid::new_v4();
-        let community_id = Uuid::new_v4();
+        let alliance_id = Uuid::new_v4();
         let event_id = Uuid::new_v4();
         let group_id = Uuid::new_v4();
         let speaker_id = Uuid::new_v4();
@@ -945,7 +945,7 @@ mod tests {
             ..before.clone()
         };
         let event =
-            sample_event_full_with_speakers(community_id, event_id, group_id, &[speaker_id]);
+            sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
         let notifications = Arc::new(Mutex::new(Vec::new()));
 
         // Setup database mock
@@ -953,13 +953,13 @@ mod tests {
         db.expect_get_event_summary()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
+                *cid == alliance_id && *gid == group_id && *eid == event_id
             })
             .returning(move |_, _, _| Ok(after.clone()));
         db.expect_get_event_full()
             .times(1)
             .withf(move |cid, gid, eid| {
-                *cid == community_id && *gid == group_id && *eid == event_id
+                *cid == alliance_id && *gid == group_id && *eid == event_id
             })
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_event_attendees_ids()
@@ -984,7 +984,7 @@ mod tests {
         enqueue_event_rescheduled_notification(
             &db,
             &sample_server_cfg(),
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             &before,
@@ -1039,7 +1039,7 @@ mod tests {
 
     /// Builds a sample full event with the provided event-level speakers.
     fn sample_event_full_with_speakers(
-        community_id: Uuid,
+        alliance_id: Uuid,
         event_id: Uuid,
         group_id: Uuid,
         speaker_ids: &[Uuid],
@@ -1053,7 +1053,7 @@ mod tests {
                     user: sample_template_user_with_id(user_id),
                 })
                 .collect(),
-            ..sample_event_full(community_id, event_id, group_id)
+            ..sample_event_full(alliance_id, event_id, group_id)
         }
     }
 

@@ -9,7 +9,7 @@ select plan(42);
 -- VARIABLES
 -- ============================================================================
 \set category1ID '3a3c0000-0000-0000-0000-000000000001'
-\set community1ID '3a3c0000-0000-0000-0000-000000000002'
+\set alliance1ID '3a3c0000-0000-0000-0000-000000000002'
 \set event13ID '3a3c0000-0000-0000-0000-000000000003'
 \set event14ID '3a3c0000-0000-0000-0000-000000000004'
 \set event15ID '3a3c0000-0000-0000-0000-000000000005'
@@ -28,7 +28,7 @@ select plan(42);
 \set group1ID '3a3c0000-0000-0000-0000-000000000018'
 \set questionsAttendeeUserID '3a3c0000-0000-0000-0000-000000000019'
 \set questionsCategoryID '3a3c0000-0000-0000-0000-000000000020'
-\set questionsCommunityID '3a3c0000-0000-0000-0000-000000000021'
+\set questionsAllianceID '3a3c0000-0000-0000-0000-000000000021'
 \set questionsEventCategoryID '3a3c0000-0000-0000-0000-000000000022'
 \set questionsGroupID '3a3c0000-0000-0000-0000-000000000023'
 \set questionsOrganizerUserID '3a3c0000-0000-0000-0000-000000000024'
@@ -42,9 +42,9 @@ select plan(42);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -52,18 +52,18 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
+    :'alliance1ID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance for testing purposes',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
--- Community for registration-question update tests
-insert into community (
-    community_id,
+-- Alliance for registration-question update tests
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -71,9 +71,9 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'questionsCommunityID',
-    'update-questions-community',
-    'Update Questions Community',
+    :'questionsAllianceID',
+    'update-questions-alliance',
+    'Update Questions Alliance',
     'Desc',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
@@ -91,30 +91,30 @@ insert into "user" (user_id, auth_hash, email, username, name) values
     (:'questionsAttendeeUserID', 'rq-hash-2', 'rq-attendee@example.com', 'rq-attendee', null);
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
+insert into event_category (event_category_id, name, alliance_id)
 values
-    (:'category1ID', 'Conference', :'community1ID'),
-    (:'questionsEventCategoryID', 'General', :'questionsCommunityID');
+    (:'category1ID', 'Conference', :'alliance1ID'),
+    (:'questionsEventCategoryID', 'General', :'questionsAllianceID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('3a3c0000-0000-0000-0000-000000000030', 'Technology', :'community1ID');
+insert into group_category (group_category_id, name, alliance_id)
+values ('3a3c0000-0000-0000-0000-000000000030', 'Technology', :'alliance1ID');
 
 -- Group category for registration-question update tests
-insert into group_category (group_category_id, name, community_id)
-values (:'questionsCategoryID', 'Technology', :'questionsCommunityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'questionsCategoryID', 'Technology', :'questionsAllianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'group1ID',
-    :'community1ID',
+    :'alliance1ID',
     'Test Group',
     'abc1234',
     'A test group',
@@ -124,13 +124,13 @@ insert into "group" (
 -- Group for registration-question update tests
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug
 ) values (
     :'questionsGroupID',
-    :'questionsCommunityID',
+    :'questionsAllianceID',
     :'questionsCategoryID',
     'Update Questions Group',
     'update-questions-group'

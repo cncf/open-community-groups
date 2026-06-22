@@ -90,7 +90,7 @@ const bindLifecycleListeners = () => {
 };
 
 /**
- * Queues a page view for a tracked community, group, or event.
+ * Queues a page view for a tracked alliance, group, or event.
  * @param {Object} params Page view parameters.
  * @param {string} params.entityId Tracked entity id.
  * @param {string} params.entityType Tracked entity type.
@@ -102,8 +102,8 @@ export const trackPageView = ({ entityId, entityType }) => {
   }
 
   const endpoint =
-    entityType === "community"
-      ? `/communities/${entityId}/views`
+    entityType === "alliance"
+      ? `/alliances/${entityId}/views`
       : entityType === "event"
         ? `/events/${entityId}/views`
         : `/groups/${entityId}/views`;

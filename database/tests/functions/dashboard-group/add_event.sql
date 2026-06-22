@@ -9,7 +9,7 @@ select plan(37);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a020000-0000-0000-0000-000000000001'
+\set allianceID '3a020000-0000-0000-0000-000000000001'
 \set eventCategoryID '3a020000-0000-0000-0000-000000000011'
 \set groupCategoryID '3a020000-0000-0000-0000-000000000010'
 \set groupID '3a020000-0000-0000-0000-000000000002'
@@ -24,9 +24,9 @@ select plan(37);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -34,10 +34,10 @@ insert into community (
     banner_mobile_url,
     banner_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
-    'A vibrant community for cloud native technologies and practices in Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
     'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png'
@@ -50,24 +50,24 @@ insert into "user" (user_id, email, username, auth_hash, name) values
     (:'user3ID', 'speaker1@example.com', 'speaker1', 'hash3', 'Speaker One');
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Conference', :'communityID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'eventCategoryID', 'Conference', :'allianceID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
+insert into group_category (group_category_id, name, alliance_id)
+values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     'Kubernetes Study Group',
     'abc1234',
     'A study group focused on Kubernetes best practices and implementation',
@@ -102,14 +102,14 @@ values
 select ok(
     (select (
         get_event_full(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             add_event(
                 null::uuid,
                 :'groupID'::uuid,
                 '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
-        )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels'
+        )::jsonb - 'alliance' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels'
     )) = '{
         "attendee_count": 0,
         "canceled": false,
@@ -147,7 +147,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             event_id,
             resource_type,
@@ -211,7 +211,7 @@ with new_event as (
         '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "CloudNativeCon Seattle 2025",
-            "description": "Premier conference for cloud native technologies and community collaboration",
+            "description": "Premier conference for cloud native technologies and alliance collaboration",
             "timezone": "America/Los_Angeles",
             "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "hybrid",
@@ -280,14 +280,14 @@ select event_id as "eventID" from new_event \gset
 -- Check event fields except sessions
 select ok(
     (select get_event_full(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'groupID'::uuid,
         :'eventID'::uuid
-    )::jsonb - 'community' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels') = '{
+    )::jsonb - 'alliance' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'sessions' - 'slug' - 'cfs_labels') = '{
         "attendee_count": 0,
         "canceled": false,
         "category_name": "Conference",
-        "description": "Premier conference for cloud native technologies and community collaboration",
+        "description": "Premier conference for cloud native technologies and alliance collaboration",
         "hosts": [
             {"name": "Host One", "user_id": "3a020000-0000-0000-0000-000000000020", "username": "host1"},
             {"name": "Host Two", "user_id": "3a020000-0000-0000-0000-000000000021", "username": "host2"}
@@ -348,7 +348,7 @@ select ok(
 select ok(
     (select (
         get_event_full(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'groupID'::uuid,
             :'eventID'::uuid
         )::jsonb->'sessions'->'2030-01-01'
@@ -442,7 +442,7 @@ select is(
         )
         from jsonb_array_elements(
             get_event_full(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventWithCfsLabelsID'::uuid
             )::jsonb->'cfs_labels'

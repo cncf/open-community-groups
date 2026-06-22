@@ -10,7 +10,7 @@ declare
     v_event_canceled boolean;
     v_event_deleted boolean;
     v_event_ends_at timestamptz;
-    v_community_id uuid;
+    v_alliance_id uuid;
     v_event_id uuid;
     v_hold_expires_at timestamptz;
     v_event_published boolean;
@@ -35,7 +35,7 @@ begin
         e.canceled,
         e.deleted,
         e.ends_at,
-        g.community_id,
+        g.alliance_id,
         e.published,
         e.starts_at,
         g.active
@@ -43,7 +43,7 @@ begin
         v_event_canceled,
         v_event_deleted,
         v_event_ends_at,
-        v_community_id,
+        v_alliance_id,
         v_event_published,
         v_event_starts_at,
         v_group_active
@@ -122,7 +122,7 @@ begin
 
     -- Return the identifiers needed by the caller after completion
     return jsonb_build_object(
-        'community_id', v_community_id,
+        'alliance_id', v_alliance_id,
         'event_id', v_event_id,
         'user_id', v_user_id
     );

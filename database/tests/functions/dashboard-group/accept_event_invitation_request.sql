@@ -10,7 +10,7 @@ select plan(19);
 -- ============================================================================
 
 \set actorID '3a010000-0000-0000-0000-000000000001'
-\set communityID '3a010000-0000-0000-0000-000000000002'
+\set allianceID '3a010000-0000-0000-0000-000000000002'
 \set eventApprovalDisabledID '3a010000-0000-0000-0000-000000000003'
 \set eventAttendeeConflictID '3a010000-0000-0000-0000-000000000004'
 \set eventCategoryID '3a010000-0000-0000-0000-000000000005'
@@ -36,9 +36,9 @@ select plan(19);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -47,22 +47,22 @@ insert into community (
     logo_url
 )
 values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
@@ -76,12 +76,12 @@ values
     (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request');
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug, active)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, active)
 values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Group', 'group', true),
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Group', 'group', true),
     (
         :'inactiveGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Inactive Group',
         'inactive-group',
@@ -397,7 +397,7 @@ select results_eq(
         select
             action,
             actor_user_id,
-            community_id,
+            alliance_id,
             details,
             event_id,
             group_id,
@@ -422,7 +422,7 @@ select results_eq(
             'user'
         )
         $$,
-        :'actorID', :'communityID', :'eventID', :'requesterID', :'eventID', :'groupID', :'requesterID'
+        :'actorID', :'allianceID', :'eventID', :'requesterID', :'eventID', :'groupID', :'requesterID'
     ),
     'Should track the acceptance in the audit log'
 );

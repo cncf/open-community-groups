@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_NAMES,
   navigateToPath,
 } from "../../utils.js";
@@ -43,14 +43,14 @@ const getMonthDistance = (from, to) =>
 
 // Find a populated month with an adjacent empty month for navigation coverage.
 const findCalendarNavigationScenario = async (page) => {
-  const data = await page.evaluate(async (communityName) => {
+  const data = await page.evaluate(async (allianceName) => {
     const params = new URLSearchParams();
-    params.append("community[0]", communityName);
+    params.append("alliance[0]", allianceName);
     params.set("view_mode", "calendar");
     params.set("date_from", "1900-01-01");
     params.set("date_to", "2100-12-31");
 
-    // Fetch the full calendar data set for the selected community.
+    // Fetch the full calendar data set for the selected alliance.
     const response = await fetch(
       `/explore/events/search?${params.toString()}`,
       {
@@ -63,7 +63,7 @@ const findCalendarNavigationScenario = async (page) => {
     }
 
     return response.json();
-  }, TEST_COMMUNITY_NAME);
+  }, TEST_ALLIANCE_NAME);
 
   // Build the set of months that currently have events.
   const populatedMonths = new Set(
@@ -106,10 +106,10 @@ test.describe("site explore events page", () => {
   test("supports kind filtering and switching to calendar view", async ({
     page,
   }) => {
-    // Load the events explore page with the community filter applied.
+    // Load the events explore page with the alliance filter applied.
     await navigateToPath(
       page,
-      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=events&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Verify events render before applying filters.
@@ -168,7 +168,7 @@ test.describe("site explore events page", () => {
     // Load the events explore page for an empty search result.
     await navigateToPath(
       page,
-      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=events&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Submit a search query that has no matching events.
@@ -233,7 +233,7 @@ test.describe("site explore events page", () => {
     // Load events data to find adjacent calendar months.
     await navigateToPath(
       page,
-      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=events&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Set up scenario.
@@ -247,7 +247,7 @@ test.describe("site explore events page", () => {
     // Load the calendar on the empty adjacent month.
     await navigateToPath(
       page,
-      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}` +
+      `/explore?entity=events&alliance[0]=${TEST_ALLIANCE_NAME}` +
         `&view_mode=calendar&date_from=${emptyRange.first}&date_to=${emptyRange.last}`,
     );
 
@@ -321,7 +321,7 @@ test.describe("site explore events page", () => {
     // Load events data to find adjacent calendar months.
     await navigateToPath(
       page,
-      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}`,
+      `/explore?entity=events&alliance[0]=${TEST_ALLIANCE_NAME}`,
     );
 
     // Set up scenario.
@@ -335,7 +335,7 @@ test.describe("site explore events page", () => {
     // Load the calendar on the populated adjacent month.
     await navigateToPath(
       page,
-      `/explore?entity=events&community[0]=${TEST_COMMUNITY_NAME}` +
+      `/explore?entity=events&alliance[0]=${TEST_ALLIANCE_NAME}` +
         `&view_mode=calendar&date_from=${populatedRange.first}&date_to=${populatedRange.last}`,
     );
 

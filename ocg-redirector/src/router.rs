@@ -20,18 +20,18 @@ use crate::config::HttpServerConfig;
 pub(crate) struct State {
     /// Base URL used for matched redirects.
     pub base_redirect_url: Arc<str>,
-    /// Redirect host suffix used to extract the community name.
+    /// Redirect host suffix used to extract the alliance name.
     pub redirect_host_suffix: Arc<str>,
-    /// Redirects keyed by community name and normalized legacy path.
+    /// Redirects keyed by alliance name and normalized legacy path.
     pub redirects: Arc<RwLock<Redirects>>,
 }
 
-/// Redirect communities keyed by community name.
-pub(crate) type Redirects = HashMap<String, CommunityRedirects>;
+/// Redirect alliances keyed by alliance name.
+pub(crate) type Redirects = HashMap<String, AllianceRedirects>;
 
-/// Redirect settings and mappings for one community.
+/// Redirect settings and mappings for one alliance.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct CommunityRedirects {
+pub(crate) struct AllianceRedirects {
     /// Base legacy URL used for unmatched redirect requests.
     pub base_legacy_url: Option<String>,
     /// Redirects keyed by normalized legacy path.
@@ -65,15 +65,15 @@ async fn health_check() -> impl IntoResponse {
     StatusCode::OK
 }
 
-/// Redirects the request to the canonical location or the community fallback.
+/// Redirects the request to the canonical location or the alliance fallback.
 #[instrument(skip_all)]
 async fn redirect(
     AxumState(state): AxumState<State>,
     headers: HeaderMap,
     uri: Uri,
 ) -> impl IntoResponse {
-    // Resolve the community from the redirector hostname
-    let Some(community_name) = community_name_from_headers(&headers, &state.redirect_host_suffix)
+    // Resolve the alliance from the redirector hostname
+    let Some(alliance_name) = alliance_name_from_headers(&headers, &state.redirect_host_suffix)
     else {
         return StatusCode::NOT_FOUND.into_response();
     };
@@ -84,22 +84,22 @@ async fn redirect(
     // Resolve the target while borrowing the shared redirect map
     let redirect_target = {
         let redirects = state.redirects.read().await;
-        let Some(community_redirects) = redirects.get(&community_name) else {
+        let Some(alliance_redirects) = redirects.get(&alliance_name) else {
             return StatusCode::NOT_FOUND.into_response();
         };
 
-        // Redirect root requests to the community page
+        // Redirect root requests to the alliance page
         if legacy_path == "/" {
-            community_redirect_target(&state.base_redirect_url, &community_name)
+            alliance_redirect_target(&state.base_redirect_url, &alliance_name)
         // Redirect known legacy paths to their canonical target
-        } else if let Some(new_path) = community_redirects.redirects.get(&legacy_path) {
+        } else if let Some(new_path) = alliance_redirects.redirects.get(&legacy_path) {
             format!("{}{new_path}", state.base_redirect_url)
-        // Fall back to the legacy site when the community still needs one
-        } else if let Some(base_legacy_url) = &community_redirects.base_legacy_url {
+        // Fall back to the legacy site when the alliance still needs one
+        } else if let Some(base_legacy_url) = &alliance_redirects.base_legacy_url {
             legacy_redirect_target(base_legacy_url, &uri)
-        // Redirect unmatched paths to the community page when no legacy fallback is configured
+        // Redirect unmatched paths to the alliance page when no legacy fallback is configured
         } else {
-            community_redirect_target(&state.base_redirect_url, &community_name)
+            alliance_redirect_target(&state.base_redirect_url, &alliance_name)
         }
     };
 
@@ -108,26 +108,26 @@ async fn redirect(
 
 // Helpers.
 
-/// Extracts the community name from the request host headers.
-fn community_name_from_headers(headers: &HeaderMap, redirect_host_suffix: &str) -> Option<String> {
+/// Extracts the alliance name from the request host headers.
+fn alliance_name_from_headers(headers: &HeaderMap, redirect_host_suffix: &str) -> Option<String> {
     let host = headers.get(HOST)?.to_str().ok()?;
 
-    community_name_from_host(host, redirect_host_suffix)
+    alliance_name_from_host(host, redirect_host_suffix)
 }
 
-/// Extracts the community name from a redirector host.
-fn community_name_from_host(host: &str, redirect_host_suffix: &str) -> Option<String> {
+/// Extracts the alliance name from a redirector host.
+fn alliance_name_from_host(host: &str, redirect_host_suffix: &str) -> Option<String> {
     let host = normalize_host(host);
     let suffix = format!(".{redirect_host_suffix}");
 
     host.strip_suffix(&suffix)
-        .filter(|community_name| !community_name.is_empty() && !community_name.contains('.'))
+        .filter(|alliance_name| !alliance_name.is_empty() && !alliance_name.contains('.'))
         .map(ToString::to_string)
 }
 
-/// Builds the fallback redirect target for a known community.
-fn community_redirect_target(base_redirect_url: &str, community_name: &str) -> String {
-    format!("{base_redirect_url}/{community_name}")
+/// Builds the fallback redirect target for a known alliance.
+fn alliance_redirect_target(base_redirect_url: &str, alliance_name: &str) -> String {
+    format!("{base_redirect_url}/{alliance_name}")
 }
 
 /// Builds the fallback redirect target from the original request.
@@ -188,39 +188,39 @@ mod tests {
     }
 
     #[test]
-    fn test_community_name_from_host_extracts_matching_subdomain() {
+    fn test_alliance_name_from_host_extracts_matching_subdomain() {
         assert_eq!(
-            community_name_from_host("active-community.redirects.example", "redirects.example"),
-            Some("active-community".to_string())
+            alliance_name_from_host("active-alliance.redirects.example", "redirects.example"),
+            Some("active-alliance".to_string())
         );
         assert_eq!(
-            community_name_from_host(
-                "ACTIVE-COMMUNITY.REDIRECTS.EXAMPLE:443",
+            alliance_name_from_host(
+                "ACTIVE-ALLIANCE.REDIRECTS.EXAMPLE:443",
                 "redirects.example"
             ),
-            Some("active-community".to_string())
+            Some("active-alliance".to_string())
         );
         assert_eq!(
-            community_name_from_host("active-community.redirects.example.", "redirects.example"),
-            Some("active-community".to_string())
+            alliance_name_from_host("active-alliance.redirects.example.", "redirects.example"),
+            Some("active-alliance".to_string())
         );
     }
 
     #[test]
-    fn test_community_name_from_host_rejects_unknown_hosts() {
+    fn test_alliance_name_from_host_rejects_unknown_hosts() {
         assert_eq!(
-            community_name_from_host("redirects.example", "redirects.example"),
+            alliance_name_from_host("redirects.example", "redirects.example"),
             None
         );
         assert_eq!(
-            community_name_from_host(
-                "nested.active-community.redirects.example",
+            alliance_name_from_host(
+                "nested.active-alliance.redirects.example",
                 "redirects.example"
             ),
             None
         );
         assert_eq!(
-            community_name_from_host("active-community.example", "redirects.example"),
+            alliance_name_from_host("active-alliance.example", "redirects.example"),
             None
         );
     }
@@ -234,9 +234,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_redirect_drops_query_string_from_lookup_and_target() {
-        let router = test_router(test_community_redirects(HashMap::from([(
+        let router = test_router(test_alliance_redirects(HashMap::from([(
             "/events/legacy-event".to_string(),
-            "/community/group/group/event/event".to_string(),
+            "/alliance/group/group/event/event".to_string(),
         )])));
         let response = router
             .oneshot(test_request("/events/legacy-event?utm_source=test"))
@@ -246,61 +246,61 @@ mod tests {
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/community/group/group/event/event")
+            &HeaderValue::from_static("https://ocg.example/alliance/group/group/event/event")
         );
     }
 
     #[tokio::test]
     async fn test_redirect_normalizes_event_trailing_slash_lookup() {
-        let router = test_router(test_community_redirects(HashMap::from([(
+        let router = test_router(test_alliance_redirects(HashMap::from([(
             "/events/legacy-event".to_string(),
-            "/community/group/group/event/event".to_string(),
+            "/alliance/group/group/event/event".to_string(),
         )])));
         let response = router.oneshot(test_request("/events/legacy-event/")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/community/group/group/event/event")
+            &HeaderValue::from_static("https://ocg.example/alliance/group/group/event/event")
         );
     }
 
     #[tokio::test]
     async fn test_redirects_event_match_to_canonical_url() {
-        let router = test_router(test_community_redirects(HashMap::from([(
+        let router = test_router(test_alliance_redirects(HashMap::from([(
             "/events/legacy-event".to_string(),
-            "/community/group/group/event/event".to_string(),
+            "/alliance/group/group/event/event".to_string(),
         )])));
         let response = router.oneshot(test_request("/events/legacy-event")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/community/group/group/event/event")
+            &HeaderValue::from_static("https://ocg.example/alliance/group/group/event/event")
         );
     }
 
     #[tokio::test]
     async fn test_redirects_group_match_to_canonical_url() {
-        let router = test_router(test_community_redirects(HashMap::from([(
+        let router = test_router(test_alliance_redirects(HashMap::from([(
             "/legacy-group".to_string(),
-            "/community/group/group".to_string(),
+            "/alliance/group/group".to_string(),
         )])));
         let response = router.oneshot(test_request("/legacy-group")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/community/group/group")
+            &HeaderValue::from_static("https://ocg.example/alliance/group/group")
         );
     }
 
     #[tokio::test]
-    async fn test_redirects_root_to_community_page() {
-        let router = test_router(test_community_redirects_with_legacy_fallback(
+    async fn test_redirects_root_to_alliance_page() {
+        let router = test_router(test_alliance_redirects_with_legacy_fallback(
             HashMap::from([(
                 "/".to_string(),
-                "/active-community/group/root-group".to_string(),
+                "/active-alliance/group/root-group".to_string(),
             )]),
         ));
         let response = router.oneshot(test_request("/")).await.unwrap();
@@ -308,32 +308,32 @@ mod tests {
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/active-community")
+            &HeaderValue::from_static("https://ocg.example/active-alliance")
         );
     }
 
     #[tokio::test]
-    async fn test_redirects_same_path_by_request_community() {
+    async fn test_redirects_same_path_by_request_alliance() {
         let router = test_router(HashMap::from([
             (
-                "active-community".to_string(),
+                "active-alliance".to_string(),
                 test_redirects(HashMap::from([(
                     "/groups/active".to_string(),
-                    "/active-community/group/active-group".to_string(),
+                    "/active-alliance/group/active-group".to_string(),
                 )])),
             ),
             (
-                "other-community".to_string(),
+                "other-alliance".to_string(),
                 test_redirects(HashMap::from([(
                     "/groups/active".to_string(),
-                    "/other-community/group/active-group".to_string(),
+                    "/other-alliance/group/active-group".to_string(),
                 )])),
             ),
         ]));
         let response = router
             .oneshot(test_host_request(
                 "/groups/active",
-                "other-community.redirects.ocg.example",
+                "other-alliance.redirects.ocg.example",
             ))
             .await
             .unwrap();
@@ -341,13 +341,13 @@ mod tests {
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/other-community/group/active-group")
+            &HeaderValue::from_static("https://ocg.example/other-alliance/group/active-group")
         );
     }
 
     #[tokio::test]
     async fn test_redirects_to_base_legacy_url_when_match_is_missing_and_fallback_is_configured() {
-        let router = test_router(test_community_redirects_with_legacy_fallback(HashMap::new()));
+        let router = test_router(test_alliance_redirects_with_legacy_fallback(HashMap::new()));
         let response = router
             .oneshot(test_request("/missing/path/?utm_source=test"))
             .await
@@ -361,32 +361,32 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_redirects_to_community_page_when_match_is_missing() {
-        let router = test_router(test_community_redirects(HashMap::new()));
+    async fn test_redirects_to_alliance_page_when_match_is_missing() {
+        let router = test_router(test_alliance_redirects(HashMap::new()));
         let response = router.oneshot(test_request("/missing")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/active-community")
+            &HeaderValue::from_static("https://ocg.example/active-alliance")
         );
     }
 
     #[tokio::test]
-    async fn test_redirects_to_community_page_when_match_is_duplicated() {
-        let router = test_router(test_community_redirects(HashMap::new()));
+    async fn test_redirects_to_alliance_page_when_match_is_duplicated() {
+        let router = test_router(test_alliance_redirects(HashMap::new()));
         let response = router.oneshot(test_request("/duplicate")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/active-community")
+            &HeaderValue::from_static("https://ocg.example/active-alliance")
         );
     }
 
     #[tokio::test]
-    async fn test_redirects_unknown_community_host_to_not_found() {
-        let router = test_router(test_community_redirects(HashMap::new()));
+    async fn test_redirects_unknown_alliance_host_to_not_found() {
+        let router = test_router(test_alliance_redirects(HashMap::new()));
         let response = router
             .oneshot(test_host_request("/missing", "unknown.example"))
             .await
@@ -396,7 +396,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_redirects_unknown_mapped_community_to_not_found() {
+    async fn test_redirects_unknown_mapped_alliance_to_not_found() {
         let router = test_router(HashMap::new());
         let response = router.oneshot(test_request("/missing")).await.unwrap();
 
@@ -409,9 +409,9 @@ mod tests {
             addr: "127.0.0.1:9001".to_string(),
             base_redirect_url: "https://ocg.example/".to_string(),
         };
-        let redirects = test_community_redirects(HashMap::from([(
+        let redirects = test_alliance_redirects(HashMap::from([(
             "/legacy-group".to_string(),
-            "/community/group/group".to_string(),
+            "/alliance/group/group".to_string(),
         )]));
         let router = setup(Arc::new(RwLock::new(redirects)), &server_cfg);
         let response = router.oneshot(test_request("/legacy-group")).await.unwrap();
@@ -419,24 +419,24 @@ mod tests {
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
         assert_eq!(
             response.headers().get(LOCATION).unwrap(),
-            &HeaderValue::from_static("https://ocg.example/community/group/group")
+            &HeaderValue::from_static("https://ocg.example/alliance/group/group")
         );
     }
 
     // Helpers.
 
-    /// Builds test redirects for the active community.
-    fn test_community_redirects(redirects: HashMap<String, String>) -> Redirects {
-        HashMap::from([("active-community".to_string(), test_redirects(redirects))])
+    /// Builds test redirects for the active alliance.
+    fn test_alliance_redirects(redirects: HashMap<String, String>) -> Redirects {
+        HashMap::from([("active-alliance".to_string(), test_redirects(redirects))])
     }
 
-    /// Builds test redirects for the active community with a legacy fallback.
-    fn test_community_redirects_with_legacy_fallback(
+    /// Builds test redirects for the active alliance with a legacy fallback.
+    fn test_alliance_redirects_with_legacy_fallback(
         redirects: HashMap<String, String>,
     ) -> Redirects {
         HashMap::from([(
-            "active-community".to_string(),
-            CommunityRedirects {
+            "active-alliance".to_string(),
+            AllianceRedirects {
                 base_legacy_url: Some("https://legacy.example/".to_string()),
                 redirects,
             },
@@ -444,8 +444,8 @@ mod tests {
     }
 
     /// Builds test redirects without a legacy fallback.
-    fn test_redirects(redirects: HashMap<String, String>) -> CommunityRedirects {
-        CommunityRedirects {
+    fn test_redirects(redirects: HashMap<String, String>) -> AllianceRedirects {
+        AllianceRedirects {
             base_legacy_url: None,
             redirects,
         }
@@ -453,7 +453,7 @@ mod tests {
 
     /// Builds a test request for the provided path.
     fn test_request(path: &str) -> Request<Body> {
-        test_host_request(path, "active-community.redirects.ocg.example")
+        test_host_request(path, "active-alliance.redirects.ocg.example")
     }
 
     /// Builds a test request for the provided host and path.

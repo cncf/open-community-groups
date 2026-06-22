@@ -10,15 +10,15 @@ create or replace function reject_event_refund_request(
 )
 returns jsonb as $$
 declare
-    v_community_id uuid;
+    v_alliance_id uuid;
     v_event_purchase_id uuid;
 begin
     -- Lock the pending refund request before rejecting it
     select
-        g.community_id,
+        g.alliance_id,
         ep.event_purchase_id
     into
-        v_community_id,
+        v_alliance_id,
         v_event_purchase_id
     from event_purchase ep
     join event e on e.event_id = ep.event_id
@@ -59,7 +59,7 @@ begin
         p_actor_user_id,
         'event',
         p_event_id,
-        v_community_id,
+        v_alliance_id,
         p_group_id,
         p_event_id,
         jsonb_build_object(
@@ -70,7 +70,7 @@ begin
 
     -- Return the identifiers the caller uses after the rejection step
     return jsonb_build_object(
-        'community_id', v_community_id,
+        'alliance_id', v_alliance_id,
         'event_id', p_event_id,
         'user_id', p_user_id
     );

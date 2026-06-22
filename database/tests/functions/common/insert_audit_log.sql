@@ -9,7 +9,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0c0c0000-0000-0000-0000-000000000001'
+\set allianceID '0c0c0000-0000-0000-0000-000000000001'
 \set eventCategoryID '0c0c0000-0000-0000-0000-000000000002'
 \set eventID '0c0c0000-0000-0000-0000-000000000003'
 \set groupCategoryID '0c0c0000-0000-0000-0000-000000000004'
@@ -20,9 +20,9 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -30,26 +30,26 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group');
 
 -- User
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -83,12 +83,12 @@ insert into event (
 -- Should insert an audit row with actor snapshot and default details
 select lives_ok(
     format($$select insert_audit_log(
-        'community_updated',
+        'alliance_updated',
         %L::uuid,
-        'community',
+        'alliance',
         %L::uuid,
         %L::uuid
-    )$$, :'userID', :'communityID', :'communityID'),
+    )$$, :'userID', :'allianceID', :'allianceID'),
     'Should insert an audit row'
 );
 
@@ -100,16 +100,16 @@ select is(
         ) t
     ),
     format('{
-        "action": "community_updated",
+        "action": "alliance_updated",
         "actor_user_id": "%s",
         "actor_username": "user",
-        "community_id": "%s",
+        "alliance_id": "%s",
         "details": {},
         "event_id": null,
         "group_id": null,
         "resource_id": "%s",
-        "resource_type": "community"
-    }', :'userID', :'communityID', :'communityID')::jsonb,
+        "resource_type": "alliance"
+    }', :'userID', :'allianceID', :'allianceID')::jsonb,
     'Should persist the actor snapshot and normalized details'
 );
 
@@ -124,7 +124,7 @@ select lives_ok(
         %L::uuid,
         %L::uuid,
         '{"subject":"Launch","recipient_count":42}'::jsonb
-    )$$, :'userID', :'eventID', :'communityID', :'groupID', :'eventID'),
+    )$$, :'userID', :'eventID', :'allianceID', :'groupID', :'eventID'),
     'Should insert an audit row with all scope ids'
 );
 
@@ -141,7 +141,7 @@ select is(
         "action": "event_published",
         "actor_user_id": "%s",
         "actor_username": "user",
-        "community_id": "%s",
+        "alliance_id": "%s",
         "details": {
             "recipient_count": 42,
             "subject": "Launch"
@@ -150,7 +150,7 @@ select is(
         "group_id": "%s",
         "resource_id": "%s",
         "resource_type": "event"
-    }', :'userID', :'communityID', :'eventID', :'groupID', :'eventID')::jsonb,
+    }', :'userID', :'allianceID', :'eventID', :'groupID', :'eventID')::jsonb,
     'Should persist the full audit row with scope ids and explicit details'
 );
 

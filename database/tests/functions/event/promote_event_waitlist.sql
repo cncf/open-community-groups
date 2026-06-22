@@ -9,7 +9,7 @@ select plan(13);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '5e0b0000-0000-0000-0000-000000000001'
+\set allianceID '5e0b0000-0000-0000-0000-000000000001'
 \set eventCappedID '5e0b0000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e0b0000-0000-0000-0000-000000000003'
 \set eventFullID '5e0b0000-0000-0000-0000-000000000004'
@@ -34,9 +34,9 @@ select plan(13);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -44,26 +44,26 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)

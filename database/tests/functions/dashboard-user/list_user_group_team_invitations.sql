@@ -9,8 +9,8 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '4a0d0000-0000-0000-0000-000000000001'
-\set communityOtherID '4a0d0000-0000-0000-0000-000000000002'
+\set allianceID '4a0d0000-0000-0000-0000-000000000001'
+\set allianceOtherID '4a0d0000-0000-0000-0000-000000000002'
 \set groupAcceptedID '4a0d0000-0000-0000-0000-000000000003'
 \set groupCategoryID '4a0d0000-0000-0000-0000-000000000004'
 \set groupCategoryOtherID '4a0d0000-0000-0000-0000-000000000005'
@@ -23,9 +23,9 @@ select plan(3);
 -- SEED DATA
 -- ============================================================================
 
--- Communities
-insert into community (
-    community_id,
+-- Alliances
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -33,28 +33,28 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'community-one',
-    'Community One',
-    'Primary community with pending group invitations',
+    :'allianceID',
+    'alliance-one',
+    'Alliance One',
+    'Primary alliance with pending group invitations',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 ), (
-    :'communityOtherID',
-    'community-two',
-    'Community Two',
-    'Secondary community with pending group invitations',
+    :'allianceOtherID',
+    'alliance-two',
+    'Alliance Two',
+    'Secondary alliance with pending group invitations',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group categories
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategoryID', :'communityID', 'Technology'),
-    (:'groupCategoryOtherID', :'communityOtherID', 'Design');
+    (:'groupCategoryID', :'allianceID', 'Technology'),
+    (:'groupCategoryOtherID', :'allianceOtherID', 'Design');
 
 -- Users
 insert into "user" (
@@ -81,13 +81,13 @@ insert into "user" (
 );
 
 -- Groups
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Group One', 'group-one'),
-    (:'groupAcceptedID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two'),
-    (:'groupOtherID', :'communityOtherID', :'groupCategoryOtherID', 'Group Three', 'group-three');
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Group One', 'group-one'),
+    (:'groupAcceptedID', :'allianceID', :'groupCategoryID', 'Group Two', 'group-two'),
+    (:'groupOtherID', :'allianceOtherID', :'groupCategoryOtherID', 'Group Three', 'group-three');
 
--- Pending group invitations (two in main community, one in other community)
+-- Pending group invitations (two in main alliance, one in other alliance)
 insert into group_team (group_id, user_id, role, accepted, created_at) values
     (:'groupID', :'userID', 'admin', false, '2024-01-02 10:00:00+00'),
     (:'groupAcceptedID', :'userID', 'admin', false, '2024-01-03 10:00:00+00'),
@@ -103,21 +103,21 @@ where group_id = :'groupAcceptedID'
 -- TESTS
 -- ============================================================================
 
--- Should list all pending invitations for a user across all communities
+-- Should list all pending invitations for a user across all alliances
 select is(
     list_user_group_team_invitations(:'userID'::uuid)::jsonb,
     format(
         $json$
             [
                 {
-                    "community_name": "community-two",
+                    "alliance_name": "alliance-two",
                     "group_id": "%s",
                     "group_name": "Group Three",
                     "role": "admin",
                     "created_at": 1704362400
                 },
                 {
-                    "community_name": "community-one",
+                    "alliance_name": "alliance-one",
                     "group_id": "%s",
                     "group_name": "Group One",
                     "role": "admin",
@@ -149,7 +149,7 @@ select is(
         $json$
             [
                 {
-                    "community_name": "community-one",
+                    "alliance_name": "alliance-one",
                     "group_id": "%s",
                     "group_name": "Group One",
                     "role": "admin",

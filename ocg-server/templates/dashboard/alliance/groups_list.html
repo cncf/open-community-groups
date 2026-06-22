@@ -1,0 +1,317 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{# Groups list header with title -#}
+{{ dashboard::page_title(title = "Groups", docs_href = "/docs#/guides/alliance-dashboard?id=groups-portfolio") -}}
+
+<div class="flex justify-between my-10">
+  <div class="flex items-center gap-x-6">
+    {# Search groups input -#}
+    <div class="relative">
+      <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
+        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+      </div>
+      <form id="groups-search-form"
+            hx-get="/dashboard/alliance/groups"
+            hx-trigger="change, submit"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner">
+        <input id="search_groups"
+               name="ts_query"
+               type="text"
+               value="{{ ts_query|assigned_or("") }}"
+               class="input-primary peer ps-9 w-96"
+               placeholder="Search groups"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false">
+      </form>
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button hx-get="/dashboard/alliance/groups"
+                hx-trigger="click"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                class="cursor-pointer mt-0.5">
+          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+        </button>
+      </div>
+    </div>
+    {# End search groups input -#}
+  </div>
+
+  {# Add group button -#}
+  <div>
+    <button id="add-group-button"
+            hx-get="/dashboard/alliance/groups/add"
+            hx-target="#dashboard-content"
+            hx-replace-url="/dashboard/alliance?tab=groups"
+            hx-indicator="#dashboard-spinner"
+            {% if !can_manage_groups -%}
+              disabled title="Your role cannot add groups."
+            {% endif -%}
+            class="btn-primary
+                   {% if !can_manage_groups -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}">Add Group</button>
+  </div>
+  {# End add group button -#}
+</div>
+
+<div class="text-sm text-stone-600">
+  {{ pagination::range_display(offset = offset.unwrap_or(0) , count = groups.len(), total = total, label = "group") }}
+</div>
+{# End groups list header with title -#}
+
+{# Groups Table -#}
+<div class="relative overflow-visible mt-5">
+  <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8">
+    <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
+      {# Table header -#}
+      <tr>
+        <th scope="col" class="px-3 xl:px-5 py-3">Name</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Location</th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Created</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Category</th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-[152px]">
+          <span class="sr-only">Actions</span>
+        </th>
+      </tr>
+      {# End table header -#}
+    </thead>
+    <tbody id="groups-list">
+      {% if groups.is_empty() -%}
+        {# Empty state -#}
+        <tr class="bg-white border-b border-stone-200">
+          {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+            {# No results when filtering -#}
+            <td class="xl:hidden px-8 py-20 text-center" colspan="2">
+              {% include "dashboard/placeholders/alliance_groups_no_results.html" -%}
+            </td>
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
+                colspan="4">{% include "dashboard/placeholders/alliance_groups_no_results.html" -%}</td>
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
+              {% include "dashboard/placeholders/alliance_groups_no_results.html" -%}
+            </td>
+            {# End no results when filtering -#}
+          {% else -%}
+            {# No groups created yet -#}
+            <td class="xl:hidden px-8 py-20 text-center" colspan="2">
+              {% include "dashboard/placeholders/alliance_groups_table.html" -%}
+            </td>
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-20 text-center"
+                colspan="4">{% include "dashboard/placeholders/alliance_groups_table.html" -%}</td>
+            <td class="hidden 2xl:table-cell px-8 py-20 text-center" colspan="5">
+              {% include "dashboard/placeholders/alliance_groups_table.html" -%}
+            </td>
+            {# End no groups created yet -#}
+          {% endif -%}
+        </tr>
+        {# End empty state -#}
+      {% else -%}
+        {% for group in groups -%}
+          {# Group row -#}
+          <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            <th scope="row"
+                class="px-3 xl:px-5 py-4 font-medium text-stone-900 min-w-[100px] max-w-[200px] xl:max-w-auto">
+              <div class="flex items-center">
+                <div class="min-w-0">
+                  {# Group name -#}
+                  <div class="max-w-full truncate flex items-center gap-x-2">
+                    <button type="button"
+                            data-select-group-id="{{ group.group_id }}"
+                            class="truncate cursor-pointer text-left bg-transparent border-0 p-0"
+                            aria-label="Open group dashboard: {{ group.name }}">{{ group.name }}</button>
+                    {% if !group.active -%}
+                      <span class="inline-block px-2 py-0.5 bg-amber-600 text-white text-[10px] leading-4 rounded-full uppercase whitespace-nowrap">Inactive</span>
+                    {% endif -%}
+                  </div>
+                  {# End group name -#}
+
+                  {# Mobile category and location -#}
+                  <div class="block xl:hidden mt-1.5 space-y-1 text-xs text-stone-500">
+                    <div class="max-w-full truncate">{{ group.category.name }}</div>
+                    {% if let Some(location) = &group.location(40) -%}
+                      <div class="max-w-full truncate">{{ location }}</div>
+                    {% endif -%}
+                  </div>
+                  {# End mobile category and location -#}
+                </div>
+              </div>
+            </th>
+
+            {# Location -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[200px]">
+              {% if let Some(location) = &group.location(50) -%}
+                <div class="max-w-full truncate">{{ location }}</div>
+              {% else -%}
+                <span class="text-stone-400">-</span>
+              {% endif -%}
+            </td>
+            {# End location -#}
+
+            {# Created date -#}
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-32">
+              {{ group.created_at.format("%B %e, %Y") }}
+            </td>
+            {# End created date -#}
+
+            {# Category -#}
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap min-w-[100px] max-w-[150px]">
+              <div class="max-w-full truncate">{{ group.category.name }}</div>
+            </td>
+            {# End category -#}
+
+            {# Actions -#}
+            <td class="px-3 xl:px-5 py-4 w-[152px]">
+              <div class="flex items-center justify-end gap-2">
+                {# Update group button -#}
+                <div>
+                  <button hx-get="/dashboard/alliance/groups/{{ group.group_id }}/update"
+                          hx-target="#dashboard-content"
+                          hx-replace-url="/dashboard/alliance?tab=groups"
+                          hx-indicator="#dashboard-spinner"
+                          hx-swap="innerHTML show:body:top"
+                          hx-disabled-elt="this"
+                          class="btn-tertiary p-2">
+                    <div class="svg-icon size-4 icon-pencil"></div>
+                  </button>
+                </div>
+                {# End update group button -#}
+
+                {# View group button -#}
+                <div>
+                  {% if group.active -%}
+                    <a href="/{{ group.alliance_name }}/group/{{ group.public_slug() }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn-tertiary-anchor p-2 inline-flex items-center justify-center"
+                       aria-label="View group page: {{ group.name }}">
+                      <div class="svg-icon size-4 icon-eye"></div>
+                    </a>
+                  {% else -%}
+                    <button disabled
+                            class="btn-tertiary p-2 inline-flex items-center justify-center opacity-50 cursor-not-allowed"
+                            title="Group must be active"
+                            aria-label="View group page: {{ group.name }}">
+                      <div class="svg-icon size-4 icon-eye"></div>
+                    </button>
+                  {% endif -%}
+                </div>
+                {# End view group button -#}
+
+                {# Actions dropdown -#}
+                <div class="group relative">
+                  <button data-group-id="{{ group.group_id }}"
+                          class="btn-group-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50"
+                          {% if !can_manage_groups -%}
+                            disabled title="Your role cannot activate, deactivate, or delete groups."
+                          {% endif -%}
+                          aria-label="Open actions menu for group {{ group.name }}">
+                    <div class="svg-icon size-4 icon-vertical-dots"></div>
+                  </button>
+
+                  <div id="dropdown-group-actions-{{ group.group_id }}"
+                       class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                    <ul class="py-2 text-sm text-stone-700">
+                      {# Activate/deactivate button -#}
+                      {% if group.active -%}
+                        <li>
+                          <button id="deactivate-group-{{ group.group_id }}"
+                                  hx-put="/dashboard/alliance/groups/{{ group.group_id }}/deactivate"
+                                  hx-target="#dashboard-content"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-trigger="confirmed"
+                                  data-confirm-action
+                                  data-confirm-message="Are you sure you wish to deactivate this group?"
+                                  data-confirm-text="Yes"
+                                  data-success-message="You have successfully deactivated the group."
+                                  data-error-message="Something went wrong deactivating this group. Please try again later."
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                         {% if !can_manage_groups -%}
+                                           opacity-50 cursor-not-allowed
+                                         {% endif -%}"
+                                  {% if !can_manage_groups -%}
+                                    disabled title="Your role cannot deactivate groups."
+                                  {% endif -%}>
+                            <div class="flex items-center">
+                              <div class="svg-icon size-4 icon-cancel bg-stone-600"></div>
+                              <div class="ms-2">Deactivate</div>
+                            </div>
+                          </button>
+                        </li>
+                      {% else -%}
+                        <li>
+                          <button id="activate-group-{{ group.group_id }}"
+                                  hx-put="/dashboard/alliance/groups/{{ group.group_id }}/activate"
+                                  hx-target="#dashboard-content"
+                                  hx-indicator="#dashboard-spinner"
+                                  hx-trigger="confirmed"
+                                  data-confirm-action
+                                  data-confirm-message="Are you sure you wish to activate this group?"
+                                  data-confirm-text="Yes"
+                                  data-success-message="You have successfully activated the group."
+                                  data-error-message="Something went wrong activating this group. Please try again later."
+                                  class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                         {% if !can_manage_groups -%}
+                                           opacity-50 cursor-not-allowed
+                                         {% endif -%}"
+                                  {% if !can_manage_groups -%}
+                                    disabled title="Your role cannot activate groups."
+                                  {% endif -%}>
+                            <div class="flex items-center">
+                              <div class="svg-icon size-4 icon-power bg-stone-600"></div>
+                              <div class="ms-2">Activate</div>
+                            </div>
+                          </button>
+                        </li>
+                      {% endif -%}
+                      {# End activate/deactivate button -#}
+
+                      {# Delete button -#}
+                      <li>
+                        <button id="delete-group-{{ group.group_id }}"
+                                hx-delete="/dashboard/alliance/groups/{{ group.group_id }}/delete"
+                                hx-target="#dashboard-content"
+                                hx-indicator="#dashboard-spinner"
+                                hx-trigger="confirmed"
+                                data-confirm-action
+                                data-confirm-message="Are you sure you wish to delete this group?"
+                                data-confirm-text="Yes"
+                                data-success-message="You have successfully deleted the group."
+                                data-error-message="Something went wrong deleting this group. Please try again later."
+                                class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
+                                       {% if !can_manage_groups -%}
+                                         opacity-50 cursor-not-allowed
+                                       {% endif -%}"
+                                {% if !can_manage_groups -%}
+                                  disabled title="Your role cannot delete groups."
+                                {% endif -%}>
+                          <div class="flex items-center">
+                            <div class="svg-icon size-4 icon-trash bg-stone-600"></div>
+                            <div class="ms-2">Delete</div>
+                          </div>
+                        </button>
+                      </li>
+                      {# End delete button -#}
+                    </ul>
+                  </div>
+                </div>
+                {# End actions dropdown -#}
+              </div>
+            </td>
+            {# End actions -#}
+          </tr>
+          {# End group row -#}
+        {% endfor -%}
+      {% endif -%}
+    </tbody>
+  </table>
+</div>
+{# End Groups Table -#}
+
+{# Pagination -#}
+{% if total > groups.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}
+{# End pagination -#}

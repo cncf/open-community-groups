@@ -14,7 +14,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedFormQs},
     },
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -37,7 +37,7 @@ mod tests;
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
@@ -48,12 +48,12 @@ pub(crate) async fn list_page(
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let (can_manage_events, _event, labels, statuses, submissions) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_summary(community_id, group_id, event_id), // ensure event belongs to group
+        db.get_event_summary(alliance_id, group_id, event_id), // ensure event belongs to group
         db.list_event_cfs_labels(event_id),
         db.list_cfs_submission_statuses_for_review(),
         db.list_event_cfs_submissions(event_id, &filters)
@@ -89,7 +89,7 @@ pub(crate) async fn list_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
     CurrentUser(reviewer): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
@@ -98,7 +98,7 @@ pub(crate) async fn update(
     ValidatedFormQs(update): ValidatedFormQs<CfsSubmissionUpdate>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Ensure event belongs to the group
-    let event = db.get_event_summary(community_id, group_id, event_id).await?;
+    let event = db.get_event_summary(alliance_id, group_id, event_id).await?;
 
     // Update submission in database
     let should_notify = db

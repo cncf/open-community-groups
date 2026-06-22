@@ -5,7 +5,7 @@
 
 {# Events update form -#}
 {% let event_read_only = event.canceled || !can_manage_events -%}
-{% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
+{% let event_public_url = "/".to_owned() + &event.alliance.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
 <div id="event-update-page"
      class="space-y-12"
@@ -16,11 +16,11 @@
      data-event-canceled="{{ event.canceled }}"
      data-event-past="{{ event.is_past() }}"
      data-can-manage-events="{{ can_manage_events }}"
-     data-community-name="{{ event.community.name }}"
-     data-community-display-name="{{ event.community.display_name }}"
-     data-community-logo-url="{{ event.community.logo_url }}"
-     data-community-banner-url="{{ event.community.banner_url }}"
-     data-community-banner-mobile-url="{{ event.community.banner_mobile_url }}"
+     data-alliance-name="{{ event.alliance.name }}"
+     data-alliance-display-name="{{ event.alliance.display_name }}"
+     data-alliance-logo-url="{{ event.alliance.logo_url }}"
+     data-alliance-banner-url="{{ event.alliance.banner_url }}"
+     data-alliance-banner-mobile-url="{{ event.alliance.banner_mobile_url }}"
      data-group-name="{{ event.group.name }}"
      data-group-slug="{{ event.group.public_slug() }}"
      data-group-logo-url="{{ event.group.logo_url }}"
@@ -210,15 +210,15 @@
               {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
 
               {# Logo URL -#}
-              {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
+              {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the group logo, then the alliance logo if needed.", value_attr = logo_value, field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
               {# End Logo URL -#}
 
               {# Banner URL -#}
-              {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_value, input_class = "w-full block") -}}
+              {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the alliance banner if needed.", value_attr = banner_value, input_class = "w-full block") -}}
               {# End Banner URL -#}
 
               {# Banner Mobile URL -#}
-              {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the community banner if needed.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
+              {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the group banner, then the alliance banner if needed.", value_attr = banner_mobile_value, input_class = "w-full block") -}}
               {# End Banner Mobile URL -#}
 
               {# Short Description -#}

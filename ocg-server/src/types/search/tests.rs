@@ -359,7 +359,7 @@ fn test_groups_filters_to_raw_query_preserves_custom_values() {
         offset: Some(15),
         region: vec!["europe".to_string()],
         sort_by: Some("distance".to_string()),
-        ts_query: Some("community".to_string()),
+        ts_query: Some("alliance".to_string()),
         view_mode: Some(ViewMode::List),
         ..Default::default()
     };
@@ -375,7 +375,7 @@ fn test_groups_filters_to_raw_query_preserves_custom_values() {
     assert!(query.contains("offset=15"));
     assert!(query.contains("region[0]=europe"));
     assert!(query.contains("sort_by=distance"));
-    assert!(query.contains("ts_query=community"));
+    assert!(query.contains("ts_query=alliance"));
     assert!(query.contains("view_mode=list"));
     assert!(!query.contains("latitude"));
     assert!(!query.contains("longitude"));

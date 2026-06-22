@@ -7,11 +7,11 @@ create or replace function cancel_event_attendee_invitation(
 )
 returns void as $$
 declare
-    v_community_id uuid;
+    v_alliance_id uuid;
 begin
     -- Lock the event and verify it belongs to the selected group
-    select g.community_id
-    into v_community_id
+    select g.alliance_id
+    into v_alliance_id
     from event e
     join "group" g using (group_id)
     where e.event_id = p_event_id
@@ -43,7 +43,7 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        v_community_id,
+        v_alliance_id,
         p_group_id,
         p_event_id,
         jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)

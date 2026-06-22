@@ -9,7 +9,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '6a060000-0000-0000-0000-000000000001'
+\set allianceID '6a060000-0000-0000-0000-000000000001'
 \set deletedGroupID '6a060000-0000-0000-0000-000000000002'
 \set groupCategoryID '6a060000-0000-0000-0000-000000000003'
 \set groupID '6a060000-0000-0000-0000-000000000004'
@@ -21,9 +21,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -31,18 +31,18 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -53,17 +53,17 @@ values
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
     active,
     deleted
 ) values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
     (
         :'inactiveGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Inactive Group',
         'inactive-group',
@@ -72,7 +72,7 @@ insert into "group" (
     ),
     (
         :'deletedGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Deleted Group',
         'deleted-group',
@@ -92,7 +92,7 @@ values (:'groupID', :'user1ID');
 select lives_ok(
     format(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID', :'groupID', :'user1ID'
+        :'allianceID', :'groupID', :'user1ID'
     ),
     'User should be able to leave a group they are a member of'
 );
@@ -107,7 +107,7 @@ select ok(
 select throws_ok(
     format(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID', :'groupID', :'user2ID'
+        :'allianceID', :'groupID', :'user2ID'
     ),
     'user is not a member of this group',
     'Should not allow user to leave a group they are not a member of'
@@ -117,7 +117,7 @@ select throws_ok(
 select throws_ok(
     format(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID', :'inactiveGroupID', :'user1ID'
+        :'allianceID', :'inactiveGroupID', :'user1ID'
     ),
     'group not found or inactive',
     'Should not allow user to leave an inactive group'
@@ -127,7 +127,7 @@ select throws_ok(
 select throws_ok(
     format(
         $$select leave_group(%L::uuid, %L::uuid, %L::uuid)$$,
-        :'communityID', :'deletedGroupID', :'user1ID'
+        :'allianceID', :'deletedGroupID', :'user1ID'
     ),
     'group not found or inactive',
     'Should not allow user to leave a deleted group'

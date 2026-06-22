@@ -227,7 +227,7 @@ async fn test_user_menu_section_success() {
 }
 
 #[tokio::test]
-async fn test_dashboard_community_redirects_to_user_invitations_when_context_is_missing_and_unavailable()
+async fn test_dashboard_alliance_redirects_to_user_invitations_when_context_is_missing_and_unavailable()
  {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -245,13 +245,13 @@ async fn test_dashboard_community_redirects_to_user_invitations_when_context_is_
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_communities()
+    db.expect_list_user_alliances()
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(|_| Ok(vec![]));
     db.expect_list_user_groups().times(0);
     db.expect_update_session().times(0);
-    db.expect_user_has_community_permission().times(0);
+    db.expect_user_has_alliance_permission().times(0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -260,7 +260,7 @@ async fn test_dashboard_community_redirects_to_user_invitations_when_context_is_
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
-        .uri("/dashboard/community")
+        .uri("/dashboard/alliance")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -330,7 +330,7 @@ async fn test_dashboard_group_redirects_to_user_invitations_when_context_is_miss
 #[tokio::test]
 async fn test_log_in_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -363,7 +363,7 @@ async fn test_log_in_success() {
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| uid == &user_id)
-        .returning(move |_| Ok(sample_user_groups_by_community(community_id, group_id)));
+        .returning(move |_| Ok(sample_user_groups_by_alliance(alliance_id, group_id)));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -768,7 +768,7 @@ async fn test_oauth2_callback_authorization_error() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
+    let selected_alliance_id: Option<Uuid> = session.get(SELECTED_ALLIANCE_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
@@ -780,18 +780,18 @@ async fn test_oauth2_callback_authorization_error() {
         Some("OAuth2 authorization failed: oauth2 auth error".to_string()),
     );
     assert!(!callback_auth.login_called);
-    assert_eq!(selected_community_id, None);
+    assert_eq!(selected_alliance_id, None);
     assert_eq!(selected_group_id, None);
 }
 
 #[tokio::test]
 async fn test_oauth2_callback_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
 
     // Setup in-memory session
     let store = Arc::new(MemoryStore::default());
@@ -838,7 +838,7 @@ async fn test_oauth2_callback_success() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
+    let selected_alliance_id: Option<Uuid> = session.get(SELECTED_ALLIANCE_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
@@ -846,7 +846,7 @@ async fn test_oauth2_callback_success() {
         &HeaderValue::from_static("/dashboard"),
     );
     assert!(callback_auth.login_called);
-    assert_eq!(selected_community_id, Some(community_id));
+    assert_eq!(selected_alliance_id, Some(alliance_id));
     assert_eq!(selected_group_id, Some(group_id));
 }
 
@@ -987,7 +987,7 @@ async fn test_oidc_callback_missing_nonce() {
 
     // Setup router
     let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
+    server_cfg.login.linkedin = true;
     let router = TestRouterBuilder::new(db, nm)
         .with_server_cfg(server_cfg)
         .build()
@@ -996,7 +996,7 @@ async fn test_oidc_callback_missing_nonce() {
     // Setup request
     let request = Request::builder()
         .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session")
+        .uri("/log-in/oidc/linkedin/callback?code=test-code&state=state-in-session")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -1036,7 +1036,7 @@ async fn test_oidc_callback_missing_state() {
 
     // Setup router
     let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
+    server_cfg.login.linkedin = true;
     let router = TestRouterBuilder::new(db, nm)
         .with_server_cfg(server_cfg)
         .build()
@@ -1045,7 +1045,7 @@ async fn test_oidc_callback_missing_state() {
     // Setup request
     let request = Request::builder()
         .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=test-state")
+        .uri("/log-in/oidc/linkedin/callback?code=test-code&state=test-state")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -1091,7 +1091,7 @@ async fn test_oidc_callback_state_mismatch() {
 
     // Setup router
     let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
+    server_cfg.login.linkedin = true;
     let router = TestRouterBuilder::new(db, nm)
         .with_server_cfg(server_cfg)
         .build()
@@ -1100,7 +1100,7 @@ async fn test_oidc_callback_state_mismatch() {
     // Setup request
     let request = Request::builder()
         .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-request")
+        .uri("/log-in/oidc/linkedin/callback?code=test-code&state=state-in-request")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -1152,7 +1152,7 @@ async fn test_oidc_callback_authorization_error() {
         &mut callback_auth,
         session.clone(),
         &db,
-        OidcProvider::LinuxFoundation,
+        OidcProvider::LinkedIn,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
         move |message| {
@@ -1166,7 +1166,7 @@ async fn test_oidc_callback_authorization_error() {
     // Check callback result and side effects
     let response = redirect.into_response();
     let auth_provider: Option<OidcProvider> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
+    let selected_alliance_id: Option<Uuid> = session.get(SELECTED_ALLIANCE_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
@@ -1179,18 +1179,18 @@ async fn test_oidc_callback_authorization_error() {
     );
     assert!(!callback_auth.login_called);
     assert_eq!(auth_provider, None);
-    assert_eq!(selected_community_id, None);
+    assert_eq!(selected_alliance_id, None);
     assert_eq!(selected_group_id, None);
 }
 
 #[tokio::test]
 async fn test_oidc_callback_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
 
     // Setup in-memory session
     let store = Arc::new(MemoryStore::default());
@@ -1226,7 +1226,7 @@ async fn test_oidc_callback_success() {
         &mut callback_auth,
         session.clone(),
         &db,
-        OidcProvider::LinuxFoundation,
+        OidcProvider::LinkedIn,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
         |_| {
@@ -1239,7 +1239,7 @@ async fn test_oidc_callback_success() {
     // Check callback result and side effects
     let response = redirect.into_response();
     let auth_provider: Option<OidcProvider> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
+    let selected_alliance_id: Option<Uuid> = session.get(SELECTED_ALLIANCE_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
     assert_eq!(
@@ -1247,8 +1247,8 @@ async fn test_oidc_callback_success() {
         &HeaderValue::from_static("/dashboard"),
     );
     assert!(callback_auth.login_called);
-    assert_eq!(auth_provider, Some(OidcProvider::LinuxFoundation));
-    assert_eq!(selected_community_id, Some(community_id));
+    assert_eq!(auth_provider, Some(OidcProvider::LinkedIn));
+    assert_eq!(selected_alliance_id, Some(alliance_id));
     assert_eq!(selected_group_id, Some(group_id));
 }
 
@@ -1289,7 +1289,7 @@ async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
 
     // Setup router
     let mut server_cfg = HttpServerConfig::default();
-    server_cfg.login.linuxfoundation = true;
+    server_cfg.login.linkedin = true;
     let router = TestRouterBuilder::new(db, nm)
         .with_server_cfg(server_cfg)
         .build()
@@ -1298,7 +1298,7 @@ async fn test_oidc_callback_returns_error_when_provider_is_not_configured() {
     // Setup request
     let request = Request::builder()
         .method("GET")
-        .uri("/log-in/oidc/linuxfoundation/callback?code=test-code&state=state-in-session")
+        .uri("/log-in/oidc/linkedin/callback?code=test-code&state=state-in-session")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -2273,9 +2273,9 @@ async fn test_verify_email_failure() {
 }
 
 #[tokio::test]
-async fn test_select_first_community_and_group_selects_community_when_user_has_no_groups() {
+async fn test_select_first_alliance_and_group_selects_alliance_when_user_has_no_groups() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
 
     // Setup database mock
@@ -2284,10 +2284,10 @@ async fn test_select_first_community_and_group_selects_community_when_user_has_n
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(|_| Ok(vec![]));
-    db.expect_list_user_communities()
+    db.expect_list_user_alliances()
         .times(1)
         .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(vec![sample_community_summary(community_id)]));
+        .returning(move |_| Ok(vec![sample_alliance_summary(alliance_id)]));
 
     // Setup in-memory session
     let db: DynDB = Arc::new(db);
@@ -2295,14 +2295,14 @@ async fn test_select_first_community_and_group_selects_community_when_user_has_n
     let session = Session::new(None, store, None);
 
     // Execute helper
-    select_first_community_and_group(&db, &session, &user_id)
+    select_first_alliance_and_group(&db, &session, &user_id)
         .await
-        .expect("helper should select first available community");
+        .expect("helper should select first available alliance");
 
     // Check session data matches expectations
-    let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
+    let selected_alliance_id: Option<Uuid> = session.get(SELECTED_ALLIANCE_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
-    assert_eq!(selected_community_id, Some(community_id));
+    assert_eq!(selected_alliance_id, Some(alliance_id));
     assert_eq!(selected_group_id, None);
 }
 
@@ -2344,14 +2344,14 @@ fn test_sanitize_next_url_rejects_external_paths() {
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_allows_request() {
+async fn test_user_has_alliance_dashboard_permission_allows_request() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2363,13 +2363,13 @@ async fn test_user_has_community_dashboard_permission_allows_request() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
-    db.expect_list_user_communities().times(0);
+    db.expect_list_user_alliances().times(0);
     db.expect_list_user_groups().times(0);
     db.expect_update_session().times(0);
 
@@ -2388,7 +2388,7 @@ async fn test_user_has_community_dashboard_permission_allows_request() {
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
             db.clone(),
-            user_has_community_dashboard_permission,
+            user_has_alliance_dashboard_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2410,14 +2410,14 @@ async fn test_user_has_community_dashboard_permission_allows_request() {
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_returns_error_on_db_failure() {
+async fn test_user_has_alliance_dashboard_permission_returns_error_on_db_failure() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2429,13 +2429,13 @@ async fn test_user_has_community_dashboard_permission_returns_error_on_db_failur
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
-    db.expect_list_user_communities().times(0);
+    db.expect_list_user_alliances().times(0);
     db.expect_list_user_groups().times(0);
     db.expect_update_session().times(0);
 
@@ -2454,7 +2454,7 @@ async fn test_user_has_community_dashboard_permission_returns_error_on_db_failur
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
             db.clone(),
-            user_has_community_dashboard_permission,
+            user_has_alliance_dashboard_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2476,7 +2476,7 @@ async fn test_user_has_community_dashboard_permission_returns_error_on_db_failur
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_redirects_when_context_is_missing_and_unavailable()
+async fn test_user_has_alliance_dashboard_permission_redirects_when_context_is_missing_and_unavailable()
  {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -2494,8 +2494,8 @@ async fn test_user_has_community_dashboard_permission_redirects_when_context_is_
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission().times(0);
-    db.expect_list_user_communities()
+    db.expect_user_has_alliance_permission().times(0);
+    db.expect_list_user_alliances()
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(|_| Ok(vec![]));
@@ -2517,7 +2517,7 @@ async fn test_user_has_community_dashboard_permission_redirects_when_context_is_
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
             db.clone(),
-            user_has_community_dashboard_permission,
+            user_has_alliance_dashboard_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2543,15 +2543,15 @@ async fn test_user_has_community_dashboard_permission_redirects_when_context_is_
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_repairs_missing_context() {
+async fn test_user_has_alliance_dashboard_permission_repairs_missing_context() {
     // Setup identifiers and data structures
-    let accessible_community_id = Uuid::new_v4();
+    let accessible_alliance_id = Uuid::new_v4();
     let accessible_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let groups = sample_user_groups_by_community(accessible_community_id, accessible_group_id);
+    let groups = sample_user_groups_by_alliance(accessible_alliance_id, accessible_group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2563,20 +2563,20 @@ async fn test_user_has_community_dashboard_permission_repairs_missing_context() 
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_communities()
+    db.expect_list_user_alliances()
         .times(1)
         .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(vec![sample_community_summary(accessible_community_id)]));
+        .returning(move |_| Ok(vec![sample_alliance_summary(accessible_alliance_id)]));
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(move |_| Ok(groups.clone()));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == accessible_community_id
+            *cid == accessible_alliance_id
                 && *uid == user_id
-                && permission == CommunityPermission::Read
+                && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_session()
@@ -2585,8 +2585,8 @@ async fn test_user_has_community_dashboard_permission_repairs_missing_context() 
             record.id == session_id
                 && record
                     .data
-                    .get(SELECTED_COMMUNITY_ID_KEY)
-                    .is_some_and(|value| value == &json!(accessible_community_id))
+                    .get(SELECTED_ALLIANCE_ID_KEY)
+                    .is_some_and(|value| value == &json!(accessible_alliance_id))
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
@@ -2609,7 +2609,7 @@ async fn test_user_has_community_dashboard_permission_repairs_missing_context() 
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
             db.clone(),
-            user_has_community_dashboard_permission,
+            user_has_alliance_dashboard_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2631,9 +2631,9 @@ async fn test_user_has_community_dashboard_permission_repairs_missing_context() 
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_logs_out_when_selected_community_is_stale() {
+async fn test_user_has_alliance_dashboard_permission_logs_out_when_selected_alliance_is_stale() {
     // Setup identifiers and data structures
-    let inaccessible_community_id = Uuid::new_v4();
+    let inaccessible_alliance_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -2642,7 +2642,7 @@ async fn test_user_has_community_dashboard_permission_logs_out_when_selected_com
         session_id,
         user_id,
         &auth_hash,
-        Some(inaccessible_community_id),
+        Some(inaccessible_alliance_id),
         Some(stale_group_id),
     );
     // Setup database mock
@@ -2655,15 +2655,15 @@ async fn test_user_has_community_dashboard_permission_logs_out_when_selected_com
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == inaccessible_community_id
+            *cid == inaccessible_alliance_id
                 && *uid == user_id
-                && permission == CommunityPermission::Read
+                && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(false));
-    db.expect_list_user_communities().times(0);
+    db.expect_list_user_alliances().times(0);
     db.expect_list_user_groups().times(0);
     db.expect_update_session().times(0);
     db.expect_delete_session()
@@ -2686,7 +2686,7 @@ async fn test_user_has_community_dashboard_permission_logs_out_when_selected_com
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
             db.clone(),
-            user_has_community_dashboard_permission,
+            user_has_alliance_dashboard_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2712,10 +2712,10 @@ async fn test_user_has_community_dashboard_permission_logs_out_when_selected_com
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected_context_is_stale()
+async fn test_user_has_alliance_dashboard_permission_hx_redirects_when_selected_context_is_stale()
 {
     // Setup identifiers and data structures
-    let inaccessible_community_id = Uuid::new_v4();
+    let inaccessible_alliance_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -2724,7 +2724,7 @@ async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected
         session_id,
         user_id,
         &auth_hash,
-        Some(inaccessible_community_id),
+        Some(inaccessible_alliance_id),
         Some(stale_group_id),
     );
 
@@ -2738,15 +2738,15 @@ async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == inaccessible_community_id
+            *cid == inaccessible_alliance_id
                 && *uid == user_id
-                && permission == CommunityPermission::Read
+                && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(false));
-    db.expect_list_user_communities().times(0);
+    db.expect_list_user_alliances().times(0);
     db.expect_list_user_groups().times(0);
     db.expect_update_session().times(0);
     db.expect_delete_session()
@@ -2769,7 +2769,7 @@ async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
             db.clone(),
-            user_has_community_dashboard_permission,
+            user_has_alliance_dashboard_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2796,10 +2796,10 @@ async fn test_user_has_community_dashboard_permission_hx_redirects_when_selected
 }
 
 #[tokio::test]
-async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selected_context_is_stale()
+async fn test_user_has_alliance_dashboard_permission_fetch_redirects_when_selected_context_is_stale()
  {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -2808,7 +2808,7 @@ async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selec
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(stale_group_id),
     );
 
@@ -2822,13 +2822,13 @@ async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selec
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(false));
-    db.expect_list_user_communities().times(0);
+    db.expect_list_user_alliances().times(0);
     db.expect_list_user_groups().times(0);
     db.expect_update_session().times(0);
     db.expect_delete_session()
@@ -2851,7 +2851,7 @@ async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selec
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
             db.clone(),
-            user_has_community_dashboard_permission,
+            user_has_alliance_dashboard_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2878,11 +2878,11 @@ async fn test_user_has_community_dashboard_permission_fetch_redirects_when_selec
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_select_route_allows_request() {
+async fn test_user_has_path_alliance_permission_select_route_allows_request() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
@@ -2896,10 +2896,10 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
 
@@ -2916,12 +2916,12 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/{community_id}/protected",
+            "/{alliance_id}/protected",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2929,7 +2929,7 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/{community_id}/protected"))
+        .uri(format!("/{alliance_id}/protected"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -2943,11 +2943,11 @@ async fn test_user_has_path_community_permission_select_route_allows_request() {
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_select_route_forbidden_without_permission() {
+async fn test_user_has_path_alliance_permission_select_route_forbidden_without_permission() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
@@ -2961,10 +2961,10 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(false));
 
@@ -2981,12 +2981,12 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/{community_id}/protected",
+            "/{alliance_id}/protected",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -2994,7 +2994,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/{community_id}/protected"))
+        .uri(format!("/{alliance_id}/protected"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -3008,11 +3008,11 @@ async fn test_user_has_path_community_permission_select_route_forbidden_without_
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_select_route_returns_error_on_db_failure() {
+async fn test_user_has_path_alliance_permission_select_route_returns_error_on_db_failure() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
@@ -3026,10 +3026,10 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
 
@@ -3046,12 +3046,12 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/{community_id}/protected",
+            "/{alliance_id}/protected",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3059,7 +3059,7 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/{community_id}/protected"))
+        .uri(format!("/{alliance_id}/protected"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -3073,11 +3073,11 @@ async fn test_user_has_path_community_permission_select_route_returns_error_on_d
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_allows_request() {
+async fn test_user_has_path_alliance_permission_allows_request() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
@@ -3091,10 +3091,10 @@ async fn test_user_has_path_community_permission_allows_request() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
 
@@ -3111,12 +3111,12 @@ async fn test_user_has_path_community_permission_allows_request() {
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/community/{community_id}/select",
+            "/alliance/{alliance_id}/select",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3124,7 +3124,7 @@ async fn test_user_has_path_community_permission_allows_request() {
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/community/{community_id}/select"))
+        .uri(format!("/alliance/{alliance_id}/select"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -3138,11 +3138,11 @@ async fn test_user_has_path_community_permission_allows_request() {
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_forbidden_without_permission() {
+async fn test_user_has_path_alliance_permission_forbidden_without_permission() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
@@ -3156,10 +3156,10 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(false));
 
@@ -3176,12 +3176,12 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/community/{community_id}/select",
+            "/alliance/{alliance_id}/select",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3189,7 +3189,7 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/community/{community_id}/select"))
+        .uri(format!("/alliance/{alliance_id}/select"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -3203,11 +3203,11 @@ async fn test_user_has_path_community_permission_forbidden_without_permission() 
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
+async fn test_user_has_path_alliance_permission_returns_error_on_db_failure() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
@@ -3221,10 +3221,10 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
 
@@ -3241,12 +3241,12 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/community/{community_id}/select",
+            "/alliance/{alliance_id}/select",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3254,7 +3254,7 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/community/{community_id}/select"))
+        .uri(format!("/alliance/{alliance_id}/select"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -3268,9 +3268,9 @@ async fn test_user_has_path_community_permission_returns_error_on_db_failure() {
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_select_route_forbidden_when_not_logged_in() {
+async fn test_user_has_path_alliance_permission_select_route_forbidden_when_not_logged_in() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let session_record = sample_empty_session_record(session_id);
 
@@ -3281,7 +3281,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
     db.expect_get_user_by_id().times(0);
-    db.expect_user_has_community_permission().times(0);
+    db.expect_user_has_alliance_permission().times(0);
 
     // Setup router
     let server_cfg = HttpServerConfig::default();
@@ -3296,12 +3296,12 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/community/{community_id}/select",
+            "/alliance/{alliance_id}/select",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3309,7 +3309,7 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/community/{community_id}/select"))
+        .uri(format!("/alliance/{alliance_id}/select"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -3323,9 +3323,9 @@ async fn test_user_has_path_community_permission_select_route_forbidden_when_not
 }
 
 #[tokio::test]
-async fn test_user_has_path_community_permission_protected_route_forbidden_when_not_logged_in() {
+async fn test_user_has_path_alliance_permission_protected_route_forbidden_when_not_logged_in() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let session_record = sample_empty_session_record(session_id);
 
@@ -3336,7 +3336,7 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
     db.expect_get_user_by_id().times(0);
-    db.expect_user_has_community_permission().times(0);
+    db.expect_user_has_alliance_permission().times(0);
 
     // Setup router
     let server_cfg = HttpServerConfig::default();
@@ -3351,12 +3351,12 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
     let auth_layer = crate::auth::setup_layer(&server_cfg, db.clone()).await.unwrap();
     let router = Router::new()
         .route(
-            "/{community_id}/protected",
+            "/{alliance_id}/protected",
             get(|| async { StatusCode::OK }),
         )
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_path_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_path_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3364,7 +3364,7 @@ async fn test_user_has_path_community_permission_protected_route_forbidden_when_
     // Execute request
     let request = Request::builder()
         .method("GET")
-        .uri(format!("/{community_id}/protected"))
+        .uri(format!("/{alliance_id}/protected"))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -3382,11 +3382,11 @@ async fn test_user_has_path_group_permission_allows_request() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3398,14 +3398,14 @@ async fn test_user_has_path_group_permission_allows_request() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_group_belongs_to_community()
+    db.expect_group_belongs_to_alliance()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
 
@@ -3450,11 +3450,11 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3466,14 +3466,14 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_group_belongs_to_community()
+    db.expect_group_belongs_to_alliance()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(false));
 
@@ -3514,15 +3514,15 @@ async fn test_user_has_path_group_permission_forbidden_without_permission() {
 }
 
 #[tokio::test]
-async fn test_user_has_path_group_permission_forbidden_when_group_is_outside_selected_community() {
+async fn test_user_has_path_group_permission_forbidden_when_group_is_outside_selected_alliance() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3534,9 +3534,9 @@ async fn test_user_has_path_group_permission_forbidden_when_group_is_outside_sel
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_group_belongs_to_community()
+    db.expect_group_belongs_to_alliance()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(|_, _| Ok(false));
     db.expect_user_has_group_permission().times(0);
 
@@ -3581,11 +3581,11 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3597,14 +3597,14 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_group_belongs_to_community()
+    db.expect_group_belongs_to_alliance()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(|_, _| Ok(true));
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Err(anyhow!("db error")));
 
@@ -3645,7 +3645,7 @@ async fn test_user_has_path_group_permission_returns_error_on_db_failure() {
 }
 
 #[tokio::test]
-async fn test_user_has_path_group_permission_redirects_when_selected_community_is_missing() {
+async fn test_user_has_path_group_permission_redirects_when_selected_alliance_is_missing() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -3663,7 +3663,7 @@ async fn test_user_has_path_group_permission_redirects_when_selected_community_i
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_group_belongs_to_community().times(0);
+    db.expect_group_belongs_to_alliance().times(0);
     db.expect_user_has_group_permission().times(0);
 
     // Setup router
@@ -3709,13 +3709,13 @@ async fn test_user_has_path_group_permission_redirects_when_selected_community_i
 #[tokio::test]
 async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
-        .insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
+        .insert(SELECTED_ALLIANCE_ID_KEY.to_string(), json!(alliance_id));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3724,7 +3724,7 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
     db.expect_get_user_by_id().times(0);
-    db.expect_group_belongs_to_community().times(0);
+    db.expect_group_belongs_to_alliance().times(0);
     db.expect_user_has_group_permission().times(0);
 
     // Setup router
@@ -3764,14 +3764,14 @@ async fn test_user_has_path_group_permission_forbidden_when_not_logged_in() {
 }
 
 #[tokio::test]
-async fn test_user_has_selected_community_permission_allows_request() {
+async fn test_user_has_selected_alliance_permission_allows_request() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3783,10 +3783,10 @@ async fn test_user_has_selected_community_permission_allows_request() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
 
@@ -3804,8 +3804,8 @@ async fn test_user_has_selected_community_permission_allows_request() {
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_selected_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_selected_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3827,14 +3827,14 @@ async fn test_user_has_selected_community_permission_allows_request() {
 }
 
 #[tokio::test]
-async fn test_user_has_selected_community_permission_forbidden_without_permission() {
+async fn test_user_has_selected_alliance_permission_forbidden_without_permission() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3846,17 +3846,17 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(2)
         .withf(move |cid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *uid == user_id
                 && matches!(
                     permission,
-                    CommunityPermission::Read | CommunityPermission::TeamWrite
+                    AlliancePermission::Read | AlliancePermission::TeamWrite
                 )
         })
-        .returning(|_, _, permission| Ok(permission == CommunityPermission::Read));
+        .returning(|_, _, permission| Ok(permission == AlliancePermission::Read));
     db.expect_delete_session().times(0);
 
     // Setup router
@@ -3873,8 +3873,8 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::TeamWrite),
-            user_has_selected_community_permission,
+            (db.clone(), AlliancePermission::TeamWrite),
+            user_has_selected_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3896,14 +3896,14 @@ async fn test_user_has_selected_community_permission_forbidden_without_permissio
 }
 
 #[tokio::test]
-async fn test_user_has_selected_community_permission_returns_error_on_db_failure() {
+async fn test_user_has_selected_alliance_permission_returns_error_on_db_failure() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -3915,10 +3915,10 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Err(anyhow!("db error")));
 
@@ -3936,8 +3936,8 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_selected_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_selected_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -3959,7 +3959,7 @@ async fn test_user_has_selected_community_permission_returns_error_on_db_failure
 }
 
 #[tokio::test]
-async fn test_user_has_selected_community_permission_redirects_when_context_is_missing_and_unavailable()
+async fn test_user_has_selected_alliance_permission_redirects_when_context_is_missing_and_unavailable()
  {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -3977,13 +3977,13 @@ async fn test_user_has_selected_community_permission_redirects_when_context_is_m
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_communities()
+    db.expect_list_user_alliances()
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(|_| Ok(vec![]));
     db.expect_list_user_groups().times(0);
     db.expect_update_session().times(0);
-    db.expect_user_has_community_permission().times(0);
+    db.expect_user_has_alliance_permission().times(0);
 
     // Setup router
     let server_cfg = HttpServerConfig::default();
@@ -3999,8 +3999,8 @@ async fn test_user_has_selected_community_permission_redirects_when_context_is_m
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_selected_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_selected_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -4026,15 +4026,15 @@ async fn test_user_has_selected_community_permission_redirects_when_context_is_m
 }
 
 #[tokio::test]
-async fn test_user_has_selected_community_permission_repairs_missing_context() {
+async fn test_user_has_selected_alliance_permission_repairs_missing_context() {
     // Setup identifiers and data structures
-    let accessible_community_id = Uuid::new_v4();
+    let accessible_alliance_id = Uuid::new_v4();
     let accessible_group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let groups = sample_user_groups_by_community(accessible_community_id, accessible_group_id);
+    let groups = sample_user_groups_by_alliance(accessible_alliance_id, accessible_group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -4046,20 +4046,20 @@ async fn test_user_has_selected_community_permission_repairs_missing_context() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_list_user_communities()
+    db.expect_list_user_alliances()
         .times(1)
         .withf(move |uid| *uid == user_id)
-        .returning(move |_| Ok(vec![sample_community_summary(accessible_community_id)]));
+        .returning(move |_| Ok(vec![sample_alliance_summary(accessible_alliance_id)]));
     db.expect_list_user_groups()
         .times(1)
         .withf(move |uid| *uid == user_id)
         .returning(move |_| Ok(groups.clone()));
-    db.expect_user_has_community_permission()
+    db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == accessible_community_id
+            *cid == accessible_alliance_id
                 && *uid == user_id
-                && permission == CommunityPermission::Read
+                && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_session()
@@ -4068,8 +4068,8 @@ async fn test_user_has_selected_community_permission_repairs_missing_context() {
             record.id == session_id
                 && record
                     .data
-                    .get(SELECTED_COMMUNITY_ID_KEY)
-                    .is_some_and(|value| value == &json!(accessible_community_id))
+                    .get(SELECTED_ALLIANCE_ID_KEY)
+                    .is_some_and(|value| value == &json!(accessible_alliance_id))
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
@@ -4091,8 +4091,8 @@ async fn test_user_has_selected_community_permission_repairs_missing_context() {
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_selected_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_selected_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -4114,14 +4114,14 @@ async fn test_user_has_selected_community_permission_repairs_missing_context() {
 }
 
 #[tokio::test]
-async fn test_user_has_selected_community_permission_forbidden_when_not_logged_in() {
+async fn test_user_has_selected_alliance_permission_forbidden_when_not_logged_in() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
-        .insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
+        .insert(SELECTED_ALLIANCE_ID_KEY.to_string(), json!(alliance_id));
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -4130,7 +4130,7 @@ async fn test_user_has_selected_community_permission_forbidden_when_not_logged_i
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
     db.expect_get_user_by_id().times(0);
-    db.expect_user_has_community_permission().times(0);
+    db.expect_user_has_alliance_permission().times(0);
 
     // Setup router
     let server_cfg = HttpServerConfig::default();
@@ -4146,8 +4146,8 @@ async fn test_user_has_selected_community_permission_forbidden_when_not_logged_i
     let router = Router::new()
         .route("/protected", get(|| async { StatusCode::OK }))
         .layer(middleware::from_fn_with_state(
-            (db.clone(), CommunityPermission::Read),
-            user_has_selected_community_permission,
+            (db.clone(), AlliancePermission::Read),
+            user_has_selected_alliance_permission,
         ))
         .layer(auth_layer)
         .with_state(state);
@@ -4173,14 +4173,14 @@ async fn test_user_has_selected_group_permission_allows_request() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -4197,7 +4197,7 @@ async fn test_user_has_selected_group_permission_allows_request() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
 
@@ -4242,14 +4242,14 @@ async fn test_user_has_selected_group_permission_forbidden_without_permission() 
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -4266,7 +4266,7 @@ async fn test_user_has_selected_group_permission_forbidden_without_permission() 
     db.expect_user_has_group_permission()
         .times(2)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && matches!(
@@ -4318,14 +4318,14 @@ async fn test_user_has_selected_group_permission_logs_out_when_selected_group_is
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(stale_group_id),
     );
 
@@ -4342,7 +4342,7 @@ async fn test_user_has_selected_group_permission_logs_out_when_selected_group_is
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == stale_group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -4400,14 +4400,14 @@ async fn test_user_has_selected_group_permission_hx_redirects_when_selected_grou
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(stale_group_id),
     );
 
@@ -4424,7 +4424,7 @@ async fn test_user_has_selected_group_permission_hx_redirects_when_selected_grou
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == stale_group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -4483,14 +4483,14 @@ async fn test_user_has_selected_group_permission_fetch_redirects_when_selected_g
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let stale_group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(stale_group_id),
     );
 
@@ -4507,7 +4507,7 @@ async fn test_user_has_selected_group_permission_fetch_redirects_when_selected_g
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == stale_group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -4566,14 +4566,14 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -4590,7 +4590,7 @@ async fn test_user_has_selected_group_permission_returns_error_on_db_failure() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Err(anyhow!("db error")));
 
@@ -4636,10 +4636,10 @@ async fn test_user_has_selected_group_permission_redirects_when_context_is_missi
     // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record =
-        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+        sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -4701,13 +4701,13 @@ async fn test_user_has_selected_group_permission_redirects_when_context_is_missi
 #[tokio::test]
 async fn test_user_has_selected_group_permission_repairs_missing_context() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -4726,7 +4726,7 @@ async fn test_user_has_selected_group_permission_repairs_missing_context() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -4738,8 +4738,8 @@ async fn test_user_has_selected_group_permission_repairs_missing_context() {
             record.id == session_id
                 && record
                     .data
-                    .get(SELECTED_COMMUNITY_ID_KEY)
-                    .is_some_and(|value| value == &json!(community_id))
+                    .get(SELECTED_ALLIANCE_ID_KEY)
+                    .is_some_and(|value| value == &json!(alliance_id))
                 && record
                     .data
                     .get(SELECTED_GROUP_ID_KEY)
@@ -4786,13 +4786,13 @@ async fn test_user_has_selected_group_permission_repairs_missing_context() {
 #[tokio::test]
 async fn test_user_has_selected_group_permission_forbidden_when_not_logged_in() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let mut session_record = sample_empty_session_record(session_id);
     session_record
         .data
-        .insert(SELECTED_COMMUNITY_ID_KEY.to_string(), json!(community_id));
+        .insert(SELECTED_ALLIANCE_ID_KEY.to_string(), json!(alliance_id));
     session_record
         .data
         .insert(SELECTED_GROUP_ID_KEY.to_string(), json!(group_id));

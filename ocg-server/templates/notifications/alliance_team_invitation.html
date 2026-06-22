@@ -1,0 +1,32 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{# Alliance Team Invitation Notification -#}
+{% block subject -%}
+  You have been invited to join the {{ alliance_name }} team
+{% endblock subject -%}
+
+{% block preheader -%}
+  You received an invitation to the {{ alliance_name }} team.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="default mb-30" style="margin-bottom: 30px">
+    You have been invited to join the <strong>{{ alliance_name }}</strong>
+    team on
+    <strong>Open Alliance Groups</strong>.
+    <br />
+    <br />
+    Use the link below to review the details and accept or reject the
+    invitation from your dashboard.
+  </p>
+
+  {{ email::button(link = link, text = "Review invitation", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email notification because someone invited this email
+  address to join the {{ alliance_name }} team. If you did not expect this
+  invitation, you can ignore this message.
+{% endblock footer -%}
+{# End alliance team invitation notification -#}

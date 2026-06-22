@@ -29,6 +29,7 @@ begin
         email_verified,
         name,
         password,
+        photo_url,
         provider,
         username
     ) values (
@@ -37,6 +38,7 @@ begin
         p_email_verified,
         p_user->>'name',
         p_user->>'password',
+        p_user->>'photo_url',
         p_user->'provider',
         v_username
     )
@@ -66,6 +68,7 @@ begin
             'email_verified', u.email_verified,
             'optional_notifications_enabled', u.optional_notifications_enabled,
             'name', u.name,
+            'photo_url', u.photo_url,
             'provider', u.provider,
             'user_id', u.user_id,
             'username', u.username

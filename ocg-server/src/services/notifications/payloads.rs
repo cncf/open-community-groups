@@ -368,7 +368,7 @@ mod tests {
         );
         assert_eq!(
             template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
+            "https://example.test/test-alliance/group/def5678/event/ghi9abc"
         );
         assert_eq!(template.event.event_id, event_id);
         assert_eq!(
@@ -574,7 +574,7 @@ mod tests {
         assert_eq!(joined_template.event.event_id, event_id);
         assert_eq!(
             joined_template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
+            "https://example.test/test-alliance/group/def5678/event/ghi9abc"
         );
 
         assert!(left.attachments.is_empty());
@@ -586,7 +586,7 @@ mod tests {
         assert_eq!(left_template.event.event_id, event_id);
         assert_eq!(
             left_template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
+            "https://example.test/test-alliance/group/def5678/event/ghi9abc"
         );
     }
 
@@ -626,7 +626,7 @@ mod tests {
         assert!(!template.has_registration_questions);
         assert_eq!(
             template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
+            "https://example.test/test-alliance/group/def5678/event/ghi9abc"
         );
         assert_eq!(
             template.theme.primary_color,
@@ -671,7 +671,7 @@ mod tests {
         assert!(template.has_registration_questions);
         assert_eq!(
             template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
+            "https://example.test/test-alliance/group/def5678/event/ghi9abc"
         );
         assert_eq!(
             template.theme.primary_color,
@@ -712,7 +712,7 @@ mod tests {
         assert_eq!(template.event.event_id, event_id);
         assert_eq!(
             template.link,
-            "https://example.test/test-community/group/def5678/event/ghi9abc"
+            "https://example.test/test-alliance/group/def5678/event/ghi9abc"
         );
         assert_eq!(
             template.theme.primary_color,

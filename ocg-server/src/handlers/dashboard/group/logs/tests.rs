@@ -19,7 +19,7 @@ use crate::{
 #[tokio::test]
 async fn test_list_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -28,7 +28,7 @@ async fn test_list_page_db_error() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -45,7 +45,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -81,7 +81,7 @@ async fn test_list_page_db_error() {
 #[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -90,7 +90,7 @@ async fn test_list_page_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let output = sample_audit_logs_output();
@@ -108,7 +108,7 @@ async fn test_list_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -161,6 +161,6 @@ async fn test_list_page_success() {
         )),
     );
     assert!(body.contains("id=\"audit-actor\""));
-    assert!(body.contains("Community updated"));
+    assert!(body.contains("Alliance updated"));
     assert!(body.contains("Schedule updated"));
 }

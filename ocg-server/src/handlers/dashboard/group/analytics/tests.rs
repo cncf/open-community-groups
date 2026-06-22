@@ -17,7 +17,7 @@ use crate::{
 #[tokio::test]
 async fn test_page_db_error() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -26,7 +26,7 @@ async fn test_page_db_error() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -43,12 +43,12 @@ async fn test_page_db_error() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_stats()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(|_, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
@@ -74,7 +74,7 @@ async fn test_page_db_error() {
 #[tokio::test]
 async fn test_page_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -83,7 +83,7 @@ async fn test_page_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
     let stats = sample_group_stats();
@@ -101,12 +101,12 @@ async fn test_page_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, _permission| {
-            *cid == community_id && *gid == group_id && *uid == user_id
+            *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_stats()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(stats.clone()));
 
     // Setup notifications manager mock

@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 
 /// Authentication pages templates.
 pub(crate) mod auth;
-/// Community site templates.
-pub(crate) mod community;
+/// Alliance site templates.
+pub(crate) mod alliance;
 /// Dashboard templates.
 pub(crate) mod dashboard;
 /// Event page templates.
@@ -30,8 +30,8 @@ pub(crate) mod site;
 #[serde(rename_all = "snake_case")]
 pub(crate) enum PageId {
     CheckIn,
-    CommunityDashboard,
-    Community,
+    AllianceDashboard,
+    Alliance,
     Event,
     Group,
     GroupDashboard,

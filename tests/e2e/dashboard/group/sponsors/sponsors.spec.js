@@ -14,7 +14,7 @@ const ORIGINAL_SPONSOR_WEBSITE = "https://techcorp.example.com";
 const UPDATED_SPONSOR_WEBSITE = "https://updated-techcorp.example.com";
 const ORIGINAL_SPONSOR_LOGO_URL = "/static/images/e2e/sponsor-logo.svg";
 const UPDATED_SPONSOR_LOGO_URL =
-  "/static/images/e2e/community-secondary-logo.svg";
+  "/static/images/e2e/alliance-secondary-logo.svg";
 
 test.describe("group dashboard sponsors view", () => {
   test("canceling sponsor visibility confirmation keeps the toggle on and skips the request", async ({

@@ -62,7 +62,7 @@ describe("sessions-section", () => {
         ],
         day_two: [
           {
-            name: "Community panel",
+            name: "Alliance panel",
             starts_at: 1735776000,
             ends_at: 1735779600,
           },
@@ -86,7 +86,7 @@ describe("sessions-section", () => {
     });
     expect(element.sessions[1]).to.include({
       id: 1,
-      name: "Community panel",
+      name: "Alliance panel",
       starts_at: "2025-01-01T19:00",
       ends_at: "2025-01-01T20:00",
     });

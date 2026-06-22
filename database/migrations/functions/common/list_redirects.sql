@@ -1,14 +1,14 @@
 -- Returns all unique normalized redirect mappings with canonical relative paths.
 create or replace function list_redirects()
 returns table (
-    community_name text,
+    alliance_name text,
     legacy_path text,
     new_path text
 ) as $$
     with redirect_candidates as (
         -- Load active, non-deleted group redirect targets
         select
-            c.name as community_name,
+            c.name as alliance_name,
             coalesce(
                 nullif(
                     trim(
@@ -25,7 +25,7 @@ returns table (
                 g.slug
             ) as new_path
         from "group" g
-        join community c using (community_id)
+        join alliance c using (alliance_id)
         where c.active = true
           and g.active = true
           and g.deleted = false
@@ -35,7 +35,7 @@ returns table (
 
         -- Load published, non-deleted event redirect targets
         select
-            c.name as community_name,
+            c.name as alliance_name,
             coalesce(
                 nullif(
                     trim(
@@ -54,7 +54,7 @@ returns table (
             ) as new_path
         from event e
         join "group" g using (group_id)
-        join community c using (community_id)
+        join alliance c using (alliance_id)
         where c.active = true
           and g.active = true
           and g.deleted = false
@@ -62,13 +62,13 @@ returns table (
           and e.published = true
           and e.legacy_url is not null
     )
-    -- Keep only unique normalized legacy paths within each community
+    -- Keep only unique normalized legacy paths within each alliance
     select
-        community_name,
+        alliance_name,
         legacy_path,
         min(new_path) as new_path
     from redirect_candidates
-    group by community_name, legacy_path
+    group by alliance_name, legacy_path
     having count(*) = 1
-    order by community_name, legacy_path;
+    order by alliance_name, legacy_path;
 $$ language sql stable;

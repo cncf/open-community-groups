@@ -65,21 +65,21 @@ pub(crate) async fn cancel_attendance(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
-    Path((community_name, event_id)): Path<(String, Uuid)>,
+    Path((alliance_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve the community from the dashboard route
-    let community_id = db
-        .get_community_id_by_name(&community_name)
+    // Resolve the alliance from the dashboard route
+    let alliance_id = db
+        .get_alliance_id_by_name(&alliance_name)
         .await?
         .ok_or(HandlerError::NotFound)?;
 
     // Validate the row still represents cancelable attendance
-    let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
+    let attendance = db.get_event_attendance(alliance_id, event_id, user.user_id).await?;
     match attendance.status {
         EventAttendanceStatus::Attendee => {}
         EventAttendanceStatus::RegistrationQuestionsPending => {
             // Pending registrations on ticketed events are owned by the checkout hold flow
-            let event = db.get_event_summary_by_id(community_id, event_id).await?;
+            let event = db.get_event_summary_by_id(alliance_id, event_id).await?;
             if event.is_ticketed() {
                 return Err(anyhow::anyhow!(
                     "pending registrations on ticketed events cannot be canceled from My Events"
@@ -101,13 +101,13 @@ pub(crate) async fn cancel_attendance(
         .transaction(|tx| {
             Box::pin(async move {
                 // Cancel attendance and collect any waitlist promotions
-                let leave_result = tx.leave_event(community_id, event_id, user.user_id).await?;
+                let leave_result = tx.leave_event(alliance_id, event_id, user.user_id).await?;
 
                 // Enqueue required cancellation and promotion notifications before committing
                 enqueue_event_attendance_cancellation_notifications(
                     tx,
                     &required_notification_server_cfg,
-                    community_id,
+                    alliance_id,
                     event_id,
                     user.user_id,
                     leave_result.promoted_user_ids,
@@ -131,12 +131,12 @@ pub(crate) async fn submit_registration_answers(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
-    Path((community_name, event_id)): Path<(String, Uuid)>,
+    Path((alliance_name, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<RequiredQuestionnaireAnswersForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve the community from the dashboard route
-    let community_id = db
-        .get_community_id_by_name(&community_name)
+    // Resolve the alliance from the dashboard route
+    let alliance_id = db
+        .get_alliance_id_by_name(&alliance_name)
         .await?
         .ok_or(HandlerError::NotFound)?;
 
@@ -149,7 +149,7 @@ pub(crate) async fn submit_registration_answers(
                 let became_confirmed = tx
                     .submit_event_registration_answers(
                         user.user_id,
-                        community_id,
+                        alliance_id,
                         event_id,
                         &registration_answers,
                     )
@@ -160,7 +160,7 @@ pub(crate) async fn submit_registration_answers(
                     enqueue_event_welcome_notification(
                         tx,
                         &server_cfg,
-                        community_id,
+                        alliance_id,
                         event_id,
                         user.user_id,
                         false,

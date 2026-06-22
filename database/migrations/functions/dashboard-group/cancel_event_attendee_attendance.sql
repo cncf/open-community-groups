@@ -7,7 +7,7 @@ create or replace function cancel_event_attendee_attendance(
 ) returns json as $$
 declare
     v_capacity int;
-    v_community_id uuid;
+    v_alliance_id uuid;
     v_is_ticketed boolean;
     v_promoted_user_ids uuid[] := array[]::uuid[];
     v_purchase_amount_minor bigint;
@@ -16,7 +16,7 @@ begin
     -- Lock the event and verify it belongs to the selected group and can be changed
     select
         e.capacity,
-        g.community_id,
+        g.alliance_id,
         exists(
             select 1
             from event_ticket_type ett
@@ -24,7 +24,7 @@ begin
         )
     into
         v_capacity,
-        v_community_id,
+        v_alliance_id,
         v_is_ticketed
     from event e
     join "group" g using (group_id)
@@ -91,7 +91,7 @@ begin
         p_actor_user_id,
         'user',
         p_user_id,
-        v_community_id,
+        v_alliance_id,
         p_group_id,
         p_event_id,
         jsonb_build_object('event_id', p_event_id, 'user_id', p_user_id)

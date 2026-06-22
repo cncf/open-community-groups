@@ -9,7 +9,7 @@ select plan(27);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '5e090000-0000-0000-0000-000000000001'
+\set allianceID '5e090000-0000-0000-0000-000000000001'
 \set eventApprovalPending '5e090000-0000-0000-0000-000000000002'
 \set eventCanceled '5e090000-0000-0000-0000-000000000003'
 \set eventCategoryID '5e090000-0000-0000-0000-000000000004'
@@ -47,9 +47,9 @@ select plan(27);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -57,22 +57,22 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -85,12 +85,12 @@ values
     (:'user6ID', 'user-6-hash', 'u6@test.com', true, 'u6');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, active, deleted)
 values
-    (:'groupID', :'communityID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
     (
         :'inactiveGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Inactive Group',
         'inactive-group',
@@ -591,7 +591,7 @@ insert into event_purchase (
 
 -- Should remove an attendee from a normal event
 select is(
-    leave_event(:'communityID'::uuid, :'eventOK'::uuid, :'user1ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventOK'::uuid, :'user1ID'::uuid)::jsonb,
     '{"left_status":"attendee","promoted_user_ids":[]}'::jsonb,
     'Removes attendee and returns attendee leave payload'
 );
@@ -608,7 +608,7 @@ select ok(
 
 -- Should allow a user to leave the waitlist
 select is(
-    leave_event(:'communityID'::uuid, :'eventWaitlist'::uuid, :'user2ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventWaitlist'::uuid, :'user2ID'::uuid)::jsonb,
     '{"left_status":"waitlisted","promoted_user_ids":[]}'::jsonb,
     'Removes waitlisted user and returns waitlisted leave payload'
 );
@@ -625,7 +625,7 @@ select ok(
 
 -- Should allow a user to leave a pending invitation request
 select is(
-    leave_event(:'communityID'::uuid, :'eventApprovalPending'::uuid, :'user4ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventApprovalPending'::uuid, :'user4ID'::uuid)::jsonb,
     '{"left_status":"pending-approval","promoted_user_ids":[]}'::jsonb,
     'Removes pending invitation request and returns pending-approval leave payload'
 );
@@ -642,7 +642,7 @@ select ok(
 
 -- Should promote the next waitlisted user when a confirmed attendee leaves a full event
 select is(
-    leave_event(:'communityID'::uuid, :'eventFull'::uuid, :'user1ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventFull'::uuid, :'user1ID'::uuid)::jsonb,
     format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user2ID')::jsonb,
     'Promotes the oldest waitlisted user when capacity opens'
 );
@@ -651,7 +651,7 @@ select is(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventPaidTicketed', :'user3ID'
+        :'allianceID', :'eventPaidTicketed', :'user3ID'
     ),
     'paid attendees must request a refund instead of leaving the event',
     'Should reject paid attendees trying to leave a ticketed event'
@@ -700,14 +700,14 @@ select is(
 
 -- Should continue promoting existing waitlisted users after waitlist is disabled
 select is(
-    leave_event(:'communityID'::uuid, :'eventDisabledWaitlist'::uuid, :'user1ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventDisabledWaitlist'::uuid, :'user1ID'::uuid)::jsonb,
     format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user3ID')::jsonb,
     'Promotes existing waitlisted users even after waitlist is disabled'
 );
 
 -- Should promote the full remaining queue when an unlimited event loses an attendee
 select is(
-    leave_event(:'communityID'::uuid, :'eventUnlimited'::uuid, :'user1ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventUnlimited'::uuid, :'user1ID'::uuid)::jsonb,
     format(
         '{"left_status":"attendee","promoted_user_ids":["%s","%s"]}',
         :'user2ID',
@@ -718,7 +718,7 @@ select is(
 
 -- Should not promote waitlisted users when leaving a ticketed event
 select is(
-    leave_event(:'communityID'::uuid, :'eventTicketed'::uuid, :'user1ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventTicketed'::uuid, :'user1ID'::uuid)::jsonb,
     '{"left_status":"attendee","promoted_user_ids":[]}'::jsonb,
     'Should not promote waitlisted users when a ticketed attendee leaves'
 );
@@ -783,7 +783,7 @@ select is(
 
 -- Should release a promoted pending-questions registration and promote the next user
 select is(
-    leave_event(:'communityID'::uuid, :'eventQuestionsPromoted'::uuid, :'user5ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventQuestionsPromoted'::uuid, :'user5ID'::uuid)::jsonb,
     format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user6ID')::jsonb,
     'Releases a promoted pending-questions registration and promotes the next user'
 );
@@ -801,7 +801,7 @@ select is(
 
 -- Should turn a manually invited pending-questions registration into a rejected invitation
 select is(
-    leave_event(:'communityID'::uuid, :'eventQuestionsInvited'::uuid, :'user5ID'::uuid)::jsonb,
+    leave_event(:'allianceID'::uuid, :'eventQuestionsInvited'::uuid, :'user5ID'::uuid)::jsonb,
     format('{"left_status":"attendee","promoted_user_ids":["%s"]}', :'user6ID')::jsonb,
     'Releases a manually invited pending-questions registration and promotes the next user'
 );
@@ -822,7 +822,7 @@ select is(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventTicketed', :'user5ID'
+        :'allianceID', :'eventTicketed', :'user5ID'
     ),
     'user is not attending or waitlisted for this event',
     'Does not release pending-questions registrations on ticketed events'
@@ -832,7 +832,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventOK', :'user3ID'
+        :'allianceID', :'eventOK', :'user3ID'
     ),
     'user is not attending or waitlisted for this event',
     'Rejects leave requests for pending organizer-created invitations'
@@ -842,7 +842,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventPast', :'user1ID'
+        :'allianceID', :'eventPast', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects leave requests for past events'
@@ -852,7 +852,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventStartedNoEnd', :'user1ID'
+        :'allianceID', :'eventStartedNoEnd', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects started events without an end time for leave requests'
@@ -862,7 +862,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventCanceled', :'user4ID'
+        :'allianceID', :'eventCanceled', :'user4ID'
     ),
     'event not found or inactive',
     'Rejects waitlist leave requests for canceled events'
@@ -872,7 +872,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventDeleted', :'user1ID'
+        :'allianceID', :'eventDeleted', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects leave requests for deleted events'
@@ -882,7 +882,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select leave_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventInactiveGroup', :'user1ID'
+        :'allianceID', :'eventInactiveGroup', :'user1ID'
     ),
     'event not found or inactive',
     'Rejects leave requests for inactive-group events'

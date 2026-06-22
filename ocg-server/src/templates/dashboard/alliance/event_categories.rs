@@ -1,0 +1,50 @@
+//! Templates and types for managing event categories in the alliance dashboard.
+
+use askama::Template;
+use garde::Validate;
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    types::event::EventCategory,
+    validation::{MAX_LEN_ENTITY_NAME, trimmed_non_empty},
+};
+
+// Pages templates.
+
+/// Event categories list page template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "dashboard/alliance/event_categories_list.html")]
+pub(crate) struct ListPage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
+    /// Event categories available in the selected alliance.
+    pub categories: Vec<EventCategory>,
+}
+
+/// Event category add form template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "dashboard/alliance/event_categories_add.html")]
+pub(crate) struct AddPage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
+}
+
+/// Event category update form template.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "dashboard/alliance/event_categories_update.html")]
+pub(crate) struct UpdatePage {
+    /// Whether the current user can manage taxonomy.
+    pub can_manage_taxonomy: bool,
+    /// Event category currently being edited.
+    pub category: EventCategory,
+}
+
+// Types.
+
+/// Event category form payload used by create and update operations.
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+pub(crate) struct EventCategoryInput {
+    /// Event category name.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
+    pub name: String,
+}

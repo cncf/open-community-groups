@@ -28,29 +28,29 @@ insert into site (
 );
 
 -- ============================================================================
--- COMMUNITIES
+-- ALLIANCES
 -- ============================================================================
 
-insert into community (
+insert into alliance (
     ad_banner_link_url,
     ad_banner_url,
     banner_mobile_url,
     banner_url,
-    community_id,
+    alliance_id,
     description,
     display_name,
     logo_url,
     name
 ) values (
-    'https://example.com/community-ad',
-    'https://example.com/community-ad-banner.png',
-    'https://example.com/community-banner-mobile.png',
-    'https://example.com/community-banner.png',
+    'https://example.com/alliance-ad',
+    'https://example.com/alliance-ad-banner.png',
+    'https://example.com/alliance-banner-mobile.png',
+    'https://example.com/alliance-banner.png',
     '00000000-0000-0000-0000-00000000c001',
-    'A community used by Rust database contract tests',
-    'Contract Community',
-    'https://example.com/community-logo.png',
-    'contract-community'
+    'A alliance used by Rust database contract tests',
+    'Contract Alliance',
+    'https://example.com/alliance-logo.png',
+    'contract-alliance'
 );
 
 -- ============================================================================
@@ -75,8 +75,8 @@ insert into "user" (
 ) values
     (
         'contract_hash_organizer',
-        'Builds reliable community platforms',
-        'Open Community Groups',
+        'Builds reliable alliance platforms',
+        'Open Alliance Groups',
         'organizer.contract@example.com',
         true,
         'https://github.com/contract-organizer',
@@ -92,7 +92,7 @@ insert into "user" (
     (
         'contract_hash_attendee',
         'Attends contract test events',
-        'Open Community Groups',
+        'Open Alliance Groups',
         'attendee.contract@example.com',
         true,
         'https://github.com/contract-attendee',
@@ -108,7 +108,7 @@ insert into "user" (
     (
         'contract_hash_waitlist',
         'Waits for contract test events',
-        'Open Community Groups',
+        'Open Alliance Groups',
         'waitlist.contract@example.com',
         true,
         'https://github.com/contract-waitlist',
@@ -233,7 +233,7 @@ insert into "user" (
 -- ============================================================================
 
 insert into region (
-    community_id,
+    alliance_id,
     name,
     region_id
 ) values (
@@ -247,7 +247,7 @@ insert into region (
 -- ============================================================================
 
 insert into group_category (
-    community_id,
+    alliance_id,
     group_category_id,
     name
 ) values (
@@ -261,7 +261,7 @@ insert into group_category (
 -- ============================================================================
 
 insert into event_category (
-    community_id,
+    alliance_id,
     event_category_id,
     name
 ) values (
@@ -278,7 +278,7 @@ insert into "group" (
     banner_mobile_url,
     banner_url,
     city,
-    community_id,
+    alliance_id,
     country_code,
     country_name,
     created_at,
@@ -351,12 +351,12 @@ insert into group_team (
 );
 
 -- ============================================================================
--- COMMUNITY TEAM
+-- ALLIANCE TEAM
 -- ============================================================================
 
-insert into community_team (
+insert into alliance_team (
     accepted,
-    community_id,
+    alliance_id,
     created_at,
     role,
     user_id
@@ -515,7 +515,7 @@ insert into event (
 
 insert into "group" (
     active,
-    community_id,
+    alliance_id,
     description,
     group_category_id,
     group_id,
@@ -1169,7 +1169,7 @@ insert into audit_log (
     actor_user_id,
     actor_username,
     audit_log_id,
-    community_id,
+    alliance_id,
     created_at,
     details,
     group_id,
@@ -1193,7 +1193,7 @@ insert into audit_log (
     actor_user_id,
     actor_username,
     audit_log_id,
-    community_id,
+    alliance_id,
     created_at,
     details,
     event_id,

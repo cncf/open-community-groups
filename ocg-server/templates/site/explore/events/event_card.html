@@ -5,7 +5,7 @@
 
 {# Site Explore Events Event Card -#}
 {% block href -%}
-  {{- "/" -}}{{- event.community_name -}}/group/{{- event.public_group_slug() -}}/event/{{- event.slug -}}
+  {{- "/" -}}{{- event.alliance_name -}}/group/{{- event.public_group_slug() -}}/event/{{- event.slug -}}
 {%- endblock href %}
 
 {% block anchor_attributes -%}
@@ -35,7 +35,7 @@
 
 {% block preheader -%}
   <span>
-    <span class="hidden text-primary-500 sm:inline">{{ event.community_display_name }}</span>
+    <span class="hidden text-primary-500 sm:inline">{{ event.alliance_display_name }}</span>
     <span class="px-1 hidden sm:inline">·</span>
     <span>{{- event.group_name -}}</span>
     <span class="px-1 hidden sm:inline">·</span>

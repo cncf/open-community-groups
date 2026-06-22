@@ -47,7 +47,7 @@ test.describe("user dashboard session proposals view", () => {
 
     // Find the linked row.
     const linkedRow = dashboardContent.locator("tr", {
-      hasText: "Scaling Community Workshops",
+      hasText: "Scaling Alliance Workshops",
     });
     await expect(linkedRow).toContainText("Linked");
     await expect(

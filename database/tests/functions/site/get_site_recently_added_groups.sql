@@ -9,8 +9,8 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set community2ID '9a030000-0000-0000-0000-000000000001'
-\set communityID '9a030000-0000-0000-0000-000000000002'
+\set alliance2ID '9a030000-0000-0000-0000-000000000001'
+\set allianceID '9a030000-0000-0000-0000-000000000002'
 \set group1ID '9a030000-0000-0000-0000-000000000003'
 \set group2ID '9a030000-0000-0000-0000-000000000004'
 \set group3ID '9a030000-0000-0000-0000-000000000005'
@@ -31,9 +31,9 @@ select plan(4);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -41,18 +41,18 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
+    :'allianceID',
     'site-recent-groups',
     'Site Recent Groups',
-    'Community used for site recently added groups tests',
+    'Alliance used for site recently added groups tests',
     'https://example.com/site-recent-groups-banner-mobile.png',
     'https://example.com/site-recent-groups-banner.png',
     'https://example.com/site-recent-groups-logo.png'
 );
 
--- Inactive community
-insert into community (
-    community_id,
+-- Inactive alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -61,10 +61,10 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'community2ID',
+    :'alliance2ID',
     'inactive-site-recent-groups',
     'Inactive Site Recent Groups',
-    'Inactive community used for site recently added groups tests',
+    'Inactive alliance used for site recently added groups tests',
     false,
     'https://example.com/inactive-site-recent-groups-banner-mobile.png',
     'https://example.com/inactive-site-recent-groups-banner.png',
@@ -72,21 +72,21 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategory1ID', :'communityID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Technology');
+    (:'groupCategory1ID', :'allianceID', 'Technology'),
+    (:'groupCategory2ID', :'alliance2ID', 'Technology');
 
 -- Region
-insert into region (region_id, name, community_id)
+insert into region (region_id, name, alliance_id)
 values
-    (:'region1ID', 'North America', :'communityID'),
-    (:'region2ID', 'Europe', :'communityID');
+    (:'region1ID', 'North America', :'allianceID'),
+    (:'region2ID', 'Europe', :'allianceID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -100,37 +100,37 @@ insert into "group" (
     state
 )
 values
-    (:'group1ID', :'communityID', :'groupCategory1ID', 'Test Group 1', 'abc1234',
+    (:'group1ID', :'allianceID', :'groupCategory1ID', 'Test Group 1', 'abc1234',
         'New York', 'US', 'United States', '2024-01-01 09:00:00+00',
         'First group', 'https://example.com/logo1.png', :'region1ID', 'NY'),
-    (:'group2ID', :'communityID', :'groupCategory1ID', 'Test Group 2', 'def5678',
+    (:'group2ID', :'allianceID', :'groupCategory1ID', 'Test Group 2', 'def5678',
         'San Francisco', 'US', 'United States', '2024-01-02 09:00:00+00',
         'Second group', 'https://example.com/logo2.png', :'region1ID', 'CA'),
-    (:'group3ID', :'communityID', :'groupCategory1ID', 'Test Group 3', 'ghi9abc',
+    (:'group3ID', :'allianceID', :'groupCategory1ID', 'Test Group 3', 'ghi9abc',
         'London', 'GB', 'United Kingdom', '2024-01-03 09:00:00+00',
         'Third group', 'https://example.com/logo3.png', :'region2ID', null),
-    (:'group4ID', :'communityID', :'groupCategory1ID', 'Test Group 4', 'jkl0def',
+    (:'group4ID', :'allianceID', :'groupCategory1ID', 'Test Group 4', 'jkl0def',
         'Paris', 'FR', 'France', '2024-01-04 09:00:00+00',
         'Fourth group (no logo)', null, :'region2ID', null),
-    (:'group5ID', :'community2ID', :'groupCategory2ID', 'Inactive Community Group', 'mno1ghi',
+    (:'group5ID', :'alliance2ID', :'groupCategory2ID', 'Inactive Alliance Group', 'mno1ghi',
         'Denver', 'US', 'United States', '2024-01-05 09:00:00+00',
-        'Group in inactive community', 'https://example.com/logo5.png', null, 'CO'),
-    (:'group6ID', :'communityID', :'groupCategory1ID', 'Test Group 6', 'pqr2jkl',
+        'Group in inactive alliance', 'https://example.com/logo5.png', null, 'CO'),
+    (:'group6ID', :'allianceID', :'groupCategory1ID', 'Test Group 6', 'pqr2jkl',
         'Toronto', 'CA', 'Canada', '2024-01-06 09:00:00+00',
         'Sixth group', 'https://example.com/logo6.png', :'region1ID', 'ON'),
-    (:'group7ID', :'communityID', :'groupCategory1ID', 'Test Group 7', 'stu3mno',
+    (:'group7ID', :'allianceID', :'groupCategory1ID', 'Test Group 7', 'stu3mno',
         'Madrid', 'ES', 'Spain', '2024-01-07 09:00:00+00',
         'Seventh group', 'https://example.com/logo7.png', :'region2ID', null),
-    (:'group8ID', :'communityID', :'groupCategory1ID', 'Test Group 8', 'vwx4pqr',
+    (:'group8ID', :'allianceID', :'groupCategory1ID', 'Test Group 8', 'vwx4pqr',
         'Boston', 'US', 'United States', '2024-01-08 09:00:00+00',
         'Eighth group', 'https://example.com/logo8.png', :'region1ID', 'MA'),
-    (:'group9ID', :'communityID', :'groupCategory1ID', 'Test Group 9', 'yza5stu',
+    (:'group9ID', :'allianceID', :'groupCategory1ID', 'Test Group 9', 'yza5stu',
         'Rome', 'IT', 'Italy', '2024-01-09 09:00:00+00',
         'Ninth group', 'https://example.com/logo9.png', :'region2ID', null),
-    (:'group10ID', :'communityID', :'groupCategory1ID', 'Test Group 10', 'bcd6vwx',
+    (:'group10ID', :'allianceID', :'groupCategory1ID', 'Test Group 10', 'bcd6vwx',
         'Paris', 'FR', 'France', '2024-01-10 09:00:00+00',
         'Tenth group', 'https://example.com/logo10.png', :'region2ID', null),
-    (:'group11ID', :'communityID', :'groupCategory1ID', 'Test Group 11', 'efg7yza',
+    (:'group11ID', :'allianceID', :'groupCategory1ID', 'Test Group 11', 'efg7yza',
         'Seattle', 'US', 'United States', '2024-01-11 09:00:00+00',
         'Eleventh group', 'https://example.com/logo11.png', :'region1ID', 'WA');
 
@@ -142,14 +142,14 @@ values
 select is(
     get_site_recently_added_groups()::jsonb,
     jsonb_build_array(
-        get_group_summary(:'communityID'::uuid, :'group11ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group10ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group9ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group8ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group7ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group6ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group4ID'::uuid)::jsonb,
-        get_group_summary(:'communityID'::uuid, :'group3ID'::uuid)::jsonb
+        get_group_summary(:'allianceID'::uuid, :'group11ID'::uuid)::jsonb,
+        get_group_summary(:'allianceID'::uuid, :'group10ID'::uuid)::jsonb,
+        get_group_summary(:'allianceID'::uuid, :'group9ID'::uuid)::jsonb,
+        get_group_summary(:'allianceID'::uuid, :'group8ID'::uuid)::jsonb,
+        get_group_summary(:'allianceID'::uuid, :'group7ID'::uuid)::jsonb,
+        get_group_summary(:'allianceID'::uuid, :'group6ID'::uuid)::jsonb,
+        get_group_summary(:'allianceID'::uuid, :'group4ID'::uuid)::jsonb,
+        get_group_summary(:'allianceID'::uuid, :'group3ID'::uuid)::jsonb
     ),
     'Should return groups ordered by creation date DESC'
 );
@@ -161,14 +161,14 @@ select is(
     'Should return at most eight groups'
 );
 
--- Should not include groups from inactive communities
+-- Should not include groups from inactive alliances
 select ok(
     not exists (
         select 1
         from jsonb_array_elements(get_site_recently_added_groups()::jsonb) as g
         where g->>'group_id' = :'group5ID'
     ),
-    'Should not include groups from inactive communities'
+    'Should not include groups from inactive alliances'
 );
 
 -- Should return empty array when no groups exist

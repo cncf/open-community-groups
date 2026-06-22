@@ -24,7 +24,7 @@ async fn test_page_db_error() {
     db.expect_get_site_recently_added_groups().returning(|| Ok(vec![]));
     db.expect_get_site_settings().returning(|| Ok(sample_site_settings()));
     db.expect_get_site_upcoming_events().returning(|_| Ok(vec![]));
-    db.expect_list_communities().returning(|| Ok(vec![]));
+    db.expect_list_alliances().returning(|| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -57,7 +57,7 @@ async fn test_page_success() {
     db.expect_get_site_upcoming_events()
         .times(2)
         .returning(|_| Ok(vec![]));
-    db.expect_list_communities().times(1).returning(|| Ok(vec![]));
+    db.expect_list_alliances().times(1).returning(|| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

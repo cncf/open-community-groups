@@ -9,7 +9,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '0c1d0000-0000-0000-0000-000000000001'
+\set allianceID '0c1d0000-0000-0000-0000-000000000001'
 \set eventCategoryID '0c1d0000-0000-0000-0000-000000000002'
 \set eventID '0c1d0000-0000-0000-0000-000000000003'
 \set eventOtherID '0c1d0000-0000-0000-0000-000000000004'
@@ -23,9 +23,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -33,28 +33,28 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'cfs-label-validation-community',
-    'CFS Label Validation Community',
-    'Community for CFS label validation tests',
+    :'allianceID',
+    'cfs-label-validation-alliance',
+    'CFS Label Validation Alliance',
+    'Alliance for CFS label validation tests',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
 values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'CFS Label Validation Group',
     'cfs-label-validation-group'

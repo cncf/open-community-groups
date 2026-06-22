@@ -7,7 +7,7 @@ use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{db::PgExecutor, templates::dashboard::community::groups::Group};
+use crate::{db::PgExecutor, templates::dashboard::alliance::groups::Group};
 
 /// Common database operations for dashboards.
 #[async_trait]
@@ -19,7 +19,7 @@ pub(crate) trait DBDashboardCommon {
     async fn update_group(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
         group: &Group,
     ) -> Result<()>;
@@ -41,13 +41,13 @@ where
     async fn update_group(
         &self,
         actor_user_id: Uuid,
-        community_id: Uuid,
+        alliance_id: Uuid,
         group_id: Uuid,
         group: &Group,
     ) -> Result<()> {
         self.execute(
             "select update_group($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
-            &[&actor_user_id, &community_id, &group_id, &Json(group)],
+            &[&actor_user_id, &alliance_id, &group_id, &Json(group)],
         )
         .await
     }

@@ -10,7 +10,7 @@ select plan(7);
 -- ============================================================================
 
 \set activeGroupID '6a070000-0000-0000-0000-000000000001'
-\set communityID '6a070000-0000-0000-0000-000000000002'
+\set allianceID '6a070000-0000-0000-0000-000000000002'
 \set groupCategoryID '6a070000-0000-0000-0000-000000000003'
 \set inactiveGroupID '6a070000-0000-0000-0000-000000000004'
 \set unknownGroupID '6a070000-0000-0000-0000-000000000005'
@@ -19,9 +19,9 @@ select plan(7);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -29,23 +29,23 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'views-community',
-    'Views Community',
-    'Community for update_group_views tests',
+    :'allianceID',
+    'views-alliance',
+    'Views Alliance',
+    'Alliance for update_group_views tests',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Groups
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
@@ -54,7 +54,7 @@ insert into "group" (
 ) values
     (
         :'activeGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Active Group',
         'active-group',
@@ -63,7 +63,7 @@ insert into "group" (
     ),
     (
         :'inactiveGroupID',
-        :'communityID',
+        :'allianceID',
         :'groupCategoryID',
         'Inactive Group',
         'inactive-group',

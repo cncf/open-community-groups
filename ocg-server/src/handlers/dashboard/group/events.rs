@@ -21,7 +21,7 @@ use crate::{
     db::{DBExt, DBOperations, DynDB},
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedFormQs},
+        extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedFormQs},
     },
     router::serde_qs_config,
     services::{
@@ -62,7 +62,7 @@ const PARTIAL_URL: &str = "/dashboard/group/events";
 #[instrument(skip_all, err)]
 pub(crate) async fn add_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
@@ -83,15 +83,15 @@ pub(crate) async fn add_page(
         timezones,
     ) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.list_event_categories(community_id),
+        db.list_event_categories(alliance_id),
         db.list_event_kinds(),
         db.list_payment_currency_codes(),
-        db.get_group_payment_recipient(community_id, group_id),
+        db.get_group_payment_recipient(alliance_id, group_id),
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones()
@@ -120,7 +120,7 @@ pub(crate) async fn add_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn list_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
@@ -128,7 +128,7 @@ pub(crate) async fn list_page(
     // Prepare list page content
     let (filters, template) = prepare_list_page(
         &db,
-        community_id,
+        alliance_id,
         group_id,
         user.user_id,
         raw_query.as_deref().unwrap_or_default(),
@@ -163,7 +163,7 @@ pub(crate) async fn preview(
 #[instrument(skip_all, err)]
 pub(crate) async fn update_page(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
@@ -188,18 +188,18 @@ pub(crate) async fn update_page(
         timezones,
     ) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user.user_id,
             GroupPermission::EventsWrite
         ),
-        db.get_event_full(community_id, group_id, event_id),
+        db.get_event_full(alliance_id, group_id, event_id),
         db.list_event_approved_cfs_submissions(event_id),
-        db.list_event_categories(community_id),
+        db.list_event_categories(alliance_id),
         db.list_cfs_submission_statuses_for_review(),
         db.list_event_kinds(),
         db.list_payment_currency_codes(),
-        db.get_group_payment_recipient(community_id, group_id),
+        db.get_group_payment_recipient(alliance_id, group_id),
         db.list_session_kinds(),
         db.list_group_sponsors(group_id, &sponsor_filters, true),
         db.list_timezones(),
@@ -231,12 +231,12 @@ pub(crate) async fn update_page(
 /// Returns full event details in JSON format.
 #[instrument(skip_all, err)]
 pub(crate) async fn details(
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let event = db.get_event_full(community_id, group_id, event_id).await?;
+    let event = db.get_event_full(alliance_id, group_id, event_id).await?;
 
     Ok(Json(event).into_response())
 }
@@ -247,7 +247,7 @@ pub(crate) async fn details(
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
@@ -258,7 +258,7 @@ pub(crate) async fn add(
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let event_payload = build_event_payload(&event)?;
     if event_payload_uses_ticketing(&event_payload) {
-        ensure_ticketing_ready(&db, community_id, group_id, payments_cfg.as_ref()).await?;
+        ensure_ticketing_ready(&db, alliance_id, group_id, payments_cfg.as_ref()).await?;
     }
 
     // Create either a single event or a linked recurring event series
@@ -296,7 +296,7 @@ pub(crate) async fn add(
 #[instrument(skip_all, err)]
 pub(crate) async fn cancel(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
@@ -314,7 +314,7 @@ pub(crate) async fn cancel(
                 let event_ids = event_action_ids(tx, group_id, event_id, scope).await?;
                 let mut events = Vec::with_capacity(event_ids.len());
                 for event_id in &event_ids {
-                    events.push(tx.get_event_summary(community_id, group_id, *event_id).await?);
+                    events.push(tx.get_event_summary(alliance_id, group_id, *event_id).await?);
                 }
 
                 // Mark the selected event or the whole linked series as canceled
@@ -347,7 +347,7 @@ pub(crate) async fn cancel(
                         enqueue_event_series_canceled_notifications(
                             tx,
                             &server_cfg,
-                            community_id,
+                            alliance_id,
                             group_id,
                             &event_ids,
                         )
@@ -358,7 +358,7 @@ pub(crate) async fn cancel(
                         enqueue_event_canceled_notification(
                             tx,
                             &server_cfg,
-                            community_id,
+                            alliance_id,
                             group_id,
                             event.event_id,
                         )
@@ -414,7 +414,7 @@ pub(crate) async fn delete(
 #[instrument(skip_all, err)]
 pub(crate) async fn publish(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(payments_cfg): State<Option<PaymentsConfig>>,
@@ -439,7 +439,7 @@ pub(crate) async fn publish(
                 };
                 let mut events = Vec::with_capacity(event_ids.len());
                 for event_id in &event_ids {
-                    events.push(tx.get_event_summary(community_id, group_id, *event_id).await?);
+                    events.push(tx.get_event_summary(alliance_id, group_id, *event_id).await?);
                 }
 
                 // Publish the selected event or the whole linked series
@@ -477,7 +477,7 @@ pub(crate) async fn publish(
                         enqueue_event_series_published_notifications(
                             tx,
                             &server_cfg,
-                            community_id,
+                            alliance_id,
                             group_id,
                             &event_ids,
                         )
@@ -488,7 +488,7 @@ pub(crate) async fn publish(
                         enqueue_event_published_notifications(
                             tx,
                             &server_cfg,
-                            community_id,
+                            alliance_id,
                             group_id,
                             event.event_id,
                         )
@@ -541,7 +541,7 @@ pub(crate) async fn unpublish(
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(meetings_cfg): State<Option<MeetingsConfig>>,
@@ -561,14 +561,14 @@ pub(crate) async fn update(
     let cfg_max_participants = build_meetings_max_participants(meetings_cfg.as_ref());
     let event_json = build_event_payload(&event)?;
     if event_payload_uses_ticketing(&event_json) {
-        ensure_ticketing_ready(&db, community_id, group_id, payments_cfg.as_ref()).await?;
+        ensure_ticketing_ready(&db, alliance_id, group_id, payments_cfg.as_ref()).await?;
     }
 
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
                 // Load prior state before mutating to drive notification decisions
-                let before = tx.get_event_summary(community_id, group_id, event_id).await?;
+                let before = tx.get_event_summary(alliance_id, group_id, event_id).await?;
 
                 // Update event in database
                 let promoted_user_ids = tx
@@ -585,7 +585,7 @@ pub(crate) async fn update(
                 enqueue_event_waitlist_promoted_notification(
                     tx,
                     &server_cfg,
-                    community_id,
+                    alliance_id,
                     group_id,
                     event_id,
                     &before,
@@ -597,7 +597,7 @@ pub(crate) async fn update(
                 enqueue_event_rescheduled_notification(
                     tx,
                     &server_cfg,
-                    community_id,
+                    alliance_id,
                     group_id,
                     event_id,
                     &before,
@@ -662,7 +662,7 @@ fn build_meetings_max_participants(
 /// Ensures that ticketing can be used for the event by checking payments configuration and group setup.
 async fn ensure_ticketing_ready(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     payments_cfg: Option<&PaymentsConfig>,
 ) -> Result<(), HandlerError> {
@@ -674,7 +674,7 @@ async fn ensure_ticketing_ready(
     };
 
     // Require a group recipient that matches the configured payments provider
-    let payment_recipient = db.get_group_payment_recipient(community_id, group_id).await?;
+    let payment_recipient = db.get_group_payment_recipient(alliance_id, group_id).await?;
     if payment_recipient.is_none() {
         return Err(HandlerError::Database(
             "configure a payments recipient in group settings first".to_string(),
@@ -737,7 +737,7 @@ fn payments_ready(
 /// Prepares the events list page and filters for the group dashboard.
 pub(crate) async fn prepare_list_page(
     db: &DynDB,
-    community_id: Uuid,
+    alliance_id: Uuid,
     group_id: Uuid,
     user_id: Uuid,
     raw_query: &str,
@@ -746,7 +746,7 @@ pub(crate) async fn prepare_list_page(
     let filters: EventsListFilters = serde_qs_config().deserialize_str(raw_query)?;
     let (can_manage_events, events) = tokio::try_join!(
         db.user_has_group_permission(
-            &community_id,
+            &alliance_id,
             &group_id,
             &user_id,
             GroupPermission::EventsWrite

@@ -48,7 +48,7 @@ impl Page {
             &self.base_url,
             &format!(
                 "/{}/group/{}",
-                self.group.community.name,
+                self.group.alliance.name,
                 self.group.public_slug()
             ),
         )
@@ -59,15 +59,15 @@ impl Page {
         self.group
             .og_image_url
             .as_deref()
-            .or(self.group.community.og_image_url.as_deref())
+            .or(self.group.alliance.og_image_url.as_deref())
             .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
     }
 
     /// Returns the preview description for the group page.
     pub(crate) fn preview_description(&self) -> String {
         format!(
-            "{} community in Open Community Groups, where Open Source communities thrive.",
-            self.group.community.display_name
+            "{} alliance in Open Alliance Groups, where Open Source alliances thrive.",
+            self.group.alliance.display_name
         )
     }
 

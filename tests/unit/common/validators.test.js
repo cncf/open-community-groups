@@ -10,7 +10,7 @@ describe("validators", () => {
     // Rejected empty and whitespace-only values.
     expect(trimmedNonEmpty("")).to.equal("Value cannot be empty");
     expect(trimmedNonEmpty("   ")).to.equal("Value cannot be empty");
-    expect(trimmedNonEmpty("Open Community Groups")).to.equal(null);
+    expect(trimmedNonEmpty("Open Alliance Groups")).to.equal(null);
   });
 
   it("validates password confirmation matches", () => {

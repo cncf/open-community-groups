@@ -9,9 +9,9 @@ select plan(25);
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '0c160000-0000-0000-0000-000000000001'
-\set community2ID '0c160000-0000-0000-0000-000000000002'
-\set community3ID '0c160000-0000-0000-0000-000000000003'
+\set alliance1ID '0c160000-0000-0000-0000-000000000001'
+\set alliance2ID '0c160000-0000-0000-0000-000000000002'
+\set alliance3ID '0c160000-0000-0000-0000-000000000003'
 \set event1ID '0c160000-0000-0000-0000-000000000004'
 \set event2ID '0c160000-0000-0000-0000-000000000005'
 \set event3ID '0c160000-0000-0000-0000-000000000006'
@@ -37,9 +37,9 @@ select plan(25);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -48,27 +48,27 @@ insert into community (
     logo_url
 ) values
     (
-        :'community1ID',
-        'test-community',
-        'Test Community',
-        'A test community',
+        :'alliance1ID',
+        'test-alliance',
+        'Test Alliance',
+        'A test alliance',
         'https://example.com/banner_mobile.png',
         'https://example.com/banner.png',
         'https://example.com/logo.png'
     ),
     (
-        :'community2ID',
-        'other-community',
-        'Other Community',
-        'Another test community',
+        :'alliance2ID',
+        'other-alliance',
+        'Other Alliance',
+        'Another test alliance',
         'https://example.com/banner_mobile2.png',
         'https://example.com/banner2.png',
         'https://example.com/logo2.png'
     );
 
--- Inactive community
-insert into community (
-    community_id,
+-- Inactive alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -78,10 +78,10 @@ insert into community (
 
     active
 ) values (
-    :'community3ID',
-    'inactive-community',
-    'Inactive Community',
-    'An inactive test community',
+    :'alliance3ID',
+    'inactive-alliance',
+    'Inactive Alliance',
+    'An inactive test alliance',
     'https://example.com/banner_mobile3.png',
     'https://example.com/banner3.png',
     'https://example.com/logo3.png',
@@ -90,24 +90,24 @@ insert into community (
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'groupCategory1ID', :'community1ID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Technology'),
-    (:'groupCategory3ID', :'community3ID', 'Technology'),
-    (:'groupCategory4ID', :'community1ID', 'Business');
+    (:'groupCategory1ID', :'alliance1ID', 'Technology'),
+    (:'groupCategory2ID', :'alliance2ID', 'Technology'),
+    (:'groupCategory3ID', :'alliance3ID', 'Technology'),
+    (:'groupCategory4ID', :'alliance1ID', 'Business');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
+insert into event_category (event_category_id, alliance_id, name)
 values
-    (:'eventCategory1ID', :'community1ID', 'Tech Talks'),
-    (:'eventCategory2ID', :'community2ID', 'Workshops'),
-    (:'eventCategory3ID', :'community3ID', 'Workshops');
+    (:'eventCategory1ID', :'alliance1ID', 'Tech Talks'),
+    (:'eventCategory2ID', :'alliance2ID', 'Workshops'),
+    (:'eventCategory3ID', :'alliance3ID', 'Workshops');
 
 -- Region
-insert into region (region_id, name, community_id)
+insert into region (region_id, name, alliance_id)
 values
-    (:'region1ID', 'North America', :'community1ID');
+    (:'region1ID', 'North America', :'alliance1ID');
 
 -- Group
 insert into "group" (
@@ -115,7 +115,7 @@ insert into "group" (
     name,
     slug,
     slug_pretty,
-    community_id,
+    alliance_id,
     group_category_id,
     city,
     state,
@@ -130,7 +130,7 @@ values (
     'Test Group',
     'test-group',
     'test-group-pretty',
-    :'community1ID',
+    :'alliance1ID',
     :'groupCategory1ID',
     'San Francisco',
     'CA',
@@ -144,7 +144,7 @@ values (
     'Cloud Group',
     'cloud-group',
     null,
-    :'community1ID',
+    :'alliance1ID',
     :'groupCategory4ID',
     'New York',
     'NY',
@@ -158,7 +158,7 @@ values (
     'Other Group',
     'other-group',
     null,
-    :'community2ID',
+    :'alliance2ID',
     :'groupCategory2ID',
     'Chicago',
     'IL',
@@ -169,16 +169,16 @@ values (
     null
 ), (
     :'group4ID',
-    'Inactive Community Group',
-    'inactive-community-group',
+    'Inactive Alliance Group',
+    'inactive-alliance-group',
     null,
-    :'community3ID',
+    :'alliance3ID',
     :'groupCategory3ID',
     'Denver',
     'CO',
     'US',
     'United States',
-    'https://example.com/inactive-community-group.png',
+    'https://example.com/inactive-alliance-group.png',
     ST_GeogFromText('POINT(-104.9903 39.7392)'),
     null
 );
@@ -316,7 +316,7 @@ insert into event (
     false,
     ST_GeogFromText('POINT(-122.4194 37.7749)')
 ),
--- Event in community 2
+-- Event in alliance 2
 (
     :'event6ID',
     'Python Workshop',
@@ -362,14 +362,14 @@ insert into event (
     false,
     null
 ),
--- Event in inactive community (should be filtered out from search results)
+-- Event in inactive alliance (should be filtered out from search results)
 (
     :'event8ID',
-    'Inactive Community Event',
-    'inactive-community-event',
-    'Event in inactive community',
+    'Inactive Alliance Event',
+    'inactive-alliance-event',
+    'Event in inactive alliance',
     false,
-    'Inactive community event',
+    'Inactive alliance event',
     'UTC',
     :'eventCategory3ID',
     'in-person',
@@ -381,7 +381,7 @@ insert into event (
     'Denver',
     'Tech Hall',
     '321 Main St',
-    'https://example.com/inactive-community-event.png',
+    'https://example.com/inactive-alliance-event.png',
     false,
     null
 );
@@ -394,11 +394,11 @@ insert into event (
 select is(
     (select search_events(jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
-        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'alliance2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
     ),
     'Should return all published events without filters'
 );
@@ -414,7 +414,7 @@ select is(
     'Should exclude test events from total counts'
 );
 
--- Should exclude events from inactive communities
+-- Should exclude events from inactive alliances
 select ok(
     not exists (
         select 1
@@ -423,38 +423,38 @@ select ok(
         ) as e
         where e->>'event_id' = :'event8ID'
     ),
-    'Should exclude events from inactive communities'
+    'Should exclude events from inactive alliances'
 );
 
--- Should filter events by community
+-- Should filter events by alliance
 select is(
     (select search_events(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0)
+        jsonb_build_object('alliance', jsonb_build_array('test-alliance'), 'limit', 10, 'offset', 0)
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
-    'Should filter events by community'
+    'Should filter events by alliance'
 );
 
 -- Should return events in ascending order when sort_direction is asc
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'limit', 10,
             'offset', 0,
             'sort_direction', 'asc'
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should return events in ascending order when sort_direction is asc'
 );
@@ -463,17 +463,17 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'limit', 10,
             'offset', 0,
             'sort_direction', 'desc'
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb
     ),
     'Should return events in descending order when sort_direction is desc'
 );
@@ -482,48 +482,48 @@ select is(
 select is(
     (
         select (
-            search_events(jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 10, 'offset', 0))::jsonb->>'total'
+            search_events(jsonb_build_object('alliance', jsonb_build_array('test-alliance'), 'limit', 10, 'offset', 0))::jsonb->>'total'
         )::bigint
     ),
     4::bigint,
     'Should return correct total count'
 );
 
--- Should return zero total for non-existing community
+-- Should return zero total for non-existing alliance
 select is(
     (
         select (
             search_events(
-                jsonb_build_object('community', jsonb_build_array('non-existent-community'), 'limit', 10, 'offset', 0)
+                jsonb_build_object('alliance', jsonb_build_array('non-existent-alliance'), 'limit', 10, 'offset', 0)
             )::jsonb->>'total'
         )::bigint
     ),
     0::bigint,
-    'Should return zero total for non-existing community'
+    'Should return zero total for non-existing alliance'
 );
 
--- Should return all events when community filter is empty array
+-- Should return all events when alliance filter is empty array
 select is(
-    (select search_events(jsonb_build_object('community', jsonb_build_array(), 'limit', 10, 'offset', 0))::jsonb->'events'),
+    (select search_events(jsonb_build_object('alliance', jsonb_build_array(), 'limit', 10, 'offset', 0))::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
-        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'alliance2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
     ),
-    'Should return all events when community filter is empty array'
+    'Should return all events when alliance filter is empty array'
 );
 
 -- Should return all events when group filter is empty array
 select is(
     (select search_events(jsonb_build_object('group', jsonb_build_array(), 'limit', 10, 'offset', 0))::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
-        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'alliance2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
     ),
     'Should return all events when group filter is empty array'
 );
@@ -532,14 +532,14 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'kind', jsonb_build_array('virtual'),
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
     'Should filter events by kind'
 );
@@ -548,17 +548,17 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'event_category', jsonb_build_array('tech-talks'),
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should filter events by event category'
 );
@@ -567,14 +567,14 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'group_category', jsonb_build_array('business'),
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should filter events by group category'
 );
@@ -583,16 +583,16 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'region', jsonb_build_array('north-america'),
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
     'Should filter events by region'
 );
@@ -601,14 +601,14 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'ts_query', 'Docker',
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
     'Should filter events by text search query'
 );
@@ -617,16 +617,16 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'date_from', to_char(current_date + interval '2 days', 'YYYY-MM-DD'),
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should filter events by date_from'
 );
@@ -635,7 +635,7 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'latitude', 37.7749,
             'longitude', -122.4194,
             'distance', 1000,
@@ -644,10 +644,10 @@ select is(
         )
      )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should filter events by distance (event location is used when available, otherwise group location)'
 );
@@ -665,10 +665,10 @@ select is(
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should filter events by bbox'
 );
@@ -686,11 +686,11 @@ select is(
         )
      )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should sort events by distance'
 );
@@ -708,11 +708,11 @@ select is(
         )
      )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
-        get_event_summary(:'community2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb,
+        get_event_summary(:'alliance2ID'::uuid, :'group3ID'::uuid, :'event6ID'::uuid)::jsonb
     ),
     'Should sort events by distance ascending'
 );
@@ -720,10 +720,10 @@ select is(
 -- Should paginate results correctly
 select is(
     (select search_events(
-        jsonb_build_object('community', jsonb_build_array('test-community'), 'limit', 1, 'offset', 1)
+        jsonb_build_object('alliance', jsonb_build_array('test-alliance'), 'limit', 1, 'offset', 1)
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb
     ),
     'Should paginate results correctly'
 );
@@ -732,16 +732,16 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'group', jsonb_build_array('test-group'),
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
     'Should filter events by group'
 );
@@ -750,16 +750,16 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'group', jsonb_build_array('test-group-pretty'),
             'limit', 10,
             'offset', 0
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'community1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event1ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
+        get_event_summary(:'alliance1ID'::uuid, :'group1ID'::uuid, :'event3ID'::uuid)::jsonb
     ),
     'Should filter events by group pretty slug'
 );
@@ -768,7 +768,7 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'include_bbox', true,
             'limit', 10,
             'offset', 0
@@ -782,7 +782,7 @@ select is(
 select is(
     (select search_events(
         jsonb_build_object(
-            'community', jsonb_build_array('test-community'),
+            'alliance', jsonb_build_array('test-alliance'),
             'date_from', to_char(current_date + interval '4 days', 'YYYY-MM-DD'),
             'date_to', to_char(current_date + interval '4 days', 'YYYY-MM-DD'),
             'limit', 10,
@@ -791,7 +791,7 @@ select is(
         )
     )::jsonb->'events'),
     jsonb_build_array(
-        get_event_summary(:'community1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
+        get_event_summary(:'alliance1ID'::uuid, :'group2ID'::uuid, :'event5ID'::uuid)::jsonb
     ),
     'Should include events that start later on date_to'
 );

@@ -24,8 +24,8 @@ pub(crate) struct Page {
 pub(crate) struct Event {
     /// Banner image URL selected for the preview.
     pub banner_url: Option<String>,
-    /// Community display name.
-    pub community_display_name: Option<String>,
+    /// Alliance display name.
+    pub alliance_display_name: Option<String>,
     /// Event description.
     pub description: Option<String>,
     /// Event-level hosts.
@@ -172,28 +172,28 @@ impl From<Input> for Event {
             input.banner_url.as_deref(),
             context.group.as_ref().and_then(|group| group.banner_url.as_deref()),
             context
-                .community
+                .alliance
                 .as_ref()
-                .and_then(|community| community.banner_url.as_deref()),
+                .and_then(|alliance| alliance.banner_url.as_deref()),
         ]);
-        let community_display_name = first_text([
+        let alliance_display_name = first_text([
             context
-                .community
+                .alliance
                 .as_ref()
-                .and_then(|community| community.display_name.as_deref()),
+                .and_then(|alliance| alliance.display_name.as_deref()),
             context
-                .community
+                .alliance
                 .as_ref()
-                .and_then(|community| community.name.as_deref()),
+                .and_then(|alliance| alliance.name.as_deref()),
         ]);
         let kind_label = first_text([context.kind_label.as_deref(), input.kind_id.as_deref()]);
         let logo_url = first_text([
             input.logo_url.as_deref(),
             context.group.as_ref().and_then(|group| group.logo_url.as_deref()),
             context
-                .community
+                .alliance
                 .as_ref()
-                .and_then(|community| community.logo_url.as_deref()),
+                .and_then(|alliance| alliance.logo_url.as_deref()),
         ]);
         let public_url = normalize_text(context.public_url.clone());
 
@@ -218,7 +218,7 @@ impl From<Input> for Event {
         // Assemble the render model
         Self {
             banner_url,
-            community_display_name,
+            alliance_display_name,
             description: normalize_text(input.description.clone()),
             hosts: context.hosts.clone(),
             input,
@@ -388,8 +388,8 @@ pub(crate) struct InputSessionSpeaker {
 pub(crate) struct Context {
     /// Category display label selected in the editor.
     pub category_label: Option<String>,
-    /// Community details for fallback branding.
-    pub community: Option<ContextCommunity>,
+    /// Alliance details for fallback branding.
+    pub alliance: Option<ContextAlliance>,
     /// Group details for fallback branding.
     pub group: Option<ContextGroup>,
     /// Event-level hosts selected in the editor.
@@ -410,16 +410,16 @@ pub(crate) struct Context {
     pub sponsors: Vec<ContextSponsor>,
 }
 
-/// Preview community display context.
+/// Preview alliance display context.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct ContextCommunity {
-    /// Community banner image URL.
+pub(crate) struct ContextAlliance {
+    /// Alliance banner image URL.
     pub banner_url: Option<String>,
-    /// Community display name.
+    /// Alliance display name.
     pub display_name: Option<String>,
-    /// Community logo image URL.
+    /// Alliance logo image URL.
     pub logo_url: Option<String>,
-    /// Community URL name.
+    /// Alliance URL name.
     pub name: Option<String>,
 }
 

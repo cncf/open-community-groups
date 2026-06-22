@@ -480,7 +480,7 @@ fn test_delivery_worker_prepare_content_event_custom() {
     assert!(body.contains("Custom event body"));
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
-    assert!(body.contains("Test Community community"));
+    assert!(body.contains("Test Alliance alliance"));
 }
 
 #[test]
@@ -544,7 +544,7 @@ fn test_delivery_worker_prepare_content_event_published() {
     assert_eq!(subject, "New event published");
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
-    assert!(body.contains("Test Community community"));
+    assert!(body.contains("Test Alliance alliance"));
 }
 
 #[test]
@@ -573,9 +573,9 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     );
     assert!(body.contains("Reminder Event"));
     assert!(body.contains("Notification Group"));
-    assert!(body.contains("Test Community community"));
+    assert!(body.contains("Test Alliance alliance"));
     assert!(body.contains(
-        "https://example.test/test-community/group/notification-group/event/reminder-event"
+        "https://example.test/test-alliance/group/notification-group/event/reminder-event"
     ));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
 }
@@ -598,7 +598,7 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
     assert_eq!(subject, "Reminder: Reminder Event starts in 24 hours");
     assert!(body.contains("Reminder Event"));
     assert!(body.contains(
-        "https://example.test/test-community/group/notification-group/event/reminder-event"
+        "https://example.test/test-alliance/group/notification-group/event/reminder-event"
     ));
 }
 
@@ -667,7 +667,7 @@ fn test_delivery_worker_prepare_content_event_series_published() {
     assert!(body.contains("Series Event Two"));
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Notification Group"));
-    assert!(body.contains("Test Community community"));
+    assert!(body.contains("Test Alliance alliance"));
 }
 
 #[test]
@@ -775,7 +775,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registratio
     assert!(body.contains("Open My Events"));
     assert!(body.contains("https://example.test/dashboard/user?tab=events"));
     assert!(!body.contains(
-        "https://example.test/test-community/group/notification-group/event/waitlist-event"
+        "https://example.test/test-alliance/group/notification-group/event/waitlist-event"
     ));
     assert!(!body.contains("https://example.test/waitlist-event/live"));
     assert!(!body.contains("Use the waiting room display name from your ticket."));
@@ -846,7 +846,7 @@ fn test_delivery_worker_prepare_content_group_custom() {
     assert!(body.contains("Custom group body"));
     assert!(body.contains("You received this email notification because you're a member of"));
     assert!(body.contains("Hello Group"));
-    assert!(body.contains("Test Community community"));
+    assert!(body.contains("Test Alliance alliance"));
 }
 
 #[test]
@@ -1031,7 +1031,7 @@ fn test_lettre_email_sender_uses_wrapper_tls_for_submissions_port() {
 fn sample_email_config(rcpts_whitelist: Option<Vec<String>>) -> EmailConfig {
     EmailConfig {
         from_address: "no-reply@example.test".to_string(),
-        from_name: "Open Community Groups".to_string(),
+        from_name: "Open Alliance Groups".to_string(),
         smtp: SmtpConfig {
             host: "smtp.example.test".to_string(),
             port: 587,
@@ -1071,10 +1071,10 @@ fn sample_event_attendance_canceled_template_data() -> serde_json::Value {
         "dashboard_link": "https://example.test/dashboard/user?tab=events",
         "event": {
             "canceled": false,
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "event_id": "11111111-1111-1111-1111-111111111111",
-            "group_category_name": "Community",
+            "group_category_name": "Alliance",
             "group_name": "Notification Group",
             "group_slug": "notification-group",
             "kind": "hybrid",
@@ -1088,7 +1088,7 @@ fn sample_event_attendance_canceled_template_data() -> serde_json::Value {
             "waitlist_count": 0,
             "waitlist_enabled": false
         },
-        "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "link": "https://example.test/test-alliance/group/notification-group/event/reminder-event",
         "theme": {
             "primary_color": "#000000"
         }
@@ -1102,10 +1102,10 @@ fn sample_event_custom_template_data() -> serde_json::Value {
         "body": "Custom event body",
         "event": {
             "canceled": false,
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "event_id": "11111111-1111-1111-1111-111111111111",
-            "group_category_name": "Community",
+            "group_category_name": "Alliance",
             "group_name": "Notification Group",
             "group_slug": "notification-group",
             "kind": "virtual",
@@ -1117,7 +1117,7 @@ fn sample_event_custom_template_data() -> serde_json::Value {
             "waitlist_count": 0,
             "waitlist_enabled": false
         },
-        "link": "https://example.test/test-community/group/notification-group/event/custom-event",
+        "link": "https://example.test/test-alliance/group/notification-group/event/custom-event",
         "theme": {
             "primary_color": "#000000"
         }
@@ -1138,10 +1138,10 @@ fn sample_event_invitation_template_data() -> serde_json::Value {
     json!({
         "event": {
             "canceled": false,
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "event_id": "11111111-1111-1111-1111-111111111111",
-            "group_category_name": "Community",
+            "group_category_name": "Alliance",
             "group_name": "Notification Group",
             "group_slug": "notification-group",
             "kind": "virtual",
@@ -1166,10 +1166,10 @@ fn sample_event_reminder_legacy_template_data() -> serde_json::Value {
     json!({
         "event": {
             "canceled": false,
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "event_id": "11111111-1111-1111-1111-111111111111",
-            "group_category_name": "Community",
+            "group_category_name": "Alliance",
             "group_name": "Notification Group",
             "group_slug": "notification-group",
             "kind": "hybrid",
@@ -1181,7 +1181,7 @@ fn sample_event_reminder_legacy_template_data() -> serde_json::Value {
             "timezone": "UTC",
             "venue_name": "Conference Hall"
         },
-        "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "link": "https://example.test/test-alliance/group/notification-group/event/reminder-event",
         "show_attendance_cancellation_copy": true,
         "theme": {
             "primary_color": "#000000"
@@ -1195,10 +1195,10 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
         "show_attendance_cancellation_copy": true,
         "event": {
             "canceled": false,
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "event_id": "11111111-1111-1111-1111-111111111111",
-            "group_category_name": "Community",
+            "group_category_name": "Alliance",
             "group_name": "Notification Group",
             "group_slug": "notification-group",
             "kind": "hybrid",
@@ -1214,7 +1214,7 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
             "waitlist_enabled": false
         },
         "dashboard_link": "https://example.test/dashboard/user?tab=events",
-        "link": "https://example.test/test-community/group/notification-group/event/reminder-event",
+        "link": "https://example.test/test-alliance/group/notification-group/event/reminder-event",
         "theme": {
             "primary_color": "#000000"
         }
@@ -1224,16 +1224,16 @@ fn sample_event_reminder_template_data() -> serde_json::Value {
 /// Sample template payload for aggregate event series notifications.
 fn sample_event_series_template_data() -> serde_json::Value {
     json!({
-        "community_display_name": "Test Community",
+        "alliance_display_name": "Test Alliance",
         "event_count": 2,
         "events": [
             {
                 "event": {
                     "canceled": false,
-                    "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "alliance_display_name": "Test Alliance",
+                    "alliance_name": "test-alliance",
                     "event_id": "11111111-1111-1111-1111-111111111111",
-                    "group_category_name": "Community",
+                    "group_category_name": "Alliance",
                     "group_name": "Notification Group",
                     "group_slug": "notification-group",
                     "kind": "hybrid",
@@ -1248,15 +1248,15 @@ fn sample_event_series_template_data() -> serde_json::Value {
                     "waitlist_count": 0,
                     "waitlist_enabled": false
                 },
-                "link": "https://example.test/test-community/group/notification-group/event/series-event-one"
+                "link": "https://example.test/test-alliance/group/notification-group/event/series-event-one"
             },
             {
                 "event": {
                     "canceled": false,
-                    "community_display_name": "Test Community",
-                    "community_name": "test-community",
+                    "alliance_display_name": "Test Alliance",
+                    "alliance_name": "test-alliance",
                     "event_id": "22222222-2222-2222-2222-222222222222",
-                    "group_category_name": "Community",
+                    "group_category_name": "Alliance",
                     "group_name": "Notification Group",
                     "group_slug": "notification-group",
                     "kind": "hybrid",
@@ -1270,7 +1270,7 @@ fn sample_event_series_template_data() -> serde_json::Value {
                     "waitlist_count": 0,
                     "waitlist_enabled": false
                 },
-                "link": "https://example.test/test-community/group/notification-group/event/series-event-two"
+                "link": "https://example.test/test-alliance/group/notification-group/event/series-event-two"
             }
         ],
         "group_name": "Notification Group",
@@ -1285,10 +1285,10 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
     json!({
         "event": {
             "canceled": false,
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "event_id": "11111111-1111-1111-1111-111111111111",
-            "group_category_name": "Community",
+            "group_category_name": "Alliance",
             "group_name": "Notification Group",
             "group_slug": "notification-group",
             "kind": "virtual",
@@ -1305,7 +1305,7 @@ fn sample_event_waitlist_template_data() -> serde_json::Value {
         },
         "dashboard_link": "https://example.test/dashboard/user?tab=events",
         "has_registration_questions": false,
-        "link": "https://example.test/test-community/group/notification-group/event/waitlist-event",
+        "link": "https://example.test/test-alliance/group/notification-group/event/waitlist-event",
         "theme": {
             "primary_color": "#000000"
         }
@@ -1325,10 +1325,10 @@ fn sample_event_welcome_template_data(dashboard_link: Option<&str>) -> serde_jso
     let mut payload = json!({
         "event": {
             "canceled": false,
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "event_id": "11111111-1111-1111-1111-111111111111",
-            "group_category_name": "Community",
+            "group_category_name": "Alliance",
             "group_name": "Notification Group",
             "group_slug": "notification-group",
             "kind": "hybrid",
@@ -1342,7 +1342,7 @@ fn sample_event_welcome_template_data(dashboard_link: Option<&str>) -> serde_jso
             "waitlist_count": 0,
             "waitlist_enabled": false
         },
-        "link": "https://example.test/test-community/group/notification-group/event/welcome-event",
+        "link": "https://example.test/test-alliance/group/notification-group/event/welcome-event",
         "theme": {
             "primary_color": "#000000"
         }
@@ -1364,15 +1364,15 @@ fn sample_group_custom_template_data() -> serde_json::Value {
                 "name": "Sample Category",
                 "normalized_name": "sample-category"
             },
-            "community_display_name": "Test Community",
-            "community_name": "test-community",
+            "alliance_display_name": "Test Alliance",
+            "alliance_name": "test-alliance",
             "created_at": 1,
             "group_id": "33333333-3333-3333-3333-333333333333",
             "logo_url": "https://example.com/logo.png",
             "name": "Hello Group",
             "slug": "hello-group"
         },
-        "link": "https://example.test/test-community/group/hello-group",
+        "link": "https://example.test/test-alliance/group/hello-group",
         "theme": {
             "primary_color": "#000000"
         }

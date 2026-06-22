@@ -9,7 +9,7 @@ create or replace function reconcile_event_purchase_for_checkout_session(
 returns jsonb as $$
 declare
     v_amount_minor bigint;
-    v_community_id uuid;
+    v_alliance_id uuid;
     v_event_discount_code_id uuid;
     v_event_id uuid;
     v_hold_expired boolean;
@@ -22,7 +22,7 @@ begin
     -- Lock the purchase before deciding how to reconcile the provider checkout
     select
         ep.amount_minor,
-        g.community_id,
+        g.alliance_id,
         ep.event_discount_code_id,
         ep.event_id,
         ep.hold_expires_at is not null
@@ -41,7 +41,7 @@ begin
         ep.user_id
     into
         v_amount_minor,
-        v_community_id,
+        v_alliance_id,
         v_event_discount_code_id,
         v_event_id,
         v_hold_expired,
@@ -98,7 +98,7 @@ begin
 
             -- Return the identifiers needed by downstream notification flows
             return jsonb_build_object(
-                'community_id', v_community_id,
+                'alliance_id', v_alliance_id,
                 'event_id', v_event_id,
                 'outcome', 'completed',
                 'user_id', v_user_id

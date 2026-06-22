@@ -24,7 +24,7 @@ describe("dashboard user events list template", () => {
     );
     expect(template).to.include("{% if item.can_cancel_attendance() -%}");
     expect(template).to.include(
-      'hx-delete="/dashboard/user/events/{{ item.event.community_name }}/{{ item.event.event_id }}/attendance"',
+      'hx-delete="/dashboard/user/events/{{ item.event.alliance_name }}/{{ item.event.event_id }}/attendance"',
     );
     expect(template).to.include('hx-trigger="confirmed"');
     expect(template).to.include('hx-disabled-elt="this"');

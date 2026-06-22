@@ -9,7 +9,7 @@ select plan(26);
 -- VARIABLES
 -- ============================================================================
 \set category1ID '3a3b0000-0000-0000-0000-000000000001'
-\set community1ID '3a3b0000-0000-0000-0000-000000000002'
+\set alliance1ID '3a3b0000-0000-0000-0000-000000000002'
 \set event5ID '3a3b0000-0000-0000-0000-000000000003'
 \set event6ID '3a3b0000-0000-0000-0000-000000000004'
 \set event7ID '3a3b0000-0000-0000-0000-000000000005'
@@ -29,9 +29,9 @@ select plan(26);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -39,34 +39,34 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'community1ID',
-    'test-community',
-    'Test Community',
-    'A test community for testing purposes',
+    :'alliance1ID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance for testing purposes',
     'https://example.com/banner_mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'category1ID', 'Conference', :'community1ID');
+insert into event_category (event_category_id, name, alliance_id)
+values (:'category1ID', 'Conference', :'alliance1ID');
 
 -- Group Category
-insert into group_category (group_category_id, name, community_id)
-values ('3a3b0000-0000-0000-0000-000000000017', 'Technology', :'community1ID');
+insert into group_category (group_category_id, name, alliance_id)
+values ('3a3b0000-0000-0000-0000-000000000017', 'Technology', :'alliance1ID');
 
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     name,
     slug,
     description,
     group_category_id
 ) values (
     :'group1ID',
-    :'community1ID',
+    :'alliance1ID',
     'Test Group',
     'abc1234',
     'A test group',
@@ -478,7 +478,7 @@ select lives_ok(
 select is(
     (
         select get_event_full(
-            :'community1ID'::uuid,
+            :'alliance1ID'::uuid,
             :'group1ID'::uuid,
             :'event5ID'::uuid
         )::jsonb->>'meeting_recording_public_url'
@@ -636,7 +636,7 @@ select is(
     (
         with payload as (
             select get_event_full(
-                :'community1ID'::uuid,
+                :'alliance1ID'::uuid,
                 :'group1ID'::uuid,
                 :'event6ID'::uuid
             )::jsonb as event_json

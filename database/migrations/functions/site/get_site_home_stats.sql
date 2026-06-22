@@ -2,10 +2,10 @@
 create or replace function get_site_home_stats()
 returns json as $$
     select json_build_object(
-        -- Count active communities
-        'communities', (
+        -- Count active alliances
+        'alliances', (
             select count(*)
-            from community
+            from alliance
             where active = true
         ),
         -- Count published events
@@ -13,7 +13,7 @@ returns json as $$
             select count(*)
             from event e
             join "group" g using (group_id)
-            join community c on c.community_id = g.community_id
+            join alliance c on c.alliance_id = g.alliance_id
             where c.active = true
             and g.active = true
             and g.deleted = false
@@ -28,7 +28,7 @@ returns json as $$
             from event_attendee ea
             join event e using (event_id)
             join "group" g using (group_id)
-            join community c on c.community_id = g.community_id
+            join alliance c on c.alliance_id = g.alliance_id
             where c.active = true
             and g.active = true
             and ea.status = 'confirmed'
@@ -42,7 +42,7 @@ returns json as $$
         'groups', (
             select count(*)
             from "group" g
-            join community c on c.community_id = g.community_id
+            join alliance c on c.alliance_id = g.alliance_id
             where c.active = true
             and g.active = true
             and g.deleted = false
@@ -52,7 +52,7 @@ returns json as $$
             select count(*)
             from group_member gm
             join "group" g using (group_id)
-            join community c on c.community_id = g.community_id
+            join alliance c on c.alliance_id = g.alliance_id
             where c.active = true
             and g.active = true
             and g.deleted = false

@@ -1,7 +1,7 @@
 import { expect, test } from "../../../fixtures.js";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_EVENT_IDS,
   TEST_GROUP_SLUGS,
   navigateToEvent,
@@ -204,8 +204,8 @@ test.describe("group dashboard waitlist tab", () => {
     // Load the public waitlist event before creating a waitlist entry.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       "alpha-waitlist-lab",
     );
 
@@ -294,8 +294,8 @@ test.describe("group dashboard waitlist tab", () => {
     // Open the public event page.
     await navigateToEvent(
       member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
+      TEST_ALLIANCE_NAME,
+      TEST_GROUP_SLUGS.alliance1.alpha,
       "alpha-waitlist-lab",
     );
 

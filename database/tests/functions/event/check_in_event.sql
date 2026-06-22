@@ -10,7 +10,7 @@ select plan(22);
 -- ============================================================================
 
 \set checkInWindowEventID '5e030000-0000-0000-0000-000000000001'
-\set communityID '5e030000-0000-0000-0000-000000000002'
+\set allianceID '5e030000-0000-0000-0000-000000000002'
 \set eventCategoryID '5e030000-0000-0000-0000-000000000003'
 \set futureEventID '5e030000-0000-0000-0000-000000000004'
 \set groupCategoryID '5e030000-0000-0000-0000-000000000005'
@@ -27,9 +27,9 @@ select plan(22);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -37,22 +37,22 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, community_id, name)
-values (:'eventCategoryID', :'communityID', 'General');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
@@ -63,14 +63,14 @@ values
 -- Group
 insert into "group" (
     group_id,
-    community_id,
+    alliance_id,
     group_category_id,
     name,
     slug,
     description
 ) values (
     :'groupID',
-    :'communityID',
+    :'allianceID',
     :'groupCategoryID',
     'Test Group',
     'test-group',
@@ -262,7 +262,7 @@ insert into event_attendee (event_id, user_id, status) values
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'checkInWindowEventID', :'userID'
+        :'allianceID', :'checkInWindowEventID', :'userID'
     ),
     'Should succeed within allowed window'
 );
@@ -293,7 +293,7 @@ select ok(
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'checkInWindowEventID', :'userID2'
+        :'allianceID', :'checkInWindowEventID', :'userID2'
     ),
     'user is not registered for this event',
     'Should require confirmed attendee record'
@@ -315,7 +315,7 @@ select is(
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'futureEventID', :'userID'
+        :'allianceID', :'futureEventID', :'userID'
     ),
     'check-in window closed',
     'Should error before start window'
@@ -325,7 +325,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'pastEventID', :'userID'
+        :'allianceID', :'pastEventID', :'userID'
     ),
     'check-in window closed',
     'Should error after allowed time'
@@ -335,7 +335,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'unknownEventID', :'userID'
+        :'allianceID', :'unknownEventID', :'userID'
     ),
     'event not found or inactive',
     'Should throw error when event does not exist'
@@ -345,7 +345,7 @@ select throws_ok(
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'multiDayEventID', :'userID'
+        :'allianceID', :'multiDayEventID', :'userID'
     ),
     'Should allow check-in for ongoing multi-day event'
 );
@@ -359,7 +359,7 @@ select is(
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'sameDayWithEndsAtEventID', :'userID'
+        :'allianceID', :'sameDayWithEndsAtEventID', :'userID'
     ),
     'Should allow check-in for same-day event with ends_at'
 );
@@ -373,7 +373,7 @@ select is(
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'noStartTimeEventID', :'userID'
+        :'allianceID', :'noStartTimeEventID', :'userID'
     ),
     'event has no start time',
     'Should throw error when event has no start time'
@@ -383,7 +383,7 @@ select throws_ok(
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'checkInWindowEventID', :'userID'
+        :'allianceID', :'checkInWindowEventID', :'userID'
     ),
     'Should allow repeated check_in_event calls'
 );
@@ -400,7 +400,7 @@ where event_id = :'checkInWindowEventID'::uuid and user_id = :'userID'::uuid \gs
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,false)',
-        :'communityID', :'checkInWindowEventID', :'userID'
+        :'allianceID', :'checkInWindowEventID', :'userID'
     ),
     'Should allow subsequent check-ins without error'
 );
@@ -418,7 +418,7 @@ select is(
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,true)',
-        :'communityID', :'futureEventID', :'userID'
+        :'allianceID', :'futureEventID', :'userID'
     ),
     'Should allow check-in with bypass_window for future event'
 );
@@ -432,7 +432,7 @@ select is(
 select lives_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,true)',
-        :'communityID', :'noStartTimeEventID', :'userID'
+        :'allianceID', :'noStartTimeEventID', :'userID'
     ),
     'Should allow check-in with bypass_window for event without start time'
 );
@@ -446,7 +446,7 @@ select is(
 select throws_ok(
     format(
         'select check_in_event(%L::uuid,%L::uuid,%L::uuid,true)',
-        :'communityID', :'checkInWindowEventID', :'userID2'
+        :'allianceID', :'checkInWindowEventID', :'userID2'
     ),
     'user is not registered for this event',
     'Should still require user registration even with bypass_window'

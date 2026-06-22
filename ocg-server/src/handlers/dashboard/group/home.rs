@@ -19,7 +19,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId},
+        extractors::{SelectedAllianceId, SelectedGroupId},
     },
     templates::{
         PageId,
@@ -46,7 +46,7 @@ mod tests;
 pub(crate) async fn page(
     auth_session: AuthSession,
     messages: Messages,
-    SelectedCommunityId(community_id): SelectedCommunityId,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     State(payments_cfg): State<Option<PaymentsConfig>>,
@@ -62,19 +62,19 @@ pub(crate) async fn page(
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
     // Get site settings and user groups information
-    let (groups_by_community, site_settings) =
+    let (groups_by_alliance, site_settings) =
         tokio::try_join!(db.list_user_groups(&user.user_id), db.get_site_settings())?;
 
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Analytics => {
-            let stats = db.get_group_stats(community_id, group_id).await?;
+            let stats = db.get_group_stats(alliance_id, group_id).await?;
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
         Tab::Events => {
             let (_, template) = events::prepare_list_page(
                 &db,
-                community_id,
+                alliance_id,
                 group_id,
                 user.user_id,
                 raw_query.as_deref().unwrap_or_default(),
@@ -85,7 +85,7 @@ pub(crate) async fn page(
         Tab::Members => {
             let (_, template) = members::prepare_list_page(
                 &db,
-                community_id,
+                alliance_id,
                 group_id,
                 user.user_id,
                 raw_query.as_deref().unwrap_or_default(),
@@ -102,14 +102,14 @@ pub(crate) async fn page(
         Tab::Settings => {
             let (can_manage_settings, group, categories, regions) = tokio::try_join!(
                 db.user_has_group_permission(
-                    &community_id,
+                    &alliance_id,
                     &group_id,
                     &user.user_id,
                     GroupPermission::SettingsWrite
                 ),
-                db.get_group_full(community_id, group_id),
-                db.list_group_categories(community_id),
-                db.list_regions(community_id)
+                db.get_group_full(alliance_id, group_id),
+                db.list_group_categories(alliance_id),
+                db.list_regions(alliance_id)
             )?;
             Content::Settings(Box::new(settings::UpdatePage {
                 can_manage_settings,
@@ -122,7 +122,7 @@ pub(crate) async fn page(
         Tab::Sponsors => {
             let (_, template) = sponsors::prepare_list_page(
                 &db,
-                community_id,
+                alliance_id,
                 group_id,
                 user.user_id,
                 raw_query.as_deref().unwrap_or_default(),
@@ -133,7 +133,7 @@ pub(crate) async fn page(
         Tab::Team => {
             let (_, template) = team::prepare_list_page(
                 &db,
-                community_id,
+                alliance_id,
                 group_id,
                 user.user_id,
                 raw_query.as_deref().unwrap_or_default(),
@@ -146,11 +146,11 @@ pub(crate) async fn page(
     // Render the page
     let page = Page {
         content,
-        groups_by_community,
+        groups_by_alliance,
         messages: messages.into_iter().collect(),
         page_id: PageId::GroupDashboard,
         path: "/dashboard/group".to_string(),
-        selected_community_id: community_id,
+        selected_alliance_id: alliance_id,
         selected_group_id: group_id,
         site_settings,
         user: User::from_session(auth_session).await?,

@@ -14,7 +14,7 @@ use crate::{
 #[tokio::test]
 async fn test_page_analytics_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -23,10 +23,10 @@ async fn test_page_analytics_tab_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
     let stats = sample_group_stats();
 
     // Setup database mock
@@ -42,7 +42,7 @@ async fn test_page_analytics_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -54,7 +54,7 @@ async fn test_page_analytics_tab_success() {
         .returning(move |_| Ok(groups.clone()));
     db.expect_get_group_stats()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(stats.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -82,7 +82,7 @@ async fn test_page_analytics_tab_success() {
 #[tokio::test]
 async fn test_page_events_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -92,10 +92,10 @@ async fn test_page_events_tab_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
     let group_events = sample_group_events(event_id, group_id);
 
     // Setup database mock
@@ -111,7 +111,7 @@ async fn test_page_events_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -120,7 +120,7 @@ async fn test_page_events_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::EventsWrite
@@ -165,18 +165,18 @@ async fn test_page_events_tab_success() {
 #[tokio::test]
 async fn test_page_logs_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
     let output = sample_audit_logs_output();
     let session_record = sample_session_record(
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
 
@@ -193,7 +193,7 @@ async fn test_page_logs_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -238,7 +238,7 @@ async fn test_page_logs_tab_success() {
 #[tokio::test]
 async fn test_page_members_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -247,10 +247,10 @@ async fn test_page_members_tab_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
     let group = sample_group_summary(group_id);
     let member = sample_group_member();
     let output = crate::templates::dashboard::group::members::GroupMembersOutput {
@@ -271,7 +271,7 @@ async fn test_page_members_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -280,7 +280,7 @@ async fn test_page_members_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::MembersWrite
@@ -300,7 +300,7 @@ async fn test_page_members_tab_success() {
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_group_summary()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group.clone()));
     db.expect_get_site_settings()
         .times(1)
@@ -331,7 +331,7 @@ async fn test_page_members_tab_success() {
 #[tokio::test]
 async fn test_page_settings_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -340,11 +340,11 @@ async fn test_page_settings_tab_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
-    let groups = sample_user_groups_by_community(community_id, group_id);
-    let group_full = sample_group_full(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
+    let group_full = sample_group_full(alliance_id, group_id);
     let category = sample_group_category();
     let region = sample_group_region();
 
@@ -361,7 +361,7 @@ async fn test_page_settings_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -370,7 +370,7 @@ async fn test_page_settings_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::SettingsWrite
@@ -382,15 +382,15 @@ async fn test_page_settings_tab_success() {
         .returning(move |_| Ok(groups.clone()));
     db.expect_get_group_full()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
         .returning(move |_, _| Ok(group_full.clone()));
     db.expect_list_group_categories()
         .times(1)
-        .withf(move |cid| *cid == community_id)
+        .withf(move |cid| *cid == alliance_id)
         .returning(move |_| Ok(vec![category.clone()]));
     db.expect_list_regions()
         .times(1)
-        .withf(move |cid| *cid == community_id)
+        .withf(move |cid| *cid == alliance_id)
         .returning(move |_| Ok(vec![region.clone()]));
     db.expect_get_site_settings()
         .times(1)
@@ -418,7 +418,7 @@ async fn test_page_settings_tab_success() {
 #[tokio::test]
 async fn test_page_sponsors_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -427,10 +427,10 @@ async fn test_page_sponsors_tab_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
     let sponsor = sample_group_sponsor();
     let output = crate::templates::dashboard::group::sponsors::GroupSponsorsOutput {
         sponsors: vec![sponsor.clone()],
@@ -450,7 +450,7 @@ async fn test_page_sponsors_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -459,7 +459,7 @@ async fn test_page_sponsors_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::SponsorsWrite
@@ -504,7 +504,7 @@ async fn test_page_sponsors_tab_success() {
 #[tokio::test]
 async fn test_page_team_tab_success() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -513,10 +513,10 @@ async fn test_page_team_tab_success() {
         session_id,
         user_id,
         &auth_hash,
-        Some(community_id),
+        Some(alliance_id),
         Some(group_id),
     );
-    let groups = sample_user_groups_by_community(community_id, group_id);
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
     let team_member = sample_team_member(true);
     let role = sample_group_role_summary();
     let members = vec![team_member.clone(), sample_team_member(false)];
@@ -540,7 +540,7 @@ async fn test_page_team_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::Read
@@ -549,7 +549,7 @@ async fn test_page_team_tab_success() {
     db.expect_user_has_group_permission()
         .times(1)
         .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
+            *cid == alliance_id
                 && *gid == group_id
                 && *uid == user_id
                 && permission == GroupPermission::TeamWrite

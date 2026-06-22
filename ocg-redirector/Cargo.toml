@@ -1,6 +1,6 @@
 [package]
 name = "ocg-redirector"
-description = "Open Community Groups redirector"
+description = "Open Alliance Groups redirector"
 version.workspace = true
 license.workspace = true
 edition.workspace = true

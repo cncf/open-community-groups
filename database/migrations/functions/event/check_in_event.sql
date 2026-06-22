@@ -1,6 +1,6 @@
 -- Check-in a user for an event.
 create or replace function check_in_event(
-    p_community_id uuid,
+    p_alliance_id uuid,
     p_event_id uuid,
     p_user_id uuid,
     p_bypass_window boolean
@@ -15,7 +15,7 @@ begin
     from event e
     join "group" g using (group_id)
     where e.event_id = p_event_id
-    and g.community_id = p_community_id
+    and g.alliance_id = p_alliance_id
     and g.active = true
     and e.deleted = false
     and e.published = true
@@ -30,7 +30,7 @@ begin
         if v_starts_at is null then
             raise exception 'event has no start time';
         end if;
-        if not is_event_check_in_window_open(p_community_id, p_event_id) then
+        if not is_event_check_in_window_open(p_alliance_id, p_event_id) then
             raise exception 'check-in window closed';
         end if;
     end if;

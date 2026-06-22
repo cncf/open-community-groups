@@ -43,13 +43,13 @@ returns json as $$
             and gt.accepted = true
         ) or exists (
             select 1
-            from community_team ct
+            from alliance_team ct
             where ct.user_id = u.user_id
             and ct.accepted = true
         ),
-        'belongs_to_community_team', exists (
+        'belongs_to_alliance_team', exists (
             select 1
-            from community_team ct
+            from alliance_team ct
             where ct.user_id = u.user_id
             and ct.accepted = true
         )

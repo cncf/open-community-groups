@@ -13,10 +13,10 @@ import { mockFetch } from "/tests/unit/test-utils/network.js";
 const mountPreviewPage = ({ testEvent = false } = {}) => {
   document.body.innerHTML = `
     <div id="dashboard-content"
-         data-community="test-community"
-         data-community-display-name="Test Community"
-         data-community-logo-url="/community.svg"
-         data-community-banner-url="/community-banner.png"
+         data-alliance="test-alliance"
+         data-alliance-display-name="Test Alliance"
+         data-alliance-logo-url="/alliance.svg"
+         data-alliance-banner-url="/alliance-banner.png"
          data-group-name="Test Group"
          data-group-slug="test-group">
       <div data-event-page="add">
@@ -138,7 +138,7 @@ describe("event preview", () => {
     );
     expect(context.kind_label).to.equal("Hybrid");
     expect(context.category_label).to.equal("Meetup");
-    expect(context.community.display_name).to.equal("Test Community");
+    expect(context.alliance.display_name).to.equal("Test Alliance");
     expect(context.group.name).to.equal("Test Group");
     expect(context.hosts[0].name).to.equal("Host User");
     expect(context.speakers[0].featured).to.equal(true);

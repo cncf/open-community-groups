@@ -9,7 +9,7 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '4a120000-0000-0000-0000-000000000001'
+\set allianceID '4a120000-0000-0000-0000-000000000001'
 \set groupCategoryID '4a120000-0000-0000-0000-000000000002'
 \set groupID '4a120000-0000-0000-0000-000000000003'
 \set userID '4a120000-0000-0000-0000-000000000004'
@@ -18,9 +18,9 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- Community
-insert into community (
-    community_id,
+-- Alliance
+insert into alliance (
+    alliance_id,
     name,
     display_name,
     description,
@@ -28,26 +28,26 @@ insert into community (
     banner_url,
     logo_url
 ) values (
-    :'communityID',
-    'group-invitation-community',
-    'Group Invitation Community',
-    'Community for testing group invitation rejection',
+    :'allianceID',
+    'group-invitation-alliance',
+    'Group Invitation Alliance',
+    'Alliance for testing group invitation rejection',
     'https://example.com/banner-mobile.png',
     'https://example.com/banner.png',
     'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, community_id, name)
-values (:'groupCategoryID', :'communityID', 'Technology');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', gen_random_bytes(32), 'alice@example.com', true, 'alice');
 
 -- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug)
-values (:'groupID', :'communityID', :'groupCategoryID', 'Invitation Group', 'invitation-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Invitation Group', 'invitation-group');
 
 -- Pending invitation
 insert into group_team (group_id, user_id, role, accepted)
@@ -88,7 +88,7 @@ select results_eq(
             action,
             actor_user_id,
             actor_username,
-            community_id,
+            alliance_id,
             group_id,
             resource_type,
             resource_id
@@ -107,7 +107,7 @@ select results_eq(
             )
         $$,
         :'userID',
-        :'communityID',
+        :'allianceID',
         :'groupID',
         :'userID'
     ),

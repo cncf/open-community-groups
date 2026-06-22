@@ -26,13 +26,13 @@ describe("dashboard selection", () => {
 
   it("persists dashboard selection with htmx and keeps the current tab", async () => {
     // Select a dashboard and preserve the current tab query.
-    await selectDashboardAndKeepTab("/dashboard/select/community-1");
+    await selectDashboardAndKeepTab("/dashboard/select/alliance-1");
 
     // HTMX receives the selection request with the dashboard swap target.
     expect(htmx.ajaxCalls).to.deep.equal([
       [
         "PUT",
-        "/dashboard/select/community-1",
+        "/dashboard/select/alliance-1",
         {
           target: "body",
           indicator: "#dashboard-spinner",
