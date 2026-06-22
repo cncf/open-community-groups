@@ -196,6 +196,31 @@ describe("share-modal", () => {
     expect(element._isOpen).to.equal(true);
   });
 
+  it("copies the Instagram caption and share url", async () => {
+    // Render the share-modal fixture with Instagram caption text.
+    const element = await mountLitComponent("share-modal", {
+      instagramCaption: "Join us for GOUP Demo Day.",
+      title: "GOUP Demo Day",
+      url: "/goup/group/baku/event/demo-day",
+    });
+
+    // Copy the suggested Instagram caption from the open modal.
+    element._openModal();
+    await element._handleInstagramCopyClick();
+    await element.updateComplete;
+
+    // Successful copy includes the caption and normalized share URL.
+    expect(clipboardCalls).to.deep.equal([
+      `Join us for GOUP Demo Day.\n\n${window.location.origin}/goup/group/baku/event/demo-day`,
+    ]);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0]).to.include({
+      text: "Instagram caption copied to clipboard!",
+      icon: "success",
+    });
+    expect(element._isOpen).to.equal(false);
+  });
+
   it("uses sharer.js when a platform button is clicked", async () => {
     // Render the share-modal fixture.
     const element = await mountLitComponent("share-modal", {

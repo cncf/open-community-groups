@@ -6,6 +6,7 @@ import {
   markDatasetReady,
 } from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
+import "/static/js/common/modals/share-modal.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
 import "/static/js/dashboard/group/questions-editor.js";

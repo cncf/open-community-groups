@@ -107,7 +107,9 @@
                     <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">Draft</span>
                   {% endif -%}
                 </div>
-                <p class="mt-1 text-sm text-stone-600">{{ job.company_name }} · {{ job.application_count }} application{% if job.application_count != 1 %}s{% endif %}</p>
+                <p class="mt-1 text-sm text-stone-600">
+                  {{ job.company_name }} · {{ job.application_count }} application{% if job.application_count != 1 %}s{% endif %} · visible until {{ job.expires_at.format("%b %d, %Y") }}
+                </p>
               </div>
               <a class="text-sm font-semibold text-primary-700 hover:text-primary-900"
                  href="/jobs/{{ job.slug }}">View</a>

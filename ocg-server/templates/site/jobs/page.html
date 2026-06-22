@@ -81,6 +81,25 @@
                   <a class="hover:text-primary-700" href="/jobs/{{ job.slug }}">{{ job.title }}</a>
                 </h2>
                 <p class="mt-2 max-w-3xl text-sm/6 text-stone-600">{{ job.summary }}</p>
+                <div class="mt-4 flex items-center gap-3 text-sm text-stone-600">
+                  <div class="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-50 text-xs font-semibold uppercase text-primary-700 ring-1 ring-inset ring-primary-100">
+                    {% if let Some(photo_url) = &job.poster_photo_url -%}
+                      <img src="{{ photo_url }}"
+                           alt="{{ job.poster_name.as_deref().unwrap_or(job.poster_username.as_str()) }}"
+                           class="h-full w-full object-cover"
+                           loading="lazy" />
+                    {% else -%}
+                      {{ self::user_initials(job.poster_name.as_deref(), job.poster_username.as_str()) }}
+                    {% endif -%}
+                  </div>
+                  <div>
+                    <div class="font-medium text-stone-800">Posted by {{ job.poster_name.as_deref().unwrap_or(job.poster_username.as_str()) }}</div>
+                    <div class="text-xs text-stone-500">
+                      {% if let Some(title) = &job.poster_title -%}{{ title }}{% if job.poster_company.is_some() %} · {% endif %}{% endif -%}
+                      {% if let Some(company) = &job.poster_company -%}{{ company }}{% endif -%}
+                    </div>
+                  </div>
+                </div>
                 {% if !job.tags.is_empty() -%}
                   <div class="mt-4 flex flex-wrap gap-2">
                     {% for tag in job.tags -%}
@@ -91,6 +110,7 @@
               </div>
               <div class="shrink-0 text-sm text-stone-500 lg:text-right">
                 <div>Posted {{ job.created_at.format("%b %d, %Y") }}</div>
+                <div>Open until {{ job.expires_at.format("%b %d, %Y") }}</div>
                 <a class="mt-3 inline-flex font-semibold text-primary-700 hover:text-primary-900"
                    href="/jobs/{{ job.slug }}">View role</a>
               </div>

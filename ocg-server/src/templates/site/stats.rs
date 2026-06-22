@@ -35,6 +35,12 @@ pub struct SiteStats {
     pub groups: SiteStatsSection,
     /// Members statistics.
     pub members: SiteStatsSection,
+    /// Jobs statistics.
+    pub jobs: SiteStatsSection,
+    /// Startup landscape statistics.
+    pub landscape_startups: SiteStatsSection,
+    /// Open-source landscape statistics.
+    pub landscape_open_source: SiteStatsSection,
 }
 
 /// Statistics for a single site section.

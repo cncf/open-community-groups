@@ -4,8 +4,9 @@
 //! with their respective permission-based middleware layers.
 
 use axum::{
-    Router, middleware,
+    middleware,
     routing::{delete, get, post, put},
+    Router,
 };
 
 use crate::{
@@ -71,6 +72,7 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             "/groups/{group_id}/update",
             get(dashboard::alliance::groups::update_page),
         )
+        .route("/landscape", get(dashboard::alliance::landscape::list_page))
         .route("/logs", get(dashboard::alliance::logs::list_page))
         .route(
             "/settings/update",
@@ -83,9 +85,7 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             "/regions/{region_id}/update",
             get(dashboard::alliance::regions::update_page),
         )
-        .route_layer(check_selected_alliance_permission(
-            AlliancePermission::Read,
-        ));
+        .route_layer(check_selected_alliance_permission(AlliancePermission::Read));
 
     // Alliance groups management endpoints
     let groups_management = Router::new()
@@ -105,6 +105,29 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/groups/{group_id}/update",
             put(dashboard::alliance::groups::update),
+        )
+        .route_layer(check_selected_alliance_permission(
+            AlliancePermission::GroupsWrite,
+        ));
+
+    // Alliance landscape management endpoints
+    let landscape_management = Router::new()
+        .route("/landscape/add", post(dashboard::alliance::landscape::add))
+        .route(
+            "/landscape/{entry_id}/delete",
+            delete(dashboard::alliance::landscape::delete),
+        )
+        .route(
+            "/landscape/{entry_id}/publish",
+            put(dashboard::alliance::landscape::publish),
+        )
+        .route(
+            "/landscape/{entry_id}/unpublish",
+            put(dashboard::alliance::landscape::unpublish),
+        )
+        .route(
+            "/landscape/{entry_id}/update",
+            put(dashboard::alliance::landscape::update),
         )
         .route_layer(check_selected_alliance_permission(
             AlliancePermission::GroupsWrite,
@@ -179,11 +202,11 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
     Router::new()
         .route(
             "/",
-            get(dashboard::alliance::home::page)
-                .route_layer(check_alliance_dashboard_permission()),
+            get(dashboard::alliance::home::page).route_layer(check_alliance_dashboard_permission()),
         )
         .merge(dashboard_read)
         .merge(groups_management)
+        .merge(landscape_management)
         .merge(settings_management)
         .merge(taxonomy_management)
         .merge(team_management)

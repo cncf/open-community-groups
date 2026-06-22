@@ -14,6 +14,7 @@ import "/static/vendor/js/sharer.v0.5.3.min.js";
  * ShareModal displays a Share button that opens a modal with share options.
  * @extends LitWrapper
  * @property {string} triggerVariant - The trigger style variant
+ * @property {string} instagramCaption - Suggested caption for Instagram sharing
  * @property {string} title - The title to share
  * @property {string} url - The URL to share
  */
@@ -24,6 +25,7 @@ export class ShareModal extends LitWrapper {
    */
   static get properties() {
     return {
+      instagramCaption: { type: String, attribute: "instagram-caption" },
       triggerVariant: { type: String, attribute: "trigger-variant" },
       title: { type: String },
       url: { type: String },
@@ -33,6 +35,7 @@ export class ShareModal extends LitWrapper {
 
   constructor() {
     super();
+    this.instagramCaption = "";
     this.triggerVariant = "button";
     this.title = "";
     this.url = "";
@@ -207,6 +210,23 @@ export class ShareModal extends LitWrapper {
   }
 
   /**
+   * Handles click on Instagram copy button.
+   * Copies the suggested caption and event link to clipboard.
+   */
+  async _handleInstagramCopyClick() {
+    const caption = this.instagramCaption?.trim() || this.title;
+    const text = `${caption}\n\n${this._getFullUrl()}`.trim();
+
+    try {
+      await navigator.clipboard.writeText(text);
+      showSuccessAlert("Instagram caption copied to clipboard!");
+      this._closeModal();
+    } catch {
+      showErrorAlert("Failed to copy Instagram caption. Please try again.");
+    }
+  }
+
+  /**
    * Renders the control that opens the share modal.
    * @returns {TemplateResult} The share trigger template
    */
@@ -269,6 +289,31 @@ export class ShareModal extends LitWrapper {
   }
 
   /**
+   * Renders an Instagram caption copy button when caption text is available.
+   * @returns {TemplateResult|string} Instagram copy button or empty string
+   */
+  _renderInstagramCopyButton() {
+    if (!this.instagramCaption) {
+      return "";
+    }
+
+    return html`
+      <button
+        type="button"
+        class="group btn-secondary-anchor flex items-center justify-center size-12 p-2"
+        title="Copy Instagram caption"
+        aria-label="Copy Instagram caption"
+        @click=${() => this._handleInstagramCopyClick()}
+      >
+        <div
+          class="svg-icon size-5 bg-primary-500 group-hover:bg-white transition-colors
+                 icon-instagram"
+        ></div>
+      </button>
+    `;
+  }
+
+  /**
    * Renders the share modal.
    * @returns {TemplateResult} The component template
    */
@@ -318,7 +363,13 @@ export class ShareModal extends LitWrapper {
                 ${this._renderShareButton("reddit", "reddit", "Reddit")}
                 ${this._renderShareButton("linkedin", "linkedin", "LinkedIn")}
                 ${this._renderShareButton("bluesky", "bluesky", "Bluesky")}
+                ${this._renderInstagramCopyButton()}
               </div>
+              ${this.instagramCaption
+                ? html`<p class="mt-3 text-xs text-stone-500">
+                    Instagram does not support prefilled web posts. Use the Instagram button to copy a caption and event link.
+                  </p>`
+                : ""}
 
               <div class="border-t border-stone-200 mt-5 pt-5">
                 <div class="text-sm font-medium text-stone-700 mb-3">Copy link</div>

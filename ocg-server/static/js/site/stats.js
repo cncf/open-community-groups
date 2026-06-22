@@ -126,6 +126,9 @@ export const initSiteStatsCharts = async (stats) => {
     { key: "members", label: "Members" },
     { key: "events", label: "Events" },
     { key: "attendees", label: "Attendees" },
+    { key: "jobs", label: "Jobs" },
+    { key: "landscape_startups", label: "Startups" },
+    { key: "landscape_open_source", label: "Open Source" },
   ];
 
   for (const section of sections) {

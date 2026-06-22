@@ -83,6 +83,8 @@
           <div class="svg-icon size-3 icon-eye shrink-0"></div>
           <span>Public page</span>
         </a>
+        <share-modal title="{{ event.name }}" url="{{ event_public_url }}" instagram-caption="Join us for {{ event.name }} with {{ event.group.name }}.">
+        </share-modal>
       {% else -%}
         <button id="event-public-page-link"
                 type="button"

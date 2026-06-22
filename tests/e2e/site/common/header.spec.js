@@ -29,7 +29,10 @@ test.describe("site header", () => {
     ).toHaveAttribute("href", "/jobs");
     await expect(
       navigation.getByRole("link", { name: "Landscape" }),
-    ).toHaveAttribute("href", "https://landscape.cncf.io/");
+    ).toHaveAttribute("href", "/landscape");
+    await expect(
+      navigation.getByRole("link", { name: "Wiki" }),
+    ).toHaveAttribute("href", "/wiki");
     await expect(
       navigation.getByRole("button", { name: "Switch to dark mode" }),
     ).toBeVisible();
@@ -67,7 +70,10 @@ test.describe("site header", () => {
     ).toHaveAttribute("href", "/jobs");
     await expect(
       userMenu.getByRole("menuitem", { name: "Landscape" }),
-    ).toHaveAttribute("href", "https://landscape.cncf.io/");
+    ).toHaveAttribute("href", "/landscape");
+    await expect(
+      userMenu.getByRole("menuitem", { name: "Wiki" }),
+    ).toHaveAttribute("href", "/wiki");
     await expect(
       userMenu.getByRole("menuitem", { name: "Dark mode" }),
     ).toBeVisible();

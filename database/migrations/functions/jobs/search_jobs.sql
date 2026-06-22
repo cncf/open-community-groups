@@ -13,6 +13,7 @@ begin
         select j.*
         from jobs_job j
         where j.published = true
+        and j.expires_at > current_timestamp
         and (
             v_query is null
             or j.title ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'

@@ -52,7 +52,8 @@
     {#- End Twitter tags #}
 
     {% if let Some(favicon_url) = &site_settings.favicon_url -%}
-      <link rel="icon" href="{{ favicon_url }}" sizes="any">
+      <link rel="icon" type="image/png" href="{{ favicon_url }}" sizes="any">
+      <link rel="shortcut icon" type="image/png" href="{{ favicon_url }}">
 
     {% endif -%}
     <meta charset="UTF-8" />

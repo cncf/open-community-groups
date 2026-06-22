@@ -12,9 +12,16 @@
         </div>
       </div>
 
-      <div class="space-y-12">
-        {# Groups section #}
-        <section class="space-y-6">
+      <div class="space-y-14">
+        {# Alliance section #}
+        <section class="space-y-8 rounded-3xl border border-stone-200 bg-white/70 p-5 shadow-sm lg:p-7">
+          <div>
+            <div class="text-xl lg:text-2xl font-semibold text-stone-900">Alliance</div>
+            <p class="mt-1 text-sm/6 text-stone-500">Current alliance growth across groups, members, events, and attendees.</p>
+          </div>
+
+          {# Groups section #}
+          <div class="space-y-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="text-lg lg:text-xl font-semibold text-stone-900">Groups</div>
             <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px]">
@@ -27,11 +34,11 @@
             {{ stats_macro::analytics_chart(chart_id = "groups-running-chart", data = stats.groups.running_total, class = "h-[320px]", min_points = 1) -}}
             {{ stats_macro::analytics_chart(chart_id = "groups-monthly-chart", data = stats.groups.per_month, class = "h-[320px]") -}}
           </div>
-        </section>
-        {# End groups section #}
+          </div>
+          {# End groups section #}
 
-        {# Members section #}
-        <section class="space-y-6">
+          {# Members section #}
+          <div class="space-y-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="text-lg lg:text-xl font-semibold text-stone-900">Members</div>
             <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px]">
@@ -44,11 +51,11 @@
             {{ stats_macro::analytics_chart(chart_id = "members-running-chart", data = stats.members.running_total, class = "h-[320px]", min_points = 1) -}}
             {{ stats_macro::analytics_chart(chart_id = "members-monthly-chart", data = stats.members.per_month, class = "h-[320px]") -}}
           </div>
-        </section>
-        {# End members section #}
+          </div>
+          {# End members section #}
 
-        {# Events section #}
-        <section class="space-y-6">
+          {# Events section #}
+          <div class="space-y-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="text-lg lg:text-xl font-semibold text-stone-900">Events</div>
             <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px]">
@@ -61,11 +68,11 @@
             {{ stats_macro::analytics_chart(chart_id = "events-running-chart", data = stats.events.running_total, class = "h-[320px]", min_points = 1) -}}
             {{ stats_macro::analytics_chart(chart_id = "events-monthly-chart", data = stats.events.per_month, class = "h-[320px]") -}}
           </div>
-        </section>
-        {# End events section #}
+          </div>
+          {# End events section #}
 
-        {# Attendees section #}
-        <section class="space-y-6">
+          {# Attendees section #}
+          <div class="space-y-6">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="text-lg lg:text-xl font-semibold text-stone-900">Attendees</div>
             <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px]">
@@ -78,8 +85,69 @@
             {{ stats_macro::analytics_chart(chart_id = "attendees-running-chart", data = stats.attendees.running_total, class = "h-[320px]", min_points = 1) -}}
             {{ stats_macro::analytics_chart(chart_id = "attendees-monthly-chart", data = stats.attendees.per_month, class = "h-[320px]") -}}
           </div>
+          </div>
+          {# End attendees section #}
         </section>
-        {# End attendees section #}
+        {# End alliance section #}
+
+        {# Jobs section #}
+        <section class="space-y-6 rounded-3xl border border-stone-200 bg-white/70 p-5 shadow-sm lg:p-7">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div class="text-xl lg:text-2xl font-semibold text-stone-900">Jobs</div>
+              <p class="mt-1 text-sm/6 text-stone-500">Roles shared by GOUP members and alliance companies.</p>
+            </div>
+            <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px]">
+              <div class="svg-icon size-4 icon-search bg-stone-500 me-2"></div>
+              Total
+              <span class="ms-2 text-base font-semibold text-stone-900">{{ stats.jobs.total|num_fmt }}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {{ stats_macro::analytics_chart(chart_id = "jobs-running-chart", data = stats.jobs.running_total, class = "h-[320px]", min_points = 1) -}}
+            {{ stats_macro::analytics_chart(chart_id = "jobs-monthly-chart", data = stats.jobs.per_month, class = "h-[320px]") -}}
+          </div>
+        </section>
+        {# End jobs section #}
+
+        {# Landscape section #}
+        <section class="space-y-8 rounded-3xl border border-stone-200 bg-white/70 p-5 shadow-sm lg:p-7">
+          <div>
+            <div class="text-xl lg:text-2xl font-semibold text-stone-900">Landscape</div>
+            <p class="mt-1 text-sm/6 text-stone-500">Startups and open-source projects added by alliance admins.</p>
+          </div>
+
+          <div class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="text-lg lg:text-xl font-semibold text-stone-900">Startups</div>
+              <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px]">
+                <div class="svg-icon size-4 icon-buildings bg-stone-500 me-2"></div>
+                Total
+                <span class="ms-2 text-base font-semibold text-stone-900">{{ stats.landscape_startups.total|num_fmt }}</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {{ stats_macro::analytics_chart(chart_id = "landscape_startups-running-chart", data = stats.landscape_startups.running_total, class = "h-[320px]", min_points = 1) -}}
+              {{ stats_macro::analytics_chart(chart_id = "landscape_startups-monthly-chart", data = stats.landscape_startups.per_month, class = "h-[320px]") -}}
+            </div>
+          </div>
+
+          <div class="space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div class="text-lg lg:text-xl font-semibold text-stone-900">Open Source</div>
+              <div class="bg-white border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-500 flex items-center justify-center w-[170px]">
+                <div class="svg-icon size-4 icon-github bg-stone-500 me-2"></div>
+                Total
+                <span class="ms-2 text-base font-semibold text-stone-900">{{ stats.landscape_open_source.total|num_fmt }}</span>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              {{ stats_macro::analytics_chart(chart_id = "landscape_open_source-running-chart", data = stats.landscape_open_source.running_total, class = "h-[320px]", min_points = 1) -}}
+              {{ stats_macro::analytics_chart(chart_id = "landscape_open_source-monthly-chart", data = stats.landscape_open_source.per_month, class = "h-[320px]") -}}
+            </div>
+          </div>
+        </section>
+        {# End landscape section #}
       </div>
     </div>
   </div>

@@ -1,7 +1,7 @@
 -- Returns site statistics as a JSON object.
 --
--- The function computes statistics for 4 domains: groups, members, events,
--- and attendees. Each domain includes the following stat types:
+-- The function computes statistics for alliance activity, jobs, and landscape
+-- entries. Each domain includes the following stat types:
 --
 --   - total: Total count of entities (all-time)
 --   - running_total: Cumulative total over time (last 10 years)
@@ -86,6 +86,42 @@ attendees as (
     join events e on e.event_id = ea.event_id
     where ea.status = 'confirmed'
 ),
+jobs as (
+    select
+        jj.created_at,
+        timezone(
+            'UTC',
+            date_trunc('month', jj.created_at at time zone 'UTC')
+        ) as created_month
+    from jobs_job jj
+    where jj.published = true
+),
+landscape_startups as (
+    select
+        le.created_at,
+        timezone(
+            'UTC',
+            date_trunc('month', le.created_at at time zone 'UTC')
+        ) as created_month
+    from landscape_entry le
+    join alliance a on a.alliance_id = le.alliance_id
+    where a.active = true
+      and le.published = true
+      and le.kind = 'startup'
+),
+landscape_open_source as (
+    select
+        le.created_at,
+        timezone(
+            'UTC',
+            date_trunc('month', le.created_at at time zone 'UTC')
+        ) as created_month
+    from landscape_entry le
+    join alliance a on a.alliance_id = le.alliance_id
+    where a.active = true
+      and le.published = true
+      and le.kind = 'github_project'
+),
 domain_running_total_counts as (
     select
         'groups' as domain,
@@ -124,6 +160,36 @@ domain_running_total_counts as (
     from attendees a
     join params p on a.created_at >= p.period_start
     group by a.created_month
+
+    union all
+
+    select
+        'jobs' as domain,
+        j.created_month as bucket_start,
+        count(*)::int as count
+    from jobs j
+    join params p on j.created_at >= p.period_start
+    group by j.created_month
+
+    union all
+
+    select
+        'landscape_startups' as domain,
+        ls.created_month as bucket_start,
+        count(*)::int as count
+    from landscape_startups ls
+    join params p on ls.created_at >= p.period_start
+    group by ls.created_month
+
+    union all
+
+    select
+        'landscape_open_source' as domain,
+        los.created_month as bucket_start,
+        count(*)::int as count
+    from landscape_open_source los
+    join params p on los.created_at >= p.period_start
+    group by los.created_month
 ),
 domain_monthly_counts as (
     select
@@ -184,6 +250,45 @@ select json_strip_nulls(json_build_object(
             where domain = 'attendees'
         )),
         'total', (select count(*)::int from attendees)
+    ),
+    'jobs', json_build_object(
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'jobs'
+        )),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'jobs'
+        )),
+        'total', (select count(*)::int from jobs)
+    ),
+    'landscape_startups', json_build_object(
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'landscape_startups'
+        )),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'landscape_startups'
+        )),
+        'total', (select count(*)::int from landscape_startups)
+    ),
+    'landscape_open_source', json_build_object(
+        'per_month', stats_label_count_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_monthly_counts counts
+            where domain = 'landscape_open_source'
+        )),
+        'running_total', stats_running_total_series((
+            select jsonb_agg(to_jsonb(counts))
+            from domain_running_total_counts counts
+            where domain = 'landscape_open_source'
+        )),
+        'total', (select count(*)::int from landscape_open_source)
     )
 ));
 $$ language sql;
