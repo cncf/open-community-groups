@@ -11,7 +11,8 @@ use tokio_postgres::types::{FromSql, Json, ToSql};
 use crate::db::{
     activity_tracker::DBActivityTracker, alliance::DBAlliance, auth::DBAuth, common::DBCommon,
     dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, jobs::DBJobs,
-    meetings::DBMeetings, notifications::DBNotifications, payments::DBPayments, site::DBSite,
+    landscape::DBLandscape, meetings::DBMeetings, notifications::DBNotifications,
+    payments::DBPayments, site::DBSite,
 };
 
 /// Module containing authentication database operations.
@@ -45,6 +46,9 @@ pub(crate) mod images;
 /// Module containing database functionality for jobs.
 pub(crate) mod jobs;
 
+/// Module containing database functionality for landscape entries.
+pub(crate) mod landscape;
+
 /// Module containing database functionality for managing meetings.
 pub(crate) mod meetings;
 
@@ -75,6 +79,7 @@ pub(crate) trait DBOperations:
     + DBGroup
     + DBImages
     + DBJobs
+    + DBLandscape
     + DBMeetings
     + DBNotifications
     + DBPayments
@@ -94,6 +99,7 @@ impl<T> DBOperations for T where
         + DBGroup
         + DBImages
         + DBJobs
+        + DBLandscape
         + DBMeetings
         + DBNotifications
         + DBPayments

@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{groups, logs, team};
+use super::{groups, landscape, logs, team};
 
 use crate::{
     auth::AuthSession,
@@ -105,6 +105,16 @@ pub(crate) async fn page(
             )
             .await?;
             Content::Groups(template)
+        }
+        Tab::Landscape => {
+            let (_, template) = landscape::prepare_list_page(
+                &db,
+                alliance_id,
+                user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Landscape(template)
         }
         Tab::Logs => {
             let (_, template) = logs::prepare_list_page(

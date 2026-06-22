@@ -895,6 +895,45 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::landscape::DBLandscape for DB {
+        async fn search_landscape_entries(
+            &self,
+            filters: &crate::types::landscape::LandscapeFilters,
+        ) -> Result<crate::types::landscape::LandscapeOutput>;
+        async fn list_alliance_landscape_entries(
+            &self,
+            alliance_id: Uuid,
+            filters: &crate::types::landscape::DashboardLandscapeFilters,
+        ) -> Result<crate::types::landscape::LandscapeOutput>;
+        async fn add_landscape_entry(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            input: &crate::types::landscape::LandscapeEntryInput,
+        ) -> Result<Uuid>;
+        async fn update_landscape_entry(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            entry_id: Uuid,
+            input: &crate::types::landscape::LandscapeEntryInput,
+        ) -> Result<()>;
+        async fn delete_landscape_entry(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            entry_id: Uuid,
+        ) -> Result<()>;
+        async fn update_landscape_entry_published(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            entry_id: Uuid,
+            published: bool,
+        ) -> Result<()>;
+    }
+
+    #[async_trait]
     impl crate::db::meetings::DBMeetings for DB {
         async fn add_meeting(
             &self,

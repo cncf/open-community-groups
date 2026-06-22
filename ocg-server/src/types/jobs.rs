@@ -166,6 +166,19 @@ pub(crate) struct JobSummary {
     pub application_count: i32,
     /// Poster user identifier.
     pub posted_by_user_id: Uuid,
+    /// Poster username.
+    pub poster_username: String,
+    /// Poster display name.
+    pub poster_name: Option<String>,
+    /// Poster profile photo URL.
+    pub poster_photo_url: Option<String>,
+    /// Poster title.
+    pub poster_title: Option<String>,
+    /// Poster company.
+    pub poster_company: Option<String>,
+    /// Public expiration time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub expires_at: DateTime<Utc>,
     /// Creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,

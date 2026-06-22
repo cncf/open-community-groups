@@ -2,6 +2,7 @@
 
 use askama::Template;
 use chrono::{DateTime, Utc};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
@@ -51,6 +52,23 @@ impl Page {
                 self.event.group.public_slug(),
                 self.event.slug
             ),
+        )
+    }
+
+    /// Returns a LinkedIn share URL for the event page.
+    pub(crate) fn linkedin_share_url(&self) -> String {
+        format!(
+            "https://www.linkedin.com/sharing/share-offsite/?url={}",
+            utf8_percent_encode(&self.canonical_url(), NON_ALPHANUMERIC)
+        )
+    }
+
+    /// Returns suggested caption text for Instagram.
+    pub(crate) fn instagram_caption(&self) -> String {
+        format!(
+            "{}\n\n{}",
+            self.preview_title(),
+            self.preview_description()
         )
     }
 

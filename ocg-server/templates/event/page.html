@@ -202,6 +202,16 @@
             </div>
 
             <div class="flex max-w-full flex-row flex-wrap gap-2 sm:flex-nowrap sm:gap-3 md:col-start-3 md:row-start-2 md:self-end md:justify-end md:gap-4">
+              <a href="{{ self.linkedin_share_url() }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 hx-boost="false"
+                 class="group btn-primary-outline-anchor hidden h-10 items-center justify-center gap-2 px-4 md:inline-flex"
+                 aria-label="Share on LinkedIn"
+                 title="Share on LinkedIn">
+                <div class="svg-icon size-4 icon-linkedin bg-primary-500 transition-colors group-hover:bg-white"></div>
+                <span>LinkedIn</span>
+              </a>
               {# Attend button section -#}
               {% let attendance_instance = "main" -%}
               {% include "event/attend_button.html" %}

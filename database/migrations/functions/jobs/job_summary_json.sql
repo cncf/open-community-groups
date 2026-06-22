@@ -18,10 +18,18 @@ returns jsonb language sql stable as $$
             where ja.job_id = p_job.job_id
         ),
         'posted_by_user_id', p_job.posted_by_user_id,
+        'poster_username', u.username,
+        'poster_name', u.name,
+        'poster_photo_url', u.photo_url,
+        'poster_title', u.title,
+        'poster_company', u.company,
+        'expires_at', extract(epoch from p_job.expires_at)::bigint,
         'created_at', extract(epoch from p_job.created_at)::bigint,
         'updated_at', case
             when p_job.updated_at is null then null
             else extract(epoch from p_job.updated_at)::bigint
         end
-    );
+    )
+    from "user" u
+    where u.user_id = p_job.posted_by_user_id;
 $$;

@@ -1174,6 +1174,21 @@ pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
             running_total: vec![],
             total: 0,
         },
+        jobs: crate::templates::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        landscape_startups: crate::templates::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
+        landscape_open_source: crate::templates::site::stats::SiteStatsSection {
+            per_month: vec![],
+            running_total: vec![],
+            total: 0,
+        },
     }
 }
 

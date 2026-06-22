@@ -4,6 +4,7 @@ pub mod alliance;
 pub mod event;
 pub mod group;
 pub(crate) mod jobs;
+pub(crate) mod landscape;
 pub mod location;
 pub mod pagination;
 pub mod payments;

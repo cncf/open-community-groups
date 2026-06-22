@@ -58,6 +58,14 @@
 {{ template "jobs/update_job.sql" }}
 {{ template "jobs/update_job_published.sql" }}
 
+{{ template "landscape/landscape_entry_json.sql" }}
+{{ template "landscape/add_landscape_entry.sql" }}
+{{ template "landscape/delete_landscape_entry.sql" }}
+{{ template "landscape/list_alliance_landscape_entries.sql" }}
+{{ template "landscape/search_landscape_entries.sql" }}
+{{ template "landscape/update_landscape_entry.sql" }}
+{{ template "landscape/update_landscape_entry_published.sql" }}
+
 {{ template "alliance/get_alliance_id_by_name.sql" }}
 {{ template "alliance/get_alliance_name_by_id.sql" }}
 {{ template "alliance/get_alliance_recently_added_groups.sql" }}

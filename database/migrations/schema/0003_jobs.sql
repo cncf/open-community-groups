@@ -11,12 +11,16 @@ create table jobs_job (
     remote boolean default false not null,
     tags text[] default '{}'::text[] not null,
     published boolean default true not null,
+    expires_at timestamp with time zone default current_timestamp + interval '30 days' not null,
     created_at timestamp with time zone default current_timestamp not null,
     updated_at timestamp with time zone
 );
 
 create index jobs_job_published_created_at_idx
 on jobs_job (published, created_at desc);
+
+create index jobs_job_published_expires_at_created_at_idx
+on jobs_job (published, expires_at, created_at desc);
 
 create index jobs_job_posted_by_user_id_created_at_idx
 on jobs_job (posted_by_user_id, created_at desc);

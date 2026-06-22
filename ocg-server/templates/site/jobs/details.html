@@ -21,6 +21,7 @@
           <span class="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700">{{ location }}</span>
         {% endif -%}
         <span class="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700">Posted {{ job.summary.created_at.format("%b %d, %Y") }}</span>
+        <span class="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700">Open until {{ job.summary.expires_at.format("%b %d, %Y") }}</span>
       </div>
     </div>
   </div>
@@ -43,45 +44,71 @@
       <div class="whitespace-pre-line text-sm/7 text-stone-700">{{ job.summary.description }}</div>
     </article>
 
-    <aside class="h-fit rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-      <h2 class="text-lg font-semibold text-stone-950">Apply</h2>
-      <p class="mt-2 text-sm/6 text-stone-600">
-        Use the employer application link or save your interest with GOUP.
-      </p>
-
-      <a class="btn-primary mt-5 w-full justify-center"
-         href="{{ job.summary.apply_url }}"
-         target="_blank"
-         rel="noopener noreferrer"
-         hx-boost="false">Apply on company site</a>
-
-      {% if user.logged_in -%}
-        {% if job.viewer_has_applied -%}
-          <div class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-            Your interest has been saved.
+    <aside class="h-fit overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
+      <div class="border-b border-stone-100 bg-linear-to-br from-primary-50 via-white to-stone-50 p-5">
+        <div class="flex items-center gap-3">
+          <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-semibold uppercase text-primary-700 ring-1 ring-inset ring-primary-100">
+            {% if let Some(photo_url) = &job.summary.poster_photo_url -%}
+              <img src="{{ photo_url }}"
+                   alt="{{ job.summary.poster_name.as_deref().unwrap_or(job.summary.poster_username.as_str()) }}"
+                   class="h-full w-full object-cover"
+                   loading="lazy" />
+            {% else -%}
+              {{ self::user_initials(job.summary.poster_name.as_deref(), job.summary.poster_username.as_str()) }}
+            {% endif -%}
           </div>
+          <div class="min-w-0">
+            <div class="text-xs font-semibold uppercase tracking-wide text-primary-700">Posted by</div>
+            <div class="truncate font-semibold text-stone-950">{{ job.summary.poster_name.as_deref().unwrap_or(job.summary.poster_username.as_str()) }}</div>
+            <div class="truncate text-xs text-stone-500">
+              {% if let Some(title) = &job.summary.poster_title -%}{{ title }}{% if job.summary.poster_company.is_some() %} · {% endif %}{% endif -%}
+              {% if let Some(company) = &job.summary.poster_company -%}{{ company }}{% endif -%}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-5">
+        <h2 class="text-lg font-semibold text-stone-950">Apply</h2>
+        <p class="mt-2 text-sm/6 text-stone-600">
+          Apply directly on the company site or save your interest so the GOUP member who posted this role can follow up.
+        </p>
+
+        <a class="btn-primary mt-5 w-full justify-center"
+           href="{{ job.summary.apply_url }}"
+           target="_blank"
+           rel="noopener noreferrer"
+           hx-boost="false">Apply on company site</a>
+
+        {% if user.logged_in -%}
+          {% if job.viewer_has_applied -%}
+            <div class="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              Your interest has been saved. The poster can see your note from the jobs dashboard.
+            </div>
+          {% else -%}
+            <form class="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4"
+                  hx-post="/jobs/{{ job.summary.job_id }}/apply"
+                  hx-swap="none"
+                  hx-disabled-elt="button">
+              <label class="mb-2 block text-sm font-semibold text-stone-800" for="job-application-note">
+                Note to the poster
+              </label>
+              <textarea id="job-application-note"
+                        name="note"
+                        rows="5"
+                        class="input bg-white"
+                        placeholder="Briefly share why this role is interesting or how they can reach you."></textarea>
+              <p class="mt-2 text-xs text-stone-500">This does not replace the official application.</p>
+              <button class="btn-secondary mt-4 w-full justify-center" type="submit">
+                Save my interest
+              </button>
+            </form>
+          {% endif -%}
         {% else -%}
-          <form class="mt-5"
-                hx-post="/jobs/{{ job.summary.job_id }}/apply"
-                hx-swap="none"
-                hx-disabled-elt="button">
-            <label class="mb-2 block text-sm font-medium text-stone-700" for="job-application-note">
-              Optional note
-            </label>
-            <textarea id="job-application-note"
-                      name="note"
-                      rows="4"
-                      class="input"
-                      placeholder="Share a short note for the poster"></textarea>
-            <button class="btn-secondary mt-3 w-full justify-center" type="submit">
-              Save interest
-            </button>
-          </form>
+          <a class="btn-secondary mt-3 w-full justify-center"
+             href="/log-in?next_url=/jobs/{{ job.summary.slug }}">Log in to save interest</a>
         {% endif -%}
-      {% else -%}
-        <a class="btn-secondary mt-3 w-full justify-center"
-           href="/log-in?next_url=/jobs/{{ job.summary.slug }}">Log in to save interest</a>
-      {% endif -%}
+      </div>
     </aside>
   </div>
 {% endblock content -%}

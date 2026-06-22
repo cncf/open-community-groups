@@ -7,7 +7,8 @@ begin
     into v_job
     from jobs_job
     where slug = p_slug
-    and published = true;
+    and published = true
+    and expires_at > current_timestamp;
 
     if v_job.job_id is null then
         raise exception 'job not found';

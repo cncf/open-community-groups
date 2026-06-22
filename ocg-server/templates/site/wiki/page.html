@@ -1,0 +1,66 @@
+{% extends "common/base.html" -%}
+
+{% block jumbotron -%}
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8">
+    <div class="relative max-w-3xl">
+      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-primary-600">Wiki</p>
+      <h1 class="mb-4 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
+        Tech reading brief for builders
+      </h1>
+      <p class="max-w-2xl text-base/7 text-stone-600">
+        A live summary of useful AI, open-source, and entrepreneurship links pulled from public tech feeds, research feeds, and founder-focused sources.
+      </p>
+    </div>
+  </div>
+{% endblock jumbotron -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl p-4 pb-12 sm:p-6 lg:p-8 lg:pb-16">
+    <div class="grid gap-6 lg:grid-cols-3">
+      {% for section in sections -%}
+        <section id="{{ section.id }}"
+                 class="flex min-h-full flex-col rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
+          <div class="mb-5">
+            <div class="mb-3 inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-700">
+              {{ section.title }}
+            </div>
+            <h2 class="text-2xl font-semibold tracking-tight text-stone-950">{{ section.title }}</h2>
+            <p class="mt-3 text-sm/6 text-stone-600">{{ section.summary }}</p>
+          </div>
+
+          {% if section.links.is_empty() -%}
+            <div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-5 text-sm text-stone-600">
+              Live links are temporarily unavailable. Use the source list below.
+            </div>
+          {% else -%}
+            <div class="grid gap-3">
+              {% for link in section.links -%}
+                <a href="{{ link.url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   hx-boost="false"
+                   class="group rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:border-primary-200 hover:bg-primary-50/40">
+                  <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-700">{{ link.source }}</div>
+                  <div class="text-sm/6 font-semibold text-stone-900 group-hover:text-primary-900">{{ link.title }}</div>
+                </a>
+              {% endfor -%}
+            </div>
+          {% endif -%}
+
+          <div class="mt-auto pt-6">
+            <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Sources</div>
+            <div class="flex flex-wrap gap-2">
+              {% for source in section.sources -%}
+                <a class="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700 transition hover:bg-stone-200"
+                   href="{{ source.url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   hx-boost="false">{{ source.label }}</a>
+              {% endfor -%}
+            </div>
+          </div>
+        </section>
+      {% endfor -%}
+    </div>
+  </div>
+{% endblock content -%}

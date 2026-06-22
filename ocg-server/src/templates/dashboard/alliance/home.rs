@@ -7,16 +7,17 @@ use uuid::Uuid;
 
 use crate::{
     templates::{
-        PageId,
         auth::User,
         dashboard::{
-            audit,
             alliance::{
-                analytics, event_categories, group_categories, groups, regions, settings, team,
+                analytics, event_categories, group_categories, groups, landscape, regions,
+                settings, team,
             },
+            audit,
         },
         filters,
         helpers::user_initials,
+        PageId,
     },
     types::{alliance::AllianceSummary, site::SiteSettings},
 };
@@ -54,6 +55,8 @@ pub(crate) enum Content {
     GroupCategories(group_categories::ListPage),
     /// Groups management page.
     Groups(groups::ListPage),
+    /// Landscape management page.
+    Landscape(landscape::ListPage),
     /// Audit logs page.
     Logs(audit::ListPage),
     /// Regions management page.
@@ -85,6 +88,11 @@ impl Content {
         matches!(self, Content::Groups(_))
     }
 
+    /// Check if the content is the landscape page.
+    fn is_landscape(&self) -> bool {
+        matches!(self, Content::Landscape(_))
+    }
+
     /// Check if the content is the logs page.
     fn is_logs(&self) -> bool {
         matches!(self, Content::Logs(_))
@@ -113,6 +121,7 @@ impl std::fmt::Display for Content {
             Content::EventCategories(template) => write!(f, "{}", template.render()?),
             Content::GroupCategories(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
+            Content::Landscape(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Regions(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
@@ -137,6 +146,8 @@ pub(crate) enum Tab {
     GroupCategories,
     /// Groups management tab.
     Groups,
+    /// Landscape management tab.
+    Landscape,
     /// Audit logs tab.
     Logs,
     /// Regions management tab.
