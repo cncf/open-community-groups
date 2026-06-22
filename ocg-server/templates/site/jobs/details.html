@@ -1,0 +1,87 @@
+{% extends "common/base.html" -%}
+
+{% block scripts -%}
+  <script type="module" src="/static/js/site/jobs/details.js"></script>
+{% endblock scripts -%}
+
+{% block jumbotron -%}
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8">
+    <a class="mb-5 inline-flex text-sm font-medium text-primary-700 hover:text-primary-900"
+       href="/jobs">Back to jobs</a>
+    <div class="relative max-w-4xl">
+      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-primary-600">{{ job.summary.company_name }}</p>
+      <h1 class="mb-4 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
+        {{ job.summary.title }}
+      </h1>
+      <div class="flex flex-wrap gap-2">
+        {% if job.summary.remote -%}
+          <span class="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700">Remote</span>
+        {% endif -%}
+        {% if let Some(location) = &job.summary.location -%}
+          <span class="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700">{{ location }}</span>
+        {% endif -%}
+        <span class="rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-700">Posted {{ job.summary.created_at.format("%b %d, %Y") }}</span>
+      </div>
+    </div>
+  </div>
+{% endblock jumbotron -%}
+
+{% block content -%}
+  <div class="container mx-auto grid max-w-7xl gap-8 p-4 pb-12 sm:p-6 lg:grid-cols-[1fr_340px] lg:p-8 lg:pb-16">
+    <article class="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
+      <p class="mb-8 text-lg/8 text-stone-700">{{ job.summary.summary }}</p>
+
+      {% if !job.summary.tags.is_empty() -%}
+        <div class="mb-8 flex flex-wrap gap-2">
+          {% for tag in job.summary.tags -%}
+            <span class="rounded-full bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-inset ring-stone-200">{{ tag }}</span>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+
+      <h2 class="mb-3 text-xl font-semibold text-stone-950">About the role</h2>
+      <div class="whitespace-pre-line text-sm/7 text-stone-700">{{ job.summary.description }}</div>
+    </article>
+
+    <aside class="h-fit rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <h2 class="text-lg font-semibold text-stone-950">Apply</h2>
+      <p class="mt-2 text-sm/6 text-stone-600">
+        Use the employer application link or save your interest with GOUP.
+      </p>
+
+      <a class="btn-primary mt-5 w-full justify-center"
+         href="{{ job.summary.apply_url }}"
+         target="_blank"
+         rel="noopener noreferrer"
+         hx-boost="false">Apply on company site</a>
+
+      {% if user.logged_in -%}
+        {% if job.viewer_has_applied -%}
+          <div class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            Your interest has been saved.
+          </div>
+        {% else -%}
+          <form class="mt-5"
+                hx-post="/jobs/{{ job.summary.job_id }}/apply"
+                hx-swap="none"
+                hx-disabled-elt="button">
+            <label class="mb-2 block text-sm font-medium text-stone-700" for="job-application-note">
+              Optional note
+            </label>
+            <textarea id="job-application-note"
+                      name="note"
+                      rows="4"
+                      class="input"
+                      placeholder="Share a short note for the poster"></textarea>
+            <button class="btn-secondary mt-3 w-full justify-center" type="submit">
+              Save interest
+            </button>
+          </form>
+        {% endif -%}
+      {% else -%}
+        <a class="btn-secondary mt-3 w-full justify-center"
+           href="/log-in?next_url=/jobs/{{ job.summary.slug }}">Log in to save interest</a>
+      {% endif -%}
+    </aside>
+  </div>
+{% endblock content -%}

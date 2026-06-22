@@ -1,11 +1,13 @@
 //! Templates for dashboard pages.
 
-/// Shared dashboard audit log templates.
-pub(crate) mod audit;
 /// Alliance dashboard templates.
 pub(crate) mod alliance;
+/// Shared dashboard audit log templates.
+pub(crate) mod audit;
 /// Group dashboard templates.
 pub(crate) mod group;
+/// Jobs dashboard templates.
+pub(crate) mod jobs;
 /// User dashboard templates.
 pub(crate) mod user;
 

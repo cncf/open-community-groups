@@ -48,6 +48,16 @@
 {{ template "common/search_events.sql" }}
 {{ template "common/search_groups.sql" }}
 
+{{ template "jobs/job_summary_json.sql" }}
+{{ template "jobs/add_job.sql" }}
+{{ template "jobs/add_job_application.sql" }}
+{{ template "jobs/delete_job.sql" }}
+{{ template "jobs/get_job_by_slug.sql" }}
+{{ template "jobs/list_user_jobs.sql" }}
+{{ template "jobs/search_jobs.sql" }}
+{{ template "jobs/update_job.sql" }}
+{{ template "jobs/update_job_published.sql" }}
+
 {{ template "alliance/get_alliance_id_by_name.sql" }}
 {{ template "alliance/get_alliance_name_by_id.sql" }}
 {{ template "alliance/get_alliance_recently_added_groups.sql" }}

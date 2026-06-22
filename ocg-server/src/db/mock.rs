@@ -849,6 +849,52 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::jobs::DBJobs for DB {
+        async fn search_jobs(
+            &self,
+            filters: &crate::types::jobs::JobsFilters,
+        ) -> Result<crate::types::jobs::JobsOutput>;
+        async fn get_job_by_slug(
+            &self,
+            slug: &str,
+            viewer_user_id: Option<Uuid>,
+        ) -> Result<crate::types::jobs::JobFull>;
+        async fn list_user_jobs(
+            &self,
+            user_id: Uuid,
+            filters: &crate::types::jobs::DashboardJobsFilters,
+        ) -> Result<crate::types::jobs::DashboardJobsOutput>;
+        async fn add_job(
+            &self,
+            user_id: Uuid,
+            input: &crate::types::jobs::JobInput,
+        ) -> Result<Uuid>;
+        async fn update_job(
+            &self,
+            user_id: Uuid,
+            job_id: Uuid,
+            input: &crate::types::jobs::JobInput,
+        ) -> Result<()>;
+        async fn delete_job(
+            &self,
+            user_id: Uuid,
+            job_id: Uuid,
+        ) -> Result<()>;
+        async fn update_job_published(
+            &self,
+            user_id: Uuid,
+            job_id: Uuid,
+            published: bool,
+        ) -> Result<()>;
+        async fn add_job_application(
+            &self,
+            user_id: Uuid,
+            job_id: Uuid,
+            input: &crate::types::jobs::JobApplicationInput,
+        ) -> Result<()>;
+    }
+
+    #[async_trait]
     impl crate::db::meetings::DBMeetings for DB {
         async fn add_meeting(
             &self,
