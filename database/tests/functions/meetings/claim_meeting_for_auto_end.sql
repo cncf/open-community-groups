@@ -9,30 +9,52 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000001411'
-\set allianceID '00000000-0000-0000-0000-000000001401'
-\set eventCanceledID '00000000-0000-0000-0000-000000001415'
-\set eventNotOverdueID '00000000-0000-0000-0000-000000001413'
-\set eventOlderOverdueID '00000000-0000-0000-0000-000000001412'
-\set eventProcessedID '00000000-0000-0000-0000-000000001414'
-\set eventRecentOverdueID '00000000-0000-0000-0000-000000001411'
-\set eventWithSessionsID '00000000-0000-0000-0000-000000001416'
-\set groupCategoryID '00000000-0000-0000-0000-000000001410'
-\set groupID '00000000-0000-0000-0000-000000001402'
-\set sessionOutOfSyncID '00000000-0000-0000-0000-000000001422'
-\set sessionOverdueID '00000000-0000-0000-0000-000000001421'
+\set allianceID '7a040000-0000-0000-0000-000000000001'
+\set eventCanceledID '7a040000-0000-0000-0000-000000000002'
+\set eventCategoryID '7a040000-0000-0000-0000-000000000003'
+\set eventNotOverdueID '7a040000-0000-0000-0000-000000000004'
+\set eventOlderOverdueID '7a040000-0000-0000-0000-000000000005'
+\set eventProcessedID '7a040000-0000-0000-0000-000000000006'
+\set eventRecentOverdueID '7a040000-0000-0000-0000-000000000007'
+\set eventWithSessionsID '7a040000-0000-0000-0000-000000000008'
+\set groupCategoryID '7a040000-0000-0000-0000-000000000009'
+\set groupID '7a040000-0000-0000-0000-000000000010'
+\set meetingEventCanceledID '7a040000-0000-0000-0000-000000000011'
+\set meetingEventNotOverdueID '7a040000-0000-0000-0000-000000000012'
+\set meetingEventOlderOverdueID '7a040000-0000-0000-0000-000000000013'
+\set meetingEventProcessedID '7a040000-0000-0000-0000-000000000014'
+\set meetingEventRecentOverdueID '7a040000-0000-0000-0000-000000000015'
+\set meetingSessionOutOfSyncID '7a040000-0000-0000-0000-000000000016'
+\set meetingSessionOverdueID '7a040000-0000-0000-0000-000000000017'
+\set sessionOutOfSyncID '7a040000-0000-0000-0000-000000000018'
+\set sessionOverdueID '7a040000-0000-0000-0000-000000000019'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -66,7 +88,7 @@ insert into event (
     false,
     'Recent overdue event meeting',
     current_timestamp - interval '25 minutes',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventRecentOverdueID',
     'virtual',
     :'groupID',
@@ -84,7 +106,7 @@ insert into event (
     false,
     'Older overdue event meeting',
     current_timestamp - interval '90 minutes',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventOlderOverdueID',
     'virtual',
     :'groupID',
@@ -102,7 +124,7 @@ insert into event (
     false,
     'Event still inside grace window',
     current_timestamp - interval '5 minutes',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventNotOverdueID',
     'virtual',
     :'groupID',
@@ -120,7 +142,7 @@ insert into event (
     false,
     'Event meeting already checked',
     current_timestamp - interval '40 minutes',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventProcessedID',
     'virtual',
     :'groupID',
@@ -138,7 +160,7 @@ insert into event (
     true,
     'Canceled event meeting',
     current_timestamp - interval '40 minutes',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventCanceledID',
     'virtual',
     :'groupID',
@@ -156,7 +178,7 @@ insert into event (
     false,
     'Parent event for session meetings',
     current_timestamp + interval '2 hours',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventWithSessionsID',
     'virtual',
     :'groupID',
@@ -220,7 +242,7 @@ insert into meeting (
     null,
     :'eventRecentOverdueID',
     'https://zoom.us/j/event-recent-overdue',
-    '00000000-0000-0000-0000-000000001431',
+    :'meetingEventRecentOverdueID',
     'zoom',
     'event-recent-overdue'
 ),
@@ -229,7 +251,7 @@ insert into meeting (
     null,
     :'eventOlderOverdueID',
     'https://zoom.us/j/event-older-overdue',
-    '00000000-0000-0000-0000-000000001432',
+    :'meetingEventOlderOverdueID',
     'zoom',
     'event-older-overdue'
 ),
@@ -238,7 +260,7 @@ insert into meeting (
     null,
     :'eventNotOverdueID',
     'https://zoom.us/j/event-not-overdue',
-    '00000000-0000-0000-0000-000000001433',
+    :'meetingEventNotOverdueID',
     'zoom',
     'event-not-overdue'
 ),
@@ -247,7 +269,7 @@ insert into meeting (
     'auto_ended',
     :'eventProcessedID',
     'https://zoom.us/j/event-processed',
-    '00000000-0000-0000-0000-000000001434',
+    :'meetingEventProcessedID',
     'zoom',
     'event-processed'
 ),
@@ -256,7 +278,7 @@ insert into meeting (
     null,
     :'eventCanceledID',
     'https://zoom.us/j/event-canceled',
-    '00000000-0000-0000-0000-000000001435',
+    :'meetingEventCanceledID',
     'zoom',
     'event-canceled'
 );
@@ -271,14 +293,14 @@ insert into meeting (
 ) values
 (
     'https://zoom.us/j/session-overdue',
-    '00000000-0000-0000-0000-000000001436',
+    :'meetingSessionOverdueID',
     'zoom',
     'session-overdue',
     :'sessionOverdueID'
 ),
 (
     'https://zoom.us/j/session-out-of-sync',
-    '00000000-0000-0000-0000-000000001437',
+    :'meetingSessionOutOfSyncID',
     'zoom',
     'session-out-of-sync',
     :'sessionOutOfSyncID'

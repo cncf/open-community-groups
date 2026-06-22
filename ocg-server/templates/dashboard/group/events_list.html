@@ -110,7 +110,8 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                    <button type="button"
+                            hx-get="/dashboard/group/events/{{ event.event_id }}/update"
                             hx-target="#dashboard-content"
                             hx-replace-url="/dashboard/group?tab=events"
                             hx-indicator="#dashboard-spinner"
@@ -198,7 +199,8 @@
                 <div class="flex items-center justify-end gap-2">
                   {# Update event button -#}
                   <div>
-                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                    <button type="button"
+                            hx-get="/dashboard/group/events/{{ event.event_id }}/update"
                             hx-target="#dashboard-content"
                             hx-replace-url="/dashboard/group?tab=events"
                             hx-indicator="#dashboard-spinner"
@@ -220,7 +222,7 @@
                       <a href="/{{ event.alliance_name }}/group/{{ event.public_group_slug() }}/event/{{ event.slug }}"
                          target="_blank"
                          rel="noopener noreferrer"
-                         class="btn-tertiary p-2 inline-flex items-center justify-center"
+                         class="btn-tertiary-anchor p-2 inline-flex items-center justify-center"
                          aria-label="View event page: {{ event.name }}">
                         <div class="svg-icon size-4 icon-eye"></div>
                       </a>
@@ -236,7 +238,8 @@
                   {# End view event button -#}
 
                   <div class="group relative">
-                    <button data-event-id="{{ event.event_id }}"
+                    <button type="button"
+                            data-event-id="{{ event.event_id }}"
                             class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
                                    {% if !can_manage_events -%}
                                      opacity-50 cursor-not-allowed
@@ -393,7 +396,8 @@
                 <div class="flex items-center">
                   <div class="min-w-0">
                     {# Event name -#}
-                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                    <button type="button"
+                            hx-get="/dashboard/group/events/{{ event.event_id }}/update"
                             hx-target="#dashboard-content"
                             hx-replace-url="/dashboard/group?tab=events"
                             hx-indicator="#dashboard-spinner"
@@ -481,7 +485,8 @@
                 <div class="flex items-center justify-end gap-2">
                   {# Update event button -#}
                   <div>
-                    <button hx-get="/dashboard/group/events/{{ event.event_id }}/update"
+                    <button type="button"
+                            hx-get="/dashboard/group/events/{{ event.event_id }}/update"
                             hx-target="#dashboard-content"
                             hx-replace-url="/dashboard/group?tab=events"
                             hx-indicator="#dashboard-spinner"
@@ -519,7 +524,8 @@
                   {# End view event button -#}
 
                   <div class="group relative">
-                    <button data-event-id="{{ event.event_id }}"
+                    <button type="button"
+                            data-event-id="{{ event.event_id }}"
                             class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
                                    {% if !can_manage_events -%}
                                      opacity-50 cursor-not-allowed
@@ -591,6 +597,7 @@
   ) -%}
   <li>
     <button id="{{ action }}-event-{{ event.event_id }}"
+            type="button"
             {% if htmx_method == "delete" -%}
               hx-delete="/dashboard/group/events/{{ event.event_id }}/{{ action }}"
             {% else -%}

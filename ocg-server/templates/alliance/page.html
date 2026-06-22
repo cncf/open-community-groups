@@ -57,9 +57,8 @@
             About this alliance
           </div>
           {% if !alliance.description.is_empty() -%}
-            <div class="font-normal text-base/8 text-stone-600 alliance-description">
-              {{ alliance.description|md_to_html|safe }}
-            </div>
+            <div class="font-normal text-base/8 text-stone-600 alliance-description"
+                 data-ocg-remove-broken-images>{{ alliance.description|md_to_html|safe }}</div>
           {% endif -%}
 
           {# New group instructions -#}
@@ -67,9 +66,8 @@
             {% if !new_group_details.is_empty() -%}
               <div class="mt-6 lg:mt-8">
                 <div class="font-bold text-sm uppercase text-stone-400 mb-3">New groups</div>
-                <div class="font-normal text-base/8 text-stone-600 new-group-content">
-                  {{ new_group_details|md_to_html|safe }}
-                </div>
+                <div class="font-normal text-base/8 text-stone-600 new-group-content"
+                     data-ocg-remove-broken-images>{{ new_group_details|md_to_html|safe }}</div>
               </div>
             {% endif -%}
           {% endif -%}
@@ -180,7 +178,7 @@
             </div>
             <div>
               {# Groups cards -#}
-              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex md:[&>a:nth-child(n+8)]:hidden]:flex">
+              <div class="grid grid-cols-1 gap-6 md:gap-8 md:grid-cols-2 [&>a:nth-child(n+6)]:hidden md:[&>a:nth-child(n+6)]:flex">
                 {% for group in recently_added_groups -%}
                   {{- group|safe -}}
                 {% endfor -%}

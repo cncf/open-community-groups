@@ -1,7 +1,4 @@
-//! Notification composition helpers.
-//!
-//! Prefer builders here for Rust-created event notification payloads when they
-//! share event links, calendar attachments, dashboard links, or template shape.
+//! Notification payload builders.
 
 use anyhow::Result;
 use uuid::Uuid;
@@ -303,6 +300,8 @@ pub(crate) fn build_speaker_welcome_notification(
         template_data: Some(serde_json::to_value(&template_data)?),
     })
 }
+
+// Helpers.
 
 /// Returns the configured base URL without a trailing slash.
 fn notification_base_url(server_cfg: &HttpServerConfig) -> &str {

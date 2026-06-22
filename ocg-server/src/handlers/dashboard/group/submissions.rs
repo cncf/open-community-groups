@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
 };
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -106,27 +106,39 @@ pub(crate) async fn update(
         .await?;
 
     if should_notify {
-        // Enqueue notification to submission author
-        let (notification_data, site_settings) = tokio::try_join!(
-            db.get_cfs_submission_notification_data(event_id, cfs_submission_id),
-            db.get_site_settings(),
-        )?;
-        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-        let link = format!("{base_url}/dashboard/user?tab=submissions");
-        let template_data = CfsSubmissionUpdated {
-            action_required_message: notification_data.action_required_message,
-            event,
-            link,
-            status_name: notification_data.status_name,
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::CfsSubmissionUpdated,
-            recipients: vec![notification_data.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await?;
+        // Enqueue notification to submission author best-effort
+        if let Err(err) = async {
+            let (notification_data, site_settings) = tokio::try_join!(
+                db.get_cfs_submission_notification_data(event_id, cfs_submission_id),
+                db.get_site_settings(),
+            )?;
+            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+            let link = format!("{base_url}/dashboard/user?tab=submissions");
+            let template_data = CfsSubmissionUpdated {
+                action_required_message: notification_data.action_required_message,
+                event,
+                link,
+                status_name: notification_data.status_name,
+                theme: site_settings.theme,
+            };
+            let notification = NewNotification {
+                attachments: vec![],
+                kind: NotificationKind::CfsSubmissionUpdated,
+                recipients: vec![notification_data.user_id],
+                template_data: Some(serde_json::to_value(&template_data)?),
+            };
+            notifications_manager.enqueue(&notification).await
+        }
+        .await
+        {
+            warn!(
+                error = %err,
+                %event_id,
+                %cfs_submission_id,
+                reviewer_id = %reviewer.user_id,
+                "failed to enqueue CFS submission update notification"
+            );
+        }
     }
 
     Ok((

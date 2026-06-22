@@ -9,16 +9,16 @@ select plan(37);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set invalidUserID '99999999-9999-9999-9999-999999999999'
-\set sponsor1ID '00000000-0000-0000-0000-000000000061'
-\set sponsor2ID '00000000-0000-0000-0000-000000000062'
-\set user1ID '00000000-0000-0000-0000-000000000020'
-\set user2ID '00000000-0000-0000-0000-000000000021'
-\set user3ID '00000000-0000-0000-0000-000000000022'
+\set allianceID '3a020000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a020000-0000-0000-0000-000000000011'
+\set groupCategoryID '3a020000-0000-0000-0000-000000000010'
+\set groupID '3a020000-0000-0000-0000-000000000002'
+\set invalidUserID '3a020000-0000-0000-0000-000000009999'
+\set sponsor1ID '3a020000-0000-0000-0000-000000000061'
+\set sponsor2ID '3a020000-0000-0000-0000-000000000062'
+\set user1ID '3a020000-0000-0000-0000-000000000020'
+\set user2ID '3a020000-0000-0000-0000-000000000021'
+\set user3ID '3a020000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -51,7 +51,7 @@ insert into "user" (user_id, email, username, auth_hash, name) values
 
 -- Event Category
 insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+values (:'eventCategoryID', 'Conference', :'allianceID');
 
 -- Group Category
 insert into group_category (group_category_id, name, alliance_id)
@@ -77,7 +77,13 @@ insert into "group" (
 -- Group Sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values
-    (:'sponsor1ID', :'groupID', 'TechCorp', 'https://example.com/techcorp.png', 'https://techcorp.com'),
+    (
+        :'sponsor1ID',
+        :'groupID',
+        'TechCorp',
+        'https://example.com/techcorp.png',
+        'https://techcorp.com'
+    ),
     (:'sponsor2ID', :'groupID', 'CloudInc', 'https://example.com/cloudinc.png', null);
 
 -- Group Team
@@ -101,7 +107,7 @@ select ok(
             add_event(
                 null::uuid,
                 :'groupID'::uuid,
-                '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+                '{"name": "Kubernetes Fundamentals Workshop", "description": "Learn the basics of Kubernetes deployment and management", "timezone": "America/New_York", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
             )
         )::jsonb - 'alliance' - 'created_at' - 'event_id' - 'organizers' - 'group' - 'legacy_hosts' - 'legacy_speakers' - 'slug' - 'cfs_labels'
     )) = '{
@@ -153,8 +159,8 @@ select results_eq(
             'event_added',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            '3a020000-0000-0000-0000-000000000001'::uuid,
+            '3a020000-0000-0000-0000-000000000002'::uuid,
             event_id,
             'event',
             event_id
@@ -168,7 +174,7 @@ select results_eq(
 select add_event(
     :'user1ID'::uuid,
     :'groupID'::uuid,
-    '{"name": "Created By Test", "description": "Verifies creator tracking", "timezone": "America/New_York", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+    '{"name": "Created By Test", "description": "Verifies creator tracking", "timezone": "America/New_York", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
 ) as "createdByEventID" \gset
 
 select is(
@@ -192,8 +198,8 @@ select results_eq(
     $$,
     $$
         values
-            ('00000000-0000-0000-0000-000000000020'::uuid, 2),
-            ('00000000-0000-0000-0000-000000000022'::uuid, null::integer)
+            ('3a020000-0000-0000-0000-000000000020'::uuid, 2),
+            ('3a020000-0000-0000-0000-000000000022'::uuid, null::integer)
     $$,
     'Should snapshot accepted group team organizers and their order only'
 );
@@ -202,12 +208,12 @@ select results_eq(
 with new_event as (
     select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "CloudNativeCon Seattle 2025",
             "description": "Premier conference for cloud native technologies and alliance collaboration",
             "timezone": "America/Los_Angeles",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "hybrid",
             "banner_url": "https://example.com/banner.jpg",
             "capacity": 100,
@@ -232,10 +238,10 @@ with new_event as (
             "venue_name": "Tech Center",
             "venue_state": "CA",
             "venue_zip_code": "94105",
-            "hosts": ["00000000-0000-0000-0000-000000000020", "00000000-0000-0000-0000-000000000021"],
+            "hosts": ["3a020000-0000-0000-0000-000000000020", "3a020000-0000-0000-0000-000000000021"],
             "speakers": [
-                {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true},
-                {"user_id": "00000000-0000-0000-0000-000000000022", "featured": false}
+                {"user_id": "3a020000-0000-0000-0000-000000000021", "featured": true},
+                {"user_id": "3a020000-0000-0000-0000-000000000022", "featured": false}
             ],
             "sessions": [
                 {
@@ -245,7 +251,7 @@ with new_event as (
                     "ends_at": "2030-01-01T10:45:00",
                     "kind": "in-person",
                     "location": "Main Hall",
-                    "speakers": [{"user_id": "00000000-0000-0000-0000-000000000022", "featured": true}]
+                    "speakers": [{"user_id": "3a020000-0000-0000-0000-000000000022", "featured": true}]
                 },
                 {
                     "name": "Kubernetes Best Practices",
@@ -257,14 +263,14 @@ with new_event as (
                     "meeting_join_instructions": "Use the session access code from your email.",
                     "meeting_join_url": "https://youtube.com/live/session2",
                     "speakers": [
-                        {"user_id": "00000000-0000-0000-0000-000000000020", "featured": false},
-                        {"user_id": "00000000-0000-0000-0000-000000000021", "featured": true}
+                        {"user_id": "3a020000-0000-0000-0000-000000000020", "featured": false},
+                        {"user_id": "3a020000-0000-0000-0000-000000000021", "featured": true}
                     ]
                 }
             ],
             "sponsors": [
-                {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold"},
-                {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver"}
+                {"group_sponsor_id": "3a020000-0000-0000-0000-000000000061", "level": "Gold"},
+                {"group_sponsor_id": "3a020000-0000-0000-0000-000000000062", "level": "Silver"}
             ]
         }'::jsonb
     ) as event_id
@@ -283,12 +289,12 @@ select ok(
         "category_name": "Conference",
         "description": "Premier conference for cloud native technologies and alliance collaboration",
         "hosts": [
-            {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1"},
-            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2"}
+            {"name": "Host One", "user_id": "3a020000-0000-0000-0000-000000000020", "username": "host1"},
+            {"name": "Host Two", "user_id": "3a020000-0000-0000-0000-000000000021", "username": "host2"}
         ],
         "speakers": [
-            {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true},
-            {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1", "featured": false}
+            {"name": "Host Two", "user_id": "3a020000-0000-0000-0000-000000000021", "username": "host2", "featured": true},
+            {"name": "Speaker One", "user_id": "3a020000-0000-0000-0000-000000000022", "username": "speaker1", "featured": false}
         ],
         "kind": "hybrid",
         "name": "CloudNativeCon Seattle 2025",
@@ -330,8 +336,8 @@ select ok(
         "waitlist_count": 0,
         "waitlist_enabled": false,
         "sponsors": [
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
-            {"group_sponsor_id": "00000000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
+            {"group_sponsor_id": "3a020000-0000-0000-0000-000000000062", "level": "Silver", "logo_url": "https://example.com/cloudinc.png", "name": "CloudInc"},
+            {"group_sponsor_id": "3a020000-0000-0000-0000-000000000061", "level": "Gold", "logo_url": "https://example.com/techcorp.png", "name": "TechCorp", "website_url": "https://techcorp.com"}
         ]
     }'::jsonb,
     'Should create event with all fields (excluding sessions)'
@@ -358,8 +364,8 @@ select ok(
                 "meeting_join_instructions": "Use the session access code from your email.",
                 "meeting_join_url": "https://youtube.com/live/session2",
                 "speakers": [
-                    {"name": "Host One", "user_id": "00000000-0000-0000-0000-000000000020", "username": "host1", "featured": false},
-                    {"name": "Host Two", "user_id": "00000000-0000-0000-0000-000000000021", "username": "host2", "featured": true}
+                    {"name": "Host One", "user_id": "3a020000-0000-0000-0000-000000000020", "username": "host1", "featured": false},
+                    {"name": "Host Two", "user_id": "3a020000-0000-0000-0000-000000000021", "username": "host2", "featured": true}
                 ]
             },
             {
@@ -370,7 +376,7 @@ select ok(
                 "kind": "in-person",
                 "location": "Main Hall",
                 "speakers": [
-                    {"name": "Speaker One", "user_id": "00000000-0000-0000-0000-000000000022", "username": "speaker1", "featured": true}
+                    {"name": "Speaker One", "user_id": "3a020000-0000-0000-0000-000000000022", "username": "speaker1", "featured": true}
                 ]
             }
         ]'::jsonb
@@ -387,7 +393,7 @@ with cfs_labels_event as (
             "name": "CloudNativeCon Labels Event",
             "description": "Event with labels for CFS",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "virtual",
             "cfs_description": "Submit your talk",
             "cfs_enabled": true,
@@ -453,12 +459,12 @@ select is(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "CloudNativeCon Duplicate Labels Event",
             "description": "Event with duplicate CFS labels",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "virtual",
             "cfs_labels": [
                 {"name": "track / web", "color": "#FEE2E2"},
@@ -479,7 +485,7 @@ with request_event as (
             "name": "Meeting Requested Event",
             "description": "Event requesting meeting support",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "virtual",
             "capacity": 100,
             "starts_at": "2030-03-01T10:00:00",
@@ -553,7 +559,7 @@ select add_event(
         "name": "Meeting Recording Disabled Event",
         "description": "Event requesting meeting support without recording",
         "timezone": "UTC",
-        "category_id": "00000000-0000-0000-0000-000000000011",
+        "category_id": "3a020000-0000-0000-0000-000000000011",
         "kind_id": "virtual",
         "capacity": 100,
         "starts_at": "2030-03-02T10:00:00",
@@ -579,8 +585,8 @@ select is(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Capacity Exceed Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 200, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     )$$,
     'event capacity (200) exceeds maximum participants allowed (100)',
@@ -591,8 +597,8 @@ select throws_ok(
 select ok(
     (select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Valid Capacity Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 50, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         '{"zoom": 100}'::jsonb
     ) is not null),
     'Should succeed when capacity is within cfg_max_participants'
@@ -602,8 +608,8 @@ select ok(
 select ok(
     (select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "No Meeting Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Meeting Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "capacity": 500}'::jsonb,
         '{"zoom": 100}'::jsonb
     ) is not null),
     'Should succeed with high capacity when meeting_requested is false'
@@ -613,8 +619,8 @@ select ok(
 select ok(
     (select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "No Limit Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Limit Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "virtual", "capacity": 1000, "meeting_requested": true, "meeting_provider_id": "zoom", "starts_at": "2030-03-01T10:00:00", "ends_at": "2030-03-01T11:00:00"}'::jsonb,
         null
     ) is not null),
     'Should succeed when cfg_max_participants is null'
@@ -624,12 +630,12 @@ select ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "Ticketed Capacity Exceed Event",
             "description": "Test",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "virtual",
             "capacity": 10,
             "meeting_requested": true,
@@ -640,12 +646,12 @@ select throws_ok(
             "ticket_types": [
                 {
                     "active": true,
-                    "event_ticket_type_id": "00000000-0000-0000-0000-000000000092",
+                    "event_ticket_type_id": "3a020000-0000-0000-0000-000000000092",
                     "order": 1,
                     "price_windows": [
                         {
                             "amount_minor": 2500,
-                            "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000093"
+                            "event_ticket_price_window_id": "3a020000-0000-0000-0000-000000000093"
                         }
                     ],
                     "seats_total": 150,
@@ -663,12 +669,12 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "Approval Waitlist Event",
             "description": "Test",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "in-person",
             "attendee_approval_required": true,
             "capacity": 100,
@@ -683,19 +689,19 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "Discounts Without Tickets",
             "description": "Test",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "in-person",
             "discount_codes": [
                 {
                     "active": true,
                     "amount_minor": 500,
                     "code": "SAVE20",
-                    "event_discount_code_id": "00000000-0000-0000-0000-000000000091",
+                    "event_discount_code_id": "3a020000-0000-0000-0000-000000000091",
                     "kind": "fixed_amount",
                     "title": "Launch"
                 }
@@ -710,12 +716,12 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "Currency Without Tickets",
             "description": "Test",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "in-person",
             "payment_currency_code": "USD"
         }'::jsonb
@@ -728,12 +734,12 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
+        '3a020000-0000-0000-0000-000000000002'::uuid,
         '{
             "name": "Ticket Type Without Identifier",
             "description": "Test",
             "timezone": "UTC",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "3a020000-0000-0000-0000-000000000011",
             "kind_id": "in-person",
             "payment_currency_code": "USD",
             "ticket_types": [
@@ -743,7 +749,7 @@ select throws_ok(
                     "price_windows": [
                         {
                             "amount_minor": 2500,
-                            "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000094"
+                            "event_ticket_price_window_id": "3a020000-0000-0000-0000-000000000094"
                         }
                     ],
                     "seats_total": 25,
@@ -760,8 +766,8 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Past Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2020-01-01T10:00:00"}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Past Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2020-01-01T10:00:00"}'::jsonb
     )$$,
     'event starts_at cannot be in the past',
     'Should throw error when event starts_at is in the past'
@@ -771,8 +777,8 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Past End Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2020-01-01T12:00:00"}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Past End Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2020-01-01T12:00:00"}'::jsonb
     )$$,
     'event ends_at cannot be in the past',
     'Should throw error when event ends_at is in the past'
@@ -782,8 +788,8 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Session Past Start", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past Session", "starts_at": "2020-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Past Start", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past Session", "starts_at": "2020-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
     'session starts_at cannot be in the past',
     'Should throw error when session starts_at is in the past'
@@ -793,8 +799,8 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Session Past End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past End Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2020-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Past End", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Past End Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2020-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
     'session ends_at cannot be in the past',
     'Should throw error when session ends_at is in the past'
@@ -804,8 +810,8 @@ select throws_ok(
 select throws_like(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Invalid Range Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00"}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Invalid Range Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00"}'::jsonb
     )$$,
     '%event_check%',
     'Should throw error when event ends_at is before starts_at'
@@ -815,8 +821,8 @@ select throws_like(
 select throws_like(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Invalid Session Range", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Invalid Session", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Invalid Session Range", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "Invalid Session", "starts_at": "2030-01-01T12:00:00", "ends_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
     '%session_check%',
     'Should throw error when session ends_at is before starts_at'
@@ -826,8 +832,8 @@ select throws_like(
 select throws_like(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "No Start Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2030-01-01T12:00:00"}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Start Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "ends_at": "2030-01-01T12:00:00"}'::jsonb
     )$$,
     '%event_check%',
     'Should throw error when event ends_at is set without starts_at'
@@ -837,8 +843,8 @@ select throws_like(
 select ok(
     (select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "No Dates Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "No Dates Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person"}'::jsonb
     ) is not null),
     'Should succeed with event ends_at null when starts_at is null'
 );
@@ -847,8 +853,8 @@ select ok(
 select ok(
     (select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Session No End", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "No End Session", "starts_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session No End", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "sessions": [{"name": "No End Session", "starts_at": "2030-01-01T10:00:00", "kind": "in-person"}]}'::jsonb
     ) is not null),
     'Should succeed with session ends_at null when starts_at is set'
 );
@@ -857,8 +863,8 @@ select ok(
 select ok(
     (select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Future Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Future Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Future Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Future Session", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T11:00:00", "kind": "in-person"}]}'::jsonb
     ) is not null),
     'Should succeed with valid future dates for event and sessions'
 );
@@ -867,8 +873,8 @@ select ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Session Before Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Early Session", "starts_at": "2030-01-01T09:00:00", "ends_at": "2030-01-01T10:30:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Before Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Early Session", "starts_at": "2030-01-01T09:00:00", "ends_at": "2030-01-01T10:30:00", "kind": "in-person"}]}'::jsonb
     )$$,
     'session starts_at must be within event bounds',
     'Should throw error when session starts_at is before event starts_at'
@@ -878,8 +884,8 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Session After Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Late Session", "starts_at": "2030-01-01T13:00:00", "ends_at": "2030-01-01T14:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session After Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Late Session", "starts_at": "2030-01-01T13:00:00", "ends_at": "2030-01-01T14:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
     'session starts_at must be within event bounds',
     'Should throw error when session starts_at is after event ends_at'
@@ -889,8 +895,8 @@ select throws_ok(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Session Exceeds Event", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Long Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T13:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Exceeds Event", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T12:00:00", "sessions": [{"name": "Long Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T13:00:00", "kind": "in-person"}]}'::jsonb
     )$$,
     'session ends_at must be within event bounds',
     'Should throw error when session ends_at is after event ends_at'
@@ -900,8 +906,8 @@ select throws_ok(
 select ok(
     (select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Session Within Bounds", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "starts_at": "2030-01-01T10:00:00", "ends_at": "2030-01-01T14:00:00", "sessions": [{"name": "Valid Session", "starts_at": "2030-01-01T11:00:00", "ends_at": "2030-01-01T12:00:00", "kind": "in-person"}]}'::jsonb
     ) is not null),
     'Should succeed when session is within event bounds'
 );
@@ -909,8 +915,8 @@ select ok(
 -- Should store registration questions when creating an event
 select add_event(
     null::uuid,
-    '00000000-0000-0000-0000-000000000002'::uuid,
-    '{"name": "Event With Questions", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "registration_questions": [{"id": "00000000-0000-0000-0000-000000000501", "kind": "single-select", "prompt": "Meal preference", "required": true, "options": [{"id": "00000000-0000-0000-0000-000000000601", "label": "Standard"}, {"id": "00000000-0000-0000-0000-000000000602", "label": "Vegetarian"}]}]}'::jsonb
+    '3a020000-0000-0000-0000-000000000002'::uuid,
+    '{"name": "Event With Questions", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "registration_questions": [{"id": "3a020000-0000-0000-0000-000000000501", "kind": "single-select", "prompt": "Meal preference", "required": true, "options": [{"id": "3a020000-0000-0000-0000-000000000601", "label": "Standard"}, {"id": "3a020000-0000-0000-0000-000000000602", "label": "Vegetarian"}]}]}'::jsonb
 ) as "questionsEventID" \gset
 
 select is(
@@ -919,7 +925,7 @@ select is(
         from event
         where event_id = :'questionsEventID'::uuid
     ),
-    '[{"id": "00000000-0000-0000-0000-000000000501", "kind": "single-select", "prompt": "Meal preference", "required": true, "options": [{"id": "00000000-0000-0000-0000-000000000601", "label": "Standard"}, {"id": "00000000-0000-0000-0000-000000000602", "label": "Vegetarian"}]}]'::jsonb,
+    '[{"id": "3a020000-0000-0000-0000-000000000501", "kind": "single-select", "prompt": "Meal preference", "required": true, "options": [{"id": "3a020000-0000-0000-0000-000000000601", "label": "Standard"}, {"id": "3a020000-0000-0000-0000-000000000602", "label": "Vegetarian"}]}]'::jsonb,
     'Should store registration questions when creating an event'
 );
 
@@ -927,8 +933,8 @@ select is(
 select throws_ok(
     $$select add_event(
         null::uuid,
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        '{"name": "Event With Invalid Questions", "description": "Test", "timezone": "UTC", "category_id": "00000000-0000-0000-0000-000000000011", "kind_id": "in-person", "registration_questions": [{"id": "bad", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]}'::jsonb
+        '3a020000-0000-0000-0000-000000000002'::uuid,
+        '{"name": "Event With Invalid Questions", "description": "Test", "timezone": "UTC", "category_id": "3a020000-0000-0000-0000-000000000011", "kind_id": "in-person", "registration_questions": [{"id": "bad", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]}'::jsonb
     )$$,
     'questionnaire question id must be a uuid',
     'Should validate registration questions when creating an event'

@@ -1,5 +1,5 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
 {# Alliance Event Categories Table Placeholder -#}
-<div class="flex flex-col items-center justify-center min-h-[125px]">
-  <div class="text-lg lg:text-xl">No event categories found for this alliance yet.</div>
-</div>
+{{ dashboard::empty_state_compact("No event categories found for this alliance yet.") }}
 {# End alliance event categories table placeholder -#}

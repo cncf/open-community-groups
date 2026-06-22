@@ -1,6 +1,6 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { FILTER_CHANGE_EVENT } from "/static/js/alliance/explore/filters.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { triggerChangeOnForm } from "/static/js/alliance/explore/filters.js";
 
 /**
  * Collapsible filter component for managing multiple selection options.
@@ -162,14 +162,16 @@ export class CollapsibleFilter extends LitWrapper {
   }
 
   /**
-   * Dynamically finds and returns the parent form ID.
-   * Uses DOM traversal to locate the nearest form element.
-   * @returns {string|null} Parent form ID or null if no form found
+   * Emits a selection change event for page-level filter handling.
    * @private
    */
-  _getParentFormId() {
-    const form = this.closest("form");
-    return form ? form.id : null;
+  _dispatchFilterChange() {
+    this.dispatchEvent(
+      new CustomEvent(FILTER_CHANGE_EVENT, {
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   /**
@@ -200,16 +202,12 @@ export class CollapsibleFilter extends LitWrapper {
     this.requestUpdate();
     await this.updateComplete;
 
-    const parentFormId = this._getParentFormId();
-    if (parentFormId) {
-      // Trigger change event on the form
-      triggerChangeOnForm(parentFormId);
-    }
+    this._dispatchFilterChange();
   }
 
   /**
    * Handles "Any" option selection by clearing all selections.
-   * Triggers form change event after component update.
+   * Emits a filter change event after component update.
    * @private
    */
   async _onSelectAny() {
@@ -225,11 +223,7 @@ export class CollapsibleFilter extends LitWrapper {
     this.requestUpdate();
     await this.updateComplete;
 
-    const parentFormId = this._getParentFormId();
-    if (parentFormId) {
-      // Trigger change event on the form
-      triggerChangeOnForm(parentFormId);
-    }
+    this._dispatchFilterChange();
   }
 
   /**
@@ -239,6 +233,7 @@ export class CollapsibleFilter extends LitWrapper {
    */
   render() {
     const canCollapse = this.options.length > this.maxVisibleItems;
+    const optionsId = `${this.name}-filter-options`;
 
     return html`<div class="px-6 py-7 pt-5 border-b border-stone-100">
       <div class="flex justify-between items-center">
@@ -248,6 +243,9 @@ export class CollapsibleFilter extends LitWrapper {
             ? html`<button
                 type="button"
                 @click=${this._changeCollapseState}
+                aria-controls=${optionsId}
+                aria-expanded=${String(!this.isCollapsed)}
+                aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
                 class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
               >
                 ${this.isCollapsed
@@ -261,11 +259,15 @@ export class CollapsibleFilter extends LitWrapper {
             : ""}
         </div>
       </div>
-      <ul class="flex w-full gap-2 mt-3 ${this.viewType === "rows" ? "flex-col" : "flex-wrap"}">
+      <ul
+        id=${optionsId}
+        class="flex w-full gap-2 mt-3 ${this.viewType === "rows" ? "flex-col" : "flex-wrap"}"
+      >
         <li>
           <button
             type="button"
             @click=${this._onSelectAny}
+            aria-label=${`Any ${this.title}`}
             class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${this
               .selected.length === 0
               ? "border-primary-500 text-primary-500"
@@ -305,6 +307,8 @@ export class CollapsibleFilter extends LitWrapper {
               data-label="{{ label }}"
               type="button"
               @click=${this._changeCollapseState}
+              aria-controls=${optionsId}
+              aria-expanded=${String(!this.isCollapsed)}
               class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium"
             >
               ${this.isCollapsed ? "+ Show more" : "- Show less"}

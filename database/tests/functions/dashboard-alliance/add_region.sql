@@ -9,7 +9,7 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
+\set allianceID '2c060000-0000-0000-0000-000000000001'
 
 -- ============================================================================
 -- SEED DATA
@@ -21,17 +21,17 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
-    'goup-seattle',
-    'Goup Seattle',
+    'cncf-seattle',
+    'CNCF Seattle',
     'Alliance for region tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- ============================================================================
@@ -40,21 +40,27 @@ insert into alliance (
 
 -- Should create a new region and auto-generate normalized name
 select lives_ok(
-    $$ select add_region(
+    format(
+        $$ select add_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'North America')
     ) $$,
+        :'allianceID'
+    ),
     'Should create a region with generated normalized name'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select
         r.name,
         r.normalized_name
     from region r
-    where r.alliance_id = '00000000-0000-0000-0000-000000000001'::uuid
-    $$,
+    where r.alliance_id = %L::uuid
+        $$,
+        :'allianceID'
+    ),
     $$ values ('North America'::text, 'north-america'::text) $$,
     'Should store region name and generated normalized name'
 );
@@ -71,27 +77,34 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         select
             'region_added',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'region',
             region_id
         from region
-        where alliance_id = '00000000-0000-0000-0000-000000000001'::uuid
-    $$,
+        where alliance_id = %L::uuid
+        $$,
+        :'allianceID',
+        :'allianceID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should not allow duplicate region normalized name in same alliance
 select throws_ok(
-    $$ select add_region(
+    format(
+        $$ select add_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'north america')
     ) $$,
+        :'allianceID'
+    ),
     'region already exists',
     'Should reject duplicate region names'
 );

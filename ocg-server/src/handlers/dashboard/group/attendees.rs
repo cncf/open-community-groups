@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::DynDB,
+    db::{DBExt, DynDB, notifications::CustomNotificationTracking},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedForm},
@@ -27,11 +27,11 @@ use crate::{
     services::{
         notifications::{
             DynNotificationsManager, NewNotification, NotificationKind,
-            helpers::{
-                build_event_attendance_canceled_notification, build_event_invitation_notification,
-                build_event_waitlist_promoted_notification, build_event_welcome_notification,
-                should_send_waitlist_promoted_notification,
+            enqueue::{
+                enqueue_event_attendance_cancellation_notifications,
+                enqueue_event_welcome_notification,
             },
+            payloads::build_event_invitation_notification,
         },
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
@@ -121,43 +121,31 @@ pub(crate) async fn accept_invitation_request(
     SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.accept_event_invitation_request(user.user_id, group_id, event_id, user_id)
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Accept the invitation request
+                tx.accept_event_invitation_request(user.user_id, group_id, event_id, user_id)
+                    .await?;
+
+                // Enqueue the welcome notification
+                enqueue_event_welcome_notification(
+                    tx,
+                    &server_cfg,
+                    alliance_id,
+                    event_id,
+                    user_id,
+                    true,
+                )
+                .await?;
+
+                Ok(())
+            })
+        })
         .await?;
-
-    // Load attendee welcome notification context after approval succeeds
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(alliance_id, event_id)
-    ) {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load event invitation acceptance notification context");
-            return Ok((
-                StatusCode::NO_CONTENT,
-                [(
-                    "HX-Trigger",
-                    "refresh-event-attendees, refresh-event-invitation-requests",
-                )],
-            )
-                .into_response());
-        }
-    };
-
-    // Send the attendee welcome notification
-    match build_event_welcome_notification(&event, user_id, &server_cfg, &site_settings, true) {
-        Ok(notification) => {
-            if let Err(err) = notifications_manager.enqueue(&notification).await {
-                warn!(error = %err, "failed to enqueue event invitation acceptance notification");
-            }
-        }
-        Err(err) => {
-            warn!(error = %err, "failed to build event invitation acceptance notification");
-        }
-    }
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -207,62 +195,34 @@ pub(crate) async fn cancel_event_attendee_attendance(
     SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path((event_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Cancel the attendee and collect any waitlist promotions
-    let cancel_result = db
-        .cancel_event_attendee_attendance(user.user_id, group_id, event_id, user_id)
+    // Cancel the attendee and enqueue required notifications
+    let required_notification_server_cfg = server_cfg.clone();
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Cancel attendance and collect any waitlist promotions
+                let cancel_result = tx
+                    .cancel_event_attendee_attendance(user.user_id, group_id, event_id, user_id)
+                    .await?;
+
+                // Enqueue required attendee and promotion notifications before committing
+                enqueue_event_attendance_cancellation_notifications(
+                    tx,
+                    &required_notification_server_cfg,
+                    alliance_id,
+                    event_id,
+                    user_id,
+                    cancel_result.promoted_user_ids,
+                )
+                .await?;
+
+                Ok(())
+            })
+        })
         .await?;
-
-    // Load notification context after cancellation succeeds
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(alliance_id, event_id)
-    ) {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load event attendance cancellation notification context");
-            return Ok((
-                StatusCode::NO_CONTENT,
-                [("HX-Trigger", "refresh-event-attendees")],
-            )
-                .into_response());
-        }
-    };
-
-    // Confirm the canceled attendance to the attendee
-    match build_event_attendance_canceled_notification(&event, user_id, &server_cfg, &site_settings)
-    {
-        Ok(notification) => {
-            if let Err(err) = notifications_manager.enqueue(&notification).await {
-                warn!(error = %err, "failed to enqueue event attendance cancellation notification");
-            }
-        }
-        Err(err) => {
-            warn!(error = %err, "failed to build event attendance cancellation notification");
-        }
-    }
-
-    // Notify users promoted off the waitlist after a spot opens up
-    if should_send_waitlist_promoted_notification(&event, &cancel_result.promoted_user_ids) {
-        match build_event_waitlist_promoted_notification(
-            &event,
-            cancel_result.promoted_user_ids,
-            &server_cfg,
-            &site_settings,
-        ) {
-            Ok(notification) => {
-                if let Err(err) = notifications_manager.enqueue(&notification).await {
-                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
-                }
-            }
-            Err(err) => {
-                warn!(error = %err, "failed to build waitlist promotion notification");
-            }
-        }
-    }
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -479,7 +439,6 @@ pub(crate) async fn send_event_custom_notification(
     SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
     ValidatedForm(notification): ValidatedForm<EventCustomNotification>,
@@ -500,7 +459,7 @@ pub(crate) async fn send_event_custom_notification(
             .into_response());
     }
 
-    // Enqueue notification
+    // Build and enqueue the custom notification with its audit entry
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = format!(
         "{}/{}/group/{}/event/{}",
@@ -522,16 +481,16 @@ pub(crate) async fn send_event_custom_notification(
         recipients: event_attendees_ids,
         template_data: Some(serde_json::to_value(&template_data)?),
     };
-    notifications_manager.enqueue(&new_notification).await?;
-
-    // Track custom notification for auditing purposes
-    db.track_custom_notification(
-        user.user_id,
-        Some(event_id),
-        Some(group_id),
-        new_notification.recipients.len(),
-        &notification.subject,
-        &notification.body,
+    db.enqueue_tracked_custom_notification(
+        &new_notification,
+        CustomNotificationTracking {
+            body: notification.body.clone(),
+            created_by: user.user_id,
+            event_id: Some(event_id),
+            group_id: Some(group_id),
+            recipient_count: new_notification.recipients.len(),
+            subject: notification.subject.clone(),
+        },
     )
     .await?;
 

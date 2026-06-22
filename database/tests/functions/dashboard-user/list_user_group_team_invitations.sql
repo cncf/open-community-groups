@@ -9,51 +9,94 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set category2ID '00000000-0000-0000-0000-000000000012'
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set group1ID '00000000-0000-0000-0000-000000000021'
-\set group2ID '00000000-0000-0000-0000-000000000022'
-\set group3ID '00000000-0000-0000-0000-000000000023'
-\set user2ID '00000000-0000-0000-0000-000000000032'
-\set userID '00000000-0000-0000-0000-000000000031'
+\set allianceID '4a0d0000-0000-0000-0000-000000000001'
+\set allianceOtherID '4a0d0000-0000-0000-0000-000000000002'
+\set groupAcceptedID '4a0d0000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a0d0000-0000-0000-0000-000000000004'
+\set groupCategoryOtherID '4a0d0000-0000-0000-0000-000000000005'
+\set groupID '4a0d0000-0000-0000-0000-000000000006'
+\set groupOtherID '4a0d0000-0000-0000-0000-000000000007'
+\set userID '4a0d0000-0000-0000-0000-000000000008'
+\set userNoInvitationsID '4a0d0000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliances
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png'),
-    (:'alliance2ID', 'c2', 'C2', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'alliance-one',
+    'Alliance One',
+    'Primary alliance with pending group invitations',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+), (
+    :'allianceOtherID',
+    'alliance-two',
+    'Alliance Two',
+    'Secondary alliance with pending group invitations',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Categories
-insert into group_category (group_category_id, alliance_id, name) values
-    (:'category1ID', :'allianceID', 'Tech'),
-    (:'category2ID', :'alliance2ID', 'Tech2');
-
--- Groups
-insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
-    (:'group1ID', :'allianceID', :'category1ID', 'G1', 'g1'),
-    (:'group2ID', :'allianceID', :'category1ID', 'G2', 'g2'),
-    (:'group3ID', :'alliance2ID', :'category2ID', 'G3', 'g3');
+-- Group categories
+insert into group_category (group_category_id, alliance_id, name)
+values
+    (:'groupCategoryID', :'allianceID', 'Technology'),
+    (:'groupCategoryOtherID', :'allianceOtherID', 'Design');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice'),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true, 'Bob');
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'userNoInvitationsID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    'Bob'
+);
+
+-- Groups
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Group One', 'group-one'),
+    (:'groupAcceptedID', :'allianceID', :'groupCategoryID', 'Group Two', 'group-two'),
+    (:'groupOtherID', :'allianceOtherID', :'groupCategoryOtherID', 'Group Three', 'group-three');
 
 -- Pending group invitations (two in main alliance, one in other alliance)
 insert into group_team (group_id, user_id, role, accepted, created_at) values
-    (:'group1ID', :'userID', 'admin', false, '2024-01-02 10:00:00+00'),
-    (:'group2ID', :'userID', 'admin', false, '2024-01-03 10:00:00+00'),
-    (:'group3ID', :'userID', 'admin', false, '2024-01-04 10:00:00+00');
+    (:'groupID', :'userID', 'admin', false, '2024-01-02 10:00:00+00'),
+    (:'groupAcceptedID', :'userID', 'admin', false, '2024-01-03 10:00:00+00'),
+    (:'groupOtherID', :'userID', 'admin', false, '2024-01-04 10:00:00+00');
 
 -- Accepted membership should not be listed (mark existing invite as accepted)
 update group_team
 set accepted = true
-where group_id = :'group2ID'
+where group_id = :'groupAcceptedID'
   and user_id = :'userID';
 
 -- ============================================================================
@@ -63,16 +106,34 @@ where group_id = :'group2ID'
 -- Should list all pending invitations for a user across all alliances
 select is(
     list_user_group_team_invitations(:'userID'::uuid)::jsonb,
-    '[
-        {"alliance_name": "c2", "group_id": "00000000-0000-0000-0000-000000000023", "group_name": "G3", "role": "admin", "created_at": 1704362400},
-        {"alliance_name": "c1", "group_id": "00000000-0000-0000-0000-000000000021", "group_name": "G1", "role": "admin", "created_at": 1704189600}
-    ]'::jsonb,
+    format(
+        $json$
+            [
+                {
+                    "alliance_name": "alliance-two",
+                    "group_id": "%s",
+                    "group_name": "Group Three",
+                    "role": "admin",
+                    "created_at": 1704362400
+                },
+                {
+                    "alliance_name": "alliance-one",
+                    "group_id": "%s",
+                    "group_name": "Group One",
+                    "role": "admin",
+                    "created_at": 1704189600
+                }
+            ]
+        $json$,
+        :'groupOtherID',
+        :'groupID'
+    )::jsonb,
     'Should list all pending invitations for the user ordered by created_at desc'
 );
 
 -- Should return empty list when no pending invites present for a user
 select is(
-    list_user_group_team_invitations(:'user2ID'::uuid)::text,
+    list_user_group_team_invitations(:'userNoInvitationsID'::uuid)::text,
     '[]',
     'No invitations should result in empty list'
 );
@@ -80,13 +141,24 @@ select is(
 -- Should not return accepted invitations
 update group_team
 set accepted = true
-where group_id = :'group3ID'
+where group_id = :'groupOtherID'
   and user_id = :'userID';
 select is(
     list_user_group_team_invitations(:'userID'::uuid)::jsonb,
-    '[
-        {"alliance_name": "c1", "group_id": "00000000-0000-0000-0000-000000000021", "group_name": "G1", "role": "admin", "created_at": 1704189600}
-    ]'::jsonb,
+    format(
+        $json$
+            [
+                {
+                    "alliance_name": "alliance-one",
+                    "group_id": "%s",
+                    "group_name": "Group One",
+                    "role": "admin",
+                    "created_at": 1704189600
+                }
+            ]
+        $json$,
+        :'groupID'
+    )::jsonb,
     'Should not return accepted invitations'
 );
 

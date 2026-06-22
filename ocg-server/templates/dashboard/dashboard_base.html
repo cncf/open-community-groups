@@ -1,20 +1,24 @@
 {% extends "common/base.html" -%}
 
-{% block content -%}
+{% block skip_link -%}
   {# Skip navigation link -#}
   <a href="#dashboard-main-content"
      class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary-600 focus:text-white focus:rounded-md focus:shadow-lg">
     Skip to main content
   </a>
   {# End skip navigation link -#}
+{% endblock skip_link -%}
 
+{% block header -%}
   {# Header -#}
-  <nav class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5"
-       role="banner">
+  <div id="dashboard-header"
+       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5">
     {% include "common/header.html" -%}
-  </nav>
+  </div>
   {# End Header -#}
+{% endblock header -%}
 
+{% block main -%}
   {# View for small devices -#}
   <div class="fixed inset-0 z-10 md:hidden flex items-center justify-center bg-stone-100">
     <div class="text-center bg-stone-100 border-4 border-primary-600 border-dashed rounded-lg text-2xl font-medium text-stone-800 p-10 m-10">
@@ -58,4 +62,4 @@
     </main>
   </div>
   {# End Main Content -#}
-{% endblock content -%}
+{% endblock main -%}

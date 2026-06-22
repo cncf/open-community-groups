@@ -9,34 +9,50 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '72000000-0000-0000-0000-000000000001'
-\set eventCategoryID '72000000-0000-0000-0000-000000000002'
-\set eventID '72000000-0000-0000-0000-000000000003'
-\set eventInactiveID '72000000-0000-0000-0000-000000000016'
-\set eventTicketTypeID '72000000-0000-0000-0000-000000000004'
-\set eventInactiveTicketTypeID '72000000-0000-0000-0000-000000000017'
-\set groupCategoryID '72000000-0000-0000-0000-000000000005'
-\set groupID '72000000-0000-0000-0000-000000000006'
-\set freePurchaseID '72000000-0000-0000-0000-000000000007'
-\set expiredPurchaseID '72000000-0000-0000-0000-000000000008'
-\set inactivePurchaseID '72000000-0000-0000-0000-000000000018'
-\set paidPurchaseID '72000000-0000-0000-0000-000000000009'
-\set completedPurchaseID '72000000-0000-0000-0000-000000000010'
-\set priceWindowID '72000000-0000-0000-0000-000000000011'
-\set user1ID '72000000-0000-0000-0000-000000000012'
-\set user2ID '72000000-0000-0000-0000-000000000013'
-\set user3ID '72000000-0000-0000-0000-000000000014'
-\set user4ID '72000000-0000-0000-0000-000000000015'
-\set user5ID '72000000-0000-0000-0000-000000000019'
-\set invitedPurchaseID '72000000-0000-0000-0000-000000000020'
+\set allianceID '79430000-0000-0000-0000-000000000001'
+\set completedPurchaseID '79430000-0000-0000-0000-000000000002'
+\set eventCategoryID '79430000-0000-0000-0000-000000000003'
+\set eventID '79430000-0000-0000-0000-000000000004'
+\set eventInactiveID '79430000-0000-0000-0000-000000000005'
+\set eventInactiveTicketTypeID '79430000-0000-0000-0000-000000000006'
+\set eventTicketTypeID '79430000-0000-0000-0000-000000000007'
+\set expiredPurchaseID '79430000-0000-0000-0000-000000000008'
+\set freePurchaseID '79430000-0000-0000-0000-000000000009'
+\set groupCategoryID '79430000-0000-0000-0000-000000000010'
+\set groupID '79430000-0000-0000-0000-000000000011'
+\set inactivePurchaseID '79430000-0000-0000-0000-000000000012'
+\set invitedPurchaseID '79430000-0000-0000-0000-000000000013'
+\set paidPurchaseID '79430000-0000-0000-0000-000000000014'
+\set priceWindowID '79430000-0000-0000-0000-000000000015'
+\set registrationQuestionID '79430000-0000-0000-0000-000000000016'
+\set user1ID '79430000-0000-0000-0000-000000000017'
+\set user2ID '79430000-0000-0000-0000-000000000018'
+\set user3ID '79430000-0000-0000-0000-000000000019'
+\set user4ID '79430000-0000-0000-0000-000000000020'
+\set user5ID '79430000-0000-0000-0000-000000000021'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'free-alliance', 'Free Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'free-alliance',
+    'Free Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -47,12 +63,43 @@ insert into event_category (event_category_id, alliance_id, name)
 values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'user1ID', 'hash-1', 'user1@example.com', true, 'user-1'),
-    (:'user2ID', 'hash-2', 'user2@example.com', true, 'user-2'),
-    (:'user3ID', 'hash-3', 'user3@example.com', true, 'user-3'),
-    (:'user4ID', 'hash-4', 'user4@example.com', true, 'user-4'),
-    (:'user5ID', 'hash-5', 'user5@example.com', true, 'user-5');
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values
+    (
+        :'user1ID',
+        'hash-1',
+        'user1@example.com',
+        true,
+        'user-1'
+    ),
+    (
+        :'user2ID',
+        'hash-2',
+        'user2@example.com',
+        true,
+        'user-2'
+    ),
+    (
+        :'user3ID',
+        'hash-3',
+        'user3@example.com',
+        true,
+        'user-3'
+    ),
+    (
+        :'user4ID',
+        'hash-4',
+        'user4@example.com',
+        true,
+        'user-4'
+    ),
+    (
+        :'user5ID',
+        'hash-5',
+        'user5@example.com',
+        true,
+        'user-5'
+    );
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
@@ -85,7 +132,13 @@ insert into event (
     now() + interval '1 day',
     true,
     now(),
-    '[{"id": "72000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    jsonb_build_array(jsonb_build_object(
+        'id', :'registrationQuestionID',
+        'kind', 'free-text',
+        'options', jsonb_build_array(),
+        'prompt', 'Note',
+        'required', true
+    ))
 ), (
     :'eventInactiveID',
     :'eventCategoryID',
@@ -102,10 +155,28 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+)
 values
-    (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission'),
-    (:'eventInactiveTicketTypeID', :'eventInactiveID', 1, 10, 'General admission');
+    (
+        :'eventTicketTypeID',
+        :'eventID',
+        1,
+        10,
+        'General admission'
+    ),
+    (
+        :'eventInactiveTicketTypeID',
+        :'eventInactiveID',
+        1,
+        10,
+        'General admission'
+    );
 
 -- Price window
 insert into event_ticket_price_window (
@@ -196,13 +267,24 @@ insert into event_attendee (event_id, user_id, registration_answers, status)
 values (
     :'eventID',
     :'user1ID',
-    '{"answers": [{"question_id": "72000000-0000-0000-0000-000000000101", "value": "Free checkout answer"}]}'::jsonb,
+    jsonb_build_object(
+        'answers',
+        jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Free checkout answer'
+        ))
+    ),
     'registration-questions-pending'
 );
 
 -- Attendee with a pending invitation that checkout cannot confirm
 insert into event_attendee (event_id, user_id, manually_invited, status)
-values (:'eventID', :'user5ID', true, 'invitation-pending');
+values (
+    :'eventID',
+    :'user5ID',
+    true,
+    'invitation-pending'
+);
 
 -- ============================================================================
 -- TESTS
@@ -221,49 +303,56 @@ select is(
 
 -- Should persist the completed purchase fields and add the attendee
 select results_eq(
-    $$
+    format($$
+        with ids as (
+            select
+                %L::uuid as event_purchase_id,
+                %L::uuid as event_id,
+                %L::uuid as user_id
+        )
         select
             (
                 select completed_at is not null
                 from event_purchase
-                where event_purchase_id = '72000000-0000-0000-0000-000000000007'::uuid
+                where event_purchase_id = ids.event_purchase_id
             ),
             (
                 select hold_expires_at is null
                 from event_purchase
-                where event_purchase_id = '72000000-0000-0000-0000-000000000007'::uuid
+                where event_purchase_id = ids.event_purchase_id
             ),
             (
                 select status
                 from event_purchase
-                where event_purchase_id = '72000000-0000-0000-0000-000000000007'::uuid
+                where event_purchase_id = ids.event_purchase_id
             ),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '72000000-0000-0000-0000-000000000003'::uuid
-                and user_id = '72000000-0000-0000-0000-000000000012'::uuid
+                where event_id = ids.event_id
+                and user_id = ids.user_id
             ),
             (
                 select manually_invited
                 from event_attendee
-                where event_id = '72000000-0000-0000-0000-000000000003'::uuid
-                and user_id = '72000000-0000-0000-0000-000000000012'::uuid
+                where event_id = ids.event_id
+                and user_id = ids.user_id
             ),
             (
                 select status
                 from event_attendee
-                where event_id = '72000000-0000-0000-0000-000000000003'::uuid
-                and user_id = '72000000-0000-0000-0000-000000000012'::uuid
+                where event_id = ids.event_id
+                and user_id = ids.user_id
             ),
             (
                 select registration_answers
                 from event_attendee
-                where event_id = '72000000-0000-0000-0000-000000000003'::uuid
-                and user_id = '72000000-0000-0000-0000-000000000012'::uuid
+                where event_id = ids.event_id
+                and user_id = ids.user_id
             )
-    $$,
-    $$
+        from ids
+    $$, :'freePurchaseID', :'eventID', :'user1ID'),
+    format($$
         values (
             true,
             true,
@@ -271,15 +360,15 @@ select results_eq(
             1::int,
             false,
             'confirmed'::text,
-            '{"answers": [{"question_id": "72000000-0000-0000-0000-000000000101", "value": "Free checkout answer"}]}'::jsonb
+            '{"answers": [{"question_id": "%s", "value": "Free checkout answer"}]}'::jsonb
         )
-    $$,
+    $$, :'registrationQuestionID'),
     'Should persist the completed purchase fields and confirm a non-manually invited attendee'
 );
 
 -- Should reject expired purchase holds
 select throws_ok(
-    $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000008'::uuid)$$,
+    format($$select complete_free_event_purchase(%L::uuid)$$, :'expiredPurchaseID'),
     'purchase hold has expired',
     'Should reject expired purchase holds'
 );
@@ -290,28 +379,28 @@ set published = false
 where event_id = :'eventInactiveID'::uuid;
 
 select throws_ok(
-    $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000018'::uuid)$$,
+    format($$select complete_free_event_purchase(%L::uuid)$$, :'inactivePurchaseID'),
     'event not found or inactive',
     'Should reject free purchases when the event becomes inactive'
 );
 
 -- Should reject non-free purchases
 select throws_ok(
-    $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000009'::uuid)$$,
+    format($$select complete_free_event_purchase(%L::uuid)$$, :'paidPurchaseID'),
     'only free purchases can be completed locally',
     'Should reject non-free purchases'
 );
 
 -- Should reject purchases that are no longer pending
 select throws_ok(
-    $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000010'::uuid)$$,
+    format($$select complete_free_event_purchase(%L::uuid)$$, :'completedPurchaseID'),
     'purchase is no longer pending',
     'Should reject purchases that are no longer pending'
 );
 
 -- Should reject purchases whose attendee row cannot be confirmed
 select throws_ok(
-    $$select complete_free_event_purchase('72000000-0000-0000-0000-000000000020'::uuid)$$,
+    format($$select complete_free_event_purchase(%L::uuid)$$, :'invitedPurchaseID'),
     'attendee cannot be confirmed for this event',
     'Should reject purchases whose attendee row cannot be confirmed'
 );

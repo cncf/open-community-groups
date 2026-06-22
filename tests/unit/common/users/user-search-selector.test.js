@@ -1,14 +1,10 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/common/users/user-search-selector.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("user-search-selector", () => {
-  const userSearchFieldPrototype =
-    customElements.get("user-search-field").prototype;
+  const userSearchFieldPrototype = customElements.get("user-search-field").prototype;
   const originalFocusInput = userSearchFieldPrototype.focusInput;
 
   useMountedElementsCleanup("user-search-selector");
@@ -55,9 +51,8 @@ describe("user-search-selector", () => {
     await element.updateComplete;
 
     // Added and removes selected users while honoring maxUsers.
-    expect(element.selectedUsers).to.deep.equal([
-      { user_id: "7", username: "ada", name: "Ada Lovelace" },
-    ]);
+    expect(element.selectedUsers).to.deep.equal([{ user_id: "7", username: "ada", name: "Ada Lovelace" }]);
+    expect(element.querySelector("selected-user-pill")?.textContent).to.include("Ada Lovelace");
     expect(element.querySelector('input[type="hidden"]').value).to.equal("7");
 
     // Remove the selected user.

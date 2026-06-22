@@ -3,46 +3,82 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000021'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set proposal1ID '00000000-0000-0000-0000-000000000061'
-\set proposal2ID '00000000-0000-0000-0000-000000000062'
-\set submission1ID '00000000-0000-0000-0000-000000000071'
-\set submission2ID '00000000-0000-0000-0000-000000000072'
-\set user1ID '00000000-0000-0000-0000-000000000081'
+\set allianceID '4a170000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a170000-0000-0000-0000-000000000002'
+\set eventID '4a170000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a170000-0000-0000-0000-000000000004'
+\set groupID '4a170000-0000-0000-0000-000000000005'
+\set proposal1ID '4a170000-0000-0000-0000-000000000006'
+\set proposal2ID '4a170000-0000-0000-0000-000000000007'
+\set submission1ID '4a170000-0000-0000-0000-000000000008'
+\set submission2ID '4a170000-0000-0000-0000-000000000009'
+\set user1ID '4a170000-0000-0000-0000-000000000010'
+\set user2ID '4a170000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'cfs-withdraw-alliance',
+    'CFS Withdraw Alliance',
+    'Alliance for testing CFS withdrawal',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, alliance_id, name) values
-    (:'categoryID', :'allianceID', 'Tech');
-
--- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
-    (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, alliance_id, name) values
-    (:'eventCategoryID', :'allianceID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'user1ID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    'Bob'
+);
+
+-- Group
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'CFS Withdraw Group', 'cfs-withdraw');
 
 -- Session proposals
 insert into session_proposal (
@@ -122,9 +158,26 @@ insert into cfs_submission (
 -- TESTS
 -- ============================================================================
 
+-- Should reject withdrawing another user's submission
+select throws_ok(
+    format(
+        'select withdraw_cfs_submission(%L::uuid, %L::uuid)',
+        :'user2ID',
+        :'submission1ID'
+    ),
+    'submission not found or cannot be withdrawn',
+    'Should reject withdrawing another user''s submission'
+);
+
 -- Withdraw submission
 select lives_ok(
-    $$select withdraw_cfs_submission('00000000-0000-0000-0000-000000000081'::uuid, '00000000-0000-0000-0000-000000000071'::uuid)$$,
+    format(
+        $$
+            select withdraw_cfs_submission(%L::uuid, %L::uuid)
+        $$,
+        :'user1ID',
+        :'submission1ID'
+    ),
     'Should execute withdraw_cfs_submission successfully'
 );
 
@@ -146,15 +199,19 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
-        values (
-            'submission_withdrawn',
-            '00000000-0000-0000-0000-000000000081'::uuid,
-            'alice',
-            'cfs_submission',
-            '00000000-0000-0000-0000-000000000071'::uuid
-        )
-    $$,
+    format(
+        $$
+            values (
+                'submission_withdrawn',
+                %L::uuid,
+                'alice',
+                'cfs_submission',
+                %L::uuid
+            )
+        $$,
+        :'user1ID',
+        :'submission1ID'
+    ),
     'Should create the expected audit row'
 );
 

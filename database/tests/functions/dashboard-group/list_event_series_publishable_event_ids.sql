@@ -9,18 +9,18 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set canceledEventID '00000000-0000-0000-0000-000000000034'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set deletedEventID '00000000-0000-0000-0000-000000000035'
-\set event1ID '00000000-0000-0000-0000-000000000031'
-\set event2ID '00000000-0000-0000-0000-000000000032'
-\set event3ID '00000000-0000-0000-0000-000000000036'
-\set eventSeriesID '00000000-0000-0000-0000-000000000040'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set standaloneEventID '00000000-0000-0000-0000-000000000033'
-\set userID '00000000-0000-0000-0000-000000000020'
+\set canceledEventID '3a1d0000-0000-0000-0000-000000000001'
+\set allianceID '3a1d0000-0000-0000-0000-000000000002'
+\set deletedEventID '3a1d0000-0000-0000-0000-000000000003'
+\set event1ID '3a1d0000-0000-0000-0000-000000000004'
+\set event2ID '3a1d0000-0000-0000-0000-000000000005'
+\set event3ID '3a1d0000-0000-0000-0000-000000000006'
+\set eventCategoryID '3a1d0000-0000-0000-0000-000000000007'
+\set eventSeriesID '3a1d0000-0000-0000-0000-000000000008'
+\set groupCategoryID '3a1d0000-0000-0000-0000-000000000009'
+\set groupID '3a1d0000-0000-0000-0000-000000000010'
+\set standaloneEventID '3a1d0000-0000-0000-0000-000000000011'
+\set userID '3a1d0000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -51,7 +51,7 @@ values (:'userID', 'organizer@example.com', 'organizer', 'hash');
 
 -- Event Category
 insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Meetup', :'allianceID');
+values (:'eventCategoryID', 'Meetup', :'allianceID');
 
 -- Group Category
 insert into group_category (group_category_id, name, alliance_id)
@@ -120,7 +120,7 @@ insert into event (
         'first-series-event',
         'First event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-07 10:00:00+00',
         '2030-01-07 11:00:00+00',
@@ -137,7 +137,7 @@ insert into event (
         'second-series-event',
         'Second event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-14 10:00:00+00',
         '2030-01-14 11:00:00+00',
@@ -154,7 +154,7 @@ insert into event (
         'third-series-event',
         'Third event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-21 10:00:00+00',
         '2030-01-21 11:00:00+00',
@@ -171,7 +171,7 @@ insert into event (
         'standalone-event',
         'Standalone event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-21 10:00:00+00',
         '2030-01-21 11:00:00+00',
@@ -188,7 +188,7 @@ insert into event (
         'canceled-series-event',
         'Canceled event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-01-28 10:00:00+00',
         '2030-01-28 11:00:00+00',
@@ -205,7 +205,7 @@ insert into event (
         'deleted-series-event',
         'Deleted event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         '2030-02-04 10:00:00+00',
         '2030-02-04 11:00:00+00',
@@ -222,19 +222,25 @@ insert into event (
 
 -- Should list only publishable events from the selected event series
 select results_eq(
-    $$
+    format(
+        $$
         select unnest(
             list_event_series_publishable_event_ids(
-                '00000000-0000-0000-0000-000000000002'::uuid,
-                '00000000-0000-0000-0000-000000000031'::uuid
+                %L::uuid,
+                %L::uuid
             )
         )
-    $$,
-    $$
+        $$,
+        :'groupID', :'event1ID'
+    ),
+    format(
+        $$
         values
-            ('00000000-0000-0000-0000-000000000031'::uuid),
-            ('00000000-0000-0000-0000-000000000036'::uuid)
-    $$,
+            (%L::uuid),
+            (%L::uuid)
+        $$,
+        :'event1ID', :'event3ID'
+    ),
     'Should list only publishable events from the selected event series'
 );
 
@@ -250,17 +256,21 @@ select is(
 
 -- Should return the selected standalone event when it is publishable
 select results_eq(
-    $$
+    format(
+        $$
         select unnest(
             list_event_series_publishable_event_ids(
-                '00000000-0000-0000-0000-000000000002'::uuid,
-                '00000000-0000-0000-0000-000000000033'::uuid
+                %L::uuid,
+                %L::uuid
             )
         )
-    $$,
-    $$
-        values ('00000000-0000-0000-0000-000000000033'::uuid)
-    $$,
+        $$,
+        :'groupID', :'standaloneEventID'
+    ),
+    format(
+        $$ values (%L::uuid) $$,
+        :'standaloneEventID'
+    ),
     'Should return the selected standalone event when it is publishable'
 );
 
@@ -273,6 +283,10 @@ select is(
     0,
     'Should return an empty array when the selected event is canceled'
 );
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
 
 select * from finish();
 rollback;

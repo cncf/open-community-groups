@@ -3,35 +3,56 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set actorID '00000000-0000-0000-0000-000000000001'
-\set attendeeID '00000000-0000-0000-0000-000000000002'
-\set categoryID '00000000-0000-0000-0000-000000000003'
-\set allianceID '00000000-0000-0000-0000-000000000004'
-\set eventCategoryID '00000000-0000-0000-0000-000000000005'
-\set eventID '00000000-0000-0000-0000-000000000006'
-\set eventPaidID '00000000-0000-0000-0000-000000000007'
-\set eventTicketTypeID '00000000-0000-0000-0000-000000000008'
-\set groupID '00000000-0000-0000-0000-000000000009'
-\set paidAttendeeID '00000000-0000-0000-0000-000000000010'
-\set purchaseID '00000000-0000-0000-0000-000000000011'
+\set actorID '3a070000-0000-0000-0000-000000000001'
+\set attendeeID '3a070000-0000-0000-0000-000000000002'
+\set allianceID '3a070000-0000-0000-0000-000000000003'
+\set eventCanceledID '3a070000-0000-0000-0000-000000000004'
+\set eventCategoryID '3a070000-0000-0000-0000-000000000005'
+\set eventID '3a070000-0000-0000-0000-000000000006'
+\set eventLimitedID '3a070000-0000-0000-0000-000000000007'
+\set eventPaidID '3a070000-0000-0000-0000-000000000008'
+\set eventTicketTypeID '3a070000-0000-0000-0000-000000000009'
+\set eventUnpublishedID '3a070000-0000-0000-0000-000000000010'
+\set groupCategoryID '3a070000-0000-0000-0000-000000000011'
+\set groupID '3a070000-0000-0000-0000-000000000012'
+\set limitedAttendeeID '3a070000-0000-0000-0000-000000000013'
+\set paidAttendeeID '3a070000-0000-0000-0000-000000000014'
+\set promotedUserID '3a070000-0000-0000-0000-000000000015'
+\set purchaseID '3a070000-0000-0000-0000-000000000016'
+\set unknownGroupID '3a070000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Tech', :'allianceID');
+values (:'groupCategoryID', 'Tech', :'allianceID');
 
 -- Event category
 insert into event_category (event_category_id, name, alliance_id)
@@ -39,14 +60,16 @@ values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Users
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
     ('hash-attendee', 'attendee@example.com', true, 'Attendee', :'attendeeID', 'attendee'),
-    ('hash-paid', 'paid@example.com', true, 'Paid', :'paidAttendeeID', 'paid');
+    ('hash-limited', 'limited@example.com', true, 'Limited', :'limitedAttendeeID', 'limited'),
+    ('hash-paid', 'paid@example.com', true, 'Paid', :'paidAttendeeID', 'paid'),
+    ('hash-promoted', 'promoted@example.com', true, 'Promoted', :'promotedUserID', 'promoted');
 
 -- Events
 insert into event (
@@ -60,11 +83,88 @@ insert into event (
     group_id,
     payment_currency_code,
     published,
+    canceled,
+    capacity,
+    waitlist_enabled,
     starts_at
 )
 values
-    (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', null, true, now() + interval '7 days'),
-    (:'eventPaidID', 'Paid Event', 'paid-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 'USD', true, now() + interval '7 days');
+    (
+        :'eventID',
+        'Free Event',
+        'free-event',
+        'Test free event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        null,
+        false,
+        now() + interval '7 days'
+    ), (
+        :'eventCanceledID',
+        'Canceled Event',
+        'canceled-event',
+        'Test canceled event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        true,
+        null,
+        false,
+        now() + interval '7 days'
+    ), (
+        :'eventLimitedID',
+        'Limited Event',
+        'limited-event',
+        'Test limited event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        true,
+        false,
+        1,
+        true,
+        now() + interval '7 days'
+    ), (
+        :'eventPaidID',
+        'Paid Event',
+        'paid-event',
+        'Test paid event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'USD',
+        true,
+        false,
+        null,
+        false,
+        now() + interval '7 days'
+    ), (
+        :'eventUnpublishedID',
+        'Unpublished Event',
+        'unpublished-event',
+        'Test unpublished event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        null,
+        false,
+        false,
+        null,
+        false,
+        now() + interval '7 days'
+    );
 
 -- Ticket type and paid purchase
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
@@ -80,13 +180,27 @@ insert into event_purchase (
     ticket_title,
     user_id
 )
-values (2500, 'USD', :'eventPaidID', :'purchaseID', :'eventTicketTypeID', 'completed', 'Paid admission', :'paidAttendeeID');
+values (
+    2500,
+    'USD',
+    :'eventPaidID',
+    :'purchaseID',
+    :'eventTicketTypeID',
+    'completed',
+    'Paid admission',
+    :'paidAttendeeID'
+);
 
 -- Attendees
 insert into event_attendee (event_id, user_id, status)
 values
     (:'eventID', :'attendeeID', 'confirmed'),
+    (:'eventLimitedID', :'limitedAttendeeID', 'confirmed'),
     (:'eventPaidID', :'paidAttendeeID', 'confirmed');
+
+-- Waitlist entries
+insert into event_waitlist (event_id, user_id, created_at)
+values (:'eventLimitedID', :'promotedUserID', now());
 
 -- ============================================================================
 -- TESTS
@@ -94,12 +208,10 @@ values
 
 -- Should cancel confirmed attendance.
 select results_eq(
-    $$ select cancel_event_attendee_attendance(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000009',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000002'
-    )::jsonb $$,
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
+        :'actorID', :'groupID', :'eventID', :'attendeeID'
+    ),
     $$ values ('{"left_status": "attendee", "promoted_user_ids": []}'::jsonb) $$,
     'Should cancel a confirmed attendance'
 );
@@ -124,53 +236,50 @@ select results_eq(
             details
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'event_attendee_attendance_canceled',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000004'::uuid,
-            '00000000-0000-0000-0000-000000000006'::uuid,
-            '00000000-0000-0000-0000-000000000009'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'user',
-            '{"event_id": "00000000-0000-0000-0000-000000000006", "user_id": "00000000-0000-0000-0000-000000000002"}'::jsonb
+            '{"event_id": "%s", "user_id": "%s"}'::jsonb
         )
-    $$,
+        $$,
+        :'actorID', :'allianceID', :'eventID', :'groupID', :'attendeeID', :'eventID', :'attendeeID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should reject canceling missing confirmed attendees.
 select throws_ok(
-    $$ select cancel_event_attendee_attendance(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000009',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000002'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'attendeeID'
+    ),
     'confirmed event attendee not found',
     'Should reject canceling missing confirmed attendance'
 );
 
 -- Should reject events outside the selected group.
 select throws_ok(
-    $$ select cancel_event_attendee_attendance(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-999999999999',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000002'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
+        :'actorID', :'unknownGroupID', :'eventID', :'attendeeID'
+    ),
     'event not found or inactive',
     'Should reject events outside the selected group'
 );
 
 -- Should reject paid attendees.
 select throws_ok(
-    $$ select cancel_event_attendee_attendance(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000009',
-        '00000000-0000-0000-0000-000000000007',
-        '00000000-0000-0000-0000-000000000010'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventPaidID', :'paidAttendeeID'
+    ),
     'paid attendees cannot be canceled from attendee actions',
     'Should reject paid attendee cancellation'
 );
@@ -185,6 +294,60 @@ select is(
     (select status from event_purchase where event_purchase_id = :'purchaseID'),
     'completed',
     'Should keep paid purchases unchanged'
+);
+
+-- Should promote a waitlisted user when canceling from a full event.
+select results_eq(
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L)::jsonb $$,
+        :'actorID', :'groupID', :'eventLimitedID', :'limitedAttendeeID'
+    ),
+    format(
+        $$ values ('{"left_status": "attendee", "promoted_user_ids": ["%s"]}'::jsonb) $$,
+        :'promotedUserID'
+    ),
+    'Should return promoted waitlisted user ids'
+);
+
+select results_eq(
+    format(
+        $$
+        select
+            ea.status,
+            not exists (
+                select 1
+                from event_waitlist ew
+                where ew.event_id = %L::uuid
+                and ew.user_id = %L::uuid
+            )
+        from event_attendee ea
+        where ea.event_id = %L::uuid
+        and ea.user_id = %L::uuid
+        $$,
+        :'eventLimitedID', :'promotedUserID', :'eventLimitedID', :'promotedUserID'
+    ),
+    $$ values ('confirmed'::text, true) $$,
+    'Should promote the waitlisted user into attendees'
+);
+
+-- Should reject unpublished events.
+select throws_ok(
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventUnpublishedID', :'attendeeID'
+    ),
+    'event not found or inactive',
+    'Should reject unpublished events'
+);
+
+-- Should reject canceled events.
+select throws_ok(
+    format(
+        $$ select cancel_event_attendee_attendance(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventCanceledID', :'attendeeID'
+    ),
+    'event not found or inactive',
+    'Should reject canceled events'
 );
 
 -- ============================================================================

@@ -9,19 +9,19 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000061'
-\set alliance2ID '00000000-0000-0000-0000-000000000062'
-\set eventCanceledID '00000000-0000-0000-0000-000000000066'
-\set eventCategoryID '00000000-0000-0000-0000-000000000063'
-\set eventDeletedID '00000000-0000-0000-0000-000000000067'
-\set eventInactiveGroupID '00000000-0000-0000-0000-000000000068'
-\set eventOKID '00000000-0000-0000-0000-000000000065'
-\set eventPastID '00000000-0000-0000-0000-000000000069'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000000070'
-\set groupCategoryID '00000000-0000-0000-0000-000000000064'
-\set groupID '00000000-0000-0000-0000-000000000071'
-\set inactiveGroupID '00000000-0000-0000-0000-000000000072'
-\set missingEventID '00000000-0000-0000-0000-000000000073'
+\set alliance2ID '5e040000-0000-0000-0000-000000000001'
+\set allianceID '5e040000-0000-0000-0000-000000000002'
+\set eventCanceledID '5e040000-0000-0000-0000-000000000003'
+\set eventCategoryID '5e040000-0000-0000-0000-000000000004'
+\set eventDeletedID '5e040000-0000-0000-0000-000000000005'
+\set eventInactiveGroupID '5e040000-0000-0000-0000-000000000006'
+\set eventOKID '5e040000-0000-0000-0000-000000000007'
+\set eventPastID '5e040000-0000-0000-0000-000000000008'
+\set eventUnpublishedID '5e040000-0000-0000-0000-000000000009'
+\set groupCategoryID '5e040000-0000-0000-0000-00000000000a'
+\set groupID '5e040000-0000-0000-0000-00000000000b'
+\set inactiveGroupID '5e040000-0000-0000-0000-00000000000c'
+\set missingEventID '5e040000-0000-0000-0000-00000000000d'
 
 -- ============================================================================
 -- SEED DATA
@@ -33,25 +33,25 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
     'event-alliance',
     'Event Alliance',
     'Test alliance',
-    'https://example.com/logo.png',
     'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 ), (
     :'alliance2ID',
     'other-event-alliance',
     'Other Event Alliance',
     'Other test alliance',
-    'https://example.com/logo-2.png',
     'https://example.com/banner-mobile-2.png',
-    'https://example.com/banner-2.png'
+    'https://example.com/banner-2.png',
+    'https://example.com/logo-2.png'
 );
 
 -- Group category
@@ -78,29 +78,29 @@ insert into event_category (
 
 -- Groups
 insert into "group" (
-    active,
-    alliance_id,
-    deleted,
-    group_category_id,
     group_id,
+    alliance_id,
+    group_category_id,
     name,
-    slug
+    slug,
+    active,
+    deleted
 ) values (
-    true,
-    :'allianceID',
-    false,
-    :'groupCategoryID',
     :'groupID',
-    'Active Group',
-    'active-group'
-), (
-    false,
     :'allianceID',
-    false,
     :'groupCategoryID',
+    'Active Group',
+    'active-group',
+    true,
+    false
+), (
     :'inactiveGroupID',
+    :'allianceID',
+    :'groupCategoryID',
     'Inactive Group',
-    'inactive-group'
+    'inactive-group',
+    false,
+    false
 );
 
 -- Events
@@ -203,79 +203,79 @@ insert into event (
 
 -- Should accept active event
 select lives_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000061'::uuid,
-        '00000000-0000-0000-0000-000000000065'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'allianceID', :'eventOKID'
+    ),
     'Should accept active event'
 );
 
 -- Should reject missing event
 select throws_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000061'::uuid,
-        '00000000-0000-0000-0000-000000000073'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'allianceID', :'missingEventID'
+    ),
     'event not found or inactive',
     'Should reject missing event'
 );
 
 -- Should reject event from another alliance
 select throws_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000062'::uuid,
-        '00000000-0000-0000-0000-000000000065'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'alliance2ID', :'eventOKID'
+    ),
     'event not found or inactive',
     'Should reject event from another alliance'
 );
 
 -- Should reject unpublished event
 select throws_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000061'::uuid,
-        '00000000-0000-0000-0000-000000000070'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'allianceID', :'eventUnpublishedID'
+    ),
     'event not found or inactive',
     'Should reject unpublished event'
 );
 
 -- Should reject canceled event
 select throws_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000061'::uuid,
-        '00000000-0000-0000-0000-000000000066'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'allianceID', :'eventCanceledID'
+    ),
     'event not found or inactive',
     'Should reject canceled event'
 );
 
 -- Should reject deleted event
 select throws_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000061'::uuid,
-        '00000000-0000-0000-0000-000000000067'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'allianceID', :'eventDeletedID'
+    ),
     'event not found or inactive',
     'Should reject deleted event'
 );
 
 -- Should reject inactive-group event
 select throws_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000061'::uuid,
-        '00000000-0000-0000-0000-000000000068'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'allianceID', :'eventInactiveGroupID'
+    ),
     'event not found or inactive',
     'Should reject inactive-group event'
 );
 
 -- Should reject past event
 select throws_ok(
-    $$select ensure_event_is_active(
-        '00000000-0000-0000-0000-000000000061'::uuid,
-        '00000000-0000-0000-0000-000000000069'::uuid
-    )$$,
+    format(
+        $$select ensure_event_is_active(%L::uuid, %L::uuid)$$,
+        :'allianceID', :'eventPastID'
+    ),
     'event not found or inactive',
     'Should reject past event'
 );

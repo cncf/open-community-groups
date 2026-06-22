@@ -9,70 +9,94 @@ select plan(27);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventApprovalPending '00000000-0000-0000-0000-000000000056'
-\set eventCanceled '00000000-0000-0000-0000-000000000050'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventDeleted '00000000-0000-0000-0000-000000000044'
-\set eventDisabledWaitlist '00000000-0000-0000-0000-000000000052'
-\set eventFull '00000000-0000-0000-0000-000000000048'
-\set eventInactiveGroup '00000000-0000-0000-0000-000000000045'
-\set eventOK '00000000-0000-0000-0000-000000000041'
-\set eventPast '00000000-0000-0000-0000-000000000047'
-\set eventPaidTicketTypeID '00000000-0000-0000-0000-000000000065'
-\set eventPaidTicketed '00000000-0000-0000-0000-000000000055'
-\set eventPaidTicketedPurchaseID '00000000-0000-0000-0000-000000000064'
-\set eventQuestionsInvited '00000000-0000-0000-0000-000000000058'
-\set eventQuestionsPromoted '00000000-0000-0000-0000-000000000057'
-\set eventStartedNoEnd '00000000-0000-0000-0000-000000000053'
-\set eventTicketed '00000000-0000-0000-0000-000000000054'
-\set eventTicketedDiscountCodeID '00000000-0000-0000-0000-000000000063'
-\set eventTicketedPurchaseID '00000000-0000-0000-0000-000000000062'
-\set eventTicketTypeID '00000000-0000-0000-0000-000000000061'
-\set eventUnlimited '00000000-0000-0000-0000-000000000049'
-\set eventUnpublished '00000000-0000-0000-0000-000000000046'
-\set eventWaitlist '00000000-0000-0000-0000-000000000051'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set inactiveGroupID '00000000-0000-0000-0000-000000000022'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
-\set user3ID '00000000-0000-0000-0000-000000000033'
-\set user4ID '00000000-0000-0000-0000-000000000034'
-\set user5ID '00000000-0000-0000-0000-000000000035'
-\set user6ID '00000000-0000-0000-0000-000000000036'
+\set allianceID '5e090000-0000-0000-0000-000000000001'
+\set eventApprovalPending '5e090000-0000-0000-0000-000000000002'
+\set eventCanceled '5e090000-0000-0000-0000-000000000003'
+\set eventCategoryID '5e090000-0000-0000-0000-000000000004'
+\set eventDeleted '5e090000-0000-0000-0000-000000000005'
+\set eventDisabledWaitlist '5e090000-0000-0000-0000-000000000006'
+\set eventFull '5e090000-0000-0000-0000-000000000007'
+\set eventInactiveGroup '5e090000-0000-0000-0000-000000000008'
+\set eventOK '5e090000-0000-0000-0000-000000000009'
+\set eventPaidTicketed '5e090000-0000-0000-0000-00000000000a'
+\set eventPaidTicketedPurchaseID '5e090000-0000-0000-0000-00000000000b'
+\set eventPaidTicketTypeID '5e090000-0000-0000-0000-00000000000c'
+\set eventPast '5e090000-0000-0000-0000-00000000000d'
+\set eventQuestionsInvited '5e090000-0000-0000-0000-00000000000e'
+\set eventQuestionsPromoted '5e090000-0000-0000-0000-00000000000f'
+\set eventStartedNoEnd '5e090000-0000-0000-0000-000000000010'
+\set eventTicketed '5e090000-0000-0000-0000-000000000011'
+\set eventTicketedDiscountCodeID '5e090000-0000-0000-0000-000000000012'
+\set eventTicketedPurchaseID '5e090000-0000-0000-0000-000000000013'
+\set eventTicketTypeID '5e090000-0000-0000-0000-000000000014'
+\set eventUnlimited '5e090000-0000-0000-0000-000000000015'
+\set eventUnpublished '5e090000-0000-0000-0000-000000000016'
+\set eventWaitlist '5e090000-0000-0000-0000-000000000017'
+\set groupCategoryID '5e090000-0000-0000-0000-000000000018'
+\set groupID '5e090000-0000-0000-0000-000000000019'
+\set inactiveGroupID '5e090000-0000-0000-0000-00000000001a'
+\set questionID '5e090000-0000-0000-0000-00000000001b'
+\set user1ID '5e090000-0000-0000-0000-00000000001c'
+\set user2ID '5e090000-0000-0000-0000-00000000001d'
+\set user3ID '5e090000-0000-0000-0000-00000000001e'
+\set user4ID '5e090000-0000-0000-0000-00000000001f'
+\set user5ID '5e090000-0000-0000-0000-000000000020'
+\set user6ID '5e090000-0000-0000-0000-000000000021'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'allianceID');
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
--- Event Category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+-- Event category
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
+insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'user1ID', 'h', 'u1@test.com', 'u1'),
-    (:'user2ID', 'h', 'u2@test.com', 'u2'),
-    (:'user3ID', 'h', 'u3@test.com', 'u3'),
-    (:'user4ID', 'h', 'u4@test.com', 'u4'),
-    (:'user5ID', 'h', 'u5@test.com', 'u5'),
-    (:'user6ID', 'h', 'u6@test.com', 'u6');
+    (:'user1ID', 'user-1-hash', 'u1@test.com', true, 'u1'),
+    (:'user2ID', 'user-2-hash', 'u2@test.com', true, 'u2'),
+    (:'user3ID', 'user-3-hash', 'u3@test.com', true, 'u3'),
+    (:'user4ID', 'user-4-hash', 'u4@test.com', true, 'u4'),
+    (:'user5ID', 'user-5-hash', 'u5@test.com', true, 'u5'),
+    (:'user6ID', 'user-6-hash', 'u6@test.com', true, 'u6');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug, active, deleted)
 values
-    (:'groupID', :'allianceID', :'categoryID', 'Active Group', 'active-group', true, false),
-    (:'inactiveGroupID', :'allianceID', :'categoryID', 'Inactive Group', 'inactive-group', false, false);
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
+    (
+        :'inactiveGroupID',
+        :'allianceID',
+        :'groupCategoryID',
+        'Inactive Group',
+        'inactive-group',
+        false,
+        false
+    );
 
 -- Events
 insert into event (
@@ -94,19 +118,240 @@ insert into event (
     waitlist_enabled
 )
 values
-    (:'eventOK', 'OK', 'ok', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, null, false),
-    (:'eventApprovalPending', 'Approval Pending', 'approval-pending', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, true, false, false, null, null, null, false),
-    (:'eventCanceled', 'Canceled', 'canceled', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, true, false, null, null, 1, true),
-    (:'eventDeleted', 'Deleted', 'deleted', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, true, null, null, null, false),
-    (:'eventInactiveGroup', 'Inactive Group', 'inactive-group', 'd', 'UTC', :'eventCategoryID', 'in-person', :'inactiveGroupID', false, true, false, false, null, null, null, false),
-    (:'eventUnpublished', 'Unpublished', 'unpublished', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, false, false, false, null, null, null, false),
-	    (:'eventPast', 'Past', 'past', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, current_timestamp - interval '2 hours', current_timestamp - interval '1 hour', null, false),
-	    (:'eventStartedNoEnd', 'Started No End', 'started-no-end', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, current_timestamp - interval '1 hour', null, null, false),
-	    (:'eventDisabledWaitlist', 'Disabled Waitlist', 'disabled-waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 2, false),
-	    (:'eventFull', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 1, true),
-	    (:'eventPaidTicketed', 'Paid Ticketed', 'paid-ticketed', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 1, false),
-	    (:'eventUnlimited', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, null, false),
-	    (:'eventWaitlist', 'Waitlist', 'waitlist', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', false, true, false, false, null, null, 1, true);
+    (
+        :'eventOK',
+        'OK',
+        'ok',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        null,
+        null,
+        null,
+        false
+    ),
+    (
+        :'eventApprovalPending',
+        'Approval Pending',
+        'approval-pending',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        true,
+        false,
+        false,
+        null,
+        null,
+        null,
+        false
+    ),
+    (
+        :'eventCanceled',
+        'Canceled',
+        'canceled',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        false,
+        true,
+        false,
+        null,
+        null,
+        1,
+        true
+    ),
+    (
+        :'eventDeleted',
+        'Deleted',
+        'deleted',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        false,
+        false,
+        true,
+        null,
+        null,
+        null,
+        false
+    ),
+    (
+        :'eventInactiveGroup',
+        'Inactive Group',
+        'inactive-group',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'inactiveGroupID',
+        false,
+        true,
+        false,
+        false,
+        null,
+        null,
+        null,
+        false
+    ),
+    (
+        :'eventUnpublished',
+        'Unpublished',
+        'unpublished',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        false,
+        false,
+        false,
+        null,
+        null,
+        null,
+        false
+    ),
+    (
+        :'eventPast',
+        'Past',
+        'past',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        current_timestamp - interval '2 hours',
+        current_timestamp - interval '1 hour',
+        null,
+        false
+    ),
+    (
+        :'eventStartedNoEnd',
+        'Started No End',
+        'started-no-end',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        current_timestamp - interval '1 hour',
+        null,
+        null,
+        false
+    ),
+    (
+        :'eventDisabledWaitlist',
+        'Disabled Waitlist',
+        'disabled-waitlist',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        null,
+        null,
+        2,
+        false
+    ),
+    (
+        :'eventFull',
+        'Full',
+        'full',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        null,
+        null,
+        1,
+        true
+    ),
+    (
+        :'eventPaidTicketed',
+        'Paid Ticketed',
+        'paid-ticketed',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        null,
+        null,
+        1,
+        false
+    ),
+    (
+        :'eventUnlimited',
+        'Unlimited',
+        'unlimited',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        null,
+        null,
+        null,
+        false
+    ),
+    (
+        :'eventWaitlist',
+        'Waitlist',
+        'waitlist',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        false,
+        true,
+        false,
+        false,
+        null,
+        null,
+        1,
+        true
+    );
 
 -- Event
 insert into event (
@@ -180,7 +425,10 @@ insert into event (
         null,
         1,
         true,
-        '[{"id": "00000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+        format(
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+            :'questionID'
+        )::jsonb
     ),
     (
         :'eventQuestionsInvited',
@@ -198,7 +446,10 @@ insert into event (
         null,
         1,
         true,
-        '[{"id": "00000000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+        format(
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+            :'questionID'
+        )::jsonb
     );
 
 -- Event Ticket Type

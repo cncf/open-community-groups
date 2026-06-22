@@ -9,51 +9,100 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '90200000-0000-0000-0000-000000000011'
-\set allianceID '90200000-0000-0000-0000-000000000001'
-\set eventCategoryID '90200000-0000-0000-0000-000000000012'
-\set eventID '90200000-0000-0000-0000-000000000041'
-\set eventStartedID '90200000-0000-0000-0000-000000000042'
-\set eventNoQuestionsID '90200000-0000-0000-0000-000000000043'
-\set eventTicketedID '90200000-0000-0000-0000-000000000044'
-\set eventTicketTypeID '90200000-0000-0000-0000-000000000051'
-\set groupID '90200000-0000-0000-0000-000000000021'
-\set nonAttendeeUserID '90200000-0000-0000-0000-000000000034'
-\set pendingUserID '90200000-0000-0000-0000-000000000031'
-\set pendingPurchaseID '90200000-0000-0000-0000-000000000061'
-\set priceWindowID '90200000-0000-0000-0000-000000000052'
-\set ticketedPendingUserID '90200000-0000-0000-0000-000000000035'
-\set updateUserID '90200000-0000-0000-0000-000000000032'
-\set startedEventUserID '90200000-0000-0000-0000-000000000033'
+\set allianceID '4a150000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a150000-0000-0000-0000-000000000002'
+\set eventID '4a150000-0000-0000-0000-000000000003'
+\set eventNoQuestionsID '4a150000-0000-0000-0000-000000000004'
+\set eventStartedID '4a150000-0000-0000-0000-000000000005'
+\set eventTicketedID '4a150000-0000-0000-0000-000000000006'
+\set eventTicketTypeID '4a150000-0000-0000-0000-000000000007'
+\set groupCategoryID '4a150000-0000-0000-0000-000000000008'
+\set groupID '4a150000-0000-0000-0000-000000000009'
+\set nonAttendeeUserID '4a150000-0000-0000-0000-000000000010'
+\set optionStandardID '4a150000-0000-0000-0000-000000000011'
+\set optionVegetarianID '4a150000-0000-0000-0000-000000000012'
+\set pendingPurchaseID '4a150000-0000-0000-0000-000000000013'
+\set pendingUserID '4a150000-0000-0000-0000-000000000014'
+\set priceWindowID '4a150000-0000-0000-0000-000000000015'
+\set questionID '4a150000-0000-0000-0000-000000000016'
+\set startedEventUserID '4a150000-0000-0000-0000-000000000017'
+\set ticketedPendingUserID '4a150000-0000-0000-0000-000000000018'
+\set unknownAllianceID '4a150000-0000-0000-0000-000000000019'
+\set updateUserID '4a150000-0000-0000-0000-000000000020'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'answers-alliance', 'Answers Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'answers-alliance',
+    'Answers Alliance',
+    'Alliance for testing registration answers',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username
+) values (
+    :'pendingUserID',
+    'hash-1',
+    'pending@example.com',
+    true,
+    'pending-user'
+), (
+    :'updateUserID',
+    'hash-2',
+    'update@example.com',
+    true,
+    'update-user'
+), (
+    :'startedEventUserID',
+    'hash-3',
+    'started-event@example.com',
+    true,
+    'started-event-user'
+), (
+    :'nonAttendeeUserID',
+    'hash-4',
+    'non-attendee@example.com',
+    true,
+    'non-attendee'
+), (
+    :'ticketedPendingUserID',
+    'hash-5',
+    'ticketed-pending@example.com',
+    true,
+    'ticketed-pending'
+);
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'Answers Group', 'answers-group');
-
--- Users
-insert into "user" (user_id, auth_hash, email, username)
-values
-    (:'pendingUserID', 'hash-1', 'pending@example.com', 'pending-user'),
-    (:'updateUserID', 'hash-2', 'update@example.com', 'update-user'),
-    (:'startedEventUserID', 'hash-3', 'started-event@example.com', 'started-event-user'),
-    (:'nonAttendeeUserID', 'hash-4', 'non-attendee@example.com', 'non-attendee'),
-    (:'ticketedPendingUserID', 'hash-5', 'ticketed-pending@example.com', 'ticketed-pending');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Answers Group', 'answers-group');
 
 -- Events
 insert into event (
@@ -81,7 +130,25 @@ insert into event (
     true,
     now() + interval '1 day',
     null,
-    '[{"id": "90200000-0000-0000-0000-000000000101", "kind": "single-select", "prompt": "Meal", "required": true, "options": [{"id": "90200000-0000-0000-0000-000000000201", "label": "Standard"}, {"id": "90200000-0000-0000-0000-000000000202", "label": "Vegetarian"}]}]'::jsonb
+    format(
+        $json$
+            [
+                {
+                    "id": "%s",
+                    "kind": "single-select",
+                    "prompt": "Meal",
+                    "required": true,
+                    "options": [
+                        {"id": "%s", "label": "Standard"},
+                        {"id": "%s", "label": "Vegetarian"}
+                    ]
+                }
+            ]
+        $json$,
+        :'questionID',
+        :'optionStandardID',
+        :'optionVegetarianID'
+    )::jsonb
 ), (
     :'eventStartedID',
     :'groupID',
@@ -94,7 +161,20 @@ insert into event (
     true,
     now() - interval '1 hour',
     null,
-    '[{"id": "90200000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    format(
+        $json$
+            [
+                {
+                    "id": "%s",
+                    "kind": "free-text",
+                    "prompt": "Note",
+                    "required": true,
+                    "options": []
+                }
+            ]
+        $json$,
+        :'questionID'
+    )::jsonb
 ), (
     :'eventNoQuestionsID',
     :'groupID',
@@ -120,7 +200,25 @@ insert into event (
     true,
     now() + interval '2 days',
     'USD',
-    '[{"id": "90200000-0000-0000-0000-000000000101", "kind": "single-select", "prompt": "Meal", "required": true, "options": [{"id": "90200000-0000-0000-0000-000000000201", "label": "Standard"}, {"id": "90200000-0000-0000-0000-000000000202", "label": "Vegetarian"}]}]'::jsonb
+    format(
+        $json$
+            [
+                {
+                    "id": "%s",
+                    "kind": "single-select",
+                    "prompt": "Meal",
+                    "required": true,
+                    "options": [
+                        {"id": "%s", "label": "Standard"},
+                        {"id": "%s", "label": "Vegetarian"}
+                    ]
+                }
+            ]
+        $json$,
+        :'questionID',
+        :'optionStandardID',
+        :'optionVegetarianID'
+    )::jsonb
 );
 
 -- Event tickets
@@ -142,8 +240,25 @@ insert into event_ticket_price_window (
 insert into event_attendee (event_id, user_id, registration_answers, status)
 values
     (:'eventID', :'pendingUserID', null, 'registration-questions-pending'),
-    (:'eventID', :'updateUserID', '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000201"}]}'::jsonb, 'confirmed'),
-    (:'eventStartedID', :'startedEventUserID', '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "Initial"}]}'::jsonb, 'confirmed'),
+    (
+        :'eventID',
+        :'updateUserID',
+        format(
+            '{"answers": [{"question_id": "%s", "value": "%s"}]}',
+            :'questionID',
+            :'optionStandardID'
+        )::jsonb,
+        'confirmed'
+    ),
+    (
+        :'eventStartedID',
+        :'startedEventUserID',
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Initial"}]}',
+            :'questionID'
+        )::jsonb,
+        'confirmed'
+    ),
     (:'eventNoQuestionsID', :'pendingUserID', null, 'confirmed'),
     (:'eventTicketedID', :'ticketedPendingUserID', null, 'registration-questions-pending');
 
@@ -176,162 +291,269 @@ insert into event_purchase (
 
 -- Should report pending attendance became confirmed after answers are submitted
 select results_eq(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000031'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000041'::uuid,
-            '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000202"}]}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'pendingUserID',
+        :'allianceID',
+        :'eventID',
+        :'questionID',
+        :'optionVegetarianID'
+    ),
     $$ values (true) $$,
     'Should report pending attendance became confirmed after answers are submitted'
 );
 
 -- Should store answers and mark the attendee confirmed
 select results_eq(
-    $$
-        select status, registration_answers
-        from event_attendee
-        where event_id = '90200000-0000-0000-0000-000000000041'::uuid
-        and user_id = '90200000-0000-0000-0000-000000000031'::uuid
-    $$,
-    $$ values ('confirmed'::text, '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000202"}]}'::jsonb) $$,
+    format(
+        $$
+            select status, registration_answers
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'eventID',
+        :'pendingUserID'
+    ),
+    format(
+        $$
+            values (
+                'confirmed'::text,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'questionID',
+        :'optionVegetarianID'
+    ),
     'Should store answers and mark the attendee confirmed'
 );
 
 -- Should create the expected audit row
-select ok(
-    exists(
-        select 1
+select results_eq(
+    format(
+        $$
+        select
+            action,
+            actor_user_id,
+            alliance_id,
+            details,
+            event_id,
+            group_id,
+            resource_id,
+            resource_type
         from audit_log
         where action = 'event_registration_questions_answered'
-        and actor_user_id = :'pendingUserID'::uuid
-        and event_id = :'eventID'::uuid
+        and resource_id = %L::uuid
+        $$,
+        :'pendingUserID'
+    ),
+    format(
+        $$
+        values (
+            'event_registration_questions_answered',
+            %L::uuid,
+            %L::uuid,
+            '{"event_id": "%s", "user_id": "%s"}'::jsonb,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'user'
+        )
+        $$,
+        :'pendingUserID', :'allianceID', :'eventID', :'pendingUserID', :'eventID', :'groupID', :'pendingUserID'
     ),
     'Should create the expected audit row'
 );
 
 -- Should report ticketed pending attendance stays unconfirmed while checkout is unpaid
 select results_eq(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000035'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000044'::uuid,
-            '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000202"}]}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'ticketedPendingUserID',
+        :'allianceID',
+        :'eventTicketedID',
+        :'questionID',
+        :'optionVegetarianID'
+    ),
     $$ values (false) $$,
     'Should report ticketed pending attendance stays unconfirmed while checkout is unpaid'
 );
 
 -- Should store ticketed answers but leave pending attendance unconfirmed
 select results_eq(
-    $$
-        select status, registration_answers
-        from event_attendee
-        where event_id = '90200000-0000-0000-0000-000000000044'::uuid
-        and user_id = '90200000-0000-0000-0000-000000000035'::uuid
-    $$,
-    $$ values ('registration-questions-pending'::text, '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000202"}]}'::jsonb) $$,
+    format(
+        $$
+            select status, registration_answers
+            from event_attendee
+            where event_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'eventTicketedID',
+        :'ticketedPendingUserID'
+    ),
+    format(
+        $$
+            values (
+                'registration-questions-pending'::text,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'questionID',
+        :'optionVegetarianID'
+    ),
     'Should store ticketed answers but leave pending attendance unconfirmed'
 );
 
 -- Should report confirmed attendee answer updates do not become newly confirmed
 select results_eq(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000032'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000041'::uuid,
-            '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000202"}]}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'updateUserID',
+        :'allianceID',
+        :'eventID',
+        :'questionID',
+        :'optionVegetarianID'
+    ),
     $$ values (false) $$,
     'Should report confirmed attendee answer updates do not become newly confirmed'
 );
 
 -- Should reject confirmed attendee updates after the event starts
 select throws_ok(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000033'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000042'::uuid,
-            '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "Changed"}]}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "Changed"}]}'::jsonb
+            )
+        $$,
+        :'startedEventUserID',
+        :'allianceID',
+        :'eventStartedID',
+        :'questionID'
+    ),
     'registration answers can only be submitted before the event starts',
     'Should reject confirmed attendee updates after the event starts'
 );
 
 -- Should reject started events before validating answers
 select throws_ok(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000033'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000042'::uuid,
-            '{"answers": []}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": []}'::jsonb
+            )
+        $$,
+        :'startedEventUserID',
+        :'allianceID',
+        :'eventStartedID'
+    ),
     'registration answers can only be submitted before the event starts',
     'Should reject started events before validating answers'
 );
 
 -- Should reject events without registration questions
 select throws_ok(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000031'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000043'::uuid,
-            '{"answers": []}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": []}'::jsonb
+            )
+        $$,
+        :'pendingUserID',
+        :'allianceID',
+        :'eventNoQuestionsID'
+    ),
     'event does not have registration questions',
     'Should reject events without registration questions'
 );
 
 -- Should reject invalid answers
 select throws_ok(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000032'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000041'::uuid,
-            '{"answers": []}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": []}'::jsonb
+            )
+        $$,
+        :'updateUserID',
+        :'allianceID',
+        :'eventID'
+    ),
     'required questionnaire answer is missing',
     'Should reject invalid answers'
 );
 
 -- Should reject users without an attendee row
 select throws_ok(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000034'::uuid,
-            '90200000-0000-0000-0000-000000000001'::uuid,
-            '90200000-0000-0000-0000-000000000041'::uuid,
-            '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000201"}]}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'nonAttendeeUserID',
+        :'allianceID',
+        :'eventID',
+        :'questionID',
+        :'optionStandardID'
+    ),
     'event registration not found',
     'Should reject users without an attendee row'
 );
 
 -- Should reject events outside the route alliance
 select throws_ok(
-    $$
-        select submit_event_registration_answers(
-            '90200000-0000-0000-0000-000000000032'::uuid,
-            '90200000-0000-0000-0000-000000000009'::uuid,
-            '90200000-0000-0000-0000-000000000041'::uuid,
-            '{"answers": [{"question_id": "90200000-0000-0000-0000-000000000101", "value": "90200000-0000-0000-0000-000000000201"}]}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            select submit_event_registration_answers(
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                '{"answers": [{"question_id": "%s", "value": "%s"}]}'::jsonb
+            )
+        $$,
+        :'updateUserID',
+        :'unknownAllianceID',
+        :'eventID',
+        :'questionID',
+        :'optionStandardID'
+    ),
     'event not found or inactive',
     'Should reject events outside the route alliance'
 );

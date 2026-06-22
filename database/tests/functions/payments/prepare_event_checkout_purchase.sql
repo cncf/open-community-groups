@@ -9,54 +9,70 @@ select plan(14);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '79100000-0000-0000-0000-000000000001'
-\set eventCategoryID '79100000-0000-0000-0000-000000000002'
-\set mainEventID '79100000-0000-0000-0000-000000000003'
-\set soldOutEventID '79100000-0000-0000-0000-000000000004'
-\set inactiveEventID '79100000-0000-0000-0000-000000000005'
-\set ticketTypeAID '79100000-0000-0000-0000-000000000006'
-\set ticketTypeBID '79100000-0000-0000-0000-000000000007'
-\set soldOutTicketTypeID '79100000-0000-0000-0000-000000000008'
-\set inactiveTicketTypeID '79100000-0000-0000-0000-000000000009'
-\set groupCategoryID '79100000-0000-0000-0000-000000000010'
-\set groupID '79100000-0000-0000-0000-000000000011'
-\set priceWindowAID '79100000-0000-0000-0000-000000000012'
-\set priceWindowBID '79100000-0000-0000-0000-000000000013'
-\set soldOutPriceWindowID '79100000-0000-0000-0000-000000000014'
-\set inactivePriceWindowID '79100000-0000-0000-0000-000000000015'
-\set freeDiscountID '79100000-0000-0000-0000-000000000016'
-\set inactiveDiscountID '79100000-0000-0000-0000-000000000017'
-\set limitedDiscountID '79100000-0000-0000-0000-000000000018'
-\set completedPurchaseID '79100000-0000-0000-0000-000000000019'
-\set redeemedPurchaseID '79100000-0000-0000-0000-000000000020'
-\set soldOutPurchaseID '79100000-0000-0000-0000-000000000021'
 \set attendeeUserID '79100000-0000-0000-0000-000000000022'
 \set checkoutUserID '79100000-0000-0000-0000-000000000023'
+\set allianceID '79100000-0000-0000-0000-000000000001'
+\set completedPurchaseID '79100000-0000-0000-0000-000000000019'
 \set completedUserID '79100000-0000-0000-0000-000000000024'
-\set invalidDiscountUserID '79100000-0000-0000-0000-000000000025'
-\set unavailableDiscountUserID '79100000-0000-0000-0000-000000000026'
-\set exhaustedDiscountUserID '79100000-0000-0000-0000-000000000027'
 \set discountUserID '79100000-0000-0000-0000-000000000028'
-\set soldOutUserID '79100000-0000-0000-0000-000000000029'
+\set eventCategoryID '79100000-0000-0000-0000-000000000002'
+\set exhaustedDiscountUserID '79100000-0000-0000-0000-000000000027'
+\set freeDiscountID '79100000-0000-0000-0000-000000000016'
+\set groupCategoryID '79100000-0000-0000-0000-000000000010'
+\set groupID '79100000-0000-0000-0000-000000000011'
+\set inactiveDiscountID '79100000-0000-0000-0000-000000000017'
+\set inactiveEventID '79100000-0000-0000-0000-000000000005'
+\set inactivePriceWindowID '79100000-0000-0000-0000-000000000015'
+\set inactiveTicketTypeID '79100000-0000-0000-0000-000000000009'
 \set inactiveUserID '79100000-0000-0000-0000-000000000030'
-\set redeemedUserID '79100000-0000-0000-0000-000000000031'
-\set soldOutHolderUserID '79100000-0000-0000-0000-000000000032'
-\set underMinimumUserID '79100000-0000-0000-0000-000000000033'
-\set underMinimumDiscountID '79100000-0000-0000-0000-000000000034'
+\set invalidDiscountUserID '79100000-0000-0000-0000-000000000025'
+\set invitedPendingPurchaseID '79100000-0000-0000-0000-000000000040'
+\set invitedUserID '79100000-0000-0000-0000-000000000039'
+\set limitedDiscountID '79100000-0000-0000-0000-000000000018'
+\set mainEventID '79100000-0000-0000-0000-000000000003'
+\set priceWindowAID '79100000-0000-0000-0000-000000000012'
+\set priceWindowBID '79100000-0000-0000-0000-000000000013'
 \set questionsEventID '79100000-0000-0000-0000-000000000035'
 \set questionsPriceWindowID '79100000-0000-0000-0000-000000000036'
 \set questionsTicketTypeID '79100000-0000-0000-0000-000000000037'
 \set questionsUserID '79100000-0000-0000-0000-000000000038'
-\set invitedUserID '79100000-0000-0000-0000-000000000039'
-\set invitedPendingPurchaseID '79100000-0000-0000-0000-000000000040'
+\set redeemedPurchaseID '79100000-0000-0000-0000-000000000020'
+\set redeemedUserID '79100000-0000-0000-0000-000000000031'
+\set registrationQuestionID '79100000-0000-0000-0000-000000000101'
+\set soldOutEventID '79100000-0000-0000-0000-000000000004'
+\set soldOutHolderUserID '79100000-0000-0000-0000-000000000032'
+\set soldOutPriceWindowID '79100000-0000-0000-0000-000000000014'
+\set soldOutPurchaseID '79100000-0000-0000-0000-000000000021'
+\set soldOutTicketTypeID '79100000-0000-0000-0000-000000000008'
+\set soldOutUserID '79100000-0000-0000-0000-000000000029'
+\set ticketTypeAID '79100000-0000-0000-0000-000000000006'
+\set ticketTypeBID '79100000-0000-0000-0000-000000000007'
+\set unavailableDiscountUserID '79100000-0000-0000-0000-000000000026'
+\set underMinimumDiscountID '79100000-0000-0000-0000-000000000034'
+\set underMinimumUserID '79100000-0000-0000-0000-000000000033'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'prepare-alliance', 'Prepare Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'prepare-alliance',
+    'Prepare Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -84,14 +100,22 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user');
 
 -- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, payment_recipient, slug, slug_pretty)
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient,
+    slug_pretty
+)
 values (
     :'groupID',
     :'allianceID',
     :'groupCategoryID',
     'Prepare Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
     'prepare-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_prepare'),
     'prepare-group-pretty'
 );
 
@@ -166,7 +190,13 @@ insert into event (
     'USD',
     true,
     now(),
-    '[{"id": "79100000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    jsonb_build_array(jsonb_build_object(
+        'id', :'registrationQuestionID',
+        'kind', 'free-text',
+        'options', jsonb_build_array(),
+        'prompt', 'Note',
+        'required', true
+    ))
 );
 
 -- Ticket types

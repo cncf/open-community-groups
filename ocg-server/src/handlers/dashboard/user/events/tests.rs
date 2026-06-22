@@ -32,6 +32,8 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event = sample_event_summary(event_id, group_id);
+    let event_for_notification = event.clone();
+    let event_for_validation = event.clone();
     let site_settings = sample_site_settings();
 
     // Setup database mock.
@@ -62,10 +64,11 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
             })
         });
     db.expect_get_event_summary_by_id()
-        .times(2)
+        .times(1)
         .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_leave_event()
+        .returning(move |_, _| Ok(event_for_validation.clone()));
+    let mut tx = MockDB::new();
+    tx.expect_leave_event()
         .times(1)
         .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(move |_, _, _| {
@@ -74,13 +77,14 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
                 promoted_user_ids: vec![],
             })
         });
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock.
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
+        .returning(move |_, _| Ok(event_for_notification.clone()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
@@ -89,7 +93,11 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
                     from_value::<EventAttendanceCanceled>(value.clone()).is_ok()
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock.
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request.
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -115,6 +123,7 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notification() {
     // Setup identifiers and data structures.
     let alliance_id = Uuid::new_v4();
@@ -126,7 +135,9 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
     let event = sample_event_summary(event_id, group_id);
+    let event_for_notifications = event.clone();
     let site_settings = sample_site_settings();
+    let site_settings_for_notifications = site_settings.clone();
     let primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock.
@@ -156,7 +167,8 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
                 resume_checkout_url: None,
             })
         });
-    db.expect_leave_event()
+    let mut tx = MockDB::new();
+    tx.expect_leave_event()
         .times(1)
         .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
         .returning(move |_, _, _| {
@@ -165,17 +177,14 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
                 promoted_user_ids: vec![promoted_user_id],
             })
         });
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
-        .returning(move || Ok(site_settings.clone()));
-    db.expect_get_event_summary_by_id()
+        .returning(move || Ok(site_settings_for_notifications.clone()));
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-
-    // Setup notifications manager mock.
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+        .returning(move |_, _| Ok(event_for_notifications.clone()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
@@ -187,8 +196,8 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
-    nm.expect_enqueue()
+        .returning(|_| Ok(()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
@@ -203,8 +212,11 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
+    // Setup notifications manager mock.
+    let nm = MockNotificationsManager::new();
     // Setup router and send request.
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
@@ -225,6 +237,94 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
         parts.headers.get("HX-Trigger"),
         Some(&HeaderValue::from_static("refresh-user-dashboard-content"))
     );
+    assert!(bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
+    // Setup identifiers and data structures.
+    let alliance_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let event = sample_event_summary(event_id, group_id);
+    let site_settings = sample_site_settings();
+
+    // Setup database mock.
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_alliance_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
+    db.expect_get_event_attendance()
+        .times(1)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
+        .returning(|_, _, _| {
+            Ok(EventAttendanceInfo {
+                is_checked_in: false,
+                status: EventAttendanceStatus::Attendee,
+
+                purchase_amount_minor: None,
+                refund_request_status: None,
+                resume_checkout_url: None,
+            })
+        });
+    let mut tx = MockDB::new();
+    tx.expect_leave_event()
+        .times(1)
+        .withf(move |cid, eid, uid| *cid == alliance_id && *eid == event_id && *uid == user_id)
+        .returning(|_, _, _| {
+            Ok(EventLeaveOutcome {
+                left_status: EventAttendanceStatus::Attendee,
+                promoted_user_ids: vec![],
+            })
+        });
+    tx.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+    tx.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+    tx.expect_enqueue_notification()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::EventAttendanceCanceled)
+                && notification.recipients == vec![user_id]
+        })
+        .returning(|_| Err(anyhow!("queue error")));
+    expect_rolled_back_transaction(&mut db, tx);
+
+    // Setup notifications manager mock.
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request.
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("DELETE")
+        .uri(format!(
+            "/dashboard/user/events/test-alliance/{event_id}/attendance"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations.
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
 }
 
@@ -613,7 +713,8 @@ async fn test_submit_registration_answers_success() {
         .times(1)
         .withf(|name| name == "test-alliance")
         .returning(move |_| Ok(Some(alliance_id)));
-    db.expect_submit_event_registration_answers()
+    let mut tx = MockDB::new();
+    tx.expect_submit_event_registration_answers()
         .times(1)
         .withf(move |actor_uid, cid, eid, registration_answers| {
             *actor_uid == user_id
@@ -625,17 +726,14 @@ async fn test_submit_registration_answers_success() {
                     .is_some_and(|answer| answer.question_id == question_id)
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
-
-    // Setup notifications manager mock.
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWelcome)
@@ -646,7 +744,11 @@ async fn test_submit_registration_answers_success() {
                     .as_ref()
                     .is_some_and(|value| from_value::<EventWelcome>(value.clone()).is_ok())
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock.
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request.
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -707,7 +809,8 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
         .times(1)
         .withf(|name| name == "test-alliance")
         .returning(move |_| Ok(Some(alliance_id)));
-    db.expect_submit_event_registration_answers()
+    let mut tx = MockDB::new();
+    tx.expect_submit_event_registration_answers()
         .times(1)
         .withf(move |actor_uid, cid, eid, registration_answers| {
             *actor_uid == user_id
@@ -719,8 +822,9 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
                     .is_some_and(|answer| answer.question_id == question_id)
         })
         .returning(|_, _, _, _| Ok(false));
-    db.expect_get_site_settings().times(0);
-    db.expect_get_event_summary_by_id().times(0);
+    tx.expect_get_site_settings().times(0);
+    tx.expect_get_event_summary_by_id().times(0);
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock.
     let mut nm = MockNotificationsManager::new();

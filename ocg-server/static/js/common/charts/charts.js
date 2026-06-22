@@ -292,7 +292,7 @@ export const getChartGridLineColor = () => {
  * Read neutral tooltip colors.
  * @returns {{background: string, border: string, text: string}} Tooltip colors.
  */
-export const getChartTooltipColors = () => {
+const getChartTooltipColors = () => {
   const styles = getComputedStyle(document.documentElement);
 
   return {
@@ -472,7 +472,7 @@ export const initChart = (elementId, option) => {
  * Shared typography configuration for charts.
  * @returns {Object} Text styling options.
  */
-export const baseText = () => {
+const baseText = () => {
   return {
     textStyle: { fontFamily: dashboardFontFamily },
     legend: { textStyle: { fontFamily: dashboardFontFamily } },
@@ -629,7 +629,7 @@ export const createDailyBarChart = (title, name, data, palette, options = {}) =>
  * @param {number} count - Number of series.
  * @returns {Array<string>} Color list sized to the series count.
  */
-export const buildSeriesColors = (palette, count) => {
+const buildSeriesColors = (palette, count) => {
   const highContrastPalette = [
     palette[950],
     palette[800],

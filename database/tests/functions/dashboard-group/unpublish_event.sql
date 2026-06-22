@@ -9,52 +9,68 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set sessionMeetingID '00000000-0000-0000-0000-000000000051'
-\set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
-\set userID '00000000-0000-0000-0000-000000000041'
+\set allianceID '3a360000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a360000-0000-0000-0000-000000000002'
+\set eventID '3a360000-0000-0000-0000-000000000003'
+\set eventNoMeetingID '3a360000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a360000-0000-0000-0000-000000000005'
+\set groupID '3a360000-0000-0000-0000-000000000006'
+\set missingGroupID '3a360000-0000-0000-0000-000000000007'
+\set sessionMeetingID '3a360000-0000-0000-0000-000000000008'
+\set sessionNoMeetingID '3a360000-0000-0000-0000-000000000009'
+\set userID '3a360000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner_mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'groupCategoryID', 'Technology', :'allianceID');
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
--- Event Category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+-- Event category
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Group
 insert into "group" (
     group_id,
     alliance_id,
+    group_category_id,
     name,
     slug,
-    description,
-    group_category_id
+    description
 ) values (
     :'groupID',
     :'allianceID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
-    'A test group',
-    :'groupCategoryID'
+    'A test group'
 );
 
 -- User (as previously published_by)
 insert into "user" (user_id, auth_hash, email, username)
-values (:'userID', 'x', 'user@test.local', 'user');
+values (:'userID', 'user-hash', 'user@test.local', 'user');
 
 -- Event (published, with meeting_in_sync=true to verify it gets set to false)
 insert into event (
@@ -182,7 +198,11 @@ insert into session (
 
 -- Should clear published flags and metadata
 select lives_ok(
-    $$select unpublish_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        'select unpublish_event(null::uuid, %L::uuid, %L::uuid)',
+        :'groupID',
+        :'eventID'
+    ),
     'Should clear published flags and metadata'
 );
 
@@ -221,18 +241,24 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'event_unpublished',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'event',
-            '00000000-0000-0000-0000-000000000031'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID',
+        :'groupID',
+        :'eventID',
+        :'eventID'
+    ),
     'Should create the expected audit row'
 );
 
@@ -259,7 +285,11 @@ select is(
 
 -- Should unpublish event when meeting_requested=false
 select lives_ok(
-    $$select unpublish_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
+    format(
+        'select unpublish_event(null::uuid, %L::uuid, %L::uuid)',
+        :'groupID',
+        :'eventNoMeetingID'
+    ),
     'Should unpublish event when meeting_requested=false'
 );
 
@@ -272,7 +302,11 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select unpublish_event(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        'select unpublish_event(null::uuid, %L::uuid, %L::uuid)',
+        :'missingGroupID',
+        :'eventID'
+    ),
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

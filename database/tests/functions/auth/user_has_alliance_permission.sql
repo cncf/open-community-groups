@@ -9,13 +9,13 @@ select plan(43);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set otherAllianceID '00000000-0000-0000-0000-000000000002'
-\set userAdminID '00000000-0000-0000-0000-000000000011'
-\set userGroupsManagerID '00000000-0000-0000-0000-000000000012'
-\set userPendingAdminID '00000000-0000-0000-0000-000000000014'
-\set userRegularID '00000000-0000-0000-0000-000000000015'
-\set userViewerID '00000000-0000-0000-0000-000000000013'
+\set allianceID '0a0d0000-0000-0000-0000-000000000001'
+\set otherAllianceID '0a0d0000-0000-0000-0000-000000000002'
+\set userAdminID '0a0d0000-0000-0000-0000-000000000003'
+\set userGroupsManagerID '0a0d0000-0000-0000-0000-000000000004'
+\set userPendingAdminID '0a0d0000-0000-0000-0000-000000000005'
+\set userRegularID '0a0d0000-0000-0000-0000-000000000006'
+\set userViewerID '0a0d0000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
@@ -27,73 +27,73 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'Seattle alliance for cloud native technologies',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'alliance-permission-alliance',
+    'Alliance Permission Alliance',
+    'Test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 ), (
     :'otherAllianceID',
-    'platform-engineering-madrid',
-    'Platform Engineering Madrid',
-    'Madrid alliance for platform engineering discussions',
-    'https://example.com/other-logo.png',
-    'https://example.com/other-banner_mobile.png',
-    'https://example.com/other-banner.png'
+    'alliance-permission-other-alliance',
+    'Alliance Permission Other Alliance',
+    'Other test alliance',
+    'https://example.com/other-banner-mobile.png',
+    'https://example.com/other-banner.png',
+    'https://example.com/other-logo.png'
 );
 
 -- Users
 insert into "user" (
     user_id,
+    name,
     auth_hash,
     email,
     email_verified,
-    name,
     username
 ) values (
     :'userAdminID',
+    'Admin User',
     gen_random_bytes(32),
     'admin@example.com',
     true,
-    'Admin User',
     'adminuser'
 ), (
     :'userGroupsManagerID',
+    'Groups Manager User',
     gen_random_bytes(32),
     'groups-manager@example.com',
     true,
-    'Groups Manager User',
     'groupsmanager'
 ), (
     :'userViewerID',
+    'Viewer User',
     gen_random_bytes(32),
     'viewer@example.com',
     true,
-    'Viewer User',
     'vieweruser'
 ), (
     :'userPendingAdminID',
+    'Pending Admin User',
     gen_random_bytes(32),
     'pending-admin@example.com',
     true,
-    'Pending Admin User',
     'pendingadmin'
 ), (
     :'userRegularID',
+    'Regular User',
     gen_random_bytes(32),
     'regular@example.com',
     true,
-    'Regular User',
     'regularuser'
 );
 
--- Alliance team membership
+-- Alliance team memberships
 insert into alliance_team (
     accepted,
     alliance_id,

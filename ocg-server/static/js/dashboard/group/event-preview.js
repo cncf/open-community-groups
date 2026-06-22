@@ -113,7 +113,7 @@ export const buildEventPreviewPayload = (pageRoot) => {
  * @param {Document|Element} pageRoot Event page root.
  * @returns {Object} Preview context.
  */
-export const collectEventPreviewContext = (pageRoot) => {
+const collectEventPreviewContext = (pageRoot) => {
   const dashboardContent = getDashboardContent(pageRoot);
   const kindSelect = pageRoot.querySelector?.("#kind_id");
   const categorySelect = pageRoot.querySelector?.("#category_id");
@@ -193,7 +193,7 @@ export const openEventPreviewModal = (modalRoot, html, pageRoot = document) => {
  * @param {HTMLElement} modalRoot Modal root element.
  * @returns {void}
  */
-export const closeEventPreviewModal = (modalRoot) => {
+const closeEventPreviewModal = (modalRoot) => {
   const state = modalState.get(modalRoot);
   if (!state) {
     modalRoot.replaceChildren();

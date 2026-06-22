@@ -260,24 +260,32 @@ describe("common utilities", () => {
     expect(scrollToMock.calls).to.deep.equal([{ top: 0, behavior: "auto" }]);
   });
 
-  it("locks and unlocks body scroll when toggling a modal", () => {
+  it("locks body scroll and manages focus when toggling a modal", () => {
     // Create the modal fixture.
+    const trigger = document.createElement("button");
+    trigger.textContent = "Open";
     const modal = document.createElement("div");
     modal.id = "test-modal";
     modal.className = "hidden";
-    document.body.append(modal);
+    modal.innerHTML = '<button id="modal-close">Close</button>';
+    document.body.append(trigger, modal);
+    trigger.focus();
 
     // Opening the modal locks body scroll and increments the lock count.
-    toggleModalVisibility("test-modal");
+    toggleModalVisibility("test-modal", trigger);
     expect(modal.classList.contains("hidden")).to.equal(false);
+    expect(modal.getAttribute("aria-hidden")).to.equal("false");
     expect(document.body.style.overflow).to.equal("hidden");
     expect(document.body.dataset.modalOpenCount).to.equal("1");
+    expect(document.activeElement).to.equal(document.getElementById("modal-close"));
 
-    // Closing the modal releases body scroll and clears the lock count.
+    // Closing the modal releases body scroll, clears the count, and restores focus.
     toggleModalVisibility("test-modal");
     expect(modal.classList.contains("hidden")).to.equal(true);
+    expect(modal.getAttribute("aria-hidden")).to.equal("true");
     expect(document.body.style.overflow).to.equal("");
     expect(document.body.dataset.modalOpenCount).to.equal("0");
+    expect(document.activeElement).to.equal(trigger);
   });
 
   it("tracks nested lock counts before unlocking body scroll", () => {

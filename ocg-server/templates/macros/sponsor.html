@@ -1,0 +1,39 @@
+{% import "macros/form_fields.html" as form_fields -%}
+
+{# Sponsor details fields -#}
+{% macro details_fields(name_attr = "", logo_attr = "", website_attr = "", featured_checked = true) -%}
+  {{ form_fields::entity_name_field(legend_prefix = "Sponsor's name.", value_attr = name_attr) -}}
+
+  {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", value_attr = logo_attr, field_class = "col-span-full lg:col-span-5", input_class = "w-full block", extra_attrs = "required") -}}
+
+  <div class="col-span-full lg:col-span-5">
+    <label for="website_url" class="form-label">Website</label>
+    <div class="mt-2">
+      <input type="url"
+             name="website_url"
+             id="website_url"
+             class="input-primary"
+             placeholder="https://example.com"
+             {{ website_attr|safe }}>
+    </div>
+  </div>
+
+  <div class="col-span-full lg:col-span-5">
+    <label class="inline-flex items-center cursor-pointer">
+      <input id="featured"
+             name="featured"
+             value="true"
+             type="checkbox"
+             class="sr-only peer"
+             {% if featured_checked %}checked{% endif %}>
+      <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+      </div>
+      <span class="ms-3 text-sm font-medium text-stone-900">Visible on group page</span>
+    </label>
+    <p class="form-legend">
+      Only featured sponsors appear in the public group page sponsors section.
+      All sponsors remain available for events.
+    </p>
+  </div>
+{% endmacro details_fields -%}
+{# End sponsor details fields -#}

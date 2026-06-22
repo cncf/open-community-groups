@@ -9,14 +9,14 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000031'
-\set event2ID '00000000-0000-0000-0000-000000000032'
-\set eventSeriesID '00000000-0000-0000-0000-000000000040'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set userID '00000000-0000-0000-0000-000000000020'
+\set allianceID '3a370000-0000-0000-0000-000000000001'
+\set event1ID '3a370000-0000-0000-0000-000000000002'
+\set event2ID '3a370000-0000-0000-0000-000000000003'
+\set eventCategoryID '3a370000-0000-0000-0000-000000000004'
+\set eventSeriesID '3a370000-0000-0000-0000-000000000005'
+\set groupCategoryID '3a370000-0000-0000-0000-000000000006'
+\set groupID '3a370000-0000-0000-0000-000000000007'
+\set userID '3a370000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
@@ -47,7 +47,7 @@ values (:'userID', 'organizer@example.com', 'organizer', 'hash');
 
 -- Event Category
 insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Meetup', :'allianceID');
+values (:'eventCategoryID', 'Meetup', :'allianceID');
 
 -- Group Category
 insert into group_category (group_category_id, name, alliance_id)
@@ -117,7 +117,7 @@ insert into event (
         'first-series-event',
         'First event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         now() + interval '1 day',
         now() + interval '1 day 1 hour',
@@ -134,7 +134,7 @@ insert into event (
         'second-series-event',
         'Second event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
         now() + interval '8 days',
         now() + interval '8 days 1 hour',
@@ -150,33 +150,33 @@ insert into event (
 
 -- Should unpublish all requested events
 select lives_ok(
-    $$
+    format(
+        $$
         select unpublish_event_series_events(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array[
-                '00000000-0000-0000-0000-000000000031'::uuid,
-                '00000000-0000-0000-0000-000000000032'::uuid
-            ]
+            %L::uuid,
+            %L::uuid,
+            array[%L::uuid, %L::uuid]
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'event1ID', :'event2ID'
+    ),
     'Should unpublish all requested events'
 );
 
 -- Should clear publication metadata for all requested events
 select results_eq(
-    $$
+    format(
+        $$
         select
             published,
             published_at is null,
             published_by is null
         from event
-        where event_id in (
-            '00000000-0000-0000-0000-000000000031'::uuid,
-            '00000000-0000-0000-0000-000000000032'::uuid
-        )
+        where event_id in (%L::uuid, %L::uuid)
         order by event_id
-    $$,
+        $$,
+        :'event1ID', :'event2ID'
+    ),
     $$
         values (false, true, true), (false, true, true)
     $$,
@@ -189,6 +189,10 @@ select is(
     2,
     'Should create one audit row per unpublished event'
 );
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
 
 select * from finish();
 rollback;

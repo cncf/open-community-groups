@@ -3,13 +3,12 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
-use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::{PgClient, PgExecutor},
     templates::dashboard::{
         audit::{AuditLogFilters, AuditLogsOutput},
         alliance::{
@@ -203,7 +202,10 @@ pub(crate) trait DBDashboardAlliance {
 }
 
 #[async_trait]
-impl DBDashboardAlliance for PgDB {
+impl<T> DBDashboardAlliance for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBDashboardAlliance::activate_group`]
     #[instrument(skip(self), err)]
     async fn activate_group(
@@ -395,7 +397,7 @@ impl DBDashboardAlliance for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, alliance_id: Uuid) -> Result<AllianceDashboardStats> {
+        async fn inner(db: PgClient<'_>, alliance_id: Uuid) -> Result<AllianceDashboardStats> {
             let row = db
                 .query_one("select get_alliance_stats($1::uuid)", &[&alliance_id])
                 .await?;
@@ -404,7 +406,7 @@ impl DBDashboardAlliance for PgDB {
             Ok(stats)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db, alliance_id).await
     }
 
@@ -432,14 +434,14 @@ impl DBDashboardAlliance for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<AllianceRoleSummary>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<AllianceRoleSummary>> {
             let row = db.query_one("select list_alliance_roles()", &[]).await?;
             let roles = row.try_get::<_, Json<Vec<AllianceRoleSummary>>>(0)?.0;
 
             Ok(roles)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 

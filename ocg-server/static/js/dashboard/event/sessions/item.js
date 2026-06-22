@@ -45,6 +45,7 @@ class SessionItem extends LitWrapper {
    * @property {boolean} disabled - Whether editing controls are disabled.
    * @property {string} inputMode - Entry mode, manual or cfs.
    * @property {string} prefilledDate - Date used to pre-fill time fields.
+   * @property {boolean} eventPast - Whether the parent event is in the past.
    */
   static properties = {
     data: { type: Object },
@@ -62,6 +63,7 @@ class SessionItem extends LitWrapper {
     disabled: { type: Boolean },
     inputMode: { type: String },
     prefilledDate: { type: String },
+    eventPast: { type: Boolean },
   };
 
   constructor() {
@@ -98,6 +100,7 @@ class SessionItem extends LitWrapper {
     this.disabled = false;
     this.inputMode = "manual";
     this.prefilledDate = "";
+    this.eventPast = false;
     this._onModeChange = this._onModeChange.bind(this);
     this._handleSpeakersChanged = this._handleSpeakersChanged.bind(this);
   }
@@ -224,14 +227,25 @@ class SessionItem extends LitWrapper {
     const endTime = extractTimePart(this.data.ends_at);
     const sessionNameMaxLength = normalizeMaxLength(this.sessionNameMaxLength);
     const locationMaxLength = normalizeMaxLength(this.locationMaxLength);
+    const sessionNameId = `session-${this.index}-name`;
+    const sessionKindId = `session-${this.index}-kind`;
+    const sessionStartsAtId = `session-${this.index}-starts-at`;
+    const sessionEndsAtId = `session-${this.index}-ends-at`;
+    const sessionLocationId = `session-${this.index}-location`;
+    const sessionCfsSubmissionId = `session-${this.index}-cfs-submission`;
+    const sessionDescriptionId = `session-${this.index}-description`;
+    const meetingJoinUrlId = `session-${this.index}-meeting-join-url`;
+    const meetingJoinInstructionsId = `session-${this.index}-meeting-join-instructions`;
+    const meetingRecordingUrlId = `session-${this.index}-meeting-recording-url`;
 
     return html` <div class="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6 w-full h-full">
       <div class="col-span-full">
-        <label class="form-label"> Session Title <span class="asterisk">*</span> </label>
+        <label for=${sessionNameId} class="form-label"> Session Title <span class="asterisk">*</span> </label>
         <div class="mt-2">
           <input
             @input=${(event) => this._onInputChange(event)}
             data-name="name"
+            id=${sessionNameId}
             type="text"
             name="sessions[${this.index}][name]"
             class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
@@ -248,11 +262,12 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-2">
-        <label class="form-label"> Session Type <span class="asterisk">*</span> </label>
+        <label for=${sessionKindId} class="form-label"> Session Type <span class="asterisk">*</span> </label>
         <div class="mt-2">
           <select
             @change=${(event) => this._onInputChange(event)}
             data-name="kind"
+            id=${sessionKindId}
             name="sessions[${this.index}][kind]"
             class="input-primary ${this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""}"
             ?required=${!this.isObjectEmpty}
@@ -270,11 +285,14 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-2">
-        <label class="form-label"> Start Time <span class="asterisk">*</span> </label>
+        <label for=${sessionStartsAtId} class="form-label">
+          Start Time <span class="asterisk">*</span>
+        </label>
         <div class="mt-2">
           ${hasPrefilledDate
             ? html`
                 <input
+                  id=${sessionStartsAtId}
                   type="time"
                   @input=${(event) => this._onTimeChange(event, "starts_at")}
                   class="input-primary ${this.disabled
@@ -287,6 +305,7 @@ class SessionItem extends LitWrapper {
               `
             : html`
                 <input
+                  id=${sessionStartsAtId}
                   type="datetime-local"
                   @input=${(event) => this._onInputChange(event)}
                   data-name="starts_at"
@@ -303,11 +322,12 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-2">
-        <label class="form-label"> End Time </label>
+        <label for=${sessionEndsAtId} class="form-label"> End Time </label>
         <div class="mt-2">
           ${hasPrefilledDate
             ? html`
                 <input
+                  id=${sessionEndsAtId}
                   type="time"
                   @input=${(event) => this._onTimeChange(event, "ends_at")}
                   class="input-primary ${this.disabled
@@ -319,6 +339,7 @@ class SessionItem extends LitWrapper {
               `
             : html`
                 <input
+                  id=${sessionEndsAtId}
                   type="datetime-local"
                   @input=${(event) => this._onInputChange(event)}
                   data-name="ends_at"
@@ -334,11 +355,12 @@ class SessionItem extends LitWrapper {
       </div>
 
       <div class="col-span-full">
-        <label class="form-label"> Location </label>
+        <label for=${sessionLocationId} class="form-label"> Location </label>
         <div class="mt-2">
           <input
             @input=${(event) => this._onInputChange(event)}
             data-name="location"
+            id=${sessionLocationId}
             type="text"
             name="sessions[${this.index}][location]"
             class="input-primary"
@@ -356,8 +378,8 @@ class SessionItem extends LitWrapper {
 
       ${this.approvedSubmissions?.length
         ? html`
-            <div class="col-span-full">
-              <label class="form-label">Description and speakers</label>
+            <fieldset class="col-span-full">
+              <legend class="form-label">Description and speakers</legend>
               <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label class="block h-full">
                   <input
@@ -438,17 +460,18 @@ class SessionItem extends LitWrapper {
                   </div>
                 </label>
               </div>
-            </div>
+            </fieldset>
           `
         : ""}
       ${this.inputMode === "cfs" && this.approvedSubmissions?.length
         ? html`
             <div class="col-span-full">
-              <label class="form-label"> Link to CFS submission </label>
+              <label for=${sessionCfsSubmissionId} class="form-label"> Link to CFS submission </label>
               <div class="mt-2">
                 <select
                   @change=${(event) => this._onInputChange(event)}
                   data-name="cfs_submission_id"
+                  id=${sessionCfsSubmissionId}
                   name="sessions[${this.index}][cfs_submission_id]"
                   class="input-primary ${this.disabled
                     ? "bg-stone-100 text-stone-500 cursor-not-allowed"
@@ -477,10 +500,10 @@ class SessionItem extends LitWrapper {
       ${this.inputMode === "manual" || !this.approvedSubmissions?.length
         ? html`
             <div class="col-span-full">
-              <label for="summary" class="form-label"> Description </label>
+              <label for=${sessionDescriptionId} class="form-label"> Description </label>
               <div class="mt-2">
                 <markdown-editor
-                  id="sessions[${this.index}][description]"
+                  input-id=${sessionDescriptionId}
                   name="sessions[${this.index}][description]"
                   content=${this.data.description}
                   .onChange=${(value) => this._onTextareaChange(value)}
@@ -511,7 +534,7 @@ class SessionItem extends LitWrapper {
       ${this.data.kind !== "in-person"
         ? html`
             <div class="col-span-full">
-              <label class="form-label"> Session meeting details </label>
+              <div class="form-label">Session meeting details</div>
               <div class="mt-2 mb-5">
                 ${this.meetingsEnabled
                   ? html`
@@ -530,6 +553,7 @@ class SessionItem extends LitWrapper {
                         .meetingHosts=${this.data.meeting_hosts || {}}
                         .meetingJoinInstructions=${this.data.meeting_join_instructions || ""}
                         .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
+                        .eventPast=${this.eventPast}
                         field-name-prefix="sessions[${this.index}]"
                         ?disabled=${this.disabled}
                       ></online-event-details>
@@ -538,11 +562,11 @@ class SessionItem extends LitWrapper {
                       <div class="space-y-6">
                         <div class="grid grid-cols-1 gap-6">
                           <div class="space-y-2">
-                            <label for="meeting_join_url_${this.index}" class="form-label">Meeting URL</label>
+                            <label for=${meetingJoinUrlId} class="form-label">Meeting URL</label>
                             <div class="mt-2">
                               <input
                                 type="url"
-                                id="meeting_join_url_${this.index}"
+                                id=${meetingJoinUrlId}
                                 name="sessions[${this.index}][meeting_join_url]"
                                 class="input-primary ${this.disabled
                                   ? "bg-stone-100 text-stone-500 cursor-not-allowed"
@@ -557,12 +581,12 @@ class SessionItem extends LitWrapper {
                             <p class="form-legend">Teams, Meet, or any other video link.</p>
                           </div>
                           <div class="space-y-2">
-                            <label for="meeting_join_instructions_${this.index}" class="form-label"
-                              >Join instructions (optional)</label
-                            >
+                            <label for=${meetingJoinInstructionsId} class="form-label">
+                              Join instructions (optional)
+                            </label>
                             <div class="mt-2">
                               <textarea
-                                id="meeting_join_instructions_${this.index}"
+                                id=${meetingJoinInstructionsId}
                                 name="sessions[${this.index}][meeting_join_instructions]"
                                 rows="4"
                                 maxlength="500"
@@ -611,13 +635,13 @@ class SessionItem extends LitWrapper {
                               `
                             : ""}
                           <div class="space-y-2">
-                            <label for="meeting_recording_url_${this.index}" class="form-label"
+                            <label for=${meetingRecordingUrlId} class="form-label"
                               >Final public recording URL (optional)</label
                             >
                             <div class="mt-2">
                               <input
                                 type="url"
-                                id="meeting_recording_url_${this.index}"
+                                id=${meetingRecordingUrlId}
                                 name="sessions[${this.index}][meeting_recording_url]"
                                 class="input-primary ${this.disabled
                                   ? "bg-stone-100 text-stone-500 cursor-not-allowed"

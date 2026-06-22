@@ -9,28 +9,28 @@ select plan(131);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000031'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set deletedGroupID '00000000-0000-0000-0000-000000000023'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set otherCategoryID '00000000-0000-0000-0000-000000000032'
-\set otherAllianceGroupID '00000000-0000-0000-0000-000000000024'
-\set otherAllianceID '00000000-0000-0000-0000-000000000002'
-\set otherGroupID '00000000-0000-0000-0000-000000000022'
-\set restrictedCategoryID '00000000-0000-0000-0000-000000000033'
-\set restrictedAllianceID '00000000-0000-0000-0000-000000000003'
-\set restrictedGroupID '00000000-0000-0000-0000-000000000025'
-\set userAllianceAdminID '00000000-0000-0000-0000-000000000018'
-\set userAllianceGroupsManagerID '00000000-0000-0000-0000-000000000014'
-\set userAlliancePendingGroupsManagerID '00000000-0000-0000-0000-000000000019'
-\set userAllianceViewerID '00000000-0000-0000-0000-000000000015'
-\set userDualRoleID '00000000-0000-0000-0000-000000000020'
-\set userEventsManagerID '00000000-0000-0000-0000-000000000012'
-\set userGroupAdminID '00000000-0000-0000-0000-000000000011'
-\set userGroupViewerID '00000000-0000-0000-0000-000000000013'
-\set userOtherGroupAdminID '00000000-0000-0000-0000-000000000021'
-\set userPendingGroupAdminID '00000000-0000-0000-0000-000000000016'
-\set userRegularID '00000000-0000-0000-0000-000000000017'
+\set allianceID '0a0e0000-0000-0000-0000-000000000001'
+\set deletedGroupID '0a0e0000-0000-0000-0000-000000000002'
+\set groupCategoryID '0a0e0000-0000-0000-0000-000000000003'
+\set groupID '0a0e0000-0000-0000-0000-000000000004'
+\set otherAllianceGroupID '0a0e0000-0000-0000-0000-000000000005'
+\set otherAllianceID '0a0e0000-0000-0000-0000-000000000006'
+\set otherGroupCategoryID '0a0e0000-0000-0000-0000-000000000007'
+\set otherGroupID '0a0e0000-0000-0000-0000-000000000008'
+\set restrictedAllianceID '0a0e0000-0000-0000-0000-000000000009'
+\set restrictedGroupCategoryID '0a0e0000-0000-0000-0000-000000000010'
+\set restrictedGroupID '0a0e0000-0000-0000-0000-000000000011'
+\set userAllianceAdminID '0a0e0000-0000-0000-0000-000000000012'
+\set userAllianceGroupsManagerID '0a0e0000-0000-0000-0000-000000000013'
+\set userAlliancePendingGroupsManagerID '0a0e0000-0000-0000-0000-000000000014'
+\set userAllianceViewerID '0a0e0000-0000-0000-0000-000000000015'
+\set userDualRoleID '0a0e0000-0000-0000-0000-000000000016'
+\set userEventsManagerID '0a0e0000-0000-0000-0000-000000000017'
+\set userGroupAdminID '0a0e0000-0000-0000-0000-000000000018'
+\set userGroupViewerID '0a0e0000-0000-0000-0000-000000000019'
+\set userOtherGroupAdminID '0a0e0000-0000-0000-0000-000000000020'
+\set userPendingGroupAdminID '0a0e0000-0000-0000-0000-000000000021'
+\set userRegularID '0a0e0000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -42,152 +42,131 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
-    banner_mobile_url,
-    banner_url
-) values (
-    :'allianceID',
-    'cloud-native-seattle',
-    'Cloud Native Seattle',
-    'Seattle alliance for cloud native technologies',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
-), (
-    :'otherAllianceID',
-    'platform-engineering-madrid',
-    'Platform Engineering Madrid',
-    'Madrid alliance for platform engineering discussions',
-    'https://example.com/other-logo.png',
-    'https://example.com/other-banner_mobile.png',
-    'https://example.com/other-banner.png'
-);
-
--- Restricted alliance
-insert into alliance (
-    alliance_id,
-    name,
-    display_name,
-    description,
-    logo_url,
     banner_mobile_url,
     banner_url,
-    group_team_management_restricted
+    group_team_management_restricted,
+    logo_url
 ) values (
+    :'allianceID',
+    'group-permission-alliance',
+    'Group Permission Alliance',
+    'Test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    false,
+    'https://example.com/logo.png'
+), (
+    :'otherAllianceID',
+    'group-permission-other-alliance',
+    'Group Permission Other Alliance',
+    'Other test alliance',
+    'https://example.com/other-banner-mobile.png',
+    'https://example.com/other-banner.png',
+    false,
+    'https://example.com/other-logo.png'
+), (
     :'restrictedAllianceID',
-    'cloud-native-portland',
-    'Cloud Native Portland',
-    'Portland alliance for cloud native technologies',
-    'https://example.com/restricted-logo.png',
-    'https://example.com/restricted-banner_mobile.png',
+    'group-permission-restricted-alliance',
+    'Group Permission Restricted Alliance',
+    'Restricted test alliance',
+    'https://example.com/restricted-banner-mobile.png',
     'https://example.com/restricted-banner.png',
-    true
+    true,
+    'https://example.com/restricted-logo.png'
 );
+
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
+values
+    (:'groupCategoryID', :'allianceID', 'Technology'),
+    (:'otherGroupCategoryID', :'otherAllianceID', 'Platform Engineering'),
+    (:'restrictedGroupCategoryID', :'restrictedAllianceID', 'Technology');
 
 -- Users
 insert into "user" (
     user_id,
+    name,
     auth_hash,
     email,
     email_verified,
-    name,
     username
 ) values (
     :'userGroupAdminID',
+    'Group Admin',
     gen_random_bytes(32),
     'group-admin@example.com',
     true,
-    'Group Admin',
     'groupadmin'
 ), (
     :'userEventsManagerID',
+    'Events Manager',
     gen_random_bytes(32),
     'events-manager@example.com',
     true,
-    'Events Manager',
     'eventsmanager'
 ), (
     :'userGroupViewerID',
+    'Group Viewer',
     gen_random_bytes(32),
     'group-viewer@example.com',
     true,
-    'Group Viewer',
     'groupviewer'
 ), (
     :'userAllianceAdminID',
+    'Alliance Admin',
     gen_random_bytes(32),
     'alliance-admin@example.com',
     true,
-    'Alliance Admin',
     'allianceadmin'
 ), (
     :'userAllianceGroupsManagerID',
+    'Alliance Groups Manager',
     gen_random_bytes(32),
     'alliance-groups-manager@example.com',
     true,
-    'Alliance Groups Manager',
     'alliancegroupsmanager'
 ), (
     :'userAlliancePendingGroupsManagerID',
+    'Alliance Pending Groups Manager',
     gen_random_bytes(32),
     'alliance-pending-groups-manager@example.com',
     true,
-    'Alliance Pending Groups Manager',
     'alliancependinggroupsmanager'
 ), (
     :'userAllianceViewerID',
+    'Alliance Viewer',
     gen_random_bytes(32),
     'alliance-viewer@example.com',
     true,
-    'Alliance Viewer',
     'allianceviewer'
 ), (
     :'userDualRoleID',
+    'Dual Role',
     gen_random_bytes(32),
     'dual-role@example.com',
     true,
-    'Dual Role',
     'dualrole'
 ), (
     :'userOtherGroupAdminID',
+    'Other Group Admin',
     gen_random_bytes(32),
     'other-group-admin@example.com',
     true,
-    'Other Group Admin',
     'othergroupadmin'
 ), (
     :'userPendingGroupAdminID',
+    'Pending Group Admin',
     gen_random_bytes(32),
     'pending-group-admin@example.com',
     true,
-    'Pending Group Admin',
     'pendinggroupadmin'
 ), (
     :'userRegularID',
+    'Regular User',
     gen_random_bytes(32),
     'regular@example.com',
     true,
-    'Regular User',
     'regularuser'
-);
-
--- Group category
-insert into group_category (
-    group_category_id,
-    alliance_id,
-    name
-) values (
-    :'categoryID',
-    :'allianceID',
-    'Technology'
-), (
-    :'otherCategoryID',
-    :'otherAllianceID',
-    'Platform Engineering'
-), (
-    :'restrictedCategoryID',
-    :'restrictedAllianceID',
-    'Technology'
 );
 
 -- Group
@@ -196,43 +175,43 @@ insert into "group" (
     alliance_id,
     group_category_id,
     name,
-    slug,
-    description
+    description,
+    slug
 ) values (
     :'groupID',
     :'allianceID',
-    :'categoryID',
+    :'groupCategoryID',
     'Kubernetes Study Group',
-    'kubernetes-study',
-    'Weekly Kubernetes study and discussion group'
+    'Weekly Kubernetes study and discussion group',
+    'kubernetes-study'
 ), (
     :'otherGroupID',
     :'allianceID',
-    :'categoryID',
+    :'groupCategoryID',
     'Open Source Study Group',
-    'open-source-study',
-    'Weekly open source study and discussion group'
+    'Weekly open source study and discussion group',
+    'open-source-study'
 ), (
     :'deletedGroupID',
     :'allianceID',
-    :'categoryID',
+    :'groupCategoryID',
     'Deleted Study Group',
-    'deleted-study',
-    'Deleted group used for permission checks'
+    'Deleted group used for permission checks',
+    'deleted-study'
 ), (
     :'otherAllianceGroupID',
     :'otherAllianceID',
-    :'otherCategoryID',
+    :'otherGroupCategoryID',
     'Internal Developer Platform',
-    'internal-developer-platform',
-    'Platform engineering group in a different alliance'
+    'Platform engineering group in a different alliance',
+    'internal-developer-platform'
 ), (
     :'restrictedGroupID',
     :'restrictedAllianceID',
-    :'restrictedCategoryID',
+    :'restrictedGroupCategoryID',
     'Restricted Kubernetes Study Group',
-    'restricted-kubernetes-study',
-    'Weekly Kubernetes study and discussion group in a restricted alliance'
+    'Weekly Kubernetes study and discussion group in a restricted alliance',
+    'restricted-kubernetes-study'
 );
 
 -- Soft-delete one group for permission checks
@@ -241,7 +220,7 @@ update "group" set
     deleted = true
 where group_id = :'deletedGroupID';
 
--- Group team membership
+-- Group team memberships
 insert into group_team (
     accepted,
     group_id,
@@ -294,7 +273,7 @@ insert into group_team (
     :'userGroupAdminID'
 );
 
--- Alliance team membership
+-- Alliance team memberships
 insert into alliance_team (
     accepted,
     alliance_id,

@@ -9,11 +9,12 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set alliance1ID '00000000-0000-0000-0000-000000000001'
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set user1ID '00000000-0000-0000-0000-000000000011'
-\set user2ID '00000000-0000-0000-0000-000000000012'
-\set user3ID '00000000-0000-0000-0000-000000000013'
+\set alliance1ID '2c130000-0000-0000-0000-000000000001'
+\set alliance2ID '2c130000-0000-0000-0000-000000000002'
+\set unknownUserID '2c130000-0000-0000-0000-000000000003'
+\set user1ID '2c130000-0000-0000-0000-000000000004'
+\set user2ID '2c130000-0000-0000-0000-000000000005'
+\set user3ID '2c130000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
@@ -25,35 +26,49 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
-) values
-    (:'alliance1ID', 'alpha-alliance', 'Alpha Alliance', 'First alliance', 'https://example.com/alpha.png', 'https://example.com/alpha-banner_mobile.png', 'https://example.com/alpha-banner.png'),
-    (:'alliance2ID', 'beta-alliance', 'Beta Alliance', 'Second alliance', 'https://example.com/beta.png', 'https://example.com/beta-banner_mobile.png', 'https://example.com/beta-banner.png');
+    banner_url,
+    logo_url
+) values (
+    :'alliance1ID',
+    'alpha-alliance',
+    'Alpha Alliance',
+    'First alliance',
+    'https://example.com/alpha-banner-mobile.png',
+    'https://example.com/alpha-banner.png',
+    'https://example.com/alpha.png'
+), (
+    :'alliance2ID',
+    'beta-alliance',
+    'Beta Alliance',
+    'Second alliance',
+    'https://example.com/beta-banner-mobile.png',
+    'https://example.com/beta-banner.png',
+    'https://example.com/beta.png'
+);
 
 -- Users
 insert into "user" (
     user_id,
     auth_hash,
     email,
-    name,
+    email_verified,
     username,
-    email_verified
+    name
 ) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'Bob', 'bob', true),
-    (:'user3ID', gen_random_bytes(32), 'charlie@example.com', 'Charlie', 'charlie', true);
+    (:'user1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice', 'Alice'),
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob', 'Bob'),
+    (:'user3ID', gen_random_bytes(32), 'charlie@example.com', true, 'charlie', 'Charlie');
 
 -- Team memberships
 -- User 1 is team member of both alliances (accepted)
 -- User 2 is team member of alliance1 only (accepted)
 -- User 3 is pending team member of alliance1 (not accepted)
-insert into alliance_team (accepted, alliance_id, role, user_id) values
-    (true, :'alliance1ID', 'admin', :'user1ID'),
-    (true, :'alliance2ID', 'admin', :'user1ID'),
-    (true, :'alliance1ID', 'admin', :'user2ID'),
-    (false, :'alliance1ID', 'viewer', :'user3ID');
+insert into alliance_team (alliance_id, user_id, accepted, role) values
+    (:'alliance1ID', :'user1ID', true, 'admin'),
+    (:'alliance2ID', :'user1ID', true, 'admin'),
+    (:'alliance1ID', :'user2ID', true, 'admin'),
+    (:'alliance1ID', :'user3ID', false, 'viewer');
 
 -- ============================================================================
 -- TESTS
@@ -82,7 +97,7 @@ select is(
 
 -- Should return empty array for unknown user
 select is(
-    list_user_alliances('00000000-0000-0000-0000-000000000099'::uuid)::text,
+    list_user_alliances(:'unknownUserID'::uuid)::text,
     '[]',
     'Should return empty array for unknown user'
 );

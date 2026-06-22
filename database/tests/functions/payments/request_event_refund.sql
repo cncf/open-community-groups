@@ -3,49 +3,81 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '78000000-0000-0000-0000-000000000001'
-\set allianceNoReviewID '78000000-0000-0000-0000-000000000019'
-\set eventCategoryID '78000000-0000-0000-0000-000000000002'
-\set eventCanceledID '78000000-0000-0000-0000-000000000022'
-\set eventCanceledTicketTypeID '78000000-0000-0000-0000-000000000023'
-\set eventCategoryNoReviewID '78000000-0000-0000-0000-000000000020'
-\set eventID '78000000-0000-0000-0000-000000000003'
-\set eventNoTeamID '78000000-0000-0000-0000-000000000004'
-\set eventTicketTypeID '78000000-0000-0000-0000-000000000005'
-\set eventUnpublishedID '78000000-0000-0000-0000-000000000024'
-\set eventUnpublishedTicketTypeID '78000000-0000-0000-0000-000000000025'
-\set groupCategoryID '78000000-0000-0000-0000-000000000006'
-\set groupCategoryNoReviewID '78000000-0000-0000-0000-000000000021'
-\set allianceManagerID '78000000-0000-0000-0000-000000000017'
-\set allianceViewerID '78000000-0000-0000-0000-000000000018'
-\set groupID '78000000-0000-0000-0000-000000000007'
-\set groupNoTeamID '78000000-0000-0000-0000-000000000008'
-\set priceWindowID '78000000-0000-0000-0000-000000000009'
-\set purchaseExpiredID '78000000-0000-0000-0000-000000000016'
-\set purchaseID '78000000-0000-0000-0000-000000000010'
-\set purchaseCanceledID '78000000-0000-0000-0000-000000000026'
-\set purchaseNoTeamID '78000000-0000-0000-0000-000000000011'
-\set purchaseUnpublishedID '78000000-0000-0000-0000-000000000027'
-\set refundRequestID '78000000-0000-0000-0000-000000000012'
-\set requesterID '78000000-0000-0000-0000-000000000013'
-\set teamUser1ID '78000000-0000-0000-0000-000000000014'
-\set teamUser2ID '78000000-0000-0000-0000-000000000015'
+\set allianceID '79470000-0000-0000-0000-000000000001'
+\set allianceManagerID '79470000-0000-0000-0000-000000000002'
+\set allianceNoReviewID '79470000-0000-0000-0000-000000000003'
+\set allianceViewerID '79470000-0000-0000-0000-000000000004'
+\set eventCanceledID '79470000-0000-0000-0000-000000000005'
+\set eventCanceledTicketTypeID '79470000-0000-0000-0000-000000000006'
+\set eventCategoryID '79470000-0000-0000-0000-000000000007'
+\set eventCategoryNoReviewID '79470000-0000-0000-0000-000000000008'
+\set eventID '79470000-0000-0000-0000-000000000009'
+\set eventNoTeamID '79470000-0000-0000-0000-000000000010'
+\set eventNoTeamTicketTypeID '79470000-0000-0000-0000-000000000011'
+\set eventStartedID '79470000-0000-0000-0000-000000000012'
+\set eventStartedTicketTypeID '79470000-0000-0000-0000-000000000013'
+\set eventTicketTypeID '79470000-0000-0000-0000-000000000014'
+\set eventUnpublishedID '79470000-0000-0000-0000-000000000015'
+\set eventUnpublishedTicketTypeID '79470000-0000-0000-0000-000000000016'
+\set groupCategoryID '79470000-0000-0000-0000-000000000017'
+\set groupCategoryNoReviewID '79470000-0000-0000-0000-000000000018'
+\set groupID '79470000-0000-0000-0000-000000000019'
+\set groupNoTeamID '79470000-0000-0000-0000-000000000020'
+\set priceWindowCanceledID '79470000-0000-0000-0000-000000000021'
+\set priceWindowID '79470000-0000-0000-0000-000000000022'
+\set priceWindowNoTeamID '79470000-0000-0000-0000-000000000023'
+\set priceWindowStartedID '79470000-0000-0000-0000-000000000024'
+\set priceWindowUnpublishedID '79470000-0000-0000-0000-000000000025'
+\set purchaseCanceledID '79470000-0000-0000-0000-000000000026'
+\set purchaseExpiredID '79470000-0000-0000-0000-000000000027'
+\set purchaseID '79470000-0000-0000-0000-000000000028'
+\set purchaseNoTeamID '79470000-0000-0000-0000-000000000029'
+\set purchaseStartedID '79470000-0000-0000-0000-000000000030'
+\set purchaseUnpublishedID '79470000-0000-0000-0000-000000000031'
+\set refundRequestID '79470000-0000-0000-0000-000000000032'
+\set requesterID '79470000-0000-0000-0000-000000000033'
+\set teamUser1ID '79470000-0000-0000-0000-000000000034'
+\set teamUser2ID '79470000-0000-0000-0000-000000000035'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+)
 values
-    (:'allianceID', 'request-alliance', 'Request Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png'),
-    (:'allianceNoReviewID', 'no-review-alliance', 'No Review Alliance', 'Test', 'https://e/logo-2.png', 'https://e/banner-mobile-2.png', 'https://e/banner-2.png');
+    (
+        :'allianceID',
+        'request-alliance',
+        'Request Alliance',
+        'Test',
+        'https://e/banner-mobile.png',
+        'https://e/banner.png',
+        'https://e/logo.png'
+    ),
+    (
+        :'allianceNoReviewID',
+        'no-review-alliance',
+        'No Review Alliance',
+        'Test',
+        'https://e/banner-mobile-2.png',
+        'https://e/banner-2.png',
+        'https://e/logo-2.png'
+    );
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -60,17 +92,61 @@ values
     (:'eventCategoryNoReviewID', :'allianceNoReviewID', 'General');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'allianceManagerID', 'hash-4', 'manager@example.com', true, 'alliance-manager'),
-    (:'allianceViewerID', 'hash-5', 'viewer@example.com', true, 'alliance-viewer'),
-    (:'requesterID', 'hash-1', 'requester@example.com', true, 'requester'),
-    (:'teamUser1ID', 'hash-2', 'team1@example.com', true, 'organizer-1'),
-    (:'teamUser2ID', 'hash-3', 'team2@example.com', true, 'organizer-2');
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values
+    (
+        :'allianceManagerID',
+        'hash-4',
+        'manager@example.com',
+        true,
+        'alliance-manager'
+    ),
+    (
+        :'allianceViewerID',
+        'hash-5',
+        'viewer@example.com',
+        true,
+        'alliance-viewer'
+    ),
+    (
+        :'requesterID',
+        'hash-1',
+        'requester@example.com',
+        true,
+        'requester'
+    ),
+    (
+        :'teamUser1ID',
+        'hash-2',
+        'team1@example.com',
+        true,
+        'organizer-1'
+    ),
+    (
+        :'teamUser2ID',
+        'hash-3',
+        'team2@example.com',
+        true,
+        'organizer-2'
+    );
 
 -- Groups
-insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
-    (:'groupID', :'allianceID', :'groupCategoryID', 'Refund Group', 'refund-group'),
-    (:'groupNoTeamID', :'allianceNoReviewID', :'groupCategoryNoReviewID', 'No Team Group', 'no-team-group');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values
+    (
+        :'groupID',
+        :'allianceID',
+        :'groupCategoryID',
+        'Refund Group',
+        'refund-group'
+    ),
+    (
+        :'groupNoTeamID',
+        :'allianceNoReviewID',
+        :'groupCategoryNoReviewID',
+        'No Team Group',
+        'no-team-group'
+    );
 
 -- Group team
 insert into group_team (group_id, user_id, accepted, role) values
@@ -105,6 +181,18 @@ insert into event (
     'Test event',
     'UTC',
     now() + interval '2 days',
+    true,
+    now()
+), (
+    :'eventStartedID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Started Refund Event',
+    'started-refund-event',
+    'Test event',
+    'UTC',
+    now() - interval '1 hour',
     true,
     now()
 ), (
@@ -146,31 +234,72 @@ insert into event (
 );
 
 -- Ticket type and price window
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+)
 values
-    (:'eventCanceledTicketTypeID', :'eventCanceledID', 1, 10, 'General admission'),
-    (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission'),
-    ('78000000-0000-0000-0000-000000000099', :'eventNoTeamID', 1, 10, 'General admission'),
-    (:'eventUnpublishedTicketTypeID', :'eventUnpublishedID', 1, 10, 'General admission');
+    (
+        :'eventCanceledTicketTypeID',
+        :'eventCanceledID',
+        1,
+        10,
+        'General admission'
+    ),
+    (
+        :'eventNoTeamTicketTypeID',
+        :'eventNoTeamID',
+        1,
+        10,
+        'General admission'
+    ),
+    (
+        :'eventStartedTicketTypeID',
+        :'eventStartedID',
+        1,
+        10,
+        'General admission'
+    ),
+    (
+        :'eventTicketTypeID',
+        :'eventID',
+        1,
+        10,
+        'General admission'
+    ),
+    (
+        :'eventUnpublishedTicketTypeID',
+        :'eventUnpublishedID',
+        1,
+        10,
+        'General admission'
+    );
 
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
     event_ticket_type_id
 ) values (
-    '78000000-0000-0000-0000-000000000096',
+    :'priceWindowCanceledID',
     2500,
     :'eventCanceledTicketTypeID'
+), (
+    :'priceWindowNoTeamID',
+    2500,
+    :'eventNoTeamTicketTypeID'
+), (
+    :'priceWindowStartedID',
+    2500,
+    :'eventStartedTicketTypeID'
 ), (
     :'priceWindowID',
     2500,
     :'eventTicketTypeID'
 ), (
-    '78000000-0000-0000-0000-000000000098',
-    2500,
-    '78000000-0000-0000-0000-000000000099'
-), (
-    '78000000-0000-0000-0000-000000000097',
+    :'priceWindowUnpublishedID',
     2500,
     :'eventUnpublishedTicketTypeID'
 );
@@ -193,6 +322,16 @@ insert into event_purchase (
     'USD',
     :'eventCanceledID',
     :'eventCanceledTicketTypeID',
+    'completed',
+    'General admission',
+    :'requesterID'
+), (
+    :'purchaseStartedID',
+    2500,
+    now(),
+    'USD',
+    :'eventStartedID',
+    :'eventStartedTicketTypeID',
     'completed',
     'General admission',
     :'requesterID'
@@ -222,7 +361,7 @@ insert into event_purchase (
     now(),
     'USD',
     :'eventNoTeamID',
-    '78000000-0000-0000-0000-000000000099'::uuid,
+    :'eventNoTeamTicketTypeID',
     'completed',
     'General admission',
     :'requesterID'
@@ -244,26 +383,29 @@ insert into event_purchase (
 
 -- Should create a refund request and enqueue organizer notifications
 select lives_ok(
-    $$select request_event_refund(
-        '78000000-0000-0000-0000-000000000001'::uuid,
-        '78000000-0000-0000-0000-000000000003'::uuid,
-        '78000000-0000-0000-0000-000000000013'::uuid,
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
         'Cannot attend',
         '{"event":"refund"}'::jsonb
-    )$$,
+    )$$, :'allianceID', :'eventID', :'requesterID'),
     'Should create a refund request and enqueue organizer notifications'
 );
 
 -- Should persist the updated purchase and refund request fields
 select results_eq(
-    $$
+    format($$
         select
-            (select status from event_purchase where event_purchase_id = '78000000-0000-0000-0000-000000000010'::uuid),
-            (select requested_by_user_id from event_refund_request where event_purchase_id = '78000000-0000-0000-0000-000000000010'::uuid),
-            (select requested_reason from event_refund_request where event_purchase_id = '78000000-0000-0000-0000-000000000010'::uuid),
-            (select status from event_refund_request where event_purchase_id = '78000000-0000-0000-0000-000000000010'::uuid)
-    $$,
-    $$ values ('refund-requested'::text, '78000000-0000-0000-0000-000000000013'::uuid, 'Cannot attend'::text, 'pending'::text) $$,
+            (select status from event_purchase where event_purchase_id = %L::uuid),
+            (select requested_by_user_id from event_refund_request where event_purchase_id = %L::uuid),
+            (select requested_reason from event_refund_request where event_purchase_id = %L::uuid),
+            (select status from event_refund_request where event_purchase_id = %L::uuid)
+    $$, :'purchaseID', :'purchaseID', :'purchaseID', :'purchaseID'),
+    format(
+        $$ values ('refund-requested'::text, %L::uuid, 'Cannot attend'::text, 'pending'::text) $$,
+        :'requesterID'
+    ),
     'Should persist the updated purchase and refund request fields'
 );
 
@@ -280,15 +422,15 @@ select results_eq(
             details->>'user_id'
         from audit_log
     $$,
-    $$ values (
+    format($$ values (
         'event_refund_requested'::text,
-        '78000000-0000-0000-0000-000000000013'::uuid,
-        '78000000-0000-0000-0000-000000000001'::uuid,
-        '78000000-0000-0000-0000-000000000003'::uuid,
-        '78000000-0000-0000-0000-000000000007'::uuid,
-        '78000000-0000-0000-0000-000000000010',
-        '78000000-0000-0000-0000-000000000013'
-    ) $$,
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        %L,
+        %L
+    ) $$, :'requesterID', :'allianceID', :'eventID', :'groupID', :'purchaseID', :'requesterID'),
     'Should create the expected audit row'
 );
 
@@ -316,13 +458,13 @@ set
 where event_id = :'eventCanceledID'::uuid;
 
 select lives_ok(
-    $$select request_event_refund(
-        '78000000-0000-0000-0000-000000000001'::uuid,
-        '78000000-0000-0000-0000-000000000022'::uuid,
-        '78000000-0000-0000-0000-000000000013'::uuid,
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
         null,
         '{}'::jsonb
-    )$$,
+    )$$, :'allianceID', :'eventCanceledID', :'requesterID'),
     'Should allow refund requests after the event is canceled'
 );
 
@@ -332,38 +474,51 @@ set published = false
 where event_id = :'eventUnpublishedID'::uuid;
 
 select lives_ok(
-    $$select request_event_refund(
-        '78000000-0000-0000-0000-000000000001'::uuid,
-        '78000000-0000-0000-0000-000000000024'::uuid,
-        '78000000-0000-0000-0000-000000000013'::uuid,
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
         null,
         '{}'::jsonb
-    )$$,
+    )$$, :'allianceID', :'eventUnpublishedID', :'requesterID'),
     'Should allow refund requests after the event is unpublished'
+);
+
+-- Should reject refund requests after the event has started
+select throws_ok(
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        null,
+        '{}'::jsonb
+    )$$, :'allianceID', :'eventStartedID', :'requesterID'),
+    'purchase not found or not refundable',
+    'Should reject refund requests after the event has started'
 );
 
 -- Should reject duplicate refund requests
 select throws_ok(
-    $$select request_event_refund(
-        '78000000-0000-0000-0000-000000000001'::uuid,
-        '78000000-0000-0000-0000-000000000003'::uuid,
-        '78000000-0000-0000-0000-000000000013'::uuid,
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
         null,
         '{}'::jsonb
-    )$$,
+    )$$, :'allianceID', :'eventID', :'requesterID'),
     'refund request already exists for this purchase',
     'Should reject duplicate refund requests'
 );
 
 -- Should reject refund requests when no organizer recipients exist
 select throws_ok(
-    $$select request_event_refund(
-        '78000000-0000-0000-0000-000000000019'::uuid,
-        '78000000-0000-0000-0000-000000000004'::uuid,
-        '78000000-0000-0000-0000-000000000013'::uuid,
+    format($$select request_event_refund(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
         null,
         '{}'::jsonb
-    )$$,
+    )$$, :'allianceNoReviewID', :'eventNoTeamID', :'requesterID'),
     'refund request notification has no recipients',
     'Should reject refund requests when no organizer recipients exist'
 );

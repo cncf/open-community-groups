@@ -2,6 +2,7 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/dashboard/event/ticketing/discount-codes-editor.js";
 import "/static/js/dashboard/event/ticketing/ticket-types-editor.js";
+import "/static/js/dashboard/event/sessions/section.js";
 import {
   initializeEventAddPage,
   initializeEventAddPageRoots,
@@ -65,13 +66,14 @@ const mountAddPageShell = () => {
 const mountUpdatePageShell = ({
   canManageEvents = false,
   eventCanceled = false,
+  eventPast = false,
   waitlistCount = "2",
 } = {}) => {
   document.body.innerHTML = `
     <div id="event-update-page"
          data-event-page="update"
          data-event-canceled="${String(eventCanceled)}"
-         data-event-past="false"
+         data-event-past="${String(eventPast)}"
          data-can-manage-events="${String(canManageEvents)}">
       ${sharedEventFormsMarkup()}
       <button data-section="details" data-active="true" class="active">Details</button>
@@ -95,6 +97,7 @@ describe("event page modules", () => {
   beforeEach(() => {
     resetDom();
     htmx = mockHtmx();
+    globalThis.htmx.on = () => {};
     swal = mockSwal();
   });
 
@@ -459,6 +462,41 @@ describe("event page modules", () => {
     expect(
       document.querySelector(".inert-form").hasAttribute("inert"),
     ).to.equal(false);
+  });
+
+  it("syncs past-event state into update page online details", () => {
+    // Mount the update page shell for a past event.
+    mountUpdatePageShell({ eventPast: true });
+    document
+      .querySelector('[data-event-page="update"]')
+      .insertAdjacentHTML(
+        "beforeend",
+        '<online-event-details id="online-event-details"></online-event-details>',
+      );
+
+    // Initialize the update page behavior.
+    initializeEventUpdatePage();
+
+    // The online details component receives the past-event state.
+    const onlineEventDetails = document.querySelector("online-event-details");
+    expect(onlineEventDetails.eventPast).to.equal(true);
+    expect(onlineEventDetails.hasAttribute("event-past")).to.equal(true);
+  });
+
+  it("syncs past-event state into update page session details", () => {
+    // Mount the update page shell for a past event.
+    mountUpdatePageShell({ eventPast: true });
+    document
+      .querySelector('[data-event-page="update"]')
+      .insertAdjacentHTML("beforeend", "<sessions-section></sessions-section>");
+
+    // Initialize the update page behavior.
+    initializeEventUpdatePage();
+
+    // The sessions component receives the past-event state for child meeting editors.
+    const sessionsSection = document.querySelector("sessions-section");
+    expect(sessionsSection.eventPast).to.equal(true);
+    expect(sessionsSection.hasAttribute("event-past")).to.equal(true);
   });
 
   it("clears update page venue fields from the location clear button", () => {

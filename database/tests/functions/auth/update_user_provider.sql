@@ -3,18 +3,20 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set userID '00000000-0000-0000-0000-000000000011'
+\set nullProviderUserID '0a0c0000-0000-0000-0000-000000000001'
+\set userID '0a0c0000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
+-- Users
 insert into "user" (
     user_id,
     auth_hash,
@@ -23,8 +25,15 @@ insert into "user" (
     provider,
     username
 ) values (
+    :'nullProviderUserID',
+    'null-provider-hash',
+    'null-provider@example.com',
+    true,
+    null,
+    'null-provider-user'
+), (
     :'userID',
-    'test_hash',
+    'test-hash',
     'user@example.com',
     true,
     jsonb_build_object(
@@ -41,27 +50,38 @@ insert into "user" (
 
 -- Should replace the provider payload for the same provider key
 select lives_ok(
-    $$
+    format(
+        $$
         select update_user_provider(
-            '00000000-0000-0000-0000-000000000011'::uuid,
+            %L::uuid,
             jsonb_build_object(
                 'github', jsonb_build_object(
                     'username', 'octocat-renamed'
                 )
             )
         )
-    $$,
+        $$,
+        :'userID'
+    ),
     'Should refresh existing provider metadata for the same provider'
 );
 
 -- Should merge provider metadata across different providers
-select update_user_provider(
-    :'userID'::uuid,
-    jsonb_build_object(
-        'linkedin', jsonb_build_object(
-            'subject', 'linkedin-subject'
+select lives_ok(
+    format(
+        $$
+        select update_user_provider(
+            %L::uuid,
+            jsonb_build_object(
+                'linuxfoundation', jsonb_build_object(
+                    'username', 'lf-user'
+                )
+            )
         )
-    )
+        $$,
+        :'userID'
+    ),
+    'Should merge provider metadata across different providers'
 );
 
 select is(
@@ -70,11 +90,39 @@ select is(
         'github', jsonb_build_object(
             'username', 'octocat-renamed'
         ),
-        'linkedin', jsonb_build_object(
-            'subject', 'linkedin-subject'
+        'linuxfoundation', jsonb_build_object(
+            'username', 'lf-user'
         )
     ),
     'Should preserve other provider keys when merging provider metadata'
+);
+
+-- Should initialize null provider payloads before merging
+select lives_ok(
+    format(
+        $$
+        select update_user_provider(
+            %L::uuid,
+            jsonb_build_object(
+                'github', jsonb_build_object(
+                    'username', 'new-octocat'
+                )
+            )
+        )
+        $$,
+        :'nullProviderUserID'
+    ),
+    'Should merge provider metadata when existing provider is null'
+);
+
+select is(
+    (select provider from "user" where user_id = :'nullProviderUserID'::uuid),
+    jsonb_build_object(
+        'github', jsonb_build_object(
+            'username', 'new-octocat'
+        )
+    ),
+    'Should store provider metadata when existing provider is null'
 );
 
 -- ============================================================================

@@ -9,41 +9,70 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000011'
-\set nonExistingEventID '00000000-0000-0000-0000-000000000099'
-\set ticketPriceWindowID '00000000-0000-0000-0000-000000000062'
-\set ticketTypeID '00000000-0000-0000-0000-000000000061'
-\set userID '00000000-0000-0000-0000-000000000051'
+\set alliance2ID '5e070000-0000-0000-0000-000000000001'
+\set allianceID '5e070000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e070000-0000-0000-0000-000000000003'
+\set eventID '5e070000-0000-0000-0000-000000000004'
+\set groupCategoryID '5e070000-0000-0000-0000-000000000005'
+\set groupID '5e070000-0000-0000-0000-000000000006'
+\set nonExistingEventID '5e070000-0000-0000-0000-000000000007'
+\set ticketPriceWindowID '5e070000-0000-0000-0000-000000000008'
+\set ticketTypeID '5e070000-0000-0000-0000-000000000009'
+\set userID '5e070000-0000-0000-0000-00000000000a'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliances
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'allianceID', 'event-summary-alliance', 'Event Summary', 'Alliance for summary tests', 'https://example.test/logo.png', 'https://example.test/banner_mobile.png', 'https://example.test/banner.png'),
-    (:'alliance2ID', 'other-alliance', 'Other Alliance', 'Another alliance', 'https://example.test/other.png', 'https://example.test/other-banner_mobile.png', 'https://example.test/other-banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'event-summary-alliance',
+    'Event Summary',
+    'Alliance for summary tests',
+    'https://example.test/banner-mobile.png',
+    'https://example.test/banner.png',
+    'https://example.test/logo.png'
+), (
+    :'alliance2ID',
+    'other-alliance',
+    'Other Alliance',
+    'Another alliance',
+    'https://example.test/other-banner-mobile.png',
+    'https://example.test/other-banner.png',
+    'https://example.test/other.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name, created_at)
 values (:'groupCategoryID', :'allianceID', 'Event Category', '2025-01-01 00:00:00');
 
--- Group
-insert into "group" (group_id, alliance_id, group_category_id, group_site_layout_id, name, slug)
-values (:'groupID', :'allianceID', :'groupCategoryID', 'default', 'Summary Group', 'summary-group');
-
 -- Event category
 insert into event_category (event_category_id, alliance_id, name)
 values (:'eventCategoryID', :'allianceID', 'Summary Events');
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified)
-values (:'userID', 'test_hash', 'summary-user@example.test', 'summary-user', true);
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values (:'userID', 'test_hash', 'summary-user@example.test', true, 'summary-user');
+
+-- Group
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, group_site_layout_id)
+values (
+    :'groupID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Summary Group',
+    'summary-group',
+    'default'
+);
 
 -- Event
 insert into event (

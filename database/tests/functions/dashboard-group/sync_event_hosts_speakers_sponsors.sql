@@ -9,49 +9,62 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set eventID '00000000-0000-0000-0000-000000000021'
-\set groupCategoryID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000041'
-\set otherGroupID '00000000-0000-0000-0000-000000000042'
-\set otherGroupSponsorID '00000000-0000-0000-0000-000000000054'
-\set sponsor1ID '00000000-0000-0000-0000-000000000051'
-\set sponsor2ID '00000000-0000-0000-0000-000000000052'
-\set sponsor3ID '00000000-0000-0000-0000-000000000053'
-\set user1ID '00000000-0000-0000-0000-000000000061'
-\set user2ID '00000000-0000-0000-0000-000000000062'
-\set user3ID '00000000-0000-0000-0000-000000000063'
+\set allianceID '3a330000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a330000-0000-0000-0000-000000000002'
+\set eventID '3a330000-0000-0000-0000-000000000003'
+\set groupCategoryID '3a330000-0000-0000-0000-000000000004'
+\set groupID '3a330000-0000-0000-0000-000000000005'
+\set otherGroupID '3a330000-0000-0000-0000-000000000006'
+\set otherGroupSponsorID '3a330000-0000-0000-0000-000000000007'
+\set sponsor1ID '3a330000-0000-0000-0000-000000000008'
+\set sponsor2ID '3a330000-0000-0000-0000-000000000009'
+\set sponsor3ID '3a330000-0000-0000-0000-000000000010'
+\set user1ID '3a330000-0000-0000-0000-000000000011'
+\set user2ID '3a330000-0000-0000-0000-000000000012'
+\set user3ID '3a330000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'alliance-1', 'Alliance 1', 'Test alliance', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'event-association-alliance',
+    'Event Association Alliance',
+    'A test alliance for event associations',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
 values (:'groupCategoryID', :'allianceID', 'Technology');
-
--- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'groupCategoryID', 'Group 1', 'group-1');
-
--- Other group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'otherGroupID', :'allianceID', :'groupCategoryID', 'Group 2', 'group-2');
 
 -- Event category
 insert into event_category (event_category_id, alliance_id, name)
 values (:'eventCategoryID', :'allianceID', 'Meetup');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'user1ID', gen_random_bytes(32), 'user1@example.com', 'user1', true, 'User 1'),
-    (:'user2ID', gen_random_bytes(32), 'user2@example.com', 'user2', true, 'User 2'),
-    (:'user3ID', gen_random_bytes(32), 'user3@example.com', 'user3', true, 'User 3');
+insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
+    (:'user1ID', gen_random_bytes(32), 'user1@example.com', true, 'user1', 'User 1'),
+    (:'user2ID', gen_random_bytes(32), 'user2@example.com', true, 'user2', 'User 2'),
+    (:'user3ID', gen_random_bytes(32), 'user3@example.com', true, 'user3', 'User 3');
+
+-- Groups
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Association Group', 'association-group'),
+    (:'otherGroupID', :'allianceID', :'groupCategoryID', 'Other Group', 'other-group');
 
 -- Group sponsors
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url) values
@@ -61,7 +74,13 @@ insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_u
 
 -- Other group sponsor
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
-values (:'otherGroupSponsorID', :'otherGroupID', 'Other Group Sponsor', 'https://e/sponsor-other.png', null);
+values (
+    :'otherGroupSponsorID',
+    :'otherGroupID',
+    'Other Group Sponsor',
+    'https://e/sponsor-other.png',
+    null
+);
 
 -- Event
 insert into event (

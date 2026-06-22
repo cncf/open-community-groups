@@ -221,6 +221,8 @@ insert into event (
     '{"meetup", "tech", "networking"}',
     'https://www.meetup.com/test-group/events/123456789/',
     'https://zoom.us/j/1234567890',
+    -- The first photo path intentionally does not exist: e2e tests rely on it
+    -- to cover broken gallery image fallback behavior. Do not "fix" it.
     '{"/static/images/e2e/missing-event-gallery-photo.svg", "/static/images/e2e/event-photo-2.svg"}'
 );
 

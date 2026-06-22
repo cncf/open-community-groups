@@ -9,44 +9,97 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
-\set user3ID '00000000-0000-0000-0000-000000000033'
-\set user4ID '00000000-0000-0000-0000-000000000034'
-\set user5ID '00000000-0000-0000-0000-000000000035'
+\set allianceID '3a210000-0000-0000-0000-000000000001'
+\set groupCategoryID '3a210000-0000-0000-0000-000000000002'
+\set groupID '3a210000-0000-0000-0000-000000000003'
+\set missingGroupID '3a210000-0000-0000-0000-000000000004'
+\set user1ID '3a210000-0000-0000-0000-000000000005'
+\set user2ID '3a210000-0000-0000-0000-000000000006'
+\set user3ID '3a210000-0000-0000-0000-000000000007'
+\set user4ID '3a210000-0000-0000-0000-000000000008'
+\set user5ID '3a210000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
-values (:'categoryID', :'allianceID', 'Tech');
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, name, username, email_verified, photo_url)
-values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice',
-        'alice', true, 'https://e/u1.png'),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', null,
-        'bob', true, 'https://e/u2.png'),
-    (:'user3ID', gen_random_bytes(32), 'aaron@example.com', null,
-        'aaron', true, 'https://e/u3.png'),
-    (:'user4ID', gen_random_bytes(32), 'alice2@example.com', 'Alice',
-        'alice2', true, 'https://e/u4.png'),
-    (:'user5ID', gen_random_bytes(32), 'bobby@example.com', 'Bob',
-        'bobby', true, 'https://e/u5.png');
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name,
+    photo_url
+) values (
+    :'user1ID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice',
+    'https://example.com/u1.png'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    null,
+    'https://example.com/u2.png'
+), (
+    :'user3ID',
+    gen_random_bytes(32),
+    'aaron@example.com',
+    true,
+    'aaron',
+    null,
+    'https://example.com/u3.png'
+), (
+    :'user4ID',
+    gen_random_bytes(32),
+    'alice2@example.com',
+    true,
+    'alice2',
+    'Alice',
+    'https://example.com/u4.png'
+), (
+    :'user5ID',
+    gen_random_bytes(32),
+    'bobby@example.com',
+    true,
+    'bobby',
+    'Bob',
+    'https://example.com/u5.png'
+);
 
 -- Group members
 insert into group_member (group_id, user_id, created_at)
@@ -70,15 +123,15 @@ select is(
     jsonb_build_object(
         'members', '[
             {"created_at": 1704067200, "username": "alice", "company": null, "name": "Alice",
-                "photo_url": "https://e/u1.png", "title": null},
+                "photo_url": "https://example.com/u1.png", "title": null},
             {"created_at": 1704326400, "username": "alice2", "company": null, "name": "Alice",
-                "photo_url": "https://e/u4.png", "title": null},
+                "photo_url": "https://example.com/u4.png", "title": null},
             {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
-                "photo_url": "https://e/u5.png", "title": null},
+                "photo_url": "https://example.com/u5.png", "title": null},
             {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
-                "photo_url": "https://e/u3.png", "title": null},
+                "photo_url": "https://example.com/u3.png", "title": null},
             {"created_at": 1704153600, "username": "bob", "company": null, "name": null,
-                "photo_url": "https://e/u2.png", "title": null}
+                "photo_url": "https://example.com/u2.png", "title": null}
         ]'::jsonb,
         'total', 5
     ),
@@ -94,9 +147,9 @@ select is(
     jsonb_build_object(
         'members', '[
             {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
-                "photo_url": "https://e/u5.png", "title": null},
+                "photo_url": "https://example.com/u5.png", "title": null},
             {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
-                "photo_url": "https://e/u3.png", "title": null}
+                "photo_url": "https://example.com/u3.png", "title": null}
         ]'::jsonb,
         'total', 5
     ),
@@ -106,7 +159,7 @@ select is(
 -- Should return empty list for non-existing group
 select is(
     list_group_members(
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        :'missingGroupID'::uuid,
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(

@@ -466,29 +466,24 @@
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="modal-panel p-4 max-w-6xl">
     <div class="modal-card rounded-lg">
-      <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <div>
-          <h3 id="attendee-answers-modal-title"
-              class="text-xl font-semibold text-stone-900">Registration answers</h3>
-          <div id="attendee-answers-subtitle" class="mt-1 text-sm text-stone-600">
-            <span id="attendee-answers-name"></span>
-          </div>
-        </div>
-        <button id="close-attendee-answers-modal"
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-          <span class="sr-only">Close modal</span>
-        </button>
+      {% let attendee_answers_subtitle -%}
+      <div id="attendee-answers-subtitle" class="mt-1 text-sm text-stone-600">
+        <span id="attendee-answers-name"></span>
       </div>
-      <div id="attendee-answers-content" class="modal-body p-4 md:p-6"></div>
-      <div class="flex items-center justify-end border-t border-stone-200 p-4 md:p-5">
-        <button id="cancel-attendee-answers-modal"
-                type="button"
-                class="btn-primary-outline">Close</button>
-      </div>
+    {%- endlet %}
+    {{ dashboard::modal_header(title_id = "attendee-answers-modal-title",
+        title = "Registration answers",
+        close_id = "close-attendee-answers-modal",
+        subtitle = attendee_answers_subtitle,
+        align_items = "items-start") -}}
+    <div id="attendee-answers-content" class="modal-body p-4 md:p-6"></div>
+    <div class="flex items-center justify-end border-t border-stone-200 p-4 md:p-5">
+      <button id="cancel-attendee-answers-modal"
+              type="button"
+              class="btn-primary-outline">Close</button>
     </div>
   </div>
+</div>
 </div>
 {# End attendee answers modal -#}
 
@@ -502,16 +497,9 @@
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="modal-panel p-4 max-w-2xl">
     <div class="modal-card rounded-lg">
-      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <h3 id="attendee-refund-modal-title"
-            class="text-xl font-semibold text-stone-900">Handle refund request</h3>
-        <button id="close-attendee-refund-modal"
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-          <span class="sr-only">Close modal</span>
-        </button>
-      </div>
+      {{ dashboard::modal_header(title_id = "attendee-refund-modal-title",
+            title = "Handle refund request",
+            close_id = "close-attendee-refund-modal") -}}
       <div class="modal-body p-4 md:px-6 md:py-5">
         <div>
           <div class="text-sm text-stone-500">Attendee</div>
@@ -562,16 +550,9 @@
        class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
   <div class="modal-panel p-4 max-w-2xl">
     <div class="modal-card rounded-lg modal-overflow-visible">
-      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <h3 id="attendee-invitation-modal-title"
-            class="text-xl font-semibold text-stone-900">Invite attendee</h3>
-        <button id="close-attendee-invitation-modal"
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-          <span class="sr-only">Close modal</span>
-        </button>
-      </div>
+      {{ dashboard::modal_header(title_id = "attendee-invitation-modal-title",
+            title = "Invite attendee",
+            close_id = "close-attendee-invitation-modal") -}}
       <div class="modal-body p-4 md:p-8 modal-overflow-visible">
         <form id="attendee-invitation-form"
               hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
@@ -624,16 +605,9 @@
   <div class="modal-panel p-4 max-w-2xl">
     <div class="modal-card rounded-lg">
       {# Modal header -#}
-      <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-        <h3 id="attendee-notification-modal-title"
-            class="text-xl font-semibold text-stone-900">Send email</h3>
-        <button id="close-attendee-notification-modal"
-                type="button"
-                class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-          <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-          <span class="sr-only">Close modal</span>
-        </button>
-      </div>
+      {{ dashboard::modal_header(title_id = "attendee-notification-modal-title",
+            title = "Send email",
+            close_id = "close-attendee-notification-modal") -}}
       {# End modal header -#}
 
       {# Modal body -#}

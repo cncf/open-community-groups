@@ -17,7 +17,7 @@ use crate::{
     activity_tracker::{Activity, DynActivityTracker},
     auth::AuthSession,
     config::{HttpServerConfig, PaymentsConfig},
-    db::{DynDB, payments::PrepareEventCheckoutPurchaseInput},
+    db::{DBExt, DynDB, payments::PrepareEventCheckoutPurchaseInput},
     handlers::{
         extractors::{CurrentUser, ValidatedForm, ValidatedFormQs},
         request_matches_site,
@@ -28,11 +28,10 @@ use crate::{
     services::{
         notifications::{
             DynNotificationsManager,
-            helpers::{
-                build_event_attendance_canceled_notification,
+            enqueue::enqueue_event_attendance_cancellation_notifications,
+            payloads::{
                 build_event_waitlist_joined_notification, build_event_waitlist_left_notification,
-                build_event_waitlist_promoted_notification, build_event_welcome_notification,
-                should_send_waitlist_promoted_notification,
+                build_event_welcome_notification,
             },
         },
         payments::{DynPaymentsManager, RequestRefundInput},
@@ -209,28 +208,6 @@ pub(crate) async fn availability(
     );
 
     Ok((headers, Json(EventAvailability::from_event(&event))).into_response())
-}
-
-// URL helpers.
-
-/// Builds a public event URL with the original query string, if present.
-fn public_event_url(alliance_name: &str, group_slug: &str, event_slug: &str, uri: &Uri) -> String {
-    let mut url = format!("/{alliance_name}/group/{group_slug}/event/{event_slug}");
-    if let Some(query) = uri.query() {
-        url.push('?');
-        url.push_str(query);
-    }
-
-    url
-}
-
-/// Returns whether a public event request should canonicalize to a pretty group slug.
-fn should_redirect_to_pretty_group_slug(event: &EventFull, group_slug: &str) -> bool {
-    event
-        .group
-        .slug_pretty
-        .as_deref()
-        .is_some_and(|_| group_slug == event.group.slug)
 }
 
 // Actions handlers.
@@ -423,8 +400,32 @@ pub(crate) async fn leave_event(
     AllianceId(alliance_id): AllianceId,
     Path((_, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Leave event
-    let leave_result = db.leave_event(alliance_id, event_id, user.user_id).await?;
+    // Leave event and enqueue required attendee cancellation notifications
+    let required_notification_server_cfg = server_cfg.clone();
+    let leave_result = db
+        .as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Leave the event and collect any waitlist promotions
+                let leave_result = tx.leave_event(alliance_id, event_id, user.user_id).await?;
+
+                // Enqueue required cancellation and promotion notifications before committing
+                if leave_result.left_status == EventAttendanceStatus::Attendee {
+                    enqueue_event_attendance_cancellation_notifications(
+                        tx,
+                        &required_notification_server_cfg,
+                        alliance_id,
+                        event_id,
+                        user.user_id,
+                        leave_result.promoted_user_ids.clone(),
+                    )
+                    .await?;
+                }
+
+                Ok(leave_result)
+            })
+        })
+        .await?;
     let response = (
         StatusCode::OK,
         Json(json!({
@@ -432,40 +433,22 @@ pub(crate) async fn leave_event(
         })),
     );
 
-    // Enqueue waitlist leave and promotion notifications best-effort after the leave action succeeds
-
-    // Get site settings and event details for notifications
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(alliance_id, event_id)
-    ) {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load event notification context after attendance change");
-            return Ok(response);
-        }
-    };
-
-    // Confirm attendee cancellation and waitlist exits
+    // Enqueue waitlist leave notifications best-effort
     match leave_result.left_status {
-        EventAttendanceStatus::Attendee => {
-            match build_event_attendance_canceled_notification(
-                &event,
-                user.user_id,
-                &server_cfg,
-                &site_settings,
-            ) {
-                Ok(notification) => {
-                    if let Err(err) = notifications_manager.enqueue(&notification).await {
-                        warn!(error = %err, "failed to enqueue event attendance cancellation notification");
-                    }
-                }
-                Err(err) => {
-                    warn!(error = %err, "failed to build event attendance cancellation notification");
-                }
-            }
-        }
         EventAttendanceStatus::Waitlisted => {
+            // Get site settings and event details for notifications
+            let (site_settings, event) = match tokio::try_join!(
+                db.get_site_settings(),
+                db.get_event_summary_by_id(alliance_id, event_id)
+            ) {
+                Ok(context) => context,
+                Err(err) => {
+                    warn!(error = %err, "failed to load event notification context after waitlist change");
+                    return Ok(response);
+                }
+            };
+
+            // Confirm the waitlist exit
             match build_event_waitlist_left_notification(
                 &event,
                 user.user_id,
@@ -482,27 +465,8 @@ pub(crate) async fn leave_event(
                 }
             }
         }
-        EventAttendanceStatus::PendingApproval => {}
+        EventAttendanceStatus::Attendee | EventAttendanceStatus::PendingApproval => {}
         _ => unreachable!("leave_event cannot return this left status"),
-    }
-
-    // Notify users promoted off the waitlist after a spot opens up
-    if should_send_waitlist_promoted_notification(&event, &leave_result.promoted_user_ids) {
-        match build_event_waitlist_promoted_notification(
-            &event,
-            leave_result.promoted_user_ids,
-            &server_cfg,
-            &site_settings,
-        ) {
-            Ok(notification) => {
-                if let Err(err) = notifications_manager.enqueue(&notification).await {
-                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
-                }
-            }
-            Err(err) => {
-                warn!(error = %err, "failed to build waitlist promotion notification");
-            }
-        }
     }
 
     Ok(response)
@@ -896,6 +860,26 @@ async fn load_checkoutable_event(
     }
 
     Ok(event)
+}
+
+/// Builds a public event URL with the original query string, if present.
+fn public_event_url(alliance_name: &str, group_slug: &str, event_slug: &str, uri: &Uri) -> String {
+    let mut url = format!("/{alliance_name}/group/{group_slug}/event/{event_slug}");
+    if let Some(query) = uri.query() {
+        url.push('?');
+        url.push_str(query);
+    }
+
+    url
+}
+
+/// Returns whether a public event request should canonicalize to a pretty group slug.
+fn should_redirect_to_pretty_group_slug(event: &EventFull, group_slug: &str) -> bool {
+    event
+        .group
+        .slug_pretty
+        .as_deref()
+        .is_some_and(|_| group_slug == event.group.slug)
 }
 
 /// Validates submitted registration answers against the event questionnaire.

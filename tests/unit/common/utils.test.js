@@ -44,9 +44,7 @@ describe("common utils", () => {
     expect(parseJsonAttribute({ day_1: [{ id: 1 }] }, [])).to.deep.equal({
       day_1: [{ id: 1 }],
     });
-    expect(parseJsonAttribute("not-json", ["fallback"])).to.deep.equal([
-      "fallback",
-    ]);
+    expect(parseJsonAttribute("not-json", ["fallback"])).to.deep.equal(["fallback"]);
     expect(parseJsonAttribute("", ["fallback"])).to.deep.equal(["fallback"]);
 
     // Boolean values are normalized from booleans and strings.
@@ -73,10 +71,7 @@ describe("common utils", () => {
 
   it("sanitizes string arrays and normalizes users", () => {
     // Assert the sanitize string array.
-    expect(sanitizeStringArray([" alpha ", "", " beta ", null])).to.deep.equal([
-      "alpha",
-      "beta",
-    ]);
+    expect(sanitizeStringArray([" alpha ", "", " beta ", null])).to.deep.equal(["alpha", "beta"]);
 
     // Assert the updated value.
     expect(
@@ -159,7 +154,7 @@ describe("common utils", () => {
     let avatarUpdates = 0;
 
     // Make one field use its setter and the other fall back to value updates.
-    coverField._setValue = (value) => {
+    coverField.setValue = (value) => {
       coverValue = value;
     };
     avatarField.requestUpdate = () => {

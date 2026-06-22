@@ -9,14 +9,17 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set category2ID '00000000-0000-0000-0000-000000000012'
-\set alliance1ID '00000000-0000-0000-0000-000000000001'
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set group2ID '00000000-0000-0000-0000-000000000032'
-\set region1ID '00000000-0000-0000-0000-000000000021'
-\set region2ID '00000000-0000-0000-0000-000000000022'
+\set alliance1ID '9a010000-0000-0000-0000-000000000001'
+\set alliance2ID '9a010000-0000-0000-0000-000000000002'
+\set eventCategory1ID '9a010000-0000-0000-0000-000000000003'
+\set eventCategory2ID '9a010000-0000-0000-0000-000000000004'
+\set eventCategory3ID '9a010000-0000-0000-0000-000000000005'
+\set group1ID '9a010000-0000-0000-0000-000000000006'
+\set group2ID '9a010000-0000-0000-0000-000000000007'
+\set groupCategory1ID '9a010000-0000-0000-0000-000000000008'
+\set groupCategory2ID '9a010000-0000-0000-0000-000000000009'
+\set region1ID '9a010000-0000-0000-0000-000000000010'
+\set region2ID '9a010000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
@@ -28,18 +31,34 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values
-    (:'alliance1ID', 'alpha-alliance', 'Alpha Alliance', 'First alliance', 'https://example.com/alpha-logo.png', 'https://example.com/alpha-banner_mobile.png', 'https://example.com/alpha-banner.png'),
-    (:'alliance2ID', 'cloud-native-seattle', 'Cloud Native Seattle', 'A vibrant alliance', 'https://example.com/cns-logo.png', 'https://example.com/cns-banner_mobile.png', 'https://example.com/cns-banner.png');
+    (
+        :'alliance1ID',
+        'alpha-alliance',
+        'Alpha Alliance',
+        'First alliance',
+        'https://example.com/alpha-banner_mobile.png',
+        'https://example.com/alpha-banner.png',
+        'https://example.com/alpha-logo.png'
+    ),
+    (
+        :'alliance2ID',
+        'cloud-native-seattle',
+        'Cloud Native Seattle',
+        'A vibrant alliance',
+        'https://example.com/cns-banner_mobile.png',
+        'https://example.com/cns-banner.png',
+        'https://example.com/cns-logo.png'
+    );
 
--- Group Category
-insert into group_category (group_category_id, name, alliance_id, "order")
+-- Group category
+insert into group_category (group_category_id, alliance_id, name, "order")
 values
-    (:'category1ID', 'Technology', :'alliance2ID', 1),
-    (:'category2ID', 'Business', :'alliance2ID', 2);
+    (:'groupCategory1ID', :'alliance2ID', 'Technology', 1),
+    (:'groupCategory2ID', :'alliance2ID', 'Business', 2);
 
 -- Region
 insert into region (region_id, name, alliance_id, "order")
@@ -47,18 +66,29 @@ values
     (:'region1ID', 'North America', :'alliance2ID', 1),
     (:'region2ID', 'Europe', :'alliance2ID', 2);
 
--- Event Category
-insert into event_category (event_category_id, name, alliance_id, "order")
+-- Event category
+insert into event_category (event_category_id, alliance_id, name, "order")
 values
-    ('00000000-0000-0000-0000-000000000061', 'Tech Talks', :'alliance2ID', 1),
-    ('00000000-0000-0000-0000-000000000062', 'Workshops', :'alliance2ID', 2),
-    ('00000000-0000-0000-0000-000000000063', 'Conferences', :'alliance2ID', 3);
+    (:'eventCategory1ID', :'alliance2ID', 'Tech Talks', 1),
+    (:'eventCategory2ID', :'alliance2ID', 'Workshops', 2),
+    (:'eventCategory3ID', :'alliance2ID', 'Conferences', 3);
 
 -- Group
-insert into "group" (group_id, name, slug, slug_pretty, description, alliance_id, group_category_id, active)
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    description,
+    slug_pretty
+)
 values
-    (:'group1ID', 'Alpha Group', 'alpha-group', 'alpha-group-pretty', 'First group', :'alliance2ID', :'category1ID', true),
-    (:'group2ID', 'Beta Group', 'beta-group', null, 'Second group', :'alliance2ID', :'category2ID', true);
+    (:'group1ID', :'alliance2ID', :'groupCategory1ID',
+        'Alpha Group', 'alpha-group', true, 'First group', 'alpha-group-pretty'),
+    (:'group2ID', :'alliance2ID', :'groupCategory2ID',
+        'Beta Group', 'beta-group', true, 'Second group', null);
 
 -- ============================================================================
 -- TESTS

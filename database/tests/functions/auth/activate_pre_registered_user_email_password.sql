@@ -3,15 +3,17 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set registeredUserID '00000000-0000-0000-0000-000000000102'
-\set takenUsernameUserID '00000000-0000-0000-0000-000000000103'
-\set userID '00000000-0000-0000-0000-000000000101'
+\set registeredUserID '0a010000-0000-0000-0000-000000000001'
+\set newVerificationCodeID '0a010000-0000-0000-0000-000000000005'
+\set takenUsernameUserID '0a010000-0000-0000-0000-000000000002'
+\set userID '0a010000-0000-0000-0000-000000000003'
+\set verificationCodeID '0a010000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
@@ -19,18 +21,46 @@ select plan(5);
 
 -- Users
 insert into "user" (
+    user_id,
+    name,
     auth_hash,
     email,
     email_verified,
-    name,
     password,
     registration_status,
-    user_id,
     username
-) values
-    ('pre-registered-hash', 'invited@example.com', false, null, null, 'pre-registered', :'userID', 'invited-user'),
-    ('registered-hash', 'registered@example.com', false, 'Registered User', 'secret', 'registered', :'registeredUserID', 'registered-user'),
-    ('taken-hash', 'taken@example.com', true, 'Taken User', 'secret', 'registered', :'takenUsernameUserID', 'alice');
+) values (
+    :'userID',
+    null,
+    'pre-registered-hash',
+    'invited@example.com',
+    false,
+    null,
+    'pre-registered',
+    'invited-user'
+), (
+    :'registeredUserID',
+    'Registered User',
+    'registered-hash',
+    'registered@example.com',
+    false,
+    'secret',
+    'registered',
+    'registered-user'
+), (
+    :'takenUsernameUserID',
+    'Taken User',
+    'taken-hash',
+    'taken@example.com',
+    true,
+    'secret',
+    'registered',
+    'alice'
+);
+
+-- Existing verification code to refresh on activation
+insert into email_verification_code (email_verification_code_id, user_id, created_at)
+values (:'verificationCodeID', :'userID', '2024-01-01 00:00:00+00');
 
 -- ============================================================================
 -- TESTS
@@ -46,7 +76,12 @@ select is(
                 "name": "Alice Invited",
                 "password": "hashed-password",
                 "username": "alice"
-            }'::jsonb
+            }'::jsonb,
+            :'newVerificationCodeID',
+            jsonb_build_object(
+                'link', 'https://example.test/verify-email/' || :'newVerificationCodeID',
+                'theme', jsonb_build_object('primary_color', '#123456')
+            )
         )
     ),
     'alice2',
@@ -55,7 +90,7 @@ select is(
 
 -- Should promote the placeholder row into an unverified registered user with password.
 select results_eq(
-    $$
+    format($$
         select
             email_verified,
             name,
@@ -63,8 +98,8 @@ select results_eq(
             registration_status,
             username
         from "user"
-        where user_id = '00000000-0000-0000-0000-000000000101'::uuid
-    $$,
+        where user_id = %L::uuid
+    $$, :'userID'),
     $$
         values (
             false,
@@ -77,7 +112,17 @@ select results_eq(
     'Should promote the placeholder row into an unverified registered user with password'
 );
 
--- Should create an email verification code for the activated user.
+-- Should rotate the user's auth hash during activation.
+select ok(
+    (
+        select auth_hash <> 'pre-registered-hash'
+        from "user"
+        where user_id = :'userID'::uuid
+    ),
+    'Should rotate the user auth hash during activation'
+);
+
+-- Should keep one email verification code for the activated user.
 select is(
     (
         select count(*)
@@ -85,7 +130,46 @@ select is(
         where user_id = :'userID'
     ),
     1::bigint,
-    'Should create an email verification code for the activated user'
+    'Should keep one email verification code for the activated user'
+);
+
+-- Should rotate the existing email verification code to the caller-provided code.
+select is(
+    (
+        select email_verification_code_id
+        from email_verification_code
+        where user_id = :'userID'
+    ),
+    :'newVerificationCodeID'::uuid,
+    'Should rotate the existing email verification code to the caller-provided code'
+);
+
+-- Should refresh the existing email verification code timestamp.
+select ok(
+    (
+        select created_at > '2024-01-01 00:00:00+00'::timestamptz
+        from email_verification_code
+        where user_id = :'userID'::uuid
+    ),
+    'Should refresh the existing email verification code timestamp'
+);
+
+-- Should enqueue email verification notification for the activated user.
+select ok(
+    exists (
+        select 1
+        from notification n
+        join notification_template_data ntd using (notification_template_data_id)
+        where n.kind = 'email-verification'
+        and n.user_id = :'userID'::uuid
+        and ntd.data = jsonb_build_object(
+            'link',
+            'https://example.test/verify-email/' || :'newVerificationCodeID',
+            'theme',
+            jsonb_build_object('primary_color', '#123456')
+        )
+    ),
+    'Should enqueue email verification notification for the activated user'
 );
 
 -- Should return null when the email belongs to an already registered user.
@@ -98,7 +182,9 @@ select is(
                 "name": "Registered User",
                 "password": "new-password",
                 "username": "registered-user"
-            }'::jsonb
+            }'::jsonb,
+            gen_random_uuid(),
+            '{}'::jsonb
         )
     ),
     null::jsonb,
@@ -115,7 +201,9 @@ select is(
                 "name": "Missing User",
                 "password": "new-password",
                 "username": "missing-user"
-            }'::jsonb
+            }'::jsonb,
+            gen_random_uuid(),
+            '{}'::jsonb
         )
     ),
     null::jsonb,

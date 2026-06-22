@@ -6,6 +6,13 @@ begin;
 select plan(18);
 
 -- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set user1ID '3a140000-0000-0000-0000-000000000001'
+\set user2ID '3a140000-0000-0000-0000-000000000002'
+
+-- ============================================================================
 -- TESTS
 -- ============================================================================
 
@@ -356,24 +363,30 @@ select is(
 -- Event hosts unchanged keeps sync
 select is(
     is_event_meeting_in_sync(
-        '{
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]
-        }'::jsonb,
-        '{
+            "hosts": [{"user_id": "%s"}]
+        }',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "hosts": ["00000000-0000-0000-0000-000000000001"]
-        }'::jsonb
+            "hosts": ["%s"]
+        }',
+            :'user1ID'
+        )::jsonb
     ),
     true,
     'Event hosts unchanged keeps sync'
@@ -382,24 +395,30 @@ select is(
 -- Event hosts change desyncs meeting
 select is(
     is_event_meeting_in_sync(
-        '{
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]
-        }'::jsonb,
-        '{
+            "hosts": [{"user_id": "%s"}]
+        }',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "hosts": ["00000000-0000-0000-0000-000000000002"]
-        }'::jsonb
+            "hosts": ["%s"]
+        }',
+            :'user2ID'
+        )::jsonb
     ),
     false,
     'Event hosts change desyncs meeting'
@@ -408,24 +427,30 @@ select is(
 -- Event speakers unchanged keeps sync
 select is(
     is_event_meeting_in_sync(
-        '{
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
-        }'::jsonb,
-        '{
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
-        }'::jsonb
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user1ID'
+        )::jsonb
     ),
     true,
     'Event speakers unchanged keeps sync'
@@ -434,24 +459,30 @@ select is(
 -- Event speakers change desyncs meeting
 select is(
     is_event_meeting_in_sync(
-        '{
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind": "virtual",
             "starts_at": 1748786400,
             "ends_at": 1748790000,
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
-        }'::jsonb,
-        '{
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{
             "name": "Sync Event",
             "timezone": "America/New_York",
             "kind_id": "virtual",
             "starts_at": "2025-06-01T10:00:00",
             "ends_at": "2025-06-01T11:00:00",
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000002", "featured": false}]
-        }'::jsonb
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user2ID'
+        )::jsonb
     ),
     false,
     'Event speakers change desyncs meeting'

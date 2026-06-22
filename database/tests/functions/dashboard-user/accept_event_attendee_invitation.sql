@@ -9,53 +9,93 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000002'
-\set allianceID '00000000-0000-0000-0000-000000000003'
-\set eventCategoryID '00000000-0000-0000-0000-000000000004'
-\set eventID '00000000-0000-0000-0000-000000000005'
-\set groupID '00000000-0000-0000-0000-000000000006'
-\set invitedUserID '00000000-0000-0000-0000-000000000007'
+\set allianceID '4a020000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a020000-0000-0000-0000-000000000002'
+\set eventID '4a020000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a020000-0000-0000-0000-000000000004'
+\set groupID '4a020000-0000-0000-0000-000000000005'
+\set invitedUserID '4a020000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'event-invitation-alliance',
+    'Event Invitation Alliance',
+    'Alliance for testing event invitation acceptance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Tech', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'invitedUserID',
+    'hash-invited',
+    'invited@example.com',
+    true,
+    'invited',
+    'Invited User'
+);
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
-
--- Users
-insert into "user" (auth_hash, email, email_verified, name, user_id, username)
-values ('hash-invited', 'invited@example.com', true, 'Invited', :'invitedUserID', 'invited');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Invitation Group', 'invitation-group');
 
 -- Event
 insert into event (
     event_id,
-    name,
-    slug,
-    description,
-    timezone,
     event_category_id,
     event_kind_id,
     group_id,
+    name,
+    slug,
+    description,
     capacity,
     payment_currency_code,
     published,
-    starts_at
-)
-values (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 0, 'USD', true, current_timestamp + interval '1 day');
+    starts_at,
+    timezone
+) values (
+    :'eventID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Free Event',
+    'free-event',
+    'Free event with invitation acceptance',
+    0,
+    'USD',
+    true,
+    current_timestamp + interval '1 day',
+    'UTC'
+);
 
 -- Event invitations
 insert into event_attendee (event_id, user_id, manually_invited, status)
@@ -85,10 +125,13 @@ select ok(
 
 -- Should reject accepting non-pending invitations.
 select throws_ok(
-    $$ select accept_event_attendee_invitation(
-        '00000000-0000-0000-0000-000000000007',
-        '00000000-0000-0000-0000-000000000005'
-    ) $$,
+    format(
+        $$
+            select accept_event_attendee_invitation(%L::uuid, %L::uuid)
+        $$,
+        :'invitedUserID',
+        :'eventID'
+    ),
     'pending event invitation not found',
     'Should reject accepting non-pending invitations'
 );
@@ -107,18 +150,27 @@ select results_eq(
             details
         from audit_log
     $$,
-    $$
-        values (
-            'event_attendee_invitation_accepted',
-            '00000000-0000-0000-0000-000000000007'::uuid,
-            '00000000-0000-0000-0000-000000000003'::uuid,
-            '00000000-0000-0000-0000-000000000005'::uuid,
-            '00000000-0000-0000-0000-000000000006'::uuid,
-            '00000000-0000-0000-0000-000000000007'::uuid,
-            'user',
-            '{"event_id": "00000000-0000-0000-0000-000000000005", "user_id": "00000000-0000-0000-0000-000000000007"}'::jsonb
-        )
-    $$,
+    format(
+        $$
+            values (
+                'event_attendee_invitation_accepted',
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                %L::uuid,
+                'user',
+                '{"event_id": "%s", "user_id": "%s"}'::jsonb
+            )
+        $$,
+        :'invitedUserID',
+        :'allianceID',
+        :'eventID',
+        :'groupID',
+        :'invitedUserID',
+        :'eventID',
+        :'invitedUserID'
+    ),
     'Should create the expected audit row'
 );
 

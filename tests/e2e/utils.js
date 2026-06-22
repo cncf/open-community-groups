@@ -26,7 +26,7 @@ export const TEST_REGISTRATION_QUESTIONS_EVENT = {
   slug: "alpha-registration-answers-lab",
 };
 export const TEST_SEARCH_QUERY = "Test";
-export const TEST_SITE_TITLE = "GOUP Alliance";
+export const TEST_SITE_TITLE = "E2E Test Site";
 export const TEST_ALLIANCE_TITLE = "Platform Engineering Alliance";
 export const TEST_ALLIANCE_TITLE_2 = "Developer Experience Alliance";
 
@@ -174,8 +174,89 @@ export const TEST_USER_CREDENTIALS = {
   },
 };
 const BASE_URL = process.env.OCG_E2E_BASE_URL || "http://127.0.0.1:9001";
+const NAVIGATION_RETRY_ATTEMPTS = 10;
+const NAVIGATION_RETRY_DELAY_MS = 1_000;
+const LOGIN_RETRY_ATTEMPTS = 3;
+const LOGIN_NAVIGATION_TIMEOUT_MS = 5_000;
 
 const buildUrl = (path) => new URL(path, BASE_URL).toString();
+
+/**
+ * Waits before retrying a navigation while the test server is starting.
+ */
+const waitForNavigationRetry = () =>
+  new Promise((resolve) => {
+    setTimeout(resolve, NAVIGATION_RETRY_DELAY_MS);
+  });
+
+/**
+ * Checks whether a navigation error is caused by a temporarily missing server.
+ */
+const isServerUnavailableNavigationError = (error) => {
+  const message = String(error?.message || error);
+
+  return (
+    message.includes("Could not connect to the server") ||
+    message.includes("ERR_CONNECTION_REFUSED") ||
+    message.includes("ECONNREFUSED")
+  );
+};
+
+/**
+ * Navigates to a URL and tolerates brief server restarts during E2E runs.
+ */
+const navigateToUrl = async (page, url) => {
+  let lastError;
+
+  for (let attempt = 1; attempt <= NAVIGATION_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await page.goto(url);
+
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (
+        attempt === NAVIGATION_RETRY_ATTEMPTS ||
+        !isServerUnavailableNavigationError(error)
+      ) {
+        throw error;
+      }
+
+      await waitForNavigationRetry();
+    }
+  }
+
+  throw lastError;
+};
+
+/**
+ * Submits the login form and retries when navigation does not start.
+ */
+const submitSeededLogin = async (page) => {
+  let lastError;
+
+  for (let attempt = 1; attempt <= LOGIN_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      await Promise.all([
+        page.waitForURL((url) => !url.pathname.includes("/log-in"), {
+          timeout: LOGIN_NAVIGATION_TIMEOUT_MS,
+        }),
+        page.getByRole("button", { name: "Sign In" }).click(),
+      ]);
+
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === LOGIN_RETRY_ATTEMPTS || page.isClosed()) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
+};
 
 /** Waits for the page to finish the visual work needed before snapshotting. */
 const waitForVisualReady = async (page) => {
@@ -449,28 +530,28 @@ export const buildAuthUser = () => {
  * Navigates to the site home page.
  */
 export const navigateToSiteHome = async (page) => {
-  await page.goto(buildUrl("/"));
+  await navigateToUrl(page, buildUrl("/"));
 };
 
 /**
  * Navigates to the site explore page.
  */
 export const navigateToSiteExplore = async (page) => {
-  await page.goto(buildUrl("/explore"));
+  await navigateToUrl(page, buildUrl("/explore"));
 };
 
 /**
  * Navigates to a alliance home page.
  */
 export const navigateToAllianceHome = async (page, allianceName) => {
-  await page.goto(buildUrl(`/${allianceName}`));
+  await navigateToUrl(page, buildUrl(`/${allianceName}`));
 };
 
 /**
  * Navigates to a specific group page within a alliance.
  */
 export const navigateToGroup = async (page, allianceName, groupSlug) => {
-  await page.goto(buildUrl(`/${allianceName}/group/${groupSlug}`));
+  await navigateToUrl(page, buildUrl(`/${allianceName}/group/${groupSlug}`));
 };
 
 /**
@@ -482,7 +563,8 @@ export const navigateToEvent = async (
   groupSlug,
   eventSlug,
 ) => {
-  await page.goto(
+  await navigateToUrl(
+    page,
     buildUrl(`/${allianceName}/group/${groupSlug}/event/${eventSlug}`),
   );
 };
@@ -491,7 +573,7 @@ export const navigateToEvent = async (
  * Navigates to a specific path.
  */
 export const navigateToPath = async (page, path) => {
-  await page.goto(buildUrl(path));
+  await navigateToUrl(page, buildUrl(path));
 };
 
 /**
@@ -620,10 +702,7 @@ export const logInWithSeededUser = async (page, credentials) => {
     .getByRole("textbox", { name: "Password required" })
     .fill(credentials.password);
 
-  await Promise.all([
-    page.waitForURL((url) => !url.pathname.includes("/log-in")),
-    page.getByRole("button", { name: "Sign In" }).click(),
-  ]);
+  await submitSeededLogin(page);
 };
 
 /**

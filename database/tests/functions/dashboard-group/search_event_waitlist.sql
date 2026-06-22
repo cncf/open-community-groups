@@ -3,50 +3,119 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000041'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
+\set allianceID '3a300000-0000-0000-0000-000000000001'
+\set event1ID '3a300000-0000-0000-0000-000000000002'
+\set eventCategoryID '3a300000-0000-0000-0000-000000000003'
+\set group2ID '3a300000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a300000-0000-0000-0000-000000000005'
+\set groupID '3a300000-0000-0000-0000-000000000006'
+\set missingEventID '3a300000-0000-0000-0000-000000000007'
+\set user1ID '3a300000-0000-0000-0000-000000000008'
+\set user2ID '3a300000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'waitlist-alliance',
+    'Waitlist Alliance',
+    'A test alliance for waitlist search',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Tech', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
--- Group
+-- Groups
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
+values
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Waitlist Group', 'waitlist-group'),
+    (:'group2ID', :'allianceID', :'groupCategoryID', 'Other Group', 'other-group');
 
 -- Users
-insert into "user" (auth_hash, email, user_id, username, company, name, photo_url, title)
-values
-    (gen_random_bytes(32), 'alice@example.com', :'user1ID', 'alice', 'Cloud Corp', 'Alice', 'https://e/u1.png', 'Principal Engineer'),
-    (gen_random_bytes(32), 'bob@example.com', :'user2ID', 'bob', null, null, 'https://e/u2.png', null);
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    username,
+    company,
+    name,
+    photo_url,
+    title
+) values (
+    :'user1ID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    'alice',
+    'Cloud Corp',
+    'Alice',
+    'https://example.com/alice.png',
+    'Principal Engineer'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    'bob',
+    null,
+    null,
+    'https://example.com/bob.png',
+    null
+);
 
 -- Event
-insert into event (event_id, name, slug, description, timezone, event_category_id, event_kind_id, group_id, published, canceled, deleted, capacity, waitlist_enabled)
-values
-    (:'event1ID', 'E1', 'e1', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, 1, true);
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    canceled,
+    deleted,
+    capacity,
+    waitlist_enabled
+) values (
+    :'event1ID',
+    'Waitlist Event',
+    'waitlist-event',
+    'An event for waitlist search',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    true,
+    false,
+    false,
+    1,
+    true
+);
 
 -- Waitlist entries
 insert into event_waitlist (event_id, user_id, created_at)
@@ -62,12 +131,12 @@ values
 select is(
     search_event_waitlist(
         :'groupID'::uuid,
-        '{"event_id":"00000000-0000-0000-0000-000000000041","limit":50,"offset":0}'::jsonb
+        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'waitlist', '[
-            {"created_at": 1704067200, "user_id": "00000000-0000-0000-0000-000000000031", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://e/u1.png", "title": "Principal Engineer"},
-            {"created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": "https://e/u2.png", "title": null}
+            {"created_at": 1704067200, "user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/alice.png", "title": "Principal Engineer"},
+            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -78,11 +147,11 @@ select is(
 select is(
     search_event_waitlist(
         :'groupID'::uuid,
-        '{"event_id":"00000000-0000-0000-0000-000000000041","limit":1,"offset":1}'::jsonb
+        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 1, 'offset', 1)
     )::jsonb,
     jsonb_build_object(
         'waitlist', '[
-            {"created_at": 1704153600, "user_id": "00000000-0000-0000-0000-000000000032", "username": "bob", "company": null, "name": null, "photo_url": "https://e/u2.png", "title": null}
+            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -106,13 +175,26 @@ select is(
 select is(
     search_event_waitlist(
         :'groupID'::uuid,
-        '{"event_id":"00000000-0000-0000-0000-999999999999","limit":50,"offset":0}'::jsonb
+        jsonb_build_object('event_id', :'missingEventID'::uuid, 'limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'waitlist', '[]'::jsonb,
         'total', 0
     ),
     'Should return empty list for non-existing event'
+);
+
+-- Should return empty list when event belongs to another group
+select is(
+    search_event_waitlist(
+        :'group2ID'::uuid,
+        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 50, 'offset', 0)
+    )::jsonb,
+    jsonb_build_object(
+        'waitlist', '[]'::jsonb,
+        'total', 0
+    ),
+    'Should return empty list when event belongs to another group'
 );
 
 -- ============================================================================

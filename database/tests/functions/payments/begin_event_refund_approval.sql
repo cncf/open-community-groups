@@ -9,27 +9,43 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '75000000-0000-0000-0000-000000000001'
-\set eventCategoryID '75000000-0000-0000-0000-000000000002'
-\set eventID '75000000-0000-0000-0000-000000000003'
-\set eventTicketTypeID '75000000-0000-0000-0000-000000000004'
-\set groupCategoryID '75000000-0000-0000-0000-000000000005'
-\set groupID '75000000-0000-0000-0000-000000000006'
-\set pendingPurchaseID '75000000-0000-0000-0000-000000000007'
-\set approvingPurchaseID '75000000-0000-0000-0000-000000000008'
-\set pendingRefundRequestID '75000000-0000-0000-0000-000000000009'
-\set approvingRefundRequestID '75000000-0000-0000-0000-000000000010'
-\set priceWindowID '75000000-0000-0000-0000-000000000011'
-\set user1ID '75000000-0000-0000-0000-000000000012'
-\set user2ID '75000000-0000-0000-0000-000000000013'
+\set approvingPurchaseID '79420000-0000-0000-0000-000000000001'
+\set approvingRefundRequestID '79420000-0000-0000-0000-000000000002'
+\set allianceID '79420000-0000-0000-0000-000000000003'
+\set eventCategoryID '79420000-0000-0000-0000-000000000004'
+\set eventID '79420000-0000-0000-0000-000000000005'
+\set eventTicketTypeID '79420000-0000-0000-0000-000000000006'
+\set groupCategoryID '79420000-0000-0000-0000-000000000007'
+\set groupID '79420000-0000-0000-0000-000000000008'
+\set missingUserID '79420000-0000-0000-0000-000000000009'
+\set pendingPurchaseID '79420000-0000-0000-0000-000000000010'
+\set pendingRefundRequestID '79420000-0000-0000-0000-000000000011'
+\set priceWindowID '79420000-0000-0000-0000-000000000012'
+\set user1ID '79420000-0000-0000-0000-000000000013'
+\set user2ID '79420000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'refund-start-alliance', 'Refund Start Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'refund-start-alliance',
+    'Refund Start Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -40,9 +56,22 @@ insert into event_category (event_category_id, alliance_id, name)
 values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, username) values
-    (:'user1ID', 'hash-1', 'user1@example.com', true, 'buyer-1'),
-    (:'user2ID', 'hash-2', 'user2@example.com', true, 'buyer-2');
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values
+    (
+        :'user1ID',
+        'hash-1',
+        'user1@example.com',
+        true,
+        'buyer-1'
+    ),
+    (
+        :'user2ID',
+        'hash-2',
+        'user2@example.com',
+        true,
+        'buyer-2'
+    );
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
@@ -76,8 +105,19 @@ insert into event (
 );
 
 -- Ticket type and price window
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventTicketTypeID',
+    :'eventID',
+    1,
+    10,
+    'General admission'
+);
 
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
@@ -197,11 +237,11 @@ select is(
 
 -- Should reject missing refund requests
 select throws_ok(
-    $$select begin_event_refund_approval(
-        '75000000-0000-0000-0000-000000000006'::uuid,
-        '75000000-0000-0000-0000-000000000003'::uuid,
-        '75000000-0000-0000-0000-000000000099'::uuid
-    )$$,
+    format($$select begin_event_refund_approval(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid
+    )$$, :'groupID', :'eventID', :'missingUserID'),
     'refund request not found',
     'Should reject missing refund requests'
 );

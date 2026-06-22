@@ -6,24 +6,19 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
-use tracing::{instrument, warn};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::DynDB,
+    db::{DBExt, DynDB},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::{
-        DynNotificationsManager,
-        helpers::{
-            build_event_attendance_canceled_notification,
-            build_event_waitlist_promoted_notification, build_event_welcome_notification,
-            should_send_waitlist_promoted_notification,
-        },
+    services::notifications::enqueue::{
+        enqueue_event_attendance_cancellation_notifications, enqueue_event_welcome_notification,
     },
     templates::dashboard::user::events,
     types::{
@@ -69,7 +64,6 @@ pub(crate) async fn list_page(
 pub(crate) async fn cancel_attendance(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path((alliance_name, event_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -101,59 +95,29 @@ pub(crate) async fn cancel_attendance(
         }
     }
 
-    // Cancel the user's attendance and collect any waitlist promotions
-    let leave_result = db.leave_event(alliance_id, event_id, user.user_id).await?;
+    // Cancel attendance and enqueue required notifications
+    let required_notification_server_cfg = server_cfg.clone();
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Cancel attendance and collect any waitlist promotions
+                let leave_result = tx.leave_event(alliance_id, event_id, user.user_id).await?;
 
-    // Load notification context after cancellation succeeds
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(alliance_id, event_id)
-    ) {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load user dashboard attendance cancellation notification context");
-            return Ok((
-                StatusCode::NO_CONTENT,
-                [("HX-Trigger", "refresh-user-dashboard-content")],
-            ));
-        }
-    };
+                // Enqueue required cancellation and promotion notifications before committing
+                enqueue_event_attendance_cancellation_notifications(
+                    tx,
+                    &required_notification_server_cfg,
+                    alliance_id,
+                    event_id,
+                    user.user_id,
+                    leave_result.promoted_user_ids,
+                )
+                .await?;
 
-    // Confirm the canceled attendance to the user
-    match build_event_attendance_canceled_notification(
-        &event,
-        user.user_id,
-        &server_cfg,
-        &site_settings,
-    ) {
-        Ok(notification) => {
-            if let Err(err) = notifications_manager.enqueue(&notification).await {
-                warn!(error = %err, "failed to enqueue event attendance cancellation notification");
-            }
-        }
-        Err(err) => {
-            warn!(error = %err, "failed to build event attendance cancellation notification");
-        }
-    }
-
-    // Notify users promoted off the waitlist after a spot opens up
-    if should_send_waitlist_promoted_notification(&event, &leave_result.promoted_user_ids) {
-        match build_event_waitlist_promoted_notification(
-            &event,
-            leave_result.promoted_user_ids,
-            &server_cfg,
-            &site_settings,
-        ) {
-            Ok(notification) => {
-                if let Err(err) = notifications_manager.enqueue(&notification).await {
-                    warn!(error = %err, "failed to enqueue waitlist promotion notification");
-                }
-            }
-            Err(err) => {
-                warn!(error = %err, "failed to build waitlist promotion notification");
-            }
-        }
-    }
+                Ok(())
+            })
+        })
+        .await?;
 
     Ok((
         StatusCode::NO_CONTENT,
@@ -166,7 +130,6 @@ pub(crate) async fn cancel_attendance(
 pub(crate) async fn submit_registration_answers(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Path((alliance_name, event_id)): Path<(String, Uuid)>,
     ValidatedForm(input): ValidatedForm<RequiredQuestionnaireAnswersForm>,
@@ -177,51 +140,38 @@ pub(crate) async fn submit_registration_answers(
         .await?
         .ok_or(HandlerError::NotFound)?;
 
-    // Persist answers and detect first-time registration completion
-    let became_confirmed = db
-        .submit_event_registration_answers(
-            user.user_id,
-            alliance_id,
-            event_id,
-            &input.registration_answers,
-        )
+    // Persist answers and enqueue required welcome notification when registration completes
+    let registration_answers = input.registration_answers;
+    db.as_ref()
+        .transaction(|tx| {
+            Box::pin(async move {
+                // Persist registration answers and detect confirmation
+                let became_confirmed = tx
+                    .submit_event_registration_answers(
+                        user.user_id,
+                        alliance_id,
+                        event_id,
+                        &registration_answers,
+                    )
+                    .await?;
+
+                // Enqueue required welcome notification when registration completes
+                if became_confirmed {
+                    enqueue_event_welcome_notification(
+                        tx,
+                        &server_cfg,
+                        alliance_id,
+                        event_id,
+                        user.user_id,
+                        false,
+                    )
+                    .await?;
+                }
+
+                Ok(())
+            })
+        })
         .await?;
-
-    // Notify only when registration transitioned from pending to confirmed
-    if !became_confirmed {
-        return Ok((
-            StatusCode::NO_CONTENT,
-            [("HX-Trigger", "refresh-user-dashboard-content")],
-        )
-            .into_response());
-    }
-
-    // Send the regular welcome notification after a pending registration becomes complete
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(alliance_id, event_id)
-    ) {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load event welcome notification context");
-            return Ok((
-                StatusCode::NO_CONTENT,
-                [("HX-Trigger", "refresh-user-dashboard-content")],
-            )
-                .into_response());
-        }
-    };
-    match build_event_welcome_notification(&event, user.user_id, &server_cfg, &site_settings, false)
-    {
-        Ok(notification) => {
-            if let Err(err) = notifications_manager.enqueue(&notification).await {
-                warn!(error = %err, "failed to enqueue event welcome notification after questionnaire answers");
-            }
-        }
-        Err(err) => {
-            warn!(error = %err, "failed to build event welcome notification after questionnaire answers");
-        }
-    }
 
     Ok((
         StatusCode::NO_CONTENT,

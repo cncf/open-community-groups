@@ -9,48 +9,63 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set checkInWindowEventID '00000000-0000-0000-0000-000000000042'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000031'
-\set futureEventID '00000000-0000-0000-0000-000000000041'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000011'
-\set multiDayEventID '00000000-0000-0000-0000-000000000044'
-\set noStartTimeEventID '00000000-0000-0000-0000-000000000046'
-\set pastEventID '00000000-0000-0000-0000-000000000043'
-\set sameDayWithEndsAtEventID '00000000-0000-0000-0000-000000000045'
+\set checkInWindowEventID '5e080000-0000-0000-0000-000000000001'
+\set allianceID '5e080000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e080000-0000-0000-0000-000000000003'
+\set futureEventID '5e080000-0000-0000-0000-000000000004'
+\set groupCategoryID '5e080000-0000-0000-0000-000000000005'
+\set groupID '5e080000-0000-0000-0000-000000000006'
+\set multiDayEventID '5e080000-0000-0000-0000-000000000007'
+\set noStartTimeEventID '5e080000-0000-0000-0000-000000000008'
+\set pastEventID '5e080000-0000-0000-0000-000000000009'
+\set sameDayWithEndsAtEventID '5e080000-0000-0000-0000-00000000000a'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'groupCategoryID', 'Technology', :'allianceID');
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
--- Event Category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+-- Event category
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Group
 insert into "group" (
     group_id,
     alliance_id,
+    group_category_id,
     name,
     slug,
-    description,
-    group_category_id
+    description
 ) values (
     :'groupID',
     :'allianceID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
-    'A test group',
-    :'groupCategoryID'
+    'A test group'
 );
 
 -- Event 1: Future event (outside check-in window)

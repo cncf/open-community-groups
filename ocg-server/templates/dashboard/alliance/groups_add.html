@@ -1,5 +1,6 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
 
 {# Groups form -#}
 <form id="groups-form"
@@ -103,292 +104,118 @@
         {# End Group Description -#}
 
         {# Logo URL -#}
-        <div class="col-span-full lg:col-span-4">
-          <image-field label="Logo" name="logo_url" image-kind="logo" target="logo" legend="If this logo isn't provided, we'll fall back to the alliance logo.">
-        </image-field>
-      </div>
-      {# End Logo URL -#}
+        {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the alliance logo.", field_class = "col-span-full lg:col-span-4") -}}
+        {# End Logo URL -#}
 
-      {# Banner URL -#}
+        {# Banner URL -#}
+        {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.") -}}
+        {# End Banner URL -#}
+
+        {# Banner Mobile URL -#}
+        {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.") -}}
+        {# End Banner Mobile URL -#}
+
+        {# Open Graph image URL -#}
+        {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for group and event link previews. If this image isn't provided, we'll fall back to the alliance Open Graph image if set.") -}}
+        {# End Open Graph image URL -#}
+      </div>
+    </div>
+
+    {# Location section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {% let clear_location_button -%}
+      <button id="clear-location-fields"
+              type="button"
+              class="btn-primary-outline btn-mini whitespace-nowrap"
+              aria-label="Clear location details">Clear location</button>
+    {%- endlet %}
+    {{ dashboard::form_title(title = "Location",
+        description = "Optional location information for the group.",
+        button = clear_location_button) -}}
+
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      {# Location search -#}
       <div class="col-span-full">
-        <image-field label="Banner" name="banner_url" image-kind="banner" help-prefix-text="Size required 2428 x 192 px." target="banner" legend="If this banner isn't provided, we'll fall back to the alliance banner.">
-      </image-field>
+        <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude">
+        </location-search-field>
+      </div>
+      {# End Location search -#}
     </div>
-    {# End Banner URL -#}
-
-    {# Banner Mobile URL -#}
-    <div class="col-span-full">
-      <image-field label="Banner Mobile" name="banner_mobile_url" image-kind="banner" help-prefix-text="Size required 1220 x 192 px." target="banner_mobile" legend="If this banner isn't provided, we'll fall back to the alliance banner.">
-    </image-field>
   </div>
-  {# End Banner Mobile URL -#}
+  {# End location section -#}
 
-  {# Open Graph image URL -#}
-  <div class="col-span-full">
-    <image-field label="Open Graph Image" name="og_image_url" image-kind="banner" help-prefix-text="Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP." target="open_graph" legend="Used for group and event link previews. If this image isn't provided, we'll fall back to the alliance Open Graph image if set.">
-  </image-field>
-</div>
-{# End Open Graph image URL -#}
-</div>
-</div>
+  {# Social links section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
 
-{# Location section -#}
-<div class="border-b border-stone-900/10 pb-12">
-  {% let clear_location_button -%}
-  <button id="clear-location-fields"
-          type="button"
-          class="btn-primary-outline btn-mini whitespace-nowrap"
-          aria-label="Clear location details">Clear location</button>
-{%- endlet %}
-{{ dashboard::form_title(title = "Location",
-description = "Optional location information for the group.",
-button = clear_location_button) -}}
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      {# Website URL -#}
+      {{ form_fields::social_url_field(name = "website_url", label = "Website", icon = "icon-link", placeholder = "https://example.com") -}}
+      {# End Website URL -#}
 
-<div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-  {# Location search -#}
-  <div class="col-span-full">
-    <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude">
-    </location-search-field>
+      {# Bluesky URL -#}
+      {{ form_fields::social_url_field(name = "bluesky_url", label = "Bluesky", icon = "icon-bluesky", placeholder = "https://bsky.app/profile/username") -}}
+      {# End Bluesky URL -#}
+
+      {# Facebook URL -#}
+      {{ form_fields::social_url_field(name = "facebook_url", label = "Facebook", icon = "icon-facebook", placeholder = "https://facebook.com/page") -}}
+      {# End Facebook URL -#}
+
+      {# Flickr URL -#}
+      {{ form_fields::social_url_field(name = "flickr_url", label = "Flickr", icon = "icon-flickr", placeholder = "https://flickr.com/photos/account") -}}
+      {# End Flickr URL -#}
+
+      {# GitHub URL -#}
+      {{ form_fields::social_url_field(name = "github_url", label = "GitHub", icon = "icon-github", placeholder = "https://github.com/organization") -}}
+      {# End GitHub URL -#}
+
+      {# Instagram URL -#}
+      {{ form_fields::social_url_field(name = "instagram_url", label = "Instagram", icon = "icon-instagram", placeholder = "https://instagram.com/username") -}}
+      {# End Instagram URL -#}
+
+      {# LinkedIn URL -#}
+      {{ form_fields::social_url_field(name = "linkedin_url", label = "LinkedIn", icon = "icon-linkedin", placeholder = "https://linkedin.com/company/name") -}}
+      {# End LinkedIn URL -#}
+
+      {# Slack URL -#}
+      {{ form_fields::social_url_field(name = "slack_url", label = "Slack", icon = "icon-slack", placeholder = "https://workspace.slack.com") -}}
+      {# End Slack URL -#}
+
+      {# Twitter URL -#}
+      {{ form_fields::social_url_field(name = "twitter_url", label = "X (formerly Twitter)", icon = "icon-twitter", placeholder = "https://x.com/username") -}}
+      {# End Twitter URL -#}
+
+      {# WeChat URL -#}
+      {{ form_fields::social_url_field(name = "wechat_url", label = "WeChat", icon = "icon-wechat", placeholder = "https://wechat.com/account") -}}
+      {# End WeChat URL -#}
+
+      {# YouTube URL -#}
+      {{ form_fields::social_url_field(name = "youtube_url", label = "YouTube", icon = "icon-youtube", placeholder = "https://youtube.com/channel/id") -}}
+      {# End YouTube URL -#}
+    </div>
   </div>
-  {# End Location search -#}
-</div>
-</div>
-{# End location section -#}
+  {# End social links section -#}
 
-{# Social links section -#}
-<div class="border-b border-stone-900/10 pb-12">
-  {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
+  {% let tag_legend -%}Optional tags for the group. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
+  {{ form_fields::tags_gallery_links_section(title = "Additional Content", description = "Optional tags, photos, and custom links.", tag_legend = tag_legend, photo_legend = "Photos that will be displayed in the group gallery.", extra_links_legend = "Additional custom links displayed in the group page.") -}}
 
-  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-    {# Website URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="website_url" class="form-label">Website</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-link bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="website_url"
-               id="website_url"
-               class="input-primary ps-10"
-               placeholder="https://example.com">
-      </div>
-    </div>
-    {# End Website URL -#}
+  <div class="mt-6 flex items-center justify-end gap-x-6">
+    {# Cancel button -#}
+    <button id="cancel-button"
+            type="button"
+            hx-get="/dashboard/alliance?tab=groups"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline">Cancel</button>
+    {# End cancel button -#}
 
-    {# Bluesky URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="bluesky_url" class="form-label">Bluesky</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-bluesky bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="bluesky_url"
-               id="bluesky_url"
-               class="input-primary ps-10"
-               placeholder="https://bsky.app/profile/username">
-      </div>
-    </div>
-    {# End Bluesky URL -#}
-
-    {# Facebook URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="facebook_url" class="form-label">Facebook</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-facebook bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="facebook_url"
-               id="facebook_url"
-               class="input-primary ps-10"
-               placeholder="https://facebook.com/page">
-      </div>
-    </div>
-    {# End Facebook URL -#}
-
-    {# Flickr URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="flickr_url" class="form-label">Flickr</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-flickr bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="flickr_url"
-               id="flickr_url"
-               class="input-primary ps-10"
-               placeholder="https://flickr.com/photos/account">
-      </div>
-    </div>
-    {# End Flickr URL -#}
-
-    {# GitHub URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="github_url" class="form-label">GitHub</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-github bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="github_url"
-               id="github_url"
-               class="input-primary ps-10"
-               placeholder="https://github.com/organization">
-      </div>
-    </div>
-    {# End GitHub URL -#}
-
-    {# Instagram URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="instagram_url" class="form-label">Instagram</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-instagram bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="instagram_url"
-               id="instagram_url"
-               class="input-primary ps-10"
-               placeholder="https://instagram.com/username">
-      </div>
-    </div>
-    {# End Instagram URL -#}
-
-    {# LinkedIn URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="linkedin_url" class="form-label">LinkedIn</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-linkedin bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="linkedin_url"
-               id="linkedin_url"
-               class="input-primary ps-10"
-               placeholder="https://linkedin.com/company/name">
-      </div>
-    </div>
-    {# End LinkedIn URL -#}
-
-    {# Slack URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="slack_url" class="form-label">Slack</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-slack bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="slack_url"
-               id="slack_url"
-               class="input-primary ps-10"
-               placeholder="https://workspace.slack.com">
-      </div>
-    </div>
-    {# End Slack URL -#}
-
-    {# Twitter URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="twitter_url" class="form-label">X (formerly Twitter)</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-twitter bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="twitter_url"
-               id="twitter_url"
-               class="input-primary ps-10"
-               placeholder="https://x.com/username">
-      </div>
-    </div>
-    {# End Twitter URL -#}
-
-    {# WeChat URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="wechat_url" class="form-label">WeChat</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-wechat bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="wechat_url"
-               id="wechat_url"
-               class="input-primary ps-10"
-               placeholder="https://wechat.com/account">
-      </div>
-    </div>
-    {# End WeChat URL -#}
-
-    {# YouTube URL -#}
-    <div class="col-span-full lg:col-span-3">
-      <label for="youtube_url" class="form-label">YouTube</label>
-      <div class="mt-2 relative">
-        <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
-          <div class="svg-icon size-4 icon-youtube bg-stone-300"></div>
-        </div>
-        <input type="url"
-               name="youtube_url"
-               id="youtube_url"
-               class="input-primary ps-10"
-               placeholder="https://youtube.com/channel/id">
-      </div>
-    </div>
-    {# End YouTube URL -#}
+    {# Save button -#}
+    <button type="submit"  class="btn-primary relative">
+      {{ ui::btn_spinner(id = "alliance-groups-create-spinner", spinner_type = "2") -}}
+      Create Group
+    </button>
+    {# End save button -#}
   </div>
-</div>
-{# End social links section -#}
-
-{# Additional content section -#}
-<div class="pb-12">
-  {{ dashboard::form_title(title = "Additional Content", description = "Optional tags, photos, and custom links.") -}}
-
-  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-    {# Tags -#}
-    <div class="col-span-6 xl:col-span-3">
-      <multiple-inputs field-name="tags" input-type="text" max-length="{{ crate::validation::MAX_LEN_TAG }}" label="Tag" legend="Optional tags for the group. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.">
-      </multiple-inputs>
-    </div>
-    {# End Tags -#}
-
-    {# Photo gallery -#}
-    <div class="col-span-full">
-      <gallery-field field-name="photos_urls" images="[]" max-images="0" label="Photos"></gallery-field>
-      <p class="form-legend">Photos that will be displayed in the group gallery.</p>
-    </div>
-    {# End photo gallery -#}
-
-    {# Extra links -#}
-    <div class="col-span-full">
-      <label class="form-label">Extra Links</label>
-      <div class="mt-2">
-        <key-value-inputs field-name="extra_links" key-placeholder="Link Name" value-placeholder="URL" items="{}" label="Link">
-        </key-value-inputs>
-      </div>
-      <p class="form-legend">Additional custom links displayed in the group page.</p>
-    </div>
-    {# End extra links -#}
-  </div>
-</div>
-{# End additional content section -#}
-
-<div class="mt-6 flex items-center justify-end gap-x-6">
-  {# Cancel button -#}
-  <button id="cancel-button"
-          type="button"
-          hx-get="/dashboard/alliance?tab=groups"
-          hx-target="body"
-          hx-indicator="#dashboard-spinner"
-          class="btn-primary-outline">Cancel</button>
-  {# End cancel button -#}
-
-  {# Save button -#}
-  <button type="submit"  class="btn-primary relative">
-    {{ ui::btn_spinner(id = "alliance-groups-create-spinner", spinner_type = "2") -}}
-    Create Group
-  </button>
-  {# End save button -#}
-</div>
 </div>
 </form>
 

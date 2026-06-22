@@ -9,9 +9,10 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set region1ID '00000000-0000-0000-0000-000000000011'
-\set region2ID '00000000-0000-0000-0000-000000000012'
+\set allianceID '2c180000-0000-0000-0000-000000000001'
+\set region1ID '2c180000-0000-0000-0000-000000000002'
+\set region2ID '2c180000-0000-0000-0000-000000000003'
+\set unknownRegionID '2c180000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
@@ -23,27 +24,27 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
-    'goup-seattle',
-    'Goup Seattle',
+    'cncf-seattle',
+    'CNCF Seattle',
     'Alliance for region update tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- Regions
 insert into region (
-    alliance_id,
     region_id,
+    alliance_id,
     name
 ) values
-    (:'allianceID', :'region1ID', 'North America'),
-    (:'allianceID', :'region2ID', 'Europe');
+    (:'region1ID', :'allianceID', 'North America'),
+    (:'region2ID', :'allianceID', 'Europe');
 
 -- ============================================================================
 -- TESTS
@@ -51,22 +52,29 @@ insert into region (
 
 -- Should update region name and generated normalized name
 select lives_ok(
-    $$ select update_region(
+    format(
+        $$ select update_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000011'::uuid,
+        %L::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'Latin America')
     ) $$,
+        :'allianceID',
+        :'region1ID'
+    ),
     'Should update region name'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select
         r.name,
         r.normalized_name
     from region r
-    where r.region_id = '00000000-0000-0000-0000-000000000011'::uuid
-    $$,
+    where r.region_id = %L::uuid
+        $$,
+        :'region1ID'
+    ),
     $$ values ('Latin America'::text, 'latin-america'::text) $$,
     'Should persist updated region values'
 );
@@ -83,39 +91,51 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'region_updated',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'region',
-            '00000000-0000-0000-0000-000000000011'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID',
+        :'region1ID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should reject duplicate normalized names in same alliance
 select throws_ok(
-    $$ select update_region(
+    format(
+        $$ select update_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000011'::uuid,
+        %L::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'Europe')
     ) $$,
+        :'allianceID',
+        :'region1ID'
+    ),
     'region already exists',
     'Should reject duplicate region names'
 );
 
 -- Should fail when target region does not exist
 select throws_ok(
-    $$ select update_region(
+    format(
+        $$ select update_region(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        %L::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'APAC')
     ) $$,
+        :'allianceID',
+        :'unknownRegionID'
+    ),
     'region not found',
     'Should fail when updating a non-existing region'
 );

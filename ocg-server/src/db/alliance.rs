@@ -3,12 +3,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
-use deadpool_postgres::Client;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::{PgClient, PgExecutor},
     templates::alliance,
     types::{
         event::{EventKind, EventSummary},
@@ -43,7 +42,10 @@ pub(crate) trait DBAlliance {
 }
 
 #[async_trait]
-impl DBAlliance for PgDB {
+impl<T> DBAlliance for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DB::get_alliance_id_by_name`]
     #[instrument(skip(self), err)]
     async fn get_alliance_id_by_name(&self, name: &str) -> Result<Option<Uuid>> {
@@ -54,7 +56,7 @@ impl DBAlliance for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, name: &str) -> Result<Option<Uuid>> {
+        async fn inner(db: PgClient<'_>, name: &str) -> Result<Option<Uuid>> {
             let alliance_id = db
                 .query_opt("select get_alliance_id_by_name($1::text)", &[&name])
                 .await?
@@ -66,7 +68,7 @@ impl DBAlliance for PgDB {
         if name.is_empty() {
             return Ok(None);
         }
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db, name).await
     }
 
@@ -80,7 +82,7 @@ impl DBAlliance for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client, alliance_id: Uuid) -> Result<Option<String>> {
+        async fn inner(db: PgClient<'_>, alliance_id: Uuid) -> Result<Option<String>> {
             let name = db
                 .query_opt(
                     "select get_alliance_name_by_id($1::uuid)",
@@ -92,7 +94,7 @@ impl DBAlliance for PgDB {
             Ok(name)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db, alliance_id).await
     }
 

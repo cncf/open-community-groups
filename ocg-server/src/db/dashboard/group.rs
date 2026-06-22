@@ -5,13 +5,12 @@ use std::collections::HashMap;
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
-use deadpool_postgres::Client;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::{PgClient, PgExecutor},
     services::meetings::MeetingProvider,
     templates::dashboard::{
         audit::{AuditLogFilters, AuditLogsOutput},
@@ -405,7 +404,10 @@ pub(crate) trait DBDashboardGroup {
 }
 
 #[async_trait]
-impl DBDashboardGroup for PgDB {
+impl<T> DBDashboardGroup for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBDashboardGroup::accept_event_invitation_request`]
     #[instrument(skip(self), err)]
     async fn accept_event_invitation_request(
@@ -683,7 +685,7 @@ impl DBDashboardGroup for PgDB {
             result = true
         )]
         async fn inner(
-            db: Client,
+            db: PgClient<'_>,
             alliance_id: Uuid,
             group_id: Uuid,
         ) -> Result<GroupDashboardStats> {
@@ -698,7 +700,7 @@ impl DBDashboardGroup for PgDB {
             Ok(stats)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db, alliance_id, group_id).await
     }
 
@@ -794,14 +796,14 @@ impl DBDashboardGroup for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<EventKind>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<EventKind>> {
             let row = db.query_one("select list_event_kinds()", &[]).await?;
             let kinds = row.try_get::<_, Json<Vec<EventKind>>>(0)?.0;
 
             Ok(kinds)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 
@@ -888,14 +890,14 @@ impl DBDashboardGroup for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<GroupRoleSummary>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<GroupRoleSummary>> {
             let row = db.query_one("select list_group_roles()", &[]).await?;
             let roles = row.try_get::<_, Json<Vec<GroupRoleSummary>>>(0)?.0;
 
             Ok(roles)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 
@@ -945,14 +947,14 @@ impl DBDashboardGroup for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<String>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<String>> {
             let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
             let currency_codes = row.try_get::<_, Vec<String>>(0)?;
 
             Ok(currency_codes)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 
@@ -966,14 +968,14 @@ impl DBDashboardGroup for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<SessionKind>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<SessionKind>> {
             let row = db.query_one("select list_session_kinds()", &[]).await?;
             let kinds = row.try_get::<_, Json<Vec<SessionKind>>>(0)?.0;
 
             Ok(kinds)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 

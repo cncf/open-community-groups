@@ -9,7 +9,7 @@ use axum::{
 };
 use garde::Validate;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -81,26 +81,37 @@ pub(crate) async fn add(
     db.add_alliance_team_member(user.user_id, alliance_id, member.user_id, &member.role)
         .await?;
 
-    // Enqueue invitation email notification
-    let (alliance, site_settings) = tokio::try_join!(
-        db.get_alliance_summary(alliance_id),
-        db.get_site_settings()
-    )?;
-    let template_data = AllianceTeamInvitation {
-        alliance_name: alliance.display_name,
-        link: format!(
-            "{}/dashboard/user?tab=invitations",
-            server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
-        ),
-        theme: site_settings.theme,
-    };
-    let notification = NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::AllianceTeamInvitation,
-        recipients: vec![member.user_id],
-        template_data: Some(serde_json::to_value(&template_data)?),
-    };
-    notifications_manager.enqueue(&notification).await?;
+    // Enqueue invitation email notification best-effort
+    if let Err(err) = async {
+        let (alliance, site_settings) = tokio::try_join!(
+            db.get_alliance_summary(alliance_id),
+            db.get_site_settings()
+        )?;
+        let template_data = AllianceTeamInvitation {
+            alliance_name: alliance.display_name,
+            link: format!(
+                "{}/dashboard/user?tab=invitations",
+                server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
+            ),
+            theme: site_settings.theme,
+        };
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::AllianceTeamInvitation,
+            recipients: vec![member.user_id],
+            template_data: Some(serde_json::to_value(&template_data)?),
+        };
+        notifications_manager.enqueue(&notification).await
+    }
+    .await
+    {
+        warn!(
+            error = %err,
+            %alliance_id,
+            user_id = %member.user_id,
+            "failed to enqueue alliance team invitation notification"
+        );
+    }
 
     Ok((
         StatusCode::CREATED,

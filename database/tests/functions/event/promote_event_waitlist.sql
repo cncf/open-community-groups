@@ -9,57 +9,74 @@ select plan(13);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCappedID '00000000-0000-0000-0000-000000000041'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventFullID '00000000-0000-0000-0000-000000000042'
-\set eventLimitedID '00000000-0000-0000-0000-000000000043'
-\set eventQuestionsID '90400000-0000-0000-0000-000000000043'
-\set eventUnlimitedID '00000000-0000-0000-0000-000000000044'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
-\set user3ID '00000000-0000-0000-0000-000000000033'
-\set user4ID '00000000-0000-0000-0000-000000000034'
-\set user5ID '00000000-0000-0000-0000-000000000035'
-\set user6ID '00000000-0000-0000-0000-000000000036'
-\set user7ID '00000000-0000-0000-0000-000000000037'
-\set user8ID '00000000-0000-0000-0000-000000000038'
+\set allianceID '5e0b0000-0000-0000-0000-000000000001'
+\set eventCappedID '5e0b0000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e0b0000-0000-0000-0000-000000000003'
+\set eventFullID '5e0b0000-0000-0000-0000-000000000004'
+\set eventLimitedID '5e0b0000-0000-0000-0000-000000000005'
+\set eventQuestionsID '5e0b0000-0000-0000-0000-000000000006'
+\set eventUnlimitedID '5e0b0000-0000-0000-0000-000000000007'
+\set groupCategoryID '5e0b0000-0000-0000-0000-000000000008'
+\set groupID '5e0b0000-0000-0000-0000-000000000009'
+\set questionID '5e0b0000-0000-0000-0000-00000000000a'
+\set questionsWaitlistUserID '5e0b0000-0000-0000-0000-00000000000b'
+\set unknownEventID '5e0b0000-0000-0000-0000-00000000000c'
+\set user1ID '5e0b0000-0000-0000-0000-00000000000d'
+\set user2ID '5e0b0000-0000-0000-0000-00000000000e'
+\set user3ID '5e0b0000-0000-0000-0000-00000000000f'
+\set user4ID '5e0b0000-0000-0000-0000-000000000010'
+\set user5ID '5e0b0000-0000-0000-0000-000000000011'
+\set user6ID '5e0b0000-0000-0000-0000-000000000012'
+\set user7ID '5e0b0000-0000-0000-0000-000000000013'
+\set user8ID '5e0b0000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'Active Group', 'active-group');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
+insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'user1ID', 'h', 'u1@test.com', 'u1'),
-    (:'user2ID', 'h', 'u2@test.com', 'u2'),
-    (:'user3ID', 'h', 'u3@test.com', 'u3'),
-    (:'user4ID', 'h', 'u4@test.com', 'u4'),
-    (:'user5ID', 'h', 'u5@test.com', 'u5'),
-    (:'user6ID', 'h', 'u6@test.com', 'u6'),
-    (:'user7ID', 'h', 'u7@test.com', 'u7'),
-    (:'user8ID', 'h', 'u8@test.com', 'u8'),
-    (:'questionsWaitlistUserID', 'h', 'rq-waitlist@test.com', 'rq-waitlist');
+    (:'user1ID', 'h1', 'u1@test.com', true, 'u1'),
+    (:'user2ID', 'h2', 'u2@test.com', true, 'u2'),
+    (:'user3ID', 'h3', 'u3@test.com', true, 'u3'),
+    (:'user4ID', 'h4', 'u4@test.com', true, 'u4'),
+    (:'user5ID', 'h5', 'u5@test.com', true, 'u5'),
+    (:'user6ID', 'h6', 'u6@test.com', true, 'u6'),
+    (:'user7ID', 'h7', 'u7@test.com', true, 'u7'),
+    (:'user8ID', 'h8', 'u8@test.com', true, 'u8'),
+    (:'questionsWaitlistUserID', 'h9', 'rq-waitlist@test.com', true, 'rq-waitlist');
 
 -- Events
 insert into event (
@@ -78,10 +95,66 @@ insert into event (
     waitlist_enabled
 )
 values
-    (:'eventCappedID', 'Capped', 'capped', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, 5, true),
-    (:'eventFullID', 'Full', 'full', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, 1, true),
-    (:'eventLimitedID', 'Limited', 'limited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, 3, true),
-    (:'eventUnlimitedID', 'Unlimited', 'unlimited', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true, false, false, null, false);
+    (
+        :'eventCappedID',
+        'Capped',
+        'capped',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        5,
+        true
+    ),
+    (
+        :'eventFullID',
+        'Full',
+        'full',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        1,
+        true
+    ),
+    (
+        :'eventLimitedID',
+        'Limited',
+        'limited',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        3,
+        true
+    ),
+    (
+        :'eventUnlimitedID',
+        'Unlimited',
+        'unlimited',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        null,
+        false
+    );
 
 -- Event requiring registration answers before promoted waitlist users are confirmed
 insert into event (
@@ -110,7 +183,10 @@ values (
     true,
     1,
     true,
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+        :'questionID'
+    )::jsonb
 );
 
 -- Existing attendees
@@ -172,7 +248,7 @@ select is(
 
 -- Should return an empty list for an unknown event
 select is(
-    promote_event_waitlist('00000000-0000-0000-0000-999999999999'::uuid),
+    promote_event_waitlist(:'unknownEventID'::uuid),
     array[]::uuid[],
     'Returns an empty list for an unknown event'
 );

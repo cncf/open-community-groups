@@ -9,8 +9,8 @@ use uuid::Uuid;
 
 use crate::{
     auth::{User, UserSummary},
-    db::PgDB,
-    templates::auth::UserDetails,
+    db::PgExecutor,
+    templates::{auth::UserDetails, notifications::EmailVerification},
     types::permissions::{AlliancePermission, GroupPermission},
     types::user::UserProvider,
 };
@@ -22,6 +22,7 @@ pub(crate) trait DBAuth {
     async fn activate_pre_registered_user_email_password(
         &self,
         user_summary: &UserSummary,
+        verification: &EmailVerificationNotification,
     ) -> Result<Option<(User, Uuid)>>;
 
     /// Activates a pre-registered user using externally verified identity details.
@@ -64,6 +65,7 @@ pub(crate) trait DBAuth {
         &self,
         user_summary: &UserSummary,
         email_verified: bool,
+        verification: Option<EmailVerificationNotification>,
     ) -> Result<(User, Option<Uuid>)>;
 
     /// Updates an existing session in the database.
@@ -78,7 +80,7 @@ pub(crate) trait DBAuth {
     /// Updates externally sourced provider metadata for a user.
     async fn update_user_provider(&self, user_id: &Uuid, provider: &UserProvider) -> Result<()>;
 
-    /// Refreshes externally sourced profile fields for a user.
+    /// Updates externally sourced profile fields for a user.
     async fn update_user_external_profile(
         &self,
         user_id: &Uuid,
@@ -106,20 +108,30 @@ pub(crate) trait DBAuth {
     async fn verify_email(&self, code: &Uuid) -> Result<()>;
 }
 
-/// Implementation of `DBAuth` for `PgDB`, providing all authentication and authorization
-/// related database operations.
 #[async_trait]
-impl DBAuth for PgDB {
-    #[instrument(skip(self, user_summary), err)]
+impl<T> DBAuth for T
+where
+    T: PgExecutor + Send + Sync,
+{
+    #[instrument(skip(self, user_summary, verification), err)]
     async fn activate_pre_registered_user_email_password(
         &self,
         user_summary: &UserSummary,
+        verification: &EmailVerificationNotification,
     ) -> Result<Option<(User, Uuid)>> {
-        let db = self.pool.get().await?;
+        let template_data = serde_json::to_value(&verification.template_data)?;
+        let db = self.client().await?;
         let row = db
             .query_opt(
-                "select * from activate_pre_registered_user_email_password($1::jsonb);",
-                &[&Json(user_summary)],
+                "
+                select *
+                from activate_pre_registered_user_email_password(
+                    $1::jsonb,
+                    $2::uuid,
+                    $3::jsonb
+                );
+                ",
+                &[&Json(user_summary), &verification.code, &template_data],
             )
             .await?;
 
@@ -180,7 +192,7 @@ impl DBAuth for PgDB {
 
     #[instrument(skip(self, session_id), err)]
     async fn get_session(&self, session_id: &session::Id) -> Result<Option<session::Record>> {
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let row = db
             .query_opt(
                 "select data, expires_at from auth_session where auth_session_id = $1::text;",
@@ -251,17 +263,37 @@ impl DBAuth for PgDB {
         .await
     }
 
-    #[instrument(skip(self, user_summary), err)]
+    #[instrument(skip(self, user_summary, verification), err)]
     async fn sign_up_user(
         &self,
         user_summary: &UserSummary,
         email_verified: bool,
+        verification: Option<EmailVerificationNotification>,
     ) -> Result<(User, Option<Uuid>)> {
-        let db = self.pool.get().await?;
+        let verification_code = verification.as_ref().map(|verification| verification.code);
+        let verification_template_data = verification
+            .as_ref()
+            .map(|verification| serde_json::to_value(&verification.template_data))
+            .transpose()?;
+
+        let db = self.client().await?;
         let row = db
             .query_one(
-                "select * from sign_up_user($1::jsonb, $2::boolean);",
-                &[&Json(user_summary), &email_verified],
+                "
+                select *
+                from sign_up_user(
+                    $1::jsonb,
+                    $2::boolean,
+                    $3::uuid,
+                    $4::jsonb
+                );
+                ",
+                &[
+                    &Json(user_summary),
+                    &email_verified,
+                    &verification_code,
+                    &verification_template_data,
+                ],
             )
             .await?;
 
@@ -363,4 +395,13 @@ impl DBAuth for PgDB {
     async fn verify_email(&self, code: &Uuid) -> Result<()> {
         self.execute("select verify_email($1::uuid);", &[&code]).await
     }
+}
+
+/// Verification notification data required for password signups.
+#[derive(Debug, Clone)]
+pub(crate) struct EmailVerificationNotification {
+    /// Verification code stored in the database and sent to the user.
+    pub(crate) code: Uuid,
+    /// Typed notification template data serialized for enqueueing.
+    pub(crate) template_data: EmailVerification,
 }

@@ -3,50 +3,33 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set user2ID '00000000-0000-0000-0000-000000000003'
-\set user3ID '00000000-0000-0000-0000-000000000004'
-\set userID '00000000-0000-0000-0000-000000000002'
+\set user2ID '0a0a0000-0000-0000-0000-000000000001'
+\set user3ID '0a0a0000-0000-0000-0000-000000000002'
+\set user4ID '0a0a0000-0000-0000-0000-000000000003'
+\set userID '0a0a0000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- User for updates
+-- Users
 insert into "user" (
     user_id,
-    auth_hash,
-    email,
-    email_verified,
     name,
-    username
-) values (
-    :'userID',
-    gen_random_bytes(32),
-    'test@example.com',
-    true,
-    'Original User',
-    'testuser'
-);
-
--- User with optional fields
-insert into "user" (
-    user_id,
     auth_hash,
-    email,
-    email_verified,
-    name,
-    username,
     bio,
     bluesky_url,
     city,
     company,
     country,
+    email,
+    email_verified,
     facebook_url,
     github_url,
     interests,
@@ -55,74 +38,97 @@ insert into "user" (
     timezone,
     title,
     twitter_url,
-    website_url
-) values (
-    :'user2ID',
-    gen_random_bytes(32),
-    'test2@example.com',
-    true,
-    'Second User',
-    'testuser2',
-    'Original bio',
-    'https://bsky.app/profile/original',
-    'Seattle',
-    'Original Company',
-    'USA',
-    'https://facebook.com/original',
-    'https://github.com/original',
-    array['reading', 'gaming'],
-    'https://linkedin.com/in/original',
-    'https://example.com/original.jpg',
-    'America/Los_Angeles',
-    'Original Title',
-    'https://twitter.com/original',
-    'https://example.com/original'
-);
-
--- User for explicit null test
-insert into "user" (
-    user_id,
-    auth_hash,
-    email,
-    email_verified,
-    name,
     username,
-    bio,
-    bluesky_url,
-    city,
-    company,
-    country,
-    facebook_url,
-    github_url,
-    interests,
-    linkedin_url,
-    photo_url,
-    timezone,
-    title,
-    twitter_url,
     website_url
-) values (
-    :'user3ID',
-    gen_random_bytes(32),
-    'test3@example.com',
-    true,
-    'Third User',
-    'testuser3',
-    'Third user bio',
-    'https://bsky.app/profile/third',
-    'Portland',
-    'Third Company',
-    'Canada',
-    'https://facebook.com/third',
-    'https://github.com/third',
-    array['cooking', 'travel'],
-    'https://linkedin.com/in/third',
-    'https://example.com/third.jpg',
-    'America/New_York',
-    'Third Title',
-    'https://twitter.com/third',
-    'https://example.com/third'
-);
+) values
+    (
+        :'user2ID',
+        'Second User',
+        gen_random_bytes(32),
+        'Original bio',
+        'https://bsky.app/profile/original',
+        'Seattle',
+        'Original Company',
+        'USA',
+        'test2@example.com',
+        true,
+        'https://facebook.com/original',
+        'https://github.com/original',
+        array['reading', 'gaming'],
+        'https://linkedin.com/in/original',
+        'https://example.com/original.jpg',
+        'America/Los_Angeles',
+        'Original Title',
+        'https://twitter.com/original',
+        'testuser2',
+        'https://example.com/original'
+    ),
+    (
+        :'user3ID',
+        'Third User',
+        gen_random_bytes(32),
+        'Third user bio',
+        'https://bsky.app/profile/third',
+        'Portland',
+        'Third Company',
+        'Canada',
+        'test3@example.com',
+        true,
+        'https://facebook.com/third',
+        'https://github.com/third',
+        array['cooking', 'travel'],
+        'https://linkedin.com/in/third',
+        'https://example.com/third.jpg',
+        'America/New_York',
+        'Third Title',
+        'https://twitter.com/third',
+        'testuser3',
+        'https://example.com/third'
+    ),
+    (
+        :'user4ID',
+        'Fourth User',
+        gen_random_bytes(32),
+        'Fourth user bio',
+        'https://bsky.app/profile/fourth',
+        'Austin',
+        'Fourth Company',
+        'USA',
+        'test4@example.com',
+        true,
+        'https://facebook.com/fourth',
+        'https://github.com/fourth',
+        array['cycling', 'music'],
+        'https://linkedin.com/in/fourth',
+        'https://example.com/fourth.jpg',
+        'America/Chicago',
+        'Fourth Title',
+        'https://twitter.com/fourth',
+        'testuser4',
+        'https://example.com/fourth'
+    ),
+    (
+        :'userID',
+        'Original User',
+        gen_random_bytes(32),
+        null,
+        null,
+        null,
+        null,
+        null,
+        'test@example.com',
+        true,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        'testuser',
+        null
+    );
 
 -- ============================================================================
 -- TESTS
@@ -198,15 +204,15 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format($$
         values (
             'user_details_updated',
-            '00000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
             'testuser',
             'user',
-            '00000000-0000-0000-0000-000000000002'::uuid
+            %L::uuid
         )
-    $$,
+    $$, :'userID', :'userID'),
     'Should create the expected audit row'
 );
 
@@ -282,6 +288,71 @@ select is(
         "username": "testuser3"
     }'::jsonb,
     'Should treat explicit null values the same as omitted fields'
+);
+
+-- Update user with empty string values for null-normalized fields
+select lives_ok(
+    format(
+        $$select update_user_details(%L::uuid, %L::jsonb)$$,
+        :'user4ID',
+        $${
+            "name": "Empty String User",
+            "bio": "",
+            "bluesky_url": "",
+            "city": "",
+            "company": "",
+            "country": "",
+            "facebook_url": "",
+            "github_url": "",
+            "linkedin_url": "",
+            "photo_url": "",
+            "timezone": "",
+            "title": "",
+            "twitter_url": "",
+            "website_url": ""
+        }$$
+    ),
+    'Should execute update with empty string optional fields'
+);
+
+-- Should normalize empty string values to null
+select results_eq(
+    format($$
+        select
+            bio,
+            bluesky_url,
+            city,
+            company,
+            country,
+            facebook_url,
+            github_url,
+            linkedin_url,
+            photo_url,
+            timezone,
+            title,
+            twitter_url,
+            website_url
+        from "user"
+        where user_id = %L::uuid
+    $$, :'user4ID'),
+    $$
+        values (
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text,
+            null::text
+        )
+    $$,
+    'Should normalize empty string values to null'
 );
 
 -- ============================================================================

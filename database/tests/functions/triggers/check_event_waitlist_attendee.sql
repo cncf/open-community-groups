@@ -9,58 +9,97 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000041'
-\set event2ID '00000000-0000-0000-0000-000000000042'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
+\set allianceID 'ab040000-0000-0000-0000-000000000001'
+\set event1ID 'ab040000-0000-0000-0000-000000000002'
+\set event2ID 'ab040000-0000-0000-0000-000000000003'
+\set eventCategoryID 'ab040000-0000-0000-0000-000000000004'
+\set groupCategoryID 'ab040000-0000-0000-0000-000000000005'
+\set groupID 'ab040000-0000-0000-0000-000000000006'
+\set user1ID 'ab040000-0000-0000-0000-000000000007'
+\set user2ID 'ab040000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'Desc', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'Active Group', 'active-group');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
+insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'user1ID', 'h', 'u1@test.com', 'u1'),
-    (:'user2ID', 'h', 'u2@test.com', 'u2');
+    (:'user1ID', 'user-one-hash', 'user-one@example.com', true, 'user-one'),
+    (:'user2ID', 'user-two-hash', 'user-two@example.com', true, 'user-two');
 
 -- Events
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
-    timezone,
-    event_category_id,
-    event_kind_id,
     capacity,
     published,
+    timezone,
     waitlist_enabled
 )
 values
-    (:'event1ID', :'groupID', 'Event 1', 'event-1', 'd', 'UTC', :'eventCategoryID', 'in-person', 1, true, true),
-    (:'event2ID', :'groupID', 'Event 2', 'event-2', 'd', 'UTC', :'eventCategoryID', 'in-person', 1, true, true);
+    (
+        :'event1ID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Event 1',
+        'event-1',
+        'First waitlist test event',
+        1,
+        true,
+        'UTC',
+        true
+    ),
+    (
+        :'event2ID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Event 2',
+        'event-2',
+        'Second waitlist test event',
+        1,
+        true,
+        'UTC',
+        true
+    );
 
 -- Existing attendees
 insert into event_attendee (event_id, user_id)

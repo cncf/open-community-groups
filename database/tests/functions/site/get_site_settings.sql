@@ -9,7 +9,7 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set siteID '00000000-0000-0000-0000-000000000001'
+\set siteID '9a040000-0000-0000-0000-000000000001'
 
 -- ============================================================================
 -- SEED DATA
@@ -47,17 +47,17 @@ insert into site (
 -- Should return site settings with all fields
 select is(
     get_site_settings()::jsonb,
-    '{
-        "description": "A test site description",
-        "site_id": "00000000-0000-0000-0000-000000000001",
-        "theme": {"primary_color": "#0066cc"},
-        "title": "Test Site Title",
-        "copyright_notice": "Copyright 2024 Test Site",
-        "favicon_url": "https://example.com/favicon.ico",
-        "footer_logo_url": "https://example.com/footer-logo.png",
-        "header_logo_url": "https://example.com/header-logo.png",
-        "og_image_url": "https://example.com/og-image.png"
-    }'::jsonb,
+    jsonb_build_object(
+        'description', 'A test site description',
+        'site_id', :'siteID',
+        'theme', '{"primary_color": "#0066cc"}'::jsonb,
+        'title', 'Test Site Title',
+        'copyright_notice', 'Copyright 2024 Test Site',
+        'favicon_url', 'https://example.com/favicon.ico',
+        'footer_logo_url', 'https://example.com/footer-logo.png',
+        'header_logo_url', 'https://example.com/header-logo.png',
+        'og_image_url', 'https://example.com/og-image.png'
+    ),
     'Should return site settings with all fields'
 );
 

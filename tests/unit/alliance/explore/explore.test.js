@@ -130,10 +130,12 @@ describe("explore helpers", () => {
   it("shows the filtered no-results placeholder with active filters", () => {
     // Build the DOM fixture with an empty results state and active search.
     document.body.innerHTML = `
-      <div id="explore-filters">
-        <form id="events-form" class="filters-form"></form>
+      <div id="entity-section">
+        <div id="explore-filters">
+          <form id="events-form" class="filters-form"></form>
+        </div>
+        <input name="ts_query" value="conference" />
       </div>
-      <input name="ts_query" value="conference" />
       <div id="cards-list">
         <div class="no-results-default hidden"></div>
         <div class="no-results-filtered hidden"></div>
@@ -402,10 +404,10 @@ describe("explore helpers", () => {
       <div id="explore-filters">
         <form id="events-form" class="filters-form">
           <input type="checkbox" name="kind[]" checked />
+          <input type="hidden" name="date_from" value="2026-01-01" />
+          <input type="hidden" name="date_to" value="2026-01-31" />
         </form>
       </div>
-      <input type="hidden" name="date_from" value="2026-01-01" />
-      <input type="hidden" name="date_to" value="2026-01-31" />
       <input type="radio" name="view_mode" value="map" checked />
     `;
 
@@ -419,6 +421,28 @@ describe("explore helpers", () => {
     expect(document.querySelector('input[name="date_from"]')?.value).to.equal("");
     expect(document.querySelector('input[name="date_to"]')?.value).to.equal("");
     expect(htmx.triggerCalls).to.deep.equal([[document.getElementById("events-form"), "change"]]);
+  });
+
+  it("delegates custom filter changes to the originating form", () => {
+    // Build desktop and mobile forms to verify the event source owns the trigger.
+    document.body.innerHTML = `
+      <div id="explore-filters">
+        <form id="events-form" class="filters-form"></form>
+      </div>
+      <form id="events-form-mobile" class="filters-form">
+        <div id="mobile-filter"></div>
+      </form>
+    `;
+
+    // Dispatch the filter event from the mobile form.
+    document.getElementById("mobile-filter").dispatchEvent(
+      new CustomEvent("filter-change", { bubbles: true }),
+    );
+
+    // The mobile form is triggered, even though a desktop form is also present.
+    expect(htmx.triggerCalls).to.deep.equal([
+      [document.getElementById("events-form-mobile"), "change"],
+    ]);
   });
 
   it("delegates mobile filter drawer actions", () => {

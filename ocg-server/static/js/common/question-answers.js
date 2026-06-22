@@ -1,5 +1,6 @@
 const DEFAULT_FREE_TEXT_MESSAGE = "Answer this question.";
 const DEFAULT_MULTI_SELECT_MESSAGE = "Select at least one option.";
+const questionValidityRefreshers = new WeakMap();
 
 /**
  * Checks whether a DOM node can hold a questionnaire answer value.
@@ -12,17 +13,54 @@ const isAnswerControl = (control) =>
   control instanceof HTMLSelectElement;
 
 /**
- * Clears custom validity from every answer control in a form.
- * @param {HTMLFormElement} form Questions form.
+ * Clears custom validity from every answer control in a root element.
+ * @param {Element|HTMLFormElement} root Questions root element.
  * @param {string} answerSelector Selector for answer controls.
  * @returns {void}
  */
-const clearQuestionValidity = (form, answerSelector) => {
-  form.querySelectorAll(answerSelector).forEach((control) => {
+const clearQuestionValidity = (root, answerSelector) => {
+  root.querySelectorAll(answerSelector).forEach((control) => {
     if (isAnswerControl(control)) {
       control.setCustomValidity("");
     }
   });
+};
+
+/**
+ * Checks whether a required question has a complete answer.
+ * @param {HTMLFieldSetElement} fieldset Question fieldset.
+ * @param {string} answerSelector Selector for answer controls.
+ * @returns {boolean} Whether the question has a valid answer.
+ */
+const hasRequiredQuestionAnswer = (fieldset, answerSelector) => {
+  if (fieldset.dataset.questionKind === "free-text") {
+    const input = fieldset.querySelector(answerSelector);
+    return input instanceof HTMLTextAreaElement && input.value.trim().length > 0;
+  }
+
+  return fieldset.querySelector(`${answerSelector}:checked`) instanceof HTMLInputElement;
+};
+
+/**
+ * Clears stale custom validity once an invalid question becomes complete.
+ * @param {HTMLFieldSetElement} fieldset Question fieldset.
+ * @param {string} answerSelector Selector for answer controls.
+ * @returns {void}
+ */
+const bindQuestionValidityRefresh = (fieldset, answerSelector) => {
+  if (questionValidityRefreshers.has(fieldset)) {
+    return;
+  }
+
+  const refreshValidity = () => {
+    if (hasRequiredQuestionAnswer(fieldset, answerSelector)) {
+      clearQuestionValidity(fieldset, answerSelector);
+    }
+  };
+
+  fieldset.addEventListener("input", refreshValidity);
+  fieldset.addEventListener("change", refreshValidity);
+  questionValidityRefreshers.set(fieldset, refreshValidity);
 };
 
 /**
@@ -76,6 +114,7 @@ export const collectQuestionAnswers = (form, { answerSelector }) => {
       const value = input.value.trim();
       if (required && !value) {
         input.setCustomValidity(DEFAULT_FREE_TEXT_MESSAGE);
+        bindQuestionValidityRefresh(fieldset, answerSelector);
       }
       if (value || required) {
         answers.push({ question_id: questionId, value });
@@ -99,6 +138,7 @@ export const collectQuestionAnswers = (form, { answerSelector }) => {
     }
     if (required && values.length === 0) {
       setQuestionValidity(fieldset, answerSelector, DEFAULT_MULTI_SELECT_MESSAGE);
+      bindQuestionValidityRefresh(fieldset, answerSelector);
     }
   });
 

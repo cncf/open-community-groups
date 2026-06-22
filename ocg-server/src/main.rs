@@ -23,7 +23,7 @@ use crate::{
     config::{
         Config, HttpServerConfig, ImageStorageConfig, LogFormat, MeetingsConfig, PaymentsConfig,
     },
-    db::PgDB,
+    db::{PgDB, pool as db_pool},
     services::{
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
         meetings::{
@@ -165,7 +165,8 @@ fn setup_db(cfg: &Config) -> Result<Arc<PgDB>> {
 
     // Create the Postgres connection pool and wrap it in our database abstraction
     let connector = MakeTlsConnector::new(builder.build());
-    let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
+    let db_cfg = db_pool::config_with_defaults(&cfg.db);
+    let pool = db_cfg.create_pool(Some(Runtime::Tokio1), connector)?;
     let db = Arc::new(PgDB::new(pool));
 
     Ok(db)

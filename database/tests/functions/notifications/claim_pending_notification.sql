@@ -3,49 +3,61 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set attachmentID1 '00000000-0000-0000-0000-000000000501'
-\set attachmentID2 '00000000-0000-0000-0000-000000000502'
-\set notificationAlreadyClaimedID '00000000-0000-0000-0000-000000000101'
-\set notificationAlreadyProcessedID '00000000-0000-0000-0000-000000000102'
-\set notificationAttachmentID '00000000-0000-0000-0000-000000000103'
-\set notificationEmailVerificationID '00000000-0000-0000-0000-000000000104'
-\set notificationEventPublishedID '00000000-0000-0000-0000-000000000105'
-\set notificationGroupWelcomeID '00000000-0000-0000-0000-000000000106'
-\set notificationPreRegisteredEventInvitationID '00000000-0000-0000-0000-000000000111'
-\set notificationPreRegisteredGroupWelcomeID '00000000-0000-0000-0000-000000000112'
-\set notificationPreRegisteredVerifiedGroupWelcomeID '00000000-0000-0000-0000-000000000113'
-\set notificationRetryID '00000000-0000-0000-0000-000000000107'
-\set notificationUnverifiedEmailVerificationID '00000000-0000-0000-0000-000000000108'
-\set notificationUnverifiedEventPublishedID '00000000-0000-0000-0000-000000000109'
-\set notificationUnverifiedGroupWelcomeID '00000000-0000-0000-0000-000000000110'
-\set templateEmailVerificationID '00000000-0000-0000-0000-000000000301'
-\set templateEventPublishedID '00000000-0000-0000-0000-000000000302'
-\set templateGroupWelcomeID '00000000-0000-0000-0000-000000000303'
-\set userPreRegisteredID '00000000-0000-0000-0000-000000000203'
-\set userPreRegisteredVerifiedID '00000000-0000-0000-0000-000000000204'
-\set userUnverifiedID '00000000-0000-0000-0000-000000000201'
-\set userVerifiedID '00000000-0000-0000-0000-000000000202'
+\set attachmentID1 '8a010000-0000-0000-0000-000000000001'
+\set attachmentID2 '8a010000-0000-0000-0000-000000000002'
+\set notificationAlreadyClaimedID '8a010000-0000-0000-0000-000000000003'
+\set notificationAlreadyProcessedID '8a010000-0000-0000-0000-000000000004'
+\set notificationAttachmentID '8a010000-0000-0000-0000-000000000005'
+\set notificationEmailVerificationID '8a010000-0000-0000-0000-000000000006'
+\set notificationEventPublishedID '8a010000-0000-0000-0000-000000000007'
+\set notificationGroupWelcomeID '8a010000-0000-0000-0000-000000000008'
+\set notificationPreRegisteredEventInvitationID '8a010000-0000-0000-0000-000000000009'
+\set notificationPreRegisteredGroupWelcomeID '8a010000-0000-0000-0000-000000000010'
+\set notificationPreRegisteredVerifiedGroupWelcomeID '8a010000-0000-0000-0000-000000000011'
+\set notificationRetryID '8a010000-0000-0000-0000-000000000012'
+\set notificationUnverifiedEmailVerificationID '8a010000-0000-0000-0000-000000000013'
+\set notificationUnverifiedEventPublishedID '8a010000-0000-0000-0000-000000000014'
+\set notificationUnverifiedGroupWelcomeID '8a010000-0000-0000-0000-000000000015'
+\set templateEmailVerificationID '8a010000-0000-0000-0000-000000000016'
+\set templateEventPublishedID '8a010000-0000-0000-0000-000000000017'
+\set templateGroupWelcomeID '8a010000-0000-0000-0000-000000000018'
+\set userPreRegisteredID '8a010000-0000-0000-0000-000000000019'
+\set userPreRegisteredVerifiedID '8a010000-0000-0000-0000-000000000020'
+\set userUnverifiedID '8a010000-0000-0000-0000-000000000021'
+\set userVerifiedID '8a010000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Users
-insert into "user" (auth_hash, email, email_verified, registration_status, user_id, username) values
-    ('hash1', 'verified@example.com', true, 'registered', :'userVerifiedID', 'verified'),
-    ('hash2', 'unverified@example.com', false, 'registered', :'userUnverifiedID', 'unverified'),
-    ('hash3', 'invited@example.com', false, 'pre-registered', :'userPreRegisteredID', 'invited'),
-    ('hash4', 'verified-invited@example.com', true, 'pre-registered', :'userPreRegisteredVerifiedID', 'verified-invited');
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    registration_status
+) values
+    (:'userVerifiedID', 'hash1', 'verified@example.com', true, 'verified', 'registered'),
+    (:'userUnverifiedID', 'hash2', 'unverified@example.com', false, 'unverified', 'registered'),
+    (:'userPreRegisteredID', 'hash3', 'invited@example.com', false, 'invited', 'pre-registered'),
+    (:'userPreRegisteredVerifiedID', 'hash4', 'verified-invited@example.com',
+        true, 'verified-invited', 'pre-registered');
 
 -- Notification templates
 insert into notification_template_data (data, hash, notification_template_data_id) values
-    ('{"link": "https://example.com/verify"}'::jsonb, 'hash_email_verification', :'templateEmailVerificationID'),
+    (
+        '{"link": "https://example.com/verify"}'::jsonb,
+        'hash_email_verification',
+        :'templateEmailVerificationID'
+    ),
     ('{"event": "test"}'::jsonb, 'hash_event_published', :'templateEventPublishedID'),
     ('{"group": "test"}'::jsonb, 'hash_group_welcome', :'templateGroupWelcomeID');
 
@@ -206,6 +218,20 @@ insert into notification_attachment (attachment_id, notification_id) values
 -- TESTS
 -- ============================================================================
 
+-- Should reject non-positive delivery rate limits
+select throws_ok(
+    $$ select * from claim_pending_notification(0, 60) $$,
+    'delivery rate limit must be positive',
+    'Should reject non-positive delivery rate limits'
+);
+
+-- Should reject non-positive delivery rate limit windows
+select throws_ok(
+    $$ select * from claim_pending_notification(1, 0) $$,
+    'delivery rate limit window must be positive',
+    'Should reject non-positive delivery rate limit windows'
+);
+
 -- Should return NULL when the delivery rate limit has been exhausted
 select is(
     (select notification_id from claim_pending_notification(1, 60)),
@@ -244,14 +270,17 @@ select is(
 
 -- Should store claim state on the claimed notification
 select results_eq(
-    $$
+    format(
+        $$
         select
             delivery_attempts,
             delivery_claimed_at is not null,
             delivery_status
         from notification
-        where notification_id = '00000000-0000-0000-0000-000000000104'
-    $$,
+        where notification_id = %L::uuid
+        $$,
+        :'notificationEmailVerificationID'
+    ),
     $$ values (1, true, 'processing'::text) $$,
     'Stores claim state on claimed notification'
 );
@@ -335,33 +364,44 @@ select is(
 
 -- Should leave other notification kinds for unverified users pending
 select results_eq(
-    $$
+    format(
+        $$
         select notification_id
         from notification
-        where user_id = '00000000-0000-0000-0000-000000000201'
+        where user_id = %L::uuid
         and delivery_status = 'pending'
         order by notification_id
-    $$,
-    $$
+        $$,
+        :'userUnverifiedID'
+    ),
+    format(
+        $$
         values
-            ('00000000-0000-0000-0000-000000000109'::uuid),
-            ('00000000-0000-0000-0000-000000000110'::uuid)
-    $$,
+            (%L::uuid),
+            (%L::uuid)
+        $$,
+        :'notificationUnverifiedEventPublishedID',
+        :'notificationUnverifiedGroupWelcomeID'
+    ),
     'Leaves other notification kinds for unverified users pending'
 );
 
 -- Should leave other notification kinds for pre-registered users pending
 select results_eq(
-    $$
+    format(
+        $$
         select notification_id
         from notification
-        where user_id = '00000000-0000-0000-0000-000000000203'
+        where user_id = %L::uuid
         and delivery_status = 'pending'
         order by notification_id
-    $$,
-    $$
-        values ('00000000-0000-0000-0000-000000000112'::uuid)
-    $$,
+        $$,
+        :'userPreRegisteredID'
+    ),
+    format(
+        $$ values (%L::uuid) $$,
+        :'notificationPreRegisteredGroupWelcomeID'
+    ),
     'Leaves other notification kinds for pre-registered users pending'
 );
 

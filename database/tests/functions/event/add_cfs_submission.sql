@@ -3,54 +3,93 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventClosedID '00000000-0000-0000-0000-000000000052'
-\set eventDisabledID '00000000-0000-0000-0000-000000000053'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000000054'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set label1ID '00000000-0000-0000-0000-000000000101'
-\set label2ID '00000000-0000-0000-0000-000000000102'
-\set labelInvalidID '00000000-0000-0000-0000-000000000103'
-\set proposalID '00000000-0000-0000-0000-000000000061'
-\set proposalWithLabelsID '00000000-0000-0000-0000-000000000063'
-\set proposalPendingID '00000000-0000-0000-0000-000000000062'
-\set userID '00000000-0000-0000-0000-000000000071'
+\set alliance2ID '5e010000-0000-0000-0000-000000000001'
+\set allianceID '5e010000-0000-0000-0000-000000000002'
+\set eventCategoryID '5e010000-0000-0000-0000-000000000003'
+\set eventClosedID '5e010000-0000-0000-0000-000000000004'
+\set eventDisabledID '5e010000-0000-0000-0000-000000000005'
+\set eventID '5e010000-0000-0000-0000-000000000006'
+\set eventUnpublishedID '5e010000-0000-0000-0000-000000000007'
+\set eventWindowNotConfiguredID '5e010000-0000-0000-0000-000000000008'
+\set groupCategoryID '5e010000-0000-0000-0000-000000000009'
+\set groupID '5e010000-0000-0000-0000-00000000000a'
+\set label1ID '5e010000-0000-0000-0000-00000000000b'
+\set label2ID '5e010000-0000-0000-0000-00000000000c'
+\set labelInvalidID '5e010000-0000-0000-0000-00000000000d'
+\set missingProposalID '5e010000-0000-0000-0000-00000000000e'
+\set proposalID '5e010000-0000-0000-0000-00000000000f'
+\set proposalPendingID '5e010000-0000-0000-0000-000000000010'
+\set proposalWithLabelsID '5e010000-0000-0000-0000-000000000011'
+\set userID '5e010000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
+-- Allow malformed legacy CFS rows for window guard coverage
+alter table event drop constraint event_cfs_fields_chk;
+
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'alliance2ID', 'c2', 'C2', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'cfs-alliance',
+    'CFS Alliance',
+    'Alliance for CFS submission tests',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+), (
+    :'alliance2ID',
+    'other-cfs-alliance',
+    'Other CFS Alliance',
+    'Other alliance for CFS submission tests',
+    'https://example.com/other-banner-mobile.png',
+    'https://example.com/other-banner.png',
+    'https://example.com/other-logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, alliance_id, name) values
-    (:'groupCategoryID', :'allianceID', 'Tech');
-
--- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
-    (:'groupID', :'allianceID', :'groupCategoryID', 'G1', 'g1');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
 
 -- Event category
-insert into event_category (event_category_id, alliance_id, name) values
-    (:'eventCategoryID', :'allianceID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+);
+
+-- Group
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'CFS Group', 'cfs-group');
 
 -- Session proposal
 insert into session_proposal (
@@ -257,6 +296,41 @@ insert into event (
     current_timestamp + interval '8 days'
 );
 
+-- Event (CFS window not configured)
+insert into event (
+    event_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    published,
+    cfs_description,
+    cfs_enabled,
+    cfs_starts_at,
+    cfs_ends_at,
+    starts_at,
+    ends_at
+) values (
+    :'eventWindowNotConfiguredID',
+    :'groupID',
+    'Event Window Not Configured',
+    'event-window-not-configured',
+    'Event description',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    true,
+    'CFS missing window',
+    true,
+    null,
+    null,
+    current_timestamp + interval '7 days',
+    current_timestamp + interval '8 days'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -287,6 +361,20 @@ select throws_ok(
     'Should reject submissions when CFS is disabled'
 );
 
+-- Should reject submissions when the CFS window is not configured
+select throws_ok(
+    format(
+        'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
+        :'allianceID',
+        :'eventWindowNotConfiguredID',
+        :'userID',
+        :'proposalID'
+    ),
+    'cfs window not configured',
+    'Should reject submissions when the CFS window is not configured'
+);
+
+-- Visibility filtering masks unpublished events, so the generic message is intentional.
 -- Should reject submissions when event is unpublished
 select throws_ok(
     format(
@@ -300,6 +388,7 @@ select throws_ok(
     'Should reject submissions when event is unpublished'
 );
 
+-- Visibility filtering masks other-alliance events, so the generic message is intentional.
 -- Should reject submissions when event belongs to another alliance
 select throws_ok(
     format(
@@ -311,6 +400,19 @@ select throws_ok(
     ),
     'cfs is not enabled for this event',
     'Should reject submissions when event belongs to another alliance'
+);
+
+-- Should reject submissions for missing proposals
+select throws_ok(
+    format(
+        'select add_cfs_submission(%L::uuid, %L::uuid, %L::uuid, %L::uuid)',
+        :'allianceID',
+        :'eventID',
+        :'userID',
+        :'missingProposalID'
+    ),
+    'session proposal not found',
+    'Should reject submissions for missing proposals'
 );
 
 -- Add CFS submission

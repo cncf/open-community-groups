@@ -9,11 +9,12 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '40000000-0000-0000-0000-000000000011'
-\set allianceID '40000000-0000-0000-0000-000000000001'
-\set eventID '40000000-0000-0000-0000-000000000004'
-\set groupID '40000000-0000-0000-0000-000000000002'
-\set sponsorID '40000000-0000-0000-0000-000000000003'
+\set allianceID '3a0c0000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a0c0000-0000-0000-0000-000000000002'
+\set eventID '3a0c0000-0000-0000-0000-000000000003'
+\set groupCategoryID '3a0c0000-0000-0000-0000-000000000004'
+\set groupID '3a0c0000-0000-0000-0000-000000000005'
+\set sponsorID '3a0c0000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
@@ -25,46 +26,55 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
     'cloud-native-london',
     'Cloud Native London',
     'Alliance for cloud native technologies in London',
-    'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
--- Group Category (required by group)
-insert into group_category (group_category_id, name, alliance_id)
-values ('40000000-0000-0000-0000-000000000010', 'Tech', :'allianceID');
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Tech');
+
+-- Event category
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group
-insert into "group" (group_id, alliance_id, name, slug, group_category_id)
-values (:'groupID', :'allianceID', 'Group London', 'group-london', '40000000-0000-0000-0000-000000000010');
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Group London', 'group-london');
 
 -- Sponsor
 insert into group_sponsor (group_sponsor_id, group_id, name, logo_url, website_url)
 values (:'sponsorID', :'groupID', 'Kappa', 'https://ex.com/kappa.png', null);
 
--- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
-
 -- Event
-insert into event (event_id, group_id, name, slug, description, timezone, event_category_id, event_kind_id)
+insert into event (
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone
+)
 values (
     :'eventID',
+    :'eventCategoryID',
+    (select event_kind_id from event_kind limit 1),
     :'groupID',
     'Event 1',
     'event-1',
     'desc',
-    'UTC',
-    :'categoryID',
-    (select event_kind_id from event_kind limit 1)
+    'UTC'
 );
 
 -- Event references sponsor
@@ -77,7 +87,10 @@ values (:'eventID', :'sponsorID', 'Gold');
 
 -- Should fail when sponsor is referenced by event
 select throws_like(
-    $$select delete_group_sponsor(null::uuid, '40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
+    format(
+        $$select delete_group_sponsor(null::uuid, %L::uuid, %L::uuid)$$,
+        :'groupID', :'sponsorID'
+    ),
     '%sponsor is used by one or more events%',
     'Should fail when sponsor is referenced by event'
 );
@@ -87,12 +100,15 @@ delete from event_sponsor where group_sponsor_id = :'sponsorID'::uuid;
 
 -- Should remove sponsor when unreferenced
 select lives_ok(
-    $$select delete_group_sponsor(null::uuid, '40000000-0000-0000-0000-000000000002'::uuid, '40000000-0000-0000-0000-000000000003'::uuid)$$,
-    'Should not error when unreferenced'
+    format(
+        $$select delete_group_sponsor(null::uuid, %L::uuid, %L::uuid)$$,
+        :'groupID', :'sponsorID'
+    ),
+    'Should delete the sponsor without error once unreferenced'
 );
 
 select is(
-    (select count(*) from group_sponsor where group_sponsor_id = '40000000-0000-0000-0000-000000000003'::uuid),
+    (select count(*) from group_sponsor where group_sponsor_id = :'sponsorID'::uuid),
     0::bigint,
     'Should remove sponsor'
 );
@@ -110,17 +126,20 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'group_sponsor_deleted',
             null::uuid,
             null::text,
-            '40000000-0000-0000-0000-000000000001'::uuid,
-            '40000000-0000-0000-0000-000000000002'::uuid,
+            %L::uuid,
+            %L::uuid,
             'group_sponsor',
-            '40000000-0000-0000-0000-000000000003'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID', :'groupID', :'sponsorID'
+    ),
     'Should create the expected audit row'
 );
 

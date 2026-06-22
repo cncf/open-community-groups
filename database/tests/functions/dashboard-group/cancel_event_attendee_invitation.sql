@@ -9,27 +9,43 @@ select plan(10);
 -- VARIABLES
 -- ============================================================================
 
-\set actorID '00000000-0000-0000-0000-000000000001'
-\set categoryID '00000000-0000-0000-0000-000000000002'
-\set allianceID '00000000-0000-0000-0000-000000000003'
-\set eventCategoryID '00000000-0000-0000-0000-000000000004'
-\set eventID '00000000-0000-0000-0000-000000000005'
-\set groupID '00000000-0000-0000-0000-000000000006'
-\set invitedUserID '00000000-0000-0000-0000-000000000007'
-\set questionsInvitedUserID '00000000-0000-0000-0000-000000000008'
-\set questionsRegisteredUserID '00000000-0000-0000-0000-000000000009'
+\set actorID '3a080000-0000-0000-0000-000000000001'
+\set allianceID '3a080000-0000-0000-0000-000000000002'
+\set eventCategoryID '3a080000-0000-0000-0000-000000000003'
+\set eventID '3a080000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a080000-0000-0000-0000-000000000005'
+\set groupID '3a080000-0000-0000-0000-000000000006'
+\set invitedUserID '3a080000-0000-0000-0000-000000000007'
+\set questionsInvitedUserID '3a080000-0000-0000-0000-000000000008'
+\set questionsRegisteredUserID '3a080000-0000-0000-0000-000000000009'
+\set unknownGroupID '3a080000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Tech', :'allianceID');
+values (:'groupCategoryID', 'Tech', :'allianceID');
 
 -- Event category
 insert into event_category (event_category_id, name, alliance_id)
@@ -37,7 +53,7 @@ values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'G1', 'g1');
 
 -- Users
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
@@ -73,7 +89,17 @@ insert into event (
     group_id,
     published
 )
-values (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', true);
+values (
+    :'eventID',
+    'Free Event',
+    'free-event',
+    'Test free event',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    true
+);
 
 -- Event invitation
 insert into event_attendee (event_id, user_id, manually_invited, status)
@@ -88,12 +114,10 @@ values
 
 -- Should cancel pending invitations.
 select lives_ok(
-    $$ select cancel_event_attendee_invitation(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000007'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_invitation(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'invitedUserID'
+    ),
     'Should cancel a pending invitation'
 );
 
@@ -122,29 +146,31 @@ select results_eq(
             details
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'event_attendee_invitation_canceled',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000003'::uuid,
-            '00000000-0000-0000-0000-000000000005'::uuid,
-            '00000000-0000-0000-0000-000000000006'::uuid,
-            '00000000-0000-0000-0000-000000000007'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'user',
-            '{"event_id": "00000000-0000-0000-0000-000000000005", "user_id": "00000000-0000-0000-0000-000000000007"}'::jsonb
+            jsonb_build_object('event_id', %L::uuid, 'user_id', %L::uuid)
         )
-    $$,
+        $$,
+        :'actorID', :'allianceID', :'eventID', :'groupID', :'invitedUserID',
+        :'eventID', :'invitedUserID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should cancel manually invited attendees pending registration questions.
 select lives_ok(
-    $$ select cancel_event_attendee_invitation(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000008'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_invitation(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'questionsInvitedUserID'
+    ),
     'Should cancel a manually invited attendee pending registration questions'
 );
 
@@ -161,36 +187,30 @@ select ok(
 
 -- Should reject canceling non-manual pending question registrations.
 select throws_ok(
-    $$ select cancel_event_attendee_invitation(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000009'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_invitation(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'questionsRegisteredUserID'
+    ),
     'pending event invitation not found',
     'Should reject canceling non-manual pending question registrations'
 );
 
 -- Should reject canceling non-pending invitations.
 select throws_ok(
-    $$ select cancel_event_attendee_invitation(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000007'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_invitation(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'invitedUserID'
+    ),
     'pending event invitation not found',
     'Should reject canceling non-pending invitations'
 );
 
 -- Should reject events outside the selected group.
 select throws_ok(
-    $$ select cancel_event_attendee_invitation(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-999999999999',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000007'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_invitation(%L, %L, %L, %L) $$,
+        :'actorID', :'unknownGroupID', :'eventID', :'invitedUserID'
+    ),
     'event not found',
     'Should reject events outside the selected group'
 );

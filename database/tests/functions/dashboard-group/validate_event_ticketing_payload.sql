@@ -22,12 +22,12 @@ select throws_ok(
         'USD',
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000060",
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000070"
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
                     }
                 ],
                 "seats_total": 50,
@@ -47,12 +47,12 @@ select throws_ok(
         null,
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000060",
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000070"
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
                     }
                 ],
                 "seats_total": 50,
@@ -72,12 +72,12 @@ select throws_ok(
         'USDD',
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000060",
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000070"
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
                     }
                 ],
                 "seats_total": 50,
@@ -95,14 +95,14 @@ select throws_ok(
     $$select validate_event_ticketing_payload(
         '[
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a470000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "save5",
                 "kind": "fixed_amount",
                 "title": "Launch discount"
             },
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000052",
+                "event_discount_code_id": "3a470000-0000-0000-0000-000000000002",
                 "amount_minor": 1000,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
@@ -112,12 +112,12 @@ select throws_ok(
         'USD',
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000060",
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000003",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000070"
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000005"
                     }
                 ],
                 "seats_total": 50,
@@ -135,7 +135,7 @@ select throws_ok(
     $$select validate_event_ticketing_payload(
         '[
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a470000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "save5",
                 "kind": "fixed_amount",
@@ -169,19 +169,19 @@ select throws_ok(
         'USD',
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 2000,
                         "ends_at": "2025-07-10 00:00:00+00",
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071",
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000006",
                         "starts_at": "2025-07-01 00:00:00+00"
                     },
                     {
                         "amount_minor": 2500,
                         "ends_at": "2025-07-15 00:00:00+00",
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000072",
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000007",
                         "starts_at": "2025-07-05 00:00:00+00"
                     }
                 ],
@@ -202,12 +202,12 @@ select throws_ok(
         'USD',
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 49,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000006"
                     }
                 ],
                 "seats_total": 50,
@@ -227,12 +227,12 @@ select throws_ok(
         'USD',
         '[
             {
-                "event_ticket_type_id": "00000000-0000-0000-0000-000000000061",
+                "event_ticket_type_id": "3a470000-0000-0000-0000-000000000004",
                 "order": 1,
                 "price_windows": [
                     {
                         "amount_minor": 100000000,
-                        "event_ticket_price_window_id": "00000000-0000-0000-0000-000000000071"
+                        "event_ticket_price_window_id": "3a470000-0000-0000-0000-000000000006"
                     }
                 ],
                 "seats_total": 50,

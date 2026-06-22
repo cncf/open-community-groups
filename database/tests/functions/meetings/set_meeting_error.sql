@@ -9,115 +9,154 @@ select plan(13);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000211'
-\set allianceID '00000000-0000-0000-0000-000000000201'
-\set eventID '00000000-0000-0000-0000-000000000212'
-\set eventStaleClaimID '00000000-0000-0000-0000-000000000215'
-\set groupCategoryID '00000000-0000-0000-0000-000000000210'
-\set groupID '00000000-0000-0000-0000-000000000202'
-\set orphanMeetingID '00000000-0000-0000-0000-000000000214'
-\set sessionID '00000000-0000-0000-0000-000000000213'
+\set allianceID '7a0e0000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a0e0000-0000-0000-0000-000000000002'
+\set eventID '7a0e0000-0000-0000-0000-000000000003'
+\set eventStaleClaimID '7a0e0000-0000-0000-0000-000000000004'
+\set groupCategoryID '7a0e0000-0000-0000-0000-000000000005'
+\set groupID '7a0e0000-0000-0000-0000-000000000006'
+\set orphanMeetingID '7a0e0000-0000-0000-0000-000000000007'
+\set sessionID '7a0e0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
 values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug, description)
-values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    description
+) values (
+    :'groupID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Test Group',
+    'test-group',
+    'A test group'
+);
 
 -- Event
 insert into event (
-    description,
     event_id,
     event_category_id,
     event_kind_id,
     group_id,
+    name,
+    slug,
+    description,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_sync_claimed_at,
-    name,
-    slug,
     timezone
 ) values (
-    'A test event',
     :'eventID',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     :'groupID',
+    'Test Event',
+    'test-event',
+    'A test event',
     false,
     'event-claim-host@example.com',
     current_timestamp,
-    'Test Event',
-    'test-event',
     'America/New_York'
 );
 
 -- Event with stale claim
 insert into event (
-    description,
     event_id,
     event_category_id,
     event_kind_id,
     group_id,
+    name,
+    slug,
+    description,
     meeting_error,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_sync_claimed_at,
-    name,
-    slug,
     timezone
 ) values (
-    'A stale claim event',
     :'eventStaleClaimID',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     :'groupID',
+    'Stale Claim Event',
+    'stale-claim-event',
+    'A stale claim event',
     'Previous sync error',
     false,
     'event-stale-claim-host@example.com',
     current_timestamp,
-    'Stale Claim Event',
-    'stale-claim-event',
     'America/New_York'
 );
 
 -- Session
 insert into session (
+    session_id,
     event_id,
+    name,
+    session_kind_id,
     meeting_in_sync,
     meeting_provider_host_user,
     meeting_sync_claimed_at,
-    name,
-    session_id,
-    session_kind_id,
     starts_at
 ) values (
+    :'sessionID',
     :'eventID',
+    'Test Session',
+    'virtual',
     false,
     'session-claim-host@example.com',
     current_timestamp,
-    'Test Session',
-    :'sessionID',
-    'virtual',
     '2025-06-01 10:00:00-04'
 );
 
 -- Orphan meeting claimed for deletion
-insert into meeting (meeting_id, meeting_provider_id, provider_meeting_id, join_url, sync_claimed_at)
-values (:'orphanMeetingID', 'zoom', 'provider-001', 'https://zoom.us/j/provider-001', current_timestamp);
+insert into meeting (
+    meeting_id,
+    join_url,
+    meeting_provider_id,
+    provider_meeting_id,
+    sync_claimed_at
+) values (
+    :'orphanMeetingID',
+    'https://zoom.us/j/provider-001',
+    'zoom',
+    'provider-001',
+    current_timestamp
+);
 
 -- ============================================================================
 -- TESTS

@@ -9,36 +9,67 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000010'
-\set alliance1ID '00000000-0000-0000-0000-000000000001'
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set groupID '00000000-0000-0000-0000-000000000051'
-\set region1ID '00000000-0000-0000-0000-000000000030'
-\set region2ID '00000000-0000-0000-0000-000000000031'
+\set alliance1ID 'ab060000-0000-0000-0000-000000000001'
+\set alliance2ID 'ab060000-0000-0000-0000-000000000002'
+\set groupCategoryID 'ab060000-0000-0000-0000-000000000003'
+\set groupID 'ab060000-0000-0000-0000-000000000004'
+\set missingGroupID 'ab060000-0000-0000-0000-000000000005'
+\set region1ID 'ab060000-0000-0000-0000-000000000006'
+\set region2ID 'ab060000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance 1
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'alliance1ID', 'alliance-1', 'Alliance 1', 'Test alliance 1', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'alliance1ID',
+    'alliance-1',
+    'Alliance 1',
+    'Test alliance 1',
+    'https://example.com/banner-mobile-1.png',
+    'https://example.com/banner-1.png',
+    'https://example.com/logo-1.png'
+);
 
 -- Alliance 2
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'alliance2ID', 'alliance-2', 'Alliance 2', 'Test alliance 2', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'alliance2ID',
+    'alliance-2',
+    'Alliance 2',
+    'Test alliance 2',
+    'https://example.com/banner-mobile-2.png',
+    'https://example.com/banner-2.png',
+    'https://example.com/logo-2.png'
+);
 
 -- Group Category (belongs to alliance 1)
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'alliance1ID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'alliance1ID', 'Technology');
 
 -- Region 1 (belongs to alliance 1)
-insert into region (region_id, name, alliance_id)
-values (:'region1ID', 'North America', :'alliance1ID');
+insert into region (region_id, alliance_id, name)
+values (:'region1ID', :'alliance1ID', 'North America');
 
 -- Region 2 (belongs to alliance 2)
-insert into region (region_id, name, alliance_id)
-values (:'region2ID', 'Europe', :'alliance2ID');
+insert into region (region_id, alliance_id, name)
+values (:'region2ID', :'alliance2ID', 'Europe');
 
 -- ============================================================================
 -- TESTS
@@ -47,7 +78,7 @@ values (:'region2ID', 'Europe', :'alliance2ID');
 -- Should succeed when group has no region (null)
 select lives_ok(
     format('insert into "group" (group_id, alliance_id, name, slug, description, group_category_id, region_id) values (%L, %L, %L, %L, %L, %L, NULL)',
-        :'groupID', :'alliance1ID', 'Test Group', 'test-group', 'A test group', :'categoryID'),
+        :'groupID', :'alliance1ID', 'Test Group', 'test-group', 'A test group', :'groupCategoryID'),
     'Should succeed when group has no region (null)'
 );
 
@@ -67,7 +98,7 @@ select throws_ok(
 -- Should fail when inserting group with region from different alliance
 select throws_ok(
     format('insert into "group" (group_id, alliance_id, name, slug, description, group_category_id, region_id) values (%L, %L, %L, %L, %L, %L, %L)',
-        gen_random_uuid(), :'alliance1ID', 'Another Group', 'another-group', 'Another test group', :'categoryID', :'region2ID'),
+        :'missingGroupID', :'alliance1ID', 'Another Group', 'another-group', 'Another test group', :'groupCategoryID', :'region2ID'),
     'region not found in alliance',
     'Should fail when inserting group with region from different alliance'
 );

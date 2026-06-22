@@ -9,26 +9,46 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set actorID '00000000-0000-0000-0000-000000000011'
-\set otherActorID '00000000-0000-0000-0000-000000000012'
-\set audit1ID '00000000-0000-0000-0000-000000000101'
-\set audit2ID '00000000-0000-0000-0000-000000000102'
-\set audit3ID '00000000-0000-0000-0000-000000000103'
-\set audit4ID '00000000-0000-0000-0000-000000000104'
-\set audit5ID '00000000-0000-0000-0000-000000000105'
-\set sessionProposalID '00000000-0000-0000-0000-000000000021'
-\set submissionID '00000000-0000-0000-0000-000000000031'
+\set actorID '4a080000-0000-0000-0000-000000000001'
+\set audit1ID '4a080000-0000-0000-0000-000000000002'
+\set audit2ID '4a080000-0000-0000-0000-000000000003'
+\set audit3ID '4a080000-0000-0000-0000-000000000004'
+\set audit4ID '4a080000-0000-0000-0000-000000000005'
+\set audit5ID '4a080000-0000-0000-0000-000000000006'
+\set eventAcceptedID '4a080000-0000-0000-0000-000000000007'
+\set eventRejectedID '4a080000-0000-0000-0000-000000000008'
+\set otherActorID '4a080000-0000-0000-0000-000000000009'
+\set sessionProposalID '4a080000-0000-0000-0000-000000000010'
 \set sessionProposalLevelID 'beginner'
+\set submissionID '4a080000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Users
-insert into "user" (user_id, auth_hash, email, email_verified, name, username)
-values
-    (:'actorID', gen_random_bytes(32), 'alice@example.com', true, 'Alice', 'alice'),
-    (:'otherActorID', gen_random_bytes(32), 'bob@example.com', true, 'Bob', 'bob');
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'actorID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'otherActorID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    'Bob'
+);
 
 -- Session proposal
 insert into session_proposal (
@@ -86,7 +106,7 @@ insert into audit_log (
         :'actorID',
         'alice',
         '2024-04-01 12:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000041"}',
+        jsonb_build_object('event_id', :'eventAcceptedID'),
         :'actorID',
         'user'
     ),
@@ -96,7 +116,7 @@ insert into audit_log (
         :'actorID',
         'alice',
         '2024-04-01 13:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000042"}',
+        jsonb_build_object('event_id', :'eventRejectedID'),
         :'actorID',
         'user'
     ),
@@ -123,48 +143,62 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'logs',
-        '[
-            {
-                "action": "user_details_updated",
-                "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000102",
-                "created_at": 1712055600,
-                "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000011",
-                "resource_name": "Alice",
-                "resource_type": "user"
-            },
-            {
-                "action": "event_attendee_invitation_rejected",
-                "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000105",
-                "created_at": 1711976400,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000042"},
-                "resource_id": "00000000-0000-0000-0000-000000000011",
-                "resource_name": "Alice",
-                "resource_type": "user"
-            },
-            {
-                "action": "event_attendee_invitation_accepted",
-                "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000104",
-                "created_at": 1711972800,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000041"},
-                "resource_id": "00000000-0000-0000-0000-000000000011",
-                "resource_name": "Alice",
-                "resource_type": "user"
-            },
-            {
-                "action": "session_proposal_added",
-                "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000101",
-                "created_at": 1711969200,
-                "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000021",
-                "resource_name": "Rust for Alliances",
-                "resource_type": "session_proposal"
-            }
-        ]'::jsonb,
+        format(
+            $json$
+                [
+                    {
+                        "action": "user_details_updated",
+                        "actor_username": "alice",
+                        "audit_log_id": "%s",
+                        "created_at": 1712055600,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Alice",
+                        "resource_type": "user"
+                    },
+                    {
+                        "action": "event_attendee_invitation_rejected",
+                        "actor_username": "alice",
+                        "audit_log_id": "%s",
+                        "created_at": 1711976400,
+                        "details": {"event_id": "%s"},
+                        "resource_id": "%s",
+                        "resource_name": "Alice",
+                        "resource_type": "user"
+                    },
+                    {
+                        "action": "event_attendee_invitation_accepted",
+                        "actor_username": "alice",
+                        "audit_log_id": "%s",
+                        "created_at": 1711972800,
+                        "details": {"event_id": "%s"},
+                        "resource_id": "%s",
+                        "resource_name": "Alice",
+                        "resource_type": "user"
+                    },
+                    {
+                        "action": "session_proposal_added",
+                        "actor_username": "alice",
+                        "audit_log_id": "%s",
+                        "created_at": 1711969200,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Rust for Alliances",
+                        "resource_type": "session_proposal"
+                    }
+                ]
+            $json$,
+            :'audit2ID',
+            :'actorID',
+            :'audit5ID',
+            :'eventRejectedID',
+            :'actorID',
+            :'audit4ID',
+            :'eventAcceptedID',
+            :'actorID',
+            :'audit1ID',
+            :'sessionProposalID'
+        )::jsonb,
         'total',
         4
     ),
@@ -179,18 +213,24 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'logs',
-        '[
-            {
-                "action": "session_proposal_added",
-                "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000101",
-                "created_at": 1711969200,
-                "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000021",
-                "resource_name": "Rust for Alliances",
-                "resource_type": "session_proposal"
-            }
-        ]'::jsonb,
+        format(
+            $json$
+                [
+                    {
+                        "action": "session_proposal_added",
+                        "actor_username": "alice",
+                        "audit_log_id": "%s",
+                        "created_at": 1711969200,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Rust for Alliances",
+                        "resource_type": "session_proposal"
+                    }
+                ]
+            $json$,
+            :'audit1ID',
+            :'sessionProposalID'
+        )::jsonb,
         'total',
         1
     ),
@@ -205,18 +245,24 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'logs',
-        '[
-            {
-                "action": "session_proposal_added",
-                "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000101",
-                "created_at": 1711969200,
-                "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000021",
-                "resource_name": "Rust for Alliances",
-                "resource_type": "session_proposal"
-            }
-        ]'::jsonb,
+        format(
+            $json$
+                [
+                    {
+                        "action": "session_proposal_added",
+                        "actor_username": "alice",
+                        "audit_log_id": "%s",
+                        "created_at": 1711969200,
+                        "details": {},
+                        "resource_id": "%s",
+                        "resource_name": "Rust for Alliances",
+                        "resource_type": "session_proposal"
+                    }
+                ]
+            $json$,
+            :'audit1ID',
+            :'sessionProposalID'
+        )::jsonb,
         'total',
         4
     ),

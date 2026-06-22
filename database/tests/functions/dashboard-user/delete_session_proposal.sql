@@ -9,38 +9,75 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000072'
-\set userID '00000000-0000-0000-0000-000000000071'
+\set allianceID '4a060000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a060000-0000-0000-0000-000000000002'
+\set eventID '4a060000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a060000-0000-0000-0000-000000000004'
+\set groupID '4a060000-0000-0000-0000-000000000005'
+\set otherUserProposalID '4a060000-0000-0000-0000-000000000006'
+\set proposalWithSubmissionID '4a060000-0000-0000-0000-000000000007'
+\set sessionProposalID '4a060000-0000-0000-0000-000000000008'
+\set user2ID '4a060000-0000-0000-0000-000000000009'
+\set userID '4a060000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice'),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'bob', true, 'Bob');
-
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'session-proposal-alliance',
+    'Session Proposal Alliance',
+    'Alliance for testing session proposal deletion',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, alliance_id, name) values
-    (:'groupCategoryID', :'allianceID', 'Tech');
-
--- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
-    (:'groupID', :'allianceID', :'groupCategoryID', 'G1', 'g1');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, alliance_id, name) values
-    (:'eventCategoryID', :'allianceID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'bob@example.com',
+    true,
+    'bob',
+    'Bob'
+);
+
+-- Group
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Session Proposal Group', 'proposal-group');
 
 -- Event
 insert into event (
@@ -87,15 +124,14 @@ insert into session_proposal (
     title,
     user_id
 ) values (
-    gen_random_uuid(),
+    :'sessionProposalID',
     '2024-01-02 00:00:00+00',
     'Session about Rust',
     make_interval(mins => 45),
     'beginner',
     'Rust 101',
     :'userID'
-)
-returning session_proposal_id as "sessionProposalID" \gset
+);
 
 -- Session proposal
 insert into session_proposal (
@@ -107,15 +143,14 @@ insert into session_proposal (
     title,
     user_id
 ) values (
-    gen_random_uuid(),
+    :'proposalWithSubmissionID',
     '2024-01-03 00:00:00+00',
     'Session about Go',
     make_interval(mins => 45),
     'beginner',
     'Go 101',
     :'userID'
-)
-returning session_proposal_id as "proposalWithSubmissionID" \gset
+);
 
 -- CFS submission
 insert into cfs_submission (event_id, session_proposal_id, status_id)
@@ -131,15 +166,14 @@ insert into session_proposal (
     title,
     user_id
 ) values (
-    gen_random_uuid(),
+    :'otherUserProposalID',
     '2024-01-04 00:00:00+00',
     'Session about Python',
     make_interval(mins => 45),
     'beginner',
     'Python 101',
     :'user2ID'
-)
-returning session_proposal_id as "otherUserProposalID" \gset
+);
 
 -- CFS submission (other user)
 insert into cfs_submission (event_id, session_proposal_id, status_id)

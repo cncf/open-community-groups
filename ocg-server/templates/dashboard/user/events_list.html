@@ -1,6 +1,7 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
+{% import "macros/question_answers.html" as question_answers -%}
 
 {# Dashboard User Events List -#}
 {# Header -#}
@@ -203,106 +204,50 @@ description = "Upcoming events where you'll participate.") -}}
       <div class="modal-panel p-4 max-w-6xl">
         <div class="modal-card rounded-lg">
           {# Modal header -#}
-          <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-            <div>
-              <h3 id="user-event-questions-title-{{ item.event.event_id }}"
-                  class="text-xl font-semibold text-stone-900">Registration questions</h3>
-              <p class="mt-1 text-sm text-stone-600">{{ item.event.name }}</p>
-            </div>
-            <button data-user-event-questions-close
-                    type="button"
-                    class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-              <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-              <span class="sr-only">Close modal</span>
-            </button>
-          </div>
-          {# End modal header -#}
-          {# Modal form -#}
-          <form data-user-event-questions-form
-                hx-put="/dashboard/user/events/{{ item.event.alliance_name }}/{{ item.event.event_id }}/registration-answers"
-                hx-indicator="#dashboard-spinner"
-                hx-disabled-elt="find button[type='submit']"
-                class="modal-body p-4 md:p-6 space-y-7">
-            {% for question in item.registration_questions -%}
-              <fieldset data-question-id="{{ question.id }}"
-                        data-question-kind="{{ question.kind.to_string() }}"
-                        data-question-required="{{ question.required }}"
-                        class="space-y-2">
-                <legend class="form-label">
-                  <span class="flex items-start gap-2">
-                    <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold leading-6 text-stone-700">
-                      {{ loop.index }}
-                    </span>
-                    <span class="min-w-0">
-                      {{ question.prompt }}
-                      {% if question.required %}<span class="asterisk">*</span>{% endif %}
-                    </span>
-                  </span>
-                </legend>
-                {% if question.kind.to_string() == "free-text" -%}
-                  <div class="ms-8">
-                    <textarea class="input-primary min-h-24 text-stone-500"
-                              data-question-answer
-                              {% if question.required %}
-                                required
-                              {% endif %}>{% if let Some(answer) = question.free_text_answer(item.registration_answers.as_ref()) %}{{ answer }}{% endif %}</textarea>
-                  </div>
-                {% else if question.kind.to_string() == "single-select" -%}
-                  <div class="ms-8 space-y-2">
-                    {% for option in question.options -%}
-                      <label class="flex items-center gap-2 text-sm text-stone-500">
-                        <input type="radio"
-                               name="question-{{ item.event.event_id }}-{{ question.id }}"
-                               value="{{ option.id }}"
-                               class="radio-primary"
-                               data-question-answer
-                               {% if question.is_option_selected(item.registration_answers.as_ref(), option.id) %}checked{% endif %}
-                               {% if question.required %}required{% endif %}>
-                        <span>{{ option.label }}</span>
-                      </label>
-                    {% endfor -%}
-                  </div>
+          {% let questions_subtitle -%}
+          <p class="mt-1 text-sm text-stone-600">{{ item.event.name }}</p>
+        {%- endlet %}
+        {% let questions_title_id -%}user-event-questions-title-{{ item.event.event_id }}{%- endlet %}
+        {{ dashboard::modal_header(title_id = questions_title_id,
+                title = "Registration questions",
+                close_attrs = "data-user-event-questions-close",
+                subtitle = questions_subtitle,
+                align_items = "items-start") -}}
+        {# End modal header -#}
+        {# Modal form -#}
+        <form data-user-event-questions-form
+              hx-put="/dashboard/user/events/{{ item.event.alliance_name }}/{{ item.event.event_id }}/registration-answers"
+              hx-indicator="#dashboard-spinner"
+              hx-disabled-elt="find button[type='submit']"
+              class="modal-body p-4 md:p-6 space-y-7">
+          {% let radio_name_prefix -%}question-{{ item.event.event_id }}{%- endlet %}
+          {{ question_answers::fields(questions = item.registration_questions,
+                    answers = item.registration_answers.as_ref() ,
+          answer_attr = "data-question-answer",
+          radio_name_prefix = radio_name_prefix) -}}
+          <input type="hidden" data-question-answers-input name="registration_answers">
+          <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
+            {{ question_answers::required_note() -}}
+            <div class="flex flex-col gap-3 md:flex-row md:justify-end">
+              <button data-user-event-questions-close
+                      type="button"
+                      class="btn-primary-outline">Cancel</button>
+              <button type="submit" class="btn-primary">
+                {% if item.registration_questions_pending() -%}
+                  Complete registration
                 {% else -%}
-                  <div class="ms-8 space-y-2">
-                    {% for option in question.options -%}
-                      <label class="flex items-center gap-2 text-sm text-stone-500">
-                        <input type="checkbox"
-                               value="{{ option.id }}"
-                               class="checkbox-primary"
-                               data-question-answer
-                               {% if question.is_option_selected(item.registration_answers.as_ref(), option.id) %}checked{% endif %}>
-                        <span>{{ option.label }}</span>
-                      </label>
-                    {% endfor -%}
-                  </div>
+                  Save answers
                 {% endif -%}
-              </fieldset>
-            {% endfor -%}
-            <input type="hidden" data-question-answers-input name="registration_answers">
-            <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
-              <p class="text-xs text-stone-500">
-                <span class="asterisk">*</span> Questions marked with an asterisk are required.
-              </p>
-              <div class="flex flex-col gap-3 md:flex-row md:justify-end">
-                <button data-user-event-questions-close
-                        type="button"
-                        class="btn-primary-outline">Cancel</button>
-                <button type="submit" class="btn-primary">
-                  {% if item.registration_questions_pending() -%}
-                    Complete registration
-                  {% else -%}
-                    Save answers
-                  {% endif -%}
-                </button>
-              </div>
+              </button>
             </div>
-          </form>
-          {# End modal form -#}
-        </div>
+          </div>
+        </form>
+        {# End modal form -#}
       </div>
     </div>
-    {# End registration questions modal -#}
-  {% endif -%}
+  </div>
+  {# End registration questions modal -#}
+{% endif -%}
 {% endfor -%}
 {# End registration questions modals -#}
 

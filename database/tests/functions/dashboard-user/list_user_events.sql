@@ -9,81 +9,159 @@ select plan(10);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupDeletedID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000032'
-\set groupInactiveID '00000000-0000-0000-0000-000000000033'
-\set questionsAttendeeUserID '90400000-0000-0000-0000-000000000031'
-\set questionsCheckoutExpiredPurchaseID '90400000-0000-0000-0000-000000000063'
-\set questionsCheckoutExpiredUserID '90400000-0000-0000-0000-000000000035'
-\set questionsCheckoutPurchaseID '90400000-0000-0000-0000-000000000062'
-\set questionsCheckoutUserID '90400000-0000-0000-0000-000000000034'
-\set questionsInvitedUserID '90400000-0000-0000-0000-000000000033'
-\set userEmptyID '00000000-0000-0000-0000-000000000099'
-\set userID '00000000-0000-0000-0000-000000000081'
-\set userPaidID '00000000-0000-0000-0000-000000000082'
-
-\set eventAID '00000000-0000-0000-0000-000000000101'
-\set eventBID '00000000-0000-0000-0000-000000000102'
-\set eventCanceledID '00000000-0000-0000-0000-000000000103'
-\set eventCID '00000000-0000-0000-0000-000000000104'
-\set eventDeletedID '00000000-0000-0000-0000-000000000105'
-\set eventInactiveGroupID '00000000-0000-0000-0000-000000000106'
-\set eventNoStartsAtID '00000000-0000-0000-0000-000000000107'
-\set eventPastID '00000000-0000-0000-0000-000000000108'
-\set eventPendingInvitationID '00000000-0000-0000-0000-000000000111'
-\set eventPaidID '00000000-0000-0000-0000-000000000112'
-\set eventPaidPriceWindowID '00000000-0000-0000-0000-000000000115'
-\set eventPaidPurchaseID '00000000-0000-0000-0000-000000000113'
-\set eventPaidTicketTypeID '00000000-0000-0000-0000-000000000114'
-\set eventQuestionsID '90400000-0000-0000-0000-000000000041'
-\set eventQuestionsTicketTypeID '90400000-0000-0000-0000-000000000081'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000000109'
-\set eventDeletedGroupID '00000000-0000-0000-0000-000000000110'
-
-\set sessionAID '00000000-0000-0000-0000-000000000201'
-\set sessionCID '00000000-0000-0000-0000-000000000202'
+\set allianceID '4a0c0000-0000-0000-0000-000000000001'
+\set eventAID '4a0c0000-0000-0000-0000-000000000002'
+\set eventBID '4a0c0000-0000-0000-0000-000000000003'
+\set eventCanceledID '4a0c0000-0000-0000-0000-000000000004'
+\set eventCategoryID '4a0c0000-0000-0000-0000-000000000005'
+\set eventCID '4a0c0000-0000-0000-0000-000000000006'
+\set eventDeletedGroupID '4a0c0000-0000-0000-0000-000000000007'
+\set eventDeletedID '4a0c0000-0000-0000-0000-000000000008'
+\set eventInactiveGroupID '4a0c0000-0000-0000-0000-000000000009'
+\set eventNoStartsAtID '4a0c0000-0000-0000-0000-000000000010'
+\set eventPaidID '4a0c0000-0000-0000-0000-000000000011'
+\set eventPaidPriceWindowID '4a0c0000-0000-0000-0000-000000000012'
+\set eventPaidPurchaseID '4a0c0000-0000-0000-0000-000000000013'
+\set eventPaidTicketTypeID '4a0c0000-0000-0000-0000-000000000014'
+\set eventPastID '4a0c0000-0000-0000-0000-000000000015'
+\set eventPendingInvitationID '4a0c0000-0000-0000-0000-000000000016'
+\set eventQuestionsID '4a0c0000-0000-0000-0000-000000000017'
+\set eventQuestionsTicketTypeID '4a0c0000-0000-0000-0000-000000000018'
+\set eventUnpublishedID '4a0c0000-0000-0000-0000-000000000019'
+\set groupCategoryID '4a0c0000-0000-0000-0000-000000000020'
+\set groupDeletedID '4a0c0000-0000-0000-0000-000000000021'
+\set groupID '4a0c0000-0000-0000-0000-000000000022'
+\set groupInactiveID '4a0c0000-0000-0000-0000-000000000023'
+\set questionsAttendeeUserID '4a0c0000-0000-0000-0000-000000000024'
+\set questionsCheckoutExpiredPurchaseID '4a0c0000-0000-0000-0000-000000000025'
+\set questionsCheckoutExpiredUserID '4a0c0000-0000-0000-0000-000000000026'
+\set questionsCheckoutPurchaseID '4a0c0000-0000-0000-0000-000000000027'
+\set questionsCheckoutUserID '4a0c0000-0000-0000-0000-000000000028'
+\set questionsInvitedUserID '4a0c0000-0000-0000-0000-000000000029'
+\set registrationQuestionID '4a0c0000-0000-0000-0000-000000000030'
+\set sessionAID '4a0c0000-0000-0000-0000-000000000031'
+\set sessionCID '4a0c0000-0000-0000-0000-000000000032'
+\set userEmptyID '4a0c0000-0000-0000-0000-000000000033'
+\set userID '4a0c0000-0000-0000-0000-000000000034'
+\set userPaidID '4a0c0000-0000-0000-0000-000000000035'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (
-        :'allianceID',
-        'alliance-one',
-        'Alliance One',
-        'Test alliance',
-        'https://e/logo.png',
-        'https://e/banner-mobile.png',
-        'https://e/banner.png'
-    );
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'alliance-one',
+    'Alliance One',
+    'Alliance for testing user event listings',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, alliance_id, name) values
-    (:'groupCategoryID', :'allianceID', 'Tech');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, alliance_id, name) values
-    (:'eventCategoryID', :'allianceID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
+
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    'auth-hash',
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+), (
+    :'userPaidID',
+    'paid-auth-hash',
+    'paid@example.com',
+    true,
+    'paid',
+    'Paid User'
+), (
+    :'questionsAttendeeUserID',
+    'attendee-auth-hash',
+    'rq-attendee@test.com',
+    true,
+    'rq-attendee',
+    'RQ Attendee'
+), (
+    :'questionsCheckoutUserID',
+    'checkout-auth-hash',
+    'rq-checkout@test.com',
+    true,
+    'rq-checkout',
+    'RQ Checkout'
+), (
+    :'questionsCheckoutExpiredUserID',
+    'expired-auth-hash',
+    'rq-expired@test.com',
+    true,
+    'rq-expired',
+    'RQ Expired'
+), (
+    :'questionsInvitedUserID',
+    'invited-auth-hash',
+    'rq-invited@test.com',
+    true,
+    'rq-invited',
+    'RQ Invited'
+);
 
 -- Groups
-insert into "group" (group_id, active, alliance_id, deleted, group_category_id, name, slug) values
-    (:'groupDeletedID', false, :'allianceID', true, :'groupCategoryID', 'Deleted Group', 'deleted-group'),
-    (:'groupID', true, :'allianceID', false, :'groupCategoryID', 'Main Group', 'main-group'),
-    (:'groupInactiveID', false, :'allianceID', false, :'groupCategoryID', 'Inactive Group', 'inactive-group');
-
--- User
-insert into "user" (user_id, auth_hash, email, email_verified, username, name) values
-    (:'userID', 'auth-hash', 'alice@example.com', true, 'alice', 'Alice'),
-    (:'userPaidID', 'paid-auth-hash', 'paid@example.com', true, 'paid', 'Paid User'),
-    (:'questionsAttendeeUserID', 'h', 'rq-attendee@test.com', true, 'rq-attendee', 'RQ Attendee'),
-    (:'questionsCheckoutUserID', 'h', 'rq-checkout@test.com', true, 'rq-checkout', 'RQ Checkout'),
-    (:'questionsCheckoutExpiredUserID', 'h', 'rq-expired@test.com', true, 'rq-expired', 'RQ Expired'),
-    (:'questionsInvitedUserID', 'h', 'rq-invited@test.com', true, 'rq-invited', 'RQ Invited');
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted
+) values (
+    :'groupDeletedID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Deleted Group',
+    'deleted-group',
+    false,
+    true
+), (
+    :'groupID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Main Group',
+    'main-group',
+    true,
+    false
+), (
+    :'groupInactiveID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Inactive Group',
+    'inactive-group',
+    false,
+    false
+);
 
 -- Events
 insert into event (
@@ -285,28 +363,41 @@ insert into event (
 -- Event with registration questions shown in user event lists
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
-    timezone,
-    event_category_id,
-    event_kind_id,
     published,
+    registration_questions,
     starts_at,
-    registration_questions
+    timezone
 ) values (
     :'eventQuestionsID',
+    :'eventCategoryID',
+    'in-person',
     :'groupID',
     'Questions Event',
     'questions-event',
-    'd',
-    'UTC',
-    :'eventCategoryID',
-    'in-person',
+    'Event with registration questions',
     true,
+    format(
+        $json$
+            [
+                {
+                    "id": "%s",
+                    "kind": "free-text",
+                    "prompt": "Note",
+                    "required": true,
+                    "options": []
+                }
+            ]
+        $json$,
+        :'registrationQuestionID'
+    )::jsonb,
     now() + interval '1 day',
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    'UTC'
 );
 
 -- Sessions for speaker role tests
@@ -369,21 +460,30 @@ values
         :'questionsCheckoutUserID',
         false,
         'registration-questions-pending',
-        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Checkout answer"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Checkout answer"}]}',
+            :'registrationQuestionID'
+        )::jsonb
     ),
     (
         :'eventQuestionsID',
         :'questionsCheckoutExpiredUserID',
         false,
         'registration-questions-pending',
-        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Expired answer"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Expired answer"}]}',
+            :'registrationQuestionID'
+        )::jsonb
     ),
     (
         :'eventQuestionsID',
         :'questionsAttendeeUserID',
         false,
         'confirmed',
-        '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Attendee answer"}]}'::jsonb
+        format(
+            '{"answers": [{"question_id": "%s", "value": "Attendee answer"}]}',
+            :'registrationQuestionID'
+        )::jsonb
     );
 
 -- User roles for role aggregation

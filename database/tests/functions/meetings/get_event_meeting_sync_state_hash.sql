@@ -9,70 +9,98 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000001711'
-\set allianceID '00000000-0000-0000-0000-000000001701'
-\set eventID '00000000-0000-0000-0000-000000001712'
-\set groupCategoryID '00000000-0000-0000-0000-000000001710'
-\set groupID '00000000-0000-0000-0000-000000001702'
-\set userHostID '00000000-0000-0000-0000-000000001721'
-\set userSpeakerID '00000000-0000-0000-0000-000000001722'
+\set allianceID '7a070000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a070000-0000-0000-0000-000000000002'
+\set eventID '7a070000-0000-0000-0000-000000000003'
+\set groupCategoryID '7a070000-0000-0000-0000-000000000004'
+\set groupID '7a070000-0000-0000-0000-000000000005'
+\set userHostID '7a070000-0000-0000-0000-000000000006'
+\set userSpeakerID '7a070000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
-
--- Users
-insert into "user" (user_id, auth_hash, email, username) values
-    (:'userHostID', 'hash-host', 'host@example.com', 'host'),
-    (:'userSpeakerID', 'hash-speaker', 'speaker@example.com', 'speaker');
-
--- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
 values (:'groupCategoryID', :'allianceID', 'Technology');
 
+-- Event category
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
+
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, username) values
+    (:'userHostID', 'hash-host', 'host@example.com', true, 'host'),
+    (:'userSpeakerID', 'hash-speaker', 'speaker@example.com', true, 'speaker');
+
 -- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug, description)
-values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group', 'A test group');
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    description
+) values (
+    :'groupID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Test Group',
+    'test-group',
+    'A test group'
+);
 
 -- Event hash target
 insert into event (
-    capacity,
-    description,
-    ends_at,
-    event_category_id,
     event_id,
+    event_category_id,
     event_kind_id,
     group_id,
+    name,
+    slug,
+    description,
+    capacity,
+    ends_at,
     meeting_hosts,
     meeting_provider_id,
     meeting_requested,
-    name,
     published,
-    slug,
     starts_at,
     timezone
 ) values (
-    100,
-    'Hash target event',
-    '2026-06-01 11:00:00+00',
-    :'categoryID',
     :'eventID',
+    :'eventCategoryID',
     'virtual',
     :'groupID',
+    'Hash Target Event',
+    'hash-target-event',
+    'Hash target event',
+    100,
+    '2026-06-01 11:00:00+00',
     array['explicit@example.com'],
     'zoom',
     true,
-    'Hash Target Event',
     true,
-    'hash-target-event',
     '2026-06-01 10:00:00+00',
     'UTC'
 );

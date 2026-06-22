@@ -9,34 +9,49 @@ select plan(17);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000001611'
-\set allianceID '00000000-0000-0000-0000-000000001601'
-\set eventClaimedID '00000000-0000-0000-0000-000000001612'
-\set eventHost1OverlapID '00000000-0000-0000-0000-000000001614'
-\set eventHost2NonOverlapID '00000000-0000-0000-0000-000000001615'
-\set eventHost2OverlapID '00000000-0000-0000-0000-000000001616'
-\set eventSelectionID '00000000-0000-0000-0000-000000001617'
-\set eventSessionParentID '00000000-0000-0000-0000-000000001618'
-\set eventStaleClaimID '00000000-0000-0000-0000-000000001619'
-\set groupCategoryID '00000000-0000-0000-0000-000000001610'
-\set groupID '00000000-0000-0000-0000-000000001602'
-\set meetingHost1OverlapID '00000000-0000-0000-0000-000000001631'
-\set meetingHost2NonOverlapID '00000000-0000-0000-0000-000000001632'
-\set meetingHost2OverlapID '00000000-0000-0000-0000-000000001633'
-\set sessionClaimedID '00000000-0000-0000-0000-000000001613'
-\set sessionStaleClaimID '00000000-0000-0000-0000-000000001620'
+\set allianceID '7a030000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a030000-0000-0000-0000-000000000002'
+\set eventClaimedID '7a030000-0000-0000-0000-000000000003'
+\set eventHost1OverlapID '7a030000-0000-0000-0000-000000000004'
+\set eventHost2NonOverlapID '7a030000-0000-0000-0000-000000000005'
+\set eventHost2OverlapID '7a030000-0000-0000-0000-000000000006'
+\set eventSelectionID '7a030000-0000-0000-0000-000000000007'
+\set eventSessionParentID '7a030000-0000-0000-0000-000000000008'
+\set eventStaleClaimID '7a030000-0000-0000-0000-000000000009'
+\set groupCategoryID '7a030000-0000-0000-0000-000000000010'
+\set groupID '7a030000-0000-0000-0000-000000000011'
+\set meetingHost1OverlapID '7a030000-0000-0000-0000-000000000012'
+\set meetingHost2NonOverlapID '7a030000-0000-0000-0000-000000000013'
+\set meetingHost2OverlapID '7a030000-0000-0000-0000-000000000014'
+\set sessionClaimedID '7a030000-0000-0000-0000-000000000015'
+\set sessionStaleClaimID '7a030000-0000-0000-0000-000000000016'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -67,7 +82,7 @@ insert into event (
     100,
     'Selection owner event',
     '2099-06-01 09:30:00-04',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventSelectionID',
     'virtual',
     :'groupID',
@@ -103,7 +118,7 @@ insert into event (
     100,
     'Claimed event',
     '2026-06-01 11:00:00+00',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventClaimedID',
     'virtual',
     :'groupID',
@@ -140,7 +155,7 @@ insert into event (
     100,
     'Stale claimed event',
     '2026-06-03 11:00:00+00',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventStaleClaimID',
     'virtual',
     :'groupID',
@@ -176,7 +191,7 @@ insert into event (
     100,
     'Parent event for session assignment',
     '2026-06-02 11:00:00+00',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventSessionParentID',
     'virtual',
     :'groupID',
@@ -258,7 +273,7 @@ insert into event (
     100,
     'Event used for host1 overlap load',
     '2099-06-01 11:00:00-04',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventHost1OverlapID',
     'virtual',
     :'groupID',
@@ -287,7 +302,7 @@ insert into event (
     100,
     'Event used for host2 non-overlap load',
     '2099-06-01 13:00:00-04',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventHost2NonOverlapID',
     'virtual',
     :'groupID',
@@ -316,7 +331,7 @@ insert into event (
     100,
     'Event used for host2 overlap load',
     '2099-06-01 11:00:00-04',
-    :'categoryID',
+    :'eventCategoryID',
     :'eventHost2OverlapID',
     'virtual',
     :'groupID',

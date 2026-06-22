@@ -9,32 +9,47 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set userID '00000000-0000-0000-0000-000000000031'
+\set allianceID '4a120000-0000-0000-0000-000000000001'
+\set groupCategoryID '4a120000-0000-0000-0000-000000000002'
+\set groupID '4a120000-0000-0000-0000-000000000003'
+\set userID '4a120000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'group-invitation-alliance',
+    'Group Invitation Alliance',
+    'Alliance for testing group invitation rejection',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
-values (:'categoryID', :'allianceID', 'Tech');
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
--- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
-
--- User
+-- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', gen_random_bytes(32), 'alice@example.com', true, 'alice');
 
--- Pending invite
+-- Group
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Invitation Group', 'invitation-group');
+
+-- Pending invitation
 insert into group_team (group_id, user_id, role, accepted)
 values (:'groupID', :'userID', 'admin', false);
 
@@ -44,7 +59,13 @@ values (:'groupID', :'userID', 'admin', false);
 
 -- Should remove the pending group invitation
 select lives_ok(
-    $$ select reject_group_team_invitation('00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000021'::uuid) $$,
+    format(
+        $$
+            select reject_group_team_invitation(%L::uuid, %L::uuid)
+        $$,
+        :'userID',
+        :'groupID'
+    ),
     'Should remove the pending group invitation'
 );
 
@@ -73,23 +94,35 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
-        values (
-            'group_team_invitation_rejected',
-            '00000000-0000-0000-0000-000000000031'::uuid,
-            'alice',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
-            'user',
-            '00000000-0000-0000-0000-000000000031'::uuid
-        )
-    $$,
+    format(
+        $$
+            values (
+                'group_team_invitation_rejected',
+                %L::uuid,
+                'alice',
+                %L::uuid,
+                %L::uuid,
+                'user',
+                %L::uuid
+            )
+        $$,
+        :'userID',
+        :'allianceID',
+        :'groupID',
+        :'userID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should reject a second rejection when no pending invitation exists
 select throws_ok(
-    $$ select reject_group_team_invitation('00000000-0000-0000-0000-000000000031'::uuid, '00000000-0000-0000-0000-000000000021'::uuid) $$,
+    format(
+        $$
+            select reject_group_team_invitation(%L::uuid, %L::uuid)
+        $$,
+        :'userID',
+        :'groupID'
+    ),
     'no pending group invitation found',
     'Should reject a second rejection when no pending invitation exists'
 );

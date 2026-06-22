@@ -9,27 +9,42 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '70000000-0000-0000-0000-000000000001'
-\set eventCategoryID '70000000-0000-0000-0000-000000000002'
-\set eventID '70000000-0000-0000-0000-000000000003'
-\set eventTicketTypeID '70000000-0000-0000-0000-000000000004'
-\set groupCategoryID '70000000-0000-0000-0000-000000000005'
-\set groupID '70000000-0000-0000-0000-000000000006'
-\set attachedPendingPurchaseID '70000000-0000-0000-0000-000000000012'
-\set attachedUserID '70000000-0000-0000-0000-000000000013'
-\set pendingPurchaseID '70000000-0000-0000-0000-000000000007'
-\set completedPurchaseID '70000000-0000-0000-0000-000000000008'
-\set completedUserID '70000000-0000-0000-0000-000000000011'
-\set priceWindowID '70000000-0000-0000-0000-000000000009'
-\set userID '70000000-0000-0000-0000-000000000010'
+\set attachedPendingPurchaseID '79410000-0000-0000-0000-000000000001'
+\set attachedUserID '79410000-0000-0000-0000-000000000002'
+\set allianceID '79410000-0000-0000-0000-000000000003'
+\set completedPurchaseID '79410000-0000-0000-0000-000000000004'
+\set completedUserID '79410000-0000-0000-0000-000000000005'
+\set eventCategoryID '79410000-0000-0000-0000-000000000006'
+\set eventID '79410000-0000-0000-0000-000000000007'
+\set eventTicketTypeID '79410000-0000-0000-0000-000000000008'
+\set groupCategoryID '79410000-0000-0000-0000-000000000009'
+\set groupID '79410000-0000-0000-0000-000000000010'
+\set pendingPurchaseID '79410000-0000-0000-0000-000000000011'
+\set priceWindowID '79410000-0000-0000-0000-000000000012'
+\set userID '79410000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'payments-alliance', 'Payments Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'payments-alliance',
+    'Payments Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -42,19 +57,44 @@ values (:'eventCategoryID', :'allianceID', 'General');
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'userID', 'hash', 'user@example.com', true, 'buyer'),
-    (:'completedUserID', 'hash-2', 'completed@example.com', true, 'completed-buyer'),
-    (:'attachedUserID', 'hash-3', 'attached@example.com', true, 'attached-buyer');
+    (
+        :'attachedUserID',
+        'hash-3',
+        'attached@example.com',
+        true,
+        'attached-buyer'
+    ),
+    (
+        :'completedUserID',
+        'hash-2',
+        'completed@example.com',
+        true,
+        'completed-buyer'
+    ),
+    (
+        :'userID',
+        'hash',
+        'user@example.com',
+        true,
+        'buyer'
+    );
 
 -- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient
+)
 values (
     :'groupID',
     :'allianceID',
     :'groupCategoryID',
     'Payments Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group'),
-    'payments-group'
+    'payments-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group')
 );
 
 -- Event
@@ -87,8 +127,19 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventTicketTypeID',
+    :'eventID',
+    1,
+    10,
+    'General admission'
+);
 
 -- Price window
 insert into event_ticket_price_window (
@@ -165,27 +216,27 @@ insert into event_purchase (
 
 -- Should link checkout session details to a pending purchase
 select lives_ok(
-    $$
+    format($$
         select attach_checkout_session_to_event_purchase(
-            '70000000-0000-0000-0000-000000000007'::uuid,
+            %L::uuid,
             'stripe',
             'cs_test_123',
             'https://example.com/checkout'
         )
-    $$,
+    $$, :'pendingPurchaseID'),
     'Should link checkout session details to a pending purchase'
 );
 
 -- Should persist the provider checkout session details
 select results_eq(
-    $$
+    format($$
         select
             payment_provider_id,
             provider_checkout_session_id,
             provider_checkout_url
         from event_purchase
-        where event_purchase_id = '70000000-0000-0000-0000-000000000007'::uuid
-    $$,
+        where event_purchase_id = %L::uuid
+    $$, :'pendingPurchaseID'),
     $$
         values (
             'stripe'::text,
@@ -198,54 +249,54 @@ select results_eq(
 
 -- Should ignore non-pending purchases
 select lives_ok(
-    $$
+    format($$
         select attach_checkout_session_to_event_purchase(
-            '70000000-0000-0000-0000-000000000008'::uuid,
+            %L::uuid,
             'stripe',
             'cs_completed',
             'https://example.com/completed'
         )
-    $$,
+    $$, :'completedPurchaseID'),
     'Should ignore non-pending purchases'
 );
 
 -- Should leave completed purchases unchanged
 select results_eq(
-    $$
+    format($$
         select
             payment_provider_id,
             provider_checkout_session_id,
             provider_checkout_url
         from event_purchase
-        where event_purchase_id = '70000000-0000-0000-0000-000000000008'::uuid
-    $$,
+        where event_purchase_id = %L::uuid
+    $$, :'completedPurchaseID'),
     $$ values (null::text, null::text, null::text) $$,
     'Should leave completed purchases unchanged'
 );
 
 -- Should ignore pending purchases that already have a checkout session
 select lives_ok(
-    $$
+    format($$
         select attach_checkout_session_to_event_purchase(
-            '70000000-0000-0000-0000-000000000012'::uuid,
+            %L::uuid,
             'stripe',
             'cs_replacement',
             'https://example.com/replacement'
         )
-    $$,
+    $$, :'attachedPendingPurchaseID'),
     'Should ignore pending purchases that already have a checkout session'
 );
 
 -- Should keep the original checkout session details when already attached
 select results_eq(
-    $$
+    format($$
         select
             payment_provider_id,
             provider_checkout_session_id,
             provider_checkout_url
         from event_purchase
-        where event_purchase_id = '70000000-0000-0000-0000-000000000012'::uuid
-    $$,
+        where event_purchase_id = %L::uuid
+    $$, :'attachedPendingPurchaseID'),
     $$
         values (
             'stripe'::text,

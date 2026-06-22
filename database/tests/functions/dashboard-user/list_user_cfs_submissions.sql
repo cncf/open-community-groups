@@ -9,43 +9,71 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set label1ID '00000000-0000-0000-0000-000000000101'
-\set label2ID '00000000-0000-0000-0000-000000000102'
-\set proposal1ID '00000000-0000-0000-0000-000000000061'
-\set proposal2ID '00000000-0000-0000-0000-000000000062'
-\set submission1ID '00000000-0000-0000-0000-000000000071'
-\set submission2ID '00000000-0000-0000-0000-000000000072'
-\set userEmptyID '00000000-0000-0000-0000-000000000099'
-\set userID '00000000-0000-0000-0000-000000000081'
+\set allianceID '4a090000-0000-0000-0000-000000000001'
+\set eventCategoryID '4a090000-0000-0000-0000-000000000002'
+\set eventID '4a090000-0000-0000-0000-000000000003'
+\set groupCategoryID '4a090000-0000-0000-0000-000000000004'
+\set groupID '4a090000-0000-0000-0000-000000000005'
+\set label1ID '4a090000-0000-0000-0000-000000000006'
+\set label2ID '4a090000-0000-0000-0000-000000000007'
+\set proposal1ID '4a090000-0000-0000-0000-000000000008'
+\set proposal2ID '4a090000-0000-0000-0000-000000000009'
+\set submission1ID '4a090000-0000-0000-0000-000000000010'
+\set submission2ID '4a090000-0000-0000-0000-000000000011'
+\set userEmptyID '4a090000-0000-0000-0000-000000000012'
+\set userID '4a090000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'cfs-submissions-alliance',
+    'CFS Submissions Alliance',
+    'Alliance for testing CFS submission listings',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, alliance_id, name) values
-    (:'groupCategoryID', :'allianceID', 'Tech');
-
--- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, slug) values
-    (:'groupID', :'allianceID', :'groupCategoryID', 'G1', 'g1');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, alliance_id, name) values
-    (:'eventCategoryID', :'allianceID', 'Meetup');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name) values
-    (:'userID', gen_random_bytes(32), 'alice@example.com', 'alice', true, 'Alice');
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'alice@example.com',
+    true,
+    'alice',
+    'Alice'
+);
+
+-- Group
+insert into "group" (group_id, alliance_id, group_category_id, name, slug)
+values (:'groupID', :'allianceID', :'groupCategoryID', 'CFS Submissions Group', 'cfs-group');
 
 -- Session proposals
 insert into session_proposal (

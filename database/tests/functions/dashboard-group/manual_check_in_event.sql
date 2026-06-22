@@ -9,22 +9,37 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set actorUserID '00000000-0000-0000-0000-000000000041'
-\set attendeeUserID '00000000-0000-0000-0000-000000000042'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set missingUserID '00000000-0000-0000-0000-000000000043'
+\set actorUserID '3a2a0000-0000-0000-0000-000000000001'
+\set attendeeUserID '3a2a0000-0000-0000-0000-000000000002'
+\set allianceID '3a2a0000-0000-0000-0000-000000000003'
+\set eventCategoryID '3a2a0000-0000-0000-0000-000000000004'
+\set eventID '3a2a0000-0000-0000-0000-000000000005'
+\set groupCategoryID '3a2a0000-0000-0000-0000-000000000006'
+\set groupID '3a2a0000-0000-0000-0000-000000000007'
+\set missingUserID '3a2a0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner-mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -117,18 +132,25 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'event_attendee_checked_in',
-            '00000000-0000-0000-0000-000000000041'::uuid,
+            %L::uuid,
             'actor',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'user',
-            '00000000-0000-0000-0000-000000000042'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'actorUserID',
+        :'allianceID',
+        :'eventID',
+        :'groupID',
+        :'attendeeUserID'
+    ),
     'Should create the expected audit row'
 );
 

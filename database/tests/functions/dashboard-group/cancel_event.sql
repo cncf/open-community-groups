@@ -9,15 +9,16 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set eventNoMeetingID '00000000-0000-0000-0000-000000000032'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set sessionMeetingID '00000000-0000-0000-0000-000000000051'
-\set sessionNoMeetingID '00000000-0000-0000-0000-000000000052'
-\set userID '00000000-0000-0000-0000-000000000041'
+\set allianceID '3a060000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a060000-0000-0000-0000-000000000002'
+\set eventID '3a060000-0000-0000-0000-000000000003'
+\set eventNoMeetingID '3a060000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a060000-0000-0000-0000-000000000005'
+\set groupID '3a060000-0000-0000-0000-000000000006'
+\set missingGroupID '3a060000-0000-0000-0000-000000000007'
+\set sessionMeetingID '3a060000-0000-0000-0000-000000000008'
+\set sessionNoMeetingID '3a060000-0000-0000-0000-000000000009'
+\set userID '3a060000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
@@ -110,8 +111,8 @@ insert into event (
     'UTC',
     :'eventCategoryID',
     'virtual',
-    now(),
-    now() + interval '1 hour',
+    now() + interval '1 day',
+    now() + interval '1 day 1 hour',
 
     false,
     100,
@@ -175,8 +176,8 @@ insert into session (
     :'sessionMeetingID',
     :'eventID',
     'Session With Meeting',
-    now(),
-    now() + interval '30 minutes',
+    now() + interval '1 day',
+    now() + interval '1 day 30 minutes',
     'virtual',
     true,
     'zoom',
@@ -197,8 +198,8 @@ insert into session (
     :'sessionNoMeetingID',
     :'eventID',
     'Session Without Meeting',
-    now() + interval '30 minutes',
-    now() + interval '1 hour',
+    now() + interval '1 day 30 minutes',
+    now() + interval '1 day 1 hour',
     'in-person',
     null,
     false
@@ -210,7 +211,10 @@ insert into session (
 
 -- Should mark as canceled and preserve publication metadata
 select lives_ok(
-    $$select cancel_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        $$select cancel_event(null::uuid, %L::uuid, %L::uuid)$$,
+        :'groupID', :'eventID'
+    ),
     'Should mark as canceled and preserve publication metadata'
 );
 
@@ -256,18 +260,21 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'event_canceled',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'event',
-            '00000000-0000-0000-0000-000000000031'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID', :'groupID', :'eventID', :'eventID'
+    ),
     'Should create the expected audit row'
 );
 
@@ -294,7 +301,10 @@ select is(
 
 -- Should not change event meeting_in_sync when meeting_requested=false
 select lives_ok(
-    $$select cancel_event(null::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
+    format(
+        $$select cancel_event(null::uuid, %L::uuid, %L::uuid)$$,
+        :'groupID', :'eventNoMeetingID'
+    ),
     'Should cancel event when meeting_requested=false'
 );
 
@@ -307,7 +317,10 @@ select is(
 
 -- Should throw error when group_id does not match
 select throws_ok(
-    $$select cancel_event(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        $$select cancel_event(null::uuid, %L::uuid, %L::uuid)$$,
+        :'missingGroupID', :'eventID'
+    ),
     'event not found or inactive',
     'Should throw error when group_id does not match'
 );

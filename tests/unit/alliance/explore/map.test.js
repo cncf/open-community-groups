@@ -25,6 +25,7 @@ describe("alliance explore map", () => {
       .forEach((node) => node.remove());
     document.body.innerHTML = `
       <div id="main-loading-map" class="hidden"></div>
+      <div id="loading-map"></div>
       <div id="map-box"></div>
     `;
     globalThis.htmx = { process() {} };
@@ -172,6 +173,13 @@ describe("alliance explore map", () => {
             longitude: -4.4,
             popover_html: "",
           },
+          {
+            slug: "null-island",
+            alliance_name: "spain",
+            latitude: null,
+            longitude: null,
+            popover_html: "",
+          },
         ],
         { sw_lat: 1, sw_lon: 2, ne_lat: 3, ne_lon: 4 },
       );
@@ -187,6 +195,7 @@ describe("alliance explore map", () => {
       expect(flyToBoundsCalls).to.deep.equal([
         { sw: { lat: 1, lng: 2 }, ne: { lat: 3, lng: 4 } },
       ]);
+      expect(map.state.status).to.equal("idle");
 
       // Verify loads map scripts, filters invalid.
       markerAdds[0].handlers.click();
@@ -253,5 +262,39 @@ describe("alliance explore map", () => {
     } finally {
       HTMLAnchorElement.prototype.click = originalAnchorClick;
     }
+  });
+
+  it("records empty and error states while refreshing location data", async () => {
+    // Create the map and finish loading scripts.
+    delete globalThis.L;
+    delete globalThis.window.L;
+    const map = new ExploreMap("groups", { groups: [] });
+    globalThis.L = { ...leafletMock, markerClusterGroup: undefined };
+    globalThis.window.L = globalThis.L;
+    document.head.querySelector('script[src*="leaflet.v1.9.4.min.js"]')?.onload();
+    await waitForMicrotask();
+    globalThis.L = leafletMock;
+    globalThis.window.L = leafletMock;
+    document.head.querySelector('script[src*="leaflet.markercluster.v1.5.3.min.js"]')?.onload();
+    await waitForMicrotask();
+
+    // Refresh with only non-mappable items.
+    await map.refresh(false, {
+      groups: [{ slug: "unknown-place", latitude: 0, longitude: 0 }],
+    });
+
+    // Verify non-mappable results produce an empty state and clear loading.
+    expect(map.state.status).to.equal("empty");
+    expect(document.getElementById("loading-map")?.classList.contains("is-loading")).to.equal(false);
+
+    // Refresh with a failing fetch helper.
+    map.fetchLocationData = async () => {
+      throw new Error("network error");
+    };
+    await map.refresh();
+
+    // Verify failed refreshes produce an error state and clear loading.
+    expect(map.state.status).to.equal("error");
+    expect(document.getElementById("loading-map")?.classList.contains("is-loading")).to.equal(false);
   });
 });

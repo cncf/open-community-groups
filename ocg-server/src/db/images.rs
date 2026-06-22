@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::{db::PgDB, services::images::Image};
+use crate::{db::PgExecutor, services::images::Image};
 
 /// Trait describing database operations for images.
 #[async_trait]
@@ -27,10 +27,13 @@ pub(crate) trait DBImages {
 }
 
 #[async_trait]
-impl DBImages for PgDB {
+impl<T> DBImages for T
+where
+    T: PgExecutor + Send + Sync,
+{
     #[instrument(skip(self), err)]
     async fn get_image(&self, file_name: &str) -> Result<Option<Image>> {
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let image = db
             .query_opt(
                 "

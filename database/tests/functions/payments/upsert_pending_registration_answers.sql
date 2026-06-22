@@ -10,21 +10,37 @@ select plan(9);
 -- ============================================================================
 
 \set allianceID '79300000-0000-0000-0000-000000000001'
-\set groupCategoryID '79300000-0000-0000-0000-000000000002'
+\set confirmedUserID '79300000-0000-0000-0000-000000000008'
 \set eventCategoryID '79300000-0000-0000-0000-000000000003'
-\set groupID '79300000-0000-0000-0000-000000000004'
 \set eventID '79300000-0000-0000-0000-000000000005'
+\set groupCategoryID '79300000-0000-0000-0000-000000000002'
+\set groupID '79300000-0000-0000-0000-000000000004'
 \set noQuestionsUserID '79300000-0000-0000-0000-000000000006'
 \set pendingUserID '79300000-0000-0000-0000-000000000007'
-\set confirmedUserID '79300000-0000-0000-0000-000000000008'
+\set registrationQuestionID '79300000-0000-0000-0000-000000000101'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'pending-answers-alliance', 'Pending Answers Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'pending-answers-alliance',
+    'Pending Answers Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -37,13 +53,37 @@ values (:'eventCategoryID', :'allianceID', 'General');
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'noQuestionsUserID', 'hash-1', 'no-questions@example.com', true, 'no-questions-user'),
-    (:'pendingUserID', 'hash-2', 'pending@example.com', true, 'pending-user'),
-    (:'confirmedUserID', 'hash-3', 'confirmed@example.com', true, 'confirmed-user');
+    (
+        :'confirmedUserID',
+        'hash-3',
+        'confirmed@example.com',
+        true,
+        'confirmed-user'
+    ),
+    (
+        :'noQuestionsUserID',
+        'hash-1',
+        'no-questions@example.com',
+        true,
+        'no-questions-user'
+    ),
+    (
+        :'pendingUserID',
+        'hash-2',
+        'pending@example.com',
+        true,
+        'pending-user'
+    );
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'groupCategoryID', 'Pending Answers Group', 'pending-answers-group');
+values (
+    :'groupID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Pending Answers Group',
+    'pending-answers-group'
+);
 
 -- Event
 insert into event (
@@ -77,7 +117,13 @@ insert into event_attendee (event_id, user_id, registration_answers, status)
 values (
     :'eventID',
     :'confirmedUserID',
-    '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Original"}]}'::jsonb,
+    jsonb_build_object(
+        'answers',
+        jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Original'
+        ))
+    ),
     'confirmed'
 );
 
@@ -87,14 +133,14 @@ values (
 
 -- Should ignore events without registration questions
 select lives_ok(
-    $$
+    format($$
         select upsert_pending_registration_answers(
-            '79300000-0000-0000-0000-000000000005'::uuid,
-            '79300000-0000-0000-0000-000000000006'::uuid,
+            %L::uuid,
+            %L::uuid,
             '[]'::jsonb,
-            '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Ignored"}]}'::jsonb
+            '{"answers": [{"question_id": "%s", "value": "Ignored"}]}'::jsonb
         )
-    $$,
+    $$, :'eventID', :'noQuestionsUserID', :'registrationQuestionID'),
     'Should ignore events without registration questions'
 );
 
@@ -111,52 +157,55 @@ select is(
 
 -- Should validate answers before writing the attendee row
 select throws_ok(
-    $$
+    format($$
         select upsert_pending_registration_answers(
-            '79300000-0000-0000-0000-000000000005'::uuid,
-            '79300000-0000-0000-0000-000000000007'::uuid,
-            '[{"id": "79300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
             null
         )
-    $$,
+    $$, :'eventID', :'pendingUserID', :'registrationQuestionID'),
     'questionnaire answers are required',
     'Should validate answers before writing the attendee row'
 );
 
 -- Should insert a new pending attendee row with answers
 select lives_ok(
-    $$
+    format($$
         select upsert_pending_registration_answers(
-            '79300000-0000-0000-0000-000000000005'::uuid,
-            '79300000-0000-0000-0000-000000000007'::uuid,
-            '[{"id": "79300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
-            '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Initial"}]}'::jsonb
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Initial"}]}'::jsonb
         )
-    $$,
+    $$, :'eventID', :'pendingUserID', :'registrationQuestionID', :'registrationQuestionID'),
     'Should insert a new pending attendee row with answers'
 );
 
 select results_eq(
-    $$
+    format($$
         select status, registration_answers
         from event_attendee
-        where event_id = '79300000-0000-0000-0000-000000000005'::uuid
-        and user_id = '79300000-0000-0000-0000-000000000007'::uuid
-    $$,
-    $$ values ('registration-questions-pending'::text, '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Initial"}]}'::jsonb) $$,
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'pendingUserID'),
+    format(
+        $$ values ('registration-questions-pending'::text, '{"answers": [{"question_id": "%s", "value": "Initial"}]}'::jsonb) $$,
+        :'registrationQuestionID'
+    ),
     'Should store the pending registration answers'
 );
 
 -- Should refresh answers for an existing pending attendee row
 select lives_ok(
-    $$
+    format($$
         select upsert_pending_registration_answers(
-            '79300000-0000-0000-0000-000000000005'::uuid,
-            '79300000-0000-0000-0000-000000000007'::uuid,
-            '[{"id": "79300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
-            '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Updated"}]}'::jsonb
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Updated"}]}'::jsonb
         )
-    $$,
+    $$, :'eventID', :'pendingUserID', :'registrationQuestionID', :'registrationQuestionID'),
     'Should refresh answers for an existing pending attendee row'
 );
 
@@ -167,31 +216,37 @@ select is(
         where event_id = :'eventID'::uuid
         and user_id = :'pendingUserID'::uuid
     ),
-    '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Updated"}]}'::jsonb,
+    format(
+        $${"answers": [{"question_id": "%s", "value": "Updated"}]}$$,
+        :'registrationQuestionID'
+    )::jsonb,
     'Should update the existing pending attendee answers'
 );
 
 -- Should leave confirmed attendees untouched on conflict
 select lives_ok(
-    $$
+    format($$
         select upsert_pending_registration_answers(
-            '79300000-0000-0000-0000-000000000005'::uuid,
-            '79300000-0000-0000-0000-000000000008'::uuid,
-            '[{"id": "79300000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
-            '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Ignored"}]}'::jsonb
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Ignored"}]}'::jsonb
         )
-    $$,
+    $$, :'eventID', :'confirmedUserID', :'registrationQuestionID', :'registrationQuestionID'),
     'Should leave confirmed attendees untouched on conflict'
 );
 
 select results_eq(
-    $$
+    format($$
         select status, registration_answers
         from event_attendee
-        where event_id = '79300000-0000-0000-0000-000000000005'::uuid
-        and user_id = '79300000-0000-0000-0000-000000000008'::uuid
-    $$,
-    $$ values ('confirmed'::text, '{"answers": [{"question_id": "79300000-0000-0000-0000-000000000101", "value": "Original"}]}'::jsonb) $$,
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'confirmedUserID'),
+    format(
+        $$ values ('confirmed'::text, '{"answers": [{"question_id": "%s", "value": "Original"}]}'::jsonb) $$,
+        :'registrationQuestionID'
+    ),
     'Should keep confirmed attendee status and answers unchanged'
 );
 

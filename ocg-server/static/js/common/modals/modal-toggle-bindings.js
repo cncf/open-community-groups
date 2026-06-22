@@ -21,7 +21,7 @@ const handleModalToggleClick = (event) => {
   }
 
   event.preventDefault();
-  toggleModalVisibility(modalId);
+  toggleModalVisibility(modalId, trigger);
 };
 
 document.addEventListener("click", handleModalToggleClick);

@@ -9,20 +9,20 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000031'
-\set event2ID '00000000-0000-0000-0000-000000000032'
-\set eventMixedDraftID '00000000-0000-0000-0000-000000000035'
-\set eventNoStartID '00000000-0000-0000-0000-000000000034'
-\set eventPublishedID '00000000-0000-0000-0000-000000000036'
-\set eventRollbackID '00000000-0000-0000-0000-000000000033'
-\set eventSeriesID '00000000-0000-0000-0000-000000000040'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set previousPublisherID '00000000-0000-0000-0000-000000000021'
-\set sessionPublishedMeetingID '00000000-0000-0000-0000-000000000051'
-\set userID '00000000-0000-0000-0000-000000000020'
+\set allianceID '3a2c0000-0000-0000-0000-000000000001'
+\set event1ID '3a2c0000-0000-0000-0000-000000000002'
+\set event2ID '3a2c0000-0000-0000-0000-000000000003'
+\set eventCategoryID '3a2c0000-0000-0000-0000-000000000004'
+\set eventMixedDraftID '3a2c0000-0000-0000-0000-000000000005'
+\set eventNoStartID '3a2c0000-0000-0000-0000-000000000006'
+\set eventPublishedID '3a2c0000-0000-0000-0000-000000000007'
+\set eventRollbackID '3a2c0000-0000-0000-0000-000000000008'
+\set eventSeriesID '3a2c0000-0000-0000-0000-000000000009'
+\set groupCategoryID '3a2c0000-0000-0000-0000-000000000010'
+\set groupID '3a2c0000-0000-0000-0000-000000000011'
+\set previousPublisherID '3a2c0000-0000-0000-0000-000000000012'
+\set sessionPublishedMeetingID '3a2c0000-0000-0000-0000-000000000013'
+\set userID '3a2c0000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
@@ -57,7 +57,7 @@ values (:'previousPublisherID', 'publisher@example.com', 'publisher', 'hash');
 
 -- Event Category
 insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Meetup', :'allianceID');
+values (:'eventCategoryID', 'Meetup', :'allianceID');
 
 -- Group Category
 insert into group_category (group_category_id, name, alliance_id)
@@ -125,7 +125,7 @@ insert into event (
         'first-series-event',
         'First event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
 
         now() + interval '1 day 1 hour',
@@ -140,7 +140,7 @@ insert into event (
         'second-series-event',
         'Second event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
 
         now() + interval '8 days 1 hour',
@@ -155,7 +155,7 @@ insert into event (
         'rollback-series-event',
         'Rollback event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
 
         now() + interval '15 days 1 hour',
@@ -170,7 +170,7 @@ insert into event (
         'no-start-event',
         'Invalid event',
         'UTC',
-        :'categoryID',
+        :'eventCategoryID',
         'virtual',
 
         null,
@@ -201,7 +201,7 @@ insert into event (
     'mixed-draft-event',
     'Draft event',
     'UTC',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
 
     now() + interval '22 days 1 hour',
@@ -238,7 +238,7 @@ insert into event (
     'already-published-event',
     'Published event',
     'UTC',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
 
     100,
@@ -281,39 +281,42 @@ insert into session (
 
 -- Should publish all requested events
 select lives_ok(
-    $$
+    format(
+        $$
         select publish_event_series_events(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array[
-                '00000000-0000-0000-0000-000000000031'::uuid,
-                '00000000-0000-0000-0000-000000000032'::uuid
-            ],
+            %L::uuid,
+            %L::uuid,
+            array[%L::uuid, %L::uuid],
             null
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'event1ID', :'event2ID'
+    ),
     'Should publish all requested events'
 );
 
 -- Should mark all requested events as published
 select results_eq(
-    $$
+    format(
+        $$
         select
             published,
             published_at is not null,
             published_by
         from event
-        where event_id in (
-            '00000000-0000-0000-0000-000000000031'::uuid,
-            '00000000-0000-0000-0000-000000000032'::uuid
-        )
+        where event_id in (%L::uuid, %L::uuid)
         order by event_id
-    $$,
-    $$
+        $$,
+        :'event1ID', :'event2ID'
+    ),
+    format(
+        $$
         values
-            (true, true, '00000000-0000-0000-0000-000000000020'::uuid),
-            (true, true, '00000000-0000-0000-0000-000000000020'::uuid)
-    $$,
+            (true, true, %L::uuid),
+            (true, true, %L::uuid)
+        $$,
+        :'userID', :'userID'
+    ),
     'Should mark all requested events as published'
 );
 
@@ -326,23 +329,24 @@ select is(
 
 -- Should publish drafts without changing already published events
 select lives_ok(
-    $$
+    format(
+        $$
         select publish_event_series_events(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array[
-                '00000000-0000-0000-0000-000000000035'::uuid,
-                '00000000-0000-0000-0000-000000000036'::uuid
-            ],
+            %L::uuid,
+            %L::uuid,
+            array[%L::uuid, %L::uuid],
             null
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventMixedDraftID', :'eventPublishedID'
+    ),
     'Should publish drafts without changing already published events'
 );
 
 -- Should preserve already published event metadata and meeting sync
 select results_eq(
-    $$
+    format(
+        $$
         select
             e.meeting_in_sync,
             e.published_at,
@@ -350,16 +354,21 @@ select results_eq(
             s.meeting_in_sync
         from event e
         join session s on s.event_id = e.event_id
-        where e.event_id = '00000000-0000-0000-0000-000000000036'::uuid
-    $$,
-    $$
+        where e.event_id = %L::uuid
+        $$,
+        :'eventPublishedID'
+    ),
+    format(
+        $$
         values (
             true,
             '2025-01-01 10:00:00+00'::timestamptz,
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
             true
         )
-    $$,
+        $$,
+        :'previousPublisherID'
+    ),
     'Should preserve already published event metadata and meeting sync'
 );
 
@@ -379,17 +388,17 @@ select is(
 
 -- Should reject invalid batches before keeping partial changes
 select throws_ok(
-    $$
+    format(
+        $$
         select publish_event_series_events(
-            '00000000-0000-0000-0000-000000000020'::uuid,
-            '00000000-0000-0000-0000-000000000002'::uuid,
-            array[
-                '00000000-0000-0000-0000-000000000033'::uuid,
-                '00000000-0000-0000-0000-000000000034'::uuid
-            ],
+            %L::uuid,
+            %L::uuid,
+            array[%L::uuid, %L::uuid],
             null
         )
-    $$,
+        $$,
+        :'userID', :'groupID', :'eventRollbackID', :'eventNoStartID'
+    ),
     'P0001',
     'event must have a start date to be published',
     'Should reject invalid batches before keeping partial changes'
@@ -400,11 +409,15 @@ select is(
     (
         select published
         from event
-        where event_id = '00000000-0000-0000-0000-000000000033'::uuid
+        where event_id = :'eventRollbackID'::uuid
     ),
     false,
     'Should leave valid events unchanged when the batch is invalid'
 );
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
 
 select * from finish();
 rollback;

@@ -1,7 +1,6 @@
 import { expect } from "@open-wc/testing";
 
 import "/static/js/alliance/explore/collapsible-filter.js";
-import { mockHtmx } from "/tests/unit/test-utils/globals.js";
 import {
   mountLitComponent,
   useMountedElementsCleanup,
@@ -9,16 +8,6 @@ import {
 
 describe("collapsible-filter", () => {
   useMountedElementsCleanup("collapsible-filter");
-
-  let htmx;
-
-  beforeEach(() => {
-    htmx = mockHtmx();
-  });
-
-  afterEach(() => {
-    htmx.restore();
-  });
 
   it("expands when a hidden option is selected initially", async () => {
     // Render the collapsible-filter fixture.
@@ -37,10 +26,46 @@ describe("collapsible-filter", () => {
     expect(element.visibleOptions).to.have.length(3);
   });
 
+  it("exposes collapsed state and context to assistive technologies", async () => {
+    // Render the collapsible-filter fixture.
+    const element = await mountLitComponent("collapsible-filter", {
+      title: "Region",
+      name: "region",
+      options: [
+        { value: "emea", name: "EMEA" },
+        { value: "latam", name: "LATAM" },
+        { value: "apac", name: "APAC" },
+      ],
+      maxVisibleItems: 1,
+    });
+
+    // The collapse controls announce their current state and controlled list.
+    const optionList = element.querySelector("#region-filter-options");
+    const collapseButton = element.querySelector(".collapse-btn");
+    const showMoreButton = element.querySelector(".mt-4 button");
+    const anyButton = element.querySelector("ul button");
+
+    expect(optionList).to.not.equal(null);
+    expect(collapseButton?.getAttribute("aria-expanded")).to.equal("false");
+    expect(collapseButton?.getAttribute("aria-controls")).to.equal("region-filter-options");
+    expect(showMoreButton?.getAttribute("aria-expanded")).to.equal("false");
+    expect(showMoreButton?.getAttribute("aria-controls")).to.equal("region-filter-options");
+    expect(anyButton?.getAttribute("aria-label")).to.equal("Any Region");
+
+    // Expanding updates the ARIA state alongside the visible state.
+    showMoreButton?.click();
+    await element.updateComplete;
+
+    expect(collapseButton?.getAttribute("aria-expanded")).to.equal("true");
+    expect(showMoreButton?.getAttribute("aria-expanded")).to.equal("true");
+  });
+
   it("supports single selection through checkbox changes and clears back to any", async () => {
     // Build the DOM fixture with filters form.
     document.body.innerHTML = '<form id="filters-form"></form>';
     const form = document.getElementById("filters-form");
+    const filterChangeEvents = [];
+    form.addEventListener("filter-change", (event) => filterChangeEvents.push(event));
     const element = document.createElement("collapsible-filter");
     Object.assign(element, {
       options: [
@@ -67,10 +92,9 @@ describe("collapsible-filter", () => {
 
     // Assert the element state.
     expect(element.selected).to.deep.equal([]);
-    expect(htmx.triggerCalls).to.deep.equal([
-      [form, "change"],
-      [form, "change"],
-    ]);
+    expect(filterChangeEvents).to.have.length(2);
+    expect(filterChangeEvents[0].target).to.equal(element);
+    expect(filterChangeEvents[1].target).to.equal(element);
   });
 
   it("resets dependent filters when configured and an option is selected", async () => {

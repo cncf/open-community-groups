@@ -26,7 +26,7 @@ use crate::{
         self, AuthSession, Credentials, OAuth2Credentials, OidcCredentials, PasswordCredentials,
     },
     config::{HttpServerConfig, OAuth2Provider, OidcProvider},
-    db::DynDB,
+    db::{DynDB, auth::EmailVerificationNotification},
     handlers::{
         error::HandlerError,
         extractors::{
@@ -34,7 +34,6 @@ use crate::{
             ValidatedFormQs,
         },
     },
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         self, PageId,
         auth::{User, UserDetails},
@@ -338,7 +337,6 @@ pub(crate) async fn oidc_redirect(
 pub(crate) async fn sign_up(
     messages: Messages,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
     Form(mut user_summary): Form<auth::UserSummary>,
@@ -360,35 +358,29 @@ pub(crate) async fn sign_up(
     // Generate password hash
     user_summary.password = Some(password_auth::generate_hash(&password));
 
+    // Prepare the required email verification notification before mutating users
+    let Ok(verification) = build_email_verification_notification(&db, &server_cfg).await else {
+        messages.error("Something went wrong while signing up. Please try again later.");
+        return Ok(Redirect::to(SIGN_UP_URL).into_response());
+    };
+
     // Sign up the user, reusing pre-registered invitation placeholders when present
-    let sign_up_result = match db.activate_pre_registered_user_email_password(&user_summary).await {
+    let sign_up_result = match db
+        .activate_pre_registered_user_email_password(&user_summary, &verification)
+        .await
+    {
         Ok(Some((user, verification_code))) => Ok((user, Some(verification_code))),
-        Ok(None) => db.sign_up_user(&user_summary, false).await,
+        Ok(None) => db.sign_up_user(&user_summary, false, Some(verification)).await,
         Err(err) => Err(err),
     };
-    let Ok((user, email_verification_code)) = sign_up_result else {
+    let Ok((_user, email_verification_code)) = sign_up_result else {
         // Redirect to the sign up page on error
         messages.error("Something went wrong while signing up. Please try again later.");
         return Ok(Redirect::to(SIGN_UP_URL).into_response());
     };
 
-    // Enqueue email verification notification
-    if let Some(code) = email_verification_code {
-        let site_settings = db.get_site_settings().await?;
-        let template_data = EmailVerification {
-            link: format!(
-                "{}/verify-email/{code}",
-                server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
-            ),
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::EmailVerification,
-            recipients: vec![user.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await?;
+    // Notify the user that database-side verification email enqueue was requested
+    if email_verification_code.is_some() {
         messages.success("Please verify your email to complete the sign up process.");
     }
 
@@ -940,6 +932,34 @@ pub(crate) async fn user_has_selected_group_permission(
 }
 
 // Helpers.
+
+/// Builds the email verification notification payload required by password signup.
+async fn build_email_verification_notification(
+    db: &DynDB,
+    server_cfg: &HttpServerConfig,
+) -> Result<EmailVerificationNotification, HandlerError> {
+    // Prepare verification link inputs before loading template context
+    let code = Uuid::new_v4();
+    let base_url = server_cfg.base_url.trim_end_matches('/');
+    if base_url.is_empty() {
+        return Err(HandlerError::Database(
+            "base URL is required to send verification email".to_string(),
+        ));
+    }
+
+    // Build template data from the current site theme
+    let site_settings = db.get_site_settings().await?;
+    let template_data = EmailVerification {
+        link: format!("{base_url}/verify-email/{code}"),
+        theme: site_settings.theme,
+    };
+
+    // Return the database-ready verification notification payload
+    Ok(EmailVerificationNotification {
+        code,
+        template_data,
+    })
+}
 
 /// Percent-encode a `next_url` so it can be safely embedded in a query string.
 fn encode_next_url(next_url: &str) -> String {

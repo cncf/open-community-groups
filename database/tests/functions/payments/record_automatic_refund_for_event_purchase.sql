@@ -9,24 +9,39 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '73000000-0000-0000-0000-000000000001'
-\set eventCategoryID '73000000-0000-0000-0000-000000000002'
-\set eventID '73000000-0000-0000-0000-000000000003'
-\set eventTicketTypeID '73000000-0000-0000-0000-000000000004'
-\set groupCategoryID '73000000-0000-0000-0000-000000000005'
-\set groupID '73000000-0000-0000-0000-000000000006'
-\set refundPendingPurchaseID '73000000-0000-0000-0000-000000000007'
-\set completedPurchaseID '73000000-0000-0000-0000-000000000008'
-\set priceWindowID '73000000-0000-0000-0000-000000000009'
-\set userID '73000000-0000-0000-0000-000000000010'
+\set allianceID '79450000-0000-0000-0000-000000000001'
+\set completedPurchaseID '79450000-0000-0000-0000-000000000002'
+\set eventCategoryID '79450000-0000-0000-0000-000000000003'
+\set eventID '79450000-0000-0000-0000-000000000004'
+\set eventTicketTypeID '79450000-0000-0000-0000-000000000005'
+\set groupCategoryID '79450000-0000-0000-0000-000000000006'
+\set groupID '79450000-0000-0000-0000-000000000007'
+\set priceWindowID '79450000-0000-0000-0000-000000000008'
+\set refundPendingPurchaseID '79450000-0000-0000-0000-000000000009'
+\set userID '79450000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'refund-alliance', 'Refund Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'refund-alliance',
+    'Refund Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -72,8 +87,19 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventTicketTypeID',
+    :'eventID',
+    1,
+    10,
+    'General admission'
+);
 
 -- Price window
 insert into event_ticket_price_window (
@@ -122,22 +148,22 @@ insert into event_purchase (
 
 -- Should record an automatic refund for a refund-pending purchase
 select lives_ok(
-    $$select record_automatic_refund_for_event_purchase(
-        '73000000-0000-0000-0000-000000000007'::uuid,
+    format($$select record_automatic_refund_for_event_purchase(
+        %L::uuid,
         're_auto_123'
-    )$$,
+    )$$, :'refundPendingPurchaseID'),
     'Should record an automatic refund for a refund-pending purchase'
 );
 
 -- Should persist the refunded purchase fields
 select results_eq(
-    $$
+    format($$
         select
             refunded_at is not null,
             status
         from event_purchase
-        where event_purchase_id = '73000000-0000-0000-0000-000000000007'::uuid
-    $$,
+        where event_purchase_id = %L::uuid
+    $$, :'refundPendingPurchaseID'),
     $$ values (true, 'refunded'::text) $$,
     'Should persist the refunded purchase fields'
 );
@@ -157,28 +183,28 @@ select results_eq(
             details->>'user_id'
         from audit_log
     $$,
-    $$
+    format($$
         values (
             'event_refunded',
             null::uuid,
-            '73000000-0000-0000-0000-000000000001'::uuid,
-            '73000000-0000-0000-0000-000000000003'::uuid,
-            '73000000-0000-0000-0000-000000000006'::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
             'true',
-            '73000000-0000-0000-0000-000000000007',
+            %L,
             're_auto_123',
-            '73000000-0000-0000-0000-000000000010'
+            %L
         )
-    $$,
+    $$, :'allianceID', :'eventID', :'groupID', :'refundPendingPurchaseID', :'userID'),
     'Should create the expected automatic refund audit row'
 );
 
 -- Should reject purchases that are not refund-pending
 select throws_ok(
-    $$select record_automatic_refund_for_event_purchase(
-        '73000000-0000-0000-0000-000000000008'::uuid,
+    format($$select record_automatic_refund_for_event_purchase(
+        %L::uuid,
         're_auto_456'
-    )$$,
+    )$$, :'completedPurchaseID'),
     'refund-pending purchase not found',
     'Should reject purchases that are not refund-pending'
 );

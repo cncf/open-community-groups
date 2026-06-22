@@ -3,7 +3,15 @@
 -- ============================================================================
 
 begin;
-select plan(49);
+select plan(54);
+
+-- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set redirectInvalidAllianceID 'f0060000-0000-0000-0000-000000000001'
+\set redirectPathAllianceID 'f0060000-0000-0000-0000-000000000002'
+\set redirectValidAllianceID 'f0060000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- TESTS
@@ -11,6 +19,9 @@ select plan(49);
 
 -- Test: custom_notification table expected constraints exist
 select has_check('custom_notification');
+
+-- Test: alliance table expected constraints exist
+select has_check('alliance', 'alliance_og_image_url_check');
 
 -- Test: alliance redirect settings table expected constraints exist
 select has_check(
@@ -20,7 +31,7 @@ select has_check(
 
 -- Test: alliance redirect settings should accept absolute legacy origin URLs
 select lives_ok(
-    $$
+    format($$
         with inserted_alliance as (
             insert into alliance (
                 alliance_id,
@@ -31,7 +42,7 @@ select lives_ok(
                 banner_mobile_url,
                 banner_url
             ) values (
-                '00000000-0000-0000-0000-000000000501',
+                %L,
                 'redirect-settings-valid',
                 'Redirect Settings Valid',
                 'A alliance with valid redirect settings',
@@ -51,13 +62,13 @@ select lives_ok(
 
             'https://legacy.example.org'
         from inserted_alliance
-    $$,
+    $$, :'redirectValidAllianceID'),
     'Alliance redirect settings should accept absolute legacy origin URLs'
 );
 
 -- Test: alliance redirect settings should reject legacy URLs with paths
 select throws_ok(
-    $$
+    format($$
         with inserted_alliance as (
             insert into alliance (
                 alliance_id,
@@ -68,7 +79,7 @@ select throws_ok(
                 banner_mobile_url,
                 banner_url
             ) values (
-                '00000000-0000-0000-0000-000000000503',
+                %L,
                 'redirect-settings-path',
                 'Redirect Settings Path',
                 'A alliance with invalid redirect settings',
@@ -88,7 +99,7 @@ select throws_ok(
 
             'https://legacy.example.org/path'
         from inserted_alliance
-    $$,
+    $$, :'redirectPathAllianceID'),
     '23514',
     'new row for relation "alliance_redirect_settings" violates check constraint "alliance_redirect_settings_base_legacy_url_chk"',
     'Alliance redirect settings should reject legacy URLs with paths'
@@ -96,7 +107,7 @@ select throws_ok(
 
 -- Test: alliance redirect settings should reject relative legacy URLs
 select throws_ok(
-    $$
+    format($$
         with inserted_alliance as (
             insert into alliance (
                 alliance_id,
@@ -107,7 +118,7 @@ select throws_ok(
                 banner_mobile_url,
                 banner_url
             ) values (
-                '00000000-0000-0000-0000-000000000502',
+                %L,
                 'redirect-settings-invalid',
                 'Redirect Settings Invalid',
                 'A alliance with invalid redirect settings',
@@ -127,7 +138,7 @@ select throws_ok(
 
             'legacy.example.org'
         from inserted_alliance
-    $$,
+    $$, :'redirectInvalidAllianceID'),
     '23514',
     'new row for relation "alliance_redirect_settings" violates check constraint "alliance_redirect_settings_base_legacy_url_chk"',
     'Alliance redirect settings should reject relative legacy URLs'
@@ -159,13 +170,34 @@ select has_check('event_ticket_price_window', 'event_ticket_price_window_window_
 
 -- Test: group table expected constraints exist
 select has_check('group', 'group_check');
+select has_check('group', 'group_og_image_url_check');
 select has_check('group', 'group_slug_pretty_chk');
+
+-- Test: site table expected constraints exist
+select has_check('site', 'site_og_image_url_check');
 
 -- Test: session table expected constraints exist
 select has_check('session', 'session_check');
 select has_check('session', 'session_meeting_conflict_chk');
 select has_check('session', 'session_meeting_provider_required_chk');
 select has_check('session', 'session_meeting_requested_times_chk');
+
+-- Test: event attendee statuses should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'event_attendee_status_chk'
+    $$,
+    $$ values
+        ('confirmed'),
+        ('invitation-canceled'),
+        ('invitation-pending'),
+        ('invitation-rejected'),
+        ('registration-questions-pending')
+    $$,
+    'Event attendee statuses should match expected values'
+);
 
 -- Test: event purchase statuses should match expected values
 select results_eq(
@@ -183,6 +215,22 @@ select results_eq(
         ('refunded')
     $$,
     'Event purchase statuses should match expected values'
+);
+
+-- Test: event refund request statuses should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'event_refund_request_status_check'
+    $$,
+    $$ values
+        ('approved'),
+        ('approving'),
+        ('pending'),
+        ('rejected')
+    $$,
+    'Event refund request statuses should match expected values'
 );
 
 -- Test: event kinds should match expected values

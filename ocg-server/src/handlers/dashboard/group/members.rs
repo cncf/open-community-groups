@@ -14,13 +14,13 @@ use uuid::Uuid;
 
 use crate::{
     config::HttpServerConfig,
-    db::DynDB,
+    db::{DynDB, notifications::CustomNotificationTracking},
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, SelectedAllianceId, SelectedGroupId, ValidatedForm},
     },
     router::serde_qs_config,
-    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
+    services::notifications::{NewNotification, NotificationKind},
     templates::{
         dashboard::group::members::{self, GroupMembersFilters},
         notifications::GroupCustom,
@@ -76,7 +76,6 @@ pub(crate) async fn send_group_custom_notification(
     SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     ValidatedForm(notification): ValidatedForm<GroupCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -99,7 +98,7 @@ pub(crate) async fn send_group_custom_notification(
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
-    // Enqueue notification
+    // Build and enqueue the custom notification with its audit entry
     let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
     let link = format!(
         "{}/{}/group/{}",
@@ -120,16 +119,16 @@ pub(crate) async fn send_group_custom_notification(
         recipients,
         template_data: Some(serde_json::to_value(&template_data)?),
     };
-    notifications_manager.enqueue(&new_notification).await?;
-
-    // Track custom notification for auditing purposes
-    db.track_custom_notification(
-        user.user_id,
-        None, // event_id is None for group notifications
-        Some(group_id),
-        new_notification.recipients.len(),
-        &notification.subject,
-        &notification.body,
+    db.enqueue_tracked_custom_notification(
+        &new_notification,
+        CustomNotificationTracking {
+            body: notification.body.clone(),
+            created_by: user.user_id,
+            event_id: None,
+            group_id: Some(group_id),
+            recipient_count: new_notification.recipients.len(),
+            subject: notification.subject.clone(),
+        },
     )
     .await?;
 

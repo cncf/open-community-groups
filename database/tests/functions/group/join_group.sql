@@ -9,31 +9,46 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set deletedGroupID '00000000-0000-0000-0000-000000000023'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set inactiveGroupID '00000000-0000-0000-0000-000000000022'
-\set user1ID '00000000-0000-0000-0000-000000000031'
-\set user2ID '00000000-0000-0000-0000-000000000032'
+\set allianceID '6a050000-0000-0000-0000-000000000001'
+\set deletedGroupID '6a050000-0000-0000-0000-000000000002'
+\set groupCategoryID '6a050000-0000-0000-0000-000000000003'
+\set groupID '6a050000-0000-0000-0000-000000000004'
+\set inactiveGroupID '6a050000-0000-0000-0000-000000000005'
+\set user1ID '6a050000-0000-0000-0000-000000000006'
+\set user2ID '6a050000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Users
-insert into "user" (user_id, auth_hash, email, username)
+insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'user1ID', 'hash1', 'user1@test.com', 'testuser1'),
-    (:'user2ID', 'hash2', 'user2@test.com', 'testuser2');
+    (:'user1ID', 'hash1', 'user1@test.com', true, 'testuser1'),
+    (:'user2ID', 'hash2', 'user2@test.com', true, 'testuser2');
 
 -- Groups
 insert into "group" (
@@ -45,9 +60,25 @@ insert into "group" (
     active,
     deleted
 ) values
-    (:'groupID', :'allianceID', :'categoryID', 'Active Group', 'active-group', true, false),
-    (:'inactiveGroupID', :'allianceID', :'categoryID', 'Inactive Group', 'inactive-group', false, false),
-    (:'deletedGroupID', :'allianceID', :'categoryID', 'Deleted Group', 'deleted-group', false, true);
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Active Group', 'active-group', true, false),
+    (
+        :'inactiveGroupID',
+        :'allianceID',
+        :'groupCategoryID',
+        'Inactive Group',
+        'inactive-group',
+        false,
+        false
+    ),
+    (
+        :'deletedGroupID',
+        :'allianceID',
+        :'groupCategoryID',
+        'Deleted Group',
+        'deleted-group',
+        false,
+        true
+    );
 
 -- ============================================================================
 -- TESTS
@@ -55,33 +86,45 @@ insert into "group" (
 
 -- Should succeed for active group
 select lives_ok(
-    $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        $$select join_group(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'allianceID', :'groupID', :'user1ID'
+    ),
     'User should be able to join an active group'
 );
 
 -- Should add user to group_member table
 select ok(
-    exists(select 1 from group_member where group_id = '00000000-0000-0000-0000-000000000021'::uuid and user_id = '00000000-0000-0000-0000-000000000031'::uuid),
+    exists(select 1 from group_member where group_id = :'groupID'::uuid and user_id = :'user1ID'::uuid),
     'User should be added to group_member table after joining'
 );
 
 -- Should error on duplicate join
 select throws_ok(
-    $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000021'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        $$select join_group(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'allianceID', :'groupID', :'user1ID'
+    ),
     'user is already a member of this group',
     'Should not allow user to join a group they are already a member of'
 );
 
 -- Should error for inactive group
 select throws_ok(
-    $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        $$select join_group(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'allianceID', :'inactiveGroupID', :'user1ID'
+    ),
     'group not found or inactive',
     'Should not allow user to join an inactive group'
 );
 
 -- Should error for deleted group
 select throws_ok(
-    $$select join_group('00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000023'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        $$select join_group(%L::uuid, %L::uuid, %L::uuid)$$,
+        :'allianceID', :'deletedGroupID', :'user1ID'
+    ),
     'group not found or inactive',
     'Should not allow user to join a deleted group'
 );

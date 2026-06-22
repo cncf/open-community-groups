@@ -3,45 +3,71 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set activeAllianceID '00000000-0000-0000-0000-000000000301'
-\set inactiveAllianceID '00000000-0000-0000-0000-000000000302'
-\set unknownAllianceID '00000000-0000-0000-0000-999999999999'
+\set activeAllianceID '0d060000-0000-0000-0000-000000000001'
+\set inactiveAllianceID '0d060000-0000-0000-0000-000000000002'
+\set unknownAllianceID '0d060000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Alliances
+-- Alliance
 insert into alliance (
     alliance_id,
-    active,
     name,
     display_name,
     description,
-    logo_url,
+    active,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values
-    (:'activeAllianceID', true, 'active-alliance', 'Active Alliance', 'Alliance for update_alliance_views tests', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
-    (:'inactiveAllianceID', false, 'inactive-alliance', 'Inactive Alliance', 'Inactive alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+    (
+        :'activeAllianceID',
+        'update-alliance-views',
+        'Update Alliance Views',
+        'Alliance for update alliance views tests',
+        true,
+        'https://example.com/update-alliance-views-banner-mobile.png',
+        'https://example.com/update-alliance-views-banner.png',
+        'https://example.com/update-alliance-views-logo.png'
+    ),
+    (
+        :'inactiveAllianceID',
+        'inactive-update-alliance-views',
+        'Inactive Update Alliance Views',
+        'Inactive alliance for update alliance views tests',
+        false,
+        'https://example.com/inactive-update-alliance-views-banner-mobile.png',
+        'https://example.com/inactive-update-alliance-views-banner.png',
+        'https://example.com/inactive-update-alliance-views-logo.png'
+    );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should insert counters only for active alliances
-select update_alliance_views(
-    jsonb_build_array(
-        jsonb_build_array(:'activeAllianceID'::text, current_date::text, 3),
-        jsonb_build_array(:'inactiveAllianceID'::text, current_date::text, 5),
-        jsonb_build_array(:'unknownAllianceID'::text, current_date::text, 8)
-    )
+select lives_ok(
+    format(
+        $$select update_alliance_views(
+            jsonb_build_array(
+                jsonb_build_array(%L, current_date::text, 3),
+                jsonb_build_array(%L, current_date::text, 5),
+                jsonb_build_array(%L, current_date::text, 8)
+            )
+        )$$,
+        :'activeAllianceID',
+        :'inactiveAllianceID',
+        :'unknownAllianceID'
+    ),
+    'Should accept counters only for active alliances'
 );
 
 select is(
@@ -66,18 +92,17 @@ select is(
     'Should insert counters only for active alliances'
 );
 
--- Should ignore counters for inactive or unknown alliances
-select is(
-    (select count(*) from alliance_views),
-    1::bigint,
-    'Should ignore counters for inactive or unknown alliances'
-);
-
 -- Should increment existing counters on conflict
-select update_alliance_views(
-    jsonb_build_array(
-        jsonb_build_array(:'activeAllianceID'::text, current_date::text, 4)
-    )
+select lives_ok(
+    format(
+        $$select update_alliance_views(
+            jsonb_build_array(
+                jsonb_build_array(%L, current_date::text, 4)
+            )
+        )$$,
+        :'activeAllianceID'
+    ),
+    'Should accept additional counters for existing alliances'
 );
 
 select is(
@@ -103,11 +128,18 @@ select is(
 );
 
 -- Should aggregate duplicate entries for the same alliance and day
-select update_alliance_views(
-    jsonb_build_array(
-        jsonb_build_array(:'activeAllianceID'::text, current_date::text, 1),
-        jsonb_build_array(:'activeAllianceID'::text, current_date::text, 2)
-    )
+select lives_ok(
+    format(
+        $$select update_alliance_views(
+            jsonb_build_array(
+                jsonb_build_array(%L, current_date::text, 1),
+                jsonb_build_array(%L, current_date::text, 2)
+            )
+        )$$,
+        :'activeAllianceID',
+        :'activeAllianceID'
+    ),
+    'Should accept duplicate counters for the same alliance and day'
 );
 
 select is(

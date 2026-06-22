@@ -3,37 +3,57 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set actorID '00000000-0000-0000-0000-000000000001'
-\set categoryID '00000000-0000-0000-0000-000000000002'
-\set allianceID '00000000-0000-0000-0000-000000000003'
-\set eventCategoryID '00000000-0000-0000-0000-000000000004'
-\set eventID '00000000-0000-0000-0000-000000000005'
-\set eventQuestionsID '90400000-0000-0000-0000-000000000041'
-\set groupID '00000000-0000-0000-0000-000000000006'
-\set questionsInvitedUserID '90400000-0000-0000-0000-000000000033'
-\set registeredUserID '00000000-0000-0000-0000-000000000007'
-\set rejectedUserID '00000000-0000-0000-0000-000000000010'
-\set ticketedEventID '00000000-0000-0000-0000-000000000008'
-\set ticketTypeID '00000000-0000-0000-0000-000000000009'
-\set waitlistedUserID '00000000-0000-0000-0000-000000000011'
+\set actorID '3a130000-0000-0000-0000-000000000001'
+\set canceledEventID '3a130000-0000-0000-0000-000000000002'
+\set allianceID '3a130000-0000-0000-0000-000000000003'
+\set confirmedAttendeeUserID '3a130000-0000-0000-0000-000000000004'
+\set eventCategoryID '3a130000-0000-0000-0000-000000000005'
+\set eventID '3a130000-0000-0000-0000-000000000006'
+\set eventQuestionsID '3a130000-0000-0000-0000-000000000007'
+\set groupCategoryID '3a130000-0000-0000-0000-000000000008'
+\set groupID '3a130000-0000-0000-0000-000000000009'
+\set questionsInvitedUserID '3a130000-0000-0000-0000-000000000010'
+\set registeredUserID '3a130000-0000-0000-0000-000000000011'
+\set registrationQuestionID '3a130000-0000-0000-0000-000000000012'
+\set rejectedUserID '3a130000-0000-0000-0000-000000000013'
+\set ticketedEventID '3a130000-0000-0000-0000-000000000014'
+\set ticketTypeID '3a130000-0000-0000-0000-000000000015'
+\set unpublishedEventID '3a130000-0000-0000-0000-000000000016'
+\set unverifiedUserID '3a130000-0000-0000-0000-000000000017'
+\set waitlistedUserID '3a130000-0000-0000-0000-000000000018'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Tech', :'allianceID');
+values (:'groupCategoryID', 'Tech', :'allianceID');
 
 -- Event category
 insert into event_category (event_category_id, name, alliance_id)
@@ -41,14 +61,16 @@ values (:'eventCategoryID', 'General', :'allianceID');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'G1', 'g1');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Users
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
+    ('hash-confirmed', 'confirmed@example.com', true, 'Confirmed', :'confirmedAttendeeUserID', 'confirmed'),
     ('hash-registered', 'registered@example.com', true, 'Registered', :'registeredUserID', 'registered'),
     ('hash-rejected', 'rejected@example.com', true, 'Rejected', :'rejectedUserID', 'rejected'),
+    ('hash-unverified', 'unverified@example.com', false, 'Unverified', :'unverifiedUserID', 'unverified'),
     ('hash-waitlisted', 'waitlisted@example.com', true, 'Waitlisted', :'waitlistedUserID', 'waitlisted'),
     ('hash-rq-invited', 'rq-invited@example.com', true, 'RQ Invited', :'questionsInvitedUserID', 'rq-invited');
 
@@ -64,11 +86,63 @@ insert into event (
     group_id,
     payment_currency_code,
     published,
+    canceled,
     starts_at
 )
 values
-    (:'eventID', 'Free Event', 'free-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 'USD', true, current_timestamp + interval '1 day'),
-    (:'ticketedEventID', 'Ticketed Event', 'ticketed-event', 'd', 'UTC', :'eventCategoryID', 'in-person', :'groupID', 'USD', true, current_timestamp + interval '1 day');
+    (
+        :'eventID',
+        'Free Event',
+        'free-event',
+        'Test free event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'USD',
+        true,
+        false,
+        current_timestamp + interval '1 day'
+    ), (
+        :'canceledEventID',
+        'Canceled Event',
+        'canceled-event',
+        'Test canceled event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'USD',
+        true,
+        true,
+        current_timestamp + interval '1 day'
+    ), (
+        :'ticketedEventID',
+        'Ticketed Event',
+        'ticketed-event',
+        'Test ticketed event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'USD',
+        true,
+        false,
+        current_timestamp + interval '1 day'
+    ), (
+        :'unpublishedEventID',
+        'Unpublished Event',
+        'unpublished-event',
+        'Test unpublished event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'USD',
+        false,
+        false,
+        current_timestamp + interval '1 day'
+    );
 
 -- Event with registration questions before confirmation
 insert into event (
@@ -89,7 +163,7 @@ values (
     :'eventQuestionsID',
     'Questions Event',
     'questions-event',
-    'd',
+    'Test event with registration questions',
     'UTC',
     :'eventCategoryID',
     'in-person',
@@ -97,16 +171,21 @@ values (
     'USD',
     true,
     current_timestamp + interval '1 day',
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+        :'registrationQuestionID'
+    )::jsonb
 );
 
 -- Ticket types
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values (:'ticketTypeID', :'ticketedEventID', 1, 100, 'General');
 
--- Existing invitation decisions
+-- Existing attendees and invitation decisions
 insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'rejectedUserID', 'invitation-rejected');
+values
+    (:'eventID', :'confirmedAttendeeUserID', 'confirmed'),
+    (:'eventID', :'rejectedUserID', 'invitation-rejected');
 
 -- Existing waitlist entries
 insert into event_waitlist (event_id, user_id)
@@ -116,6 +195,17 @@ values (:'eventID', :'waitlistedUserID');
 -- TESTS
 -- ============================================================================
 
+-- Should reject invitations with both user_id and email.
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, 'registered@example.com') $$,
+        :'actorID', :'groupID', :'eventID', :'registeredUserID'
+    ),
+    'P0001',
+    'provide exactly one invite target',
+    'Should reject invitations with both user_id and email'
+);
+
 -- Should invite a registered user.
 select is(
     invite_event_attendee(:'actorID', :'groupID', :'eventID', :'registeredUserID', null),
@@ -124,14 +214,78 @@ select is(
 );
 
 select results_eq(
-    $$
+    format(
+        $$
         select status, manually_invited
         from event_attendee
-        where event_id = '00000000-0000-0000-0000-000000000005'::uuid
-        and user_id = '00000000-0000-0000-0000-000000000007'::uuid
-    $$,
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        $$,
+        :'eventID', :'registeredUserID'
+    ),
     $$ values ('invitation-pending'::text, true) $$,
     'Should create a pending manual invitation for a registered user'
+);
+
+-- Should create the expected audit row for a registered user invitation.
+select results_eq(
+    format(
+        $$
+        select
+            action,
+            actor_user_id,
+            actor_username,
+            alliance_id,
+            details,
+            event_id,
+            group_id,
+            resource_id,
+            resource_type
+        from audit_log
+        where action = 'event_attendee_invitation_sent'
+        and resource_id = %L::uuid
+        $$,
+        :'registeredUserID'
+    ),
+    format(
+        $$
+        values (
+            'event_attendee_invitation_sent',
+            %L::uuid,
+            'actor',
+            %L::uuid,
+            '{"event_id": "%s", "user_id": "%s"}'::jsonb,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'user'
+        )
+        $$,
+        :'actorID', :'allianceID', :'eventID', :'registeredUserID', :'eventID', :'groupID', :'registeredUserID'
+    ),
+    'Should create the expected audit row for a registered user invitation'
+);
+
+-- Should reject re-inviting users with a pending invitation.
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'eventID', :'registeredUserID'
+    ),
+    'P0001',
+    'user already has a pending event invitation',
+    'Should reject re-inviting users with a pending invitation'
+);
+
+-- Should reject re-inviting confirmed attendees.
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'eventID', :'confirmedAttendeeUserID'
+    ),
+    'P0001',
+    'user is already attending this event',
+    'Should reject re-inviting confirmed attendees'
 );
 
 -- Should invite a waitlisted user and remove them from the waitlist.
@@ -142,12 +296,15 @@ select is(
 );
 
 select results_eq(
-    $$
+    format(
+        $$
         select status, manually_invited
         from event_attendee
-        where event_id = '00000000-0000-0000-0000-000000000005'::uuid
-        and user_id = '00000000-0000-0000-0000-000000000011'::uuid
-    $$,
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        $$,
+        :'eventID', :'waitlistedUserID'
+    ),
     $$ values ('invitation-pending'::text, true) $$,
     'Should create a pending manual invitation for a waitlisted user'
 );
@@ -180,7 +337,8 @@ select is(
 );
 
 select results_eq(
-    $$
+    format(
+        $$
         select
             ea.checked_in,
             ea.checked_in_at is null,
@@ -190,9 +348,11 @@ select results_eq(
             u.registration_status
         from event_attendee ea
         join "user" u using (user_id)
-        where ea.event_id = '00000000-0000-0000-0000-000000000005'::uuid
+        where ea.event_id = %L::uuid
         and u.email = 'new@example.com'
-    $$,
+        $$,
+        :'eventID'
+    ),
     $$
         values (
             false,
@@ -206,37 +366,40 @@ select results_eq(
     'Should create a pending attendee row for an email invite'
 );
 
+-- Should reject email invites for registered users with unverified email.
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, null, 'unverified@example.com') $$,
+        :'actorID', :'groupID', :'eventID'
+    ),
+    'P0001',
+    'registered user email is not verified',
+    'Should reject email invites for registered users with unverified email'
+);
+
 -- Should allow canceling and re-inviting pending invitations.
 select lives_ok(
-    $$ select cancel_event_attendee_invitation(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000007'
-    ) $$,
+    format(
+        $$ select cancel_event_attendee_invitation(%L, %L, %L, %L) $$,
+        :'actorID', :'groupID', :'eventID', :'registeredUserID'
+    ),
     'Should cancel a pending invitation'
 );
 
 select lives_ok(
-    $$ select invite_event_attendee(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000007',
-        null
-    ) $$,
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'eventID', :'registeredUserID'
+    ),
     'Should allow re-inviting after cancellation'
 );
 
 -- Should reject re-inviting users that rejected an organizer invitation.
 select throws_ok(
-    $$ select invite_event_attendee(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000005',
-        '00000000-0000-0000-0000-000000000010',
-        null
-    ) $$,
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'eventID', :'rejectedUserID'
+    ),
     'P0001',
     'user rejected an invitation for this event',
     'Should reject re-inviting a user that rejected an event invitation'
@@ -244,16 +407,35 @@ select throws_ok(
 
 -- Should reject ticketed events.
 select throws_ok(
-    $$ select invite_event_attendee(
-        '00000000-0000-0000-0000-000000000001',
-        '00000000-0000-0000-0000-000000000006',
-        '00000000-0000-0000-0000-000000000008',
-        '00000000-0000-0000-0000-000000000007',
-        null
-    ) $$,
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'ticketedEventID', :'registeredUserID'
+    ),
     'P0001',
     'manual invitations are not available for ticketed events',
     'Should reject invitations for ticketed events'
+);
+
+-- Should reject unpublished events.
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'unpublishedEventID', :'registeredUserID'
+    ),
+    'P0001',
+    'event not found or inactive',
+    'Should reject unpublished events'
+);
+
+-- Should reject canceled events.
+select throws_ok(
+    format(
+        $$ select invite_event_attendee(%L, %L, %L, %L, null) $$,
+        :'actorID', :'groupID', :'canceledEventID', :'registeredUserID'
+    ),
+    'P0001',
+    'event not found or inactive',
+    'Should reject canceled events'
 );
 
 -- Should invite users into registration-questions-pending when registration questions exist

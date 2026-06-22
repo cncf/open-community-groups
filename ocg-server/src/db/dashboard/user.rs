@@ -7,7 +7,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::PgDB,
+    db::PgExecutor,
     templates::dashboard::{
         audit::{AuditLogFilters, AuditLogsOutput},
         user::{
@@ -182,7 +182,10 @@ pub(crate) trait DBDashboardUser {
 }
 
 #[async_trait]
-impl DBDashboardUser for PgDB {
+impl<T> DBDashboardUser for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBDashboardUser::accept_alliance_team_invitation`]
     #[instrument(skip(self), err)]
     async fn accept_alliance_team_invitation(
@@ -274,7 +277,7 @@ impl DBDashboardUser for PgDB {
         user_id: Uuid,
         session_proposal_id: Uuid,
     ) -> Result<Option<SessionProposalCoSpeakerUser>> {
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         let row = db
             .query_opt(
                 "

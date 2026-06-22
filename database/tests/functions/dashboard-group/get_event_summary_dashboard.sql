@@ -9,13 +9,13 @@ select plan(2);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000031'
-\set event2ID '00000000-0000-0000-0000-000000000032'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set user1ID '00000000-0000-0000-0000-000000000041'
+\set allianceID '3a0f0000-0000-0000-0000-000000000001'
+\set event1ID '3a0f0000-0000-0000-0000-000000000002'
+\set event2ID '3a0f0000-0000-0000-0000-000000000003'
+\set eventCategoryID '3a0f0000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a0f0000-0000-0000-0000-000000000005'
+\set groupID '3a0f0000-0000-0000-0000-000000000006'
+\set user1ID '3a0f0000-0000-0000-0000-000000000007'
 
 -- ============================================================================
 -- SEED DATA
@@ -50,7 +50,7 @@ values (:'groupCategoryID', 'Technology', :'allianceID');
 
 -- Event Category
 insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+values (:'eventCategoryID', 'Conference', :'allianceID');
 
 -- Group
 insert into "group" (
@@ -87,7 +87,7 @@ insert into event (
     'Created Event',
     'created-event',
     'An event with creator metadata',
-    :'categoryID',
+    :'eventCategoryID',
     'in-person',
     'America/New_York',
 
@@ -98,7 +98,7 @@ insert into event (
     'Untracked Event',
     'untracked-event',
     'An event without creator metadata',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     'America/New_York',
 

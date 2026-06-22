@@ -9,33 +9,48 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000041'
-\set eventEmptyID '00000000-0000-0000-0000-000000000052'
-\set eventID '00000000-0000-0000-0000-000000000051'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set label1ID '00000000-0000-0000-0000-000000000101'
-\set label2ID '00000000-0000-0000-0000-000000000102'
-\set proposal1ID '00000000-0000-0000-0000-000000000061'
-\set proposal2ID '00000000-0000-0000-0000-000000000062'
-\set proposal3ID '00000000-0000-0000-0000-000000000063'
-\set reviewer1ID '00000000-0000-0000-0000-000000000083'
-\set reviewer2ID '00000000-0000-0000-0000-000000000084'
-\set sessionID '00000000-0000-0000-0000-000000000091'
-\set submission1ID '00000000-0000-0000-0000-000000000071'
-\set submission2ID '00000000-0000-0000-0000-000000000072'
-\set submission3ID '00000000-0000-0000-0000-000000000073'
-\set user1ID '00000000-0000-0000-0000-000000000081'
-\set user2ID '00000000-0000-0000-0000-000000000082'
+\set allianceID '3a1a0000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a1a0000-0000-0000-0000-000000000002'
+\set eventEmptyID '3a1a0000-0000-0000-0000-000000000003'
+\set eventID '3a1a0000-0000-0000-0000-000000000004'
+\set groupCategoryID '3a1a0000-0000-0000-0000-000000000005'
+\set groupID '3a1a0000-0000-0000-0000-000000000006'
+\set label1ID '3a1a0000-0000-0000-0000-000000000007'
+\set label2ID '3a1a0000-0000-0000-0000-000000000008'
+\set proposal1ID '3a1a0000-0000-0000-0000-000000000009'
+\set proposal2ID '3a1a0000-0000-0000-0000-000000000010'
+\set proposal3ID '3a1a0000-0000-0000-0000-000000000011'
+\set reviewer1ID '3a1a0000-0000-0000-0000-000000000012'
+\set reviewer2ID '3a1a0000-0000-0000-0000-000000000013'
+\set sessionID '3a1a0000-0000-0000-0000-000000000014'
+\set submission1ID '3a1a0000-0000-0000-0000-000000000015'
+\set submission2ID '3a1a0000-0000-0000-0000-000000000016'
+\set submission3ID '3a1a0000-0000-0000-0000-000000000017'
+\set user1ID '3a1a0000-0000-0000-0000-000000000018'
+\set user2ID '3a1a0000-0000-0000-0000-000000000019'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url) values
-    (:'allianceID', 'c1', 'C1', 'd', 'https://e/logo.png', 'https://e/banner_mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name) values

@@ -9,28 +9,51 @@ select plan(3);
 -- VARIABLES
 -- ============================================================================
 
-\set alliance1ID '00000000-0000-0000-0000-000000000001'
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
+\set activeAllianceID '0d010000-0000-0000-0000-000000000001'
+\set inactiveAllianceID '0d010000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Alliances
+-- Alliance
 insert into alliance (
     alliance_id,
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
-) values
-    (:'alliance1ID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png'),
-    (:'alliance2ID', 'inactive-alliance', 'Inactive Alliance', 'An inactive alliance', 'https://example.com/logo2.png', 'https://example.com/banner_mobile2.png', 'https://example.com/banner2.png');
+    banner_url,
+    logo_url
+) values (
+    :'activeAllianceID',
+    'alliance-id-lookup',
+    'Alliance ID Lookup',
+    'Alliance used for name lookups',
+    'https://example.com/alliance-id-lookup-banner-mobile.png',
+    'https://example.com/alliance-id-lookup-banner.png',
+    'https://example.com/alliance-id-lookup-logo.png'
+);
 
--- Deactivate second alliance
-update alliance set active = false where alliance_id = :'alliance2ID';
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    active,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'inactiveAllianceID',
+    'inactive-alliance-id-lookup',
+    'Inactive Alliance ID Lookup',
+    'Inactive alliance used for name lookups',
+    false,
+    'https://example.com/inactive-alliance-id-lookup-banner-mobile.png',
+    'https://example.com/inactive-alliance-id-lookup-banner.png',
+    'https://example.com/inactive-alliance-id-lookup-logo.png'
+);
 
 -- ============================================================================
 -- TESTS
@@ -38,14 +61,14 @@ update alliance set active = false where alliance_id = :'alliance2ID';
 
 -- Should return alliance_id for active alliance
 select is(
-    get_alliance_id_by_name('test-alliance'),
-    :'alliance1ID'::uuid,
+    get_alliance_id_by_name('alliance-id-lookup'),
+    :'activeAllianceID'::uuid,
     'Should return alliance_id for active alliance'
 );
 
 -- Should return null for inactive alliance
 select is(
-    get_alliance_id_by_name('inactive-alliance'),
+    get_alliance_id_by_name('inactive-alliance-id-lookup'),
     null,
     'Should return null for inactive alliance'
 );

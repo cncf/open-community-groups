@@ -9,14 +9,14 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set activeAllianceID '00000000-0000-0000-0000-000000000001'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set deletedGroupID '00000000-0000-0000-0000-000000000024'
-\set inactiveAllianceID '00000000-0000-0000-0000-000000000002'
-\set inactiveAllianceCategoryID '00000000-0000-0000-0000-000000000012'
-\set inactiveAllianceGroupID '00000000-0000-0000-0000-000000000025'
-\set inactiveGroupID '00000000-0000-0000-0000-000000000023'
-\set publicGroupID '00000000-0000-0000-0000-000000000021'
+\set activeAllianceID '0c0d0000-0000-0000-0000-000000000001'
+\set deletedGroupID '0c0d0000-0000-0000-0000-000000000002'
+\set groupCategoryID '0c0d0000-0000-0000-0000-000000000003'
+\set inactiveAllianceCategoryID '0c0d0000-0000-0000-0000-000000000004'
+\set inactiveAllianceGroupID '0c0d0000-0000-0000-0000-000000000005'
+\set inactiveAllianceID '0c0d0000-0000-0000-0000-000000000006'
+\set inactiveGroupID '0c0d0000-0000-0000-0000-000000000007'
+\set publicGroupID '0c0d0000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
@@ -25,93 +25,101 @@ select plan(7);
 -- Alliances
 insert into alliance (
     alliance_id,
-    active,
     name,
     display_name,
     description,
-    logo_url,
-    og_image_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url,
+
+    active,
+    og_image_url
 ) values
     (
         :'activeAllianceID',
-        true,
         'active-alliance',
         'Active Alliance',
         'An active alliance.',
-        'https://example.com/active-logo.png',
-        '/images/alliance-og.png',
         'https://example.com/active-banner-mobile.png',
-        'https://example.com/active-banner.png'
+        'https://example.com/active-banner.png',
+        'https://example.com/active-logo.png',
+
+        true,
+        '/images/alliance-og.png'
     ),
     (
         :'inactiveAllianceID',
-        false,
         'inactive-alliance',
         'Inactive Alliance',
         'An inactive alliance.',
-        'https://example.com/inactive-logo.png',
-        '/images/inactive-alliance-og.png',
         'https://example.com/inactive-banner-mobile.png',
-        'https://example.com/inactive-banner.png'
+        'https://example.com/inactive-banner.png',
+        'https://example.com/inactive-logo.png',
+
+        false,
+        '/images/inactive-alliance-og.png'
     );
 
 -- Group categories
-insert into group_category (group_category_id, name, alliance_id)
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'categoryID', 'Technology', :'activeAllianceID'),
-    (:'inactiveAllianceCategoryID', 'Technology', :'inactiveAllianceID');
+    (:'groupCategoryID', :'activeAllianceID', 'Technology'),
+    (:'inactiveAllianceCategoryID', :'inactiveAllianceID', 'Technology');
 
 -- Groups
 insert into "group" (
     group_id,
-    active,
-    deleted,
-    name,
-    slug,
     alliance_id,
     group_category_id,
+    name,
+    slug,
+
+    active,
+    deleted,
     og_image_url
 ) values
     (
         :'publicGroupID',
-        true,
-        false,
+        :'activeAllianceID',
+        :'groupCategoryID',
         'Public Group',
         'public-group',
-        :'activeAllianceID',
-        :'categoryID',
+
+        true,
+        false,
         '/images/group-og.png'
     ),
     (
         :'inactiveGroupID',
-        false,
-        false,
+        :'activeAllianceID',
+        :'groupCategoryID',
         'Inactive Group',
         'inactive-group',
-        :'activeAllianceID',
-        :'categoryID',
+
+        false,
+        false,
         '/images/inactive-group-og.png'
     ),
     (
         :'deletedGroupID',
-        false,
-        true,
+        :'activeAllianceID',
+        :'groupCategoryID',
         'Deleted Group',
         'deleted-group',
-        :'activeAllianceID',
-        :'categoryID',
+
+        false,
+        true,
         '/images/deleted-group-og.png'
     ),
     (
         :'inactiveAllianceGroupID',
-        true,
-        false,
-        'Inactive Alliance Group',
-        'inactive-alliance-group',
         :'inactiveAllianceID',
         :'inactiveAllianceCategoryID',
+        'Inactive Alliance Group',
+        'inactive-alliance-group',
+
+        true,
+        false,
         '/images/inactive-alliance-group-og.png'
     );
 
@@ -167,6 +175,10 @@ select is(
     false,
     'Returns false for unreferenced images'
 );
+
+-- ============================================================================
+-- CLEANUP
+-- ============================================================================
 
 select * from finish();
 rollback;

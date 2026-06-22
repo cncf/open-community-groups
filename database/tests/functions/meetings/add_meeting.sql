@@ -9,48 +9,63 @@ select plan(17);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventID '00000000-0000-0000-0000-000000000101'
-\set eventReassignedClaimID '00000000-0000-0000-0000-000000000104'
-\set eventStaleClaimID '00000000-0000-0000-0000-000000000103'
-\set eventWithErrorID '00000000-0000-0000-0000-000000000102'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set sessionID '00000000-0000-0000-0000-000000000201'
-\set sessionWithErrorID '00000000-0000-0000-0000-000000000202'
+\set allianceID '7a010000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a010000-0000-0000-0000-000000000002'
+\set eventID '7a010000-0000-0000-0000-000000000003'
+\set eventReassignedClaimID '7a010000-0000-0000-0000-000000000004'
+\set eventStaleClaimID '7a010000-0000-0000-0000-000000000005'
+\set eventWithErrorID '7a010000-0000-0000-0000-000000000006'
+\set groupCategoryID '7a010000-0000-0000-0000-000000000007'
+\set groupID '7a010000-0000-0000-0000-000000000008'
+\set sessionID '7a010000-0000-0000-0000-000000000009'
+\set sessionWithErrorID '7a010000-0000-0000-0000-000000000010'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event Category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group Category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'groupCategoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
 insert into "group" (
     group_id,
     alliance_id,
+    group_category_id,
     name,
     slug,
-    description,
-    group_category_id
+    description
 ) values (
     :'groupID',
     :'allianceID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
-    'A test group',
-    :'groupCategoryID'
+    'A test group'
 );
 
 -- Event: needs meeting
@@ -79,7 +94,7 @@ insert into event (
     'event-test',
     'Test event for meeting',
     'America/New_York',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     '2025-06-01 10:00:00-04',
     '2025-06-01 11:00:00-04',
@@ -146,7 +161,7 @@ insert into event (
     'event-with-error',
     'Test event with previous error',
     'America/New_York',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     '2025-06-02 10:00:00-04',
     '2025-06-02 11:00:00-04',
@@ -186,7 +201,7 @@ insert into event (
     'event-stale-claim',
     'Test event changed after claim',
     'America/New_York',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     '2025-06-03 10:00:00-04',
     '2025-06-03 11:00:00-04',
@@ -225,7 +240,7 @@ insert into event (
     'event-reassigned-claim',
     'Test event reclaimed by another worker',
     'America/New_York',
-    :'categoryID',
+    :'eventCategoryID',
     'virtual',
     '2025-06-04 10:00:00-04',
     '2025-06-04 11:00:00-04',

@@ -9,24 +9,44 @@ select plan(4);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set user1ID '00000000-0000-0000-0000-000000000011'
-\set user2ID '00000000-0000-0000-0000-000000000012'
+\set allianceID '2c020000-0000-0000-0000-000000000001'
+\set user1ID '2c020000-0000-0000-0000-000000000002'
+\set user2ID '2c020000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'team-member-alliance',
+    'Team Member Alliance',
+    'Alliance for team member tests',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Users
 insert into "user" (
-    user_id, auth_hash, email, name, username, email_verified
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
 ) values
-    (:'user1ID', gen_random_bytes(32), 'alice@example.com', 'Alice', 'alice', true),
-    (:'user2ID', gen_random_bytes(32), 'bob@example.com', 'Bob', 'bob', true);
+    (:'user1ID', gen_random_bytes(32), 'alice@example.com', true, 'alice', 'Alice'),
+    (:'user2ID', gen_random_bytes(32), 'bob@example.com', true, 'bob', 'Bob');
 
 -- ============================================================================
 -- TESTS
@@ -34,18 +54,26 @@ insert into "user" (
 
 -- Adding a user should create membership
 select lives_ok(
-    $$ select add_alliance_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
+    format(
+        $$ select add_alliance_team_member(null::uuid, %L::uuid, %L::uuid, 'admin') $$,
+        :'allianceID',
+        :'user1ID'
+    ),
     'Should succeed for valid user'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select
         count(*)::bigint,
         bool_or(accepted)
     from alliance_team
-    where alliance_id = '00000000-0000-0000-0000-000000000001'::uuid
-      and user_id = '00000000-0000-0000-0000-000000000011'::uuid
-    $$,
+    where alliance_id = %L::uuid
+      and user_id = %L::uuid
+        $$,
+        :'allianceID',
+        :'user1ID'
+    ),
     $$ values (1::bigint, false) $$,
     'Membership should be created with accepted = false'
 );
@@ -63,23 +91,31 @@ select results_eq(
             details
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'alliance_team_member_added',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'user',
-            '00000000-0000-0000-0000-000000000011'::uuid,
+            %L::uuid,
             jsonb_build_object('role', 'admin')
         )
-    $$,
+        $$,
+        :'allianceID',
+        :'user1ID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should not allow duplicate alliance team membership
 select throws_ok(
-    $$ select add_alliance_team_member(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000011'::uuid, 'admin') $$,
+    format(
+        $$ select add_alliance_team_member(null::uuid, %L::uuid, %L::uuid, 'admin') $$,
+        :'allianceID',
+        :'user1ID'
+    ),
     'user is already a alliance team member',
     'Should not allow duplicate alliance team membership'
 );

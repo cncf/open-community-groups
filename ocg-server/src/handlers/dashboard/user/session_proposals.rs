@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_messages::Messages;
 use serde_json::to_value;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
@@ -89,8 +89,8 @@ pub(crate) async fn add(
     db.add_session_proposal(user.user_id, &session_proposal).await?;
 
     // Notify co-speaker when invitation is created
-    if let Some(co_speaker_user_id) = session_proposal.co_speaker_user_id {
-        send_co_speaker_invitation_notification(
+    if let Some(co_speaker_user_id) = session_proposal.co_speaker_user_id
+        && let Err(err) = send_co_speaker_invitation_notification(
             &db,
             &notifications_manager,
             &server_cfg,
@@ -98,7 +98,14 @@ pub(crate) async fn add(
             session_proposal.title.as_str(),
             get_speaker_name(&user),
         )
-        .await?;
+        .await
+    {
+        warn!(
+            error = %err,
+            user_id = %user.user_id,
+            %co_speaker_user_id,
+            "failed to enqueue session proposal co-speaker invitation notification"
+        );
     }
 
     messages.success("Session proposal added.");
@@ -176,8 +183,7 @@ pub(crate) async fn update(
     // Notify new co-speaker when invitation target changed
     if let Some(co_speaker_user_id) = session_proposal.co_speaker_user_id
         && Some(co_speaker_user_id) != previous_co_speaker_user_id
-    {
-        send_co_speaker_invitation_notification(
+        && let Err(err) = send_co_speaker_invitation_notification(
             &db,
             &notifications_manager,
             &server_cfg,
@@ -185,7 +191,15 @@ pub(crate) async fn update(
             session_proposal.title.as_str(),
             get_speaker_name(&user),
         )
-        .await?;
+        .await
+    {
+        warn!(
+            error = %err,
+            user_id = %user.user_id,
+            %co_speaker_user_id,
+            %session_proposal_id,
+            "failed to enqueue session proposal co-speaker invitation notification"
+        );
     }
 
     messages.success("Session proposal updated.");

@@ -24,7 +24,7 @@ const getOnlineEventDetails = () => document.querySelector("online-event-details
 /**
  * Resets meeting-related fields to avoid copying existing links or sync state.
  */
-export const resetCopiedMeetingFields = () => {
+const resetCopiedMeetingFields = () => {
   setTextValue("meeting_join_instructions", "");
   setTextValue("meeting_join_url", "");
   setTextValue("meeting_recording_url", "");
@@ -38,7 +38,7 @@ export const resetCopiedMeetingFields = () => {
  * Copies reusable manual meeting access details into the event form.
  * @param {object} details Event details payload
  */
-export const copyManualMeetingFields = (details) => {
+const copyManualMeetingFields = (details) => {
   if (details.meeting_requested === true) {
     return;
   }

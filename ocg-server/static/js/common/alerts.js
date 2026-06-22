@@ -74,6 +74,7 @@ export const initializePageAlerts = (root = document) => {
  * Auto-dismisses after 30 seconds to ensure user sees errors.
  * @param {string} message - The error message to display
  * @param {boolean} withHtml - Whether to display the message as HTML content
+ * @param {boolean} persist - Whether the alert should stay open until dismissed
  */
 export const showErrorAlert = (message, withHtml = false, persist = false) => {
   const alertOptions = {
@@ -213,7 +214,7 @@ export const shouldRefreshBodyForBackendFlash = (xhr, successMessage = "") => {
  * Triggers a body refresh after the current HTMX response settles.
  * @returns {void}
  */
-export const refreshBodyAfterHtmxSettle = () => {
+const refreshBodyAfterHtmxSettle = () => {
   document.addEventListener(
     "htmx:afterSettle",
     () => {

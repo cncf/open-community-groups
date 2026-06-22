@@ -14,6 +14,13 @@ const MARKER_CLUSTER_SCRIPT_SRC = "/static/vendor/js/leaflet.markercluster.v1.5.
 const MAIN_LOADING_MAP_ID = "main-loading-map";
 const MAP_LOADING_ID = "loading-map";
 const MAP_ELEMENT_ID = "map-box";
+const MAP_STATUS = Object.freeze({
+  empty: "empty",
+  error: "error",
+  idle: "idle",
+  loading: "loading",
+  ready: "ready",
+});
 const MARKER_ICON_CONFIG = {
   html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker"></div>',
   iconSize: [30, 30],
@@ -48,12 +55,29 @@ const getItemsForEntity = (entity, data) => {
 };
 
 /**
+ * Checks whether a coordinate is finite and non-zero.
+ * @param {unknown} value - Coordinate value
+ * @returns {boolean} True when the coordinate can be used for map markers
+ */
+const isFiniteNonZeroCoordinate = (value) => {
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) && coordinate !== 0;
+};
+
+/**
  * Checks whether an item can be rendered as a map marker.
  * @param {object} item - Explore item
  * @returns {boolean} True when coordinates are present and non-zero
  */
 const hasValidCoordinates = (item) =>
-  item.latitude !== undefined && item.longitude !== undefined && item.latitude != 0 && item.longitude != 0;
+  isFiniteNonZeroCoordinate(item.latitude) && isFiniteNonZeroCoordinate(item.longitude);
+
+/**
+ * Filters explore items to those that can be rendered as map markers.
+ * @param {Array} items - Explore items
+ * @returns {Array} Items with finite, non-zero coordinates
+ */
+const getMappableItems = (items) => items.filter((item) => hasValidCoordinates(item));
 
 /**
  * Normalizes a latitude value to be within the -90 to 90 range.
@@ -171,6 +195,7 @@ export class Map {
     this.entity = entity;
     this.enabledMoveEnd = false;
     this.tooltipTimers = new WeakMap();
+    this.state = { status: MAP_STATUS.idle };
 
     // Save map instance
     Map._instance = this;
@@ -256,6 +281,19 @@ export class Map {
   }
 
   /**
+   * Stores the current map status and syncs the blocking loading affordance.
+   * @param {string} status - Map status
+   */
+  setStatus(status) {
+    this.state = { status };
+    if (status === MAP_STATUS.loading) {
+      showLoadingSpinner(MAP_LOADING_ID);
+    } else {
+      hideLoadingSpinner(MAP_LOADING_ID);
+    }
+  }
+
+  /**
    * Refreshes the map by updating markers with new data.
    * @param {boolean} overwriteBounds - Whether to overwrite map bounds with new data
    * @param {object} currentData - Optional current data to use instead of fetching
@@ -268,29 +306,28 @@ export class Map {
     if (currentData) {
       data = currentData;
     } else {
-      // Show loading spinner
-      showLoadingSpinner(MAP_LOADING_ID);
+      this.setStatus(MAP_STATUS.loading);
 
       // Fetch data based on current map bounds
       try {
         data = await this.fetchLocationData(overwriteBounds);
       } catch (error) {
-        // If fetch fails (e.g., due to invalid bbox), hide loading and ignore error
-        hideLoadingSpinner(MAP_LOADING_ID);
+        this.setStatus(MAP_STATUS.error);
         return;
       }
     }
 
-    if (data) {
-      const items = getItemsForEntity(this.entity, data);
+    if (!data) {
+      this.setStatus(MAP_STATUS.error);
+      return;
+    }
 
-      // Refresh map markers
-      if (items.length > 0) {
-        this.addMarkers(items, overwriteBounds ? data.bbox : null);
-      } else {
-        // Hide loading spinner
-        hideLoadingSpinner(MAP_LOADING_ID);
-      }
+    const mappableItems = getMappableItems(getItemsForEntity(this.entity, data));
+    if (mappableItems.length > 0) {
+      this.addMarkers(mappableItems, overwriteBounds ? data.bbox : null);
+      this.setStatus(MAP_STATUS.ready);
+    } else {
+      this.setStatus(MAP_STATUS.empty);
     }
   }
 
@@ -371,8 +408,5 @@ export class Map {
 
     // Add marker cluster group to the map
     this.map.addLayer(markers);
-
-    // Hide loading spinner
-    hideLoadingSpinner(MAP_LOADING_ID);
   }
 }

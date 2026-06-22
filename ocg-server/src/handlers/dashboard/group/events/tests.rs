@@ -1065,33 +1065,31 @@ async fn test_cancel_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    db.expect_cancel_event()
+    tx.expect_cancel_event()
         .times(1)
         .withf(move |uid, id, eid| *uid == user_id && *id == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(()));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
-    db.expect_list_event_attendees_ids()
+    tx.expect_list_event_attendees_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(vec![attendee_id]));
-    db.expect_list_event_waitlist_ids()
+    tx.expect_list_event_waitlist_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(vec![]));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventCanceled)
@@ -1106,7 +1104,11 @@ async fn test_cancel_success() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -1169,14 +1171,16 @@ async fn test_cancel_test_event_no_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(test_event.clone()));
-    db.expect_cancel_event()
+    tx.expect_cancel_event()
         .times(1)
         .withf(move |uid, id, eid| *uid == user_id && *id == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1220,6 +1224,8 @@ async fn test_cancel_series_success() {
         Some(alliance_id),
         Some(group_id),
     );
+    let series_event_ids = vec![event_id, related_event_id];
+    let expected_series_event_ids = series_event_ids.clone();
     let event_summary = EventSummary {
         published: false,
         ..sample_event_summary(event_id, group_id)
@@ -1229,8 +1235,6 @@ async fn test_cancel_series_success() {
         published: false,
         ..sample_event_summary(related_event_id, group_id)
     };
-    let series_event_ids = vec![event_id, related_event_id];
-    let expected_series_event_ids = series_event_ids.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1251,27 +1255,29 @@ async fn test_cancel_series_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_list_event_series_event_ids()
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_event_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(series_event_ids.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == alliance_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    db.expect_cancel_event().times(0);
-    db.expect_cancel_event_series_events()
+    tx.expect_cancel_event().times(0);
+    tx.expect_cancel_event_series_events()
         .times(1)
         .withf(move |uid, gid, event_ids| {
             *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
         })
         .returning(move |_, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1363,51 +1369,49 @@ async fn test_cancel_series_sends_aggregate_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_list_event_series_event_ids()
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_event_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(series_event_ids.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == alliance_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    db.expect_cancel_event_series_events()
+    tx.expect_cancel_event_series_events()
         .times(1)
         .withf(move |uid, gid, event_ids| {
             *uid == user_id && *gid == group_id && event_ids == expected_series_event_ids.as_slice()
         })
         .returning(move |_, _, _| Ok(()));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == alliance_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_full.clone()));
-    db.expect_list_event_attendees_ids()
+    tx.expect_list_event_attendees_ids()
         .times(2)
         .withf(move |gid, eid| *gid == group_id && (*eid == event_id || *eid == related_event_id))
         .returning(move |_, _| Ok(vec![attendee_id]));
-    db.expect_list_event_waitlist_ids()
+    tx.expect_list_event_waitlist_ids()
         .times(2)
         .withf(move |gid, eid| *gid == group_id && (*eid == event_id || *eid == related_event_id))
         .returning(move |_, _| Ok(vec![]));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventSeriesCanceled)
@@ -1422,7 +1426,11 @@ async fn test_cancel_series_sends_aggregate_notification() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -1499,35 +1507,33 @@ async fn test_publish_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
-    db.expect_publish_event()
+    tx.expect_publish_event()
         .times(1)
         .withf(move |uid, provider, gid, eid| {
             *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
         })
         .returning(move |_, _, _, _| Ok(()));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
-    db.expect_list_group_members_ids()
+    tx.expect_list_group_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![member_id]));
-    db.expect_list_group_team_members_ids()
+    tx.expect_list_group_team_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![team_member_id]));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventPublished)
@@ -1539,8 +1545,8 @@ async fn test_publish_success() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
-    nm.expect_enqueue()
+        .returning(|_| Ok(()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::SpeakerWelcome)
@@ -1552,7 +1558,11 @@ async fn test_publish_success() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -1616,16 +1626,18 @@ async fn test_publish_test_event_no_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(unpublished_test_event.clone()));
-    db.expect_publish_event()
+    tx.expect_publish_event()
         .times(1)
         .withf(move |uid, provider, gid, eid| {
             *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
         })
         .returning(move |_, _, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1699,22 +1711,23 @@ async fn test_publish_series_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_list_event_series_publishable_event_ids()
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_publishable_event_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(series_event_ids.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == alliance_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    db.expect_publish_event().times(0);
-    db.expect_publish_event_series_events()
+    tx.expect_publish_event().times(0);
+    tx.expect_publish_event_series_events()
         .times(1)
         .withf(move |uid, provider, gid, event_ids| {
             *uid == user_id
@@ -1723,6 +1736,7 @@ async fn test_publish_series_success() {
                 && event_ids == expected_series_event_ids.as_slice()
         })
         .returning(move |_, _, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -1814,21 +1828,22 @@ async fn test_publish_series_sends_aggregate_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_list_event_series_publishable_event_ids()
+    let mut tx = MockDB::new();
+    tx.expect_list_event_series_publishable_event_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(series_event_ids.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_summary.clone()));
-    db.expect_get_event_summary()
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == alliance_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
-    db.expect_publish_event_series_events()
+    tx.expect_publish_event_series_events()
         .times(1)
         .withf(move |uid, provider, gid, event_ids| {
             *uid == user_id
@@ -1837,31 +1852,28 @@ async fn test_publish_series_sends_aggregate_notification() {
                 && event_ids == expected_series_event_ids.as_slice()
         })
         .returning(move |_, _, _, _| Ok(()));
-    db.expect_list_group_members_ids()
+    tx.expect_list_group_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![member_id]));
-    db.expect_list_group_team_members_ids()
+    tx.expect_list_group_team_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![]));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == alliance_id && *gid == group_id && *eid == related_event_id
         })
         .returning(move |_, _, _| Ok(related_event_full.clone()));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventSeriesPublished)
@@ -1876,7 +1888,11 @@ async fn test_publish_series_sends_aggregate_notification() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -1938,16 +1954,18 @@ async fn test_publish_already_published_no_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(already_published_event.clone()));
-    db.expect_publish_event()
+    tx.expect_publish_event()
         .times(1)
         .withf(move |uid, provider, gid, eid| {
             *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
         })
         .returning(move |_, _, _, _| Ok(()));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected)
     let nm = MockNotificationsManager::new();
@@ -2024,36 +2042,34 @@ async fn test_publish_speakers_only() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(unpublished_event.clone()));
-    db.expect_publish_event()
+    tx.expect_publish_event()
         .times(1)
         .withf(move |uid, provider, gid, eid| {
             *uid == user_id && provider.is_none() && *gid == group_id && *eid == event_id
         })
         .returning(move |_, _, _, _| Ok(()));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
     // No group members
-    db.expect_list_group_members_ids()
+    tx.expect_list_group_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![]));
-    db.expect_list_group_team_members_ids()
+    tx.expect_list_group_team_members_ids()
         .times(1)
         .withf(move |gid| *gid == group_id)
         .returning(move |_| Ok(vec![]));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock - only speaker notification expected
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::SpeakerWelcome)
@@ -2065,7 +2081,11 @@ async fn test_publish_speakers_only() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -2376,12 +2396,10 @@ async fn test_unpublish_series_success() {
 #[allow(clippy::too_many_lines)]
 async fn test_update_success() {
     // Setup identifiers and data structures
-    let attendee_id = Uuid::new_v4();
     let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
-    let speaker_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
@@ -2392,19 +2410,7 @@ async fn test_update_success() {
         Some(group_id),
     );
     let before = sample_event_summary(event_id, group_id);
-    let after = EventSummary {
-        starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
-        ..before.clone()
-    };
-    let event_full = EventFull {
-        speakers: vec![Speaker {
-            featured: false,
-            user: sample_template_user_with_id(speaker_id),
-        }],
-        ..sample_event_full(alliance_id, event_id, group_id)
-    };
-    let site_settings = sample_site_settings();
-    let site_settings_for_notifications = site_settings.clone();
+    let after = before.clone();
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
 
@@ -2427,7 +2433,8 @@ async fn test_update_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning({
@@ -2442,7 +2449,7 @@ async fn test_update_success() {
                 Ok(result)
             }
         });
-    db.expect_update_event()
+    tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, cfg_max_participants| {
             *uid == user_id
@@ -2453,36 +2460,10 @@ async fn test_update_success() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
-    db.expect_get_event_full()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(event_full.clone()));
-    db.expect_list_event_attendees_ids()
-        .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(vec![attendee_id]));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            matches!(notification.kind, NotificationKind::EventRescheduled)
-                && notification.recipients.len() == 2
-                && notification.recipients.contains(&attendee_id)
-                && notification.recipients.contains(&speaker_id)
-                && notification.template_data.as_ref().is_some_and(|value| {
-                    from_value::<EventRescheduled>(value.clone()).is_ok_and(|template| {
-                        template.link == "/test/group/npq6789/event/abc1234"
-                            && template.theme.primary_color
-                                == site_settings_for_notifications.theme.primary_color
-                    })
-                })
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -2522,7 +2503,6 @@ async fn test_update_invalid_ticketing_fields_returns_unprocessable_entity() {
         Some(alliance_id),
         Some(group_id),
     );
-    let before = sample_event_summary(event_id, group_id);
     let event_form = sample_event_form();
     let body = format!(
         concat!(
@@ -2556,11 +2536,6 @@ async fn test_update_invalid_ticketing_fields_returns_unprocessable_entity() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(before.clone()));
-
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
@@ -2598,7 +2573,6 @@ async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessa
         Some(alliance_id),
         Some(group_id),
     );
-    let before = sample_event_summary(event_id, group_id);
     let body = sample_ticketed_event_body();
 
     // Setup database mock
@@ -2620,10 +2594,6 @@ async fn test_update_ticketed_event_without_payment_recipient_returns_unprocessa
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
-        .times(1)
-        .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(before.clone()));
     db.expect_get_group_payment_recipient()
         .times(1)
         .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
@@ -2719,7 +2689,8 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(3)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning({
@@ -2733,7 +2704,7 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                 }
             }
         });
-    db.expect_update_event()
+    tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, cfg_max_participants| {
             *uid == user_id
@@ -2744,21 +2715,18 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
-    db.expect_get_event_full()
+    tx.expect_get_event_full()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(event_full.clone()));
-    db.expect_list_event_attendees_ids()
+    tx.expect_list_event_attendees_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
         .returning(move |_, _| Ok(vec![attendee_id]));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(2)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
@@ -2772,8 +2740,8 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
-    nm.expect_enqueue()
+        .returning(|_| Ok(()));
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventRescheduled)
@@ -2788,7 +2756,11 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -2814,7 +2786,7 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
 
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
-async fn test_update_promotion_notification_failure_is_ignored() {
+async fn test_update_promotion_notification_failure_rolls_back() {
     // Setup identifiers and data structures
     let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -2856,11 +2828,23 @@ async fn test_update_promotion_notification_failure_is_ignored() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
-        .times(3)
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
+        .times(2)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
-        .returning(move |_, _, _| Ok(after.clone()));
-    db.expect_update_event()
+        .returning({
+            let mut first_call = true;
+            move |_, _, _| {
+                let result = if first_call {
+                    first_call = false;
+                    before.clone()
+                } else {
+                    after.clone()
+                };
+                Ok(result)
+            }
+        });
+    tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, cfg_max_participants| {
             *uid == user_id
@@ -2871,13 +2855,10 @@ async fn test_update_promotion_notification_failure_is_ignored() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWaitlistPromoted)
@@ -2893,7 +2874,11 @@ async fn test_update_promotion_notification_failure_is_ignored() {
                     })
                 })
         })
-        .returning(|_| Box::pin(async { Err(anyhow!("notification error")) }));
+        .returning(|_| Err(anyhow!("notification error")));
+    expect_rolled_back_transaction(&mut db, tx);
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -2909,16 +2894,12 @@ async fn test_update_promotion_notification_failure_is_ignored() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
-async fn test_update_promotion_notification_context_failure_is_ignored() {
+async fn test_update_promotion_notification_context_failure_rolls_back() {
     // Setup identifiers and data structures
     let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -2935,7 +2916,6 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
         Some(group_id),
     );
     let before = sample_event_summary(event_id, group_id);
-    let after = before.clone();
     let event_form = sample_event_form();
     let body = serde_qs::to_string(&event_form).unwrap();
 
@@ -2958,8 +2938,9 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
-        .times(3)
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
+        .times(2)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning({
             let mut call_count = 0;
@@ -2968,11 +2949,11 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
                 match call_count {
                     1 => Ok(before.clone()),
                     2 => Err(anyhow!("db error")),
-                    _ => Ok(after.clone()),
+                    _ => unreachable!(),
                 }
             }
         });
-    db.expect_update_event()
+    tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, cfg_max_participants| {
             *uid == user_id
@@ -2983,9 +2964,10 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![promoted_user_id]));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    expect_rolled_back_transaction(&mut db, tx);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -3004,12 +2986,8 @@ async fn test_update_promotion_notification_context_failure_is_ignored() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(
-        &parts,
-        &bytes,
-        StatusCode::NO_CONTENT,
-        "refresh-group-dashboard-table",
-    );
+    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(bytes.is_empty());
 }
 
 #[tokio::test]
@@ -3056,7 +3034,8 @@ async fn test_update_no_notification_when_shift_too_small() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning({
@@ -3071,7 +3050,7 @@ async fn test_update_no_notification_when_shift_too_small() {
                 Ok(result)
             }
         });
-    db.expect_update_event()
+    tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, cfg_max_participants| {
             *uid == user_id
@@ -3082,6 +3061,7 @@ async fn test_update_no_notification_when_shift_too_small() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected - shift too small)
     let nm = MockNotificationsManager::new();
@@ -3156,7 +3136,8 @@ async fn test_update_no_notification_when_unpublished() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(2)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning({
@@ -3171,7 +3152,7 @@ async fn test_update_no_notification_when_unpublished() {
                 Ok(result)
             }
         });
-    db.expect_update_event()
+    tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, cfg_max_participants| {
             *uid == user_id
@@ -3182,6 +3163,7 @@ async fn test_update_no_notification_when_unpublished() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no enqueue expected - event unpublished)
     let nm = MockNotificationsManager::new();
@@ -3256,11 +3238,12 @@ async fn test_update_past_event_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
-    db.expect_get_event_summary()
+    let mut tx = MockDB::new();
+    tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
         .returning(move |_, _, _| Ok(past_event.clone()));
-    db.expect_update_event()
+    tx.expect_update_event()
         .times(1)
         .withf(move |uid, gid, eid, event, cfg_max_participants| {
             *uid == user_id
@@ -3273,6 +3256,7 @@ async fn test_update_past_event_success() {
                 && cfg_max_participants.is_empty()
         })
         .returning(move |_, _, _, _, _| Ok(vec![]));
+    expect_successful_transaction(&mut db, tx);
 
     // Setup notifications manager mock (no expectations - past events don't notify)
     let nm = MockNotificationsManager::new();

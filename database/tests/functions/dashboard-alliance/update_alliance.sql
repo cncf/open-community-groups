@@ -9,7 +9,8 @@ select plan(8);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
+\set allianceID '2c140000-0000-0000-0000-000000000001'
+\set unknownAllianceID '2c140000-0000-0000-0000-000000000002'
 
 -- ============================================================================
 -- SEED DATA
@@ -18,17 +19,17 @@ select plan(8);
 -- Alliance
 insert into alliance (
     alliance_id,
-    active,
+    name,
+    display_name,
+    description,
     banner_mobile_url,
     banner_url,
-    alliance_site_layout_id,
-    description,
-    display_name,
     logo_url,
-    name,
-    ad_banner_url,
+    active,
     ad_banner_link_url,
+    ad_banner_url,
     bluesky_url,
+    alliance_site_layout_id,
     extra_links,
     facebook_url,
     flickr_url,
@@ -44,17 +45,17 @@ insert into alliance (
     youtube_url
 ) values (
     :'allianceID',
-    true,
-    'https://original.com/alliance-banner_mobile.png',
-    'https://original.com/alliance-banner.png',
-    'default',
-    'A vibrant alliance for cloud native technologies and practices in Seattle',
-    'Cloud Native Seattle',
-    'https://original.com/logo.png',
     'cloud-native-seattle',
-    'https://original.com/banner.png',
+    'Cloud Native Seattle',
+    'A vibrant alliance for cloud native technologies and practices in Seattle',
+    'https://original.com/alliance-banner-mobile.png',
+    'https://original.com/alliance-banner.png',
+    'https://original.com/logo.png',
+    true,
     'https://original.com/banner-link',
+    'https://original.com/banner.png',
     'https://bsky.app/profile/original',
+    'default',
     '{"docs": "https://docs.original.com"}'::jsonb,
     'https://facebook.com/original',
     'https://flickr.com/original',
@@ -76,23 +77,26 @@ insert into alliance (
 
 -- Should update required fields and set optional fields to null when not provided
 select lives_ok(
-    $$select update_alliance(
+    format(
+        $$select update_alliance(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         '{
             "description": "Updated description for Seattle cloud native alliance",
             "display_name": "Cloud Native Seattle Updated",
             "logo_url": "https://updated.com/logo.png"
         }'::jsonb
     )$$,
+        :'allianceID'
+    ),
     'Should execute update with only required fields'
 );
 
 select is(
-    (select get_alliance_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'alliance_id' - 'created_at'),
+    (select get_alliance_full(:'allianceID'::uuid)::jsonb - 'alliance_id' - 'created_at'),
     '{
         "active": true,
-        "banner_mobile_url": "https://original.com/alliance-banner_mobile.png",
+        "banner_mobile_url": "https://original.com/alliance-banner-mobile.png",
         "banner_url": "https://original.com/alliance-banner.png",
         "alliance_site_layout_id": "default",
         "description": "Updated description for Seattle cloud native alliance",
@@ -116,24 +120,29 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'alliance_updated',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'alliance',
-            '00000000-0000-0000-0000-000000000001'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID',
+        :'allianceID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should update all fields including optional ones
 select lives_ok(
-    $$select update_alliance(
+    format(
+        $$select update_alliance(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         '{
             "description": "Comprehensive cloud native alliance in Seattle",
             "display_name": "Cloud Native Seattle Complete",
@@ -160,11 +169,13 @@ select lives_ok(
             "youtube_url": "https://youtube.com/new"
         }'::jsonb
     )$$,
+        :'allianceID'
+    ),
     'Should update all fields including optional ones'
 );
 
 select is(
-    (select get_alliance_full('00000000-0000-0000-0000-000000000001'::uuid)::jsonb - 'alliance_id' - 'created_at'),
+    (select get_alliance_full(:'allianceID'::uuid)::jsonb - 'alliance_id' - 'created_at'),
     '{
         "active": true,
         "ad_banner_link_url": "https://new.com/link",
@@ -198,9 +209,10 @@ select is(
 
 -- Should convert empty strings to null for nullable fields
 select lives_ok(
-    $$select update_alliance(
+    format(
+        $$select update_alliance(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
+        %L::uuid,
         '{
             "ad_banner_url": "",
             "ad_banner_link_url": "",
@@ -219,13 +231,15 @@ select lives_ok(
             "youtube_url": ""
         }'::jsonb
     )$$,
+        :'allianceID'
+    ),
     'Should execute update converting empty strings to null'
 );
 
 select is(
     (select row_to_json(t.*)::jsonb - 'alliance_id' - 'created_at' - 'active' - 'banner_mobile_url' - 'banner_url' - 'alliance_site_layout_id' - 'description' - 'display_name' - 'logo_url' - 'name' - 'extra_links' - 'photos_urls'
      from (
-        select * from alliance where alliance_id = '00000000-0000-0000-0000-000000000001'::uuid
+        select * from alliance where alliance_id = :'allianceID'::uuid
      ) t),
     '{
         "ad_banner_url": null,
@@ -250,15 +264,18 @@ select is(
 
 -- Should raise an error when the alliance does not exist
 select throws_ok(
-    $$select update_alliance(
+    format(
+        $$select update_alliance(
         null::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        %L::uuid,
         '{
             "description": "Some description",
             "display_name": "Some Alliance",
             "logo_url": "https://some.com/logo.png"
         }'::jsonb
     )$$,
+        :'unknownAllianceID'
+    ),
     'alliance not found',
     'Should raise an error when the alliance does not exist'
 );

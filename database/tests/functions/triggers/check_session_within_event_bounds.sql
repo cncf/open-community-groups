@@ -9,92 +9,107 @@ select plan(10);
 -- VARIABLES
 -- ============================================================================
 
-\set bypassSessionID '00000000-0000-0000-0000-000000000202'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventNoBoundsID '00000000-0000-0000-0000-000000000102'
-\set eventWithBoundsID '00000000-0000-0000-0000-000000000101'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000051'
-\set sessionID '00000000-0000-0000-0000-000000000201'
+\set bypassSessionID 'ab080000-0000-0000-0000-000000000001'
+\set allianceID 'ab080000-0000-0000-0000-000000000002'
+\set eventCategoryID 'ab080000-0000-0000-0000-000000000003'
+\set eventNoBoundsID 'ab080000-0000-0000-0000-000000000004'
+\set eventWithBoundsID 'ab080000-0000-0000-0000-000000000005'
+\set groupCategoryID 'ab080000-0000-0000-0000-000000000006'
+\set groupID 'ab080000-0000-0000-0000-000000000007'
+\set sessionID 'ab080000-0000-0000-0000-000000000008'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event Category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group Category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'groupCategoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
 insert into "group" (
     group_id,
     alliance_id,
+    group_category_id,
     name,
     slug,
-    description,
-    group_category_id
+    description
 ) values (
     :'groupID',
     :'allianceID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
-    'A test group',
-    :'groupCategoryID'
+    'A test group'
 );
 
 -- Event with bounds (10:00 to 18:00)
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
-    timezone,
-    event_category_id,
-    event_kind_id,
     starts_at,
-    ends_at
+    ends_at,
+    timezone
 ) values (
     :'eventWithBoundsID',
+    :'eventCategoryID',
+    'in-person',
     :'groupID',
     'Event With Bounds',
     'event-with-bounds',
     'An event with start and end times',
-    'UTC',
-    :'categoryID',
-    'in-person',
     '2030-01-01 10:00:00+00',
-    '2030-01-01 18:00:00+00'
+    '2030-01-01 18:00:00+00',
+    'UTC'
 );
 
 -- Event without bounds
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
-    timezone,
-    event_category_id,
-    event_kind_id
+    timezone
 ) values (
     :'eventNoBoundsID',
+    :'eventCategoryID',
+    'in-person',
     :'groupID',
     'Event Without Bounds',
     'event-without-bounds',
     'An event without start and end times',
-    'UTC',
-    :'categoryID',
-    'in-person'
+    'UTC'
 );
 
 -- ============================================================================

@@ -9,21 +9,21 @@ select plan(20);
 -- VARIABLES
 -- ============================================================================
 
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set category2ID '00000000-0000-0000-0000-000000000012'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000013'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000000032'
-\set group2ID '00000000-0000-0000-0000-000000000023'
-\set group3ID '00000000-0000-0000-0000-000000000024'
-\set group4ID '00000000-0000-0000-0000-000000000025'
-\set group5ID '00000000-0000-0000-0000-000000000026'
-\set groupDeletedID '00000000-0000-0000-0000-000000000022'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set nonExistentAllianceID '00000000-0000-0000-0000-000000000099'
-\set ticketTypeID '00000000-0000-0000-0000-000000000041'
-\set ticketTypeUnpublishedID '00000000-0000-0000-0000-000000000042'
+\set allianceID '1c020000-0000-0000-0000-000000000001'
+\set eventCategoryID '1c020000-0000-0000-0000-000000000002'
+\set eventID '1c020000-0000-0000-0000-000000000003'
+\set eventUnpublishedID '1c020000-0000-0000-0000-000000000004'
+\set group2ID '1c020000-0000-0000-0000-000000000005'
+\set group3ID '1c020000-0000-0000-0000-000000000006'
+\set group4ID '1c020000-0000-0000-0000-000000000007'
+\set group5ID '1c020000-0000-0000-0000-000000000008'
+\set groupCategory1ID '1c020000-0000-0000-0000-000000000009'
+\set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
+\set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
+\set groupID '1c020000-0000-0000-0000-00000000000c'
+\set nonExistentAllianceID '1c020000-0000-0000-0000-00000000000d'
+\set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
+\set ticketTypeUnpublishedID '1c020000-0000-0000-0000-00000000000f'
 
 -- ============================================================================
 -- SEED DATA
@@ -35,24 +35,24 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
     'cloud-native-seattle',
     'Cloud Native Seattle',
     'A vibrant alliance for cloud native technologies and practices in Seattle',
-    'https://example.com/logo.png',
     'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
--- Group Category
-insert into group_category (group_category_id, name, alliance_id)
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'category1ID', 'Technology', :'allianceID'),
-    (:'category2ID', 'Business', :'allianceID');
+    (:'groupCategory1ID', :'allianceID', 'Technology'),
+    (:'groupCategory2ID', :'allianceID', 'Business');
 
 -- Event category
 insert into event_category (event_category_id, alliance_id, name)
@@ -72,7 +72,7 @@ insert into "group" (
     'Original Group',
     'abc1234',
     :'allianceID',
-    :'category1ID',
+    :'groupCategory1ID',
     'Original description',
     '2024-01-15 10:00:00+00'
 );
@@ -94,7 +94,7 @@ insert into "group" (
     'Deleted Group',
     'xyz9876',
     :'allianceID',
-    :'category1ID',
+    :'groupCategory1ID',
     'Deleted group description',
     false,
     true,
@@ -118,10 +118,41 @@ insert into "group" (
     'Test Group for Null Arrays',
     'mno3ghi',
     :'allianceID',
-    :'category1ID',
+    :'groupCategory1ID',
     'Has array fields',
     array['original', 'tags'],
     array['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+    '2024-01-15 10:00:00+00'
+);
+
+-- Group used to verify empty strings convert to null
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    alliance_id,
+    group_category_id,
+    description,
+    banner_url,
+    city,
+    state,
+    country_code,
+    country_name,
+    website_url,
+    created_at
+) values (
+    :'group2ID'::uuid,
+    'Test Group for Empty Strings',
+    'pqr4jkl',
+    :'allianceID',
+    :'groupCategory1ID',
+    'Has some values',
+    'https://example.com/banner.jpg',
+    'San Francisco',
+    'CA',
+    'US',
+    'United States',
+    'https://example.com',
     '2024-01-15 10:00:00+00'
 );
 
@@ -139,7 +170,7 @@ insert into "group" (
     'Group With Payment Recipient',
     'stu5nop',
     :'allianceID',
-    :'category1ID',
+    :'groupCategory1ID',
     'Payment recipient audit coverage',
     '2024-01-15 10:00:00+00'
 );
@@ -159,7 +190,7 @@ insert into "group" (
     'Group With Unpublished Ticketed Event',
     'vwx6qrs',
     :'allianceID',
-    :'category1ID',
+    :'groupCategory1ID',
     'Unpublished ticketed event coverage',
     '{"provider": "stripe", "recipient_id": "acct_456"}'::jsonb,
     '2024-01-15 10:00:00+00'
@@ -247,13 +278,14 @@ insert into event_ticket_type (
 
 -- Should update all provided fields correctly
 select lives_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000021'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Updated Group",
-            "category_id": "00000000-0000-0000-0000-000000000012",
+            "category_id": "%s",
             "description": "Updated description",
             "description_short": "Updated brief description",
             "city": "New York",
@@ -270,30 +302,36 @@ select lives_ok(
             "og_image_url": "https://example.com/updated-og.png"
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'groupID',
+        :'groupCategory2ID'
+    ),
     'Should update all provided fields correctly'
 );
 
 -- Should return expected structure after update
 select is(
     (select get_group_full(:'allianceID'::uuid, :'groupID'::uuid)::jsonb - 'active' - 'created_at' - 'members_count'),
-    '{
+    format(
+        $json$
+    {
         "name": "Updated Group",
         "slug": "abc1234",
         "slug_pretty": "updated-group",
         "category": {
-            "group_category_id": "00000000-0000-0000-0000-000000000012",
+            "group_category_id": "%s",
             "name": "Business",
             "normalized_name": "business"
         },
         "alliance": {
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
-            "alliance_id": "00000000-0000-0000-0000-000000000001",
+            "alliance_id": "%s",
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "name": "cloud-native-seattle"
         },
-        "group_id": "00000000-0000-0000-0000-000000000021",
+        "group_id": "%s",
         "description": "Updated description",
         "description_short": "Updated brief description",
         "city": "New York",
@@ -309,39 +347,54 @@ select is(
         "og_image_url": "https://example.com/updated-og.png",
         "organizers": [],
         "sponsors": []
-    }'::jsonb,
+    }
+        $json$,
+        :'groupCategory2ID',
+        :'allianceID',
+        :'groupID'
+    )::jsonb,
     'Should update all provided fields and return expected structure'
 );
 
 -- Should clear pretty slug when provided as an empty string
 select lives_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000021'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Updated Group",
-            "category_id": "00000000-0000-0000-0000-000000000012",
+            "category_id": "%s",
             "description": "Updated description",
             "slug_pretty": ""
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'groupID',
+        :'groupCategory2ID'
+    ),
     'Should clear pretty slug when provided as an empty string'
 );
 
 -- Should reject pretty slugs with invalid characters
 select throws_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000021'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Updated Group",
-            "category_id": "00000000-0000-0000-0000-000000000012",
+            "category_id": "%s",
             "description": "Updated description",
             "slug_pretty": "Updated Group"
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'groupID',
+        :'groupCategory2ID'
+    ),
     'P0001',
     'Pretty slug must use lowercase ASCII letters, numbers, and hyphens only',
     'Should reject pretty slugs with invalid characters'
@@ -360,81 +413,65 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values
             (
                 'group_updated',
                 null::uuid,
                 null::text,
-                '00000000-0000-0000-0000-000000000001'::uuid,
-                '00000000-0000-0000-0000-000000000021'::uuid,
+                %L::uuid,
+                %L::uuid,
                 'group',
-                '00000000-0000-0000-0000-000000000021'::uuid
+                %L::uuid
             ),
             (
                 'group_updated',
                 null::uuid,
                 null::text,
-                '00000000-0000-0000-0000-000000000001'::uuid,
-                '00000000-0000-0000-0000-000000000021'::uuid,
+                %L::uuid,
+                %L::uuid,
                 'group',
-                '00000000-0000-0000-0000-000000000021'::uuid
+                %L::uuid
             )
     $$,
+        :'allianceID',
+        :'groupID',
+        :'groupID',
+        :'allianceID',
+        :'groupID',
+        :'groupID'
+    ),
     'Should create the expected audit rows'
 );
 
 -- Should throw error when updating deleted group
 select throws_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000022'::uuid,
-        '{"name": "Won''t Work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
+        %L::uuid,
+        %L::uuid,
+        '{"name": "Won''t Work", "category_id": "%s", "description": "This should fail"}'::jsonb
     )$$,
+        :'allianceID',
+        :'groupDeletedID',
+        :'groupCategory1ID'
+    ),
     'group not found or inactive',
     'Should throw error when trying to update deleted group'
 );
 
 -- Should convert empty strings to null for nullable fields
-insert into "group" (
-    group_id,
-    name,
-    slug,
-    alliance_id,
-    group_category_id,
-    description,
-    banner_url,
-    city,
-    state,
-    country_code,
-    country_name,
-    website_url,
-    created_at
-) values (
-    :'group2ID'::uuid,
-    'Test Group for Empty Strings',
-    'pqr4jkl',
-    :'allianceID',
-    :'category1ID',
-    'Has some values',
-    'https://example.com/banner.jpg',
-    'San Francisco',
-    'CA',
-    'US',
-    'United States',
-    'https://example.com',
-    '2024-01-15 10:00:00+00'
-);
-
 select lives_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000023'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Updated Group Empty Strings",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "%s",
             "description": "",
             "description_short": "",
             "banner_url": "",
@@ -457,6 +494,10 @@ select lives_ok(
             "region_id": ""
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'group2ID',
+        :'groupCategory1ID'
+    ),
     'Should convert empty strings to null for nullable fields'
 );
 
@@ -473,30 +514,40 @@ select is(
 
 -- Should throw error when alliance_id mismatches
 select throws_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid,
-        '00000000-0000-0000-0000-000000000021'::uuid,
-        '{"name": "Won''t Work", "category_id": "00000000-0000-0000-0000-000000000011", "description": "This should fail"}'::jsonb
+        %L::uuid,
+        %L::uuid,
+        '{"name": "Won''t Work", "category_id": "%s", "description": "This should fail"}'::jsonb
     )$$,
+        :'nonExistentAllianceID',
+        :'groupID',
+        :'groupCategory1ID'
+    ),
     'group not found or inactive',
     'Should throw error when alliance_id does not match'
 );
 
 -- Should handle explicit null values for array fields
 select lives_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000024'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Updated Group Null Arrays",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "%s",
             "description": "Updated description",
             "tags": null,
             "photos_urls": null
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'group3ID',
+        :'groupCategory1ID'
+    ),
     'Should handle explicit null values for array fields'
 );
 
@@ -514,13 +565,14 @@ select is(
 
 -- Should create the payment recipient audit row when the recipient changes
 select lives_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000025'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Group With Payment Recipient",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "%s",
             "description": "Payment recipient audit coverage",
             "payment_recipient": {
                 "provider": "stripe",
@@ -528,12 +580,17 @@ select lives_ok(
             }
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'group4ID',
+        :'groupCategory1ID'
+    ),
     'Should create the payment recipient audit row when the recipient changes'
 );
 
 -- Should create both audit rows when the payment recipient changes
 select results_eq(
-    $$
+    format(
+        $$
         select
             action,
             actor_user_id,
@@ -543,30 +600,40 @@ select results_eq(
             resource_type,
             resource_id
         from audit_log
-        where group_id = '00000000-0000-0000-0000-000000000025'::uuid
+        where group_id = %L::uuid
         order by action asc
     $$,
-    $$
+        :'group4ID'
+    ),
+    format(
+        $$
         values
             (
                 'group_payment_recipient_updated',
                 null::uuid,
                 null::text,
-                '00000000-0000-0000-0000-000000000001'::uuid,
-                '00000000-0000-0000-0000-000000000025'::uuid,
+                %L::uuid,
+                %L::uuid,
                 'group',
-                '00000000-0000-0000-0000-000000000025'::uuid
+                %L::uuid
             ),
             (
                 'group_updated',
                 null::uuid,
                 null::text,
-                '00000000-0000-0000-0000-000000000001'::uuid,
-                '00000000-0000-0000-0000-000000000025'::uuid,
+                %L::uuid,
+                %L::uuid,
                 'group',
-                '00000000-0000-0000-0000-000000000025'::uuid
+                %L::uuid
             )
     $$,
+        :'allianceID',
+        :'group4ID',
+        :'group4ID',
+        :'allianceID',
+        :'group4ID',
+        :'group4ID'
+    ),
     'Should create both audit rows when the payment recipient changes'
 );
 
@@ -582,13 +649,14 @@ select is(
 
 -- Should reject clearing payment recipient when published ticketed events exist
 select throws_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000025'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Group With Payment Recipient",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "%s",
             "description": "Payment recipient audit coverage",
             "payment_recipient": {
                 "provider": "stripe",
@@ -596,6 +664,10 @@ select throws_ok(
             }
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'group4ID',
+        :'groupCategory1ID'
+    ),
     'ticketed events require a payment recipient',
     'Should reject clearing payment recipient when published ticketed events exist'
 );
@@ -612,13 +684,14 @@ select is(
 
 -- Should normalize whitespace-only payment recipient ids to null
 select lives_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000021'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Updated Group",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "%s",
             "description": "Updated description",
             "payment_recipient": {
                 "provider": "stripe",
@@ -626,6 +699,10 @@ select lives_ok(
             }
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'groupID',
+        :'groupCategory1ID'
+    ),
     'Should normalize whitespace-only payment recipient ids to null'
 );
 
@@ -638,13 +715,14 @@ select is(
 
 -- Should allow clearing payment recipient when only unpublished ticketed events exist
 select lives_ok(
-    $$select update_group(
+    format(
+        $$select update_group(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000026'::uuid,
+        %L::uuid,
+        %L::uuid,
         '{
             "name": "Group With Unpublished Ticketed Event",
-            "category_id": "00000000-0000-0000-0000-000000000011",
+            "category_id": "%s",
             "description": "Unpublished ticketed event coverage",
             "payment_recipient": {
                 "provider": "stripe",
@@ -652,6 +730,10 @@ select lives_ok(
             }
         }'::jsonb
     )$$,
+        :'allianceID',
+        :'group5ID',
+        :'groupCategory1ID'
+    ),
     'Should allow clearing payment recipient when only unpublished ticketed events exist'
 );
 

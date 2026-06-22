@@ -9,39 +9,147 @@ select plan(12);
 -- VARIABLES
 -- ============================================================================
 
-\set user1ID '00000000-0000-0000-0000-000000000011'
-\set user2ID '00000000-0000-0000-0000-000000000012'
-\set user3ID '00000000-0000-0000-0000-000000000013'
-\set user4ID '00000000-0000-0000-0000-000000000014'
-\set user5ID '00000000-0000-0000-0000-000000000015'
-\set user6ID '00000000-0000-0000-0000-000000000016'
-\set user7ID '00000000-0000-0000-0000-000000000017'
-\set user8ID '00000000-0000-0000-0000-000000000018'
-\set user9ID '00000000-0000-0000-0000-000000000021'
-\set userPreRegisteredID '00000000-0000-0000-0000-000000000019'
-\set userUnverifiedID '00000000-0000-0000-0000-000000000020'
+\set user1ID '1c010000-0000-0000-0000-000000000001'
+\set user2ID '1c010000-0000-0000-0000-000000000002'
+\set user3ID '1c010000-0000-0000-0000-000000000003'
+\set user4ID '1c010000-0000-0000-0000-000000000004'
+\set user5ID '1c010000-0000-0000-0000-000000000005'
+\set user6ID '1c010000-0000-0000-0000-000000000006'
+\set user7ID '1c010000-0000-0000-0000-000000000007'
+\set user8ID '1c010000-0000-0000-0000-000000000008'
+\set user9ID '1c010000-0000-0000-0000-000000000009'
+\set userPreRegisteredID '1c010000-0000-0000-0000-00000000000a'
+\set userUnverifiedID '1c010000-0000-0000-0000-00000000000b'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- User
-insert into "user" (user_id, username, email, email_verified, auth_hash, name, photo_url, registration_status)
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name,
+    photo_url,
+    registration_status
+)
 values
-    (:'user1ID', 'johndoe', 'john.doe@example.com', true, 'hash1', 'John Doe', 'https://example.com/john.jpg', 'registered'),
-    (:'user2ID', 'janedoe', 'jane.doe@example.com', true, 'hash2', 'Jane Doe', 'https://example.com/jane.jpg', 'registered'),
-    (:'user3ID', 'johnsmith', 'john.smith@example.com', true, 'hash3', 'John Smith', null, 'registered'),
-    (:'user4ID', 'alice', 'alice@example.com', true, 'hash4', 'Alice Johnson', 'https://example.com/alice.jpg', 'registered'),
-    (:'user5ID', 'bob', 'bob@example.com', true, 'hash5', null, null, 'registered'),
-    (:'user6ID', 'charlie', 'charlie@example.com', true, 'hash6', 'Charlie Brown', 'https://example.com/charlie.jpg', 'registered'),
+    (
+        :'user1ID',
+        'hash1',
+        'john.doe@example.com',
+        true,
+        'johndoe',
+        'John Doe',
+        'https://example.com/john.jpg',
+        'registered'
+    ),
+    (
+        :'user2ID',
+        'hash2',
+        'jane.doe@example.com',
+        true,
+        'janedoe',
+        'Jane Doe',
+        'https://example.com/jane.jpg',
+        'registered'
+    ),
+    (
+        :'user3ID',
+        'hash3',
+        'john.smith@example.com',
+        true,
+        'johnsmith',
+        'John Smith',
+        null,
+        'registered'
+    ),
+    (
+        :'user4ID',
+        'hash4',
+        'alice@example.com',
+        true,
+        'alice',
+        'Alice Johnson',
+        'https://example.com/alice.jpg',
+        'registered'
+    ),
+    (
+        :'user5ID',
+        'hash5',
+        'bob@example.com',
+        true,
+        'bob',
+        null,
+        null,
+        'registered'
+    ),
+    (
+        :'user6ID',
+        'hash6',
+        'charlie@example.com',
+        true,
+        'charlie',
+        'Charlie Brown',
+        'https://example.com/charlie.jpg',
+        'registered'
+    ),
     -- Users for testing special characters
-    (:'user7ID', 'user%test', 'usertest@example.com', true, 'hash14', 'User Percent Test', null, 'registered'),
-    (:'user8ID', 'user_special', 'userspecial@example.com', true, 'hash15', 'User Underscore', null, 'registered'),
-    (:'user9ID', 'back\slash', 'backslash@example.com', true, 'hash18', 'Back Slash', null, 'registered'),
+    (
+        :'user7ID',
+        'hash14',
+        'usertest@example.com',
+        true,
+        'user%test',
+        'User Percent Test',
+        null,
+        'registered'
+    ),
+    (
+        :'user8ID',
+        'hash15',
+        'userspecial@example.com',
+        true,
+        'user_special',
+        'User Underscore',
+        null,
+        'registered'
+    ),
+    (
+        :'user9ID',
+        'hash18',
+        'backslash@example.com',
+        true,
+        'back\slash',
+        'Back Slash',
+        null,
+        'registered'
+    ),
     -- Pre-registered users should not appear in regular dashboard search
-    (:'userPreRegisteredID', 'invited-user', 'invited@example.com', true, 'hash17', 'Invited User', null, 'pre-registered'),
+    (
+        :'userPreRegisteredID',
+        'hash17',
+        'invited@example.com',
+        true,
+        'invited-user',
+        'Invited User',
+        null,
+        'pre-registered'
+    ),
     -- User with unverified email (should not appear in results)
-    (:'userUnverifiedID', 'unverified', 'unverified@example.com', false, 'hash16', 'Unverified User', null, 'registered');
+    (
+        :'userUnverifiedID',
+        'hash16',
+        'unverified@example.com',
+        false,
+        'unverified',
+        'Unverified User',
+        null,
+        'registered'
+    );
 
 -- User (for testing max results limit)
 insert into "user" (username, email, email_verified, auth_hash, name)
@@ -60,48 +168,48 @@ values
 -- Should find users by username prefix
 select is(
     search_user('john'),
-    '[
-        {
-            "user_id": "00000000-0000-0000-0000-000000000011",
-            "username": "johndoe",
-            "name": "John Doe",
-            "photo_url": "https://example.com/john.jpg"
-        },
-        {
-            "user_id": "00000000-0000-0000-0000-000000000013",
-            "username": "johnsmith",
-            "name": "John Smith",
-            "photo_url": null
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'user_id', :'user1ID',
+            'username', 'johndoe',
+            'name', 'John Doe',
+            'photo_url', 'https://example.com/john.jpg'
+        ),
+        jsonb_build_object(
+            'user_id', :'user3ID',
+            'username', 'johnsmith',
+            'name', 'John Smith',
+            'photo_url', null
+        )
+    ),
     'Should find users by username prefix'
 );
 
 -- Should find users by name prefix
 select is(
     search_user('jane'),
-    '[
-        {
-            "user_id": "00000000-0000-0000-0000-000000000012",
-            "username": "janedoe",
-            "name": "Jane Doe",
-            "photo_url": "https://example.com/jane.jpg"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'user_id', :'user2ID',
+            'username', 'janedoe',
+            'name', 'Jane Doe',
+            'photo_url', 'https://example.com/jane.jpg'
+        )
+    ),
     'Should find users by name prefix'
 );
 
 -- Should find users by exact email match
 select is(
     search_user('Alice@Example.com'),
-    '[
-        {
-            "user_id": "00000000-0000-0000-0000-000000000014",
-            "username": "alice",
-            "name": "Alice Johnson",
-            "photo_url": "https://example.com/alice.jpg"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'user_id', :'user4ID',
+            'username', 'alice',
+            'name', 'Alice Johnson',
+            'photo_url', 'https://example.com/alice.jpg'
+        )
+    ),
     'Should find users by exact email match (case-insensitive)'
 );
 
@@ -115,42 +223,42 @@ select is(
 -- Should treat percent in query as a literal character
 select is(
     search_user('user%'),
-    '[
-        {
-            "user_id": "00000000-0000-0000-0000-000000000017",
-            "username": "user%test",
-            "name": "User Percent Test",
-            "photo_url": null
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'user_id', :'user7ID',
+            'username', 'user%test',
+            'name', 'User Percent Test',
+            'photo_url', null
+        )
+    ),
     'Should treat percent in query as a literal character'
 );
 
 -- Should treat underscore in query as a literal character
 select is(
     search_user('user_'),
-    '[
-        {
-            "user_id": "00000000-0000-0000-0000-000000000018",
-            "username": "user_special",
-            "name": "User Underscore",
-            "photo_url": null
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'user_id', :'user8ID',
+            'username', 'user_special',
+            'name', 'User Underscore',
+            'photo_url', null
+        )
+    ),
     'Should treat underscore in query as a literal character'
 );
 
 -- Should treat backslash in query as a literal character
 select is(
     search_user('back\'),
-    '[
-        {
-            "user_id": "00000000-0000-0000-0000-000000000021",
-            "username": "back\\slash",
-            "name": "Back Slash",
-            "photo_url": null
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'user_id', :'user9ID',
+            'username', 'back\slash',
+            'name', 'Back Slash',
+            'photo_url', null
+        )
+    ),
     'Should treat backslash in query as a literal character'
 );
 

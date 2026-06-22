@@ -1,5 +1,5 @@
-{% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
 
 {# Update Group Category form -#}
 <form id="group-category-form"
@@ -24,51 +24,17 @@
            {% if !can_manage_taxonomy -%}
              inert
            {% endif -%}>
-        <div class="col-span-full lg:col-span-5">
-          <label for="name" class="form-label">
-            Name <span class="asterisk">*</span>
-          </label>
-          <div class="mt-2">
-            <input type="text"
-                   name="name"
-                   id="name"
-                   maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}"
-                   class="input-primary"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false"
-                   value="{{ category.name }}"
-                   required>
-          </div>
-          <p class="form-legend">
-            Category display name. Max {{ crate::validation::MAX_LEN_ENTITY_NAME }} characters.
-          </p>
-        </div>
+        {% let name_value -%}value="{{ category.name }}"{%- endlet %}
+        {{ form_fields::entity_name_field(legend_prefix = "Category display name.", value_attr = name_value) -}}
       </div>
     </div>
   </div>
 
-  <div class="mt-6 flex items-center justify-end gap-x-6">
-    <button id="cancel-button"
-            type="button"
-            hx-get="/dashboard/alliance?tab=group-categories"
-            hx-target="body"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline">Cancel</button>
-
-    <button type="submit"
-            class="btn-primary relative
-                   {% if !can_manage_taxonomy -%}
-                     opacity-50 cursor-not-allowed
-                   {% endif -%}"
-            {% if !can_manage_taxonomy -%}
-              disabled title="Your role cannot update group categories."
-            {% endif -%}>
-      {{ ui::btn_spinner(id = "alliance-group-category-update-spinner", spinner_type = "2") -}}
-      Update Group Category
-    </button>
-  </div>
+  {{ dashboard::form_actions(cancel_href = "/dashboard/alliance?tab=group-categories",
+    spinner_id = "alliance-group-category-update-spinner",
+    submit_label = "Update Group Category",
+    disabled = !can_manage_taxonomy,
+    disabled_title = "Your role cannot update group categories.") -}}
 </form>
 
 {# End Update Group Category form -#}

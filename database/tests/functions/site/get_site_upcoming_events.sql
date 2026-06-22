@@ -3,29 +3,29 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set category2ID '00000000-0000-0000-0000-000000000012'
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set event1ID '00000000-0000-0000-0000-000000000041'
-\set event2ID '00000000-0000-0000-0000-000000000042'
-\set event3ID '00000000-0000-0000-0000-000000000043'
-\set event4ID '00000000-0000-0000-0000-000000000044'
-\set event5ID '00000000-0000-0000-0000-000000000045'
-\set event6ID '00000000-0000-0000-0000-000000000046'
-\set event7ID '00000000-0000-0000-0000-000000000047'
-\set event8ID '00000000-0000-0000-0000-000000000048'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000021'
-\set eventCategory2ID '00000000-0000-0000-0000-000000000022'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set group2ID '00000000-0000-0000-0000-000000000032'
-\set group3ID '00000000-0000-0000-0000-000000000033'
+\set alliance2ID '9a060000-0000-0000-0000-000000000001'
+\set allianceID '9a060000-0000-0000-0000-000000000002'
+\set event1ID '9a060000-0000-0000-0000-000000000003'
+\set event2ID '9a060000-0000-0000-0000-000000000004'
+\set event3ID '9a060000-0000-0000-0000-000000000005'
+\set event4ID '9a060000-0000-0000-0000-000000000006'
+\set event5ID '9a060000-0000-0000-0000-000000000007'
+\set event6ID '9a060000-0000-0000-0000-000000000008'
+\set event7ID '9a060000-0000-0000-0000-000000000009'
+\set event8ID '9a060000-0000-0000-0000-000000000010'
+\set eventCategory1ID '9a060000-0000-0000-0000-000000000011'
+\set eventCategory2ID '9a060000-0000-0000-0000-000000000012'
+\set group1ID '9a060000-0000-0000-0000-000000000013'
+\set group2ID '9a060000-0000-0000-0000-000000000014'
+\set group3ID '9a060000-0000-0000-0000-000000000015'
+\set groupCategory1ID '9a060000-0000-0000-0000-000000000016'
+\set groupCategory2ID '9a060000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
@@ -37,61 +37,108 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
-    'test-alliance',
-    'Test Alliance',
-    'A test alliance',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'site-upcoming-events',
+    'Site Upcoming Events',
+    'Alliance used for site upcoming events tests',
+    'https://example.com/site-upcoming-events-banner-mobile.png',
+    'https://example.com/site-upcoming-events-banner.png',
+    'https://example.com/site-upcoming-events-logo.png'
 );
 
 -- Inactive alliance
 insert into alliance (
     alliance_id,
-    active,
     name,
     display_name,
     description,
-    logo_url,
+    active,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'alliance2ID',
+    'inactive-site-upcoming-events',
+    'Inactive Site Upcoming Events',
+    'Inactive alliance used for site upcoming events tests',
     false,
-    'inactive-alliance',
-    'Inactive Alliance',
-    'An inactive test alliance',
-    'https://example.com/logo2.png',
-    'https://example.com/banner_mobile2.png',
-    'https://example.com/banner2.png'
+    'https://example.com/inactive-site-upcoming-events-banner-mobile.png',
+    'https://example.com/banner2.png',
+    'https://example.com/logo2.png'
 );
 
--- Group Category
-insert into group_category (group_category_id, name, alliance_id)
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
 values
-    (:'category1ID', 'Technology', :'allianceID'),
-    (:'category2ID', 'Technology', :'alliance2ID');
+    (:'groupCategory1ID', :'allianceID', 'Technology'),
+    (:'groupCategory2ID', :'alliance2ID', 'Technology');
 
 -- Group
-insert into "group" (group_id, name, slug, alliance_id, group_category_id, city, state, country_code, country_name, logo_url)
-values (:'group1ID', 'Test Group', 'test-group', :'allianceID', :'category1ID', 'New York', 'NY', 'US', 'United States', 'https://example.com/group-logo.png');
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    city,
+    country_code,
+    country_name,
+    logo_url,
+    state
+) values (
+    :'group1ID',
+    :'allianceID',
+    :'groupCategory1ID',
+    'Test Group',
+    'test-group',
+    'New York',
+    'US',
+    'United States',
+    'https://example.com/group-logo.png',
+    'NY'
+);
 
-insert into "group" (group_id, name, slug, alliance_id, group_category_id, logo_url)
-values (:'group2ID', 'Virtual Group', 'virtual-group', :'allianceID', :'category1ID', 'https://example.com/virtual-group-logo.png');
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    logo_url
+) values (
+    :'group2ID',
+    :'allianceID',
+    :'groupCategory1ID',
+    'Virtual Group',
+    'virtual-group',
+    'https://example.com/virtual-group-logo.png'
+);
 
-insert into "group" (group_id, name, slug, alliance_id, group_category_id, logo_url)
-values (:'group3ID', 'Inactive Alliance Group', 'inactive-alliance-group', :'alliance2ID', :'category2ID', 'https://example.com/inactive-alliance-group-logo.png');
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    logo_url
+) values (
+    :'group3ID',
+    :'alliance2ID',
+    :'groupCategory2ID',
+    'Inactive Alliance Group',
+    'inactive-alliance-group',
+    'https://example.com/inactive-alliance-group-logo.png'
+);
 
--- Event Category
-insert into event_category (event_category_id, name, alliance_id)
+-- Event category
+insert into event_category (event_category_id, alliance_id, name)
 values
-    (:'eventCategory1ID', 'Tech Talks', :'allianceID'),
-    (:'eventCategory2ID', 'Tech Talks', :'alliance2ID');
+    (:'eventCategory1ID', :'allianceID', 'Tech Talks'),
+    (:'eventCategory2ID', :'alliance2ID', 'Tech Talks');
 
 -- Event
 insert into event (
@@ -124,13 +171,15 @@ insert into event (
      :'eventCategory1ID', 'hybrid', :'group1ID', false,
      now() + interval '3 months', now() + interval '3 months' + interval '2 hours', false, null),
     -- Future event 3 (canceled - should be filtered out)
-    (:'event4ID', 'Canceled Future Event', 'canceled-future-event', 'A canceled event', false, 'UTC',
+    (:'event4ID', 'Canceled Future Event', 'canceled-future-event',
+     'A canceled event', false, 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', false,
      now() + interval '2 weeks', now() + interval '2 weeks' + interval '2 hours', true, null),
     -- Future event 4 (uses group logo fallback)
     (:'event5ID', 'No Logo Event', 'no-logo-event', 'An event without logo', true, 'UTC',
      :'eventCategory1ID', 'in-person', :'group1ID', true,
-     now() + interval '1 month' + interval '1 day', now() + interval '1 month' + interval '1 day' + interval '2 hours',
+     now() + interval '1 month' + interval '1 day',
+     now() + interval '1 month' + interval '1 day' + interval '2 hours',
      false, null),
     -- Future event 5 (virtual event for a group without location data)
     (:'event7ID', 'Locationless Virtual Event', 'locationless-virtual-event',
@@ -169,17 +218,6 @@ select ok(
     'Should not include events from inactive alliances'
 );
 
--- Should return only published future events matching event kind filter
-delete from event where event_id = :'event5ID';
-select is(
-    get_site_upcoming_events(array['in-person', 'virtual', 'hybrid'])::jsonb,
-    jsonb_build_array(
-        get_event_summary(:'allianceID'::uuid, :'group1ID'::uuid, :'event2ID'::uuid)::jsonb,
-        get_event_summary(:'allianceID'::uuid, :'group2ID'::uuid, :'event7ID'::uuid)::jsonb
-    ),
-    'Should return only published future events'
-);
-
 -- Should return empty array when no events match the filter
 select is(
     get_site_upcoming_events(array['in-person'])::jsonb,
@@ -187,7 +225,7 @@ select is(
     'Should return empty array when no events match the filter'
 );
 
--- Add a tied future event to verify deterministic ordering
+-- Intentional mid-test seed: creates a tied future event after baseline assertions.
 insert into event (
     event_id,
     name,

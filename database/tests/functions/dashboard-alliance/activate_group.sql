@@ -9,22 +9,39 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set groupAlreadyDeletedID '00000000-0000-0000-0000-000000000032'
-\set groupID '00000000-0000-0000-0000-000000000031'
+\set allianceID '2c010000-0000-0000-0000-000000000001'
+\set groupAlreadyDeletedID '2c010000-0000-0000-0000-000000000002'
+\set groupCategoryID '2c010000-0000-0000-0000-000000000003'
+\set groupID '2c010000-0000-0000-0000-000000000004'
+\set unknownAllianceID '2c010000-0000-0000-0000-000000000005'
+\set unknownGroupID '2c010000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'activate-group-alliance',
+    'Activate Group Alliance',
+    'Alliance for activate group tests',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- Group Category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Tech', :'allianceID');
+-- Group category
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group (inactive)
 insert into "group" (
@@ -37,9 +54,9 @@ insert into "group" (
 ) values (
     :'groupID',
     :'allianceID',
-    :'categoryID',
-    'G1',
-    'g1',
+    :'groupCategoryID',
+    'Inactive Group',
+    'inactive-group',
     false
 );
 
@@ -55,9 +72,9 @@ insert into "group" (
 ) values (
     :'groupAlreadyDeletedID',
     :'allianceID',
-    :'categoryID',
-    'G2',
-    'g2',
+    :'groupCategoryID',
+    'Deleted Group',
+    'deleted-group',
     false,
     true
 );
@@ -97,37 +114,54 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'group_activated',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
+            %L::uuid,
             'group',
-            '00000000-0000-0000-0000-000000000031'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID',
+        :'groupID',
+        :'groupID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should throw error for already deleted group
 select throws_ok(
-    $$select activate_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000032'::uuid)$$,
+    format(
+        $$select activate_group(null::uuid, %L::uuid, %L::uuid)$$,
+        :'allianceID',
+        :'groupAlreadyDeletedID'
+    ),
     'group not found or inactive',
     'Should throw error when trying to activate already deleted group'
 );
 
 -- Should throw error for wrong alliance_id
 select throws_ok(
-    $$select activate_group(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000031'::uuid)$$,
+    format(
+        $$select activate_group(null::uuid, %L::uuid, %L::uuid)$$,
+        :'unknownAllianceID',
+        :'groupID'
+    ),
     'group not found or inactive',
     'Should throw error when alliance_id does not match'
 );
 
 -- Should throw error for non-existent group
 select throws_ok(
-    $$select activate_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000099'::uuid)$$,
+    format(
+        $$select activate_group(null::uuid, %L::uuid, %L::uuid)$$,
+        :'allianceID',
+        :'unknownGroupID'
+    ),
     'group not found or inactive',
     'Should throw error for non-existent group'
 );

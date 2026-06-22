@@ -3,26 +3,62 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set userID '00000000-0000-0000-0000-000000000011'
+\set allianceID '4a010000-0000-0000-0000-000000000001'
+\set user2ID '4a010000-0000-0000-0000-000000000002'
+\set userID '4a010000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'cloud-native-seattle', 'Cloud Native Seattle', 'Seattle alliance for cloud native technologies', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'cloud-native-seattle',
+    'Cloud Native Seattle',
+    'Seattle alliance for cloud native technologies',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
--- User
-insert into "user" (user_id, auth_hash, email, username, email_verified, name)
-values (:'userID', gen_random_bytes(32), 'user@example.com', 'user', true, 'User');
+-- Users
+insert into "user" (
+    user_id,
+    auth_hash,
+    email,
+    email_verified,
+    username,
+    name
+) values (
+    :'userID',
+    gen_random_bytes(32),
+    'user@example.com',
+    true,
+    'user',
+    'User'
+), (
+    :'user2ID',
+    gen_random_bytes(32),
+    'user2@example.com',
+    true,
+    'user2',
+    'User Two'
+);
 
 -- Pending invitation
 insert into alliance_team (
@@ -43,11 +79,26 @@ insert into alliance_team (
 
 -- Should flip accepted to true when accepting invitation
 select lives_ok(
-    $$ select accept_alliance_team_invitation('00000000-0000-0000-0000-000000000011'::uuid, '00000000-0000-0000-0000-000000000001'::uuid) $$,
-    'Should execute successfully'
+    format(
+        $$
+            select accept_alliance_team_invitation(%L::uuid, %L::uuid)
+        $$,
+        :'userID',
+        :'allianceID'
+    ),
+    'Should accept a pending alliance team invitation'
 );
 select results_eq(
-    $$ select accepted from alliance_team where alliance_id = '00000000-0000-0000-0000-000000000001'::uuid and user_id = '00000000-0000-0000-0000-000000000011'::uuid $$,
+    format(
+        $$
+            select accepted
+            from alliance_team
+            where alliance_id = %L::uuid
+            and user_id = %L::uuid
+        $$,
+        :'allianceID',
+        :'userID'
+    ),
     $$ values (true) $$,
     'Invitation should be marked as accepted'
 );
@@ -64,17 +115,33 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
-        values (
-            'alliance_team_invitation_accepted',
-            '00000000-0000-0000-0000-000000000011'::uuid,
-            'user',
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            'user',
-            '00000000-0000-0000-0000-000000000011'::uuid
-        )
-    $$,
+    format(
+        $$
+            values (
+                'alliance_team_invitation_accepted',
+                %L::uuid,
+                'user',
+                %L::uuid,
+                'user',
+                %L::uuid
+            )
+        $$,
+        :'userID',
+        :'allianceID',
+        :'userID'
+    ),
     'Should create the expected audit row'
+);
+
+-- Should reject accepting a non-existent invitation
+select throws_ok(
+    format(
+        'select accept_alliance_team_invitation(%L::uuid, %L::uuid)',
+        :'user2ID',
+        :'allianceID'
+    ),
+    'no pending alliance invitation found',
+    'Should reject accepting a non-existent invitation'
 );
 
 -- ============================================================================

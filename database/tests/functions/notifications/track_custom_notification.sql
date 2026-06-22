@@ -9,32 +9,51 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set userID '00000000-0000-0000-0000-000000000041'
+\set allianceID '8a050000-0000-0000-0000-000000000001'
+\set eventCategoryID '8a050000-0000-0000-0000-000000000002'
+\set eventID '8a050000-0000-0000-0000-000000000003'
+\set groupCategoryID '8a050000-0000-0000-0000-000000000004'
+\set groupID '8a050000-0000-0000-0000-000000000005'
+\set userID '8a050000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'custom-notification-alliance',
+    'Custom Notification Alliance',
+    'Alliance used for custom notification tests',
+    'https://example.com/custom-notification-banner-mobile.png',
+    'https://example.com/custom-notification-banner.png',
+    'https://example.com/custom-notification-logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'Meetup', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Meetup');
+
+-- Users
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values (:'userID', gen_random_bytes(32), 'user@example.com', true, 'user');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'categoryID', 'Test Group', 'test-group');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Test Group', 'test-group');
 
 -- Event
 insert into event (
@@ -57,24 +76,25 @@ insert into event (
     'UTC'
 );
 
--- User
-insert into "user" (auth_hash, email, email_verified, user_id, username)
-values (gen_random_bytes(32), 'user@example.com', true, :'userID', 'user');
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should store the event custom notification
 select lives_ok(
-    $$select track_custom_notification(
-        '00000000-0000-0000-0000-000000000041'::uuid,
-        '00000000-0000-0000-0000-000000000031'::uuid,
-        '00000000-0000-0000-0000-000000000021'::uuid,
+    format(
+        $$select track_custom_notification(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
         12,
         'Event update',
         'Body for event notification'
-    )$$,
+        )$$,
+        :'userID',
+        :'eventID',
+        :'groupID'
+    ),
     'Should store the event custom notification'
 );
 
@@ -90,15 +110,19 @@ select results_eq(
         from custom_notification
         where subject = 'Event update'
     $$,
-    $$
+    format(
+        $$
         values (
             'Body for event notification',
-            '00000000-0000-0000-0000-000000000041'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
+            %L::uuid,
             null::uuid,
             'Event update'
         )
-    $$,
+        $$,
+        :'userID',
+        :'eventID'
+    ),
     'Should persist the event custom notification row'
 );
 
@@ -117,31 +141,41 @@ select results_eq(
         from audit_log
         where action = 'event_custom_notification_sent'
     $$,
-    $$
+    format(
+        $$
         values (
             'event_custom_notification_sent',
-            '00000000-0000-0000-0000-000000000041'::uuid,
+            %L::uuid,
             'user',
-            '00000000-0000-0000-0000-000000000021'::uuid,
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
+            %L::uuid,
             'event',
-            '00000000-0000-0000-0000-000000000031'::uuid,
+            %L::uuid,
             jsonb_build_object('recipient_count', 12, 'subject', 'Event update')
         )
-    $$,
+        $$,
+        :'userID',
+        :'groupID',
+        :'eventID',
+        :'eventID'
+    ),
     'Should create the expected audit row for the event notification'
 );
 
 -- Should store the group custom notification
 select lives_ok(
-    $$select track_custom_notification(
-        '00000000-0000-0000-0000-000000000041'::uuid,
+    format(
+        $$select track_custom_notification(
+        %L::uuid,
         null::uuid,
-        '00000000-0000-0000-0000-000000000021'::uuid,
+        %L::uuid,
         8,
         'Group update',
         'Body for group notification'
-    )$$,
+        )$$,
+        :'userID',
+        :'groupID'
+    ),
     'Should store the group custom notification'
 );
 
@@ -157,15 +191,19 @@ select results_eq(
         from custom_notification
         where subject = 'Group update'
     $$,
-    $$
+    format(
+        $$
         values (
             'Body for group notification',
-            '00000000-0000-0000-0000-000000000041'::uuid,
+            %L::uuid,
             null::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
             'Group update'
         )
-    $$,
+        $$,
+        :'userID',
+        :'groupID'
+    ),
     'Should persist the group custom notification row'
 );
 
@@ -184,18 +222,23 @@ select results_eq(
         from audit_log
         where action = 'group_custom_notification_sent'
     $$,
-    $$
+    format(
+        $$
         values (
             'group_custom_notification_sent',
-            '00000000-0000-0000-0000-000000000041'::uuid,
+            %L::uuid,
             'user',
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
             null::uuid,
             'group',
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
             jsonb_build_object('recipient_count', 8, 'subject', 'Group update')
         )
-    $$,
+        $$,
+        :'userID',
+        :'groupID',
+        :'groupID'
+    ),
     'Should create the expected audit row for the group notification'
 );
 

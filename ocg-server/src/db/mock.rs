@@ -8,17 +8,26 @@ use mockall::mock;
 use uuid::Uuid;
 
 mock! {
-    /// Mock `DB` struct for testing purposes, implementing the DB trait.
+    /// Mock `DB` struct for testing purposes, implementing the DB traits.
     pub(crate) DB {}
 
     #[async_trait]
-    impl crate::db::DB for DB {}
+    impl crate::db::DB for DB {
+        async fn begin(&self) -> Result<crate::db::DynDBUnitOfWork>;
+    }
+
+    #[async_trait]
+    impl crate::db::DBUnitOfWork for DB {
+        async fn commit(self: Box<Self>) -> Result<()>;
+        async fn rollback(self: Box<Self>) -> Result<()>;
+    }
 
     #[async_trait]
     impl crate::db::auth::DBAuth for DB {
         async fn activate_pre_registered_user_email_password(
             &self,
             user_summary: &crate::auth::UserSummary,
+            verification: &crate::db::auth::EmailVerificationNotification,
         ) -> Result<Option<(crate::auth::User, Uuid)>>;
         async fn activate_pre_registered_user_external_provider(
             &self,
@@ -56,6 +65,7 @@ mock! {
             &self,
             user_summary: &crate::auth::UserSummary,
             email_verified: bool,
+            verification: Option<crate::db::auth::EmailVerificationNotification>,
         ) -> Result<(crate::auth::User, Option<Uuid>)>;
         async fn update_session(
             &self,
@@ -910,6 +920,11 @@ mock! {
             &self,
             notification: &crate::services::notifications::NewNotification,
         ) -> Result<()>;
+        async fn enqueue_tracked_custom_notification(
+            &self,
+            notification: &crate::services::notifications::NewNotification,
+            tracking: crate::db::notifications::CustomNotificationTracking,
+        ) -> Result<()>;
         async fn get_notification_attachment(
             &self,
             attachment_id: Uuid
@@ -921,15 +936,6 @@ mock! {
             &self,
             timeout: std::time::Duration,
         ) -> Result<usize>;
-        async fn track_custom_notification(
-            &self,
-            created_by: Uuid,
-            event_id: Option<Uuid>,
-            group_id: Option<Uuid>,
-            recipient_count: usize,
-            subject: &str,
-            body: &str,
-        ) -> Result<()>;
         async fn update_notification(
             &self,
             notification: &crate::services::notifications::Notification,

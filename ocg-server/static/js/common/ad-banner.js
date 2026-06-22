@@ -4,7 +4,7 @@ const FLOATING_AD_BANNER_SELECTOR = '[data-ad-banner="floating"]';
 const AD_BANNER_CLOSE_SELECTOR = "[data-ad-banner-close]";
 const BANNER_HIDDEN_TRANSLATE_CLASS = "translate-y-[150%]";
 const BANNER_VISIBLE_TRANSLATE_CLASS = "translate-y-0";
-export const AD_BANNER_STORAGE_KEY_PREFIX = "ocg:ad-banner:hidden";
+const AD_BANNER_STORAGE_KEY_PREFIX = "ocg:ad-banner:hidden";
 
 /**
  * Builds the localStorage key for a banner image and destination.

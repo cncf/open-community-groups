@@ -9,26 +9,26 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set actor1ID '00000000-0000-0000-0000-000000000011'
-\set actor2ID '00000000-0000-0000-0000-000000000012'
-\set audit1ID '00000000-0000-0000-0000-000000000101'
-\set audit2ID '00000000-0000-0000-0000-000000000102'
-\set audit3ID '00000000-0000-0000-0000-000000000103'
-\set audit4ID '00000000-0000-0000-0000-000000000104'
-\set audit5ID '00000000-0000-0000-0000-000000000106'
-\set audit6ID '00000000-0000-0000-0000-000000000107'
-\set audit7ID '00000000-0000-0000-0000-000000000108'
-\set audit8ID '00000000-0000-0000-0000-000000000109'
-\set audit9ID '00000000-0000-0000-0000-000000000110'
-\set audit10ID '00000000-0000-0000-0000-000000000111'
-\set audit11ID '00000000-0000-0000-0000-000000000112'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set groupCategoryID '00000000-0000-0000-0000-000000000021'
-\set groupID '00000000-0000-0000-0000-000000000031'
-\set otherGroupID '00000000-0000-0000-0000-000000000032'
-\set targetUserID '00000000-0000-0000-0000-000000000041'
-\set wildcardActorID '00000000-0000-0000-0000-000000000013'
-\set wildcardAuditID '00000000-0000-0000-0000-000000000105'
+\set actor1ID '3a1f0000-0000-0000-0000-000000000011'
+\set actor2ID '3a1f0000-0000-0000-0000-000000000012'
+\set audit1ID '3a1f0000-0000-0000-0000-000000000101'
+\set audit2ID '3a1f0000-0000-0000-0000-000000000102'
+\set audit3ID '3a1f0000-0000-0000-0000-000000000103'
+\set audit4ID '3a1f0000-0000-0000-0000-000000000104'
+\set audit5ID '3a1f0000-0000-0000-0000-000000000106'
+\set audit6ID '3a1f0000-0000-0000-0000-000000000107'
+\set audit7ID '3a1f0000-0000-0000-0000-000000000108'
+\set audit8ID '3a1f0000-0000-0000-0000-000000000109'
+\set audit9ID '3a1f0000-0000-0000-0000-000000000110'
+\set audit10ID '3a1f0000-0000-0000-0000-000000000111'
+\set audit11ID '3a1f0000-0000-0000-0000-000000000112'
+\set allianceID '3a1f0000-0000-0000-0000-000000000001'
+\set groupCategoryID '3a1f0000-0000-0000-0000-000000000021'
+\set groupID '3a1f0000-0000-0000-0000-000000000031'
+\set otherGroupID '3a1f0000-0000-0000-0000-000000000032'
+\set targetUserID '3a1f0000-0000-0000-0000-000000000041'
+\set wildcardActorID '3a1f0000-0000-0000-0000-000000000013'
+\set wildcardAuditID '3a1f0000-0000-0000-0000-000000000105'
 
 -- ============================================================================
 -- SEED DATA
@@ -115,7 +115,7 @@ insert into audit_log (
         'bob',
         :'allianceID',
         '2024-03-02 11:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000051"}',
+        '{"event_id": "3a1f0000-0000-0000-0000-000000000051"}',
         :'groupID',
         :'targetUserID',
         'user'
@@ -127,7 +127,7 @@ insert into audit_log (
         'alice',
         :'allianceID',
         '2024-03-02 12:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000052"}',
+        '{"event_id": "3a1f0000-0000-0000-0000-000000000052"}',
         :'groupID',
         :'targetUserID',
         'user'
@@ -139,7 +139,7 @@ insert into audit_log (
         'sara',
         :'allianceID',
         '2024-03-02 13:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000053"}',
+        '{"event_id": "3a1f0000-0000-0000-0000-000000000053"}',
         :'groupID',
         :'targetUserID',
         'user'
@@ -151,7 +151,7 @@ insert into audit_log (
         'sara',
         :'allianceID',
         '2024-03-02 14:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000054"}',
+        '{"event_id": "3a1f0000-0000-0000-0000-000000000054"}',
         :'groupID',
         :'targetUserID',
         'user'
@@ -163,7 +163,7 @@ insert into audit_log (
         'bob',
         :'allianceID',
         '2024-03-02 15:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000055"}',
+        '{"event_id": "3a1f0000-0000-0000-0000-000000000055"}',
         :'groupID',
         :'targetUserID',
         'user'
@@ -175,7 +175,7 @@ insert into audit_log (
         'alice',
         :'allianceID',
         '2024-03-02 16:00:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000056"}',
+        '{"event_id": "3a1f0000-0000-0000-0000-000000000056"}',
         :'groupID',
         :'targetUserID',
         'user'
@@ -187,7 +187,7 @@ insert into audit_log (
         'alice',
         :'allianceID',
         '2024-03-02 16:30:00+00',
-        '{"event_id": "00000000-0000-0000-0000-000000000057"}',
+        '{"event_id": "3a1f0000-0000-0000-0000-000000000057"}',
         :'groupID',
         :'targetUserID',
         'user'
@@ -245,100 +245,100 @@ select is(
             {
                 "action": "group_updated",
                 "actor_username": "userx1",
-                "audit_log_id": "00000000-0000-0000-0000-000000000105",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000105",
                 "created_at": 1709632800,
                 "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000031",
+                "resource_id": "3a1f0000-0000-0000-0000-000000000031",
                 "resource_name": "Platform",
                 "resource_type": "group"
             },
             {
                 "action": "event_attendee_attendance_canceled",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000112",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000112",
                 "created_at": 1709397000,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000057"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000057"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "event_attendee_invitation_canceled",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000111",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000111",
                 "created_at": 1709395200,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000056"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000056"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "event_attendee_invitation_sent",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000110",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000110",
                 "created_at": 1709391600,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000055"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000055"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "event_attendee_invitation_rejected",
                 "actor_username": "sara",
-                "audit_log_id": "00000000-0000-0000-0000-000000000109",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000109",
                 "created_at": 1709388000,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000054"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000054"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "event_attendee_invitation_accepted",
                 "actor_username": "sara",
-                "audit_log_id": "00000000-0000-0000-0000-000000000108",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000108",
                 "created_at": 1709384400,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000053"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000053"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "event_invitation_request_rejected",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000107",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000107",
                 "created_at": 1709380800,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000052"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000052"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "event_invitation_request_accepted",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000106",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000106",
                 "created_at": 1709377200,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000051"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000051"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "group_team_member_added",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000102",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000102",
                 "created_at": 1709373600,
                 "details": {"role": "admin"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             },
             {
                 "action": "group_updated",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000101",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000101",
                 "created_at": 1709287200,
                 "details": {},
-                "resource_id": "00000000-0000-0000-0000-000000000031",
+                "resource_id": "3a1f0000-0000-0000-0000-000000000031",
                 "resource_name": "Platform",
                 "resource_type": "group"
             }
@@ -361,10 +361,10 @@ select is(
             {
                 "action": "event_invitation_request_accepted",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000106",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000106",
                 "created_at": 1709377200,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000051"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000051"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             }
@@ -387,10 +387,10 @@ select is(
             {
                 "action": "event_attendee_attendance_canceled",
                 "actor_username": "alice",
-                "audit_log_id": "00000000-0000-0000-0000-000000000112",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000112",
                 "created_at": 1709397000,
-                "details": {"event_id": "00000000-0000-0000-0000-000000000057"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "details": {"event_id": "3a1f0000-0000-0000-0000-000000000057"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             }
@@ -413,10 +413,10 @@ select is(
             {
                 "action": "group_team_member_added",
                 "actor_username": "bob",
-                "audit_log_id": "00000000-0000-0000-0000-000000000102",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000102",
                 "created_at": 1709373600,
                 "details": {"role": "admin"},
-                "resource_id": "00000000-0000-0000-0000-000000000041",
+                "resource_id": "3a1f0000-0000-0000-0000-000000000041",
                 "resource_name": "Sara",
                 "resource_type": "user"
             }

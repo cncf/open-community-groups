@@ -41,7 +41,12 @@ const renderAttendanceDom = ({
       data-attendee-approval-required="${attendeeApprovalRequired}"
     >
       <button data-attendance-role="attendance-checker"></button>
-      <button data-attendance-role="loading-btn" class="hidden">
+      <button
+        data-attendance-role="loading-btn"
+        role="status"
+        aria-live="polite"
+        class="hidden"
+      >
         <span data-attendance-label>Loading</span>
       </button>
       <button
@@ -91,7 +96,7 @@ const renderAttendanceDom = ({
             data-question-kind="free-text"
             data-question-required="true"
           >
-            <textarea data-registration-answer required></textarea>
+            <textarea data-question-answer required></textarea>
           </fieldset>
           <input
             type="hidden"
@@ -416,6 +421,8 @@ describe("event attendance", () => {
     // Verify shows loading state before attending and emits a waitlist success.
     expect(attendButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(false);
+    expect(loadingButton.getAttribute("role")).to.equal("status");
+    expect(loadingButton.getAttribute("aria-live")).to.equal("polite");
 
     // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(attendButton, {
@@ -432,9 +439,10 @@ describe("event attendance", () => {
 
   it("blocks the attend request until registration questions are answered", () => {
     // Render attendance controls with registration questions.
-    const { attendButton, container, loadingButton, questionsModal } = renderAttendanceDom({
-      includeRegistrationQuestions: true,
-    });
+    const { attendButton, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        includeRegistrationQuestions: true,
+      });
     const event = new CustomEvent("htmx:beforeRequest", {
       bubbles: true,
       cancelable: true,
@@ -454,12 +462,14 @@ describe("event attendance", () => {
 
   it("allows waitlist joins before registration questions are answered", () => {
     // Render full-event attendance controls with waitlist enabled.
-    const { attendButton, loadingButton, questionsModal } = renderAttendanceDom({
-      capacity: "10",
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, loadingButton, questionsModal } = renderAttendanceDom(
+      {
+        capacity: "10",
+        includeRegistrationQuestions: true,
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      },
+    );
     const event = new CustomEvent("htmx:beforeRequest", {
       bubbles: true,
       cancelable: true,
@@ -485,24 +495,30 @@ describe("event attendance", () => {
 
   it("opens registration questions for promoted waitlist attendees", () => {
     // Render waitlist controls with registration questions.
-    const { attendButton, checker, container, loadingButton, questionsModal } = renderAttendanceDom({
-      capacity: "10",
-      includeRegistrationQuestions: true,
-      remainingCapacity: "0",
-      waitlistEnabled: "true",
-    });
+    const { attendButton, checker, container, loadingButton, questionsModal } =
+      renderAttendanceDom({
+        capacity: "10",
+        includeRegistrationQuestions: true,
+        remainingCapacity: "0",
+        waitlistEnabled: "true",
+      });
 
+    // Apply the promoted waitlist state from the attendance check.
     dispatchHtmxAfterRequest(checker, {
-      responseText: JSON.stringify({ status: "registration-questions-pending" }),
+      responseText: JSON.stringify({
+        status: "registration-questions-pending",
+      }),
     });
 
     // Verify opens registration questions for promoted waitlist attendees.
     expect(attendButton.classList.contains("hidden")).to.equal(false);
-    expect(attendButton.querySelector("[data-attendance-label]")?.textContent).to.equal(
-      "Complete registration",
-    );
     expect(
-      attendButton.querySelector("[data-attendance-icon]")?.classList.contains("icon-list-check"),
+      attendButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Complete registration");
+    expect(
+      attendButton
+        .querySelector("[data-attendance-icon]")
+        ?.classList.contains("icon-list-check"),
     ).to.equal(true);
 
     // Click the attend button.
@@ -529,7 +545,9 @@ describe("event attendance", () => {
     });
 
     dispatchHtmxAfterRequest(checker, {
-      responseText: JSON.stringify({ status: "registration-questions-pending" }),
+      responseText: JSON.stringify({
+        status: "registration-questions-pending",
+      }),
     });
     attendButton.dispatchEvent(event);
 
@@ -800,6 +818,46 @@ describe("event attendance", () => {
     ).to.equal("Attend event");
   });
 
+  it("clears the availability spinner when refreshed capacity is zero", async () => {
+    // Render capacity availability with the initial server placeholder.
+    const { availabilityCapacity } = renderAttendanceDom({
+      availabilityUrl: "/events/test-event/availability",
+    });
+    // Mock refreshed availability for an event with no attendee capacity.
+    const fetchMock = mockFetch({
+      response: {
+        ok: true,
+        json: async () => ({
+          attendee_approval_required: false,
+          capacity: 0,
+          canceled: false,
+          has_sellable_ticket_types: false,
+          is_live: false,
+          is_past: false,
+          is_ticketed: false,
+          remaining_capacity: 0,
+          ticket_types: [],
+          waitlist_count: 0,
+          waitlist_enabled: false,
+        }),
+      },
+    });
+
+    try {
+      // Initialize attendance behavior and wait for availability hydration.
+      await initializeAttendanceDom();
+      await waitForMicrotask();
+
+      // Verify hydration replaces the spinner with the resolved zero capacity.
+      expect(availabilityCapacity.textContent.trim()).to.equal("0");
+      expect(
+        availabilityCapacity.querySelector("[data-availability-spinner]"),
+      ).to.equal(null);
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
   it("shows remaining seats instead of waitlist while capacity is still available", async () => {
     // Render the attendance fixture.
     const { availabilityCapacity, availabilityCaptions } = renderAttendanceDom({
@@ -939,6 +997,10 @@ describe("event attendance", () => {
       // Assert the expected visibility state.
       expect(attendButton.classList.contains("hidden")).to.equal(false);
       expect(attendButton.disabled).to.equal(false);
+      expect(env.current.swal.calls.at(-1)).to.include({
+        icon: "error",
+        text: "Something went wrong loading event availability. The page is showing the last available event details.",
+      });
     } finally {
       fetchMock.restore();
     }

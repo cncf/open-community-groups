@@ -1,10 +1,13 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
 import { getElementById } from "/static/js/common/dom.js";
-import { ocgFetch } from "/static/js/common/fetch.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
+import {
+  DEFAULT_IMAGE_ACCEPTED_FORMATS,
+  getImageUploadErrorMessage,
+  uploadImageFile,
+} from "/static/js/common/media/image-upload.js";
 import "/static/js/common/svg-spinner.js";
 
 const DEFAULT_MAX_IMAGES = 8;
@@ -43,7 +46,6 @@ export class GalleryField extends LitWrapper {
     this.maxImages = DEFAULT_MAX_IMAGES;
     this._isUploading = false;
     this._isDragActive = false;
-    this._pendingUploads = 0;
     this._uploadErrorShown = false;
     this._uniqueId = `gallery-field-${Math.random().toString(36).slice(2, 9)}`;
     this._draggedIndex = null;
@@ -216,7 +218,6 @@ export class GalleryField extends LitWrapper {
       return;
     }
 
-    this._pendingUploads += filesToUpload.length;
     this._isUploading = true;
     this._uploadErrorShown = false;
     this.requestUpdate();
@@ -232,18 +233,13 @@ export class GalleryField extends LitWrapper {
         }
       } catch (error) {
         if (!this._uploadErrorShown) {
-          const ERROR_MESSAGE =
-            'Something went wrong adding the images. Please try again later.<br /><br /><div class="text-sm text-stone-500"> Maximum file size: 1MB. Formats supported: SVG, PNG, JPEG, GIF, WEBP and TIFF.</div>';
-          showErrorAlert(ERROR_MESSAGE, true);
+          showErrorAlert(getImageUploadErrorMessage("images", error.message), true);
           this._uploadErrorShown = true;
         }
       }
     }
 
-    this._pendingUploads = Math.max(0, this._pendingUploads - filesToUpload.length);
-    if (this._pendingUploads === 0) {
-      this._isUploading = false;
-    }
+    this._isUploading = false;
     this.requestUpdate();
   }
 
@@ -251,29 +247,7 @@ export class GalleryField extends LitWrapper {
    * Upload a single file to the server and return the resulting URL.
    */
   async _uploadFile(file) {
-    const formData = new FormData();
-    formData.append("file", file, file.name);
-
-    const response = await ocgFetch("/images", {
-      method: "POST",
-      body: formData,
-      credentials: "same-origin",
-      headers: {
-        "HX-Request": "true",
-      },
-    });
-
-    if (!isSuccessfulXHRStatus(response.status)) {
-      const errorMessage = await response.text();
-      throw new Error(errorMessage || "Upload failed");
-    }
-
-    const data = await response.json();
-    if (!data || !data.url) {
-      throw new Error("Missing image URL");
-    }
-
-    return data.url;
+    return uploadImageFile(file);
   }
 
   /**
@@ -410,16 +384,6 @@ export class GalleryField extends LitWrapper {
   }
 
   /**
-   * Clear every thumbnail when the form requests a full reset.
-   */
-  _handleRemoveAll() {
-    if (this._isUploading || this.images.length === 0) {
-      return;
-    }
-    this._setImages([]);
-  }
-
-  /**
    * Ensures the add tile stays the same size as the existing previews on large screens.
    */
   _renderAddTile() {
@@ -516,7 +480,7 @@ export class GalleryField extends LitWrapper {
           type="file"
           id=${this._fileInputId}
           class="hidden"
-          accept=".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff"
+          accept=${DEFAULT_IMAGE_ACCEPTED_FORMATS}
           multiple
           ?disabled=${this._isUploading}
           @change=${this._handleFileChange}

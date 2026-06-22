@@ -9,9 +9,9 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set userPreRegisteredID '00000000-0000-0000-0000-000000000103'
-\set userRegisteredID '00000000-0000-0000-0000-000000000101'
-\set userUnverifiedID '00000000-0000-0000-0000-000000000102'
+\set userPreRegisteredID '0a040000-0000-0000-0000-000000000001'
+\set userRegisteredID '0a040000-0000-0000-0000-000000000002'
+\set userUnverifiedID '0a040000-0000-0000-0000-000000000003'
 
 -- ============================================================================
 -- SEED DATA
@@ -19,17 +19,38 @@ select plan(6);
 
 -- Users
 insert into "user" (
+    user_id,
     auth_hash,
     email,
     email_verified,
     password,
     registration_status,
-    user_id,
     username
-) values
-    ('registered-hash', 'registered@example.com', true, 'secret', 'registered', :'userRegisteredID', 'registered-user'),
-    ('unverified-hash', 'unverified@example.com', false, null, 'registered', :'userUnverifiedID', 'unverified-user'),
-    ('pre-registered-hash', 'invited@example.com', false, null, 'pre-registered', :'userPreRegisteredID', 'invited-user');
+) values (
+    :'userPreRegisteredID',
+    'pre-registered-hash',
+    'invited@example.com',
+    false,
+    null,
+    'pre-registered',
+    'invited-user'
+), (
+    :'userRegisteredID',
+    'registered-hash',
+    'registered@example.com',
+    true,
+    'registered-password',
+    'registered',
+    'registered-user'
+), (
+    :'userUnverifiedID',
+    'unverified-hash',
+    'unverified@example.com',
+    false,
+    null,
+    'registered',
+    'unverified-user'
+);
 
 -- ============================================================================
 -- TESTS

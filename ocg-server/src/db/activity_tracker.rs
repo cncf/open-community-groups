@@ -8,7 +8,7 @@ use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::db::PgDB;
+use crate::db::PgExecutor;
 
 /// Type aliases.
 type Day = String;
@@ -31,7 +31,10 @@ pub(crate) trait DBActivityTracker {
 pub(crate) type DynDBActivityTracker = Arc<dyn DBActivityTracker + Send + Sync>;
 
 #[async_trait]
-impl DBActivityTracker for PgDB {
+impl<T> DBActivityTracker for T
+where
+    T: PgExecutor + Send + Sync,
+{
     #[instrument(skip(self), err)]
     async fn update_alliance_views(&self, data: Vec<(Uuid, Day, Total)>) -> Result<()> {
         self.execute("select update_alliance_views($1::jsonb)", &[&Json(&data)])

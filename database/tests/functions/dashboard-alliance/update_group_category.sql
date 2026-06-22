@@ -9,9 +9,10 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set category1ID '00000000-0000-0000-0000-000000000011'
-\set category2ID '00000000-0000-0000-0000-000000000012'
+\set allianceID '2c170000-0000-0000-0000-000000000001'
+\set groupCategory1ID '2c170000-0000-0000-0000-000000000002'
+\set groupCategory2ID '2c170000-0000-0000-0000-000000000003'
+\set unknownGroupCategoryID '2c170000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
@@ -23,27 +24,27 @@ insert into alliance (
     name,
     display_name,
     description,
-    logo_url,
     banner_mobile_url,
-    banner_url
+    banner_url,
+    logo_url
 ) values (
     :'allianceID',
-    'goup-seattle',
-    'Goup Seattle',
+    'cncf-seattle',
+    'CNCF Seattle',
     'Alliance for group category update tests',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- Group categories
 insert into group_category (
-    alliance_id,
     group_category_id,
+    alliance_id,
     name
 ) values
-    (:'allianceID', :'category1ID', 'Meetup'),
-    (:'allianceID', :'category2ID', 'Conference');
+    (:'groupCategory1ID', :'allianceID', 'Meetup'),
+    (:'groupCategory2ID', :'allianceID', 'Conference');
 
 -- ============================================================================
 -- TESTS
@@ -51,22 +52,29 @@ insert into group_category (
 
 -- Should update category name and generated normalized name
 select lives_ok(
-    $$ select update_group_category(
+    format(
+        $$ select update_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000011'::uuid,
+        %L::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'Lightning Talks')
     ) $$,
+        :'allianceID',
+        :'groupCategory1ID'
+    ),
     'Should update group category name'
 );
 select results_eq(
-    $$
+    format(
+        $$
     select
         gc.name,
         gc.normalized_name
     from group_category gc
-    where gc.group_category_id = '00000000-0000-0000-0000-000000000011'::uuid
-    $$,
+    where gc.group_category_id = %L::uuid
+        $$,
+        :'groupCategory1ID'
+    ),
     $$ values ('Lightning Talks'::text, 'lightning-talks'::text) $$,
     'Should persist updated group category values'
 );
@@ -83,39 +91,51 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'group_category_updated',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
+            %L::uuid,
             'group_category',
-            '00000000-0000-0000-0000-000000000011'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID',
+        :'groupCategory1ID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should reject duplicate normalized names in same alliance
 select throws_ok(
-    $$ select update_group_category(
+    format(
+        $$ select update_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000011'::uuid,
+        %L::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'Conference')
     ) $$,
+        :'allianceID',
+        :'groupCategory1ID'
+    ),
     'group category already exists',
     'Should reject duplicate group category names'
 );
 
 -- Should fail when target category does not exist
 select throws_ok(
-    $$ select update_group_category(
+    format(
+        $$ select update_group_category(
         null::uuid,
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        '00000000-0000-0000-0000-000000000099'::uuid,
+        %L::uuid,
+        %L::uuid,
         jsonb_build_object('name', 'Workshops')
     ) $$,
+        :'allianceID',
+        :'unknownGroupCategoryID'
+    ),
     'group category not found',
     'Should fail when updating a non-existing group category'
 );

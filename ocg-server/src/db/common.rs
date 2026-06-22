@@ -3,14 +3,13 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::proc_macro::cached;
-use deadpool_postgres::Client;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    db::{BBox, PgDB, Total},
+    db::{BBox, PgClient, PgExecutor, Total},
     types::{
         alliance::{AllianceFull, AllianceSummary},
         event::{EventCfsLabel, EventFull, EventSummary},
@@ -64,7 +63,10 @@ pub(crate) trait DBCommon {
 }
 
 #[async_trait]
-impl DBCommon for PgDB {
+impl<T> DBCommon for T
+where
+    T: PgExecutor + Send + Sync,
+{
     /// [`DBCommon::get_alliance_full`]
     #[instrument(skip(self), err)]
     async fn get_alliance_full(&self, alliance_id: Uuid) -> Result<AllianceFull> {
@@ -146,7 +148,7 @@ impl DBCommon for PgDB {
             sync_writes = "by_key",
             result = true
         )]
-        async fn inner(db: Client) -> Result<Vec<String>> {
+        async fn inner(db: PgClient<'_>) -> Result<Vec<String>> {
             let timezones = db
                 .query(
                     "
@@ -166,7 +168,7 @@ impl DBCommon for PgDB {
             Ok(timezones)
         }
 
-        let db = self.pool.get().await?;
+        let db = self.client().await?;
         inner(db).await
     }
 

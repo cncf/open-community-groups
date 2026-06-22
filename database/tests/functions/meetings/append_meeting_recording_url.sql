@@ -9,69 +9,84 @@ select plan(11);
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventID '00000000-0000-0000-0000-000000000101'
-\set groupCategoryID '00000000-0000-0000-0000-000000000010'
-\set groupID '00000000-0000-0000-0000-000000000002'
-\set meetingID '00000000-0000-0000-0000-000000000301'
+\set allianceID '7a020000-0000-0000-0000-000000000001'
+\set eventCategoryID '7a020000-0000-0000-0000-000000000002'
+\set eventID '7a020000-0000-0000-0000-000000000003'
+\set groupCategoryID '7a020000-0000-0000-0000-000000000004'
+\set groupID '7a020000-0000-0000-0000-000000000005'
+\set meetingID '7a020000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'test-alliance', 'Test Alliance', 'A test alliance', 'https://example.com/logo.png', 'https://example.com/banner_mobile.png', 'https://example.com/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'test-alliance',
+    'Test Alliance',
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Event Category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'categoryID', 'Conference', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'Conference');
 
 -- Group Category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'groupCategoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
 insert into "group" (
     group_id,
     alliance_id,
+    group_category_id,
     name,
     slug,
-    description,
-    group_category_id
+    description
 ) values (
     :'groupID',
     :'allianceID',
+    :'groupCategoryID',
     'Test Group',
     'test-group',
-    'A test group',
-    :'groupCategoryID'
+    'A test group'
 );
 
 -- Event
 insert into event (
     event_id,
+    event_category_id,
+    event_kind_id,
     group_id,
     name,
     slug,
     description,
-    timezone,
-    event_category_id,
-    event_kind_id,
     starts_at,
-    ends_at
+    ends_at,
+    timezone
 ) values (
     :'eventID',
+    :'eventCategoryID',
+    'virtual',
     :'groupID',
     'Event Test',
     'event-test',
     'Test event for recording URL update',
-    'America/New_York',
-    :'categoryID',
-    'virtual',
     '2025-06-01 10:00:00-04',
-    '2025-06-01 11:00:00-04'
+    '2025-06-01 11:00:00-04',
+    'America/New_York'
 );
 
 -- Meeting linked to event
@@ -88,7 +103,10 @@ select lives_ok(
     'Should append recording URL'
 );
 select results_eq(
-    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    format(
+        $$select recording_urls from meeting where meeting_id = %L::uuid$$,
+        :'meetingID'
+    ),
     $$ values (array['https://zoom.us/rec/share/abc123']::text[]) $$,
     'Recording URL appended successfully'
 );
@@ -110,7 +128,10 @@ select lives_ok(
     'Should append distinct recording URL'
 );
 select results_eq(
-    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    format(
+        $$select recording_urls from meeting where meeting_id = %L::uuid$$,
+        :'meetingID'
+    ),
     $$ values (array['https://zoom.us/rec/share/abc123', 'https://zoom.us/rec/share/xyz789']::text[]) $$,
     'Distinct recording URL is appended'
 );
@@ -126,7 +147,10 @@ select lives_ok(
     'Should accept duplicate recording URL update'
 );
 select results_eq(
-    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    format(
+        $$select recording_urls from meeting where meeting_id = %L::uuid$$,
+        :'meetingID'
+    ),
     $$ values (array['https://zoom.us/rec/share/abc123', 'https://zoom.us/rec/share/xyz789']::text[]) $$,
     'Duplicate recording URL is not appended'
 );
@@ -137,7 +161,10 @@ select lives_ok(
     'Should accept blank recording URL update'
 );
 select results_eq(
-    $$ select recording_urls from meeting where meeting_id = '00000000-0000-0000-0000-000000000301' $$,
+    format(
+        $$select recording_urls from meeting where meeting_id = %L::uuid$$,
+        :'meetingID'
+    ),
     $$ values (array['https://zoom.us/rec/share/abc123', 'https://zoom.us/rec/share/xyz789']::text[]) $$,
     'Blank recording URL is not appended'
 );

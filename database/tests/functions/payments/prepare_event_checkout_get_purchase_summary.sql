@@ -12,21 +12,36 @@ select plan(2);
 \set allianceID '79240000-0000-0000-0000-000000000001'
 \set eventCategoryID '79240000-0000-0000-0000-000000000002'
 \set eventID '79240000-0000-0000-0000-000000000003'
-\set ticketTypeID '79240000-0000-0000-0000-000000000004'
 \set groupCategoryID '79240000-0000-0000-0000-000000000005'
 \set groupID '79240000-0000-0000-0000-000000000006'
 \set priceWindowID '79240000-0000-0000-0000-000000000007'
 \set purchaseID '79240000-0000-0000-0000-000000000008'
-\set userID '79240000-0000-0000-0000-000000000009'
 \set purchaseWithProviderFieldsID '79240000-0000-0000-0000-000000000010'
+\set ticketTypeID '79240000-0000-0000-0000-000000000004'
+\set userID '79240000-0000-0000-0000-000000000009'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'get-summary-alliance', 'Get Summary Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'get-summary-alliance',
+    'Get Summary Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -41,14 +56,21 @@ insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'hash-1', 'buyer@example.com', true, 'buyer');
 
 -- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient
+)
 values (
     :'groupID',
     :'allianceID',
     :'groupCategoryID',
     'Get Summary Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_get_summary'),
-    'get-summary-group'
+    'get-summary-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_get_summary')
 );
 
 -- Event
@@ -81,8 +103,19 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'ticketTypeID', :'eventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'ticketTypeID',
+    :'eventID',
+    1,
+    10,
+    'General admission'
+);
 
 -- Price window
 insert into event_ticket_price_window (

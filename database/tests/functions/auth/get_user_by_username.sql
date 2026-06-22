@@ -9,81 +9,56 @@ select plan(7);
 -- VARIABLES
 -- ============================================================================
 
-\set userNoPasswordID '00000000-0000-0000-0000-000000000121'
-\set userPreRegisteredID '00000000-0000-0000-0000-000000000124'
-\set userUnverifiedID '00000000-0000-0000-0000-000000000122'
-\set userWithPasswordID '00000000-0000-0000-0000-000000000123'
+\set userNoPasswordID '0a070000-0000-0000-0000-000000000001'
+\set userPreRegisteredID '0a070000-0000-0000-0000-000000000002'
+\set userUnverifiedID '0a070000-0000-0000-0000-000000000003'
+\set userWithPasswordID '0a070000-0000-0000-0000-000000000004'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Verified user with password
+-- Users
 insert into "user" (
-    auth_hash,
-    email,
-    email_verified,
-    password,
     user_id,
-    username
-) values (
-    'password_hash',
-    'with-password@example.com',
-    true,
-    'password_value',
-    :'userWithPasswordID',
-    'with-password'
-);
-
--- Verified user without password
-insert into "user" (
-    auth_hash,
-    email,
-    email_verified,
-    user_id,
-    username
-) values (
-    'no_password_hash',
-    'no-password@example.com',
-    true,
-    :'userNoPasswordID',
-    'no-password'
-);
-
--- Unverified user with password
-insert into "user" (
-    auth_hash,
-    email,
-    email_verified,
-    password,
-    user_id,
-    username
-) values (
-    'unverified_hash',
-    'unverified@example.com',
-    false,
-    'hidden_password',
-    :'userUnverifiedID',
-    'unverified-user'
-);
-
--- Pre-registered user with password
-insert into "user" (
     auth_hash,
     email,
     email_verified,
     password,
     registration_status,
-    user_id,
     username
 ) values (
-    'pre_registered_hash',
+    :'userNoPasswordID',
+    'no-password-hash',
+    'no-password@example.com',
+    true,
+    null,
+    'registered',
+    'no-password'
+), (
+    :'userPreRegisteredID',
+    'pre-registered-hash',
     'pre-registered@example.com',
     true,
-    'hidden_password',
+    'hidden-password',
     'pre-registered',
-    :'userPreRegisteredID',
     'pre-registered-user'
+), (
+    :'userUnverifiedID',
+    'unverified-hash',
+    'unverified@example.com',
+    false,
+    'hidden-password',
+    'registered',
+    'unverified-user'
+), (
+    :'userWithPasswordID',
+    'password-hash',
+    'with-password@example.com',
+    true,
+    'password_value',
+    'registered',
+    'with-password'
 );
 
 -- ============================================================================

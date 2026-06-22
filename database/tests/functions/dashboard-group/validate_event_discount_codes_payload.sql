@@ -20,14 +20,14 @@ select lives_ok(
     $$select validate_event_discount_codes_payload(
         '[
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
                 "title": "Launch discount"
             },
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000052",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000002",
                 "code": "SAVE15",
                 "kind": "percentage",
                 "percentage": 15,
@@ -43,14 +43,14 @@ select throws_ok(
     $$select validate_event_discount_codes_payload(
         '[
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "save5",
                 "kind": "fixed_amount",
                 "title": "Launch discount"
             },
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000052",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000002",
                 "amount_minor": 1000,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
@@ -68,7 +68,7 @@ select throws_ok(
         '[
             {
                 "available": 11,
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
@@ -102,7 +102,7 @@ select throws_ok(
     $$select validate_event_discount_codes_payload(
         '[
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "",
                 "kind": "fixed_amount",
@@ -119,7 +119,7 @@ select throws_ok(
     $$select validate_event_discount_codes_payload(
         '[
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
@@ -137,7 +137,7 @@ select throws_ok(
         '[
             {
                 "available": -1,
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
@@ -154,7 +154,7 @@ select throws_ok(
     $$select validate_event_discount_codes_payload(
         '[
             {
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
@@ -173,7 +173,7 @@ select throws_ok(
         '[
             {
                 "ends_at": "2025-06-01 00:00:00+00",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "amount_minor": 500,
                 "code": "SAVE5",
                 "kind": "fixed_amount",
@@ -192,7 +192,7 @@ select throws_ok(
         '[
             {
                 "code": "SAVE5",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "kind": "fixed_amount",
                 "title": "Launch discount"
             }
@@ -209,7 +209,7 @@ select throws_ok(
             {
                 "amount_minor": 0,
                 "code": "SAVE5",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "kind": "fixed_amount",
                 "title": "Launch discount"
             }
@@ -226,7 +226,7 @@ select throws_ok(
             {
                 "amount_minor": -1,
                 "code": "SAVE5",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "kind": "fixed_amount",
                 "title": "Launch discount"
             }
@@ -243,7 +243,7 @@ select throws_ok(
             {
                 "amount_minor": 500,
                 "code": "SAVE5",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "kind": "fixed_amount",
                 "percentage": 15,
                 "title": "Launch discount"
@@ -260,7 +260,7 @@ select throws_ok(
         '[
             {
                 "code": "SAVE15",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000052",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000002",
                 "kind": "percentage",
                 "title": "Alpha discount"
             }
@@ -276,7 +276,7 @@ select throws_ok(
         '[
             {
                 "code": "SAVE0",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000052",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000002",
                 "kind": "percentage",
                 "percentage": 0,
                 "title": "Alpha discount"
@@ -293,7 +293,7 @@ select throws_ok(
         '[
             {
                 "code": "SAVE101",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000052",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000002",
                 "kind": "percentage",
                 "percentage": 101,
                 "title": "Alpha discount"
@@ -311,7 +311,7 @@ select throws_ok(
             {
                 "amount_minor": 500,
                 "code": "SAVE15",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000052",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000002",
                 "kind": "percentage",
                 "percentage": 15,
                 "title": "Alpha discount"
@@ -328,7 +328,7 @@ select throws_ok(
         '[
             {
                 "code": "SAVE5",
-                "event_discount_code_id": "00000000-0000-0000-0000-000000000051",
+                "event_discount_code_id": "3a430000-0000-0000-0000-000000000001",
                 "kind": "bogus",
                 "title": "Launch discount"
             }

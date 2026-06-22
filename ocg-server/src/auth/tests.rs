@@ -402,14 +402,15 @@ async fn get_or_sign_up_external_user_signs_up_new_user() {
     db.expect_update_user_provider().times(0);
     db.expect_sign_up_user()
         .times(1)
-        .withf(move |summary, email_verified| {
+        .withf(move |summary, email_verified, verification| {
             summary.email == "user@example.com"
                 && summary.name == "Test User"
                 && summary.provider == Some(provider.clone())
                 && summary.username == "test-user"
                 && *email_verified
+                && verification.is_none()
         })
-        .returning(move |_, _| Ok((signed_up_user.clone(), None)));
+        .returning(move |_, _, _| Ok((signed_up_user.clone(), None)));
     let db: DynDB = Arc::new(db);
 
     // Execute helper

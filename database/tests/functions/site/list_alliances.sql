@@ -9,18 +9,18 @@ select plan(6);
 -- VARIABLES
 -- ============================================================================
 
-\set alliance1ID '00000000-0000-0000-0000-000000000001'
-\set alliance2ID '00000000-0000-0000-0000-000000000002'
-\set alliance3ID '00000000-0000-0000-0000-000000000003'
-\set alliance4ID '00000000-0000-0000-0000-000000000004'
-\set event1ID '00000000-0000-0000-0000-000000000051'
-\set event2ID '00000000-0000-0000-0000-000000000052'
-\set eventCategory1ID '00000000-0000-0000-0000-000000000061'
-\set eventCategory2ID '00000000-0000-0000-0000-000000000062'
-\set group1ID '00000000-0000-0000-0000-000000000031'
-\set group2ID '00000000-0000-0000-0000-000000000032'
-\set groupCategory1ID '00000000-0000-0000-0000-000000000011'
-\set groupCategory2ID '00000000-0000-0000-0000-000000000012'
+\set alliance1ID '9a070000-0000-0000-0000-000000000001'
+\set alliance2ID '9a070000-0000-0000-0000-000000000002'
+\set alliance3ID '9a070000-0000-0000-0000-000000000003'
+\set alliance4ID '9a070000-0000-0000-0000-000000000004'
+\set event1ID '9a070000-0000-0000-0000-000000000005'
+\set event2ID '9a070000-0000-0000-0000-000000000006'
+\set eventCategory1ID '9a070000-0000-0000-0000-000000000007'
+\set eventCategory2ID '9a070000-0000-0000-0000-000000000008'
+\set group1ID '9a070000-0000-0000-0000-000000000009'
+\set group2ID '9a070000-0000-0000-0000-000000000010'
+\set groupCategory1ID '9a070000-0000-0000-0000-000000000011'
+\set groupCategory2ID '9a070000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
@@ -33,36 +33,72 @@ select plan(6);
 -- alliance4: Delta Alliance - inactive (should be excluded)
 insert into alliance (
     alliance_id,
+    name,
+    display_name,
+    description,
     active,
     banner_mobile_url,
     banner_url,
-    description,
-    display_name,
-    logo_url,
-    name
+    logo_url
 ) values
-    (:'alliance1ID', true, 'https://example.com/alpha-banner_mobile.png', 'https://example.com/alpha-banner.png', 'First alliance', 'Alpha Alliance', 'https://example.com/alpha-logo.png', 'alpha-alliance'),
-    (:'alliance2ID', true, 'https://example.com/beta-banner_mobile.png', 'https://example.com/beta-banner.png', 'Second alliance', 'Beta Alliance', 'https://example.com/beta-logo.png', 'beta-alliance'),
-    (:'alliance3ID', true, 'https://example.com/gamma-banner_mobile.png', 'https://example.com/gamma-banner.png', 'Third alliance', 'Gamma Alliance', 'https://example.com/gamma-logo.png', 'gamma-alliance'),
-    (:'alliance4ID', false, 'https://example.com/delta-banner_mobile.png', 'https://example.com/delta-banner.png', 'Fourth alliance', 'Delta Alliance', 'https://example.com/delta-logo.png', 'delta-alliance');
+    (
+        :'alliance1ID',
+        'alpha-alliance',
+        'Alpha Alliance',
+        'First alliance',
+        true,
+        'https://example.com/alpha-banner_mobile.png',
+        'https://example.com/alpha-banner.png',
+        'https://example.com/alpha-logo.png'
+    ),
+    (
+        :'alliance2ID',
+        'beta-alliance',
+        'Beta Alliance',
+        'Second alliance',
+        true,
+        'https://example.com/beta-banner_mobile.png',
+        'https://example.com/beta-banner.png',
+        'https://example.com/beta-logo.png'
+    ),
+    (
+        :'alliance3ID',
+        'gamma-alliance',
+        'Gamma Alliance',
+        'Third alliance',
+        true,
+        'https://example.com/gamma-banner_mobile.png',
+        'https://example.com/gamma-banner.png',
+        'https://example.com/gamma-logo.png'
+    ),
+    (
+        :'alliance4ID',
+        'delta-alliance',
+        'Delta Alliance',
+        'Fourth alliance',
+        false,
+        'https://example.com/delta-banner_mobile.png',
+        'https://example.com/delta-banner.png',
+        'https://example.com/delta-logo.png'
+    );
 
--- Group Categories
+-- Group category
 insert into group_category (group_category_id, alliance_id, name)
 values
     (:'groupCategory1ID', :'alliance1ID', 'Technology'),
     (:'groupCategory2ID', :'alliance2ID', 'Technology');
 
--- Groups
-insert into "group" (group_id, active, alliance_id, deleted, group_category_id, name, slug)
-values
-    (:'group1ID', true, :'alliance1ID', false, :'groupCategory1ID', 'Alpha Group', 'alpha-group'),
-    (:'group2ID', true, :'alliance2ID', false, :'groupCategory2ID', 'Beta Group', 'beta-group');
-
--- Event Categories
+-- Event category
 insert into event_category (event_category_id, alliance_id, name)
 values
     (:'eventCategory1ID', :'alliance1ID', 'Meetups'),
     (:'eventCategory2ID', :'alliance2ID', 'Meetups');
+
+-- Group
+insert into "group" (group_id, alliance_id, group_category_id, name, slug, active, deleted)
+values
+    (:'group1ID', :'alliance1ID', :'groupCategory1ID', 'Alpha Group', 'alpha-group', true, false),
+    (:'group2ID', :'alliance2ID', :'groupCategory2ID', 'Beta Group', 'beta-group', true, false);
 
 -- Events (only alliance1's group has a published event)
 insert into event (
@@ -78,8 +114,10 @@ insert into event (
     slug,
     timezone
 ) values
-    (:'event1ID', false, false, 'A published event', :'eventCategory1ID', 'in-person', :'group1ID', 'Alpha Event', true, 'alpha-event', 'America/Los_Angeles'),
-    (:'event2ID', false, false, 'An unpublished event', :'eventCategory2ID', 'in-person', :'group2ID', 'Beta Event', false, 'beta-event', 'America/Los_Angeles');
+    (:'event1ID', false, false, 'A published event', :'eventCategory1ID',
+        'in-person', :'group1ID', 'Alpha Event', true, 'alpha-event', 'America/Los_Angeles'),
+    (:'event2ID', false, false, 'An unpublished event', :'eventCategory2ID',
+        'in-person', :'group2ID', 'Beta Event', false, 'beta-event', 'America/Los_Angeles');
 
 -- ============================================================================
 -- TESTS
@@ -88,16 +126,16 @@ insert into event (
 -- Should return only alliances with at least one group and one published event
 select is(
     list_alliances()::jsonb,
-    '[
-        {
-            "banner_mobile_url": "https://example.com/alpha-banner_mobile.png",
-            "banner_url": "https://example.com/alpha-banner.png",
-            "alliance_id": "00000000-0000-0000-0000-000000000001",
-            "display_name": "Alpha Alliance",
-            "logo_url": "https://example.com/alpha-logo.png",
-            "name": "alpha-alliance"
-        }
-    ]'::jsonb,
+    jsonb_build_array(
+        jsonb_build_object(
+            'banner_mobile_url', 'https://example.com/alpha-banner_mobile.png',
+            'banner_url', 'https://example.com/alpha-banner.png',
+            'alliance_id', :'alliance1ID',
+            'display_name', 'Alpha Alliance',
+            'logo_url', 'https://example.com/alpha-logo.png',
+            'name', 'alpha-alliance'
+        )
+    ),
     'Should return only alliances with at least one group and one published event'
 );
 

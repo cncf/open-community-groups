@@ -219,27 +219,19 @@ async fn test_accept_event_attendee_invitation_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_accept_event_attendee_invitation()
+    let mut tx = MockDB::new();
+    tx.expect_accept_event_attendee_invitation()
         .times(1)
         .withf(move |uid, eid| *uid == user_id && *eid == event_id)
         .returning(move |_, _| Ok(alliance_id));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(move || Ok(site_settings.clone()));
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event.clone()));
-    db.expect_update_session()
-        .times(1)
-        .withf(move |record| {
-            record.id == session_id && message_matches(record, "Event invitation accepted.")
-        })
-        .returning(|_| Ok(()));
-
-    // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue()
+    tx.expect_enqueue_notification()
         .times(1)
         .withf(move |notification| {
             matches!(notification.kind, NotificationKind::EventWelcome)
@@ -250,7 +242,17 @@ async fn test_accept_event_attendee_invitation_success() {
                         .is_ok_and(|template| template.link == expected_link)
                 })
         })
-        .returning(|_| Box::pin(async { Ok(()) }));
+        .returning(|_| Ok(()));
+    expect_successful_transaction(&mut db, tx);
+    db.expect_update_session()
+        .times(1)
+        .withf(move |record| {
+            record.id == session_id && message_matches(record, "Event invitation accepted.")
+        })
+        .returning(|_| Ok(()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm)
@@ -277,7 +279,7 @@ async fn test_accept_event_attendee_invitation_success() {
 }
 
 #[tokio::test]
-async fn test_accept_event_attendee_invitation_succeeds_when_notification_context_fails() {
+async fn test_accept_event_attendee_invitation_context_failure_rolls_back() {
     // Setup identifiers and data structures
     let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -296,27 +298,24 @@ async fn test_accept_event_attendee_invitation_succeeds_when_notification_contex
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_accept_event_attendee_invitation()
+    let mut tx = MockDB::new();
+    tx.expect_accept_event_attendee_invitation()
         .times(1)
         .withf(move |uid, eid| *uid == user_id && *eid == event_id)
         .returning(move |_, _| Ok(alliance_id));
-    db.expect_get_site_settings()
+    tx.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
-    db.expect_get_event_summary_by_id()
+    tx.expect_get_event_summary_by_id()
         .times(1)
         .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Err(anyhow!("event summary error")));
-    db.expect_update_session()
-        .times(1)
-        .withf(move |record| {
-            record.id == session_id && message_matches(record, "Event invitation accepted.")
-        })
-        .returning(|_| Ok(()));
+    tx.expect_enqueue_notification().times(0);
+    expect_rolled_back_transaction(&mut db, tx);
+    db.expect_update_session().times(0);
 
     // Setup notifications manager mock
-    let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
+    let nm = MockNotificationsManager::new();
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
@@ -333,7 +332,7 @@ async fn test_accept_event_attendee_invitation_succeeds_when_notification_contex
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_empty_hx_trigger_response(&parts, &bytes, StatusCode::NO_CONTENT, "refresh-body");
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[tokio::test]

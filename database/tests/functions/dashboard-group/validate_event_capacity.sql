@@ -9,28 +9,43 @@ select plan(9);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventCategoryID '00000000-0000-0000-0000-000000000011'
-\set eventID '00000000-0000-0000-0000-000000000021'
-\set eventManualOverCapacityID '90400000-0000-0000-0000-000000000044'
-\set eventQuestionsID '90400000-0000-0000-0000-000000000043'
-\set groupCategoryID '00000000-0000-0000-0000-000000000031'
-\set groupID '00000000-0000-0000-0000-000000000041'
-\set questionsSeatedUserID '90400000-0000-0000-0000-000000000036'
-\set questionsWaitlistUserID '90400000-0000-0000-0000-000000000032'
-\set user1ID '00000000-0000-0000-0000-000000000051'
-\set user2ID '00000000-0000-0000-0000-000000000052'
-\set user3ID '00000000-0000-0000-0000-000000000053'
-\set user4ID '00000000-0000-0000-0000-000000000054'
-\set user5ID '00000000-0000-0000-0000-000000000055'
+\set allianceID '3a410000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a410000-0000-0000-0000-000000000002'
+\set eventID '3a410000-0000-0000-0000-000000000003'
+\set eventManualOverCapacityID '3a410000-0000-0000-0000-000000000004'
+\set eventQuestionsID '3a410000-0000-0000-0000-000000000005'
+\set groupCategoryID '3a410000-0000-0000-0000-000000000006'
+\set groupID '3a410000-0000-0000-0000-000000000007'
+\set questionsSeatedUserID '3a410000-0000-0000-0000-000000000008'
+\set questionsWaitlistUserID '3a410000-0000-0000-0000-000000000009'
+\set user1ID '3a410000-0000-0000-0000-000000000010'
+\set user2ID '3a410000-0000-0000-0000-000000000011'
+\set user3ID '3a410000-0000-0000-0000-000000000012'
+\set user4ID '3a410000-0000-0000-0000-000000000013'
+\set user5ID '3a410000-0000-0000-0000-000000000014'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'alliance-1', 'Alliance 1', 'Test alliance', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'capacity-alliance',
+    'Capacity Alliance',
+    'A test alliance for event capacity',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -38,7 +53,7 @@ values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
-values (:'groupID', :'allianceID', :'groupCategoryID', 'Group 1', 'group-1');
+values (:'groupID', :'allianceID', :'groupCategoryID', 'Capacity Group', 'capacity-group');
 
 -- Event category
 insert into event_category (event_category_id, alliance_id, name)
@@ -51,8 +66,22 @@ insert into "user" (user_id, auth_hash, email, username, email_verified, name) v
     (:'user3ID', gen_random_bytes(32), 'user3@example.com', 'user3', true, 'User 3'),
     (:'user4ID', gen_random_bytes(32), 'user4@example.com', 'user4', true, 'User 4'),
     (:'user5ID', gen_random_bytes(32), 'user5@example.com', 'user5', true, 'User 5'),
-    (:'questionsSeatedUserID', gen_random_bytes(32), 'rq-seated@example.com', 'rq-seated', true, 'RQ Seated'),
-    (:'questionsWaitlistUserID', gen_random_bytes(32), 'rq-waitlist@example.com', 'rq-waitlist', true, 'RQ Waitlist');
+    (
+        :'questionsSeatedUserID',
+        gen_random_bytes(32),
+        'rq-seated@example.com',
+        'rq-seated',
+        true,
+        'RQ Seated'
+    ),
+    (
+        :'questionsWaitlistUserID',
+        gen_random_bytes(32),
+        'rq-waitlist@example.com',
+        'rq-waitlist',
+        true,
+        'RQ Waitlist'
+    );
 
 -- Event
 insert into event (

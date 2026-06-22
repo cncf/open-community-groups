@@ -3,28 +3,45 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set groupAlreadyDeletedID '00000000-0000-0000-0000-000000000022'
-\set groupID '00000000-0000-0000-0000-000000000021'
+\set allianceID '2c0a0000-0000-0000-0000-000000000001'
+\set groupAlreadyDeletedID '2c0a0000-0000-0000-0000-000000000002'
+\set groupCategoryID '2c0a0000-0000-0000-0000-000000000003'
+\set groupID '2c0a0000-0000-0000-0000-000000000004'
+\set groupWrongAllianceID '2c0a0000-0000-0000-0000-000000000005'
+\set unknownAllianceID '2c0a0000-0000-0000-0000-000000000006'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'c1', 'C1', 'Alliance 1', 'https://e/logo.png', 'https://e/bm.png', 'https://e/b.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'delete-group-alliance',
+    'Delete Group Alliance',
+    'Alliance for delete group tests',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
+);
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Tech', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Active group
 insert into "group" (
@@ -36,9 +53,9 @@ insert into "group" (
 ) values (
     :'groupID',
     :'allianceID',
-    :'categoryID',
-    'G1',
-    'g1'
+    :'groupCategoryID',
+    'Active Group',
+    'active-group'
 );
 
 -- Already deleted group
@@ -53,11 +70,26 @@ insert into "group" (
 ) values (
     :'groupAlreadyDeletedID',
     :'allianceID',
-    :'categoryID',
-    'G2',
-    'g2',
+    :'groupCategoryID',
+    'Deleted Group',
+    'deleted-group',
     false,
     true
+);
+
+-- Active group used to exercise the cross-alliance guard
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug
+) values (
+    :'groupWrongAllianceID',
+    :'allianceID',
+    :'groupCategoryID',
+    'Cross Alliance Guard Group',
+    'cross-alliance-guard-group'
 );
 
 -- ============================================================================
@@ -111,32 +143,52 @@ select results_eq(
             resource_id
         from audit_log
     $$,
-    $$
+    format(
+        $$
         values (
             'group_deleted',
             null::uuid,
             null::text,
-            '00000000-0000-0000-0000-000000000001'::uuid,
-            '00000000-0000-0000-0000-000000000021'::uuid,
+            %L::uuid,
+            %L::uuid,
             'group',
-            '00000000-0000-0000-0000-000000000021'::uuid
+            %L::uuid
         )
-    $$,
+        $$,
+        :'allianceID',
+        :'groupID',
+        :'groupID'
+    ),
     'Should create the expected audit row'
 );
 
 -- Should throw error for already deleted group
 select throws_ok(
-    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000022'::uuid)$$,
+    format(
+        $$select delete_group(null::uuid, %L::uuid, %L::uuid)$$,
+        :'allianceID',
+        :'groupAlreadyDeletedID'
+    ),
     'group not found or inactive',
     'Should throw error when trying to delete already deleted group'
 );
 
 -- Should throw error for wrong alliance_id
 select throws_ok(
-    $$select delete_group(null::uuid, '00000000-0000-0000-0000-000000000099'::uuid, '00000000-0000-0000-0000-000000000021'::uuid)$$,
+    format(
+        $$select delete_group(null::uuid, %L::uuid, %L::uuid)$$,
+        :'unknownAllianceID',
+        :'groupWrongAllianceID'
+    ),
     'group not found or inactive',
     'Should throw error when alliance_id does not match'
+);
+
+-- Should leave the group untouched when alliance_id does not match
+select is(
+    (select deleted from "group" where group_id = :'groupWrongAllianceID'::uuid),
+    false,
+    'Should leave the group untouched when alliance_id does not match'
 );
 
 -- ============================================================================

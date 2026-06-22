@@ -1,6 +1,7 @@
 import {
   cleanInputField,
   closeFiltersDrawer,
+  FILTER_CHANGE_EVENT,
   hasActiveFilters,
   openFiltersDrawer,
   resetDateFiltersOnCalendarViewMode,
@@ -173,7 +174,7 @@ const handleExploreChange = (event) => {
     if (target.value === "calendar") {
       updateDateInput();
     } else {
-      resetDateFiltersOnCalendarViewMode();
+      resetDateFiltersOnCalendarViewMode(formId);
     }
     unckeckAllKinds();
     triggerChangeOnForm(formId);
@@ -183,6 +184,17 @@ const handleExploreChange = (event) => {
   if (target.id === SORT_SELECTOR_ID) {
     updateSortInputsFromSelector(target, SORT_BY_INPUT_ID, SORT_DIRECTION_INPUT_ID);
     triggerChangeOnForm(formId);
+  }
+};
+
+/**
+ * Handles custom filter component changes.
+ * @param {CustomEvent} event - Filter change event
+ */
+const handleFilterChange = (event) => {
+  const form = closestElement(event.target, FILTER_FORM_SELECTOR);
+  if (form?.id) {
+    triggerChangeOnForm(form.id);
   }
 };
 
@@ -268,7 +280,7 @@ export const initializeExploreWidgets = async (root = document, { force = false 
  * Initializes delegated explore page controls.
  * @param {Document} root - Document root used for event binding
  */
-export const initializeExploreControls = (root = document) => {
+const initializeExploreControls = (root = document) => {
   if (!markDatasetReady(root.documentElement, EXPLORE_CONTROLS_READY_KEY)) {
     return;
   }
@@ -276,6 +288,7 @@ export const initializeExploreControls = (root = document) => {
   root.addEventListener("click", handleExploreClick);
   root.addEventListener("keydown", handleExploreKeydown);
   root.addEventListener("change", handleExploreChange);
+  root.addEventListener(FILTER_CHANGE_EVENT, handleFilterChange);
   root.addEventListener("htmx:afterSwap", handleExploreAfterSwap);
   root.addEventListener("htmx:historyRestore", handleExploreHistoryRestore);
   syncNoResultsPlaceholders(root);

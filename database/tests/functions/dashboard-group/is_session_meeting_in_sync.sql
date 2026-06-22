@@ -6,6 +6,13 @@ begin;
 select plan(20);
 
 -- ============================================================================
+-- VARIABLES
+-- ============================================================================
+
+\set user1ID '3a150000-0000-0000-0000-000000000001'
+\set user2ID '3a150000-0000-0000-0000-000000000002'
+
+-- ============================================================================
 -- TESTS
 -- ============================================================================
 
@@ -423,8 +430,14 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York", "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]}'::jsonb,
-        '{"timezone": "America/New_York", "hosts": ["00000000-0000-0000-0000-000000000001"]}'::jsonb
+        format(
+            '{"timezone": "America/New_York", "hosts": [{"user_id": "%s"}]}',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{"timezone": "America/New_York", "hosts": ["%s"]}',
+            :'user1ID'
+        )::jsonb
     ),
     true,
     'Event hosts unchanged keeps session sync'
@@ -447,8 +460,14 @@ select is(
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true
         }'::jsonb,
-        '{"timezone": "America/New_York", "hosts": [{"user_id": "00000000-0000-0000-0000-000000000001"}]}'::jsonb,
-        '{"timezone": "America/New_York", "hosts": ["00000000-0000-0000-0000-000000000002"]}'::jsonb
+        format(
+            '{"timezone": "America/New_York", "hosts": [{"user_id": "%s"}]}',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{"timezone": "America/New_York", "hosts": ["%s"]}',
+            :'user2ID'
+        )::jsonb
     ),
     false,
     'Event hosts change desyncs session meeting'
@@ -457,22 +476,28 @@ select is(
 -- Session speakers unchanged keeps sync
 select is(
     is_session_meeting_in_sync(
-        '{
+        format(
+            '{
             "name": "Session One",
             "session_kind_id": "virtual",
             "starts_at": 1748787300,
             "ends_at": 1748789100,
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
-        }'::jsonb,
-        '{
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
-        }'::jsonb,
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user1ID'
+        )::jsonb,
         '{"timezone": "America/New_York"}'::jsonb,
         '{"timezone": "America/New_York"}'::jsonb
     ),
@@ -483,22 +508,28 @@ select is(
 -- Session speakers change desyncs meeting
 select is(
     is_session_meeting_in_sync(
-        '{
+        format(
+            '{
             "name": "Session One",
             "session_kind_id": "virtual",
             "starts_at": 1748787300,
             "ends_at": 1748789100,
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000001", "featured": false}]
-        }'::jsonb,
-        '{
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user1ID'
+        )::jsonb,
+        format(
+            '{
             "name": "Session One",
             "kind": "virtual",
             "starts_at": "2025-06-01T10:15:00",
             "ends_at": "2025-06-01T10:45:00",
             "meeting_requested": true,
-            "speakers": [{"user_id": "00000000-0000-0000-0000-000000000002", "featured": false}]
-        }'::jsonb,
+            "speakers": [{"user_id": "%s", "featured": false}]
+        }',
+            :'user2ID'
+        )::jsonb,
         '{"timezone": "America/New_York"}'::jsonb,
         '{"timezone": "America/New_York"}'::jsonb
     ),

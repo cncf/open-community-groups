@@ -9,51 +9,60 @@ select plan(19);
 -- VARIABLES
 -- ============================================================================
 
-\set actorID '00000000-0000-0000-0000-000000000031'
-\set categoryID '00000000-0000-0000-0000-000000000011'
-\set allianceID '00000000-0000-0000-0000-000000000001'
-\set eventApprovalDisabledID '00000000-0000-0000-0000-000000000046'
-\set eventAttendeeConflictID '00000000-0000-0000-0000-000000000043'
-\set eventCategoryID '00000000-0000-0000-0000-000000000012'
-\set eventFullID '00000000-0000-0000-0000-000000000042'
-\set eventID '00000000-0000-0000-0000-000000000041'
-\set eventInactiveGroupID '00000000-0000-0000-0000-000000000045'
-\set eventPastID '00000000-0000-0000-0000-000000000047'
-\set eventPendingInvitationID '00000000-0000-0000-0000-000000000048'
-\set eventQuestionsApprovalID '90400000-0000-0000-0000-000000000042'
-\set eventUnpublishedID '00000000-0000-0000-0000-000000000044'
-\set groupID '00000000-0000-0000-0000-000000000021'
-\set inactiveGroupID '00000000-0000-0000-0000-000000000022'
-\set questionsAcceptedRequestUserID '90400000-0000-0000-0000-000000000035'
-\set requesterID '00000000-0000-0000-0000-000000000032'
-\set requester2ID '00000000-0000-0000-0000-000000000033'
-\set requester3ID '00000000-0000-0000-0000-000000000034'
-\set requester4ID '00000000-0000-0000-0000-000000000035'
-\set requester5ID '00000000-0000-0000-0000-000000000036'
+\set actorID '3a010000-0000-0000-0000-000000000001'
+\set allianceID '3a010000-0000-0000-0000-000000000002'
+\set eventApprovalDisabledID '3a010000-0000-0000-0000-000000000003'
+\set eventAttendeeConflictID '3a010000-0000-0000-0000-000000000004'
+\set eventCategoryID '3a010000-0000-0000-0000-000000000005'
+\set eventFullID '3a010000-0000-0000-0000-000000000006'
+\set eventID '3a010000-0000-0000-0000-000000000007'
+\set eventInactiveGroupID '3a010000-0000-0000-0000-000000000008'
+\set eventPastID '3a010000-0000-0000-0000-000000000009'
+\set eventPendingInvitationID '3a010000-0000-0000-0000-000000000010'
+\set eventQuestionsApprovalID '3a010000-0000-0000-0000-000000000011'
+\set eventUnpublishedID '3a010000-0000-0000-0000-000000000012'
+\set groupCategoryID '3a010000-0000-0000-0000-000000000013'
+\set groupID '3a010000-0000-0000-0000-000000000014'
+\set inactiveGroupID '3a010000-0000-0000-0000-000000000015'
+\set questionsAcceptedRequestUserID '3a010000-0000-0000-0000-000000000016'
+\set registrationQuestionID '3a010000-0000-0000-0000-000000000017'
+\set requesterID '3a010000-0000-0000-0000-000000000018'
+\set requester2ID '3a010000-0000-0000-0000-000000000019'
+\set requester3ID '3a010000-0000-0000-0000-000000000020'
+\set requester4ID '3a010000-0000-0000-0000-000000000021'
+\set requester5ID '3a010000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+)
 values (
     :'allianceID',
     'test-alliance',
     'Test Alliance',
-    'Desc',
-    'https://example.com/logo.png',
-    'https://example.com/banner_mobile.png',
-    'https://example.com/banner.png'
+    'A test alliance',
+    'https://example.com/banner-mobile.png',
+    'https://example.com/banner.png',
+    'https://example.com/logo.png'
 );
 
 -- Group category
-insert into group_category (group_category_id, name, alliance_id)
-values (:'categoryID', 'Technology', :'allianceID');
+insert into group_category (group_category_id, alliance_id, name)
+values (:'groupCategoryID', :'allianceID', 'Technology');
 
 -- Event category
-insert into event_category (event_category_id, name, alliance_id)
-values (:'eventCategoryID', 'General', :'allianceID');
+insert into event_category (event_category_id, alliance_id, name)
+values (:'eventCategoryID', :'allianceID', 'General');
 
 -- Users
 insert into "user" (user_id, auth_hash, email, username)
@@ -69,8 +78,15 @@ values
 -- Groups
 insert into "group" (group_id, alliance_id, group_category_id, name, slug, active)
 values
-    (:'groupID', :'allianceID', :'categoryID', 'Group', 'group', true),
-    (:'inactiveGroupID', :'allianceID', :'categoryID', 'Inactive Group', 'inactive-group', false);
+    (:'groupID', :'allianceID', :'groupCategoryID', 'Group', 'group', true),
+    (
+        :'inactiveGroupID',
+        :'allianceID',
+        :'groupCategoryID',
+        'Inactive Group',
+        'inactive-group',
+        false
+    );
 
 -- Events
 insert into event (
@@ -236,7 +252,10 @@ insert into event (
     true,
     true,
     '2030-01-02 10:00:00+00',
-    '[{"id": "90400000-0000-0000-0000-000000000101", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb
+    format(
+        '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
+        :'registrationQuestionID'
+    )::jsonb
 );
 
 -- Invitation requests
@@ -258,7 +277,10 @@ insert into event_invitation_request (event_id, user_id, registration_answers)
 values (
     :'eventQuestionsApprovalID',
     :'questionsAcceptedRequestUserID',
-    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Accepted request answer"}]}'::jsonb
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Accepted request answer"}]}',
+        :'registrationQuestionID'
+    )::jsonb
 );
 
 -- Existing attendee that fills the second event
@@ -369,14 +391,38 @@ select results_eq(
 );
 
 -- Should track the acceptance in the audit log
-select ok(
-    exists(
-        select 1
+select results_eq(
+    format(
+        $$
+        select
+            action,
+            actor_user_id,
+            alliance_id,
+            details,
+            event_id,
+            group_id,
+            resource_id,
+            resource_type
         from audit_log
         where action = 'event_invitation_request_accepted'
-        and actor_user_id = :'actorID'::uuid
-        and event_id = :'eventID'::uuid
-        and resource_id = :'requesterID'::uuid
+        and resource_id = %L::uuid
+        $$,
+        :'requesterID'
+    ),
+    format(
+        $$
+        values (
+            'event_invitation_request_accepted',
+            %L::uuid,
+            %L::uuid,
+            '{"event_id": "%s", "user_id": "%s"}'::jsonb,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'user'
+        )
+        $$,
+        :'actorID', :'allianceID', :'eventID', :'requesterID', :'eventID', :'groupID', :'requesterID'
     ),
     'Should track the acceptance in the audit log'
 );
@@ -498,7 +544,10 @@ select is(
         where event_id = :'eventQuestionsApprovalID'::uuid
         and user_id = :'questionsAcceptedRequestUserID'::uuid
     ),
-    '{"answers": [{"question_id": "90400000-0000-0000-0000-000000000101", "value": "Accepted request answer"}]}'::jsonb,
+    format(
+        '{"answers": [{"question_id": "%s", "value": "Accepted request answer"}]}',
+        :'registrationQuestionID'
+    )::jsonb,
     'Should copy request answers to the attendee row'
 );
 

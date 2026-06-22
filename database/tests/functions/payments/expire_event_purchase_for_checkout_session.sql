@@ -9,26 +9,41 @@ select plan(5);
 -- VARIABLES
 -- ============================================================================
 
-\set allianceID '71000000-0000-0000-0000-000000000001'
-\set discountCodeID '71000000-0000-0000-0000-000000000002'
-\set eventCategoryID '71000000-0000-0000-0000-000000000003'
-\set eventID '71000000-0000-0000-0000-000000000004'
-\set eventTicketTypeID '71000000-0000-0000-0000-000000000005'
-\set groupCategoryID '71000000-0000-0000-0000-000000000006'
-\set groupID '71000000-0000-0000-0000-000000000007'
-\set pendingPurchaseID '71000000-0000-0000-0000-000000000008'
-\set completedPurchaseID '71000000-0000-0000-0000-000000000009'
-\set completedUserID '71000000-0000-0000-0000-000000000012'
-\set priceWindowID '71000000-0000-0000-0000-000000000010'
-\set userID '71000000-0000-0000-0000-000000000011'
+\set allianceID '79440000-0000-0000-0000-000000000001'
+\set completedPurchaseID '79440000-0000-0000-0000-000000000002'
+\set completedUserID '79440000-0000-0000-0000-000000000003'
+\set discountCodeID '79440000-0000-0000-0000-000000000004'
+\set eventCategoryID '79440000-0000-0000-0000-000000000005'
+\set eventID '79440000-0000-0000-0000-000000000006'
+\set eventTicketTypeID '79440000-0000-0000-0000-000000000007'
+\set groupCategoryID '79440000-0000-0000-0000-000000000008'
+\set groupID '79440000-0000-0000-0000-000000000009'
+\set pendingPurchaseID '79440000-0000-0000-0000-000000000010'
+\set priceWindowID '79440000-0000-0000-0000-000000000011'
+\set userID '79440000-0000-0000-0000-000000000012'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
 -- Alliance
-insert into alliance (alliance_id, name, display_name, description, logo_url, banner_mobile_url, banner_url)
-values (:'allianceID', 'expire-alliance', 'Expire Alliance', 'Test', 'https://e/logo.png', 'https://e/banner-mobile.png', 'https://e/banner.png');
+insert into alliance (
+    alliance_id,
+    name,
+    display_name,
+    description,
+    banner_mobile_url,
+    banner_url,
+    logo_url
+) values (
+    :'allianceID',
+    'expire-alliance',
+    'Expire Alliance',
+    'Test',
+    'https://e/banner-mobile.png',
+    'https://e/banner.png',
+    'https://e/logo.png'
+);
 
 -- Group category
 insert into group_category (group_category_id, alliance_id, name)
@@ -41,18 +56,37 @@ values (:'eventCategoryID', :'allianceID', 'General');
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
-    (:'userID', 'hash', 'user@example.com', true, 'buyer'),
-    (:'completedUserID', 'hash-2', 'completed@example.com', true, 'completed-buyer');
+    (
+        :'completedUserID',
+        'hash-2',
+        'completed@example.com',
+        true,
+        'completed-buyer'
+    ),
+    (
+        :'userID',
+        'hash',
+        'user@example.com',
+        true,
+        'buyer'
+    );
 
 -- Group
-insert into "group" (group_id, alliance_id, group_category_id, name, payment_recipient, slug)
+insert into "group" (
+    group_id,
+    alliance_id,
+    group_category_id,
+    name,
+    slug,
+    payment_recipient
+)
 values (
     :'groupID',
     :'allianceID',
     :'groupCategoryID',
     'Expire Group',
-    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group'),
-    'expire-group'
+    'expire-group',
+    jsonb_build_object('provider', 'stripe', 'recipient_id', 'acct_test_group')
 );
 
 -- Event
@@ -85,8 +119,19 @@ insert into event (
 );
 
 -- Ticket type
-insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
-values (:'eventTicketTypeID', :'eventID', 1, 10, 'General admission');
+insert into event_ticket_type (
+    event_ticket_type_id,
+    event_id,
+    "order",
+    seats_total,
+    title
+) values (
+    :'eventTicketTypeID',
+    :'eventID',
+    1,
+    10,
+    'General admission'
+);
 
 -- Price window
 insert into event_ticket_price_window (
@@ -170,7 +215,11 @@ insert into event_purchase (
 
 -- Pending attendee row with registration answers created during checkout
 insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'userID', 'registration-questions-pending');
+values (
+    :'eventID',
+    :'userID',
+    'registration-questions-pending'
+);
 
 -- ============================================================================
 -- TESTS
@@ -184,20 +233,20 @@ select lives_ok(
 
 -- Should mark the pending purchase as expired and release its registration hold
 select results_eq(
-    $$
+    format($$
         select
             (
                 select status
                 from event_purchase
-                where event_purchase_id = '71000000-0000-0000-0000-000000000008'::uuid
+                where event_purchase_id = %L::uuid
             ),
             (
                 select count(*)::int
                 from event_attendee
-                where event_id = '71000000-0000-0000-0000-000000000004'::uuid
-                and user_id = '71000000-0000-0000-0000-000000000011'::uuid
+                where event_id = %L::uuid
+                and user_id = %L::uuid
             )
-    $$,
+    $$, :'pendingPurchaseID', :'eventID', :'userID'),
     $$ values ('expired'::text, 0::int) $$,
     'Should mark the pending purchase as expired and release its registration hold'
 );
