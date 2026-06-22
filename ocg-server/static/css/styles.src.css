@@ -1120,10 +1120,37 @@ html.ocg-dark .shadow,
 html.ocg-dark .shadow-sm,
 html.ocg-dark .shadow-md,
 html.ocg-dark .shadow-lg,
+html.ocg-dark .shadow-xl,
+html.ocg-dark .shadow-2xl,
 html.ocg-dark .drop-shadow-sm {
   --tw-shadow-color: rgb(0 0 0 / 0.45) !important;
   --tw-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.65) !important;
   box-shadow: var(--tw-shadow) !important;
+}
+
+/* Translucent white surfaces (cards, badges) read as light-on-light in dark
+   mode because the opacity modifier escapes the plain .bg-white override.
+   Low-opacity whites (5-30%) are deliberate overlays on dark sections and
+   are left untouched. */
+html.ocg-dark .bg-white\/70,
+html.ocg-dark .bg-white\/80,
+html.ocg-dark .bg-white\/85 {
+  background-color: rgb(15 23 42 / 0.85) !important;
+}
+
+html.ocg-dark .border-white\/70 {
+  border-color: rgb(51 65 85 / 0.7) !important;
+}
+
+/* The home hero wraps header and jumbotron in a white-to-dark gradient.
+   The white stops stay light in dark mode, so the inverted heading text
+   sits light-on-light. Recolor the gradient stops to the dark surface. */
+html.ocg-dark .from-white {
+  --tw-gradient-from: #0f172a !important;
+}
+
+html.ocg-dark .via-white {
+  --tw-gradient-via: #0f172a !important;
 }
 
 html.ocg-dark :is(input, textarea, select, .input) {
