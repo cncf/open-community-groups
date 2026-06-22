@@ -25,6 +25,9 @@ test.describe("site header", () => {
       navigation.getByRole("link", { name: "Stats" }),
     ).toHaveAttribute("href", "/stats");
     await expect(
+      navigation.getByRole("link", { name: "Jobs" }),
+    ).toHaveAttribute("href", "https://github.com/sakomws/gitjobs");
+    await expect(
       navigation.getByRole("link", { name: "Docs" }),
     ).toHaveCount(0);
   });
@@ -53,5 +56,8 @@ test.describe("site header", () => {
     await expect(
       userMenu.getByRole("menuitem", { name: "Log in" }),
     ).toHaveAttribute("href", "/log-in");
+    await expect(
+      userMenu.getByRole("menuitem", { name: "Jobs" }),
+    ).toHaveAttribute("href", "https://github.com/sakomws/gitjobs");
   });
 });
