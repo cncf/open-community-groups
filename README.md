@@ -1,15 +1,25 @@
-# Open Alliance Groups
+# GOUP Alliance
 
-**Open Alliance Groups** is an open source events platform for alliances and
-organizations.
+**GOUP Alliance** is a community platform for builders, founders, and open
+source contributors to discover groups, join events, share opportunities, and
+map the startup and open source landscape.
 
-<!-- markdownlint-disable MD013 -->
+Live site: <https://goup.vc>
 
-| ![Screenshot 1](docs/screenshots/ocg1.png?raw=true) | ![Screenshot 2](docs/screenshots/ocg2.png?raw=true) | ![Screenshot 3](docs/screenshots/ocg3.png?raw=true) |
-| --------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------- |
-| ![Screenshot 4](docs/screenshots/ocg4.png?raw=true) | ![Screenshot 5](docs/screenshots/ocg5.png?raw=true) | ![Screenshot 6](docs/screenshots/ocg6.png?raw=true) |
+This repository powers the GOUP public site, dashboards, jobs board, landscape
+directory, wiki, and remote MCP operational tools.
 
-<!-- markdownlint-enable MD013 -->
+## What Is Live
+
+- Public GOUP Alliance site at <https://goup.vc>
+- GOUP Baku and San Francisco chapters
+- Event discovery and RSVP flows
+- Jobs board with saved-interest applications
+- Startup and open source landscape directory
+- Wiki with AI, open source, and entrepreneurship reading feeds
+- Public stats page with alliance, jobs, landscape, and engagement metrics
+- Dashboard tools for users, group admins, and alliance admins
+- Remote MCP server at `/mcp` for operational and content-management tools
 
 ## Features
 
@@ -18,8 +28,10 @@ organizations.
 - Browse alliances, groups, and events from a public site
 - Explore events in list or calendar views
 - Explore groups in list or map views
-- Search and filter by alliance, category, region, date, and event type
-- View platform stats for groups, members, events, and attendees
+- Search and filter by alliance, category, region, date, event type, jobs, and
+  landscape entries
+- View platform stats for active members, upcoming events, jobs, saved interest,
+  landscape entries, attendee averages, and engagement signals
 
 ### Alliances and Groups
 
@@ -47,13 +59,29 @@ organizations.
 - Recurring event creation with series-aware publish, unpublish, cancel, and
   delete actions
 - RSVP, attendance tracking, QR code check-in, and manual organizer check-in
+- Manual LinkedIn and Instagram sharing helpers for event promotion
 
 ### Meetings
 
-- Zoom integration with automatic meeting setup
+- Zoom and Google Meet integration with automatic meeting setup
 - Per-event and per-session meeting support with automatic meeting cleanup
 - Support for manual meeting and recording links, plus organizer-controlled
   recording visibility
+
+### Jobs
+
+- Public job board for alliance members and companies
+- Dashboard for posting, publishing, unpublishing, and deleting jobs
+- Saved-interest applications with applicant details for job posters
+- Automatic 30-day job expiry with republish support
+
+### Landscape and Wiki
+
+- Public landscape directory for startups and open source projects
+- Alliance-admin management for landscape entries
+- Search and filtering by kind, category, tags, and alliance
+- Wiki page with curated RSS/Atom sources for AI, open source, and
+  entrepreneurship
 
 ### Notifications
 
@@ -65,12 +93,22 @@ organizations.
 
 ### Users
 
-- Email/password login with email verification
-- GitHub and LinkedIn social login options
+- LinkedIn-focused login for GOUP members, with support for email and GitHub
+  login in the underlying platform
+- LinkedIn blocklist support for removed accounts
 - Invitation inbox for alliance and group team access
 - Personal dashboard for upcoming events, profile, invitations, proposals,
-  submissions, and audit history
+  submissions, jobs, and audit history
 - User profiles with photos, social links, interests, and location
+
+### Remote MCP
+
+- HTTP JSON-RPC MCP server for GOUP operational tools
+- Bearer-token authentication and mutation guard
+- Tools for listing/searching groups, events, members, teams, jobs, wiki, and
+  landscape entries
+- Tools for creating and updating draft events and submitting talks when
+  mutations are enabled
 
 ## Development
 
@@ -566,5 +604,5 @@ This project follows the [Goup Code of Conduct](https://github.com/goup/foundati
 
 ## License
 
-Open Alliance Groups is an Open Source project licensed under the
+GOUP Alliance is an open source project licensed under the
 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0).
