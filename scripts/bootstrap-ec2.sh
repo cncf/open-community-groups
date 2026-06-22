@@ -11,6 +11,7 @@ INSTALL_POSTGRES_SERVER="${BOOTSTRAP_INSTALL_POSTGRES_SERVER:-false}"
 RUN_BUILD="${BOOTSTRAP_BUILD:-true}"
 RUN_MIGRATIONS="${BOOTSTRAP_MIGRATE:-true}"
 RUN_SEED="${BOOTSTRAP_SEED:-true}"
+TAILWINDCSS_VERSION="${BOOTSTRAP_TAILWINDCSS_VERSION:-v4.1.10}"
 
 DB_HOST="${OCG_DB_HOST:-127.0.0.1}"
 DB_PORT="${OCG_DB_PORT:-5432}"
@@ -67,6 +68,8 @@ Common optional environment:
   BOOTSTRAP_BUILD              Build release binary. Default: true
   BOOTSTRAP_MIGRATE            Run migrations. Default: true
   BOOTSTRAP_SEED               Seed site/alliance/group. Default: true
+  BOOTSTRAP_TAILWINDCSS_VERSION
+                               Tailwind standalone CLI version. Default: v4.1.10
 
 Example:
   OCG_DB_PASSWORD='...' \
@@ -204,6 +207,38 @@ install_tern() {
     export PATH="$HOME/go/bin:$PATH"
 }
 
+install_tailwindcss() {
+    if command -v tailwindcss >/dev/null 2>&1; then
+        return
+    fi
+
+    local arch
+    local binary
+    local tmp_file
+
+    case "$(uname -m)" in
+        x86_64 | amd64)
+            arch="x64"
+            ;;
+        aarch64 | arm64)
+            arch="arm64"
+            ;;
+        *)
+            die "unsupported architecture for tailwindcss standalone binary: $(uname -m)"
+            ;;
+    esac
+
+    binary="tailwindcss-linux-${arch}"
+    tmp_file="$(mktemp)"
+
+    log "Installing tailwindcss ${TAILWINDCSS_VERSION}"
+    curl -fsSL \
+        "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWINDCSS_VERSION}/${binary}" \
+        -o "$tmp_file"
+    sudo_cmd install -m 0755 "$tmp_file" /usr/local/bin/tailwindcss
+    rm -f "$tmp_file"
+}
+
 install_dependencies() {
     if [[ "$INSTALL_DEPS" != "true" ]]; then
         return
@@ -214,6 +249,7 @@ install_dependencies() {
     install_rust
     export PATH="$HOME/.cargo/bin:$HOME/go/bin:$PATH"
     install_tern
+    install_tailwindcss
 }
 
 write_file_once() {
