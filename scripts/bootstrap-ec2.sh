@@ -11,7 +11,10 @@ INSTALL_POSTGRES_SERVER="${BOOTSTRAP_INSTALL_POSTGRES_SERVER:-false}"
 RUN_BUILD="${BOOTSTRAP_BUILD:-true}"
 RUN_MIGRATIONS="${BOOTSTRAP_MIGRATE:-true}"
 RUN_SEED="${BOOTSTRAP_SEED:-true}"
+INSTALL_SYSTEMD_SERVICE="${BOOTSTRAP_SYSTEMD_SERVICE:-true}"
+START_SYSTEMD_SERVICE="${BOOTSTRAP_START_SERVICE:-true}"
 TAILWINDCSS_VERSION="${BOOTSTRAP_TAILWINDCSS_VERSION:-v4.1.10}"
+CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-1}"
 
 DB_HOST="${OCG_DB_HOST:-127.0.0.1}"
 DB_PORT="${OCG_DB_PORT:-5432}"
@@ -68,8 +71,11 @@ Common optional environment:
   BOOTSTRAP_BUILD              Build release binary. Default: true
   BOOTSTRAP_MIGRATE            Run migrations. Default: true
   BOOTSTRAP_SEED               Seed site/alliance/group. Default: true
+  BOOTSTRAP_SYSTEMD_SERVICE    Install an ocg-server systemd service. Default: true
+  BOOTSTRAP_START_SERVICE      Start/restart the systemd service. Default: true
   BOOTSTRAP_TAILWINDCSS_VERSION
                                Tailwind standalone CLI version. Default: v4.1.10
+  CARGO_BUILD_JOBS             Cargo build parallelism. Default: 1
 
 Example:
   OCG_DB_PASSWORD='...' \
@@ -268,6 +274,51 @@ write_file_once() {
     log "Wrote $path"
 }
 
+install_systemd_service() {
+    if [[ "$INSTALL_SYSTEMD_SERVICE" != "true" ]]; then
+        return
+    fi
+
+    local service_user
+    local service_group
+
+    service_user="$(id -un)"
+    service_group="$(id -gn)"
+
+    log "Installing systemd service"
+    sudo_cmd tee /etc/systemd/system/ocg-server.service >/dev/null <<EOF
+[Unit]
+Description=GOUP OCG server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=$service_user
+Group=$service_group
+WorkingDirectory=$ROOT_DIR
+ExecStart=$ROOT_DIR/target/release/ocg-server -c $SERVER_CONFIG
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    sudo_cmd systemctl daemon-reload
+    sudo_cmd systemctl enable ocg-server
+}
+
+start_systemd_service() {
+    if [[ "$INSTALL_SYSTEMD_SERVICE" != "true" || "$START_SYSTEMD_SERVICE" != "true" ]]; then
+        return
+    fi
+
+    log "Starting systemd service"
+    sudo_cmd systemctl restart ocg-server
+    sudo_cmd systemctl --no-pager --full status ocg-server || true
+}
+
 sql_escape() {
     printf "%s" "$1" | sed "s/'/''/g"
 }
@@ -355,7 +406,7 @@ EOF
 
 if [[ "$RUN_BUILD" == "true" ]]; then
     log "Building release binary"
-    (cd "$ROOT_DIR" && cargo build --release -p ocg-server)
+    (cd "$ROOT_DIR" && CARGO_BUILD_JOBS="$CARGO_BUILD_JOBS" cargo build --release -p ocg-server)
 fi
 
 if [[ "$RUN_MIGRATIONS" == "true" ]]; then
@@ -445,12 +496,18 @@ else
     log "Skipping admin grant; set OCG_ADMIN_EMAIL after first LinkedIn login to grant admin"
 fi
 
+install_systemd_service
+start_systemd_service
+
 cat <<EOF
 
 Bootstrap complete.
 
 Start the server:
-  $ROOT_DIR/target/release/ocg-server -c "$SERVER_CONFIG"
+  sudo systemctl restart ocg-server
+
+View server logs:
+  sudo journalctl -u ocg-server -f
 
 LinkedIn redirect URL to configure:
   $BASE_URL/log-in/oidc/linkedin/callback
