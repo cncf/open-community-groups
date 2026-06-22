@@ -402,7 +402,7 @@ async function searchGroups(args) {
          ilike '%' || (args.j->>'query') || '%'
     )
   order by lower(g.name), g.group_id
-  limit (args.j->>'limit')::int
+  limit (select (j->>'limit')::int from args)
 )
 select coalesce(json_agg(row_to_json(rows)), '[]'::json)::text from rows;
 `);
@@ -452,7 +452,7 @@ async function searchEvents(args) {
          ilike '%' || (args.j->>'query') || '%'
     )
   order by e.starts_at nulls last, e.created_at desc, e.event_id
-  limit (args.j->>'limit')::int
+  limit (select (j->>'limit')::int from args)
 )
 select coalesce(json_agg(row_to_json(rows)), '[]'::json)::text from rows;
 `);
@@ -496,7 +496,7 @@ async function searchMembers(args) {
          ilike '%' || (args.j->>'query') || '%'
     )
   order by lower(coalesce(u.name, u.username)), u.user_id
-  limit (args.j->>'limit')::int
+  limit (select (j->>'limit')::int from args)
 )
 select coalesce(json_agg(row_to_json(rows)), '[]'::json)::text from rows;
 `);
