@@ -533,7 +533,7 @@ test.describe("group dashboard attendees tab", () => {
         attendeesContent.getByRole("button", { name: "Send email" }),
       ).toHaveAttribute(
         "title",
-        "No confirmed attendees with verified email addresses.",
+        "No attendees with verified email addresses and email notifications enabled.",
       );
     } finally {
       await deleteEventFromList(organizerGroupPage, eventId);

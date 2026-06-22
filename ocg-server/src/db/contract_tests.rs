@@ -1349,17 +1349,17 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
         event_id: event_id(),
-
         limit: Some(10),
         offset: Some(0),
     };
     let output = db.search_event_attendees(group_id(), &filters).await?;
 
-    assert_eq!(output.notification_recipient_total, 1);
+    assert_eq!(output.all_attendees_email_recipient_total, 1);
     assert_eq!(output.total, 2);
     assert_eq!(output.attendees.len(), 2);
     assert_eq!(output.attendees[0].user_id, attendee_id());
     assert_eq!(output.attendees[0].username, "contract-attendee");
+    assert!(output.attendees[0].can_receive_attendee_email);
     assert!(output.attendees[0].checked_in);
     assert!(output.attendees[0].registration_answers.is_some());
     assert_eq!(

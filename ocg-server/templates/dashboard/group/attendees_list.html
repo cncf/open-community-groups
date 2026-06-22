@@ -71,20 +71,51 @@
               {% endif -%}
               data-event-id="{{ event.event_id }}">Invite</button>
     </span>
-    <button id="open-attendee-notification-modal"
-            type="button"
-            class="btn-primary-outline w-full lg:w-auto
-                   {% if notification_recipient_total == 0 || !can_manage_events || event.canceled -%}
-                     opacity-50 cursor-not-allowed
-                   {% endif -%}"
-            {% if !can_manage_events -%}
-              disabled title="Your role cannot send emails to attendees."
-            {% else if event.canceled -%}
-              disabled title="Canceled events cannot send attendee emails."
-            {% else if notification_recipient_total == 0 -%}
-              disabled title="No confirmed attendees with verified email addresses."
-            {% endif -%}
-            data-event-id="{{ event.event_id }}">Send email</button>
+    <div class="group relative w-full lg:w-auto">
+      <button id="attendee-email-actions-button"
+              type="button"
+              class="btn-primary-outline w-full lg:w-auto group-has-[.dropdown:not(.hidden)]:bg-primary-500 group-has-[.dropdown:not(.hidden)]:text-white group-has-[.dropdown:not(.hidden)]:border-primary-500
+                     {% if all_attendees_email_recipient_total == 0 || !can_manage_events || event.canceled -%}
+                       opacity-50 cursor-not-allowed
+                     {% endif -%}"
+              aria-haspopup="menu"
+              aria-controls="attendee-email-actions-menu"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot send emails to attendees."
+              {% else if event.canceled -%}
+                disabled title="Canceled events cannot send attendee emails."
+              {% else if all_attendees_email_recipient_total == 0 -%}
+                disabled title="No attendees with verified email addresses and email notifications enabled."
+              {% endif -%}>Send email</button>
+      <div id="attendee-email-actions-menu"
+           data-attendee-email-actions-dropdown
+           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-64 bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+        <ul class="py-2 text-sm text-stone-700" role="menu">
+          <li>
+            <button type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                    data-attendee-notification-open
+                    data-event-id="{{ event.event_id }}"
+                    data-notification-scope="all"
+                    data-notification-recipient-total="{{ all_attendees_email_recipient_total }}">
+              <div class="svg-icon size-4 icon-email shrink-0 bg-stone-500"></div>
+              <span>All eligible attendees</span>
+            </button>
+          </li>
+          <li>
+            <button type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
+                    data-attendee-email-selection-start
+                    data-event-id="{{ event.event_id }}">
+              <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+              <span>Choose attendees</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
     <div class="group relative">
       <button id="attendee-actions-button"
               type="button"
@@ -124,6 +155,34 @@
 </div>
 {# End header actions -#}
 
+{# Email selection mode -#}
+<div data-attendee-email-selection-bar
+     class="hidden mb-4 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div class="min-w-0">
+      <div class="text-sm font-semibold text-stone-900">
+        <span data-attendee-email-selection-count>0</span> selected for email
+      </div>
+      <div class="mt-0.5 text-xs text-stone-600">
+        Only attendees eligible for optional email notifications can be selected.
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button type="button"
+              class="btn-primary-outline btn-mini"
+              data-attendee-email-selection-clear>Clear</button>
+      <button type="button"
+              class="btn-primary-outline btn-mini"
+              data-attendee-email-selection-cancel>Cancel</button>
+      <button type="button"
+              class="btn-primary btn-mini"
+              data-attendee-email-selection-send
+              disabled>Send email</button>
+    </div>
+  </div>
+</div>
+{# End email selection mode -#}
+
 {# Attendees table -#}
 <div class="relative overflow-visible pb-12">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
@@ -133,6 +192,11 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
+        <th scope="col"
+            class="hidden px-3 xl:px-5 py-3 w-12"
+            data-attendee-email-selection-column>
+          <span class="sr-only">Select for email</span>
+        </th>
         <th scope="col" class="px-3 xl:px-5 py-3">Attendee</th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Position</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">RSVP Date</th>
@@ -162,6 +226,23 @@
         {% for attendee in attendees -%}
           {# Attendee row -#}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
+            {# Email selection -#}
+            <td class="hidden px-3 xl:px-5 py-4 w-12"
+                data-attendee-email-selection-column>
+              {% if can_manage_events && !event.canceled && attendee.can_receive_attendee_email -%}
+                <input type="checkbox"
+                       class="size-4 rounded border-stone-300 text-primary-600 focus:ring-primary-500"
+                       aria-label="Select {{ attendee.name|assigned_or(attendee.username) }} for email"
+                       data-attendee-email-selection-checkbox
+                       data-recipient-email="{{ attendee.email }}"
+                       data-recipient-id="{{ attendee.user_id }}"
+                       data-recipient-name="{{ attendee.name|assigned_or(attendee.username) }}"
+                       data-recipient-username="{{ attendee.username }}"
+                       value="{{ attendee.user_id }}">
+              {% endif -%}
+            </td>
+            {# End email selection -#}
+
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
@@ -286,6 +367,7 @@
                   || (attendee.registration_answers.is_some() && !registration_questions.is_empty())
                   || attendee.status == "invitation-pending"
                   || (attendee.status == "registration-questions-pending" && attendee.manually_invited)
+                  || (!event.canceled && attendee.can_receive_attendee_email)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending)
                   || attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving))) -%}
                   <details data-attendee-row-actions-menu class="group relative">
@@ -364,6 +446,23 @@
                                     type="button">
                               <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
                               <span>Cancel invitation</span>
+                            </button>
+                          </li>
+                        {% endif -%}
+                        {% if can_manage_events && !event.canceled && attendee.can_receive_attendee_email -%}
+                          <li>
+                            <button type="button"
+                                    data-attendee-notification-open
+                                    data-event-id="{{ event.event_id }}"
+                                    data-notification-scope="selected"
+                                    data-recipient-email="{{ attendee.email }}"
+                                    data-recipient-id="{{ attendee.user_id }}"
+                                    data-recipient-name="{{ attendee.name|assigned_or(attendee.username) }}"
+                                    data-recipient-username="{{ attendee.username }}"
+                                    role="menuitem"
+                                    class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                              <div class="svg-icon size-4 icon-email shrink-0 bg-stone-500"></div>
+                              <span>Send email</span>
                             </button>
                           </li>
                         {% endif -%}
@@ -612,14 +711,23 @@
 
       {# Modal body -#}
       <div class="modal-body p-4 md:p-8">
-        <div class="bg-stone-50 border border-stone-200 text-stone-800 rounded-lg p-4 mb-5 text-sm">
-          <p class="font-medium">
-            This email will be sent to <span class="font-semibold">all event attendees</span>.
-          </p>
-        </div>
         <form id="attendee-notification-form"
+              hx-post="/dashboard/group/notifications/{{ event.event_id }}"
               hx-indicator="#attendee-notification-spinner"
               hx-disabled-elt="#submit-attendee-notification">
+          <div class="bg-stone-50 border border-stone-200 text-stone-800 rounded-lg p-4 mb-5 text-sm">
+            <p id="attendee-notification-recipient-summary"
+               class="font-medium"
+               data-all-recipient-total="{{ all_attendees_email_recipient_total }}">
+              This email will be sent to all eligible attendees.
+            </p>
+          </div>
+          <input type="hidden"
+                 id="attendee-notification-recipient-scope"
+                 name="recipient_scope"
+                 value="all">
+          <div id="attendee-notification-selected-fields"></div>
+
           <div class="mb-4">
             <label for="attendee-subject" class="form-label">
               Subject <span class="asterisk">*</span>

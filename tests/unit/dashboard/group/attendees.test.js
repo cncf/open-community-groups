@@ -51,6 +51,83 @@ describe("dashboard group attendees", () => {
     </div>
   `;
 
+  const attendeeNotificationMarkup = (triggerMarkup) => `
+    <div id="attendees-content">
+      ${triggerMarkup}
+      <div id="attendee-notification-modal" class="hidden"></div>
+      <button id="close-attendee-notification-modal" type="button">Close</button>
+      <button id="cancel-attendee-notification" type="button">Cancel</button>
+      <div id="overlay-attendee-notification-modal"></div>
+      <form id="attendee-notification-form">
+        <p id="attendee-notification-recipient-summary" data-all-recipient-total="3"></p>
+        <input id="attendee-notification-recipient-scope" type="hidden" name="recipient_scope" value="all" />
+        <div id="attendee-notification-selected-fields"></div>
+        <button id="submit-attendee-notification" type="submit">Send email</button>
+      </form>
+    </div>
+  `;
+
+  const attendeeSelectionMarkup = ({ eventId = "event-42", recipients = [] } = {}) => `
+    <div id="attendees-content">
+      <button id="attendee-email-actions-button" type="button">Send email</button>
+      <div data-attendee-email-actions-dropdown class="hidden">
+        <button type="button" data-attendee-email-selection-start data-event-id="${eventId}">
+          Choose attendees
+        </button>
+      </div>
+      <div data-attendee-email-selection-bar class="hidden">
+        <span data-attendee-email-selection-count>0</span>
+        <button type="button" data-attendee-email-selection-clear>Clear</button>
+        <button type="button" data-attendee-email-selection-cancel>Cancel</button>
+        <button type="button" data-attendee-email-selection-send disabled>Send email</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th data-attendee-email-selection-column class="hidden">Select</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${recipients
+            .map(
+              (recipient) => `
+                <tr>
+                  <td data-attendee-email-selection-column class="hidden">
+                    <input
+                      type="checkbox"
+                      data-attendee-email-selection-checkbox
+                      data-recipient-id="${recipient.id}"
+                      data-recipient-name="${recipient.name}"
+                      data-recipient-username="${recipient.username}"
+                      data-recipient-email="${recipient.email}"
+                      value="${recipient.id}"
+                    />
+                  </td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+      <div id="attendee-notification-modal" class="hidden"></div>
+      <button id="close-attendee-notification-modal" type="button">Close</button>
+      <button id="cancel-attendee-notification" type="button">Cancel</button>
+      <div id="overlay-attendee-notification-modal"></div>
+      <form id="attendee-notification-form">
+        <p id="attendee-notification-recipient-summary" data-all-recipient-total="3"></p>
+        <input id="attendee-notification-recipient-scope" type="hidden" name="recipient_scope" value="all" />
+        <div id="attendee-notification-selected-fields"></div>
+        <button id="submit-attendee-notification" type="submit">Send email</button>
+      </form>
+    </div>
+  `;
+
+  const attendeeSelectionInnerMarkup = (options = {}) => {
+    const template = document.createElement("template");
+    template.innerHTML = attendeeSelectionMarkup(options).trim();
+    return template.content.firstElementChild?.innerHTML || "";
+  };
+
   it("toggles and closes the attendee actions menu", () => {
     // Render the DOM fixture for toggling and closes the attendee actions menu.
     document.body.innerHTML = `
@@ -181,18 +258,22 @@ describe("dashboard group attendees", () => {
   it("updates the attendee notification endpoint before opening the modal", () => {
     // Render the DOM fixture for updating the attendee notification endpoint.
     document.body.innerHTML = `
-      <button
-        id="open-attendee-notification-modal"
-        type="button"
-        data-event-id="event-42"
-      >
-        Notify attendees
-      </button>
-      <div id="attendee-notification-modal" class="hidden"></div>
-      <button id="close-attendee-notification-modal" type="button">Close</button>
-      <button id="cancel-attendee-notification" type="button">Cancel</button>
-      <div id="overlay-attendee-notification-modal"></div>
-      <form id="attendee-notification-form"></form>
+      <div id="attendees-content">
+        <button
+          id="open-attendee-notification-modal"
+          type="button"
+          data-attendee-notification-open
+          data-event-id="event-42"
+          data-notification-scope="all"
+        >
+          Notify attendees
+        </button>
+        <div id="attendee-notification-modal" class="hidden"></div>
+        <button id="close-attendee-notification-modal" type="button">Close</button>
+        <button id="cancel-attendee-notification" type="button">Cancel</button>
+        <div id="overlay-attendee-notification-modal"></div>
+        <form id="attendee-notification-form"></form>
+      </div>
     `;
 
     // Verify updates the attendee notification endpoint.
@@ -214,18 +295,22 @@ describe("dashboard group attendees", () => {
     // Prepare replacement body for opening the attendee notification modal.
     const replacementBody = document.createElement("body");
     replacementBody.innerHTML = `
-      <button
-        id="open-attendee-notification-modal"
-        type="button"
-        data-event-id="event-99"
-      >
-        Notify attendees
-      </button>
-      <div id="attendee-notification-modal" class="hidden"></div>
-      <button id="close-attendee-notification-modal" type="button">Close</button>
-      <button id="cancel-attendee-notification" type="button">Cancel</button>
-      <div id="overlay-attendee-notification-modal"></div>
-      <form id="attendee-notification-form"></form>
+      <div id="attendees-content">
+        <button
+          id="open-attendee-notification-modal"
+          type="button"
+          data-attendee-notification-open
+          data-event-id="event-99"
+          data-notification-scope="all"
+        >
+          Notify attendees
+        </button>
+        <div id="attendee-notification-modal" class="hidden"></div>
+        <button id="close-attendee-notification-modal" type="button">Close</button>
+        <button id="cancel-attendee-notification" type="button">Cancel</button>
+        <div id="overlay-attendee-notification-modal"></div>
+        <form id="attendee-notification-form"></form>
+      </div>
     `;
     document.documentElement.replaceChild(replacementBody, document.body);
 
@@ -244,6 +329,360 @@ describe("dashboard group attendees", () => {
         .getElementById("attendee-notification-modal")
         ?.classList.contains("hidden"),
     ).to.equal(false);
+  });
+
+  it("opens attendee notification with a row recipient preselected", async () => {
+    // Render a confirmed attendee row action and the notification modal.
+    document.body.innerHTML = attendeeNotificationMarkup(`
+      <button
+        type="button"
+        data-attendee-notification-open
+        data-event-id="event-42"
+        data-notification-scope="selected"
+        data-recipient-id="user-1"
+        data-recipient-name="Ana Lopez"
+        data-recipient-username="alopez"
+        data-recipient-email="ana@example.test"
+      >
+        Send email
+      </button>
+    `);
+
+    // Open the selected-recipient modal.
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-notification-open]")?.click();
+    await waitForMicrotask();
+
+    // Verify the row recipient is selected and submitted as a hidden field.
+    expect(
+      document
+        .getElementById("attendee-notification-modal")
+        ?.classList.contains("hidden"),
+    ).to.equal(false);
+    expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("selected");
+    expect(document.getElementById("attendee-notification-recipient-summary")?.textContent).to.equal(
+      "This email will be sent to 1 selected attendee.",
+    );
+    expect(
+      document.querySelector(
+        '#attendee-notification-selected-fields input[name="recipient_user_ids[0]"]',
+      )?.value,
+    ).to.equal("user-1");
+    expect(document.getElementById("submit-attendee-notification")?.disabled).to.equal(false);
+    expect(fetchMock.calls).to.have.length(0);
+  });
+
+  it("opens the attendee email actions dropdown and starts table selection", () => {
+    // Render attendees table selection controls.
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-43",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+      ],
+    });
+
+    // Start attendee selection from the email actions dropdown.
+    initializeAttendeesUi();
+    document.getElementById("attendee-email-actions-button")?.click();
+
+    const dropdown = document.querySelector("[data-attendee-email-actions-dropdown]");
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+
+    document.querySelector("[data-attendee-email-selection-start]")?.click();
+
+    const bar = document.querySelector("[data-attendee-email-selection-bar]");
+    const column = document.querySelector("[data-attendee-email-selection-column]");
+    const checkbox = document.querySelector("[data-attendee-email-selection-checkbox]");
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+    expect(bar.classList.contains("hidden")).to.equal(false);
+    expect(column.classList.contains("hidden")).to.equal(false);
+    expect(document.activeElement).to.equal(checkbox);
+    expect(document.querySelector("[data-attendee-email-selection-send]")?.disabled).to.equal(true);
+  });
+
+  it("opens attendee notification from selected table attendees", () => {
+    // Render selectable attendee rows and the notification modal.
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-44",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+        {
+          email: "bo@example.test",
+          id: "user-2",
+          name: "Bo Chen",
+          username: "bchen",
+        },
+      ],
+    });
+
+    // Select both attendees and open the notification modal from the bar.
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-email-selection-start]")?.click();
+    document.querySelectorAll("[data-attendee-email-selection-checkbox]").forEach((checkbox) => {
+      checkbox.checked = true;
+      checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("2");
+    expect(document.querySelector("[data-attendee-email-selection-send]")?.disabled).to.equal(false);
+
+    document.querySelector("[data-attendee-email-selection-send]")?.click();
+
+    // Verify selected attendees are submitted as hidden fields.
+    expect(
+      document
+        .getElementById("attendee-notification-modal")
+        ?.classList.contains("hidden"),
+    ).to.equal(false);
+    expect(
+      document
+        .getElementById("attendee-notification-form")
+        ?.getAttribute("hx-post"),
+    ).to.equal("/dashboard/group/notifications/event-44");
+    expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("selected");
+    expect(document.getElementById("attendee-notification-recipient-summary")?.textContent).to.equal(
+      "This email will be sent to 2 selected attendees.",
+    );
+    expect([...document.querySelectorAll("#attendee-notification-selected-fields input")].map((input) => input.value)).to.deep.equal([
+      "user-1",
+      "user-2",
+    ]);
+  });
+
+  it("keeps selected attendees across table refreshes for the same event", () => {
+    // Render the first attendee table page and select one attendee.
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-45",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+      ],
+    });
+
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-email-selection-start]")?.click();
+    const initialCheckbox = document.querySelector("[data-attendee-email-selection-checkbox]");
+    initialCheckbox.checked = true;
+    initialCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("1");
+
+    // Swap in a refreshed table page for the same event.
+    const attendeesRoot = document.getElementById("attendees-content");
+    attendeesRoot.innerHTML = attendeeSelectionInnerMarkup({
+      eventId: "event-45",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+        {
+          email: "bo@example.test",
+          id: "user-2",
+          name: "Bo Chen",
+          username: "bchen",
+        },
+      ],
+    });
+    dispatchHtmxLoad(attendeesRoot);
+
+    const refreshedCheckboxes = document.querySelectorAll("[data-attendee-email-selection-checkbox]");
+    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(false);
+    expect(refreshedCheckboxes[0].checked).to.equal(true);
+    expect(refreshedCheckboxes[1].checked).to.equal(false);
+    expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("1");
+  });
+
+  it("clears selected attendees when the refreshed table belongs to another event", () => {
+    // Render a selectable attendees table for the original event.
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-42",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+      ],
+    });
+
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-email-selection-start]")?.click();
+    const initialCheckbox = document.querySelector("[data-attendee-email-selection-checkbox]");
+    initialCheckbox.checked = true;
+    initialCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // Swap to a different event and verify selection mode resets.
+    const attendeesRoot = document.getElementById("attendees-content");
+    attendeesRoot.innerHTML = attendeeSelectionInnerMarkup({
+      eventId: "event-99",
+      recipients: [
+        {
+          email: "cyd@example.test",
+          id: "user-3",
+          name: "Cyd Diaz",
+          username: "cdiaz",
+        },
+      ],
+    });
+    dispatchHtmxLoad(attendeesRoot);
+
+    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
+    expect(document.querySelector("[data-attendee-email-selection-checkbox]")?.checked).to.equal(false);
+    expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("0");
+  });
+
+  it("clears and cancels attendee email selection", () => {
+    // Render attendee selection controls.
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-77",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+      ],
+    });
+
+    // Clear keeps selection mode open, while cancel exits it.
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-email-selection-start]")?.click();
+    const checkbox = document.querySelector("[data-attendee-email-selection-checkbox]");
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+
+    document.querySelector("[data-attendee-email-selection-clear]")?.click();
+    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(false);
+    expect(checkbox.checked).to.equal(false);
+    expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("0");
+    expect(document.querySelector("[data-attendee-email-selection-send]")?.disabled).to.equal(true);
+
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    document.querySelector("[data-attendee-email-selection-cancel]")?.click();
+
+    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
+    expect(checkbox.checked).to.equal(false);
+    expect(document.activeElement).to.equal(document.getElementById("attendee-email-actions-button"));
+  });
+
+  it("resets attendee email selection after a successful selected-recipient send", () => {
+    // Render selected attendee notification controls.
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-88",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+      ],
+    });
+
+    // Send to a selected attendee and dispatch a successful response.
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-email-selection-start]")?.click();
+    const checkbox = document.querySelector("[data-attendee-email-selection-checkbox]");
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    document.querySelector("[data-attendee-email-selection-send]")?.click();
+
+    const form = document.getElementById("attendee-notification-form");
+    dispatchHtmxAfterRequest(form, { status: 200 });
+
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Email sent successfully to selected attendees!",
+      icon: "success",
+    });
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(true);
+    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
+    expect(checkbox.checked).to.equal(false);
+    expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("all");
+    expect(document.querySelectorAll("#attendee-notification-selected-fields input")).to.have.length(0);
+  });
+
+  it("leaves attendee email selection active after a failed selected-recipient send", () => {
+    // Render selected attendee notification controls.
+    document.body.innerHTML = attendeeSelectionMarkup({
+      eventId: "event-89",
+      recipients: [
+        {
+          email: "ana@example.test",
+          id: "user-1",
+          name: "Ana Lopez",
+          username: "alopez",
+        },
+      ],
+    });
+
+    // Send to a selected attendee and dispatch a failed response.
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-email-selection-start]")?.click();
+    const checkbox = document.querySelector("[data-attendee-email-selection-checkbox]");
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    document.querySelector("[data-attendee-email-selection-send]")?.click();
+
+    const form = document.getElementById("attendee-notification-form");
+    dispatchHtmxAfterRequest(form, { status: 500, responseText: "Nope" });
+
+    expect(env.current.swal.calls[0]).to.include({
+      text: "Nope",
+      icon: "error",
+    });
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(false);
+    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(false);
+    expect(checkbox.checked).to.equal(true);
+    document.querySelector("[data-attendee-email-selection-cancel]")?.click();
+  });
+
+  it("opens attendee notification for all eligible attendees", () => {
+    // Render the all-recipient notification trigger.
+    document.body.innerHTML = attendeeNotificationMarkup(`
+      <button
+        type="button"
+        data-attendee-notification-open
+        data-event-id="event-42"
+        data-notification-scope="all"
+        data-notification-recipient-total="3"
+      >
+        Send email
+      </button>
+    `);
+
+    initializeAttendeesUi();
+    document.querySelector("[data-attendee-notification-open]")?.click();
+
+    expect(
+      document
+        .getElementById("attendee-notification-modal")
+        ?.classList.contains("hidden"),
+    ).to.equal(false);
+    expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("all");
+    expect(document.getElementById("attendee-notification-recipient-summary")?.textContent).to.equal(
+      "This email will be sent to 3 eligible attendees.",
+    );
+    expect(document.querySelectorAll("#attendee-notification-selected-fields input")).to.have.length(0);
+    expect(document.getElementById("submit-attendee-notification")?.disabled).to.equal(false);
   });
 
   it("opens the attendee answers modal with copied answers", () => {

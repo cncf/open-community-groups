@@ -21,7 +21,9 @@ use crate::{
     db::{DBExt, DynDB, notifications::CustomNotificationTracking},
     handlers::{
         error::HandlerError,
-        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm},
+        extractors::{
+            CurrentUser, SelectedCommunityId, SelectedGroupId, ValidatedForm, ValidatedFormQs,
+        },
     },
     router::serde_qs_config,
     services::{
@@ -97,11 +99,12 @@ pub(crate) async fn list_page(
         &format!("/dashboard/group/events/{event_id}/attendees"),
     )?;
     let template = attendees::ListPage {
+        all_attendees_email_recipient_total: search_attendees_results
+            .all_attendees_email_recipient_total,
         attendees: search_attendees_results.attendees,
         can_manage_events,
         event,
         navigation_links,
-        notification_recipient_total: search_attendees_results.notification_recipient_total,
         registration_questions,
         total: search_attendees_results.total,
         limit: page_filters.limit,
@@ -441,22 +444,44 @@ pub(crate) async fn send_event_custom_notification(
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
-    ValidatedForm(notification): ValidatedForm<EventCustomNotification>,
+    ValidatedFormQs(notification): ValidatedFormQs<EventCustomNotification>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Normalize recipient scope input before resolving eligible recipients
+    let requested_user_ids = match notification.recipient_scope {
+        EventCustomNotificationRecipientScope::All => None,
+        EventCustomNotificationRecipientScope::Selected => {
+            if notification.recipient_user_ids.is_empty() {
+                return Ok(
+                    (StatusCode::BAD_REQUEST, "Select at least one attendee.").into_response()
+                );
+            }
+            Some(notification.recipient_user_ids.clone())
+        }
+    };
+
     // Get event data and site settings
     let (site_settings, event, event_attendees_ids) = tokio::try_join!(
         db.get_site_settings(),
         db.get_event_summary_by_id(community_id, event_id),
-        db.list_event_attendees_ids(group_id, event_id),
+        db.resolve_event_custom_notification_recipient_ids(
+            group_id,
+            event_id,
+            notification.recipient_scope.as_ref(),
+            requested_user_ids
+        ),
     )?;
 
     // Reject empty recipient sets so stale pages cannot report a false success
     if event_attendees_ids.is_empty() {
-        return Ok((
-            StatusCode::BAD_REQUEST,
-            "No confirmed attendees with verified email addresses.",
-        )
-            .into_response());
+        let message = match notification.recipient_scope {
+            EventCustomNotificationRecipientScope::All => {
+                "No attendees with verified email addresses and email notifications enabled."
+            }
+            EventCustomNotificationRecipientScope::Selected => {
+                "No selected attendees can receive this email."
+            }
+        };
+        return Ok((StatusCode::BAD_REQUEST, message).into_response());
     }
 
     // Build and enqueue the custom notification with its audit entry
@@ -592,10 +617,31 @@ pub(crate) struct EventCustomNotification {
     /// Body text for the notification.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_NOTIFICATION_BODY))]
     pub body: String,
+    /// Recipient scope for the notification.
+    #[serde(default)]
+    #[garde(skip)]
+    pub recipient_scope: EventCustomNotificationRecipientScope,
+    /// Selected recipient user identifiers.
+    #[serde(default)]
+    #[garde(skip)]
+    pub recipient_user_ids: Vec<Uuid>,
     /// Subject line for the notification email.
     #[serde(alias = "title")]
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub subject: String,
+}
+
+/// Recipient scope for custom event notifications.
+#[derive(Debug, Clone, Copy, Default, Deserialize, PartialEq, Serialize, strum::AsRefStr)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventCustomNotificationRecipientScope {
+    /// Send to all attendees eligible for email.
+    #[default]
+    #[strum(serialize = "all-attendees")]
+    All,
+    /// Send only to selected attendees eligible for email.
+    #[strum(serialize = "selected-attendees")]
+    Selected,
 }
 
 /// Form data for refund reviews.
