@@ -154,7 +154,7 @@ async fn test_favicon_route_returns_redirect_with_cache_header() {
     assert_eq!(parts.status, StatusCode::SEE_OTHER);
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static("public, max-age=604800")
+        &HeaderValue::from_static("no-cache")
     );
     assert_eq!(
         parts.headers.get(LOCATION).unwrap(),
