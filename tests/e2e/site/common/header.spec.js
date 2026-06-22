@@ -28,6 +28,12 @@ test.describe("site header", () => {
       navigation.getByRole("link", { name: "Jobs" }),
     ).toHaveAttribute("href", "/jobs");
     await expect(
+      navigation.getByRole("link", { name: "Landscape" }),
+    ).toHaveAttribute("href", "https://landscape.cncf.io/");
+    await expect(
+      navigation.getByRole("button", { name: "Switch to dark mode" }),
+    ).toBeVisible();
+    await expect(
       navigation.getByRole("link", { name: "Docs" }),
     ).toHaveCount(0);
   });
@@ -59,5 +65,11 @@ test.describe("site header", () => {
     await expect(
       userMenu.getByRole("menuitem", { name: "Jobs" }),
     ).toHaveAttribute("href", "/jobs");
+    await expect(
+      userMenu.getByRole("menuitem", { name: "Landscape" }),
+    ).toHaveAttribute("href", "https://landscape.cncf.io/");
+    await expect(
+      userMenu.getByRole("menuitem", { name: "Dark mode" }),
+    ).toBeVisible();
   });
 });
