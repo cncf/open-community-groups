@@ -98,6 +98,19 @@ sudo_cmd() {
     fi
 }
 
+install_first_available_package() {
+    local package_manager="$1"
+    shift
+
+    for package_name in "$@"; do
+        if sudo_cmd "$package_manager" install -y "$package_name"; then
+            return
+        fi
+    done
+
+    die "none of these packages could be installed: $*"
+}
+
 install_debian_deps() {
     local packages=(
         ca-certificates
@@ -133,16 +146,22 @@ install_rhel_deps() {
         make
         pkgconf-pkg-config
         openssl-devel
-        postgresql
-        postgresql-devel
         golang
     )
 
-    if [[ "$INSTALL_POSTGRES_SERVER" == "true" ]]; then
-        packages+=(postgresql-server postgresql-contrib postgis)
+    sudo_cmd "$package_manager" install -y "${packages[@]}"
+
+    if ! command -v psql >/dev/null 2>&1; then
+        install_first_available_package "$package_manager" postgresql16 postgresql15 postgresql14 postgresql
     fi
 
-    sudo_cmd "$package_manager" install -y "${packages[@]}"
+    if [[ "$INSTALL_POSTGRES_SERVER" == "true" ]]; then
+        install_first_available_package "$package_manager" postgresql16-server postgresql15-server postgresql14-server postgresql-server
+
+        if ! sudo_cmd "$package_manager" install -y postgis; then
+            log "PostGIS package was not available from enabled repositories; install it manually for the PostgreSQL server you use."
+        fi
+    fi
 }
 
 install_system_deps() {
