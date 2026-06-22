@@ -18,7 +18,18 @@ const WIKI_SECTIONS = [
     sources: [
       { label: "arXiv AI", url: "https://export.arxiv.org/rss/cs.AI" },
       { label: "Google AI", url: "https://blog.google/technology/ai/rss/" },
+      { label: "Simon Willison Blog", url: "https://simonwillison.net/atom/everything/" },
+      { label: "Hugging Face Blog", url: "https://huggingface.co/blog/feed.xml" },
+      { label: "Latent Space", url: "https://www.latent.space/feed" },
+      { label: "Import AI", url: "https://importai.substack.com/feed" },
+      { label: "The Batch by DeepLearning.AI", url: "https://www.deeplearning.ai/the-batch/feed/" },
       { label: "OpenAI", url: "https://openai.com/news/rss.xml" },
+      { label: "Anthropic News", url: "https://www.anthropic.com/news/rss.xml" },
+      { label: "InfoQ AI/ML", url: "https://feed.infoq.com/AI-ML-Data-Engineering" },
+      { label: "LlamaIndex Blog", url: "https://www.llamaindex.ai/blog/rss.xml" },
+      { label: "LangChain Blog", url: "https://blog.langchain.com/rss/" },
+      { label: "a16z AI", url: "https://a16z.news/feed" },
+      { label: "Papers with Code Trending", url: "https://paperswithcode.com/rss.xml" },
     ],
   },
   {
@@ -27,16 +38,19 @@ const WIKI_SECTIONS = [
     sources: [
       { label: "GitHub Blog", url: "https://github.blog/feed/" },
       { label: "CNCF", url: "https://www.cncf.io/feed/" },
-      { label: "Hacker News", url: "https://hnrss.org/frontpage" },
+      { label: "Hacker News Front Page RSS", url: "https://hnrss.org/frontpage" },
+      { label: "GitHub Trending RSS", url: "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml" },
     ],
   },
   {
     id: "entrepreneurship",
     title: "Entrepreneurship",
     sources: [
-      { label: "Y Combinator", url: "https://www.ycombinator.com/blog/feed" },
-      { label: "a16z", url: "https://a16z.com/feed/" },
-      { label: "First Round Review", url: "https://review.firstround.com/feed.xml" },
+      { label: "Y Combinator Blog", url: "https://www.ycombinator.com/blog/rss.xml" },
+      { label: "TechCrunch Startups", url: "https://techcrunch.com/category/startups/feed/" },
+      { label: "Lenny's Newsletter", url: "https://www.lennysnewsletter.com/feed" },
+      { label: "Sequoia Capital Blog", url: "https://www.sequoiacap.com/feed/" },
+      { label: "Paul Graham Essays", url: "https://paulgraham.com/index.xml" },
     ],
   },
 ];

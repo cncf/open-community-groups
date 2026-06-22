@@ -23,7 +23,7 @@ use crate::{
 };
 
 const WIKI_URL: &str = "/wiki";
-const MAX_LINKS_PER_SECTION: usize = 9;
+const MAX_LINKS_PER_SECTION: usize = 24;
 const MAX_LINKS_PER_SOURCE: usize = 4;
 
 #[derive(Debug, Clone, Copy)]
@@ -51,8 +51,52 @@ const AI_SOURCES: &[FeedSource] = &[
         url: "https://blog.google/technology/ai/rss/",
     },
     FeedSource {
+        label: "Simon Willison Blog",
+        url: "https://simonwillison.net/atom/everything/",
+    },
+    FeedSource {
+        label: "Hugging Face Blog",
+        url: "https://huggingface.co/blog/feed.xml",
+    },
+    FeedSource {
+        label: "Latent Space",
+        url: "https://www.latent.space/feed",
+    },
+    FeedSource {
+        label: "Import AI",
+        url: "https://importai.substack.com/feed",
+    },
+    FeedSource {
+        label: "The Batch by DeepLearning.AI",
+        url: "https://www.deeplearning.ai/the-batch/feed/",
+    },
+    FeedSource {
         label: "OpenAI",
         url: "https://openai.com/news/rss.xml",
+    },
+    FeedSource {
+        label: "Anthropic News",
+        url: "https://www.anthropic.com/news/rss.xml",
+    },
+    FeedSource {
+        label: "InfoQ AI/ML",
+        url: "https://feed.infoq.com/AI-ML-Data-Engineering",
+    },
+    FeedSource {
+        label: "LlamaIndex Blog",
+        url: "https://www.llamaindex.ai/blog/rss.xml",
+    },
+    FeedSource {
+        label: "LangChain Blog",
+        url: "https://blog.langchain.com/rss/",
+    },
+    FeedSource {
+        label: "a16z AI",
+        url: "https://a16z.news/feed",
+    },
+    FeedSource {
+        label: "Papers with Code Trending",
+        url: "https://paperswithcode.com/rss.xml",
     },
 ];
 
@@ -66,23 +110,35 @@ const OPEN_SOURCE_SOURCES: &[FeedSource] = &[
         url: "https://www.cncf.io/feed/",
     },
     FeedSource {
-        label: "Hacker News",
+        label: "Hacker News Front Page RSS",
         url: "https://hnrss.org/frontpage",
+    },
+    FeedSource {
+        label: "GitHub Trending RSS",
+        url: "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
     },
 ];
 
 const ENTREPRENEURSHIP_SOURCES: &[FeedSource] = &[
     FeedSource {
-        label: "Y Combinator",
-        url: "https://www.ycombinator.com/blog/feed",
+        label: "Y Combinator Blog",
+        url: "https://www.ycombinator.com/blog/rss.xml",
     },
     FeedSource {
-        label: "a16z",
-        url: "https://a16z.com/feed/",
+        label: "TechCrunch Startups",
+        url: "https://techcrunch.com/category/startups/feed/",
     },
     FeedSource {
-        label: "First Round Review",
-        url: "https://review.firstround.com/feed.xml",
+        label: "Lenny's Newsletter",
+        url: "https://www.lennysnewsletter.com/feed",
+    },
+    FeedSource {
+        label: "Sequoia Capital Blog",
+        url: "https://www.sequoiacap.com/feed/",
+    },
+    FeedSource {
+        label: "Paul Graham Essays",
+        url: "https://paulgraham.com/index.xml",
     },
 ];
 
