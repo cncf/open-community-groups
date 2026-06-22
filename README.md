@@ -403,6 +403,32 @@ Format and lint frontend/template code:
 just frontend-fmt-and-lint
 ```
 
+### GitHub Actions CI/CD
+
+Pull requests to `main` run the relevant CI jobs based on changed paths:
+
+- Rust formatting, clippy, and tests for server changes.
+- Database migrations, pgTAP tests, and Rust database contract tests for
+  database changes.
+- Frontend unit tests and formatting checks for browser JavaScript changes.
+- MCP syntax and tool catalog validation for files under `mcp/`.
+- Playwright e2e suites when app, database, or e2e files change.
+
+Pushes to `main` publish Docker images to GitHub Container Registry under this
+repository:
+
+```text
+ghcr.io/sakomws/goup.vc/server
+ghcr.io/sakomws/goup.vc/redirector
+ghcr.io/sakomws/goup.vc/dbmigrator
+```
+
+Images are tagged with `sha-<commit>` and `latest` on `main`. The workflow uses
+the built-in `GITHUB_TOKEN`; no Oracle/OCI registry secrets are required.
+
+The production EC2 deployment is still updated by pulling from Git and
+restarting systemd services, as documented below.
+
 ### Common Development Workflow
 
 For a fresh local checkout:
@@ -491,6 +517,13 @@ Restart the deployed service after a successful build:
 ```bash
 sudo systemctl restart ocg-server
 sudo systemctl status ocg-server --no-pager
+```
+
+If files under `mcp/` changed, restart the remote MCP service too:
+
+```bash
+sudo systemctl restart goup-mcp
+sudo systemctl status goup-mcp --no-pager
 ```
 
 ### Troubleshooting

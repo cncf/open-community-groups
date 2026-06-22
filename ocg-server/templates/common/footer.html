@@ -1,43 +1,154 @@
 {# Footer -#}
-<footer class="flex-none bg-stone-950 text-center text-white text-surface/75 lg:text-left"
+<footer class="relative flex-none overflow-hidden bg-stone-950 text-white"
         role="contentinfo"
         aria-label="Site footer">
-  <div class="px-8 py-7 lg:px-16 lg:py-12">
-    <div class="pb-8 sm:pb-10 text-center md:text-left">
-      <div class="flex flex-col justify-between items-center gap-6 md:flex-row">
-        {# Footer logo -#}
+  <div class="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary-400/70 to-transparent"></div>
+  <div class="absolute -top-32 right-0 h-72 w-72 rounded-full bg-primary-500/15 blur-3xl"></div>
+  <div class="absolute -bottom-40 left-8 h-80 w-80 rounded-full bg-sky-400/10 blur-3xl"></div>
+
+  <div class="relative mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:px-16 lg:py-16">
+    <div class="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-16">
+      {# Brand section -#}
+      <div class="max-w-xl">
         {% if let Some(footer_logo_url) = &self.site_settings.footer_logo_url -%}
-          <div class="inline-flex">
-            <img class="w-auto max-w-[518px] h-[48px]"
+          <a href="/"
+             class="inline-flex rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300"
+             aria-label="{{ site_settings.title }} home">
+            <img class="h-12 w-auto max-w-[260px] object-contain sm:max-w-[360px]"
                  width="auto"
                  height="48"
                  data-ocg-broken-image-bg-class="bg-stone-950"
                  src="{{ footer_logo_url }}"
                  alt="{{ site_settings.title }} footer logo" />
-          </div>
+          </a>
+        {% else -%}
+          <a href="/"
+             class="inline-flex items-center rounded-2xl text-2xl font-black tracking-tight text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300">
+            {{ site_settings.title }}
+          </a>
         {% endif -%}
-        {# End footer logo -#}
 
-        {# GitHub link -#}
-        <a href="https://github.com/sakomws/goup.vc"
-           target="_blank"
-           rel="noopener noreferrer"
-           class="group p-2 flex items-center justify-center rounded-lg hover:bg-stone-800 transition-colors"
-           title="GitHub">
-          <div class="svg-icon size-6 bg-white icon-github"></div>
-        </a>
-        {# End GitHub link -#}
+        <p class="mt-5 max-w-lg text-sm leading-6 text-stone-300 sm:text-base">
+          A home for builders, founders, and open source communities to discover groups,
+          host events, share opportunities, and grow the GOUP Alliance.
+        </p>
+
+        <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+          <a href="/explore?alliance[0]=goup&entity=events"
+             hx-boost="true"
+             hx-target="body"
+             class="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-stone-950 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300">
+            Explore events
+          </a>
+          <a href="/dashboard"
+             hx-boost="true"
+             hx-target="body"
+             class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300">
+            Open dashboard
+          </a>
+        </div>
       </div>
+      {# End brand section -#}
+
+      {# Navigation section -#}
+      <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
+        <div>
+          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Explore</h2>
+          <ul class="mt-4 space-y-3 text-sm">
+            <li>
+              <a href="/explore?alliance[0]=goup&entity=events"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Events</a>
+            </li>
+            <li>
+              <a href="/explore?alliance[0]=goup&entity=groups"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Groups</a>
+            </li>
+            <li>
+              <a href="/landscape"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Landscape</a>
+            </li>
+            <li>
+              <a href="/stats"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Stats</a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Resources</h2>
+          <ul class="mt-4 space-y-3 text-sm">
+            <li>
+              <a href="/jobs"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Jobs</a>
+            </li>
+            <li>
+              <a href="/wiki"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Wiki</a>
+            </li>
+            <li>
+              <a href="https://github.com/sakomws/gitjobs"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="inline-flex items-center gap-1.5 text-stone-300 transition hover:text-white">
+                GitJobs
+                <span class="svg-icon size-3 icon-external-link bg-current"></span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="col-span-2 sm:col-span-1">
+          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Connect</h2>
+          <div class="mt-4 flex items-center gap-3">
+            <a href="https://github.com/sakomws/goup.vc"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="group inline-flex size-11 items-center justify-center rounded-full border border-white/15 bg-white/5 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300"
+               title="GOUP on GitHub"
+               aria-label="GOUP on GitHub">
+              <div class="svg-icon size-5 bg-stone-200 icon-github transition group-hover:bg-white"></div>
+            </a>
+            <a href="https://www.linkedin.com/company/goupaz"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="group inline-flex size-11 items-center justify-center rounded-full border border-white/15 bg-white/5 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300"
+               title="GOUP on LinkedIn"
+               aria-label="GOUP on LinkedIn">
+              <div class="svg-icon size-5 bg-stone-200 icon-linkedin transition group-hover:bg-white"></div>
+            </a>
+          </div>
+          <p class="mt-4 text-sm leading-6 text-stone-400">
+            Open source, alliance-driven, and built for communities that ship.
+          </p>
+        </div>
+      </div>
+      {# End navigation section -#}
     </div>
 
     {# Copyright section -#}
-    <div class="pt-8 border-solid border-0 border-t border-stone-800 text-xs text-stone-300">
-      {% if let Some(copyright_notice) = &self.site_settings.copyright_notice -%}
-        <div class="mb-4 copyright">{{ copyright_notice|md_to_html|safe }}</div>
-      {% endif -%}
+    <div class="mt-12 flex flex-col gap-4 border-0 border-t border-solid border-white/10 pt-6 text-sm text-stone-400 md:flex-row md:items-center md:justify-between">
+      <div>
+        {% if let Some(copyright_notice) = &self.site_settings.copyright_notice -%}
+          <div class="copyright">{{ copyright_notice|md_to_html|safe }}</div>
+        {% else -%}
+          <p>{{ site_settings.title }}. All rights reserved.</p>
+        {% endif -%}
+      </div>
       <p>
         Powered by <a href="https://github.com/sakomws/goup.vc"
-    class="font-bold text-white"
+    class="font-bold text-white underline decoration-white/20 underline-offset-4 transition hover:decoration-white"
     target="_blank"
     rel="noopener noreferrer">GOUP Alliance</a>.
       </p>
