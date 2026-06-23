@@ -12,3 +12,5 @@ Chart.lock
 chart/charts
 ocg-server/dist
 ocg-server/static/css/styles.css
+.config/ocg/server.yml
+.config/ocg/tern.conf
