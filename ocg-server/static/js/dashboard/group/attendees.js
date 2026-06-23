@@ -588,6 +588,24 @@ const readRecipientFromElement = (element) => {
 const getSelectedEmailRecipients = () => Array.from(attendeeEmailSelectionState.selectedRecipients.values());
 
 /**
+ * Read one submitted HTMX parameter from FormData, URLSearchParams, or a plain object.
+ * @param {FormData|URLSearchParams|Object|null|undefined} parameters Submitted parameters.
+ * @param {string} name Parameter name.
+ * @returns {string} Submitted parameter value.
+ */
+const readSubmittedParameter = (parameters, name) => {
+  if (!parameters) {
+    return "";
+  }
+
+  if (typeof parameters.get === "function") {
+    return parameters.get(name) || "";
+  }
+
+  return parameters[name] || "";
+};
+
+/**
  * Build hidden recipient fields for selected notification sends.
  * @param {Document|Element} root Query root.
  * @param {Array<Object>} recipients Selected recipients.
@@ -898,8 +916,12 @@ const initializeAttendeeNotification = (root = document) => {
       return;
     }
 
-    const { recipientScope } = getAttendeeNotificationControls(root);
-    const scope = recipientScope?.value === "selected" ? "selected" : "all";
+    const submittedRecipientScope = requestTarget.elements.namedItem("recipient_scope");
+    const submittedScope =
+      readSubmittedParameter(event.detail?.requestConfig?.parameters, "recipient_scope") ||
+      readSubmittedParameter(event.detail?.parameters, "recipient_scope") ||
+      (submittedRecipientScope instanceof HTMLInputElement ? submittedRecipientScope.value : "");
+    const scope = submittedScope === "selected" ? "selected" : "all";
     const ok = handleHtmxResponse({
       xhr: event.detail?.xhr,
       successMessage:
