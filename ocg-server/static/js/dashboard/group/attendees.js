@@ -558,6 +558,8 @@ const getAttendeeEmailSelectionControls = (root) => ({
   clear: root.querySelector?.("[data-attendee-email-selection-clear]"),
   columns: root.querySelectorAll?.("[data-attendee-email-selection-column]") || [],
   count: root.querySelector?.("[data-attendee-email-selection-count]"),
+  headerSend: getElementById(root, "attendee-email-actions-button"),
+  label: root.querySelector?.("[data-attendee-email-selection-label]"),
   send: root.querySelector?.("[data-attendee-email-selection-send]"),
   start: root.querySelector?.("[data-attendee-email-selection-start]"),
 });
@@ -759,7 +761,8 @@ const syncEmailSelectionCheckboxes = (root) => {
  * @returns {void}
  */
 const renderEmailSelectionState = (root) => {
-  const { bar, checkboxes, columns, count, send, start } = getAttendeeEmailSelectionControls(root);
+  const { bar, checkboxes, columns, count, headerSend, label, send, start } =
+    getAttendeeEmailSelectionControls(root);
   const currentEventId = start?.dataset.eventId || "";
 
   if (
@@ -781,8 +784,20 @@ const renderEmailSelectionState = (root) => {
   if (count) {
     count.textContent = String(selectedCount);
   }
+  if (label) {
+    label.textContent = selectedCount === 1 ? "attendee selected" : "attendees selected";
+  }
   if (send) {
     send.disabled = !active || selectedCount === 0;
+  }
+  if (headerSend) {
+    if (!("emailSelectionBaseDisabled" in headerSend.dataset)) {
+      headerSend.dataset.emailSelectionBaseDisabled = headerSend.disabled ? "true" : "false";
+    }
+    const baseDisabled = headerSend.dataset.emailSelectionBaseDisabled === "true";
+    headerSend.disabled = baseDisabled || active;
+    headerSend.classList.toggle("opacity-50", baseDisabled || active);
+    headerSend.classList.toggle("cursor-not-allowed", baseDisabled || active);
   }
   if (!active) {
     checkboxes.forEach((checkbox) => {
@@ -1042,7 +1057,7 @@ const initializeAttendeeActionsMenu = (root = document) => {
     }
 
     const emailTrigger = closestElementWithinRoot(event.target, "#attendee-email-actions-button", root);
-    if (emailTrigger instanceof HTMLElement) {
+    if (emailTrigger instanceof HTMLButtonElement && !emailTrigger.disabled) {
       event.stopPropagation();
       closeAttendeeActionsDropdown(root);
       closeAttendeeRowActionMenus(root);

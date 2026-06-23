@@ -1297,19 +1297,20 @@ test.describe("group dashboard attendees tab", () => {
       "[data-attendee-email-selection-checkbox]",
     );
     const selectionSendButton = selectionBar.getByRole("button", {
-      name: "Send email",
+      name: "Continue to email",
     });
 
     // Verify selection mode starts empty and cannot send without a selection.
     await expect(selectionBar).toBeVisible();
-    await expect(selectionBar).toContainText("0 selected for email");
+    await expect(selectionBar).toContainText("0 attendees selected");
+    await expect(openEmailActionsButton).toBeDisabled();
     await expect(selectionSendButton).toBeDisabled();
     await expect(selectionCheckboxes).toHaveCount(1);
     await expect(selectionCheckboxes).toBeVisible();
 
     // Select the eligible attendee and open the email modal.
     await selectionCheckboxes.check();
-    await expect(selectionBar).toContainText("1 selected for email");
+    await expect(selectionBar).toContainText("1 attendee selected");
     await expect(selectionSendButton).toBeEnabled();
 
     await selectionSendButton.click();
@@ -1332,6 +1333,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(modal).toBeHidden();
     await selectionBar.getByRole("button", { name: "Cancel" }).click();
     await expect(selectionBar).toBeHidden();
+    await expect(openEmailActionsButton).toBeEnabled();
   });
 
   test("organizer can send an attendee email to selected attendees", async ({
@@ -1363,7 +1365,7 @@ test.describe("group dashboard attendees tab", () => {
     // Select the eligible attendee and open the email modal.
     await expect(selectionCheckboxes).toHaveCount(1);
     await selectionCheckboxes.check();
-    await selectionBar.getByRole("button", { name: "Send email" }).click();
+    await selectionBar.getByRole("button", { name: "Continue to email" }).click();
 
     // Verify the email modal is configured for selected recipients.
     const modal = organizerGroupPage.locator("#attendee-notification-modal");

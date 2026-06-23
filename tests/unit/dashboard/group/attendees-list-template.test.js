@@ -87,9 +87,20 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-start");
     expect(template).to.include("data-attendee-email-selection-bar");
     expect(template).to.include("data-attendee-email-selection-count");
+    expect(template).to.include("<span data-attendee-email-selection-count>0</span>");
+    expect(template).to.include(
+      "<span data-attendee-email-selection-label>attendees selected</span>",
+    );
+    expect(template).not.to.include(
+      "Only attendees eligible for optional email notifications can be selected.",
+    );
     expect(template).to.include("data-attendee-email-selection-column");
     expect(template).to.include("data-attendee-email-selection-checkbox");
+    expect(template).to.include('class="checkbox-primary"');
     expect(template).to.include("attendee.can_receive_attendee_email");
+    expect(template).to.include('class="btn-primary-outline btn-mini h-7!"');
+    expect(template).to.include('class="btn-primary btn-mini h-7!"');
+    expect(template).to.include("Continue to email");
     expect(template).to.include('data-notification-scope="selected"');
     expect(template).to.include('id="attendee-notification-recipient-scope"');
     expect(template).to.include('id="attendee-notification-selected-fields"');

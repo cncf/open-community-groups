@@ -77,9 +77,10 @@ describe("dashboard group attendees", () => {
       </div>
       <div data-attendee-email-selection-bar class="hidden">
         <span data-attendee-email-selection-count>0</span>
+        <span data-attendee-email-selection-label>attendees selected</span>
         <button type="button" data-attendee-email-selection-clear>Clear</button>
         <button type="button" data-attendee-email-selection-cancel>Cancel</button>
-        <button type="button" data-attendee-email-selection-send disabled>Send email</button>
+        <button type="button" data-attendee-email-selection-send disabled>Continue to email</button>
       </div>
       <table>
         <thead>
@@ -398,10 +399,13 @@ describe("dashboard group attendees", () => {
     const bar = document.querySelector("[data-attendee-email-selection-bar]");
     const column = document.querySelector("[data-attendee-email-selection-column]");
     const checkbox = document.querySelector("[data-attendee-email-selection-checkbox]");
+    const headerSend = document.getElementById("attendee-email-actions-button");
     expect(dropdown.classList.contains("hidden")).to.equal(true);
     expect(bar.classList.contains("hidden")).to.equal(false);
     expect(column.classList.contains("hidden")).to.equal(false);
     expect(document.activeElement).to.equal(checkbox);
+    expect(headerSend?.textContent).to.equal("Send email");
+    expect(headerSend?.disabled).to.equal(true);
     expect(document.querySelector("[data-attendee-email-selection-send]")?.disabled).to.equal(true);
   });
 
@@ -479,6 +483,9 @@ describe("dashboard group attendees", () => {
     initialCheckbox.checked = true;
     initialCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
     expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("1");
+    expect(document.querySelector("[data-attendee-email-selection-label]")?.textContent).to.equal(
+      "attendee selected",
+    );
 
     // Swap in a refreshed table page for the same event.
     const attendeesRoot = document.getElementById("attendees-content");
@@ -546,6 +553,9 @@ describe("dashboard group attendees", () => {
     expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
     expect(document.querySelector("[data-attendee-email-selection-checkbox]")?.checked).to.equal(false);
     expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("0");
+    expect(document.querySelector("[data-attendee-email-selection-label]")?.textContent).to.equal(
+      "attendees selected",
+    );
   });
 
   it("clears and cancels attendee email selection", () => {
@@ -581,6 +591,7 @@ describe("dashboard group attendees", () => {
 
     expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
     expect(checkbox.checked).to.equal(false);
+    expect(document.getElementById("attendee-email-actions-button")?.disabled).to.equal(false);
     expect(document.activeElement).to.equal(document.getElementById("attendee-email-actions-button"));
   });
 
