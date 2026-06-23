@@ -358,7 +358,10 @@ async fn test_log_in_success() {
         .returning(|_| Ok(()));
     db.expect_create_session()
         .times(1)
-        .withf(move |record| session_record_contains_selected_group(record, group_id))
+        .withf(move |record| {
+            session_record_contains_auth_provider(record, AUTH_PROVIDER_EMAIL)
+                && session_record_contains_selected_group(record, group_id)
+        })
         .returning(|_| Ok(()));
     db.expect_list_user_groups()
         .times(1)
@@ -838,6 +841,7 @@ async fn test_oauth2_callback_success() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
@@ -846,6 +850,10 @@ async fn test_oauth2_callback_success() {
         &HeaderValue::from_static("/dashboard"),
     );
     assert!(callback_auth.login_called);
+    assert_eq!(
+        auth_provider.as_deref(),
+        Some(OAuth2Provider::GitHub.as_ref())
+    );
     assert_eq!(selected_community_id, Some(community_id));
     assert_eq!(selected_group_id, Some(group_id));
 }
@@ -1165,7 +1173,7 @@ async fn test_oidc_callback_authorization_error() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
-    let auth_provider: Option<OidcProvider> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
@@ -1238,7 +1246,7 @@ async fn test_oidc_callback_success() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
-    let auth_provider: Option<OidcProvider> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
@@ -1247,7 +1255,10 @@ async fn test_oidc_callback_success() {
         &HeaderValue::from_static("/dashboard"),
     );
     assert!(callback_auth.login_called);
-    assert_eq!(auth_provider, Some(OidcProvider::LinuxFoundation));
+    assert_eq!(
+        auth_provider.as_deref(),
+        Some(OidcProvider::LinuxFoundation.as_ref())
+    );
     assert_eq!(selected_community_id, Some(community_id));
     assert_eq!(selected_group_id, Some(group_id));
 }
@@ -4880,4 +4891,8 @@ impl CallbackAuth for MockCallbackAuth {
             .take()
             .expect("callback login result should be configured in tests")
     }
+}
+
+fn session_record_contains_auth_provider(record: &session::Record, provider: &str) -> bool {
+    record.data.get(AUTH_PROVIDER_KEY).and_then(|value| value.as_str()) == Some(provider)
 }

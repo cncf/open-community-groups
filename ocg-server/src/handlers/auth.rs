@@ -49,6 +49,9 @@ mod tests;
 /// Key used to store the authentication provider in the session.
 pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 
+/// Session value for password authentication.
+pub(crate) const AUTH_PROVIDER_EMAIL: &str = "email";
+
 /// URL for the log in page.
 pub(crate) const LOG_IN_URL: &str = "/log-in";
 
@@ -215,6 +218,9 @@ pub(crate) async fn log_in(
 
     // Select the first community and group as selected in the session
     select_first_community_and_group(&db, &session, &user.user_id).await?;
+
+    // Track auth provider in the session
+    track_auth_provider(&session, AUTH_PROVIDER_EMAIL).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -535,7 +541,7 @@ where
     let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
-    let user = match auth.authenticate_oauth2(code, provider).await {
+    let user = match auth.authenticate_oauth2(code, provider.clone()).await {
         Ok(Some(user)) => user,
         Ok(None) => {
             on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
@@ -552,6 +558,9 @@ where
 
     // Select the first community and group as selected in the session
     select_first_community_and_group(db, &session, &user.user_id).await?;
+
+    // Track auth provider in the session
+    track_auth_provider(&session, provider.as_ref()).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -617,7 +626,7 @@ where
     select_first_community_and_group(db, &session, &user.user_id).await?;
 
     // Track auth provider in the session
-    session.insert(AUTH_PROVIDER_KEY, provider).await?;
+    track_auth_provider(&session, provider.as_ref()).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -1195,5 +1204,11 @@ pub(crate) async fn sync_selected_community_and_group(
         session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
     }
 
+    Ok(())
+}
+
+/// Stores the authentication provider used for the current login.
+async fn track_auth_provider(session: &Session, provider: &str) -> Result<(), HandlerError> {
+    session.insert(AUTH_PROVIDER_KEY, provider).await?;
     Ok(())
 }
