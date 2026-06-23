@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,7 @@ select plan(9);
 \set eventPendingCheckoutID '3a2e0000-0000-0000-0000-000000000026'
 \set eventQuestionsID '3a2e0000-0000-0000-0000-000000000008'
 \set eventRefundRequest2ID '3a2e0000-0000-0000-0000-000000000009'
+\set eventStopwordSearchID '3a2e0000-0000-0000-0000-000000000028'
 \set eventTicketType1ID '3a2e0000-0000-0000-0000-000000000010'
 \set eventTicketType2ID '3a2e0000-0000-0000-0000-000000000011'
 \set eventTicketTypePendingCheckoutID '3a2e0000-0000-0000-0000-000000000027'
@@ -36,6 +37,7 @@ select plan(9);
 \set user4ID '3a2e0000-0000-0000-0000-000000000021'
 \set user5ID '3a2e0000-0000-0000-0000-000000000022'
 \set user6ID '3a2e0000-0000-0000-0000-000000000023'
+\set userStopwordSearchID '3a2e0000-0000-0000-0000-000000000029'
 
 -- ============================================================================
 -- SEED DATA
@@ -185,6 +187,18 @@ values (
     null,
     'registered',
     null
+), (
+    :'userStopwordSearchID',
+    gen_random_bytes(32),
+    'may@example.com',
+    true,
+    true,
+    'may',
+    null,
+    'May',
+    null,
+    'registered',
+    null
 );
 
 -- Events
@@ -233,6 +247,19 @@ values (
     'Pending Checkout Event',
     'pending-checkout-event',
     'An event with an active pending checkout',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'USD',
+    true,
+    false,
+    false
+), (
+    :'eventStopwordSearchID',
+    'Stopword Search Event',
+    'stopword-search-event',
+    'An event with an attendee whose name looks like a stop word',
     'UTC',
     :'eventCategoryID',
     'in-person',
@@ -378,6 +405,14 @@ insert into event_attendee (
     true,
     '2024-01-03 15:00:00+00',
     '2024-01-03 00:00:00+00',
+    false,
+    'confirmed'
+), (
+    :'eventStopwordSearchID',
+    :'userStopwordSearchID',
+    false,
+    null,
+    '2024-01-08 00:00:00+00',
     false,
     'confirmed'
 );
@@ -586,6 +621,94 @@ select is(
         'total', 0
     ),
     'Should return empty list when event belongs to another group'
+);
+
+-- Should filter attendees by identity search query without changing all-recipient count
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'ali'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and (data->>'all_attendees_email_recipient_total')::int = 2
+        and data#>>'{attendees,0,user_id}' = :'user1ID'
+        from result
+    ),
+    'Should filter attendees by identity search query without changing all-recipient count'
+);
+
+-- Should filter attendees whose names look like stop words
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'eventStopwordSearchID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'may'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and (data->>'all_attendees_email_recipient_total')::int = 1
+        and data#>>'{attendees,0,user_id}' = :'userStopwordSearchID'
+        from result
+    ),
+    'Should filter attendees whose names look like stop words'
+);
+
+-- Should filter attendees by company search query
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'cloud corp'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and (data->>'all_attendees_email_recipient_total')::int = 2
+        and data#>>'{attendees,0,user_id}' = :'user1ID'
+        from result
+    ),
+    'Should filter attendees by company search query'
+);
+
+-- Should filter attendees by title search query
+select ok(
+    (
+        with result as (
+            select search_event_attendees(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'principal engineer'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and (data->>'all_attendees_email_recipient_total')::int = 2
+        and data#>>'{attendees,0,user_id}' = :'user1ID'
+        from result
+    ),
+    'Should filter attendees by title search query'
 );
 
 -- Should exclude active pending checkout holds from email recipient eligibility

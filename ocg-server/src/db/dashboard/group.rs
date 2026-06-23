@@ -16,7 +16,7 @@ use crate::{
         audit::{AuditLogFilters, AuditLogsOutput},
         group::{
             analytics::GroupDashboardStats,
-            attendees::{AttendeesFilters, AttendeesOutput},
+            attendees::{AttendeesOutput, SearchEventAttendeesFilters},
             events::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
@@ -333,7 +333,7 @@ pub(crate) trait DBDashboardGroup {
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &AttendeesFilters,
+        filters: &SearchEventAttendeesFilters,
     ) -> Result<AttendeesOutput>;
 
     /// Searches invitation requests for a group's event using filters.
@@ -1091,7 +1091,7 @@ where
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &AttendeesFilters,
+        filters: &SearchEventAttendeesFilters,
     ) -> Result<AttendeesOutput> {
         self.fetch_json_one(
             "select search_event_attendees($1::uuid, $2::jsonb)",

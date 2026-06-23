@@ -818,6 +818,7 @@ select columns_are('user', array[
     'created_at',
     'email',
     'email_verified',
+    'tsdoc',
     'username',
 
     'bio',

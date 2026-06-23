@@ -2,16 +2,53 @@
 {% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
-{% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
 {# Refresh attendees with the current page after attendee actions -#}
 <div id="attendees-refresh"
-     hx-get="/dashboard/group/events/{{ event.event_id }}/attendees?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
+     hx-get="{{ refresh_url }}"
      hx-trigger="refresh-event-attendees from:body"
      hx-target="#attendees-content"
      hx-swap="innerHTML"></div>
 {# End attendees refresh trigger -#}
+
+{# Filters -#}
+<div class="my-5">
+  <div class="relative w-full sm:w-96">
+    <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+      <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+    </div>
+    <form id="attendees-search-form"
+          hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+          hx-trigger="change, submit"
+          hx-target="#attendees-content"
+          hx-swap="innerHTML"
+          hx-indicator="#dashboard-spinner">
+      <input id="search_attendees"
+             name="ts_query"
+             type="text"
+             value="{{ ts_query|assigned_or("") }}"
+             class="input-primary peer ps-9 w-full"
+             placeholder="Search attendees"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false">
+    </form>
+    <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+      <button hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+              hx-trigger="click"
+              hx-target="#attendees-content"
+              hx-swap="innerHTML"
+              hx-indicator="#dashboard-spinner"
+              class="cursor-pointer mt-0.5"
+              aria-label="Clear attendee search">
+        <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+      </button>
+    </div>
+  </div>
+</div>
+{# End filters -#}
 
 {# Header actions -#}
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
@@ -211,12 +248,26 @@
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
-            {% include "dashboard/placeholders/group_attendees_empty.html" -%}
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_attendees_empty.html" -%}
+            {% endif -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
-              colspan="5">{% include "dashboard/placeholders/group_attendees_empty.html" -%}</td>
+              colspan="5">
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_attendees_empty.html" -%}
+            {% endif -%}
+          </td>
           <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
-            {% include "dashboard/placeholders/group_attendees_empty.html" -%}
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_attendees_empty.html" -%}
+            {% endif -%}
           </td>
         </tr>
         {# End empty state -#}

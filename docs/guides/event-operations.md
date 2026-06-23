@@ -455,12 +455,13 @@ company, title, and whether the confirmed attendee was manually invited; `Attend
 adds one column per registration question. Row actions also include `View answers` when an attendee
 has submitted registration answers.
 
-`Send email` in this tab sends operational updates to attendees who receive optional notifications.
-Organizers can send to all eligible attendees, including confirmed attendees and attendees who still
-need to complete registration questions, or enter email selection mode to choose eligible attendees
-directly from the table. Eligible attendee rows also include `Send email` for starting with that
-attendee selected. The email form includes a required `Subject`, defaults it to
-`{group name}: {event name}`, and sends the message body as plain text.
+The attendees table can be searched by attendee identity and visible profile details, including
+company and title. `Send email` in this tab sends operational updates to attendees who receive
+optional notifications. Organizers can send to all eligible attendees, including confirmed
+attendees and attendees who still need to complete registration questions, or enter email selection
+mode to choose eligible attendees directly from the table. Eligible attendee rows also include
+`Send email` for starting with that attendee selected. The email form includes a required
+`Subject`, defaults it to `{group name}: {event name}`, and sends the message body as plain text.
 
 ![Event attendees](../screenshots/dashboard-group-event-attendees.png)
 

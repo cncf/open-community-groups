@@ -29,7 +29,7 @@ use crate::{
             audit::AuditLogFilters,
             community::team::CommunityTeamFilters,
             group::{
-                attendees::AttendeesFilters,
+                attendees::SearchEventAttendeesFilters,
                 events::{Event as EventUpdate, EventsListFilters},
                 invitation_requests::InvitationRequestsFilters,
                 members::GroupMembersFilters,
@@ -1347,10 +1347,11 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let filters = AttendeesFilters {
+    let filters = SearchEventAttendeesFilters {
         event_id: event_id(),
         limit: Some(10),
         offset: Some(0),
+        ts_query: None,
     };
     let output = db.search_event_attendees(group_id(), &filters).await?;
 

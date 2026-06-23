@@ -15,7 +15,7 @@ use crate::{
         payments::{EventRefundRequestStatus, format_amount_minor},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
     },
-    validation::MAX_PAGINATION_LIMIT,
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -34,6 +34,8 @@ pub(crate) struct ListPage {
     pub event: EventSummary,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
+    /// URL used to refresh the attendee list with the current filters.
+    pub refresh_url: String,
     /// Registration questions configured for the event.
     #[serde(default)]
     pub registration_questions: Vec<QuestionnaireQuestion>,
@@ -44,6 +46,8 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Text search query used to filter attendees.
+    pub ts_query: Option<String>,
 }
 
 // Types.
@@ -96,10 +100,10 @@ pub struct Attendee {
     pub title: Option<String>,
 }
 
-/// Filter parameters for attendee pagination URLs.
+/// Filter parameters for attendee list page URLs.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct AttendeesPaginationFilters {
+pub(crate) struct AttendeesListPageFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
@@ -108,9 +112,12 @@ pub(crate) struct AttendeesPaginationFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Text search query.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
-crate::impl_pagination_and_raw_query!(AttendeesPaginationFilters, limit, offset);
+crate::impl_pagination_and_raw_query!(AttendeesListPageFilters, limit, offset);
 
 /// Paginated attendee response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -123,10 +130,10 @@ pub(crate) struct AttendeesOutput {
     pub total: usize,
 }
 
-/// Filter parameters for attendees searches.
+/// Filter parameters for the attendee search database function.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct AttendeesFilters {
+pub(crate) struct SearchEventAttendeesFilters {
     /// Selected event to scope attendees list.
     #[garde(skip)]
     pub event_id: Uuid,
@@ -139,6 +146,9 @@ pub(crate) struct AttendeesFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Search query for attendee name, username, email, company, or title.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
 // Helpers.
