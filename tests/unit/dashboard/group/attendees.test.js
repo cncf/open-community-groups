@@ -70,7 +70,7 @@ describe("dashboard group attendees", () => {
   const attendeeSelectionMarkup = ({ eventId = "event-42", recipients = [] } = {}) => `
     <div id="attendees-content">
       <button id="attendee-email-actions-button" type="button">Send email</button>
-      <div data-attendee-email-actions-dropdown class="hidden">
+      <div id="attendee-email-actions-menu" data-attendee-email-actions-dropdown class="hidden">
         <button type="button" data-attendee-email-selection-start data-event-id="${eventId}">
           Choose attendees
         </button>
@@ -184,7 +184,7 @@ describe("dashboard group attendees", () => {
       document.body.innerHTML = `
         <div id="attendees-content">
           <button id="attendee-actions-button" type="button">More</button>
-          <div data-attendee-actions-dropdown class="hidden"></div>
+          <div id="attendee-actions-menu" data-attendee-actions-dropdown class="hidden"></div>
         </div>
       `;
       dispatchHtmxLoad(document.getElementById("attendees-content"));
@@ -193,7 +193,7 @@ describe("dashboard group attendees", () => {
       document.body.innerHTML = `
         <div id="attendees-content">
           <button id="attendee-actions-button" type="button">More</button>
-          <div data-attendee-actions-dropdown class="hidden"></div>
+          <div id="attendee-actions-menu" data-attendee-actions-dropdown class="hidden"></div>
         </div>
       `;
       dispatchHtmxLoad(document.getElementById("attendees-content"));

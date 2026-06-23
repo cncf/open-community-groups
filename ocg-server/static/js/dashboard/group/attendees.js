@@ -29,6 +29,8 @@ const refundApproveButtonId = "attendee-refund-approve";
 const refundRejectButtonId = "attendee-refund-reject";
 const answersModalId = "attendee-answers-modal";
 const attendeesRootSelector = "#attendees-content";
+const attendeeActionsDropdownId = "attendee-actions-menu";
+const attendeeEmailActionsDropdownId = "attendee-email-actions-menu";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
 const attendeeEmailActionsDropdownSelector = "[data-attendee-email-actions-dropdown]";
 const attendeeRowActionsMenuSelector = "[data-attendee-row-actions-menu]";
@@ -424,7 +426,7 @@ const processRefundActionButton = (button) => {
  * @returns {void}
  */
 const closeAttendeeActionsDropdown = (root = document) => {
-  setElementHidden(root.querySelector?.(attendeeActionsDropdownSelector), true);
+  setElementHidden(getElementById(root, attendeeActionsDropdownId), true);
 };
 
 /**
@@ -433,7 +435,7 @@ const closeAttendeeActionsDropdown = (root = document) => {
  * @returns {void}
  */
 const closeAttendeeEmailActionsDropdown = (root = document) => {
-  setElementHidden(root.querySelector?.(attendeeEmailActionsDropdownSelector), true);
+  setElementHidden(getElementById(root, attendeeEmailActionsDropdownId), true);
 };
 
 /**
@@ -456,7 +458,7 @@ const closeAttendeeRowActionMenus = (root = document, exceptMenu = null) => {
  * @returns {void}
  */
 const toggleAttendeeActionsDropdown = (root = document) => {
-  const dropdown = root.querySelector?.(attendeeActionsDropdownSelector);
+  const dropdown = getElementById(root, attendeeActionsDropdownId);
   setElementHidden(dropdown, !isElementHidden(dropdown));
 };
 
@@ -466,7 +468,7 @@ const toggleAttendeeActionsDropdown = (root = document) => {
  * @returns {void}
  */
 const toggleAttendeeEmailActionsDropdown = (root = document) => {
-  const dropdown = root.querySelector?.(attendeeEmailActionsDropdownSelector);
+  const dropdown = getElementById(root, attendeeEmailActionsDropdownId);
   setElementHidden(dropdown, !isElementHidden(dropdown));
 };
 

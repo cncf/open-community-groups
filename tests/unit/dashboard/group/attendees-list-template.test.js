@@ -98,6 +98,8 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-checkbox");
     expect(template).to.include('class="checkbox-primary"');
     expect(template).to.include("attendee.can_receive_attendee_email");
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle"');
     expect(template).to.include('class="btn-primary-outline btn-mini h-7!"');
     expect(template).to.include('class="btn-primary btn-mini h-7!"');
     expect(template).to.include("Continue to email");

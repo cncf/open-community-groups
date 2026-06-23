@@ -5,7 +5,7 @@
 {% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
-{# Attendees refresh trigger -#}
+{# Refresh attendees with the current page after attendee actions -#}
 <div id="attendees-refresh"
      hx-get="/dashboard/group/events/{{ event.event_id }}/attendees?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
      hx-trigger="refresh-event-attendees from:body"
@@ -198,7 +198,7 @@
         <th scope="col" class="px-3 xl:px-5 py-3">Attendee</th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Position</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">RSVP Date</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-48">Ticket type</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48">Ticket type</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-30">Checked In</th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
           <span class="sr-only">Actions</span>
@@ -210,7 +210,7 @@
       {% if attendees.is_empty() -%}
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
-          <td class="xl:hidden px-8 py-12 text-center" colspan="4">
+          <td class="xl:hidden px-8 py-12 text-center" colspan="3">
             {% include "dashboard/placeholders/group_attendees_empty.html" -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
@@ -297,7 +297,7 @@
             {# End RSVP date -#}
 
             {# Payment -#}
-            <td class="px-3 xl:px-5 py-4 align-middle">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle">
               {% if attendee.status == "registration-questions-pending" && event.is_ticketed() -%}
                 {{ badges::invitation_badge(label = "Pending checkout", with_border = true) -}}
               {% else if attendee.status != "confirmed" -%}
