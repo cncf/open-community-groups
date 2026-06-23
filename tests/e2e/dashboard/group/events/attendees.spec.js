@@ -1155,6 +1155,9 @@ test.describe("group dashboard attendees tab", () => {
     // Assert that the answers modal can open.
     await expect(openModalButton).toBeEnabled();
     await openModalButton.click();
+    await attendeesContent
+      .getByRole("menuitem", { name: "All eligible attendees" })
+      .click();
 
     // Verify the modal opens with the default message fields.
     const modal = organizerGroupPage.locator("#attendee-notification-modal");
@@ -1163,7 +1166,7 @@ test.describe("group dashboard attendees tab", () => {
       modal.getByRole("heading", { name: "Send email" }),
     ).toBeVisible();
     await expect(
-      modal.getByText("This email will be sent to all event attendees."),
+      modal.getByText("This email will be sent to 1 eligible attendee."),
     ).toBeVisible();
     await expect(modal.locator("#attendee-subject")).toHaveValue(
       "Platform Ops Meetup: Full Event With Waitlist",
@@ -1228,6 +1231,9 @@ test.describe("group dashboard attendees tab", () => {
     // Assert that the answers modal can open.
     await expect(openModalButton).toBeEnabled();
     await openModalButton.click();
+    await attendeesContent
+      .getByRole("menuitem", { name: "All eligible attendees" })
+      .click();
 
     // Find the modal.
     const modal = organizerGroupPage.locator("#attendee-notification-modal");
