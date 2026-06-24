@@ -16,9 +16,12 @@ use crate::{
     },
     router::serde_qs_config,
     templates::dashboard::group::invitation_requests::{
-        self, InvitationRequestsFilters, InvitationRequestsPaginationFilters,
+        self, InvitationRequestsFilters, InvitationRequestsListPageFilters,
     },
-    types::{pagination::NavigationLinks, permissions::GroupPermission},
+    types::{
+        pagination::{self, NavigationLinks},
+        permissions::GroupPermission,
+    },
 };
 
 #[cfg(test)]
@@ -37,12 +40,13 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and invitation requests
-    let page_filters: InvitationRequestsPaginationFilters =
+    let page_filters: InvitationRequestsListPageFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let search_filters = InvitationRequestsFilters {
         event_id,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        ts_query: page_filters.ts_query.clone(),
     };
     let (can_manage_events, event, search_results) = tokio::try_join!(
         db.user_has_group_permission(
@@ -62,14 +66,20 @@ pub(crate) async fn list_page(
         &format!("/dashboard/group/events/{event_id}/invitation-requests"),
         &format!("/dashboard/group/events/{event_id}/invitation-requests"),
     )?;
+    let refresh_url = pagination::build_url(
+        &format!("/dashboard/group/events/{event_id}/invitation-requests"),
+        &page_filters,
+    )?;
     let template = invitation_requests::ListPage {
         can_manage_events,
         event,
         invitation_requests: search_results.invitation_requests,
-        limit: page_filters.limit,
         navigation_links,
-        offset: page_filters.offset,
+        refresh_url,
         total: search_results.total,
+        limit: page_filters.limit,
+        offset: page_filters.offset,
+        ts_query: page_filters.ts_query,
     };
 
     Ok(Html(template.render()?))

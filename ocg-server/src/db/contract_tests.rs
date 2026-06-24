@@ -29,7 +29,7 @@ use crate::{
             audit::AuditLogFilters,
             community::team::CommunityTeamFilters,
             group::{
-                attendees::AttendeesFilters,
+                attendees::SearchEventAttendeesFilters,
                 events::{Event as EventUpdate, EventsListFilters},
                 invitation_requests::InvitationRequestsFilters,
                 members::GroupMembersFilters,
@@ -1347,10 +1347,11 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let filters = AttendeesFilters {
+    let filters = SearchEventAttendeesFilters {
         event_id: event_id(),
         limit: Some(10),
         offset: Some(0),
+        ts_query: None,
     };
     let output = db.search_event_attendees(group_id(), &filters).await?;
 
@@ -1383,6 +1384,7 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
 
         limit: Some(10),
         offset: Some(0),
+        ts_query: None,
     };
     let output = db.search_event_invitation_requests(group_id(), &filters).await?;
 
@@ -1406,6 +1408,7 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
 
         limit: Some(10),
         offset: Some(0),
+        ts_query: None,
     };
     let output = db.search_event_waitlist(group_id(), &filters).await?;
 
@@ -1413,6 +1416,7 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
     assert_eq!(output.waitlist.len(), 1);
     assert_eq!(output.waitlist[0].user_id, waitlist_id());
     assert_eq!(output.waitlist[0].username, "contract-waitlist");
+    assert_eq!(output.waitlist[0].waitlist_position, 1);
 
     Ok(())
 }

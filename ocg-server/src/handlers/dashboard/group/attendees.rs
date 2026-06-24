@@ -39,12 +39,13 @@ use crate::{
     },
     templates::{
         dashboard::group::attendees::{
-            self, Attendee, AttendeesFilters, AttendeesPaginationFilters,
+            self, Attendee, AttendeesListPageFilters, SearchEventAttendeesFilters,
         },
         notifications::EventCustom,
     },
     types::{
-        pagination::NavigationLinks, permissions::GroupPermission,
+        pagination::{self, NavigationLinks},
+        permissions::GroupPermission,
         questionnaire::QuestionnaireQuestion,
     },
     validation::{
@@ -72,12 +73,13 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and attendees
-    let page_filters: AttendeesPaginationFilters =
+    let page_filters: AttendeesListPageFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let search_filters = AttendeesFilters {
+    let search_filters = SearchEventAttendeesFilters {
         event_id,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        ts_query: page_filters.ts_query.clone(),
     };
     let (can_manage_events, event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.user_has_group_permission(
@@ -98,6 +100,10 @@ pub(crate) async fn list_page(
         &format!("/dashboard/group/events/{event_id}/attendees"),
         &format!("/dashboard/group/events/{event_id}/attendees"),
     )?;
+    let refresh_url = pagination::build_url(
+        &format!("/dashboard/group/events/{event_id}/attendees"),
+        &page_filters,
+    )?;
     let template = attendees::ListPage {
         all_attendees_email_recipient_total: search_attendees_results
             .all_attendees_email_recipient_total,
@@ -105,10 +111,12 @@ pub(crate) async fn list_page(
         can_manage_events,
         event,
         navigation_links,
+        refresh_url,
         registration_questions,
         total: search_attendees_results.total,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        ts_query: page_filters.ts_query,
     };
 
     Ok(Html(template.render()?))
@@ -533,10 +541,11 @@ pub(crate) async fn download_csv(
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and all attendee rows
-    let search_filters = AttendeesFilters {
+    let search_filters = SearchEventAttendeesFilters {
         event_id,
         limit: None,
         offset: None,
+        ts_query: None,
     };
     let (event, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
@@ -568,10 +577,11 @@ pub(crate) async fn download_csv_with_answers(
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary, registration questions, and all attendee rows
-    let search_filters = AttendeesFilters {
+    let search_filters = SearchEventAttendeesFilters {
         event_id,
         limit: None,
         offset: None,
+        ts_query: None,
     };
     let (event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),

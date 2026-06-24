@@ -1709,6 +1709,108 @@ async fn test_list_page_with_pagination_params() {
 }
 
 #[tokio::test]
+async fn test_list_page_with_search_query() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let mut attendee = sample_attendee();
+    attendee.email = "ana@example.test".to_string();
+    attendee.name = Some("Ana Lopez".to_string());
+    attendee.company = Some("Example Co".to_string());
+    let event = sample_event_summary(event_id, group_id);
+    let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
+        all_attendees_email_recipient_total: 1,
+        attendees: vec![attendee],
+        total: 1,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_search_event_attendees()
+        .times(1)
+        .withf(move |gid, filters| {
+            *gid == group_id
+                && filters.event_id == event_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+                && filters.ts_query.as_deref() == Some("ana")
+        })
+        .returning(move |_, _| Ok(output.clone()));
+    db.expect_get_event_summary()
+        .times(1)
+        .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .returning(move |_, _, _| Ok(event.clone()));
+    db.expect_get_event_registration_questions()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(|_, _| Ok(vec![]));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees?ts_query=ana"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("name=\"ts_query\""));
+    assert!(body.contains("value=\"ana\""));
+    assert!(body.contains("Ana Lopez"));
+    assert!(body.contains("ana@example.test"));
+    assert!(body.contains("Example Co"));
+    assert!(body.contains("refresh-event-attendees"));
+}
+
+#[tokio::test]
 async fn test_manual_check_in_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

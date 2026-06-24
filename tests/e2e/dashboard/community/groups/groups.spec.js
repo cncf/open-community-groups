@@ -561,7 +561,9 @@ test.describe("community dashboard groups view", () => {
     ).toBeVisible();
 
     // Target the search input used to submit dashboard filters.
-    const searchInput = dashboardContent.getByPlaceholder("Search groups");
+    const searchInput = dashboardContent.getByRole("textbox", {
+      name: "Search groups",
+    });
 
     // Enter a query expected to match a seeded group.
     await searchInput.fill("Observability");
@@ -623,9 +625,9 @@ test.describe("community dashboard groups view", () => {
     ).toBeVisible();
 
     // Target the clear-filter control shown for empty results.
-    const clearFilterButton = dashboardContent.locator(
-      'button[hx-get="/dashboard/community/groups"]',
-    );
+    const clearFilterButton = dashboardContent.getByRole("button", {
+      name: "Clear group search",
+    });
     await expect(clearFilterButton).toBeVisible();
 
     // Click the clear-filter control to reset the list.
@@ -646,9 +648,7 @@ test.describe("community dashboard groups view", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: "Observability Guild" }),
     ).toBeVisible();
-    await expect(
-      dashboardContent.getByPlaceholder("Search groups"),
-    ).toHaveValue("");
+    await expect(searchInput).toHaveValue("");
   });
 
   test("viewer sees read-only controls on community groups", async ({

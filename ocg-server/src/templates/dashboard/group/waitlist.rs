@@ -13,7 +13,7 @@ use crate::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
     },
-    validation::MAX_PAGINATION_LIMIT,
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -26,16 +26,21 @@ pub(crate) struct ListPage {
     pub can_manage_events: bool,
     /// Event for which waitlist entries are listed.
     pub event: EventSummary,
-    /// Number of results per page.
-    pub limit: Option<usize>,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
-    /// Pagination offset for results.
-    pub offset: Option<usize>,
+    /// URL used to refresh the waitlist with the current filters.
+    pub refresh_url: String,
     /// Total number of waitlist entries for the selected event.
     pub total: usize,
     /// Waitlist entries for the selected event.
     pub waitlist: Vec<WaitlistEntry>,
+
+    /// Number of results per page.
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    pub offset: Option<usize>,
+    /// Text search query used to filter waitlist entries.
+    pub ts_query: Option<String>,
 }
 
 // Types.
@@ -50,6 +55,8 @@ pub struct WaitlistEntry {
     pub user_id: Uuid,
     /// Username.
     pub username: String,
+    /// Position in the full event waitlist.
+    pub waitlist_position: usize,
 
     /// Company the user represents.
     pub company: Option<String>,
@@ -77,12 +84,15 @@ pub(crate) struct WaitlistFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Search query for waitlist user name, username, email, company, or title.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
-/// Filter parameters for waitlist pagination URLs.
+/// Filter parameters for waitlist list page URLs.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct WaitlistPaginationFilters {
+pub(crate) struct WaitlistListPageFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
@@ -91,9 +101,12 @@ pub(crate) struct WaitlistPaginationFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Text search query.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
-crate::impl_pagination_and_raw_query!(WaitlistPaginationFilters, limit, offset);
+crate::impl_pagination_and_raw_query!(WaitlistListPageFilters, limit, offset);
 
 /// Paginated waitlist response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]

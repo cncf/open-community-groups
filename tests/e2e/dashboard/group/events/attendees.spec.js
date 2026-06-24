@@ -540,6 +540,108 @@ test.describe("group dashboard attendees tab", () => {
     }
   });
 
+  test("organizer can search attendees and clear the filter", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the attendees tab for the seeded event.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Upcoming In-Person Event",
+      TEST_EVENT_IDS.alpha.one,
+    );
+
+    // Target the search controls used to submit attendee filters.
+    const searchInput = attendeesContent.getByRole("textbox", {
+      name: "Search attendees",
+    });
+    const searchForm = attendeesContent.locator("#attendees-search-form");
+
+    // Enter a query expected to match a seeded attendee.
+    await searchInput.fill("member");
+
+    // Submit the matching search and wait for filtered results.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees?ts_query=member`,
+            ) &&
+          response.ok(),
+      ),
+      searchInput.press("Enter"),
+    ]);
+
+    // Verify the matching result is shown and non-matching attendees are hidden.
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Member One" }),
+    ).toBeVisible();
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Organizer One" }),
+    ).toHaveCount(0);
+    await expect(searchInput).toHaveValue("member");
+
+    // Enter a query expected to return no attendees.
+    await searchInput.fill("");
+    await searchInput.fill("zzzzzzzzzzzz");
+
+    // Submit the empty-result search and wait for the response.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees?ts_query=zzzzzzzzzzzz`,
+            ) &&
+          response.ok(),
+      ),
+      searchForm.evaluate((form) => {
+        if (form instanceof HTMLFormElement) {
+          form.requestSubmit();
+        }
+      }),
+    ]);
+
+    const noResultsMessage = attendeesContent
+      .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
+      .filter({ hasText: "No attendees found matching your search." });
+
+    // Verify the filtered empty result message is shown.
+    await expect(noResultsMessage.first()).toBeVisible();
+
+    // Clear the attendee search filter.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+            ) &&
+          !response.url().includes("ts_query") &&
+          response.ok(),
+      ),
+      attendeesContent
+        .getByRole("button", { name: "Clear attendee search" })
+        .click(),
+    ]);
+
+    // Verify clearing removes the empty state and restores seeded attendees.
+    await expect(noResultsMessage).toHaveCount(0);
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Member One" }),
+    ).toBeVisible();
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Organizer One" }),
+    ).toBeVisible();
+    await expect(searchInput).toHaveValue("");
+  });
+
   test("organizer can download attendees as CSV from the attendees tab", async ({
     organizerGroupPage,
   }) => {
@@ -891,6 +993,101 @@ test.describe("group dashboard attendees tab", () => {
       await expect(
         requestsContent.getByRole("table", { name: "Invitation requests" }),
       ).toBeVisible();
+
+      // Target the search controls used to submit request filters.
+      const searchInput = requestsContent.getByRole("textbox", {
+        name: "Search invitation requests",
+      });
+      const searchForm = requestsContent.locator(
+        "#invitation-requests-search-form",
+      );
+
+      // Enter a query expected to match one seeded requester.
+      await searchInput.fill("Two");
+
+      // Submit the matching search and wait for filtered results.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests?ts_query=Two`,
+              ) &&
+            response.ok(),
+        ),
+        searchInput.press("Enter"),
+      ]);
+
+      // Verify the matching result is shown and non-matching requests are hidden.
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending Two" }),
+      ).toBeVisible();
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending One" }),
+      ).toHaveCount(0);
+      await expect(searchInput).toHaveValue("Two");
+
+      // Enter a query expected to return no requests.
+      await searchInput.fill("");
+      await searchInput.fill("zzzzzzzzzzzz");
+
+      // Submit the empty-result search and wait for the response.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests?ts_query=zzzzzzzzzzzz`,
+              ) &&
+            response.ok(),
+        ),
+        searchForm.evaluate((form) => {
+          if (form instanceof HTMLFormElement) {
+            form.requestSubmit();
+          }
+        }),
+      ]);
+
+      const noResultsMessage = requestsContent
+        .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
+        .filter({
+          hasText: "No invitation requests found matching your search.",
+        });
+
+      // Verify the filtered empty result message is shown.
+      await expect(noResultsMessage.first()).toBeVisible();
+
+      // Clear the invitation request search filter.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests`,
+              ) &&
+            !response.url().includes("ts_query") &&
+            response.ok(),
+        ),
+        requestsContent
+          .getByRole("button", { name: "Clear invitation request search" })
+          .click(),
+      ]);
+
+      // Verify clearing removes the empty state and restores request rows.
+      await expect(noResultsMessage).toHaveCount(0);
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending One" }),
+      ).toBeVisible();
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending Two" }),
+      ).toBeVisible();
+      await expect(searchInput).toHaveValue("");
 
       // Reject one invitation request.
       const pendingOneRow = requestsContent.locator("tr", {

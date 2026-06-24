@@ -481,6 +481,7 @@ select indexes_are('user', array[
     'user_pkey',
     'user_email_lower_idx',
     'user_name_lower_idx',
+    'user_tsdoc_idx',
     'user_username_lower_idx'
 ]);
 select index_is_unique('user', 'user_email_lower_idx');

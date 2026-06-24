@@ -1337,6 +1337,7 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         user_id: Uuid::new_v4(),
         username: "waitlisted-user".to_string(),
+        waitlist_position: 1,
 
         company: Some("Example".to_string()),
         name: Some("Waitlisted User".to_string()),

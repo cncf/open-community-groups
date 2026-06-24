@@ -78,6 +78,21 @@ describe("dashboard group attendees list template", () => {
     );
   });
 
+  it("uses the shared attendee search convention for table filtering", async () => {
+    // Load the attendees list template before checking search markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify attendee search follows the existing dashboard HTMX pattern.
+    expect(template).to.include('id="attendees-search-form"');
+    expect(template).to.include('hx-trigger="change, submit"');
+    expect(template).to.include('hx-target="#attendees-content"');
+    expect(template).to.include('<label for="search_attendees" class="sr-only">Search attendees</label>');
+    expect(template).to.include('name="ts_query"');
+    expect(template).to.include('placeholder="Search attendees"');
+    expect(template).to.include('aria-label="Clear attendee search"');
+    expect(template).to.include("dashboard/placeholders/group_attendees_no_results.html");
+  });
+
   it("integrates selected attendee email sends with the attendees table", async () => {
     // Load the attendees list template before checking table selection markup.
     const template = normalizeWhitespace(await loadTemplate());

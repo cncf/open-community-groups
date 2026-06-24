@@ -7,7 +7,24 @@ returns json as $$
             select
                 (p_filters->>'event_id')::uuid as event_id,
                 (p_filters->>'limit')::int as limit_value,
-                (p_filters->>'offset')::int as offset_value
+                (p_filters->>'offset')::int as offset_value,
+                nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
+        ),
+        -- Prepare text search with prefix matching
+        search_filter as (
+            select
+                ts_rewrite(
+                    websearch_to_tsquery('simple', ts_query_value),
+                    format('
+                        select
+                            to_tsquery(''simple'', lexeme),
+                            to_tsquery(''simple'', lexeme || '':*'')
+                        from unnest(tsvector_to_array(to_tsvector(''simple'', %L))) as lexeme
+                        ', ts_query_value
+                    )
+                ) as ts_query
+            from filters
+            where ts_query_value is not null
         ),
         -- Select visible attendee and invitation rows
         base_attendees as (
@@ -31,6 +48,7 @@ returns json as $$
                 u.name,
                 u.photo_url,
                 err.status as refund_request_status,
+                u.tsdoc,
                 u.title,
 
                 (
@@ -82,6 +100,19 @@ returns json as $$
                 'registration-questions-pending'
             )
         ),
+        -- Apply table filters while retaining internal search data
+        filtered_attendees as (
+            select *
+            from base_attendees
+            where (
+                not exists (select 1 from search_filter)
+                or exists (
+                    select 1
+                    from search_filter
+                    where search_filter.ts_query @@ base_attendees.tsdoc
+                )
+            )
+        ),
         -- Apply pagination and project public attendee fields
         attendees as (
             select
@@ -107,18 +138,21 @@ returns json as $$
                 title,
 
                 can_receive_attendee_email
-            from base_attendees
+            from filtered_attendees
             order by coalesce(lower(name), lower(username)) asc, user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),
-        -- Count visible rows and eligible notification recipients
+        -- Count filtered rows and event-wide eligible notification recipients
         totals as (
             select
-                count(*) filter (where can_receive_attendee_email = true)::int
-                    as all_attendees_email_recipient_total,
+                (
+                    select count(*)::int
+                    from base_attendees
+                    where can_receive_attendee_email = true
+                ) as all_attendees_email_recipient_total,
                 count(*)::int as total
-            from base_attendees
+            from filtered_attendees
         ),
         -- Render attendees as JSON
         attendees_json as (
