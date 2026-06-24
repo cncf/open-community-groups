@@ -269,6 +269,7 @@ fn section_summary(section: &SectionSource, links: &[WikiLink]) -> String {
     )
 }
 
+#[allow(clippy::too_many_lines)]
 fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
     let mut reader = Reader::from_str(feed);
     reader.config_mut().trim_text(true);

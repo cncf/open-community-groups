@@ -831,6 +831,7 @@ select columns_are('user', array[
     'name',
     'optional_notifications_enabled',
     'password',
+    'platform_admin',
     'photo_url',
     'provider',
     'registration_status',

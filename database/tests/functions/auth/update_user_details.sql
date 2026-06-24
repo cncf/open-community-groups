@@ -173,6 +173,7 @@ select is(
         "email": "test@example.com",
         "email_verified": true,
         "optional_notifications_enabled": false,
+        "platform_admin": false,
         "name": "Updated User",
         "username": "testuser",
         "bio": "This is my bio",
@@ -240,6 +241,7 @@ select is(
         "email": "test2@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,
+        "platform_admin": false,
         "name": "Updated Name Only",
         "username": "testuser2"
     }'::jsonb,
@@ -284,6 +286,7 @@ select is(
         "email": "test3@example.com",
         "email_verified": true,
         "optional_notifications_enabled": true,
+        "platform_admin": false,
         "name": "Explicitly Nulled User",
         "username": "testuser3"
     }'::jsonb,

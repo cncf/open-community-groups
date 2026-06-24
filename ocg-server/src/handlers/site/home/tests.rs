@@ -13,6 +13,7 @@ use crate::{
     handlers::tests::*,
     router::{CACHE_CONTROL_PUBLIC_SHARED, PUBLIC_SHARED_CACHE_VARY},
     services::notifications::MockNotificationsManager,
+    types::{jobs::JobsOutput, landscape::LandscapeOutput},
 };
 
 #[tokio::test]
@@ -57,10 +58,12 @@ async fn test_page_success() {
     db.expect_get_site_upcoming_events()
         .times(2)
         .returning(|_| Ok(vec![]));
-    db.expect_search_jobs().times(1).returning(|_| Ok(Default::default()));
+    db.expect_search_jobs()
+        .times(1)
+        .returning(|_| Ok(JobsOutput::default()));
     db.expect_search_landscape_entries()
         .times(1)
-        .returning(|_| Ok(Default::default()));
+        .returning(|_| Ok(LandscapeOutput::default()));
     db.expect_list_alliances().times(1).returning(|| Ok(vec![]));
 
     // Setup notifications manager mock

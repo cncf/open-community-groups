@@ -15,8 +15,8 @@ use crate::{
     templates::{PageId, auth::User, site::home},
     types::{
         event::{EventKind, EventSummary},
-        jobs::JobsFilters,
-        landscape::LandscapeFilters,
+        jobs::{JobsFilters, JobsOutput},
+        landscape::{LandscapeFilters, LandscapeOutput},
     },
 };
 
@@ -95,11 +95,11 @@ async fn load_latest_feed(
     );
     let jobs = jobs.unwrap_or_else(|error| {
         warn!("home latest feed jobs source failed: {error}");
-        Default::default()
+        JobsOutput::default()
     });
     let landscape = landscape.unwrap_or_else(|error| {
         warn!("home latest feed landscape source failed: {error}");
-        Default::default()
+        LandscapeOutput::default()
     });
 
     let mut feed = Vec::new();
@@ -165,10 +165,10 @@ fn event_feed_item(event: &EventSummary) -> home::HomeFeedItem {
             event.public_group_slug(),
             event.slug
         ),
-        meta: event
-            .starts_at
-            .map(|date| date.format("%b %d").to_string())
-            .unwrap_or_else(|| event.group_name.clone()),
+        meta: event.starts_at.map_or_else(
+            || event.group_name.clone(),
+            |date| date.format("%b %d").to_string(),
+        ),
         hx_boost: true,
     }
 }
@@ -180,5 +180,5 @@ async fn load_home_wiki_sections() -> Vec<crate::templates::site::wiki::WikiSect
 
 #[cfg(test)]
 async fn load_home_wiki_sections() -> Vec<crate::templates::site::wiki::WikiSection> {
-    Vec::new()
+    std::future::ready(Vec::new()).await
 }

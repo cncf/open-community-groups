@@ -40,6 +40,7 @@ pub(crate) struct AllianceCreate {
     pub website_url: Option<String>,
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn valid_alliance_slug(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
     let value = value.as_ref();
     if value.is_empty() {

@@ -53,7 +53,7 @@ pub(crate) async fn page(
     let site_settings = db.get_site_settings().await?;
     let entity: explore::Entity = query.get("entity").map(String::as_str).into();
     let mut template = explore::Page {
-        entity: entity.clone(),
+        entity,
         title: "Explore Events".to_string(),
         page_id: PageId::SiteExplore,
         path: uri.path().to_string(),
