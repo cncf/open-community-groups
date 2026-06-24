@@ -59,6 +59,9 @@ pub(crate) trait DBEvent {
         user_id: Uuid,
     ) -> Result<EventAttendanceInfo>;
 
+    /// Resolves an event's group identifier.
+    async fn get_event_group_id(&self, event_id: Uuid) -> Result<Option<Uuid>>;
+
     /// Retrieves detailed event information.
     async fn get_event_full_by_slug(
         &self,
@@ -195,6 +198,16 @@ where
         self.fetch_json_one(
             "select get_event_attendance($1::uuid, $2::uuid, $3::uuid)",
             &[&alliance_id, &event_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBEvent::get_event_group_id`]
+    #[instrument(skip(self), err)]
+    async fn get_event_group_id(&self, event_id: Uuid) -> Result<Option<Uuid>> {
+        self.fetch_scalar_opt(
+            "select group_id from event where event_id = $1::uuid",
+            &[&event_id],
         )
         .await
     }

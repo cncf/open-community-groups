@@ -3,7 +3,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use axum::{
-    Form,
+    Form, Json,
     extract::{FromRequest, FromRequestParts, Path, Request},
     http::{StatusCode, request::Parts},
 };
@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::{
     auth::{AuthSession, OAuth2ProviderDetails, OidcProviderDetails, User as AuthUser},
     config::{OAuth2Provider, OidcProvider},
+    handlers::api::error::ApiError,
     router,
 };
 
@@ -192,6 +193,39 @@ where
             .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
 
         Ok(ValidatedForm(value))
+    }
+}
+
+/// Extractor that deserializes and validates JSON request bodies.
+pub(crate) struct ValidatedJson<T>(pub T);
+
+impl<T> FromRequest<router::State> for ValidatedJson<T>
+where
+    T: DeserializeOwned + Validate,
+    T::Context: Default,
+{
+    type Rejection = ApiError;
+
+    async fn from_request(req: Request, state: &router::State) -> Result<Self, Self::Rejection> {
+        let Json(value) = Json::<T>::from_request(req, state).await.map_err(|error| {
+            ApiError::new(
+                StatusCode::BAD_REQUEST,
+                "invalid_request",
+                "Request JSON body is invalid.",
+            )
+            .with_details(vec![error.to_string()])
+        })?;
+
+        value.validate().map_err(|error| {
+            ApiError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_failed",
+                "Request JSON body failed validation.",
+            )
+            .with_details(vec![error.to_string()])
+        })?;
+
+        Ok(ValidatedJson(value))
     }
 }
 
