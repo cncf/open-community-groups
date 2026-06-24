@@ -2,12 +2,12 @@ import { expect, test } from "@playwright/test";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  PUBLIC_HOME_TITLE,
   TEST_ALLIANCE_NAME,
   TEST_ALLIANCE_NAME_2,
   TEST_ALLIANCE_TITLE,
   TEST_ALLIANCE_TITLE_2,
   TEST_EVENT_NAMES,
-  TEST_SITE_TITLE,
   getAllianceBanner,
   getSectionLink,
   getStatsContainer,
@@ -30,15 +30,15 @@ test.describe("site home page", () => {
     }) => {
       // Verify the jumbotron exposes the primary explore CTA.
       await expect(
-        page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
+        page.getByRole("heading", { level: 1, name: PUBLIC_HOME_TITLE }),
       ).toBeVisible();
 
       // Verify the jumbotron description and CTA destination.
       await expect(page.locator(".jumbotron-description")).toBeVisible();
 
-      // Find the Explore groups and events control.
+      // Find the primary Explore events control.
       const ctaLink = page.getByRole("link", {
-        name: "Explore groups and events",
+        name: "Explore events",
       });
       await expect(ctaLink).toBeVisible();
       await expect(ctaLink).toHaveAttribute("href", /\/explore/);
@@ -61,7 +61,7 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Verify alliance cards link to their public alliance pages.
-      await expect(page.getByText("Alliances")).toBeVisible();
+      await expect(page.getByText("Alliance", { exact: true })).toBeVisible();
 
       // Target the first alliance card link.
       const alliance1Link = page
@@ -86,14 +86,14 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Verify the in-person events section heading is present.
-      await expect(page.getByText("upcoming in-person events")).toBeVisible();
+      await expect(page.getByText("upcoming in-person")).toBeVisible();
     });
 
     test("upcoming virtual events section renders with title", async ({
       page,
     }) => {
       // Verify the virtual events section heading is present.
-      await expect(page.getByText("upcoming virtual events")).toBeVisible();
+      await expect(page.getByText("upcoming virtual")).toBeVisible();
     });
 
     test("upcoming in-person events shows seeded event cards", async ({
@@ -260,7 +260,7 @@ test.describe("site home page", () => {
       // Target the desktop explore link for in-person events.
       const desktopLink = getSectionLink(
         page,
-        "upcoming in-person events",
+        "upcoming in-person",
         "Explore all events",
         "desktop",
       );
@@ -369,7 +369,7 @@ test.describe("site home page", () => {
       // Target the mobile explore link for in-person events.
       const mobileLink = getSectionLink(
         page,
-        "upcoming in-person events",
+        "upcoming in-person",
         "Explore all events",
         "mobile",
       );

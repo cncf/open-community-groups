@@ -23,11 +23,17 @@ test.describe("site stats page", () => {
     const mainContent = page.locator("#main-content");
 
     // Verify renders totals and analytics chart containers.
-    await expect(mainContent.getByText("Stats", { exact: true })).toBeVisible();
     await expect(
-      mainContent.getByText("Global growth trends across all alliances.", {
-        exact: true,
+      mainContent.getByRole("heading", {
+        level: 1,
+        name: "Alliance stats that show momentum",
       }),
+    ).toBeVisible();
+    await expect(
+      mainContent.getByText(
+        "Track community growth, event activity, job market signals, and the startup and open-source landscape across GOUP.",
+        { exact: true },
+      ),
     ).toBeVisible();
 
     // Assert each expected case.
