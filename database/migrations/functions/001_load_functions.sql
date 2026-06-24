@@ -79,6 +79,7 @@
 {{ template "dashboard-common/update_group.sql" }}
 
 {{ template "dashboard-alliance/activate_group.sql" }}
+{{ template "dashboard-alliance/add_alliance.sql" }}
 {{ template "dashboard-alliance/add_alliance_team_member.sql" }}
 {{ template "dashboard-alliance/add_event_category.sql" }}
 {{ template "dashboard-alliance/add_group.sql" }}

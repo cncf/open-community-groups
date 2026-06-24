@@ -12,6 +12,7 @@ use crate::{
     templates::dashboard::{
         alliance::{
             analytics::AllianceDashboardStats,
+            create::AllianceCreate,
             event_categories::EventCategoryInput,
             group_categories::GroupCategoryInput,
             groups::Group,
@@ -46,6 +47,9 @@ pub(crate) trait DBDashboardAlliance {
         user_id: Uuid,
         role: &AllianceRole,
     ) -> Result<()>;
+
+    /// Adds a new alliance to the database.
+    async fn add_alliance(&self, actor_user_id: Uuid, alliance: &AllianceCreate) -> Result<Uuid>;
 
     /// Adds a new group to the database.
     async fn add_group(
@@ -233,6 +237,16 @@ where
         self.execute(
             "select add_alliance_team_member($1::uuid, $2::uuid, $3::uuid, $4::text)",
             &[&actor_user_id, &alliance_id, &user_id, &role.to_string()],
+        )
+        .await
+    }
+
+    /// [`DBDashboardAlliance::add_alliance`]
+    #[instrument(skip(self, alliance), err)]
+    async fn add_alliance(&self, actor_user_id: Uuid, alliance: &AllianceCreate) -> Result<Uuid> {
+        self.fetch_scalar_one(
+            "select add_alliance($1::uuid, $2::jsonb)::uuid",
+            &[&actor_user_id, &Json(alliance)],
         )
         .await
     }

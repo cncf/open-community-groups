@@ -202,6 +202,11 @@ mock! {
             user_id: Uuid,
             role: &crate::types::alliance::AllianceRole,
         ) -> Result<()>;
+        async fn add_alliance(
+            &self,
+            actor_user_id: Uuid,
+            alliance: &crate::templates::dashboard::alliance::create::AllianceCreate,
+        ) -> Result<Uuid>;
         async fn add_event_category(
             &self,
             actor_user_id: Uuid,

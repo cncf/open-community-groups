@@ -564,6 +564,9 @@ pub(crate) struct User {
     pub name: String,
     /// Whether the user receives optional notifications.
     pub optional_notifications_enabled: bool,
+    /// Whether the user can manage platform-level resources.
+    #[serde(default)]
+    pub platform_admin: bool,
     /// Registration state for placeholder and regular users.
     #[serde(default = "default_registration_status")]
     pub registration_status: String,

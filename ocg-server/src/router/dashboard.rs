@@ -41,6 +41,7 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
     // Read-only alliance dashboard endpoints
     let dashboard_read = Router::new()
         .route("/analytics", get(dashboard::alliance::analytics::page))
+        .route("/create", get(dashboard::alliance::create::page))
         .route(
             "/event-categories",
             get(dashboard::alliance::event_categories::list_page),
@@ -85,6 +86,10 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::alliance::regions::update_page),
         )
         .route_layer(check_selected_alliance_permission(AlliancePermission::Read));
+
+    // Platform-level alliance management endpoints
+    let platform_management =
+        Router::new().route("/create", post(dashboard::alliance::create::add));
 
     // Alliance groups management endpoints
     let groups_management = Router::new()
@@ -204,6 +209,7 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::alliance::home::page).route_layer(check_alliance_dashboard_permission()),
         )
         .merge(dashboard_read)
+        .merge(platform_management)
         .merge(groups_management)
         .merge(landscape_management)
         .merge(settings_management)

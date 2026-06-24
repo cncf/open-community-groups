@@ -100,6 +100,8 @@ pub(crate) struct User {
     pub belongs_to_alliance_team: Option<bool>,
     /// Display name of the user, if any.
     pub name: Option<String>,
+    /// Whether the user can manage platform-level resources.
+    pub platform_admin: bool,
     /// Username, if any.
     pub username: Option<String>,
 }
@@ -114,6 +116,7 @@ impl User {
             belongs_to_any_group_team: auth_session_user.and_then(|u| u.belongs_to_any_group_team),
             belongs_to_alliance_team: auth_session_user.and_then(|u| u.belongs_to_alliance_team),
             name: auth_session_user.map(|u| u.name.clone()),
+            platform_admin: auth_session_user.is_some_and(|u| u.platform_admin),
             username: auth_session_user.map(|u| u.username.clone()),
         };
         Ok(user)
