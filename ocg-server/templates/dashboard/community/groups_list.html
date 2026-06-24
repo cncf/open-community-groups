@@ -26,16 +26,18 @@
                autocorrect="off"
                autocapitalize="off"
                spellcheck="false">
+        <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+          <button type="button"
+                  hx-get="/dashboard/community/groups"
+                  hx-trigger="click"
+                  hx-target="#dashboard-content"
+                  hx-indicator="#dashboard-spinner"
+                  class="cursor-pointer mt-0.5"
+                  aria-label="Clear group search">
+            <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+          </button>
+        </div>
       </form>
-      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-        <button hx-get="/dashboard/community/groups"
-                hx-trigger="click"
-                hx-target="#dashboard-content"
-                hx-indicator="#dashboard-spinner"
-                class="cursor-pointer mt-0.5">
-          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-        </button>
-      </div>
     </div>
     {# End search groups input -#}
   </div>
