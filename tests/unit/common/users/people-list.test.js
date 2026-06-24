@@ -29,9 +29,7 @@ describe("people-list", () => {
     });
 
     // Collect the headings and toggle elements.
-    const headings = Array.from(element.querySelectorAll("h3")).map((node) =>
-      node.textContent.trim(),
-    );
+    const headings = Array.from(element.querySelectorAll("h3")).map((node) => node.textContent.trim());
     const toggle = element.querySelector("button");
 
     // The rendered text shows the scenario data.
@@ -43,11 +41,7 @@ describe("people-list", () => {
   it("toggles between collapsed and expanded lists", async () => {
     // Render the people-list fixture.
     const element = await mountLitComponent("people-list", {
-      people: [
-        { name: "Ada Lovelace" },
-        { name: "Grace Hopper" },
-        { name: "Margaret Hamilton" },
-      ],
+      people: [{ name: "Ada Lovelace" }, { name: "Grace Hopper" }, { name: "Margaret Hamilton" }],
       initialCount: 1,
     });
 
@@ -56,26 +50,16 @@ describe("people-list", () => {
     await element.updateComplete;
 
     // Expanded state shows all people and offers to collapse.
-    let headings = Array.from(element.querySelectorAll("h3")).map((node) =>
-      node.textContent.trim(),
-    );
-    expect(headings).to.deep.equal([
-      "Ada Lovelace",
-      "Grace Hopper",
-      "Margaret Hamilton",
-    ]);
-    expect(element.querySelector("button")?.textContent).to.include(
-      "Show less",
-    );
+    let headings = Array.from(element.querySelectorAll("h3")).map((node) => node.textContent.trim());
+    expect(headings).to.deep.equal(["Ada Lovelace", "Grace Hopper", "Margaret Hamilton"]);
+    expect(element.querySelector("button")?.textContent).to.include("Show less");
 
     // Collapse the list from the show-less control.
     element.querySelector("button")?.click();
     await element.updateComplete;
 
     // Collapsed state returns to the initial subset.
-    headings = Array.from(element.querySelectorAll("h3")).map((node) =>
-      node.textContent.trim(),
-    );
+    headings = Array.from(element.querySelectorAll("h3")).map((node) => node.textContent.trim());
     expect(headings).to.deep.equal(["Ada Lovelace"]);
   });
 
@@ -86,9 +70,7 @@ describe("people-list", () => {
     });
 
     // Passed initials into logo-image placeholders.
-    expect(
-      element.querySelector("logo-image")?.getAttribute("placeholder"),
-    ).to.equal("OC");
+    expect(element.querySelector("logo-image")?.getAttribute("placeholder")).to.equal("OA");
   });
 
   it("cleans non-letter characters when asked directly", () => {

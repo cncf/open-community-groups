@@ -49,11 +49,19 @@
         </div>
         <div>
           <label class="label" for="new-job-summary">Summary</label>
-          <input id="new-job-summary" name="summary" class="input" required maxlength="500" />
+          <input id="new-job-summary"
+                 name="summary"
+                 class="input"
+                 required
+                 maxlength="500" />
         </div>
         <div>
           <label class="label" for="new-job-description">Description</label>
-          <textarea id="new-job-description" name="description" rows="6" class="input" required></textarea>
+          <textarea id="new-job-description"
+                    name="description"
+                    rows="6"
+                    class="input"
+                    required></textarea>
         </div>
         <div class="grid gap-4 lg:grid-cols-3">
           <div>
@@ -66,7 +74,10 @@
           </div>
           <div>
             <label class="label" for="new-job-tags">Tags</label>
-            <input id="new-job-tags" name="tags" class="input" placeholder="Rust, Platform, DevOps" />
+            <input id="new-job-tags"
+                   name="tags"
+                   class="input"
+                   placeholder="Rust, Platform, DevOps" />
           </div>
         </div>
         <label class="inline-flex items-center gap-2 text-sm text-stone-700">
@@ -84,7 +95,7 @@
 
     <div class="my-8 flex items-center justify-between">
       <div class="text-sm text-stone-600">
-        {{ pagination::range_display(offset = filters.offset.unwrap_or(0), count = jobs.len(), total = total, label = "job") }}
+        {{ pagination::range_display(offset = filters.offset.unwrap_or(0) , count = jobs.len(), total = total, label = "job") }}
       </div>
     </div>
 
@@ -108,7 +119,9 @@
                   {% endif -%}
                 </div>
                 <p class="mt-1 text-sm text-stone-600">
-                  {{ job.company_name }} · {{ job.application_count }} application{% if job.application_count != 1 %}s{% endif %} · visible until {{ job.expires_at.format("%b %d, %Y") }}
+                  {{ job.company_name }} · {{ job.application_count }} application
+                  {% if job.application_count != 1 %}s{% endif %}
+                  · visible until {{ job.expires_at.format("%b %d, %Y") }}
                 </p>
               </div>
               <a class="text-sm font-semibold text-primary-700 hover:text-primary-900"
@@ -121,7 +134,11 @@
               <div class="grid gap-4 lg:grid-cols-2">
                 <div>
                   <label class="label" for="job-title-{{ job.job_id }}">Title</label>
-                  <input id="job-title-{{ job.job_id }}" name="title" class="input" value="{{ job.title }}" required />
+                  <input id="job-title-{{ job.job_id }}"
+                         name="title"
+                         class="input"
+                         value="{{ job.title }}"
+                         required />
                 </div>
                 <div>
                   <label class="label" for="job-company-{{ job.job_id }}">Company</label>
@@ -143,7 +160,11 @@
               </div>
               <div>
                 <label class="label" for="job-description-{{ job.job_id }}">Description</label>
-                <textarea id="job-description-{{ job.job_id }}" name="description" rows="5" class="input" required>{{ job.description }}</textarea>
+                <textarea id="job-description-{{ job.job_id }}"
+                          name="description"
+                          rows="5"
+                          class="input"
+                          required>{{ job.description }}</textarea>
               </div>
               <div class="grid gap-4 lg:grid-cols-3">
                 <div>
@@ -202,9 +223,7 @@
               <div class="flex items-center justify-between gap-3">
                 <div>
                   <h3 class="text-sm font-semibold text-stone-900">Saved interest</h3>
-                  <p class="mt-1 text-xs text-stone-500">
-                    People who saved interest from the public job page.
-                  </p>
+                  <p class="mt-1 text-xs text-stone-500">People who saved interest from the public job page.</p>
                 </div>
                 <span class="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-stone-600 ring-1 ring-inset ring-stone-200">
                   {{ job.applications.len() }}
@@ -233,7 +252,7 @@
                                 {{ title }}
                               {% endif -%}
                               {% if application.applicant_title.is_some() && application.applicant_company.is_some() -%}
-                                <span class="text-stone-400"> at </span>
+                                <span class="text-stone-400">&nbsp;at&nbsp;</span>
                               {% endif -%}
                               {% if let Some(company) = &application.applicant_company -%}
                                 {{ company }}

@@ -5,7 +5,8 @@
 {% block content -%}
   <div class="relative overflow-hidden">
     <div class="absolute inset-x-0 top-0 h-72 bg-linear-to-b from-primary-50/80 to-transparent"></div>
-    <div class="absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary-300/20 blur-3xl"></div>
+    <div class="absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary-300/20 blur-3xl">
+    </div>
     <div class="absolute top-24 right-0 hidden h-72 w-72 rounded-full bg-sky-300/20 blur-3xl lg:block"></div>
 
     <div class="relative container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
@@ -93,8 +94,7 @@
       {# End summary cards #}
 
       {# Engagement cards #}
-      <div id="engagement"
-           class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div id="engagement" class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div class="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
           <div class="text-sm font-bold text-stone-500">Repeat attendees</div>
           <div class="mt-2 text-2xl font-black text-stone-950">{{ stats.engagement.repeat_attendees|num_fmt }}</div>
@@ -286,9 +286,7 @@
             <div>
               <div class="text-xs font-bold uppercase tracking-[0.22em] text-primary-700">Jobs</div>
               <h2 class="mt-2 text-2xl font-black tracking-tight text-stone-950 lg:text-4xl">Opportunity flow</h2>
-              <p class="mt-2 max-w-2xl text-sm/6 text-stone-500">
-                Roles shared by GOUP members and alliance companies.
-              </p>
+              <p class="mt-2 max-w-2xl text-sm/6 text-stone-500">Roles shared by GOUP members and alliance companies.</p>
             </div>
             <div class="inline-flex items-center rounded-full border border-stone-200 bg-white px-4 py-2 text-sm text-stone-500">
               <div class="svg-icon me-2 size-4 icon-search bg-primary-600"></div>

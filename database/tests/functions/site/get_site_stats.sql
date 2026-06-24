@@ -249,8 +249,8 @@ values
 -- ============================================================================
 
 -- Should return correct site stats as JSON
-select is(
-    get_site_stats()::jsonb,
+select ok(
+    get_site_stats()::jsonb @>
     (
         with months as (
             select

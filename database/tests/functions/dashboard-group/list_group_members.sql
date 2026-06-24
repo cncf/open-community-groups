@@ -122,16 +122,31 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'members', '[
-            {"created_at": 1704067200, "username": "alice", "company": null, "name": "Alice",
-                "photo_url": "https://example.com/u1.png", "title": null},
-            {"created_at": 1704326400, "username": "alice2", "company": null, "name": "Alice",
-                "photo_url": "https://example.com/u4.png", "title": null},
-            {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
-                "photo_url": "https://example.com/u5.png", "title": null},
-            {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
-                "photo_url": "https://example.com/u3.png", "title": null},
-            {"created_at": 1704153600, "username": "bob", "company": null, "name": null,
-                "photo_url": "https://example.com/u2.png", "title": null}
+            {"bio": null, "city": null, "name": "Alice", "email": "alice@example.com", "title": null,
+                "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000005",
+                "username": "alice", "interests": null, "photo_url": "https://example.com/u1.png",
+                "created_at": 1704067200, "github_url": null, "bluesky_url": null, "twitter_url": null,
+                "website_url": null, "facebook_url": null, "linkedin_url": null, "linkedin_connected": false},
+            {"bio": null, "city": null, "name": "Alice", "email": "alice2@example.com", "title": null,
+                "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000008",
+                "username": "alice2", "interests": null, "photo_url": "https://example.com/u4.png",
+                "created_at": 1704326400, "github_url": null, "bluesky_url": null, "twitter_url": null,
+                "website_url": null, "facebook_url": null, "linkedin_url": null, "linkedin_connected": false},
+            {"bio": null, "city": null, "name": "Bob", "email": "bobby@example.com", "title": null,
+                "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000009",
+                "username": "bobby", "interests": null, "photo_url": "https://example.com/u5.png",
+                "created_at": 1704412800, "github_url": null, "bluesky_url": null, "twitter_url": null,
+                "website_url": null, "facebook_url": null, "linkedin_url": null, "linkedin_connected": false},
+            {"bio": null, "city": null, "name": null, "email": "aaron@example.com", "title": null,
+                "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000007",
+                "username": "aaron", "interests": null, "photo_url": "https://example.com/u3.png",
+                "created_at": 1704240000, "github_url": null, "bluesky_url": null, "twitter_url": null,
+                "website_url": null, "facebook_url": null, "linkedin_url": null, "linkedin_connected": false},
+            {"bio": null, "city": null, "name": null, "email": "bob@example.com", "title": null,
+                "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000006",
+                "username": "bob", "interests": null, "photo_url": "https://example.com/u2.png",
+                "created_at": 1704153600, "github_url": null, "bluesky_url": null, "twitter_url": null,
+                "website_url": null, "facebook_url": null, "linkedin_url": null, "linkedin_connected": false}
         ]'::jsonb,
         'total', 5
     ),
@@ -146,10 +161,16 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'members', '[
-            {"created_at": 1704412800, "username": "bobby", "company": null, "name": "Bob",
-                "photo_url": "https://example.com/u5.png", "title": null},
-            {"created_at": 1704240000, "username": "aaron", "company": null, "name": null,
-                "photo_url": "https://example.com/u3.png", "title": null}
+            {"bio": null, "city": null, "name": "Bob", "email": "bobby@example.com", "title": null,
+                "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000009",
+                "username": "bobby", "interests": null, "photo_url": "https://example.com/u5.png",
+                "created_at": 1704412800, "github_url": null, "bluesky_url": null, "twitter_url": null,
+                "website_url": null, "facebook_url": null, "linkedin_url": null, "linkedin_connected": false},
+            {"bio": null, "city": null, "name": null, "email": "aaron@example.com", "title": null,
+                "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000007",
+                "username": "aaron", "interests": null, "photo_url": "https://example.com/u3.png",
+                "created_at": 1704240000, "github_url": null, "bluesky_url": null, "twitter_url": null,
+                "website_url": null, "facebook_url": null, "linkedin_url": null, "linkedin_connected": false}
         ]'::jsonb,
         'total', 5
     ),

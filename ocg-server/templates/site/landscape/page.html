@@ -30,8 +30,10 @@
       <label class="sr-only" for="landscape-kind">Kind</label>
       <select id="landscape-kind" name="kind" class="input">
         <option value="">All kinds</option>
-        <option value="startup" {% if filters.kind.as_deref() == Some("startup") %}selected{% endif %}>Startups</option>
-        <option value="github_project" {% if filters.kind.as_deref() == Some("github_project") %}selected{% endif %}>GitHub projects</option>
+        <option value="startup"
+                {% if filters.kind.as_deref() == Some("startup") %}selected{% endif %}>Startups</option>
+        <option value="github_project"
+                {% if filters.kind.as_deref() == Some("github_project") %}selected{% endif %}>GitHub projects</option>
       </select>
 
       <label class="sr-only" for="landscape-category">Category</label>
@@ -46,7 +48,7 @@
 
     <div class="mb-5 flex items-center justify-between gap-3">
       <div class="text-sm text-stone-600">
-        {{ pagination::range_display(offset = filters.offset.unwrap_or(0), count = entries.len(), total = total, label = "entry") }}
+        {{ pagination::range_display(offset = filters.offset.unwrap_or(0) , count = entries.len(), total = total, label = "entry") }}
       </div>
       {% if user.belongs_to_alliance_team.unwrap_or(false) -%}
         <a class="btn-secondary" href="/dashboard/alliance?tab=landscape">Manage landscape</a>
@@ -76,7 +78,11 @@
               <div class="min-w-0">
                 <div class="mb-2 flex flex-wrap items-center gap-2">
                   <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-                    {% if entry.kind == "github_project" %}GitHub project{% else %}Startup{% endif %}
+                    {% if entry.kind == "github_project" %}
+                      GitHub project
+                    {% else %}
+                      Startup
+                    {% endif %}
                   </span>
                   {% if let Some(category) = &entry.category -%}
                     <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ category }}</span>

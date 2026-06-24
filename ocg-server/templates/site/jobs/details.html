@@ -54,14 +54,17 @@
                    class="h-full w-full object-cover"
                    loading="lazy" />
             {% else -%}
-              {{ self::user_initials(job.summary.poster_name.as_deref(), job.summary.poster_username.as_str()) }}
+              {{ self::user_initials(job.summary.poster_name.as_deref() , job.summary.poster_username.as_str()) }}
             {% endif -%}
           </div>
           <div class="min-w-0">
             <div class="text-xs font-semibold uppercase tracking-wide text-primary-700">Posted by</div>
             <div class="truncate font-semibold text-stone-950">{{ job.summary.poster_name.as_deref().unwrap_or(job.summary.poster_username.as_str()) }}</div>
             <div class="truncate text-xs text-stone-500">
-              {% if let Some(title) = &job.summary.poster_title -%}{{ title }}{% if job.summary.poster_company.is_some() %} · {% endif %}{% endif -%}
+              {% if let Some(title) = &job.summary.poster_title -%}
+                {{ title }}
+                {% if job.summary.poster_company.is_some() %}·{% endif %}
+              {% endif -%}
               {% if let Some(company) = &job.summary.poster_company -%}{{ company }}{% endif -%}
             </div>
           </div>
@@ -90,18 +93,15 @@
                   hx-post="/jobs/{{ job.summary.job_id }}/apply"
                   hx-swap="none"
                   hx-disabled-elt="button">
-              <label class="mb-2 block text-sm font-semibold text-stone-800" for="job-application-note">
-                Note to the poster
-              </label>
+              <label class="mb-2 block text-sm font-semibold text-stone-800"
+                     for="job-application-note">Note to the poster</label>
               <textarea id="job-application-note"
                         name="note"
                         rows="5"
                         class="input bg-white"
                         placeholder="Briefly share why this role is interesting or how they can reach you."></textarea>
               <p class="mt-2 text-xs text-stone-500">This does not replace the official application.</p>
-              <button class="btn-secondary mt-4 w-full justify-center" type="submit">
-                Save my interest
-              </button>
+              <button class="btn-secondary mt-4 w-full justify-center" type="submit">Save my interest</button>
             </form>
           {% endif -%}
         {% else -%}

@@ -23,16 +23,26 @@
         </div>
         <div>
           <label class="label" for="new-landscape-category">Category</label>
-          <input id="new-landscape-category" name="category" class="input" placeholder="AI, DevOps, Fintech" />
+          <input id="new-landscape-category"
+                 name="category"
+                 class="input"
+                 placeholder="AI, DevOps, Fintech" />
         </div>
       </div>
       <div>
         <label class="label" for="new-landscape-summary">Summary</label>
-        <input id="new-landscape-summary" name="summary" class="input" required maxlength="500" />
+        <input id="new-landscape-summary"
+               name="summary"
+               class="input"
+               required
+               maxlength="500" />
       </div>
       <div>
         <label class="label" for="new-landscape-description">Description</label>
-        <textarea id="new-landscape-description" name="description" rows="4" class="input"></textarea>
+        <textarea id="new-landscape-description"
+                  name="description"
+                  rows="4"
+                  class="input"></textarea>
       </div>
       <div class="grid gap-4 lg:grid-cols-4">
         <div>
@@ -49,7 +59,10 @@
         </div>
         <div>
           <label class="label" for="new-landscape-tags">Tags</label>
-          <input id="new-landscape-tags" name="tags" class="input" placeholder="Rust, SaaS, OSS" />
+          <input id="new-landscape-tags"
+                 name="tags"
+                 class="input"
+                 placeholder="Rust, SaaS, OSS" />
         </div>
       </div>
       <div>
@@ -76,9 +89,10 @@
 
 <div class="mb-5 flex items-center justify-between gap-3">
   <div class="text-sm text-stone-600">
-    {{ pagination::range_display(offset = filters.offset.unwrap_or(0), count = entries.len(), total = total, label = "entry") }}
+    {{ pagination::range_display(offset = filters.offset.unwrap_or(0) , count = entries.len(), total = total, label = "entry") }}
   </div>
-  <a class="text-sm font-semibold text-primary-700 hover:text-primary-900" href="/landscape">Public landscape</a>
+  <a class="text-sm font-semibold text-primary-700 hover:text-primary-900"
+     href="/landscape">Public landscape</a>
 </div>
 
 {% if entries.is_empty() -%}
@@ -95,7 +109,11 @@
             <div class="flex flex-wrap items-center gap-2">
               <h2 class="text-lg font-semibold text-stone-950">{{ entry.name }}</h2>
               <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-                {% if entry.kind == "github_project" %}GitHub project{% else %}Startup{% endif %}
+                {% if entry.kind == "github_project" %}
+                  GitHub project
+                {% else %}
+                  Startup
+                {% endif %}
               </span>
               {% if entry.published -%}
                 <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Published</span>
@@ -113,13 +131,21 @@
           <div class="grid gap-4 lg:grid-cols-3">
             <div>
               <label class="label" for="landscape-name-{{ entry.landscape_entry_id }}">Name</label>
-              <input id="landscape-name-{{ entry.landscape_entry_id }}" name="name" class="input" value="{{ entry.name }}" required />
+              <input id="landscape-name-{{ entry.landscape_entry_id }}"
+                     name="name"
+                     class="input"
+                     value="{{ entry.name }}"
+                     required />
             </div>
             <div>
               <label class="label" for="landscape-kind-{{ entry.landscape_entry_id }}">Kind</label>
-              <select id="landscape-kind-{{ entry.landscape_entry_id }}" name="kind" class="input" required>
+              <select id="landscape-kind-{{ entry.landscape_entry_id }}"
+                      name="kind"
+                      class="input"
+                      required>
                 <option value="startup" {% if entry.kind == "startup" %}selected{% endif %}>Startup</option>
-                <option value="github_project" {% if entry.kind == "github_project" %}selected{% endif %}>GitHub project</option>
+                <option value="github_project"
+                        {% if entry.kind == "github_project" %}selected{% endif %}>GitHub project</option>
               </select>
             </div>
             <div>
@@ -140,8 +166,12 @@
                    maxlength="500" />
           </div>
           <div>
-            <label class="label" for="landscape-description-{{ entry.landscape_entry_id }}">Description</label>
-            <textarea id="landscape-description-{{ entry.landscape_entry_id }}" name="description" rows="4" class="input">{{ entry.description.as_deref().unwrap_or("") }}</textarea>
+            <label class="label"
+                   for="landscape-description-{{ entry.landscape_entry_id }}">Description</label>
+            <textarea id="landscape-description-{{ entry.landscape_entry_id }}"
+                      name="description"
+                      rows="4"
+                      class="input">{{ entry.description.as_deref().unwrap_or("") }}</textarea>
           </div>
           <div class="grid gap-4 lg:grid-cols-4">
             <div>
