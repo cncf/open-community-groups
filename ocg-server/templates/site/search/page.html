@@ -1,0 +1,96 @@
+{% extends "common/base.html" -%}
+
+{% block jumbotron -%}
+  <section class="container mx-auto max-w-5xl px-4 pt-10 pb-8 sm:px-6 lg:px-8 lg:pt-16">
+    <div class="rounded-[2.25rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+      <div class="inline-flex rounded-full border border-primary-200 bg-primary-50/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-700">
+        Search GOUP
+      </div>
+      <h1 class="mt-4 text-4xl font-black tracking-tight text-stone-950 sm:text-5xl">Find what you need</h1>
+      <p class="mt-4 max-w-2xl text-base/7 text-stone-600">
+        Search events, groups, jobs, ecosystem entries, and the GOUP reading brief from one place.
+      </p>
+      <form action="/search"
+            method="get"
+            class="mt-7 flex flex-col gap-3 sm:flex-row">
+        <label class="sr-only" for="site-search-query">Search GOUP</label>
+        <input id="site-search-query"
+               name="query"
+               value="{{ query }}"
+               type="search"
+               autocomplete="off"
+               placeholder="Search events, jobs, groups, startups..."
+               class="min-w-0 flex-1 rounded-full border border-stone-200 bg-stone-50 px-5 py-3 text-base font-medium text-stone-900 placeholder-stone-400 transition focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-0" />
+        <button type="submit"
+                class="inline-flex items-center justify-center rounded-full bg-stone-950 px-6 py-3 text-base font-bold text-white shadow-lg shadow-stone-950/15 transition hover:-translate-y-0.5 hover:bg-primary-700">
+          Search
+        </button>
+      </form>
+    </div>
+  </section>
+{% endblock jumbotron -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-5xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
+    {% if query.is_empty() -%}
+      <div class="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 p-6 text-center">
+        <h2 class="text-xl font-black text-stone-950">Start with a keyword</h2>
+        <p class="mt-2 text-sm/6 text-stone-600">Try a topic, city, company, role, technology, or community name.</p>
+      </div>
+    {% else -%}
+      <div class="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div class="text-xs font-bold uppercase tracking-[0.2em] text-primary-700">Search results</div>
+          <h2 class="mt-2 text-2xl font-black tracking-tight text-stone-950">Search for "{{ query }}"</h2>
+        </div>
+        <div class="text-sm font-medium text-stone-500">{{ total }} total matches</div>
+      </div>
+
+      {% if total == 0 -%}
+        <div class="rounded-[2rem] border border-dashed border-stone-300 bg-stone-50 p-6 text-center">
+          <h2 class="text-xl font-black text-stone-950">No matches yet</h2>
+          <p class="mt-2 text-sm/6 text-stone-600">Try a broader term, a city, a technology, or a company name.</p>
+        </div>
+      {% else -%}
+        <div class="grid gap-5">
+          {% for section in sections -%}
+            <section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
+              <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-xl font-black text-stone-950">{{ section.title }}</h3>
+                  <p class="mt-1 text-sm font-medium text-stone-500">{{ section.total }} matches</p>
+                </div>
+                <a href="{{ section.href }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="text-sm font-bold text-primary-700 transition hover:text-primary-900">View all</a>
+              </div>
+
+              {% if section.results.is_empty() -%}
+                <div class="rounded-2xl border border-dashed border-stone-200 bg-stone-50 p-4 text-sm/6 text-stone-600">
+                  No results in {{ section.title|lower }} for this query.
+                </div>
+              {% else -%}
+                <div class="grid gap-3 sm:grid-cols-2">
+                  {% for result in section.results -%}
+                    <a href="{{ result.href }}"
+                       {% if result.hx_boost %}
+                         hx-boost="true" hx-target="body"
+                       {% else %}
+                         hx-boost="false" target="_blank" rel="noopener noreferrer"
+                       {% endif %}
+                       class="group rounded-3xl border border-stone-200 bg-stone-50 p-4 transition hover:border-primary-200 hover:bg-white hover:shadow-lg hover:shadow-stone-200/50">
+                      <div class="text-xs font-bold uppercase tracking-[0.14em] text-primary-700">{{ result.eyebrow }}</div>
+                      <div class="mt-2 text-base/7 font-black text-stone-950 group-hover:text-primary-900">{{ result.title }}</div>
+                      <p class="mt-2 line-clamp-3 text-sm/6 text-stone-600">{{ result.summary }}</p>
+                    </a>
+                  {% endfor -%}
+                </div>
+              {% endif -%}
+            </section>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    {% endif -%}
+  </div>
+{% endblock content -%}

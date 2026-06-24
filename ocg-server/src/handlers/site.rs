@@ -6,5 +6,6 @@ pub(crate) mod home;
 pub(crate) mod jobs;
 pub(crate) mod landscape;
 pub(crate) mod not_found;
+pub(crate) mod search;
 pub(crate) mod stats;
 pub(crate) mod wiki;

@@ -33,7 +33,7 @@ test.describe("site header", () => {
     ).toHaveAttribute("href", "/jobs");
     await expect(
       navigation.getByRole("link", { name: /Remote roles/ }),
-    ).toHaveAttribute("href", "/jobs?remote=true");
+    ).toHaveCount(0);
     await expect(
       navigation.getByRole("link", { name: /Post a role/ }),
     ).toHaveAttribute("href", "/log-in?next_url=/dashboard/jobs");
@@ -46,6 +46,9 @@ test.describe("site header", () => {
     await expect(
       navigation.getByRole("link", { name: "Join GOUP" }),
     ).toHaveAttribute("href", "/log-in/oidc/linkedin");
+    await expect(
+      navigation.getByRole("search").getByPlaceholder("Search GOUP"),
+    ).toBeVisible();
     await expect(navigation.getByRole("link", { name: "About" })).toHaveCount(
       0,
     );

@@ -72,7 +72,7 @@
     <div class="grid gap-6 lg:grid-cols-3">
       {% for section in sections -%}
         <section id="{{ section.id }}"
-                 class="scroll-mt-32 flex min-h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/60 lg:max-h-[78vh]">
+                 class="scroll-mt-32 flex min-h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/60">
           <div class="border-b border-stone-100 bg-linear-to-br from-white via-primary-50/50 to-stone-50 p-6">
             <div class="mb-5 flex items-center justify-between gap-3">
               <div class="inline-flex items-center rounded-full border border-primary-100 bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary-700 shadow-sm">
@@ -104,7 +104,7 @@
               <span>Newest links</span>
               <span>{{ section.links.len() }} items</span>
             </div>
-            <div class="min-h-0 grow overflow-y-auto overscroll-contain p-5 pt-3 lg:pr-3">
+            <div class="grow p-5 pt-3">
               {% for link in section.links -%}
                 {% if loop.index <= 8 -%}
                   <a href="{{ link.url }}"

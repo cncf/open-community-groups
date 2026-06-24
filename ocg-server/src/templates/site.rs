@@ -12,6 +12,8 @@ pub(crate) mod jobs;
 pub(crate) mod landscape;
 /// Templates for the not found page.
 pub(crate) mod not_found;
+/// Templates for the site search page.
+pub(crate) mod search;
 /// Templates for the stats page.
 pub(crate) mod stats;
 /// Templates for the wiki page.
