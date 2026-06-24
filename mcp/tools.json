@@ -295,6 +295,35 @@
     "action": "update_event"
   },
   {
+    "name": "goup_search",
+    "title": "GOUP Global Search",
+    "description": "Search across GOUP events, groups, jobs, ecosystem entries, and wiki feed sources in one call.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "Search text to match across public GOUP content."
+        },
+        "alliance": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter. Defaults to goup."
+        },
+        "alliance_name": {
+          "type": "string",
+          "description": "Optional alliance slug/name filter alias. Defaults to goup."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Maximum results per section, 1 to 100. Defaults to 4."
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    },
+    "action": "search_all"
+  },
+  {
     "name": "goup_search_groups",
     "title": "GOUP Search Groups",
     "description": "List or search GOUP groups by alliance, name, slug, category, location, or description.",
