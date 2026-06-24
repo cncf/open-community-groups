@@ -80,7 +80,7 @@ describe("dashboard group attendees", () => {
         <span data-attendee-email-selection-label>attendees selected</span>
         <button type="button" data-attendee-email-selection-clear>Clear</button>
         <button type="button" data-attendee-email-selection-cancel>Cancel</button>
-        <button type="button" data-attendee-email-selection-send disabled>Continue to email</button>
+        <button type="button" data-attendee-email-selection-send disabled>Continue</button>
       </div>
       <table>
         <thead>

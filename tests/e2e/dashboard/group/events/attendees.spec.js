@@ -1297,7 +1297,7 @@ test.describe("group dashboard attendees tab", () => {
       "[data-attendee-email-selection-checkbox]",
     );
     const selectionSendButton = selectionBar.getByRole("button", {
-      name: "Continue to email",
+      name: "Continue",
     });
 
     // Verify selection mode starts empty and cannot send without a selection.
@@ -1365,7 +1365,7 @@ test.describe("group dashboard attendees tab", () => {
     // Select the eligible attendee and open the email modal.
     await expect(selectionCheckboxes).toHaveCount(1);
     await selectionCheckboxes.check();
-    await selectionBar.getByRole("button", { name: "Continue to email" }).click();
+    await selectionBar.getByRole("button", { name: "Continue" }).click();
 
     // Verify the email modal is configured for selected recipients.
     const modal = organizerGroupPage.locator("#attendee-notification-modal");
