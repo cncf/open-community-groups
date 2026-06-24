@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(277);
+select plan(278);
 
 -- ============================================================================
 -- VARIABLES
@@ -262,6 +262,7 @@ select has_function('release_event_discount_code_availability', array['uuid', 'i
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
+select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revert_event_refund_approval', array['uuid', 'uuid', 'uuid']::name[]);

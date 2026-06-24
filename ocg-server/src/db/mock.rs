@@ -521,6 +521,13 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn resolve_event_custom_notification_recipient_ids(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            recipient_scope: &str,
+            requested_user_ids: Option<Vec<Uuid>>,
+        ) -> Result<Vec<Uuid>>;
         async fn search_event_attendees(
             &self,
             group_id: Uuid,
