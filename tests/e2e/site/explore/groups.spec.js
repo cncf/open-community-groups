@@ -35,7 +35,7 @@ test.describe("site explore groups page", () => {
       page.getByText(TEST_GROUP_NAMES.gamma, { exact: true }),
     ).toBeVisible();
 
-    // Submit a group search and wait for the results to refresh.
+    // Type a group search and wait for the results to refresh.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -44,7 +44,7 @@ test.describe("site explore groups page", () => {
           response.url().includes("ts_query=Observability") &&
           response.ok(),
       ),
-      searchInput.fill("Observability").then(() => searchInput.press("Enter")),
+      searchInput.fill("Observability"),
     ]);
 
     // Verify the search narrows the list to the matching group.
@@ -86,7 +86,7 @@ test.describe("site explore groups page", () => {
     const searchInput = page.getByPlaceholder("Search groups");
     await expect(searchInput).toBeVisible();
 
-    // Submit the unmatched search query and wait for filtered results.
+    // Type the unmatched search query and wait for filtered results.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -95,9 +95,7 @@ test.describe("site explore groups page", () => {
           response.url().includes("ts_query=No%20matching%20group") &&
           response.ok(),
       ),
-      searchInput
-        .fill("No matching group")
-        .then(() => searchInput.press("Enter")),
+      searchInput.fill("No matching group"),
     ]);
 
     // Verify the filtered empty state explains the missing matches.

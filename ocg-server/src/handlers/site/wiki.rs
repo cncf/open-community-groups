@@ -189,7 +189,7 @@ pub(crate) async fn page(
 }
 
 #[cached(time = 900)]
-async fn load_wiki_sections() -> Vec<WikiSection> {
+pub(crate) async fn load_wiki_sections() -> Vec<WikiSection> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(8))
         .user_agent("GOUP Wiki/1.0")

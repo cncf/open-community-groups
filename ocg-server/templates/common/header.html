@@ -38,13 +38,6 @@
                 Browse roles
                 <span class="mt-1 block text-xs/5 font-medium text-stone-500">Open roles from GOUP members.</span>
               </a>
-              <a href="/jobs?remote=true"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
-                Remote roles
-                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Find jobs you can do from anywhere.</span>
-              </a>
               {% if user.logged_in -%}
                 <a href="/dashboard/jobs"
                    hx-boost="true"
@@ -74,7 +67,24 @@
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end items-center gap-3">
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
+      <form action="/search"
+            method="get"
+            role="search"
+            class="relative hidden xl:block">
+        <label class="sr-only" for="header-site-search">Search GOUP</label>
+        <input id="header-site-search"
+               name="query"
+               type="search"
+               autocomplete="off"
+               placeholder="Search GOUP"
+               class="w-44 rounded-full border border-stone-200 bg-white/80 px-4 py-2 pr-9 text-sm font-medium text-stone-900 placeholder-stone-400 shadow-sm transition focus:w-56 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-0" />
+        <button type="submit"
+                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-primary-600 transition hover:bg-primary-50"
+                aria-label="Search GOUP">
+          <span class="svg-icon block size-4 bg-current icon-magnifying-glass"></span>
+        </button>
+      </form>
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteSearch || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"
@@ -131,6 +141,20 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-home bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">Home</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="/search"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-magnifying-glass bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Search GOUP</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>

@@ -182,7 +182,7 @@ test.describe("site explore events page", () => {
     const searchInput = page.getByPlaceholder("Search events");
     await expect(searchInput).toBeVisible();
 
-    // Submit the unmatched search query and wait for filtered results.
+    // Type the unmatched search query and wait for filtered results.
     await Promise.all([
       page.waitForResponse(
         (response) =>
@@ -191,9 +191,7 @@ test.describe("site explore events page", () => {
           response.url().includes("ts_query=No%20matching%20event") &&
           response.ok(),
       ),
-      searchInput
-        .fill("No matching event")
-        .then(() => searchInput.press("Enter")),
+      searchInput.fill("No matching event"),
     ]);
 
     // Find the filtered empty state.

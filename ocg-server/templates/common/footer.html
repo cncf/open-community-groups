@@ -30,8 +30,8 @@
         {% endif -%}
 
         <p class="mt-5 max-w-lg text-sm leading-6 text-stone-300 sm:text-base">
-          A home for builders, founders, and open source communities to discover groups,
-          host events, share opportunities, and grow the GOUP Alliance.
+          A warm builder community for people who dream, connect, achieve, and help each
+          other move forward.
         </p>
 
         <div class="mt-7 flex flex-col gap-3 sm:flex-row">
@@ -39,14 +39,23 @@
              hx-boost="true"
              hx-target="body"
              class="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-bold text-stone-950 shadow-lg shadow-black/20 transition hover:-translate-y-0.5 hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300">
-            Explore events
+            Explore events & groups
           </a>
-          <a href="/dashboard/user"
-             hx-boost="true"
-             hx-target="body"
-             class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300">
-            Open dashboard
-          </a>
+          {% if user.logged_in -%}
+            <a href="/dashboard/jobs"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300">
+              Post a role
+            </a>
+          {% else -%}
+            <a href="/log-in?next_url=/dashboard/jobs"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300">
+              Post a role
+            </a>
+          {% endif -%}
         </div>
       </div>
       {# End brand section -#}
@@ -54,25 +63,19 @@
       {# Navigation section -#}
       <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
         <div>
-          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Explore</h2>
+          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Community</h2>
           <ul class="mt-4 space-y-3 text-sm">
             <li>
               <a href="/explore?alliance[0]=goup&entity=events"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-300 transition hover:text-white">Events</a>
-            </li>
-            <li>
-              <a href="/explore?alliance[0]=goup&entity=groups"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="text-stone-300 transition hover:text-white">Groups</a>
+                 class="text-stone-300 transition hover:text-white">Events & Groups</a>
             </li>
             <li>
               <a href="/landscape"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-300 transition hover:text-white">Landscape</a>
+                 class="text-stone-300 transition hover:text-white">Ecosystem</a>
             </li>
             <li>
               <a href="/stats"
@@ -80,38 +83,54 @@
                  hx-target="body"
                  class="text-stone-300 transition hover:text-white">Stats</a>
             </li>
-          </ul>
-        </div>
-
-        <div>
-          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Resources</h2>
-          <ul class="mt-4 space-y-3 text-sm">
             <li>
               <a href="/about"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-300 transition hover:text-white">About</a>
+                 class="text-stone-300 transition hover:text-white">About GOUP</a>
             </li>
+            <li>
+              <a href="/search"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Search GOUP</a>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Jobs</h2>
+          <ul class="mt-4 space-y-3 text-sm">
             <li>
               <a href="/jobs"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-300 transition hover:text-white">Jobs</a>
+                 class="text-stone-300 transition hover:text-white">Browse roles</a>
+            </li>
+            <li>
+              <a href="/jobs?remote=true"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="text-stone-300 transition hover:text-white">Remote roles</a>
+            </li>
+            <li>
+              {% if user.logged_in -%}
+                <a href="/dashboard/jobs"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="text-stone-300 transition hover:text-white">Post a role</a>
+              {% else -%}
+                <a href="/log-in?next_url=/dashboard/jobs"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="text-stone-300 transition hover:text-white">Post a role</a>
+              {% endif -%}
             </li>
             <li>
               <a href="/wiki"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-300 transition hover:text-white">Wiki</a>
-            </li>
-            <li>
-              <a href="https://github.com/sakomws/gitjobs"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 class="inline-flex items-center gap-1.5 text-stone-300 transition hover:text-white">
-                GitJobs
-                <span class="svg-icon size-3 icon-external-link bg-current"></span>
-              </a>
+                 class="text-stone-300 transition hover:text-white">Reading brief</a>
             </li>
           </ul>
         </div>
@@ -135,9 +154,25 @@
                aria-label="GOUP on LinkedIn">
               <div class="svg-icon size-5 bg-stone-200 icon-linkedin transition group-hover:bg-white"></div>
             </a>
+            <a href="https://www.instagram.com/goupaz/"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="group inline-flex size-11 items-center justify-center rounded-full border border-white/15 bg-white/5 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300"
+               title="GOUP on Instagram"
+               aria-label="GOUP on Instagram">
+              <div class="svg-icon size-5 bg-stone-200 icon-instagram transition group-hover:bg-white"></div>
+            </a>
+            <a href="https://youtube.com/goupaz"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="group inline-flex size-11 items-center justify-center rounded-full border border-white/15 bg-white/5 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-300"
+               title="GOUP on YouTube"
+               aria-label="GOUP on YouTube">
+              <div class="svg-icon size-5 bg-stone-200 icon-youtube transition group-hover:bg-white"></div>
+            </a>
           </div>
           <p class="mt-4 text-sm leading-6 text-stone-400">
-            Open source, alliance-driven, and built for communities that ship.
+            Open source, community-led, and built for people who ship.
           </p>
         </div>
       </div>
@@ -157,7 +192,7 @@
         Powered by <a href="https://github.com/sakomws/goup.vc"
     class="font-bold text-white underline decoration-white/20 underline-offset-4 transition hover:decoration-white"
     target="_blank"
-    rel="noopener noreferrer">GOUP Alliance</a>.
+    rel="noopener noreferrer">GOUP</a>.
       </p>
     </div>
     {# End copyright section -#}

@@ -37,6 +37,9 @@ const EXPLORE_WIDGET_READY_KEY = "exploreWidgetReady";
 const CURRENT_MONTH_BUTTON_ID = "current-month-btn";
 const PREV_MONTH_BUTTON_ID = "prev-month-btn";
 const NEXT_MONTH_BUTTON_ID = "next-month-btn";
+const SEARCH_INPUT_DEBOUNCE_MS = 300;
+
+let searchInputTimer = null;
 
 /**
  * Gets the active desktop explore form id.
@@ -153,6 +156,30 @@ const handleExploreKeydown = (event) => {
   if (formId) {
     searchOnEnter(event, formId);
   }
+};
+
+/**
+ * Handles type-ahead search for explore text input.
+ * @param {InputEvent} event - Input event
+ */
+const handleExploreInput = (event) => {
+  if (!(event.target instanceof HTMLInputElement) || event.target.id !== SEARCH_INPUT_ID) {
+    return;
+  }
+
+  const formId = getExploreFormId();
+  if (!formId) {
+    return;
+  }
+
+  if (searchInputTimer) {
+    window.clearTimeout(searchInputTimer);
+  }
+
+  searchInputTimer = window.setTimeout(() => {
+    triggerChangeOnForm(formId);
+    searchInputTimer = null;
+  }, SEARCH_INPUT_DEBOUNCE_MS);
 };
 
 /**
@@ -287,6 +314,7 @@ const initializeExploreControls = (root = document) => {
 
   root.addEventListener("click", handleExploreClick);
   root.addEventListener("keydown", handleExploreKeydown);
+  root.addEventListener("input", handleExploreInput);
   root.addEventListener("change", handleExploreChange);
   root.addEventListener(FILTER_CHANGE_EVENT, handleFilterChange);
   root.addEventListener("htmx:afterSwap", handleExploreAfterSwap);
