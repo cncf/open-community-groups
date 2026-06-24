@@ -145,7 +145,7 @@ pub(crate) fn build_user_dashboard_events_link(base_url: &str) -> String {
 pub(crate) fn compute_hash(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 /// Helper function to format `DateTime` with timezone for ICS format (YYYYMMDDTHHMMSS)

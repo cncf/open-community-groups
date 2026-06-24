@@ -6,7 +6,7 @@ use std::time::Duration;
 use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
-use cached::proc_macro::cached;
+use cached::cached;
 use serde::Serialize;
 use tracing::instrument;
 use uuid::Uuid;
@@ -230,11 +230,10 @@ where
     #[instrument(skip(self), err)]
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment> {
         #[cached(
-            time = 7200,
+            ttl = 7200,
             key = "Uuid",
             convert = "{ attachment_id }",
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>, attachment_id: Uuid) -> Result<Attachment> {
             let row = db
