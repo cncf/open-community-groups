@@ -10,98 +10,8 @@ let pendingHeaderNavLink = null;
 let pendingHeaderNavLinkTimer = null;
 
 const headerNavLinkSelector = "[data-header-nav-link]";
-const themeStorageKey = "ocg-theme";
 /** Wait before showing nav loading so quick HTMX requests can finish without flicker. */
 const headerNavLinkPendingDelayMs = 120;
-
-/**
- * Returns the stored theme preference, if any.
- * @returns {"light"|"dark"|null}
- */
-const getStoredTheme = () => {
-  try {
-    const theme = window.localStorage.getItem(themeStorageKey);
-    return theme === "light" || theme === "dark" ? theme : null;
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Stores the theme preference.
- * @param {"light"|"dark"} theme - Theme name.
- */
-const setStoredTheme = (theme) => {
-  try {
-    window.localStorage.setItem(themeStorageKey, theme);
-  } catch {
-    // Ignore storage failures; the current page can still switch themes.
-  }
-};
-
-/**
- * Returns the active theme.
- * @returns {"light"|"dark"}
- */
-const getActiveTheme = () => {
-  if (document.documentElement.classList.contains("ocg-dark")) {
-    return "dark";
-  }
-  return "light";
-};
-
-/**
- * Updates all visible dark-mode toggle controls.
- */
-const syncThemeToggleButtons = () => {
-  const isDark = getActiveTheme() === "dark";
-
-  document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(isDark));
-    button.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
-
-    const icon = button.querySelector(".theme-toggle-icon");
-    if (icon) {
-      icon.textContent = isDark ? "☀" : "☾";
-    }
-
-    const label = button.querySelector(".theme-toggle-label");
-    if (label) {
-      label.textContent = isDark ? "Light mode" : "Dark mode";
-    }
-  });
-};
-
-/**
- * Applies the requested theme.
- * @param {"light"|"dark"} theme - Theme name.
- */
-const applyTheme = (theme) => {
-  document.documentElement.classList.toggle("ocg-dark", theme === "dark");
-  setStoredTheme(theme);
-  syncThemeToggleButtons();
-};
-
-/**
- * Initializes dark mode from storage/system preference and binds controls.
- */
-const initThemeToggle = () => {
-  const storedTheme = getStoredTheme();
-  if (storedTheme) {
-    document.documentElement.classList.toggle("ocg-dark", storedTheme === "dark");
-  }
-
-  document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
-    if (!button.__ocgThemeToggleInitialized) {
-      button.addEventListener("click", () => {
-        applyTheme(getActiveTheme() === "dark" ? "light" : "dark");
-      });
-      button.__ocgThemeToggleInitialized = true;
-    }
-  });
-
-  syncThemeToggleButtons();
-};
 
 /**
  * Finds the header nav link that triggered an event.
@@ -163,7 +73,6 @@ const clearHeaderLoading = () => {
 const restoreHeaderState = () => {
   clearHeaderLoading();
   initUserDropdown();
-  initThemeToggle();
 };
 
 /**
@@ -350,7 +259,6 @@ const toggleDropdownVisibility = () => {
 export const initUserDropdown = () => {
   ensureDocumentHandlers();
   bindLifecycleListeners();
-  initThemeToggle();
 
   const button = getElementById(document, "user-dropdown-button");
   const dropdown = getElementById(document, "user-dropdown");

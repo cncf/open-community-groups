@@ -24,8 +24,6 @@ describe("header", () => {
 
   afterEach(() => {
     resetDom();
-    window.localStorage.removeItem("ocg-theme");
-    document.documentElement.classList.remove("ocg-dark");
     scrollToMock.restore();
     setLocationPath(originalPath);
   });
@@ -179,44 +177,6 @@ describe("header", () => {
       false,
     );
     expect(link.hasAttribute("aria-busy")).to.equal(false);
-  });
-
-  it("toggles dark mode and persists the selected theme", () => {
-    // Build the DOM fixture with desktop and dropdown theme toggles.
-    document.body.innerHTML = `
-      <button id="user-dropdown-button" type="button">User</button>
-      <div id="user-dropdown" class="hidden"></div>
-      <button data-theme-toggle aria-label="Switch to dark mode">
-        <span class="theme-toggle-icon">☾</span>
-      </button>
-      <button data-theme-toggle aria-label="Switch to dark mode">
-        <span class="theme-toggle-icon">☾</span>
-        <span class="theme-toggle-label">Dark mode</span>
-      </button>
-    `;
-
-    // Wire header handlers before toggling the theme.
-    initUserDropdown();
-
-    // The first click enables dark mode on the whole document.
-    document.querySelector("[data-theme-toggle]").click();
-    expect(document.documentElement.classList.contains("ocg-dark")).to.equal(
-      true,
-    );
-    expect(window.localStorage.getItem("ocg-theme")).to.equal("dark");
-    expect(
-      document.querySelector(".theme-toggle-label").textContent,
-    ).to.equal("Light mode");
-
-    // The second click returns to light mode and updates all controls.
-    document.querySelector("[data-theme-toggle]").click();
-    expect(document.documentElement.classList.contains("ocg-dark")).to.equal(
-      false,
-    );
-    expect(window.localStorage.getItem("ocg-theme")).to.equal("light");
-    expect(
-      document.querySelector(".theme-toggle-label").textContent,
-    ).to.equal("Dark mode");
   });
 
   it("scrolls to the top after dashboard swaps", () => {
