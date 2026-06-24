@@ -65,7 +65,7 @@ pub(crate) struct UserSummary {
 pub(crate) struct UserProvider {
     /// GitHub metadata.
     pub github: Option<GitHubUserProvider>,
-    /// LinkedIn metadata.
+    /// `LinkedIn` metadata.
     pub linkedin: Option<LinkedInUserProvider>,
 }
 
@@ -78,7 +78,7 @@ impl UserProvider {
         }
     }
 
-    /// Build provider metadata for a LinkedIn account.
+    /// Build provider metadata for a `LinkedIn` account.
     pub(crate) fn from_linkedin_subject(subject: String) -> Self {
         Self {
             github: None,
@@ -104,9 +104,9 @@ pub(crate) struct GitHubUserProvider {
     pub username: String,
 }
 
-/// LinkedIn-specific user metadata.
+/// `LinkedIn`-specific user metadata.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct LinkedInUserProvider {
-    /// Stable LinkedIn OIDC subject identifier.
+    /// Stable `LinkedIn` OIDC subject identifier.
     pub subject: String,
 }

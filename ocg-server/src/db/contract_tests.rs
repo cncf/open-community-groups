@@ -10,11 +10,11 @@ use crate::{
     auth::UserSummary,
     db::{
         PgDB,
+        alliance::DBAlliance,
         auth::DBAuth,
         common::DBCommon,
-        alliance::DBAlliance,
         dashboard::{
-            common::DBDashboardCommon, alliance::DBDashboardAlliance, group::DBDashboardGroup,
+            alliance::DBDashboardAlliance, common::DBDashboardCommon, group::DBDashboardGroup,
             user::DBDashboardUser,
         },
         event::DBEvent,
@@ -26,8 +26,8 @@ use crate::{
     services::meetings::MeetingProvider,
     templates::{
         dashboard::{
-            audit::AuditLogFilters,
             alliance::team::AllianceTeamFilters,
+            audit::AuditLogFilters,
             group::{
                 attendees::AttendeesFilters,
                 events::{Event as EventUpdate, EventsListFilters},
@@ -397,9 +397,7 @@ async fn db_contracts_get_event_purchase_summary_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_event_registration_questions_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let questions = db
-        .get_event_registration_questions(alliance_id(), event_id())
-        .await?;
+    let questions = db.get_event_registration_questions(alliance_id(), event_id()).await?;
 
     assert_eq!(questions.len(), 1);
     assert_eq!(questions[0].prompt, "Meal preference");
@@ -584,12 +582,7 @@ async fn db_contracts_get_group_summary_deserializes() -> Result<()> {
 async fn db_contracts_get_group_upcoming_events_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let events = db
-        .get_group_upcoming_events(
-            alliance_id(),
-            "contract-group",
-            vec![EventKind::Hybrid],
-            10,
-        )
+        .get_group_upcoming_events(alliance_id(), "contract-group", vec![EventKind::Hybrid], 10)
         .await?;
 
     assert_eq!(events.len(), 1);

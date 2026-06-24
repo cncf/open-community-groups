@@ -88,12 +88,7 @@ pub(crate) async fn page(
 
     // Redirect generated group slugs to their pretty URL
     if should_redirect_to_pretty_group_slug(&event, &group_slug) {
-        let url = public_event_url(
-            &alliance_name,
-            event.group.public_slug(),
-            &event.slug,
-            &uri,
-        );
+        let url = public_event_url(&alliance_name, event.group.public_slug(), &event.slug, &uri);
         return Ok(Redirect::temporary(&url).into_response());
     }
 
@@ -516,8 +511,7 @@ pub(crate) async fn start_checkout(
     load_checkoutable_event(&db, alliance_id, event_id).await?;
 
     // Get registration questions and validate answers
-    let registration_questions =
-        db.get_event_registration_questions(alliance_id, event_id).await?;
+    let registration_questions = db.get_event_registration_questions(alliance_id, event_id).await?;
     validate_registration_answers(
         input.registration_answers.registration_answers.as_ref(),
         &registration_questions,
@@ -813,14 +807,14 @@ async fn ensure_attendee_event_is_active(
     alliance_id: Uuid,
     event_id: Uuid,
 ) -> Result<(), HandlerError> {
-    db.ensure_event_is_active(alliance_id, event_id)
-        .await
-        .map_err(|err| match HandlerError::from(err) {
+    db.ensure_event_is_active(alliance_id, event_id).await.map_err(|err| {
+        match HandlerError::from(err) {
             HandlerError::Other(err) if err.to_string() == "event not found or inactive" => {
                 HandlerError::Database("event not found or inactive".to_string())
             }
             other => other,
-        })
+        }
+    })
 }
 
 /// Returns the attendee-facing status when checkout should not continue.

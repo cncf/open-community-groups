@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     db::PgExecutor,
     types::landscape::{
-        DashboardLandscapeFilters, LandscapeEntryInput, LandscapeOutput, LandscapeFilters,
+        DashboardLandscapeFilters, LandscapeEntryInput, LandscapeFilters, LandscapeOutput,
         parse_tags,
     },
 };
@@ -73,8 +73,11 @@ where
         &self,
         filters: &LandscapeFilters,
     ) -> Result<LandscapeOutput> {
-        self.fetch_json_one("select search_landscape_entries($1::jsonb)", &[&Json(filters)])
-            .await
+        self.fetch_json_one(
+            "select search_landscape_entries($1::jsonb)",
+            &[&Json(filters)],
+        )
+        .await
     }
 
     #[instrument(skip(self, filters), err)]

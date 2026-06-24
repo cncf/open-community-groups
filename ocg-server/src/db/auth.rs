@@ -53,15 +53,11 @@ pub(crate) trait DBAuth {
     /// Retrieves the password hash for a user.
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
 
-    /// Checks whether a LinkedIn OIDC subject is blocked.
+    /// Checks whether a `LinkedIn` OIDC subject is blocked.
     async fn is_linkedin_subject_blocked(&self, linkedin_subject: &str) -> Result<bool>;
 
     /// Checks whether a group belongs to a alliance.
-    async fn group_belongs_to_alliance(
-        &self,
-        alliance_id: &Uuid,
-        group_id: &Uuid,
-    ) -> Result<bool>;
+    async fn group_belongs_to_alliance(&self, alliance_id: &Uuid, group_id: &Uuid) -> Result<bool>;
 
     /// Registers a new user in the database.
     async fn sign_up_user(
@@ -255,11 +251,7 @@ where
     }
 
     #[instrument(skip(self), err)]
-    async fn group_belongs_to_alliance(
-        &self,
-        alliance_id: &Uuid,
-        group_id: &Uuid,
-    ) -> Result<bool> {
+    async fn group_belongs_to_alliance(&self, alliance_id: &Uuid, group_id: &Uuid) -> Result<bool> {
         self.fetch_scalar_one(
             r#"
             select exists (

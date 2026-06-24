@@ -83,10 +83,8 @@ pub(crate) async fn add(
 
     // Enqueue invitation email notification best-effort
     if let Err(err) = async {
-        let (alliance, site_settings) = tokio::try_join!(
-            db.get_alliance_summary(alliance_id),
-            db.get_site_settings()
-        )?;
+        let (alliance, site_settings) =
+            tokio::try_join!(db.get_alliance_summary(alliance_id), db.get_site_settings())?;
         let template_data = AllianceTeamInvitation {
             alliance_name: alliance.display_name,
             link: format!(

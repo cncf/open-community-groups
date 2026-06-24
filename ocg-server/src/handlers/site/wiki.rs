@@ -235,7 +235,13 @@ async fn fetch_source_links(
     client: &reqwest::Client,
     source: &FeedSource,
 ) -> anyhow::Result<Vec<WikiLink>> {
-    let body = client.get(source.url).send().await?.error_for_status()?.text().await?;
+    let body = client
+        .get(source.url)
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?;
     Ok(parse_feed_links(&body, source.label)
         .into_iter()
         .take(MAX_LINKS_PER_SOURCE)
@@ -273,7 +279,7 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
 
     loop {
         match reader.read_event() {
-            Ok(Event::Eof) => break,
+            Ok(Event::Eof) | Err(_) => break,
             Ok(Event::Start(event)) => {
                 let name = event.name().as_ref().to_vec();
                 if name.as_slice() == b"item" || name.as_slice() == b"entry" {
@@ -281,15 +287,14 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
                     title.clear();
                     link.clear();
                 } else if in_item && (name.as_slice() == b"title" || name.as_slice() == b"link") {
-                    if name.as_slice() == b"link" {
-                        if let Some(href) = event
+                    if name.as_slice() == b"link"
+                        && let Some(href) = event
                             .attributes()
                             .filter_map(Result::ok)
                             .find(|attr| attr.key.as_ref() == b"href")
                             .and_then(|attr| String::from_utf8(attr.value.into_owned()).ok())
-                        {
-                            link = href;
-                        }
+                    {
+                        link = href;
                     }
                     current_tag = Some(name);
                 }
@@ -335,19 +340,19 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
                 }
             }
             Ok(Event::Empty(event)) => {
-                if in_item && event.name().as_ref() == b"link" && link.is_empty() {
-                    if let Some(href) = event
+                if in_item
+                    && event.name().as_ref() == b"link"
+                    && link.is_empty()
+                    && let Some(href) = event
                         .attributes()
                         .filter_map(Result::ok)
                         .find(|attr| attr.key.as_ref() == b"href")
                         .and_then(|attr| String::from_utf8(attr.value.into_owned()).ok())
-                    {
-                        link = href;
-                    }
+                {
+                    link = href;
                 }
             }
             Ok(_) => {}
-            Err(_) => break,
         }
     }
 

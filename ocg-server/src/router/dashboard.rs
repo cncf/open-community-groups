@@ -4,9 +4,8 @@
 //! with their respective permission-based middleware layers.
 
 use axum::{
-    middleware,
+    Router, middleware,
     routing::{delete, get, post, put},
-    Router,
 };
 
 use crate::{

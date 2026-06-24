@@ -194,10 +194,7 @@ mod tests {
             Some("active-alliance".to_string())
         );
         assert_eq!(
-            alliance_name_from_host(
-                "ACTIVE-ALLIANCE.REDIRECTS.EXAMPLE:443",
-                "redirects.example"
-            ),
+            alliance_name_from_host("ACTIVE-ALLIANCE.REDIRECTS.EXAMPLE:443", "redirects.example"),
             Some("active-alliance".to_string())
         );
         assert_eq!(
@@ -297,12 +294,12 @@ mod tests {
 
     #[tokio::test]
     async fn test_redirects_root_to_alliance_page() {
-        let router = test_router(test_alliance_redirects_with_legacy_fallback(
-            HashMap::from([(
+        let router = test_router(test_alliance_redirects_with_legacy_fallback(HashMap::from(
+            [(
                 "/".to_string(),
                 "/active-alliance/group/root-group".to_string(),
-            )]),
-        ));
+            )],
+        )));
         let response = router.oneshot(test_request("/")).await.unwrap();
 
         assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);

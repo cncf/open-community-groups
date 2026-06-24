@@ -4,7 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::{auth::User, filters, helpers::user_initials, PageId},
+    templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         landscape::{LandscapeEntry, LandscapeFilters},
         pagination::NavigationLinks,

@@ -117,9 +117,7 @@ async fn test_page_groups_tab_success() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_alliance_full()

@@ -54,9 +54,7 @@ async fn test_list_page_success() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_alliance_name_by_id()
@@ -126,9 +124,7 @@ async fn test_list_page_db_error() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_alliance_name_by_id()
@@ -195,9 +191,7 @@ async fn test_add_page_success() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_group_categories()
@@ -258,9 +252,7 @@ async fn test_add_page_db_error() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_list_group_categories()
@@ -321,9 +313,7 @@ async fn test_update_page_success() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_group_full()
@@ -389,9 +379,7 @@ async fn test_update_page_db_error() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_get_group_full()
@@ -445,9 +433,7 @@ async fn test_add_success_auto_selects_group() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
@@ -528,9 +514,7 @@ async fn test_add_success_keeps_existing_group_selection() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
@@ -589,9 +573,7 @@ async fn test_add_invalid_payload() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
 
@@ -641,9 +623,7 @@ async fn test_add_db_error() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_add_group()
@@ -700,9 +680,7 @@ async fn test_update_success() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_group()
@@ -765,9 +743,7 @@ async fn test_update_invalid_payload() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
 
@@ -818,9 +794,7 @@ async fn test_update_db_error() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_update_group()
@@ -878,9 +852,7 @@ async fn test_activate_success() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_activate_group()
@@ -937,9 +909,7 @@ async fn test_deactivate_success() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_deactivate_group()
@@ -1002,9 +972,7 @@ async fn test_delete_non_selected_group() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
@@ -1066,9 +1034,7 @@ async fn test_delete_selected_group_updates_selection() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()
@@ -1144,9 +1110,7 @@ async fn test_delete_selected_group_without_fallback_clears_selection() {
     db.expect_user_has_alliance_permission()
         .times(1)
         .withf(move |cid, uid, permission| {
-            *cid == alliance_id
-                && *uid == user_id
-                && permission == AlliancePermission::GroupsWrite
+            *cid == alliance_id && *uid == user_id && permission == AlliancePermission::GroupsWrite
         })
         .returning(|_, _, _| Ok(true));
     db.expect_delete_group()

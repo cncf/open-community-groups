@@ -284,11 +284,7 @@ impl PgPaymentsManager {
 
         // Notify the attendee about the rejected refund
         self.notification_composer
-            .enqueue_refund_rejection_notification(
-                input.alliance_id,
-                input.event_id,
-                input.user_id,
-            )
+            .enqueue_refund_rejection_notification(input.alliance_id, input.event_id, input.user_id)
             .await;
 
         Ok(())

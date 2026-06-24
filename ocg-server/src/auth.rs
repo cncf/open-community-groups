@@ -36,7 +36,7 @@ mod tests;
 pub(crate) type AuthLayer = AuthManagerLayer<AuthnBackend, SessionStore>;
 
 /// Setup router authentication/authorization layer.
-pub(crate) async fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<AuthLayer> {
+pub(crate) fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<AuthLayer> {
     // Setup session layer
     let session_store = SessionStore::new(db.clone());
     let secure = if let Some(cookie) = &cfg.cookie {
@@ -51,7 +51,7 @@ pub(crate) async fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<Aut
         .with_secure(secure);
 
     // Setup auth layer
-    let authn_backend = AuthnBackend::new(db, &cfg.oauth2, &cfg.oidc).await?;
+    let authn_backend = AuthnBackend::new(db, &cfg.oauth2, &cfg.oidc)?;
     let auth_layer = AuthManagerLayerBuilder::new(authn_backend, session_layer).build();
 
     Ok(auth_layer)
@@ -140,7 +140,7 @@ pub(crate) struct AuthnBackend {
 impl AuthnBackend {
     /// Create a new `AuthnBackend` instance.
     #[allow(unused_mut)]
-    pub async fn new(db: DynDB, oauth2_cfg: &OAuth2Config, oidc_cfg: &OidcConfig) -> Result<Self> {
+    pub fn new(db: DynDB, oauth2_cfg: &OAuth2Config, oidc_cfg: &OidcConfig) -> Result<Self> {
         let mut builder =
             oauth2_reqwest::ClientBuilder::new().redirect(oauth2_reqwest::redirect::Policy::none());
         #[cfg(test)]
@@ -150,7 +150,7 @@ impl AuthnBackend {
         }
         let http_client = builder.build()?;
         let oauth2_providers = Self::setup_oauth2_providers(oauth2_cfg)?;
-        let oidc_providers = Self::setup_oidc_providers(oidc_cfg, http_client.clone()).await?;
+        let oidc_providers = Self::setup_oidc_providers(oidc_cfg, http_client.clone())?;
 
         Ok(Self {
             db,
@@ -196,17 +196,16 @@ impl AuthnBackend {
             .request_async(&self.http_client)
             .await;
 
-        if let (
-            OidcProvider::LinkedIn,
-            Err(RequestTokenError::Parse(parse_err, body)),
-        ) = (&creds.provider, &token_result)
+        if let (OidcProvider::LinkedIn, Err(RequestTokenError::Parse(parse_err, body))) =
+            (&creds.provider, &token_result)
         {
-            let token_response: LinkedInTokenResponse = serde_json::from_slice(body).map_err(|_| {
-                anyhow!(
-                    "failed to parse token response: {parse_err}; response body: {}",
-                    sanitize_oauth_response_body(body)
-                )
-            })?;
+            let token_response: LinkedInTokenResponse =
+                serde_json::from_slice(body).map_err(|_| {
+                    anyhow!(
+                        "failed to parse token response: {parse_err}; response body: {}",
+                        sanitize_oauth_response_body(body)
+                    )
+                })?;
             let user_summary =
                 UserSummary::from_linkedin_userinfo(&token_response.access_token).await?;
             let user = self.get_or_sign_up_external_user(&user_summary).await?;
@@ -270,10 +269,7 @@ impl AuthnBackend {
             .as_ref()
             .and_then(|provider| provider.linkedin.as_ref())
             .map(|linkedin| linkedin.subject.as_str())
-            && self
-                .db
-                .is_linkedin_subject_blocked(linkedin_subject)
-                .await?
+            && self.db.is_linkedin_subject_blocked(linkedin_subject).await?
         {
             bail!("linkedin account is blocked");
         }
@@ -339,7 +335,7 @@ impl AuthnBackend {
     }
 
     /// Set up `Oidc` providers from configuration.
-    async fn setup_oidc_providers(
+    fn setup_oidc_providers(
         oidc_cfg: &OidcConfig,
         _http_client: oauth2_reqwest::Client,
     ) -> Result<OidcProviders> {
@@ -369,11 +365,11 @@ impl AuthnBackend {
         Ok(providers)
     }
 
-    /// Build LinkedIn OIDC provider metadata.
+    /// Build `LinkedIn` OIDC provider metadata.
     ///
-    /// LinkedIn publishes its discovery document at `/oauth/.well-known/openid-configuration`,
+    /// `LinkedIn` publishes its discovery document at `/oauth/.well-known/openid-configuration`,
     /// but the issuer in that document is `https://www.linkedin.com`. Constructing the metadata
-    /// directly avoids relying on issuer-derived discovery URLs that do not match LinkedIn's layout.
+    /// directly avoids relying on issuer-derived discovery URLs that do not match `LinkedIn`'s layout.
     fn linkedin_provider_metadata(issuer_url: &str) -> Result<oidc::core::CoreProviderMetadata> {
         Ok(oidc::core::CoreProviderMetadata::new(
             oidc::IssuerUrl::new(issuer_url.to_string())?,
@@ -711,7 +707,7 @@ impl UserSummary {
         })
     }
 
-    /// Create a `UserSummary` from LinkedIn OIDC ID token claims.
+    /// Create a `UserSummary` from `LinkedIn` OIDC ID token claims.
     fn from_linkedin_id_token_claims(
         claims: &oidc::IdTokenClaims<oidc::EmptyAdditionalClaims, oidc::core::CoreGenderClaim>,
     ) -> Result<Self> {
@@ -741,7 +737,7 @@ impl UserSummary {
         })
     }
 
-    /// Create a `UserSummary` from LinkedIn's OIDC UserInfo endpoint.
+    /// Create a `UserSummary` from `LinkedIn`'s OIDC `UserInfo` endpoint.
     async fn from_linkedin_userinfo(access_token: &str) -> Result<Self> {
         let mut headers = HeaderMap::new();
         headers.insert(

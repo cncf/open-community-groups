@@ -11,8 +11,8 @@ use crate::{
     db::BBox,
     templates::{
         PageId,
-        auth::User,
         alliance::{EventCard as HomeEventCard, GroupCard as HomeGroupCard},
+        auth::User,
         filters,
         helpers::user_initials,
     },

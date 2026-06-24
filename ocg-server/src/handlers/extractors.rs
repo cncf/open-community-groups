@@ -45,14 +45,10 @@ impl FromRequestParts<router::State> for AllianceId {
             return Err((StatusCode::NOT_FOUND, "alliance not found"));
         }
         let Some(alliance_id) =
-            state
-                .db
-                .get_alliance_id_by_name(alliance_name)
-                .await
-                .map_err(|err| {
-                    error!(?err, "error looking up alliance id");
-                    (StatusCode::INTERNAL_SERVER_ERROR, "")
-                })?
+            state.db.get_alliance_id_by_name(alliance_name).await.map_err(|err| {
+                error!(?err, "error looking up alliance id");
+                (StatusCode::INTERNAL_SERVER_ERROR, "")
+            })?
         else {
             return Err((StatusCode::NOT_FOUND, "alliance not found"));
         };

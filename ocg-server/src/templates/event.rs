@@ -55,7 +55,7 @@ impl Page {
         )
     }
 
-    /// Returns a LinkedIn share URL for the event page.
+    /// Returns a `LinkedIn` share URL for the event page.
     pub(crate) fn linkedin_share_url(&self) -> String {
         format!(
             "https://www.linkedin.com/sharing/share-offsite/?url={}",
@@ -65,11 +65,7 @@ impl Page {
 
     /// Returns suggested caption text for Instagram.
     pub(crate) fn instagram_caption(&self) -> String {
-        format!(
-            "{}\n\n{}",
-            self.preview_title(),
-            self.preview_description()
-        )
+        format!("{}\n\n{}", self.preview_title(), self.preview_description())
     }
 
     /// Returns the Open Graph image URL for the event page.
