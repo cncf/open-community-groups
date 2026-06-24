@@ -15,8 +15,11 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
     router::serde_qs_config,
-    templates::dashboard::group::waitlist::{self, WaitlistFilters, WaitlistPaginationFilters},
-    types::{pagination::NavigationLinks, permissions::GroupPermission},
+    templates::dashboard::group::waitlist::{self, WaitlistFilters, WaitlistListPageFilters},
+    types::{
+        pagination::{self, NavigationLinks},
+        permissions::GroupPermission,
+    },
 };
 
 #[cfg(test)]
@@ -35,12 +38,13 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and waitlist
-    let page_filters: WaitlistPaginationFilters =
+    let page_filters: WaitlistListPageFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
     let search_filters = WaitlistFilters {
         event_id,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        ts_query: page_filters.ts_query.clone(),
     };
     let (can_manage_events, event, search_waitlist_results) = tokio::try_join!(
         db.user_has_group_permission(
@@ -60,14 +64,20 @@ pub(crate) async fn list_page(
         &format!("/dashboard/group/events/{event_id}/waitlist"),
         &format!("/dashboard/group/events/{event_id}/waitlist"),
     )?;
+    let refresh_url = pagination::build_url(
+        &format!("/dashboard/group/events/{event_id}/waitlist"),
+        &page_filters,
+    )?;
     let template = waitlist::ListPage {
         can_manage_events,
         event,
-        limit: page_filters.limit,
         navigation_links,
-        offset: page_filters.offset,
+        refresh_url,
         total: search_waitlist_results.total,
         waitlist: search_waitlist_results.waitlist,
+        limit: page_filters.limit,
+        offset: page_filters.offset,
+        ts_query: page_filters.ts_query,
     };
 
     Ok(Html(template.render()?))

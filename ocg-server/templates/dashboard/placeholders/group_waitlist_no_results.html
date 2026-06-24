@@ -1,0 +1,9 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Group Waitlist No Results Placeholder -#}
+{% call dashboard::empty_state("No waitlist entries found matching your search.", title_margin = "mb-4") -%}
+<p class="text-sm lg:text-md text-stone-700">
+  Try adjusting your search terms or clear the filter to see all waitlist entries.
+</p>
+{% endcall -%}
+{# End group waitlist no results placeholder -#}

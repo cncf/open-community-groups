@@ -1,14 +1,53 @@
 {% import "macros/pagination.html" as pagination -%}
-{% let refresh_limit = limit.unwrap_or(crate::templates::dashboard::DASHBOARD_PAGINATION_LIMIT) -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
 {# Waitlist refresh trigger -#}
 <div id="waitlist-refresh"
-     hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist?limit={{ refresh_limit }}&offset={{ refresh_offset }}"
+     hx-get="{{ refresh_url }}"
      hx-trigger="refresh-event-waitlist from:body"
      hx-target="#waitlist-content"
      hx-swap="innerHTML"></div>
 {# End waitlist refresh trigger -#}
+
+{# Filters -#}
+<div class="my-5">
+  <div class="relative w-[36rem] max-w-full">
+    <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
+      <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+    </div>
+    <form id="waitlist-search-form"
+          hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+          hx-trigger="change, submit"
+          hx-target="#waitlist-content"
+          hx-swap="innerHTML"
+          hx-indicator="#dashboard-spinner">
+      <label for="search_waitlist" class="sr-only">Search waitlist</label>
+      <input id="search_waitlist"
+             name="ts_query"
+             type="text"
+             value="{{ ts_query|assigned_or("") }}"
+             class="input-primary peer ps-9 w-full"
+             placeholder="Search waitlist"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false">
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button type="button"
+                hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+                hx-trigger="click"
+                hx-target="#waitlist-content"
+                hx-swap="innerHTML"
+                hx-indicator="#dashboard-spinner"
+                class="cursor-pointer mt-0.5"
+                aria-label="Clear waitlist search">
+          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{# End filters -#}
 
 {# Header -#}
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
@@ -41,14 +80,18 @@
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
-            {% if event.waitlist_enabled -%}
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
+            {% else if event.waitlist_enabled -%}
               {% include "dashboard/placeholders/group_waitlist_table.html" -%}
             {% else -%}
               {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
             {% endif -%}
           </td>
           <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
-            {% if event.waitlist_enabled -%}
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
+            {% else if event.waitlist_enabled -%}
               {% include "dashboard/placeholders/group_waitlist_table.html" -%}
             {% else -%}
               {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
@@ -77,7 +120,7 @@
             </td>
             {# End entry -#}
             {# Position -#}
-            <td class="px-3 xl:px-5 py-4">{{ refresh_offset + loop.index }}</td>
+            <td class="px-3 xl:px-5 py-4">{{ entry.waitlist_position }}</td>
             {# End position -#}
             {# Joined date -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">

@@ -13,7 +13,7 @@ use crate::{
         event::{EventInvitationRequestStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
     },
-    validation::MAX_PAGINATION_LIMIT,
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -28,14 +28,19 @@ pub(crate) struct ListPage {
     pub event: EventSummary,
     /// Invitation requests for the selected event.
     pub invitation_requests: Vec<InvitationRequest>,
-    /// Number of results per page.
-    pub limit: Option<usize>,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
-    /// Pagination offset for results.
-    pub offset: Option<usize>,
+    /// URL used to refresh the invitation request list with the current filters.
+    pub refresh_url: String,
     /// Total number of invitation requests for the selected event.
     pub total: usize,
+
+    /// Number of results per page.
+    pub limit: Option<usize>,
+    /// Pagination offset for results.
+    pub offset: Option<usize>,
+    /// Text search query used to filter invitation requests.
+    pub ts_query: Option<String>,
 }
 
 // Types.
@@ -82,12 +87,15 @@ pub(crate) struct InvitationRequestsFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Search query for requester name, username, email, company, or title.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
-/// Filter parameters for invitation request pagination URLs.
+/// Filter parameters for invitation request list page URLs.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct InvitationRequestsPaginationFilters {
+pub(crate) struct InvitationRequestsListPageFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
@@ -96,9 +104,12 @@ pub(crate) struct InvitationRequestsPaginationFilters {
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Text search query.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    pub ts_query: Option<String>,
 }
 
-crate::impl_pagination_and_raw_query!(InvitationRequestsPaginationFilters, limit, offset);
+crate::impl_pagination_and_raw_query!(InvitationRequestsListPageFilters, limit, offset);
 
 /// Paginated invitation requests response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]

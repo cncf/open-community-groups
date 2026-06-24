@@ -11,6 +11,36 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group waitlist list template", () => {
+  it("uses the shared search convention for table filtering", async () => {
+    // Load the waitlist list template before checking search markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify waitlist search follows the existing dashboard HTMX pattern.
+    expect(template).to.include('id="waitlist-search-form"');
+    expect(template).to.include('hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"');
+    expect(template).to.include('hx-trigger="change, submit"');
+    expect(template).to.include('hx-target="#waitlist-content"');
+    expect(template).to.include('<label for="search_waitlist" class="sr-only">Search waitlist</label>');
+    expect(template).to.include('name="ts_query"');
+    expect(template).to.include('value="{{ ts_query|assigned_or("") }}"');
+    expect(template).to.include('placeholder="Search waitlist"');
+    expect(template).to.include('aria-label="Clear waitlist search"');
+    expect(template).to.include("dashboard/placeholders/group_waitlist_no_results.html");
+    expect(template).to.include("{{ entry.waitlist_position }}");
+    expect(template).not.to.include("{{ refresh_offset + loop.index }}");
+  });
+
+  it("preserves current filters for waitlist refreshes", async () => {
+    // Load the waitlist list template before checking refresh markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify action-triggered refreshes reuse the handler-built filtered URL.
+    expect(template).to.include('id="waitlist-refresh"');
+    expect(template).to.include('hx-get="{{ refresh_url }}"');
+    expect(template).to.include('hx-trigger="refresh-event-waitlist from:body"');
+    expect(template).not.to.include("refresh_limit");
+  });
+
   it("renders row actions to invite waitlisted users", async () => {
     // Load the waitlist list template before checking invite action markup.
     const template = normalizeWhitespace(await loadTemplate());
