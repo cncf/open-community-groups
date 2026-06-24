@@ -1,41 +1,97 @@
 {% extends "common/base.html" -%}
 
 {% block jumbotron -%}
-  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8">
-    <div class="relative max-w-3xl">
-      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-primary-600">Wiki</p>
-      <h1 class="mb-4 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
-        Tech reading brief for builders
-      </h1>
-      <p class="max-w-2xl text-base/7 text-stone-600">
-        A live summary of useful AI, open-source, and entrepreneurship links pulled from public tech feeds, research feeds, and founder-focused sources.
-      </p>
+  <div class="relative overflow-hidden">
+    <div class="absolute inset-x-0 top-0 h-72 bg-linear-to-b from-primary-50/90 to-transparent"></div>
+    <div class="absolute -top-40 right-1/2 h-[30rem] w-[30rem] translate-x-1/2 rounded-full bg-primary-300/20 blur-3xl">
     </div>
+    <div class="absolute top-20 right-0 hidden h-80 w-80 rounded-full bg-sky-300/20 blur-3xl lg:block"></div>
+
+    <section class="relative container mx-auto max-w-7xl px-4 pt-10 pb-12 sm:px-6 sm:pt-14 lg:px-8 lg:pt-20 lg:pb-16">
+      <div class="grid items-end gap-10 lg:grid-cols-[1.15fr_0.85fr]">
+        <div class="max-w-4xl">
+          <div class="mb-7 inline-flex items-center rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-700 shadow-sm backdrop-blur-xl">
+            GOUP Wiki
+          </div>
+          <h1 class="text-balance text-5xl font-black tracking-[-0.055em] text-stone-950 sm:text-6xl lg:text-7xl">
+            A daily reading brief for builders
+          </h1>
+          <p class="mt-7 max-w-3xl text-lg/8 font-medium text-stone-600 lg:text-xl/9">
+            Fresh AI, open-source, and founder links collected from public research feeds, engineering blogs, and startup operators.
+          </p>
+        </div>
+
+        <div class="rounded-[2rem] border border-stone-200 bg-white/85 p-6 shadow-xl shadow-stone-200/60 backdrop-blur-xl">
+          <div class="text-xs font-bold uppercase tracking-[0.22em] text-primary-700">How to use it</div>
+          <div class="mt-5 grid gap-4">
+            <div class="rounded-2xl bg-stone-50 p-4">
+              <div class="text-sm font-black text-stone-950">Scan the newest links</div>
+              <p class="mt-1 text-sm/6 text-stone-600">Items show source dates when feeds provide them.</p>
+            </div>
+            <div class="rounded-2xl bg-stone-50 p-4">
+              <div class="text-sm font-black text-stone-950">Follow the source</div>
+              <p class="mt-1 text-sm/6 text-stone-600">Each card opens the original article, paper, or newsletter.</p>
+            </div>
+            <div class="rounded-2xl bg-stone-50 p-4">
+              <div class="text-sm font-black text-stone-950">Refresh cadence</div>
+              <p class="mt-1 text-sm/6 text-stone-600">The digest refreshes about every 15 minutes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 {% endblock jumbotron -%}
 
 {% block content -%}
-  <div class="container mx-auto max-w-7xl p-4 pb-12 sm:p-6 lg:p-8 lg:pb-16">
+  <div class="container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+    <div class="mb-8 flex flex-col justify-between gap-4 rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:p-6">
+      <div>
+        <div class="text-xs font-bold uppercase tracking-[0.22em] text-primary-700">Live digest</div>
+        <h2 class="mt-2 text-2xl font-black tracking-tight text-stone-950">Three streams worth keeping warm</h2>
+      </div>
+      <div class="inline-flex w-fit items-center rounded-full bg-stone-100 px-4 py-2 text-sm font-semibold text-stone-700">
+        AI · Open source · Entrepreneurship
+      </div>
+    </div>
+
+    <nav class="sticky top-20 z-20 mb-6 overflow-x-auto rounded-full border border-stone-200 bg-white/90 p-2 shadow-sm backdrop-blur-xl"
+         aria-label="Wiki sections">
+      <div class="flex min-w-max items-center gap-2">
+        <span class="px-3 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Jump to</span>
+        {% for section in sections -%}
+          <a href="#{{ section.id }}"
+             class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-primary-50 hover:text-primary-800">
+            {{ section.title }}
+            <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">{{ section.links.len() }}</span>
+          </a>
+        {% endfor -%}
+      </div>
+    </nav>
+
     <div class="grid gap-6 lg:grid-cols-3">
       {% for section in sections -%}
         <section id="{{ section.id }}"
-                 class="flex min-h-full flex-col rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-          <div class="mb-5">
-            <div class="mb-3 inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-700">
-              Reading brief
+                 class="scroll-mt-32 flex min-h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-stone-200/60 lg:max-h-[78vh]">
+          <div class="border-b border-stone-100 bg-linear-to-br from-white via-primary-50/50 to-stone-50 p-6">
+            <div class="mb-5 flex items-center justify-between gap-3">
+              <div class="inline-flex items-center rounded-full border border-primary-100 bg-white px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary-700 shadow-sm">
+                Reading brief
+              </div>
+              <div class="rounded-full bg-stone-950 px-3 py-1 text-xs font-bold text-white">0{{ loop.index }}</div>
             </div>
-            <h2 class="text-2xl font-semibold tracking-tight text-stone-950">{{ section.title }}</h2>
-            <p class="mt-3 text-sm/6 text-stone-600">{{ section.summary }}</p>
+            <h2 class="text-3xl font-black tracking-tight text-stone-950">{{ section.title }}</h2>
+            <p class="mt-3 text-sm/6 font-medium text-stone-600">{{ section.summary }}</p>
           </div>
 
           {% if section.links.is_empty() -%}
-            <div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-5">
+            <div class="m-5 rounded-3xl border border-dashed border-stone-300 bg-stone-50 p-5">
               <p class="text-sm/6 text-stone-600">
                 Live feed items are still refreshing. Open the source feeds below for the latest links.
               </p>
               <div class="mt-4 grid gap-2">
                 {% for source in section.sources -%}
-                  <a class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-primary-700 transition hover:border-primary-200 hover:bg-primary-50"
+                  <a class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-primary-700 transition hover:border-primary-200 hover:bg-primary-50"
                      href="{{ source.url }}"
                      target="_blank"
                      rel="noopener noreferrer"
@@ -44,25 +100,78 @@
               </div>
             </div>
           {% else -%}
-            <div class="grid gap-3">
+            <div class="flex items-center justify-between px-5 pt-4 text-xs font-bold uppercase tracking-[0.16em] text-stone-500">
+              <span>Newest links</span>
+              <span>{{ section.links.len() }} items</span>
+            </div>
+            <div class="min-h-0 grow overflow-y-auto overscroll-contain p-5 pt-3 lg:pr-3">
               {% for link in section.links -%}
-                <a href="{{ link.url }}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   hx-boost="false"
-                   class="group rounded-2xl border border-stone-200 bg-stone-50 p-4 transition hover:border-primary-200 hover:bg-primary-50/40">
-                  <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-700">{{ link.source }}</div>
-                  <div class="text-sm/6 font-semibold text-stone-900 group-hover:text-primary-900">{{ link.title }}</div>
-                </a>
+                {% if loop.index <= 8 -%}
+                  <a href="{{ link.url }}"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     hx-boost="false"
+                     class="group mb-3 block rounded-3xl border border-stone-200 bg-stone-50 p-4 transition last:mb-0 hover:border-primary-200 hover:bg-white hover:shadow-lg hover:shadow-stone-200/50">
+                    <div class="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]">
+                      <span class="rounded-full bg-primary-50 px-2.5 py-1 text-primary-700">{{ link.source }}</span>
+                      {% if let Some(published_at) = &link.published_at -%}
+                        <span class="rounded-full bg-white px-2.5 py-1 text-stone-500">{{ published_at.format("%b %d, %Y") }}</span>
+                      {% else -%}
+                        <span class="rounded-full bg-white px-2.5 py-1 text-stone-500">Latest</span>
+                      {% endif -%}
+                    </div>
+                    <div class="text-base/7 font-black tracking-tight text-stone-950 group-hover:text-primary-900">
+                      {{ link.title }}
+                    </div>
+                    <div class="mt-4 inline-flex items-center text-sm font-bold text-primary-700 opacity-0 transition group-hover:opacity-100">
+                      Read source <span class="ml-1" aria-hidden="true">&rarr;</span>
+                    </div>
+                  </a>
+                {% endif -%}
               {% endfor -%}
+              {% if section.links.len() > 8 -%}
+                <details class="group/read-more mt-2 rounded-3xl border border-dashed border-primary-200 bg-primary-50/40 p-3 open:border-stone-200 open:bg-white">
+                  <summary class="flex cursor-pointer list-none items-center justify-between rounded-2xl px-2 py-1 text-sm font-black text-primary-800 marker:hidden">
+                    Read more
+                    <span class="rounded-full bg-white px-3 py-1 text-xs font-bold text-stone-500 group-open/read-more:hidden">Show more links</span>
+                    <span class="hidden rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-500 group-open/read-more:inline-flex">Collapse</span>
+                  </summary>
+                  <div class="mt-3">
+                    {% for link in section.links -%}
+                      {% if loop.index > 8 -%}
+                        <a href="{{ link.url }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           hx-boost="false"
+                           class="group mb-3 block rounded-3xl border border-stone-200 bg-stone-50 p-4 transition last:mb-0 hover:border-primary-200 hover:bg-white hover:shadow-lg hover:shadow-stone-200/50">
+                          <div class="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]">
+                            <span class="rounded-full bg-primary-50 px-2.5 py-1 text-primary-700">{{ link.source }}</span>
+                            {% if let Some(published_at) = &link.published_at -%}
+                              <span class="rounded-full bg-white px-2.5 py-1 text-stone-500">{{ published_at.format("%b %d, %Y") }}</span>
+                            {% else -%}
+                              <span class="rounded-full bg-white px-2.5 py-1 text-stone-500">Latest</span>
+                            {% endif -%}
+                          </div>
+                          <div class="text-base/7 font-black tracking-tight text-stone-950 group-hover:text-primary-900">
+                            {{ link.title }}
+                          </div>
+                          <div class="mt-4 inline-flex items-center text-sm font-bold text-primary-700 opacity-0 transition group-hover:opacity-100">
+                            Read source <span class="ml-1" aria-hidden="true">&rarr;</span>
+                          </div>
+                        </a>
+                      {% endif -%}
+                    {% endfor -%}
+                  </div>
+                </details>
+              {% endif -%}
             </div>
           {% endif -%}
 
-          <div class="mt-auto pt-6">
-            <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">Sources</div>
+          <div class="mt-auto border-t border-stone-100 bg-white p-5">
+            <div class="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Sources</div>
             <div class="flex flex-wrap gap-2">
               {% for source in section.sources -%}
-                <a class="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700 transition hover:bg-stone-200"
+                <a class="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 transition hover:bg-stone-200"
                    href="{{ source.url }}"
                    target="_blank"
                    rel="noopener noreferrer"

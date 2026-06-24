@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   TEST_ALLIANCE_NAME,
+  TEST_ALLIANCE_TITLE,
   TEST_EVENT_NAMES,
   navigateToPath,
 } from "../../utils.js";
@@ -113,6 +114,12 @@ test.describe("site explore events page", () => {
     );
 
     // Verify events render before applying filters.
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: `${TEST_ALLIANCE_TITLE} Events`,
+      }),
+    ).toBeVisible();
     await expect(page.getByPlaceholder("Search events")).toBeVisible();
     await expect(
       page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),

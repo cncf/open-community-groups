@@ -35,6 +35,9 @@ test.describe("site home page", () => {
 
       // Verify the jumbotron description and CTA destination.
       await expect(page.locator(".jumbotron-description")).toBeVisible();
+      await expect(page.locator(".jumbotron-description")).toContainText(
+        "honest introductions",
+      );
 
       // Find the primary Explore events control.
       const ctaLink = page
@@ -42,6 +45,62 @@ test.describe("site home page", () => {
         .first();
       await expect(ctaLink).toBeVisible();
       await expect(ctaLink).toHaveAttribute("href", /\/explore/);
+    });
+
+    test("hero explains concrete member benefits", async ({ page }) => {
+      // Verify the hero answers what members get from joining GOUP.
+      for (const benefit of [
+        "Ask for help",
+        "Share your work",
+        "Meet in real life",
+        "Grow together",
+      ]) {
+        await expect(
+          page.getByText(benefit, { exact: true }).first(),
+        ).toBeVisible();
+      }
+    });
+
+    test("audience section explains who GOUP is for", async ({ page }) => {
+      // Verify the audience section makes the target community explicit.
+      await expect(
+        page.getByRole("heading", {
+          name: "For people building in public and in community",
+        }),
+      ).toBeVisible();
+
+      for (const audience of [
+        "AI founders",
+        "Open-source maintainers",
+        "Product builders",
+        "Community hosts",
+      ]) {
+        await expect(
+          page.getByText(audience, { exact: true }).first(),
+        ).toBeVisible();
+      }
+    });
+
+    test("home page includes the merged about story", async ({ page }) => {
+      // Verify the About positioning now lives on the home page.
+      await expect(
+        page.getByRole("heading", {
+          name: "Growth through useful progress",
+        }),
+      ).toBeVisible();
+      await expect(page.getByText("Why GOUP", { exact: true })).toBeVisible();
+      await expect(
+        page.getByText("Growth", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Opportunity", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Usefulness", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Progress", { exact: true }).first(),
+      ).toBeVisible();
     });
 
     test("stats strip displays all stat labels with values", async ({

@@ -1,6 +1,6 @@
 //! HTTP handlers for the public wiki page.
 
-use std::time::Duration;
+use std::{cmp::Reverse, time::Duration};
 
 use askama::Template;
 use axum::{
@@ -8,6 +8,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use cached::proc_macro::cached;
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use quick_xml::{Reader, events::Event};
 use tracing::{debug, instrument};
 
@@ -213,6 +214,7 @@ async fn load_section(client: &reqwest::Client, section: &SectionSource) -> Wiki
         }
     }
 
+    links.sort_by_key(|link| Reverse(link.published_at));
     links.truncate(MAX_LINKS_PER_SECTION);
 
     WikiSection {
@@ -276,18 +278,20 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
     let mut current_tag: Option<Vec<u8>> = None;
     let mut title = String::new();
     let mut link = String::new();
+    let mut published_at = String::new();
 
     loop {
         match reader.read_event() {
             Ok(Event::Eof) | Err(_) => break,
             Ok(Event::Start(event)) => {
                 let name = event.name().as_ref().to_vec();
-                if name.as_slice() == b"item" || name.as_slice() == b"entry" {
+                if tag_name_is(&name, b"item") || tag_name_is(&name, b"entry") {
                     in_item = true;
                     title.clear();
                     link.clear();
-                } else if in_item && (name.as_slice() == b"title" || name.as_slice() == b"link") {
-                    if name.as_slice() == b"link"
+                    published_at.clear();
+                } else if in_item && is_supported_item_tag(&name) {
+                    if tag_name_is(&name, b"link")
                         && let Some(href) = event
                             .attributes()
                             .filter_map(Result::ok)
@@ -305,8 +309,15 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
                     && let Ok(decoded) = text.decode()
                 {
                     match tag {
-                        b"title" if title.is_empty() => title = decoded.into_owned(),
-                        b"link" if link.is_empty() => link = decoded.into_owned(),
+                        tag if tag_name_is(tag, b"title") && title.is_empty() => {
+                            title = decoded.into_owned();
+                        }
+                        tag if tag_name_is(tag, b"link") && link.is_empty() => {
+                            link = decoded.into_owned();
+                        }
+                        tag if is_date_tag(tag) && published_at.is_empty() => {
+                            published_at = decoded.into_owned();
+                        }
                         _ => {}
                     }
                 }
@@ -317,20 +328,28 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
                     && let Ok(decoded) = text.decode()
                 {
                     match tag {
-                        b"title" if title.is_empty() => title = decoded.into_owned(),
-                        b"link" if link.is_empty() => link = decoded.into_owned(),
+                        tag if tag_name_is(tag, b"title") && title.is_empty() => {
+                            title = decoded.into_owned();
+                        }
+                        tag if tag_name_is(tag, b"link") && link.is_empty() => {
+                            link = decoded.into_owned();
+                        }
+                        tag if is_date_tag(tag) && published_at.is_empty() => {
+                            published_at = decoded.into_owned();
+                        }
                         _ => {}
                     }
                 }
             }
             Ok(Event::End(event)) => {
                 let name = event.name().as_ref().to_vec();
-                if name.as_slice() == b"item" || name.as_slice() == b"entry" {
+                if tag_name_is(&name, b"item") || tag_name_is(&name, b"entry") {
                     if !title.trim().is_empty() && !link.trim().is_empty() {
                         links.push(WikiLink {
                             title: title.trim().to_string(),
                             url: link.trim().to_string(),
                             source: source_label.to_string(),
+                            published_at: parse_feed_date(published_at.trim()),
                         });
                     }
                     in_item = false;
@@ -341,7 +360,7 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
             }
             Ok(Event::Empty(event)) => {
                 if in_item
-                    && event.name().as_ref() == b"link"
+                    && tag_name_is(event.name().as_ref(), b"link")
                     && link.is_empty()
                     && let Some(href) = event
                         .attributes()
@@ -357,4 +376,40 @@ fn parse_feed_links(feed: &str, source_label: &str) -> Vec<WikiLink> {
     }
 
     links
+}
+
+fn is_supported_item_tag(name: &[u8]) -> bool {
+    tag_name_is(name, b"title") || tag_name_is(name, b"link") || is_date_tag(name)
+}
+
+fn is_date_tag(name: &[u8]) -> bool {
+    tag_name_is(name, b"pubDate")
+        || tag_name_is(name, b"published")
+        || tag_name_is(name, b"updated")
+        || tag_name_is(name, b"date")
+}
+
+fn tag_name_is(name: &[u8], expected: &[u8]) -> bool {
+    name == expected
+        || name
+            .rsplit(|byte| *byte == b':')
+            .next()
+            .is_some_and(|local_name| local_name == expected)
+}
+
+fn parse_feed_date(value: &str) -> Option<DateTime<Utc>> {
+    if value.is_empty() {
+        return None;
+    }
+
+    DateTime::parse_from_rfc2822(value)
+        .or_else(|_| DateTime::parse_from_rfc3339(value))
+        .map(|date| date.with_timezone(&Utc))
+        .ok()
+        .or_else(|| {
+            NaiveDate::parse_from_str(value, "%Y-%m-%d")
+                .ok()
+                .and_then(|date| date.and_hms_opt(0, 0, 0))
+                .map(|date| Utc.from_utc_datetime(&date))
+        })
 }

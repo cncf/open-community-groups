@@ -1,5 +1,7 @@
 //! Templates for the global site pages.
 
+/// Templates for the about page.
+pub(crate) mod about;
 /// Templates for the explore page.
 pub(crate) mod explore;
 /// Templates for the home page.

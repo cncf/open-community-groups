@@ -36,6 +36,8 @@ use crate::{
 pub(crate) struct Page {
     /// The type of content being explored (events or groups).
     pub entity: Entity,
+    /// Page title tailored to the selected explore filters.
+    pub title: String,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current URL path.
@@ -64,6 +66,17 @@ pub(crate) struct EventsSection {
     pub filters_options: FiltersOptions,
     /// Results section containing matching events.
     pub results_section: EventsResultsSection,
+}
+
+impl EventsSection {
+    /// Return a descriptive page title for the current event filters.
+    pub(crate) fn page_title(&self) -> String {
+        explore_page_title(
+            Entity::Events,
+            &self.filters.alliance,
+            &self.filters_options.alliances,
+        )
+    }
 }
 
 /// Template for displaying event search results.
@@ -126,6 +139,17 @@ pub(crate) struct GroupsSection {
     pub filters_options: FiltersOptions,
     /// Results section containing matching groups.
     pub results_section: GroupsResultsSection,
+}
+
+impl GroupsSection {
+    /// Return a descriptive page title for the current group filters.
+    pub(crate) fn page_title(&self) -> String {
+        explore_page_title(
+            Entity::Groups,
+            &self.filters.alliance,
+            &self.filters_options.alliances,
+        )
+    }
 }
 
 /// Template for displaying group search results.
@@ -223,6 +247,27 @@ pub(crate) struct FilterOption {
     pub name: String,
     /// Technical value used in queries.
     pub value: String,
+}
+
+/// Build a human-readable explore page title from the selected entity and alliance filter.
+fn explore_page_title(
+    entity: Entity,
+    selected_alliances: &[String],
+    alliances: &[FilterOption],
+) -> String {
+    let entity_label = match entity {
+        Entity::Events => "Events",
+        Entity::Groups => "Groups",
+    };
+
+    if selected_alliances.len() == 1
+        && let Some(alliance) =
+            alliances.iter().find(|option| option.value == selected_alliances[0])
+    {
+        return format!("{} {}", alliance.name, entity_label);
+    }
+
+    format!("Explore {entity_label}")
 }
 
 // Helpers for rendering popovers.

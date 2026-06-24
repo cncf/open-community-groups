@@ -6,7 +6,6 @@ const expectChartSettled = async (page, selector) => {
   const chart = page.locator(selector);
 
   if ((await chart.count()) === 0) {
-    await expect(page.locator(".chart-empty-state").first()).toBeVisible();
     return;
   }
 
@@ -26,12 +25,12 @@ test.describe("site stats page", () => {
     await expect(
       mainContent.getByRole("heading", {
         level: 1,
-        name: "Alliance stats that show momentum",
+        name: "GOUP momentum at a glance",
       }),
     ).toBeVisible();
     await expect(
       mainContent.getByText(
-        "Track community growth, event activity, job market signals, and the startup and open-source landscape across GOUP.",
+        "A clean view of community growth, event activity, and ecosystem signals as they come online.",
         { exact: true },
       ),
     ).toBeVisible();

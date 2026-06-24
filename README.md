@@ -557,8 +557,10 @@ OCG_ADMIN_EMAIL='you@example.com' \
 
 ### Update an Existing EC2 Deployment
 
-After pulling new code on EC2, run migrations before restarting whenever files
-under `database/migrations` changed:
+After pulling new code on EC2, run migrations before rebuilding and restarting
+whenever files under `database/migrations` changed. The migration script lives
+under `database/migrations`, so do not run `./migrate.sh` from the repository
+root:
 
 ```bash
 cd ~/goup.vc
@@ -568,18 +570,22 @@ cd database/migrations
 TERN_CONF="$HOME/.config/ocg/tern.conf" ./migrate.sh
 ```
 
+Or run the same migration from the repository root:
+
+```bash
+cd ~/goup.vc
+TERN_CONF="$HOME/.config/ocg/tern.conf" ./database/migrations/migrate.sh
+```
+
 Build the release binary in the background so it keeps running if the SSH
-session disconnects:
+session disconnects, then restart the deployed service after the build finishes
+successfully:
 
 ```bash
 cd ~/goup.vc
 nohup env CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &
 tail -f ~/goup-build.log
-```
 
-Restart the deployed service after the build finishes successfully:
-
-```bash
 sudo systemctl restart ocg-server
 sudo systemctl status ocg-server --no-pager
 curl -I http://127.0.0.1:9000
@@ -589,20 +595,6 @@ For small EC2 instances, keep builds single-threaded:
 
 ```bash
 CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server
-```
-
-To build in the background over SSH:
-
-```bash
-nohup env CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &
-tail -f ~/goup-build.log
-```
-
-Restart the deployed service after a successful build:
-
-```bash
-sudo systemctl restart ocg-server
-sudo systemctl status ocg-server --no-pager
 ```
 
 If files under `mcp/` changed, restart the remote MCP service too:

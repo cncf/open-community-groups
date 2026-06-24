@@ -19,7 +19,7 @@ test.describe("site header", () => {
       navigation.getByRole("link", { name: "Home" }),
     ).toHaveAttribute("href", "/");
     await expect(
-      navigation.getByRole("link", { name: "Explore" }),
+      navigation.getByRole("link", { name: "Events & Groups" }),
     ).toHaveAttribute("href", /\/explore/);
     await expect(
       navigation.getByRole("link", { name: "Stats" }),
@@ -27,12 +27,28 @@ test.describe("site header", () => {
     await expect(
       navigation.getByRole("link", { name: "Jobs" }),
     ).toHaveAttribute("href", "/jobs");
+    await navigation.getByRole("link", { name: "Jobs" }).hover();
     await expect(
-      navigation.getByRole("link", { name: "Landscape" }),
+      navigation.getByRole("link", { name: /Browse roles/ }),
+    ).toHaveAttribute("href", "/jobs");
+    await expect(
+      navigation.getByRole("link", { name: /Remote roles/ }),
+    ).toHaveAttribute("href", "/jobs?remote=true");
+    await expect(
+      navigation.getByRole("link", { name: /Post a role/ }),
+    ).toHaveAttribute("href", "/log-in?next_url=/dashboard/jobs");
+    await expect(
+      navigation.getByRole("link", { name: "Ecosystem" }),
     ).toHaveAttribute("href", "/landscape");
     await expect(
-      navigation.getByRole("link", { name: "Wiki" }),
+      navigation.getByRole("link", { name: "Resources" }),
     ).toHaveAttribute("href", "/wiki");
+    await expect(
+      navigation.getByRole("link", { name: "Join GOUP" }),
+    ).toHaveAttribute("href", "/log-in/oidc/linkedin");
+    await expect(navigation.getByRole("link", { name: "About" })).toHaveCount(
+      0,
+    );
     await expect(navigation.getByRole("link", { name: "Docs" })).toHaveCount(0);
   });
 
@@ -55,6 +71,9 @@ test.describe("site header", () => {
     const userMenu = page.locator("#user-dropdown");
     await expect(userMenu).toBeVisible();
     await expect(
+      userMenu.getByRole("menuitem", { name: "Join GOUP" }),
+    ).toHaveAttribute("href", "/log-in/oidc/linkedin");
+    await expect(
       userMenu.getByRole("menuitem", { name: "Sign up" }),
     ).toHaveAttribute("href", "/sign-up");
     await expect(
@@ -64,10 +83,10 @@ test.describe("site header", () => {
       0,
     );
     await expect(
-      userMenu.getByRole("menuitem", { name: "Landscape" }),
+      userMenu.getByRole("menuitem", { name: "Ecosystem" }),
     ).toHaveCount(0);
-    await expect(userMenu.getByRole("menuitem", { name: "Wiki" })).toHaveCount(
-      0,
-    );
+    await expect(
+      userMenu.getByRole("menuitem", { name: "Resources" }),
+    ).toHaveCount(0);
   });
 });

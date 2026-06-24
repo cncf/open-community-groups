@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   TEST_ALLIANCE_NAME,
+  TEST_ALLIANCE_TITLE,
   TEST_GROUP_NAMES,
   navigateToPath,
 } from "../../utils.js";
@@ -20,6 +21,12 @@ test.describe("site explore groups page", () => {
     const searchInput = page.getByPlaceholder("Search groups");
 
     // Verify groups render before applying search.
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: `${TEST_ALLIANCE_TITLE} Groups`,
+      }),
+    ).toBeVisible();
     await expect(searchInput).toBeVisible();
     await expect(
       page.getByText(TEST_GROUP_NAMES.alpha, { exact: true }),

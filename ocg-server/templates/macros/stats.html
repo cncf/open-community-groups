@@ -1,15 +1,28 @@
 {# Analytics chart container #}
-{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "") -%}
-  <div class="bg-white border border-stone-200 rounded-lg px-2 py-4 md:p-6 {{ wrapper_class }}">
-    {% if data.len() > min_points + 0 -%}
-      <div id="{{ chart_id }}" class="{{ class }}">
-        <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
-        </svg-spinner>
-      </div>
+{% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "", href = "") -%}
+  {% if data.len() > min_points + 0 -%}
+    {% if href.len() > 0 -%}
+      <a href="{{ href }}"
+         class="group block bg-white border border-stone-200 rounded-lg px-2 py-4 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-xl hover:shadow-stone-200/60 md:p-6 {{ wrapper_class }}">
+        <div class="mb-3 flex justify-end">
+          <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-500 transition group-hover:bg-primary-50 group-hover:text-primary-700">
+            View source
+          </span>
+        </div>
+        <div id="{{ chart_id }}" class="{{ class }}">
+          <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
+          </svg-spinner>
+        </div>
+      </a>
     {%- else -%}
-      <div class="chart-empty-state {{ class }}">No data available yet</div>
+      <div class="bg-white border border-stone-200 rounded-lg px-2 py-4 md:p-6 {{ wrapper_class }}">
+        <div id="{{ chart_id }}" class="{{ class }}">
+          <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
+          </svg-spinner>
+        </div>
+      </div>
     {%- endif %}
-  </div>
+  {%- endif %}
 {% endmacro analytics_chart -%}
 {# End analytics chart container #}
 

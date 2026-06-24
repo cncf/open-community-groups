@@ -30,64 +30,99 @@
       <div class="mt-6">{{ feedback::alerts(messages) -}}</div>
     {% endif -%}
 
-    <section class="mt-8 rounded-2xl border border-stone-200 bg-stone-50 p-5">
-      <h2 class="text-lg font-semibold text-stone-950">Post a job</h2>
-      <form class="mt-4 grid gap-4"
+    <section class="mt-8 overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
+      <div class="border-b border-stone-100 bg-linear-to-br from-primary-50/80 via-white to-stone-50 px-5 py-5 sm:px-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="inline-flex rounded-full border border-primary-200 bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary-700">
+              New role
+            </div>
+            <h2 class="mt-3 text-xl font-black tracking-tight text-stone-950">Post a job</h2>
+            <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
+              Share a clear role with the GOUP network. Keep the summary short, then use the
+              description for responsibilities, requirements, and how candidates should apply.
+            </p>
+          </div>
+          <div class="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-xs/5 font-medium text-stone-500 shadow-sm">
+            Draft first, publish when ready.
+          </div>
+        </div>
+      </div>
+      <form class="grid gap-6 p-5 sm:p-6 lg:p-8"
             action="/dashboard/jobs"
             method="post"
             hx-post="/dashboard/jobs"
             hx-target="body">
-        <div class="grid gap-4 lg:grid-cols-2">
-          <div>
-            <label class="label" for="new-job-title">Title</label>
-            <input id="new-job-title" name="title" class="input" required />
+        <div class="grid gap-5 lg:grid-cols-12">
+          <div class="space-y-2 lg:col-span-6">
+            <label class="form-label" for="new-job-title">Title</label>
+            <input id="new-job-title"
+                   name="title"
+                   class="input-primary"
+                   placeholder="Founding AI Engineer"
+                   required />
           </div>
-          <div>
-            <label class="label" for="new-job-company">Company</label>
-            <input id="new-job-company" name="company_name" class="input" required />
+          <div class="space-y-2 lg:col-span-6">
+            <label class="form-label" for="new-job-company">Company</label>
+            <input id="new-job-company"
+                   name="company_name"
+                   class="input-primary"
+                   placeholder="Company or project name"
+                   required />
           </div>
-        </div>
-        <div>
-          <label class="label" for="new-job-summary">Summary</label>
-          <input id="new-job-summary"
-                 name="summary"
-                 class="input"
-                 required
-                 maxlength="500" />
-        </div>
-        <div>
-          <label class="label" for="new-job-description">Description</label>
-          <textarea id="new-job-description"
-                    name="description"
-                    rows="6"
-                    class="input"
-                    required></textarea>
-        </div>
-        <div class="grid gap-4 lg:grid-cols-3">
-          <div>
-            <label class="label" for="new-job-apply-url">Apply URL</label>
-            <input id="new-job-apply-url" name="apply_url" class="input" required />
+
+          <div class="space-y-2 lg:col-span-12">
+            <label class="form-label" for="new-job-summary">Summary</label>
+            <input id="new-job-summary"
+                   name="summary"
+                   class="input-primary"
+                   placeholder="One sentence about the role and why it matters"
+                   required
+                   maxlength="500" />
+            <p class="form-legend">Shown on job cards. Max 500 characters.</p>
           </div>
-          <div>
-            <label class="label" for="new-job-location">Location</label>
-            <input id="new-job-location" name="location" class="input" />
+
+          <div class="space-y-2 lg:col-span-12">
+            <label class="form-label" for="new-job-description">Description</label>
+            <textarea id="new-job-description"
+                      name="description"
+                      rows="6"
+                      class="input-primary min-h-40 resize-y"
+                      placeholder="What the person will build, who they will work with, and what experience helps"
+                      required></textarea>
           </div>
-          <div>
-            <label class="label" for="new-job-tags">Tags</label>
+
+          <div class="space-y-2 lg:col-span-5">
+            <label class="form-label" for="new-job-apply-url">Apply URL</label>
+            <input id="new-job-apply-url"
+                   name="apply_url"
+                   class="input-primary"
+                   placeholder="https://..."
+                   required />
+          </div>
+          <div class="space-y-2 lg:col-span-4">
+            <label class="form-label" for="new-job-location">Location</label>
+            <input id="new-job-location"
+                   name="location"
+                   class="input-primary"
+                   placeholder="Baku, Remote, San Francisco" />
+          </div>
+          <div class="space-y-2 lg:col-span-3">
+            <label class="form-label" for="new-job-tags">Tags</label>
             <input id="new-job-tags"
                    name="tags"
-                   class="input"
+                   class="input-primary"
                    placeholder="Rust, Platform, DevOps" />
           </div>
         </div>
-        <label class="inline-flex items-center gap-2 text-sm text-stone-700">
-          <input type="checkbox"
-                 name="remote"
-                 value="true"
-                 class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
-          Remote-friendly role
-        </label>
-        <div>
+        <div class="flex flex-col gap-4 rounded-3xl border border-stone-100 bg-stone-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <label class="inline-flex w-fit items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-700">
+            <input type="checkbox"
+                   name="remote"
+                   value="true"
+                   class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
+            Remote-friendly role
+          </label>
           <button class="btn-primary" type="submit">Post job</button>
         </div>
       </form>
@@ -132,61 +167,61 @@
                   hx-put="/dashboard/jobs/{{ job.job_id }}"
                   hx-target="body">
               <div class="grid gap-4 lg:grid-cols-2">
-                <div>
-                  <label class="label" for="job-title-{{ job.job_id }}">Title</label>
+                <div class="space-y-2">
+                  <label class="form-label" for="job-title-{{ job.job_id }}">Title</label>
                   <input id="job-title-{{ job.job_id }}"
                          name="title"
-                         class="input"
+                         class="input-primary"
                          value="{{ job.title }}"
                          required />
                 </div>
-                <div>
-                  <label class="label" for="job-company-{{ job.job_id }}">Company</label>
+                <div class="space-y-2">
+                  <label class="form-label" for="job-company-{{ job.job_id }}">Company</label>
                   <input id="job-company-{{ job.job_id }}"
                          name="company_name"
-                         class="input"
+                         class="input-primary"
                          value="{{ job.company_name }}"
                          required />
                 </div>
               </div>
-              <div>
-                <label class="label" for="job-summary-{{ job.job_id }}">Summary</label>
+              <div class="space-y-2">
+                <label class="form-label" for="job-summary-{{ job.job_id }}">Summary</label>
                 <input id="job-summary-{{ job.job_id }}"
                        name="summary"
-                       class="input"
+                       class="input-primary"
                        value="{{ job.summary }}"
                        required
                        maxlength="500" />
               </div>
-              <div>
-                <label class="label" for="job-description-{{ job.job_id }}">Description</label>
+              <div class="space-y-2">
+                <label class="form-label" for="job-description-{{ job.job_id }}">Description</label>
                 <textarea id="job-description-{{ job.job_id }}"
                           name="description"
                           rows="5"
-                          class="input"
+                          class="input-primary min-h-32 resize-y"
                           required>{{ job.description }}</textarea>
               </div>
               <div class="grid gap-4 lg:grid-cols-3">
-                <div>
-                  <label class="label" for="job-apply-url-{{ job.job_id }}">Apply URL</label>
+                <div class="space-y-2">
+                  <label class="form-label" for="job-apply-url-{{ job.job_id }}">Apply URL</label>
                   <input id="job-apply-url-{{ job.job_id }}"
                          name="apply_url"
-                         class="input"
+                         class="input-primary"
                          value="{{ job.apply_url }}"
                          required />
                 </div>
-                <div>
-                  <label class="label" for="job-location-{{ job.job_id }}">Location</label>
+                <div class="space-y-2">
+                  <label class="form-label" for="job-location-{{ job.job_id }}">Location</label>
                   <input id="job-location-{{ job.job_id }}"
                          name="location"
-                         class="input"
+                         class="input-primary"
                          value="{{ job.location.as_deref().unwrap_or("") }}" />
                 </div>
-                <div>
-                  <label class="label" for="job-tags-{{ job.job_id }}">Tags</label>
+                <div class="space-y-2">
+                  <label class="form-label" for="job-tags-{{ job.job_id }}">Tags</label>
                   <input id="job-tags-{{ job.job_id }}"
                          name="tags"
-                         class="input"
+                         class="input-primary"
                          value="{{ job.tags.join(", ") }}" />
                 </div>
               </div>
