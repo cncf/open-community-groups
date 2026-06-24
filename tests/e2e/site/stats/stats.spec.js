@@ -43,74 +43,14 @@ test.describe("site stats page", () => {
       ).toBeVisible();
     }
 
-    // Set up groups section.
-    const groupsSection = mainContent
-      .getByText("Groups", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(
-      groupsSection
-        .locator("#groups-running-chart, .chart-empty-state")
-        .first(),
-    ).toBeVisible();
-    await expect(
-      groupsSection.locator("#groups-monthly-chart, .chart-empty-state").last(),
-    ).toBeVisible();
-
-    // Set up members section.
-    const membersSection = mainContent
-      .getByText("Members", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(
-      membersSection
-        .locator("#members-running-chart, .chart-empty-state")
-        .first(),
-    ).toBeVisible();
-    await expect(
-      membersSection
-        .locator("#members-monthly-chart, .chart-empty-state")
-        .last(),
-    ).toBeVisible();
-
-    // Set up events section.
-    const eventsSection = mainContent
-      .getByText("Events", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(
-      eventsSection
-        .locator("#events-running-chart, .chart-empty-state")
-        .first(),
-    ).toBeVisible();
-    await expect(
-      eventsSection.locator("#events-monthly-chart, .chart-empty-state").last(),
-    ).toBeVisible();
-
-    // Set up attendees section.
-    const attendeesSection = mainContent
-      .getByText("Attendees", { exact: true })
-      .first()
-      .locator("..")
-      .locator("..");
-    await expect(
-      attendeesSection
-        .locator("#attendees-running-chart, .chart-empty-state")
-        .first(),
-    ).toBeVisible();
-    await expect(
-      attendeesSection
-        .locator("#attendees-monthly-chart, .chart-empty-state")
-        .last(),
-    ).toBeVisible();
-
-    // Verify representative charts finish rendering or show the empty state.
+    // Verify representative charts finish rendering or show an empty state.
     await expectChartSettled(page, "#groups-running-chart");
+    await expectChartSettled(page, "#groups-monthly-chart");
     await expectChartSettled(page, "#members-running-chart");
+    await expectChartSettled(page, "#members-monthly-chart");
     await expectChartSettled(page, "#events-running-chart");
+    await expectChartSettled(page, "#events-monthly-chart");
     await expectChartSettled(page, "#attendees-running-chart");
+    await expectChartSettled(page, "#attendees-monthly-chart");
   });
 });
