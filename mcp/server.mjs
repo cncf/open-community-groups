@@ -244,6 +244,8 @@ async function runAction(action, args) {
       return createEvent(args);
     case "update_event":
       return updateEvent(args);
+    case "search_all":
+      return searchAll(args);
     case "search_groups":
       return searchGroups(args);
     case "search_events":
@@ -263,6 +265,91 @@ async function runAction(action, args) {
     default:
       throw new Error(`Unknown tool action: ${action}`);
   }
+}
+
+async function searchAll(args) {
+  const query = requireString(args.query, "query");
+  const limit = normalizeLimit(args.limit ?? 4);
+  const allianceName = optionalString(args.alliance || args.alliance_name) || "goup";
+  const sharedFilters = {
+    query,
+    alliance_name: allianceName,
+    limit,
+  };
+
+  const [events, groups, jobs, landscape, wiki] = await Promise.all([
+    searchEvents({ ...sharedFilters, published: true }).then(parseJsonToolOutput),
+    searchGroups(sharedFilters).then(parseJsonToolOutput),
+    searchJobs({ query, limit }).then(parseJsonToolOutput),
+    searchLandscape({ query, alliance: allianceName, limit }).then(parseJsonToolOutput),
+    searchWiki({ query, limit }).then(parseJsonToolOutput),
+  ]);
+
+  return JSON.stringify(
+    {
+      query,
+      alliance: allianceName,
+      sections: [
+        {
+          key: "events",
+          title: "Events",
+          total: events.length,
+          results: events.map((event) => ({
+            title: event.name,
+            href: `/events/${event.group_slug}/${event.slug}`,
+            summary: event.description_short || "",
+            meta: [event.group_name, event.venue_city, event.kind].filter(Boolean).join(" - "),
+          })),
+        },
+        {
+          key: "groups",
+          title: "Groups",
+          total: groups.length,
+          results: groups.map((group) => ({
+            title: group.name,
+            href: `/groups/${group.slug}`,
+            summary: group.description_short || "",
+            meta: [group.category, group.city, group.country_name].filter(Boolean).join(" - "),
+          })),
+        },
+        {
+          key: "jobs",
+          title: "Jobs",
+          total: jobs.total || jobs.jobs?.length || 0,
+          results: (jobs.jobs || []).map((job) => ({
+            title: job.title,
+            href: `/jobs/${job.slug}`,
+            summary: job.summary || "",
+            meta: [job.company_name, job.location, job.remote ? "Remote" : ""].filter(Boolean).join(" - "),
+          })),
+        },
+        {
+          key: "landscape",
+          title: "Ecosystem",
+          total: landscape.total || landscape.entries?.length || 0,
+          results: (landscape.entries || []).map((entry) => ({
+            title: entry.name,
+            href: `/landscape/${entry.slug}`,
+            summary: entry.summary || "",
+            meta: [entry.kind, entry.category].filter(Boolean).join(" - "),
+          })),
+        },
+        {
+          key: "wiki",
+          title: "Reading Brief",
+          total: wiki.length,
+          results: wiki.map((source) => ({
+            title: source.source_label,
+            href: source.source_url,
+            summary: source.section_title,
+            meta: source.section_id,
+          })),
+        },
+      ],
+    },
+    null,
+    2,
+  );
 }
 
 async function searchJobs(args) {
@@ -719,6 +806,11 @@ function optionalString(value) {
 
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function parseJsonToolOutput(output) {
+  const trimmed = output.trim();
+  return trimmed ? JSON.parse(trimmed) : [];
 }
 
 function requireProposalLevel(value) {

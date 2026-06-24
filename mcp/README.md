@@ -115,6 +115,7 @@ through the standard `tools/list` method.
 - `goup_service_status`: inspect systemd logs and local HTTP status.
 - `goup_create_event`: create an unpublished draft event through `add_event`.
 - `goup_update_event`: update an existing event through `update_event`.
+- `goup_search`: search public events, groups, jobs, ecosystem entries, and wiki sources in one call.
 - `goup_search_groups`: list or search groups.
 - `goup_search_events`: list or search events.
 - `goup_search_members`: list or search regular group members.
