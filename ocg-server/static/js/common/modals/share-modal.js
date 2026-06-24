@@ -1,4 +1,4 @@
-import { html, render } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, render } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { showSuccessAlert, showErrorAlert } from "/static/js/common/alerts.js";
 import {
@@ -8,7 +8,7 @@ import {
   openModalBodyScroll,
 } from "/static/js/common/modals/modal-lifecycle.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
-import "/static/vendor/js/sharer.v0.5.3.min.js";
+import "/static/vendor/js/sharer.v0.5.4.min.js";
 
 /**
  * ShareModal displays a Share button that opens a modal with share options.

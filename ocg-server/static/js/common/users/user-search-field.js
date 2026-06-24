@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/common/media/logo-image.js";

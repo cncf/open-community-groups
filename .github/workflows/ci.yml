@@ -143,7 +143,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Install djlint
-        run: pip install djlint==1.39.2
+        run: pip install djlint==1.39.4
       - name: Run djlint
         run: |
           djlint \

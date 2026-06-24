@@ -84,7 +84,7 @@ export const hasStackedTimeSeriesData = (series = [], minPoints = 2) => {
  * @returns {Promise<void>} Promise that resolves when ECharts is loaded
  */
 export const loadEChartsScript = () => {
-  return loadScriptOnce("/static/vendor/js/echarts.v6.0.0.min.js", {
+  return loadScriptOnce("/static/vendor/js/echarts.v6.1.0.min.js", {
     isLoaded: () => typeof window.echarts !== "undefined",
   });
 };
