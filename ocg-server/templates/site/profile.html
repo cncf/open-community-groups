@@ -1,0 +1,113 @@
+{% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
+{% import "macros/ui.html" as ui -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ self.preview_description() |demoji }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = self.profile.name.as_deref().unwrap_or(&self.profile.username)) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
+
+{% block scripts -%}
+  <script type="module" src="/static/js/common/modals/share-modal.js"></script>
+{% endblock scripts -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-10">
+    <article class="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
+      <div class="h-36 bg-gradient-to-br from-primary-100 via-white to-stone-100"></div>
+      <div class="-mt-16 px-6 pb-8 sm:px-10 sm:pb-10">
+        <div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          <div class="flex flex-col gap-5 sm:flex-row sm:items-end">
+            <div class="rounded-3xl bg-white p-2 shadow-sm ring-1 ring-stone-200">
+              <logo-image
+              {% if let Some(photo_url) = &profile.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+              size="size-28" placeholder="{{ crate::templates::helpers::user_initials(profile.name.as_deref() , profile.username.as_str()) }}">
+              </logo-image>
+            </div>
+            <div class="min-w-0 pb-1">
+              <div class="text-sm font-semibold uppercase tracking-wide text-primary-600">@{{ profile.username }}</div>
+              <h1 class="mt-1 text-3xl font-semibold text-stone-950 sm:text-4xl">
+                {{ profile.name.as_deref().unwrap_or(&profile.username) }}
+              </h1>
+              {% if profile.title.is_some() || profile.company.is_some() -%}
+                <p class="mt-3 text-lg text-stone-600">
+                  {% if let Some(title) = &profile.title -%}
+                    {{ title }}
+                  {% endif -%}
+                  {% if profile.title.is_some() && profile.company.is_some() -%}
+                    <span class="text-stone-400">at</span>
+                  {% endif -%}
+                  {% if let Some(company) = &profile.company -%}
+                    {{ company }}
+                  {% endif -%}
+                </p>
+              {% endif -%}
+            </div>
+          </div>
+          <share-modal trigger-variant="button" title="{{ self.preview_title() }}" url="/profiles/{{ profile.username }}">
+          </share-modal>
+        </div>
+
+        {% if let Some(bio) = &profile.bio -%}
+          <p class="mt-8 max-w-3xl text-base leading-7 text-stone-700">{{ bio }}</p>
+        {% endif -%}
+
+        <div class="mt-8 border-t border-stone-200 pt-6">
+          <div class="text-sm font-semibold uppercase tracking-wide text-stone-500">Connect</div>
+          <div class="mt-4 flex flex-wrap gap-3">
+            {% if let Some(website_url) = &profile.website_url -%}
+              {{ social_link(url = website_url, icon = "website", label = "Website") }}
+            {% endif -%}
+            {% if let Some(linkedin_url) = &profile.linkedin_url -%}
+              {{ social_link(url = linkedin_url, icon = "linkedin", label = "LinkedIn") }}
+            {% endif -%}
+            {% if let Some(github_url) = &profile.github_url -%}
+              {{ social_link(url = github_url, icon = "github", label = "GitHub") }}
+            {% endif -%}
+            {% if let Some(bluesky_url) = &profile.bluesky_url -%}
+              {{ social_link(url = bluesky_url, icon = "bluesky", label = "Bluesky") }}
+            {% endif -%}
+            {% if let Some(twitter_url) = &profile.twitter_url -%}
+              {{ social_link(url = twitter_url, icon = "twitter", label = "X") }}
+            {% endif -%}
+            {% if let Some(facebook_url) = &profile.facebook_url -%}
+              {{ social_link(url = facebook_url, icon = "facebook", label = "Facebook") }}
+            {% endif -%}
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+{% endblock content -%}
+
+{% macro social_link(url, icon, label) -%}
+  <a href="{{ url }}"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="group btn-secondary-anchor p-3 flex items-center justify-center"
+     title="{{ label }}"
+     aria-label="{{ label }}">
+    <div class="svg-icon size-6 bg-primary-500 group-hover:bg-white transition-colors icon-{{ icon }}"></div>
+  </a>
+{% endmacro social_link -%}

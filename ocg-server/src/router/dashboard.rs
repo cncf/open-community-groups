@@ -285,6 +285,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         )
         .route("/logs", get(dashboard::group::logs::list_page))
         .route("/members", get(dashboard::group::members::list_page))
+        .route("/spotlights", get(dashboard::group::spotlights::list_page))
         .route(
             "/settings/update",
             get(dashboard::group::settings::update_page),
@@ -380,6 +381,11 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/notifications",
             post(dashboard::group::members::send_group_custom_notification),
+        )
+        .route("/spotlights", post(dashboard::group::spotlights::add))
+        .route(
+            "/spotlights/{spotlight_id}",
+            put(dashboard::group::spotlights::update).delete(dashboard::group::spotlights::delete),
         )
         .route_layer(check_selected_group_permission(
             GroupPermission::MembersWrite,

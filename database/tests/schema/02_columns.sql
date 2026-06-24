@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(70);
+select plan(71);
 
 -- ============================================================================
 -- TESTS
@@ -563,6 +563,22 @@ select columns_are('group_member', array[
     'group_id',
     'user_id',
     'created_at'
+]);
+
+-- Test: group_member_spotlight columns should match expected
+select columns_are('group_member_spotlight', array[
+    'group_member_spotlight_id',
+    'group_id',
+    'user_id',
+    'created_by',
+    'title',
+    'story',
+    'image_url',
+    'link_url',
+    'featured',
+    'published',
+    'created_at',
+    'updated_at'
 ]);
 
 -- Test: group_role columns should match expected

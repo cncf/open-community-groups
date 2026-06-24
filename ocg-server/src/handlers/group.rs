@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, DynActivityTracker},
+    auth::AuthSession,
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
@@ -23,7 +24,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        group::{self, Page},
+        group::{self, Page, SpotlightsPage},
         notifications::GroupWelcome,
     },
     types::{event::EventKind, group::GroupFull},
@@ -95,6 +96,43 @@ pub(crate) async fn page(
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
+}
+
+/// Handler that renders logged-in group member spotlights.
+#[instrument(skip_all)]
+pub(crate) async fn spotlights_page(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((alliance_name, group_slug)): Path<(String, String)>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let Some(mut group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return not_found::render(site_settings);
+    };
+    trim_public_gallery_images(&mut group.photos_urls);
+    group.sponsors.clear();
+
+    let spotlights = db.list_group_member_spotlights(group.group_id, false).await?;
+    let template = SpotlightsPage {
+        base_url: server_cfg.base_url,
+        group,
+        page_id: PageId::Group,
+        path: uri.path().to_string(),
+        site_settings,
+        spotlights,
+        user: User::from_session(auth_session).await?,
+    };
+
+    Ok(Html(template.render()?).into_response())
 }
 
 // Helpers.

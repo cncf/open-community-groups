@@ -12,7 +12,7 @@ use crate::{
     db::PgExecutor,
     templates::{auth::UserDetails, notifications::EmailVerification},
     types::permissions::{AlliancePermission, GroupPermission},
-    types::user::UserProvider,
+    types::user::{PublicUserProfile, UserProvider},
 };
 
 /// Trait for database operations related to authentication and authorization.
@@ -49,6 +49,12 @@ pub(crate) trait DBAuth {
 
     /// Retrieves a user by their username.
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>>;
+
+    /// Retrieves public, non-email profile fields by username.
+    async fn get_public_user_profile_by_username(
+        &self,
+        username: &str,
+    ) -> Result<Option<PublicUserProfile>>;
 
     /// Retrieves the password hash for a user.
     async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
@@ -230,6 +236,38 @@ where
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
         self.fetch_json_opt("select get_user_by_username($1::text);", &[&username])
             .await
+    }
+
+    #[instrument(skip(self, username), err)]
+    async fn get_public_user_profile_by_username(
+        &self,
+        username: &str,
+    ) -> Result<Option<PublicUserProfile>> {
+        self.fetch_json_opt(
+            r#"
+            select jsonb_build_object(
+                'user_id', user_id,
+                'username', username,
+                'bio', bio,
+                'bluesky_url', bluesky_url,
+                'company', company,
+                'facebook_url', facebook_url,
+                'github_url', github_url,
+                'linkedin_url', linkedin_url,
+                'name', name,
+                'photo_url', photo_url,
+                'title', title,
+                'twitter_url', twitter_url,
+                'website_url', website_url
+            )
+            from "user"
+            where lower(username) = lower($1::text)
+            and email_verified = true
+            and registration_status = 'registered';
+            "#,
+            &[&username],
+        )
+        .await
     }
 
     #[instrument(skip(self, user_id), err)]
