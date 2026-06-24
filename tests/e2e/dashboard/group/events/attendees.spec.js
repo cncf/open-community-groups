@@ -551,7 +551,9 @@ test.describe("group dashboard attendees tab", () => {
     );
 
     // Target the search controls used to submit attendee filters.
-    const searchInput = attendeesContent.getByPlaceholder("Search attendees");
+    const searchInput = attendeesContent.getByRole("textbox", {
+      name: "Search attendees",
+    });
     const searchForm = attendeesContent.locator("#attendees-search-form");
 
     // Enter a query expected to match a seeded attendee.
@@ -637,9 +639,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(
       attendeesContent.locator("tr", { hasText: "E2E Organizer One" }),
     ).toBeVisible();
-    await expect(
-      attendeesContent.getByPlaceholder("Search attendees"),
-    ).toHaveValue("");
+    await expect(searchInput).toHaveValue("");
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({

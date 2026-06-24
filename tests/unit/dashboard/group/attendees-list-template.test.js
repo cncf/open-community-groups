@@ -86,6 +86,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('id="attendees-search-form"');
     expect(template).to.include('hx-trigger="change, submit"');
     expect(template).to.include('hx-target="#attendees-content"');
+    expect(template).to.include('<label for="search_attendees" class="sr-only">Search attendees</label>');
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('placeholder="Search attendees"');
     expect(template).to.include('aria-label="Clear attendee search"');
