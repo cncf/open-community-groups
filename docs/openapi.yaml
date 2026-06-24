@@ -1,0 +1,325 @@
+openapi: 3.1.0
+info:
+  title: GOUP API
+  version: 1.0.0
+  description: Versioned JSON API for public GOUP data, authenticated user actions, and scoped admin mutations.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      summary: Health check
+      responses:
+        "200":
+          description: API is available.
+  /meta/filters:
+    get:
+      security: []
+      summary: List public filter options.
+      parameters:
+        - $ref: "#/components/parameters/AllianceQuery"
+        - name: entity
+          in: query
+          schema:
+            type: string
+            enum: [events, groups]
+      responses:
+        "200":
+          description: Filter options envelope.
+  /alliances:
+    get:
+      security: []
+      summary: List active alliances.
+      responses:
+        "200":
+          description: Alliance summaries.
+    post:
+      summary: Create an alliance.
+      description: Requires `admin:platform` and a platform-admin user.
+      responses:
+        "200":
+          description: Created alliance id.
+  /alliances/{alliance}:
+    get:
+      security: []
+      summary: Get an alliance.
+      parameters:
+        - $ref: "#/components/parameters/AlliancePath"
+      responses:
+        "200":
+          description: Full alliance.
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      summary: Update an alliance.
+      description: Requires `admin:alliance`.
+      parameters:
+        - $ref: "#/components/parameters/AlliancePath"
+      responses:
+        "200":
+          description: Updated.
+  /alliances/{alliance}/groups:
+    get:
+      security: []
+      summary: List/search groups in an alliance.
+      parameters:
+        - $ref: "#/components/parameters/AlliancePath"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Group summaries with total metadata.
+    post:
+      summary: Create a group.
+      description: Requires `admin:alliance`.
+      parameters:
+        - $ref: "#/components/parameters/AlliancePath"
+      responses:
+        "200":
+          description: Created group id.
+  /alliances/{alliance}/events:
+    get:
+      security: []
+      summary: List/search events in an alliance.
+      parameters:
+        - $ref: "#/components/parameters/AlliancePath"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Event summaries with total metadata.
+  /groups/{alliance}/{group_slug}:
+    get:
+      security: []
+      summary: Get a group by slug.
+      parameters:
+        - $ref: "#/components/parameters/AlliancePath"
+        - name: group_slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Full group.
+  /groups/{alliance}/{group_id}/join:
+    post:
+      summary: Join a group.
+      description: Requires `write:events`.
+      responses:
+        "200":
+          description: Joined.
+    delete:
+      summary: Leave a group.
+      description: Requires `write:events`.
+      responses:
+        "200":
+          description: Left.
+  /events/{alliance}/{group_slug}/{event_slug}:
+    get:
+      security: []
+      summary: Get an event by slug.
+      responses:
+        "200":
+          description: Full event.
+  /events/{alliance}/{event_id}/attendance:
+    get:
+      summary: Get current user's event attendance.
+      description: Requires `write:events`.
+      responses:
+        "200":
+          description: Attendance details.
+  /events/{alliance}/{event_id}/attend:
+    post:
+      summary: Attend an event.
+      description: Requires `write:events`.
+      responses:
+        "200":
+          description: Attendance status.
+    delete:
+      summary: Leave an event.
+      description: Requires `write:events`.
+      responses:
+        "200":
+          description: Leave outcome.
+  /jobs:
+    get:
+      security: []
+      summary: List/search jobs.
+      responses:
+        "200":
+          description: Job summaries with total metadata.
+    post:
+      summary: Create a job.
+      description: Requires `write:jobs`.
+      responses:
+        "200":
+          description: Created job id.
+  /jobs/{slug}:
+    get:
+      security: []
+      summary: Get a job by slug.
+      responses:
+        "200":
+          description: Full job.
+  /jobs/{job_id}:
+    patch:
+      summary: Update a job.
+      description: Requires `write:jobs`.
+      responses:
+        "200":
+          description: Updated.
+    delete:
+      summary: Delete a job.
+      description: Requires `write:jobs`.
+      responses:
+        "200":
+          description: Deleted.
+  /jobs/{job_id}/applications:
+    post:
+      summary: Apply to a job.
+      description: Requires `write:jobs`.
+      responses:
+        "200":
+          description: Application saved.
+  /landscape:
+    get:
+      security: []
+      summary: List/search ecosystem entries.
+      responses:
+        "200":
+          description: Landscape entries with total metadata.
+    post:
+      summary: Create an ecosystem entry.
+      description: Requires `admin:alliance`; body includes `alliance` plus the landscape entry fields.
+      responses:
+        "200":
+          description: Created entry id.
+  /landscape/{entry_id}:
+    patch:
+      summary: Update an ecosystem entry.
+      description: Requires `admin:alliance`; body includes `alliance` plus the landscape entry fields.
+      responses:
+        "200":
+          description: Updated.
+  /search:
+    get:
+      security: []
+      summary: Search events, groups, jobs, and ecosystem entries.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/AllianceQuery"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Aggregated search results.
+  /me:
+    get:
+      summary: Get current API user.
+      responses:
+        "200":
+          description: Current user.
+    patch:
+      summary: Update current user's profile.
+      description: Requires `write:profile`.
+      responses:
+        "200":
+          description: Updated.
+  /me/tokens:
+    get:
+      summary: List current user's API tokens.
+      description: Uses the browser session to bootstrap token management.
+      responses:
+        "200":
+          description: Token metadata.
+    post:
+      summary: Create an API token.
+      description: Uses the browser session; plaintext token is returned only once.
+      responses:
+        "200":
+          description: Created token and metadata.
+  /me/tokens/{token_id}:
+    delete:
+      summary: Revoke an API token.
+      description: Uses the browser session.
+      responses:
+        "200":
+          description: Revoked.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    AlliancePath:
+      name: alliance
+      in: path
+      required: true
+      schema:
+        type: string
+    AllianceQuery:
+      name: alliance
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+  responses:
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    ResponseEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data: true
+        meta:
+          type: object
+        links:
+          type: object
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - invalid_request
+                - unauthenticated
+                - forbidden
+                - not_found
+                - conflict
+                - validation_failed
+                - internal_error
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: string
