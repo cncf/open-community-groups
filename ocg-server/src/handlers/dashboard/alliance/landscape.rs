@@ -93,8 +93,7 @@ pub(crate) async fn delete(
     State(db): State<DynDB>,
     Path(entry_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.delete_landscape_entry(user.user_id, alliance_id, entry_id)
-        .await?;
+    db.delete_landscape_entry(user.user_id, alliance_id, entry_id).await?;
 
     Ok((
         StatusCode::NO_CONTENT,

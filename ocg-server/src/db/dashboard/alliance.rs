@@ -10,7 +10,6 @@ use uuid::Uuid;
 use crate::{
     db::{PgClient, PgExecutor},
     templates::dashboard::{
-        audit::{AuditLogFilters, AuditLogsOutput},
         alliance::{
             analytics::AllianceDashboardStats,
             event_categories::EventCategoryInput,
@@ -20,6 +19,7 @@ use crate::{
             settings::AllianceUpdate,
             team::{AllianceTeamFilters, AllianceTeamOutput},
         },
+        audit::{AuditLogFilters, AuditLogsOutput},
     },
     types::{
         alliance::{AllianceRole, AllianceRoleSummary, AllianceSummary},

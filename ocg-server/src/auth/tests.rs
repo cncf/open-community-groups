@@ -35,7 +35,7 @@ async fn authenticate_dispatches_password_credentials() {
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = axum_login::AuthnBackend::authenticate(
         &backend,
         Credentials::Password(PasswordCredentials {
@@ -63,7 +63,7 @@ async fn authenticate_maps_password_backend_error_to_auth_error() {
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let result = axum_login::AuthnBackend::authenticate(
         &backend,
         Credentials::Password(PasswordCredentials {
@@ -84,7 +84,7 @@ async fn authenticate_maps_password_backend_error_to_auth_error() {
 async fn authenticate_maps_oauth2_backend_error_to_auth_error() {
     // Setup backend without configured providers
     let db: DynDB = Arc::new(MockDB::new());
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
 
     // Execute authentication
     let result = axum_login::AuthnBackend::authenticate(
@@ -107,7 +107,7 @@ async fn authenticate_maps_oauth2_backend_error_to_auth_error() {
 async fn authenticate_maps_oidc_backend_error_to_auth_error() {
     // Setup backend without configured providers
     let db: DynDB = Arc::new(MockDB::new());
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
 
     // Execute authentication
     let result = axum_login::AuthnBackend::authenticate(
@@ -131,7 +131,7 @@ async fn authenticate_maps_oidc_backend_error_to_auth_error() {
 async fn authenticate_oauth2_returns_error_when_provider_missing() {
     // Setup backend without configured providers
     let db: DynDB = Arc::new(MockDB::new());
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
 
     // Execute authentication
     let result = backend
@@ -150,7 +150,7 @@ async fn authenticate_oauth2_returns_error_when_provider_missing() {
 async fn authenticate_oidc_returns_error_when_provider_missing() {
     // Setup backend without configured providers
     let db: DynDB = Arc::new(MockDB::new());
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
 
     // Execute authentication
     let result = backend
@@ -182,7 +182,7 @@ async fn authenticate_password_returns_none_when_password_is_incorrect() {
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let result = backend
         .authenticate_password(PasswordCredentials {
             password: "wrong-password".to_string(),
@@ -210,7 +210,7 @@ async fn authenticate_password_returns_none_when_password_is_missing() {
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let result = backend
         .authenticate_password(PasswordCredentials {
             password: "correct-password".to_string(),
@@ -234,7 +234,7 @@ async fn authenticate_password_returns_none_when_user_not_found() {
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let result = backend
         .authenticate_password(PasswordCredentials {
             password: "correct-password".to_string(),
@@ -263,7 +263,7 @@ async fn authenticate_password_returns_user_without_password_when_valid() {
     let db: DynDB = Arc::new(db);
 
     // Execute authentication
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = backend
         .authenticate_password(PasswordCredentials {
             password: "correct-password".to_string(),
@@ -321,7 +321,7 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
     let db: DynDB = Arc::new(db);
 
     // Execute helper
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
 
     // Check result
@@ -361,7 +361,7 @@ async fn get_or_sign_up_external_user_sets_provider_for_existing_user_without_pr
     let db: DynDB = Arc::new(db);
 
     // Execute helper
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
 
     // Check result
@@ -384,7 +384,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_unchanged() {
     let db: DynDB = Arc::new(db);
 
     // Execute helper
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
 
     // Check result
@@ -418,7 +418,7 @@ async fn get_or_sign_up_external_user_signs_up_new_user() {
     let db: DynDB = Arc::new(db);
 
     // Execute helper
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
 
     // Check result
@@ -456,7 +456,7 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
     let db: DynDB = Arc::new(db);
 
     // Execute helper
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
 
     // Check result
@@ -479,11 +479,8 @@ async fn get_or_sign_up_external_user_rejects_blocked_linkedin_subject() {
     let db: DynDB = Arc::new(db);
 
     // Execute helper
-    let backend = authn_backend(db).await;
-    let err = backend
-        .get_or_sign_up_external_user(&user_summary)
-        .await
-        .unwrap_err();
+    let backend = authn_backend(db);
+    let err = backend.get_or_sign_up_external_user(&user_summary).await.unwrap_err();
 
     // Check result
     assert!(err.to_string().contains("linkedin account is blocked"));
@@ -505,7 +502,7 @@ async fn get_or_sign_up_external_user_skips_provider_update_when_missing() {
     let db: DynDB = Arc::new(db);
 
     // Execute helper
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
 
     // Check result
@@ -524,7 +521,7 @@ async fn get_user_maps_db_error_to_auth_error() {
     let db: DynDB = Arc::new(db);
 
     // Execute get user
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let result = axum_login::AuthnBackend::get_user(&backend, &user_id).await;
 
     // Check result
@@ -546,7 +543,7 @@ async fn get_user_returns_none_when_user_not_found() {
     let db: DynDB = Arc::new(db);
 
     // Execute get user
-    let backend = authn_backend(db).await;
+    let backend = authn_backend(db);
     let result = axum_login::AuthnBackend::get_user(&backend, &user_id).await.unwrap();
 
     // Check result
@@ -563,7 +560,7 @@ async fn setup_oidc_providers_rejects_invalid_issuer_url() {
     let http_client = oauth2_reqwest::ClientBuilder::new().build().unwrap();
 
     // Execute provider setup
-    let result = AuthnBackend::setup_oidc_providers(&oidc_cfg, http_client).await;
+    let result = AuthnBackend::setup_oidc_providers(&oidc_cfg, http_client);
 
     // Check result
     assert!(result.is_err());
@@ -782,10 +779,10 @@ fn user_session_auth_hash_matches_auth_hash_bytes() {
 
 // Helpers.
 
-async fn authn_backend(db: DynDB) -> AuthnBackend {
+fn authn_backend(db: DynDB) -> AuthnBackend {
     let oidc_cfg: OidcConfig = HashMap::new();
     let oauth2_cfg: OAuth2Config = HashMap::new();
-    AuthnBackend::new(db, &oauth2_cfg, &oidc_cfg).await.unwrap()
+    AuthnBackend::new(db, &oauth2_cfg, &oidc_cfg).unwrap()
 }
 
 fn sample_oauth2_provider_config() -> OAuth2ProviderConfig {

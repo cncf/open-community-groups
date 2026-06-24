@@ -117,12 +117,9 @@ pub(crate) async fn page(
             Content::Landscape(template)
         }
         Tab::Logs => {
-            let (_, template) = logs::prepare_list_page(
-                &db,
-                alliance_id,
-                raw_query.as_deref().unwrap_or_default(),
-            )
-            .await?;
+            let (_, template) =
+                logs::prepare_list_page(&db, alliance_id, raw_query.as_deref().unwrap_or_default())
+                    .await?;
             Content::Logs(template)
         }
         Tab::Regions => {

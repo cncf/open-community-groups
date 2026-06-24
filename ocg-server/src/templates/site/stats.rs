@@ -86,7 +86,7 @@ pub struct SiteStatsSummary {
 pub struct SiteEngagementStats {
     /// Confirmed attendees who joined two or more events.
     pub repeat_attendees: i64,
-    /// Members with LinkedIn identity or profile data.
+    /// Members with `LinkedIn` identity or profile data.
     pub linkedin_connected_members: i64,
     /// Average members per active group.
     pub members_per_group_avg: f64,

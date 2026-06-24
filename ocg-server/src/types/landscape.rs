@@ -10,8 +10,8 @@ use crate::{
     templates::dashboard,
     types::pagination::{Pagination, ToRawQuery},
     validation::{
-        trimmed_non_empty, trimmed_non_empty_opt, MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT,
-        MAX_LEN_ENTITY_NAME, MAX_LEN_M, MAX_LEN_TAG, MAX_PAGINATION_LIMIT,
+        MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_M,
+        MAX_LEN_TAG, MAX_PAGINATION_LIMIT, trimmed_non_empty, trimmed_non_empty_opt,
     },
 };
 
@@ -92,7 +92,7 @@ pub(crate) struct LandscapeEntryInput {
     /// Entry name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
-    /// Entry kind, either startup or github_project.
+    /// Entry kind, either startup or `github_project`.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
     pub kind: String,
     /// Short summary.

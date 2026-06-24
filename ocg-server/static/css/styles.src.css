@@ -29,6 +29,24 @@
   --color-primary-950: #002152;   /* Deepest navy */
 }
 
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 50% -10%, rgb(224 242 254 / 0.7), transparent 34rem),
+      linear-gradient(180deg, #ffffff 0%, #f8fafc 42%, #f5f5f4 100%);
+  }
+
+  ::selection {
+    background: rgb(14 165 233 / 0.22);
+  }
+}
+
 @layer components {
   breadcrumb-nav {
     display: block;
@@ -1066,132 +1084,3 @@ input:placeholder-shown {
 
 /* End header nav loading */
 
-/* Dark mode */
-
-html.ocg-dark {
-  color-scheme: dark;
-  background-color: #020617;
-}
-
-html.ocg-dark body {
-  background-color: #020617;
-  color: #e5e7eb;
-}
-
-html.ocg-dark .bg-white,
-html.ocg-dark .bg-stone-50,
-html.ocg-dark .bg-stone-100 {
-  background-color: #0f172a !important;
-}
-
-html.ocg-dark .bg-stone-200 {
-  background-color: #1e293b !important;
-}
-
-html.ocg-dark .bg-transparent {
-  background-color: transparent !important;
-}
-
-html.ocg-dark .text-stone-950,
-html.ocg-dark .text-stone-900,
-html.ocg-dark .text-stone-800,
-html.ocg-dark .text-stone-700 {
-  color: #f8fafc !important;
-}
-
-html.ocg-dark .text-stone-600,
-html.ocg-dark .text-stone-500 {
-  color: #cbd5e1 !important;
-}
-
-html.ocg-dark .text-stone-400 {
-  color: #94a3b8 !important;
-}
-
-html.ocg-dark .border-stone-100,
-html.ocg-dark .border-stone-200,
-html.ocg-dark .border-stone-300,
-html.ocg-dark .divide-stone-100 > :not(:last-child),
-html.ocg-dark .divide-stone-200 > :not(:last-child) {
-  border-color: #334155 !important;
-}
-
-html.ocg-dark .shadow,
-html.ocg-dark .shadow-sm,
-html.ocg-dark .shadow-md,
-html.ocg-dark .shadow-lg,
-html.ocg-dark .shadow-xl,
-html.ocg-dark .shadow-2xl,
-html.ocg-dark .drop-shadow-sm {
-  --tw-shadow-color: rgb(0 0 0 / 0.45) !important;
-  --tw-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.65) !important;
-  box-shadow: var(--tw-shadow) !important;
-}
-
-/* Translucent white surfaces (cards, badges) read as light-on-light in dark
-   mode because the opacity modifier escapes the plain .bg-white override.
-   Low-opacity whites (5-30%) are deliberate overlays on dark sections and
-   are left untouched. */
-html.ocg-dark .bg-white\/70,
-html.ocg-dark .bg-white\/80,
-html.ocg-dark .bg-white\/85 {
-  background-color: rgb(15 23 42 / 0.85) !important;
-}
-
-html.ocg-dark .border-white\/70 {
-  border-color: rgb(51 65 85 / 0.7) !important;
-}
-
-/* The home hero wraps header and jumbotron in a white-to-dark gradient.
-   The white stops stay light in dark mode, so the inverted heading text
-   sits light-on-light. Recolor the gradient stops to the dark surface. */
-html.ocg-dark .from-white {
-  --tw-gradient-from: #0f172a !important;
-}
-
-html.ocg-dark .via-white {
-  --tw-gradient-via: #0f172a !important;
-}
-
-html.ocg-dark :is(input, textarea, select, .input) {
-  background-color: #020617 !important;
-  border-color: #334155 !important;
-  color: #f8fafc !important;
-}
-
-html.ocg-dark :is(input, textarea, select, .input)::placeholder {
-  color: #94a3b8 !important;
-}
-
-html.ocg-dark .hover\:bg-stone-100:hover,
-html.ocg-dark .hover\:bg-stone-50:hover {
-  background-color: #1e293b !important;
-}
-
-html.ocg-dark .svg-icon.bg-stone-600,
-html.ocg-dark .bg-stone-600 {
-  background-color: #cbd5e1 !important;
-}
-
-html.ocg-dark .theme-toggle {
-  background-color: #0f172a !important;
-  color: #bae6fd !important;
-}
-
-html.ocg-dark .theme-toggle-icon {
-  color: #bae6fd !important;
-}
-
-html.ocg-dark .EasyMDEContainer .editor-toolbar,
-html.ocg-dark .EasyMDEContainer .CodeMirror,
-html.ocg-dark .EasyMDEContainer .editor-preview-active {
-  background-color: #020617 !important;
-  border-color: #334155 !important;
-  color: #f8fafc !important;
-}
-
-html.ocg-dark .EasyMDEContainer button {
-  color: #e5e7eb !important;
-}
-
-/* End dark mode */

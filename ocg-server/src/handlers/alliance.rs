@@ -21,7 +21,7 @@ use crate::{
         error::HandlerError, request_matches_site, site::not_found, trim_public_gallery_images,
     },
     router::PUBLIC_SHARED_CACHE_HEADERS,
-    templates::{PageId, auth::User, alliance},
+    templates::{PageId, alliance, auth::User},
     types::event::EventKind,
 };
 
@@ -57,10 +57,7 @@ pub(crate) async fn page(
     ) = tokio::try_join!(
         db.get_alliance_full(alliance_id),
         db.get_alliance_recently_added_groups(alliance_id),
-        db.get_alliance_upcoming_events(
-            alliance_id,
-            vec![EventKind::InPerson, EventKind::Hybrid]
-        ),
+        db.get_alliance_upcoming_events(alliance_id, vec![EventKind::InPerson, EventKind::Hybrid]),
         db.get_alliance_upcoming_events(alliance_id, vec![EventKind::Virtual, EventKind::Hybrid]),
         db.get_alliance_site_stats(alliance_id),
     )?;
@@ -101,9 +98,7 @@ pub(crate) async fn track_view(
     Path(alliance_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     if request_matches_site(&server_cfg, &headers)? {
-        activity_tracker
-            .track(Activity::AllianceView { alliance_id })
-            .await?;
+        activity_tracker.track(Activity::AllianceView { alliance_id }).await?;
     }
 
     Ok(StatusCode::NO_CONTENT)

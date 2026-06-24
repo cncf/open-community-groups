@@ -48,7 +48,7 @@
 
     <div class="mb-5 flex items-center justify-between gap-3">
       <div class="text-sm text-stone-600">
-        {{ pagination::range_display(offset = filters.offset.unwrap_or(0), count = jobs.len(), total = total, label = "job") }}
+        {{ pagination::range_display(offset = filters.offset.unwrap_or(0) , count = jobs.len(), total = total, label = "job") }}
       </div>
       {% if user.logged_in -%}
         <a class="btn-secondary" href="/dashboard/jobs">Post a job</a>
@@ -89,13 +89,16 @@
                            class="h-full w-full object-cover"
                            loading="lazy" />
                     {% else -%}
-                      {{ self::user_initials(job.poster_name.as_deref(), job.poster_username.as_str()) }}
+                      {{ self::user_initials(job.poster_name.as_deref() , job.poster_username.as_str()) }}
                     {% endif -%}
                   </div>
                   <div>
                     <div class="font-medium text-stone-800">Posted by {{ job.poster_name.as_deref().unwrap_or(job.poster_username.as_str()) }}</div>
                     <div class="text-xs text-stone-500">
-                      {% if let Some(title) = &job.poster_title -%}{{ title }}{% if job.poster_company.is_some() %} · {% endif %}{% endif -%}
+                      {% if let Some(title) = &job.poster_title -%}
+                        {{ title }}
+                        {% if job.poster_company.is_some() %}·{% endif %}
+                      {% endif -%}
                       {% if let Some(company) = &job.poster_company -%}{{ company }}{% endif -%}
                     </div>
                   </div>

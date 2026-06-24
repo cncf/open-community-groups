@@ -387,7 +387,7 @@ pub(crate) struct LoginOptions {
     pub email: bool,
     /// Enable GitHub login.
     pub github: bool,
-    /// Enable LinkedIn login.
+    /// Enable `LinkedIn` login.
     pub linkedin: bool,
 }
 
@@ -426,7 +426,7 @@ pub(crate) type OidcConfig = HashMap<OidcProvider, OidcProviderConfig>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum OidcProvider {
-    /// LinkedIn as an OIDC provider.
+    /// `LinkedIn` as an OIDC provider.
     LinkedIn,
 }
 

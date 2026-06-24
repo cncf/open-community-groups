@@ -84,10 +84,7 @@ where
         )]
         async fn inner(db: PgClient<'_>, alliance_id: Uuid) -> Result<Option<String>> {
             let name = db
-                .query_opt(
-                    "select get_alliance_name_by_id($1::uuid)",
-                    &[&alliance_id],
-                )
+                .query_opt("select get_alliance_name_by_id($1::uuid)", &[&alliance_id])
                 .await?
                 .and_then(|row| row.get(0));
 
@@ -114,11 +111,8 @@ where
     /// [`DB::get_alliance_site_stats`]
     #[instrument(skip(self), err)]
     async fn get_alliance_site_stats(&self, alliance_id: Uuid) -> Result<alliance::Stats> {
-        self.fetch_json_one(
-            "select get_alliance_site_stats($1::uuid)",
-            &[&alliance_id],
-        )
-        .await
+        self.fetch_json_one("select get_alliance_site_stats($1::uuid)", &[&alliance_id])
+            .await
     }
 
     /// [`DB::get_alliance_upcoming_events`]

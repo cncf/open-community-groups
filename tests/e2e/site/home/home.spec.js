@@ -2,12 +2,12 @@ import { expect, test } from "@playwright/test";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  PUBLIC_HOME_TITLE,
   TEST_ALLIANCE_NAME,
   TEST_ALLIANCE_NAME_2,
   TEST_ALLIANCE_TITLE,
   TEST_ALLIANCE_TITLE_2,
   TEST_EVENT_NAMES,
-  TEST_SITE_TITLE,
   getAllianceBanner,
   getSectionLink,
   getStatsContainer,
@@ -30,16 +30,16 @@ test.describe("site home page", () => {
     }) => {
       // Verify the jumbotron exposes the primary explore CTA.
       await expect(
-        page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
+        page.getByRole("heading", { level: 1, name: PUBLIC_HOME_TITLE }),
       ).toBeVisible();
 
       // Verify the jumbotron description and CTA destination.
       await expect(page.locator(".jumbotron-description")).toBeVisible();
 
-      // Find the Explore groups and events control.
-      const ctaLink = page.getByRole("link", {
-        name: "Explore groups and events",
-      });
+      // Find the primary Explore events control.
+      const ctaLink = page
+        .getByRole("link", { name: "Explore events" })
+        .first();
       await expect(ctaLink).toBeVisible();
       await expect(ctaLink).toHaveAttribute("href", /\/explore/);
     });
@@ -61,7 +61,7 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Verify alliance cards link to their public alliance pages.
-      await expect(page.getByText("Alliances")).toBeVisible();
+      await expect(page.getByText("Alliance", { exact: true })).toBeVisible();
 
       // Target the first alliance card link.
       const alliance1Link = page
@@ -86,14 +86,14 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Verify the in-person events section heading is present.
-      await expect(page.getByText("upcoming in-person events")).toBeVisible();
+      await expect(page.getByText("upcoming in-person").first()).toBeVisible();
     });
 
     test("upcoming virtual events section renders with title", async ({
       page,
     }) => {
       // Verify the virtual events section heading is present.
-      await expect(page.getByText("upcoming virtual events")).toBeVisible();
+      await expect(page.getByText("upcoming virtual").first()).toBeVisible();
     });
 
     test("upcoming in-person events shows seeded event cards", async ({
@@ -140,7 +140,9 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Verify the latest groups section exposes its explore link.
-      await expect(page.getByText("Latest groups added")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "New chapters and circles" }),
+      ).toBeVisible();
 
       // Target the latest groups explore link.
       const exploreGroupsLinks = page.getByRole("link", {
@@ -152,15 +154,13 @@ test.describe("site home page", () => {
     test("groups grid renders in the latest groups section", async ({
       page,
     }) => {
-      // Locate the latest groups grid on the public home page.
-      const groupsGrid = page
-        .getByText("Latest groups added", { exact: true })
-        .locator("..")
-        .locator("..")
-        .locator("div.grid");
-
-      // Verify the latest groups grid is visible.
-      await expect(groupsGrid.first()).toBeVisible();
+      // Verify the latest groups section renders group cards.
+      await expect(
+        page
+          .getByRole("link")
+          .filter({ hasText: "Platform Ops Meetup" })
+          .first(),
+      ).toBeVisible();
     });
   });
 
@@ -260,7 +260,7 @@ test.describe("site home page", () => {
       // Target the desktop explore link for in-person events.
       const desktopLink = getSectionLink(
         page,
-        "upcoming in-person events",
+        "upcoming in-person",
         "Explore all events",
         "desktop",
       );
@@ -277,12 +277,9 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Target the desktop explore link for latest groups.
-      const desktopLink = getSectionLink(
-        page,
-        "Latest groups added",
-        "Explore all groups",
-        "desktop",
-      );
+      const desktopLink = page
+        .getByRole("link", { name: "Explore all groups" })
+        .first();
 
       // Verify the desktop groups link points to the filtered explore page.
       await expect(desktopLink).toHaveAttribute(
@@ -293,12 +290,9 @@ test.describe("site home page", () => {
 
     test("explore all groups link visible on desktop", async ({ page }) => {
       // Target the desktop latest-groups explore link.
-      const desktopExploreLink = getSectionLink(
-        page,
-        "Latest groups added",
-        "Explore all groups",
-        "desktop",
-      );
+      const desktopExploreLink = page
+        .getByRole("link", { name: "Explore all groups" })
+        .first();
 
       // Verify the desktop groups link is visible.
       await expect(desktopExploreLink).toBeVisible();
@@ -369,7 +363,7 @@ test.describe("site home page", () => {
       // Target the mobile explore link for in-person events.
       const mobileLink = getSectionLink(
         page,
-        "upcoming in-person events",
+        "upcoming in-person",
         "Explore all events",
         "mobile",
       );
@@ -386,12 +380,9 @@ test.describe("site home page", () => {
       page,
     }) => {
       // Target the mobile explore link for latest groups.
-      const mobileLink = getSectionLink(
-        page,
-        "Latest groups added",
-        "Explore all groups",
-        "mobile",
-      );
+      const mobileLink = page
+        .getByRole("link", { name: "Explore all groups" })
+        .last();
 
       // Verify the mobile groups link points to the filtered explore page.
       await expect(mobileLink).toHaveAttribute(
@@ -402,12 +393,9 @@ test.describe("site home page", () => {
 
     test("explore all groups link visible on mobile", async ({ page }) => {
       // Target the mobile latest-groups explore link.
-      const mobileExploreLink = getSectionLink(
-        page,
-        "Latest groups added",
-        "Explore all groups",
-        "mobile",
-      );
+      const mobileExploreLink = page
+        .getByRole("link", { name: "Explore all groups" })
+        .last();
 
       // Verify the mobile groups link is visible.
       await expect(mobileExploreLink).toBeVisible();

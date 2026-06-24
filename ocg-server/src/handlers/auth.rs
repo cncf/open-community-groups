@@ -49,10 +49,10 @@ mod tests;
 /// Key used to store the authentication provider in the session.
 pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 
-/// Alliance slug used for LinkedIn auto-join.
+/// Alliance slug used for `LinkedIn` auto-join.
 const LINKEDIN_AUTO_JOIN_ALLIANCE_NAME: &str = "goup";
 
-/// Group slug used for LinkedIn auto-join.
+/// Group slug used for `LinkedIn` auto-join.
 const LINKEDIN_AUTO_JOIN_GROUP_SLUG: &str = "baku";
 
 /// URL for the log in page.
@@ -522,8 +522,7 @@ where
     const OAUTH2_AUTHORIZATION_FAILED: &str = "OAuth2 authorization failed";
 
     // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<String>(OAUTH2_CSRF_STATE_KEY).await?
-    else {
+    let Some(state_in_session) = session.remove::<String>(OAUTH2_CSRF_STATE_KEY).await? else {
         on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
@@ -567,21 +566,19 @@ where
     Ok(Redirect::to(next_url))
 }
 
-/// Best-effort auto-join for users signing in with LinkedIn.
+/// Best-effort auto-join for users signing in with `LinkedIn`.
 async fn auto_join_linkedin_baku_chapter(db: &DynDB, user_id: &Uuid) {
     if let Err(err) = try_auto_join_linkedin_baku_chapter(db, user_id).await {
         warn!(%err, %user_id, "failed to auto-join linkedin user to Baku chapter");
     }
 }
 
-/// Adds a LinkedIn user to the configured Baku chapter when it exists.
+/// Adds a `LinkedIn` user to the configured Baku chapter when it exists.
 async fn try_auto_join_linkedin_baku_chapter(
     db: &DynDB,
     user_id: &Uuid,
 ) -> Result<(), HandlerError> {
-    let Some(alliance_id) = db
-        .get_alliance_id_by_name(LINKEDIN_AUTO_JOIN_ALLIANCE_NAME)
-        .await?
+    let Some(alliance_id) = db.get_alliance_id_by_name(LINKEDIN_AUTO_JOIN_ALLIANCE_NAME).await?
     else {
         return Ok(());
     };
@@ -617,8 +614,7 @@ where
     const OIDC_AUTHORIZATION_FAILED: &str = "OpenID Connect authorization failed";
 
     // Verify oauth2 csrf state
-    let Some(state_in_session) = session.remove::<String>(OAUTH2_CSRF_STATE_KEY).await?
-    else {
+    let Some(state_in_session) = session.remove::<String>(OAUTH2_CSRF_STATE_KEY).await? else {
         on_error(OIDC_AUTHORIZATION_FAILED.to_string());
         return Ok(Redirect::to(LOG_IN_URL));
     };
@@ -804,8 +800,7 @@ pub(crate) async fn user_has_path_group_permission(
     };
 
     // Ensure the path group belongs to the selected alliance before checking permissions
-    let Ok(group_belongs_to_alliance) =
-        db.group_belongs_to_alliance(&alliance_id, &group_id).await
+    let Ok(group_belongs_to_alliance) = db.group_belongs_to_alliance(&alliance_id, &group_id).await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
@@ -906,8 +901,7 @@ pub(crate) async fn user_has_selected_group_permission(
     };
 
     // Resolve selected alliance and group from session context, repairing them if needed
-    let (alliance_id, group_id) = match get_selected_alliance_and_group_ids_optional(&session)
-        .await
+    let (alliance_id, group_id) = match get_selected_alliance_and_group_ids_optional(&session).await
     {
         Ok(Some(ids)) => ids,
         Ok(None) => {
@@ -942,12 +936,7 @@ pub(crate) async fn user_has_selected_group_permission(
         // Missing write permission is a normal 403 when base Read still works
         if permission != GroupPermission::Read {
             let Ok(has_read_permission) = db
-                .user_has_group_permission(
-                    &alliance_id,
-                    &group_id,
-                    &user_id,
-                    GroupPermission::Read,
-                )
+                .user_has_group_permission(&alliance_id, &group_id, &user_id, GroupPermission::Read)
                 .await
             else {
                 return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -1165,11 +1154,8 @@ async fn select_first_accessible_group_for_dashboard(
         .filter(|c| !c.groups.is_empty());
 
     // Fall back to the first alliance with available groups
-    let first_alliance = selected_alliance.or_else(|| {
-        groups_by_alliance
-            .iter()
-            .find(|alliance| !alliance.groups.is_empty())
-    });
+    let first_alliance = selected_alliance
+        .or_else(|| groups_by_alliance.iter().find(|alliance| !alliance.groups.is_empty()));
     let Some(first_alliance) = first_alliance else {
         return Ok(None);
     };

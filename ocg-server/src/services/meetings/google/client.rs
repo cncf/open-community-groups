@@ -567,7 +567,7 @@ mod tests {
     #[test]
     fn create_event_request_can_include_meet_conference_data() {
         let request = CalendarEventRequest::try_from(&Meeting {
-            duration: Some(Duration::from_secs(30 * 60)),
+            duration: Some(Duration::from_mins(30)),
             starts_at: Some(Utc::now()),
             topic: Some("Demo".to_string()),
             timezone: Some("America/New_York".to_string()),

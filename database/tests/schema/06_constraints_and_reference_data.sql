@@ -299,8 +299,8 @@ select results_eq(
 select results_eq(
     'select name, optional_notification from notification_kind order by name',
     $$ values
-        ('cfs-submission-updated', false),
         ('alliance-team-invitation', false),
+        ('cfs-submission-updated', false),
         ('email-verification', false),
         ('event-attendance-canceled', false),
         ('event-canceled', false),

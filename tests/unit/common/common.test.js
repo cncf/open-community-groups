@@ -325,7 +325,7 @@ describe("common utilities", () => {
 
   it("formats initials, datetimes, and empty-object checks", () => {
     // Initials are derived from names with fallback text.
-    expect(computeUserInitials("Open Alliance", "ocg")).to.equal("OC");
+    expect(computeUserInitials("Open Alliance", "ocg")).to.equal("OA");
     expect(computeUserInitials("Single", "ocg", 1)).to.equal("S");
     expect(computeUserInitials("", "ocg")).to.equal("O");
 

@@ -178,7 +178,6 @@ async fn test_current_user_extractor_session_without_user() {
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
     let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
         .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
@@ -254,7 +253,6 @@ async fn test_current_user_extractor_success() {
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
     let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
         .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
@@ -333,7 +331,6 @@ async fn test_oauth2_extractor_success() {
     // Setup auth layer with the configured provider
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
     let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
         .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
@@ -436,7 +433,6 @@ async fn test_oauth2_extractor_unsupported_provider() {
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
     let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
         .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
@@ -532,7 +528,6 @@ async fn test_oidc_extractor_unsupported_provider() {
     let server_cfg = HttpServerConfig::default();
     let session_layer = SessionManagerLayer::new(MemoryStore::default());
     let backend = AuthnBackend::new(db.clone(), &server_cfg.oauth2, &server_cfg.oidc)
-        .await
         .expect("backend setup should succeed");
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
 
@@ -603,10 +598,9 @@ async fn test_selected_alliance_id_extractor_success() {
     let state = test_state(db, is, nm);
 
     // Check extraction matches expectations
-    let SelectedAllianceId(extracted) =
-        SelectedAllianceId::from_request_parts(&mut parts, &state)
-            .await
-            .expect("extractor should succeed");
+    let SelectedAllianceId(extracted) = SelectedAllianceId::from_request_parts(&mut parts, &state)
+        .await
+        .expect("extractor should succeed");
     assert_eq!(extracted, alliance_id);
 }
 

@@ -158,7 +158,7 @@ pub(crate) struct UserDetails {
     /// User's `LinkedIn` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
-    /// Whether the user authenticated with LinkedIn.
+    /// Whether the user authenticated with `LinkedIn`.
     #[serde(default)]
     #[garde(skip)]
     pub linkedin_connected: bool,

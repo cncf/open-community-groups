@@ -37,13 +37,6 @@
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end items-center gap-3">
-      <button type="button"
-              class="theme-toggle inline-flex size-[38px] items-center justify-center rounded-full border border-primary-500 bg-white text-primary-700 transition-colors hover:border-primary-900 hover:text-primary-900"
-              data-theme-toggle
-              aria-label="Switch to dark mode"
-              aria-pressed="false">
-        <span class="theme-toggle-icon text-base leading-none" aria-hidden="true">☾</span>
-      </button>
       {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
@@ -174,20 +167,6 @@
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
-          </li>
-
-          <li class="lg:hidden" role="none">
-            <button type="button"
-                    class="theme-toggle inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-                    data-theme-toggle
-                    role="menuitem"
-                    aria-label="Switch to dark mode"
-                    aria-pressed="false">
-              <div class="flex items-center">
-                <div class="theme-toggle-icon w-4 text-center text-stone-600" aria-hidden="true">☾</div>
-                <div class="theme-toggle-label ms-2 text-xs/6">Dark mode</div>
-              </div>
-            </button>
           </li>
 
           <li class="hidden lg:block" role="none">
@@ -340,8 +319,7 @@
             </a>
           </li>
 
-          <li class="lg:hidden border-b border-stone-200 mb-2 pb-2"
-              role="none">
+          <li class="lg:hidden border-b border-stone-200 mb-2 pb-2" role="none">
             <a href="/jobs"
                hx-boost="true"
                hx-target="body"
@@ -368,21 +346,6 @@
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
-          </li>
-
-          <li class="lg:hidden border-b border-stone-200 mb-2 pb-2"
-              role="none">
-            <button type="button"
-                    class="theme-toggle inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-                    data-theme-toggle
-                    role="menuitem"
-                    aria-label="Switch to dark mode"
-                    aria-pressed="false">
-              <div class="flex items-center">
-                <div class="theme-toggle-icon w-4 text-center text-stone-600" aria-hidden="true">☾</div>
-                <div class="theme-toggle-label ms-2 text-xs/6">Dark mode</div>
-              </div>
-            </button>
           </li>
 
           {# Sign up -#}

@@ -573,8 +573,7 @@ mod tests {
         let related_event_recipient_id = Uuid::new_v4();
         let speaker_id = Uuid::new_v4();
         let test_event_recipient_id = Uuid::new_v4();
-        let event =
-            sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
+        let event = sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
         let related_event =
             sample_event_full_with_speakers(alliance_id, related_event_id, group_id, &[]);
         let test_event = EventFull {
@@ -587,9 +586,7 @@ mod tests {
         let mut db = MockDB::new();
         db.expect_get_event_full()
             .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == alliance_id && *gid == group_id && *eid == event_id
-            })
+            .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)
@@ -705,8 +702,7 @@ mod tests {
         let speaker_id = Uuid::new_v4();
         let related_event_speaker_id = Uuid::new_v4();
         let team_member_id = Uuid::new_v4();
-        let event =
-            sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
+        let event = sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
         let related_event = sample_event_full_with_speakers(
             alliance_id,
             related_event_id,
@@ -727,9 +723,7 @@ mod tests {
             .returning(move |_| Ok(vec![team_member_id, member_id]));
         db.expect_get_event_full()
             .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == alliance_id && *gid == group_id && *eid == event_id
-            })
+            .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_get_event_full()
             .times(1)
@@ -833,9 +827,7 @@ mod tests {
         let mut db = MockDB::new();
         db.expect_get_event_full()
             .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == alliance_id && *gid == group_id && *eid == event_id
-            })
+            .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_group_members_ids()
             .times(1)
@@ -913,9 +905,7 @@ mod tests {
         let mut db = MockDB::new();
         db.expect_get_event_summary()
             .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == alliance_id && *gid == group_id && *eid == event_id
-            })
+            .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(after.clone()));
 
         // Run the workflow
@@ -944,23 +934,18 @@ mod tests {
             starts_at: before.starts_at.map(|starts_at| starts_at + Duration::minutes(30)),
             ..before.clone()
         };
-        let event =
-            sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
+        let event = sample_event_full_with_speakers(alliance_id, event_id, group_id, &[speaker_id]);
         let notifications = Arc::new(Mutex::new(Vec::new()));
 
         // Setup database mock
         let mut db = MockDB::new();
         db.expect_get_event_summary()
             .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == alliance_id && *gid == group_id && *eid == event_id
-            })
+            .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(after.clone()));
         db.expect_get_event_full()
             .times(1)
-            .withf(move |cid, gid, eid| {
-                *cid == alliance_id && *gid == group_id && *eid == event_id
-            })
+            .withf(move |cid, gid, eid| *cid == alliance_id && *gid == group_id && *eid == event_id)
             .returning(move |_, _, _| Ok(event.clone()));
         db.expect_list_event_attendees_ids()
             .times(1)

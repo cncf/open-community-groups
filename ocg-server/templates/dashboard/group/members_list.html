@@ -102,9 +102,9 @@
                 {% endif -%}
               </div>
               <div class="mt-3 text-sm leading-5 text-stone-700">
-                <span class="font-medium text-stone-900">{{ member.title.as_deref()|assigned_or("Member") }}</span>
+                <span class="font-medium text-stone-900">{{ member.title.as_deref() |assigned_or("Member") }}</span>
                 {% if let Some(company) = &member.company -%}
-                  <span class="text-stone-400"> at </span><span>{{ company }}</span>
+                  <span class="text-stone-400">&nbsp;at&nbsp;</span><span>{{ company }}</span>
                 {% endif -%}
               </div>
             </div>
@@ -136,7 +136,8 @@
                   <dt class="text-[0.68rem] font-semibold uppercase tracking-wide text-stone-400">Location</dt>
                   <dd class="mt-1 truncate text-stone-700">
                     {% if let Some(city) = &member.city -%}
-                      {{ city }}{% if member.country.is_some() -%}, {% endif -%}
+                      {{ city }}
+                      {% if member.country.is_some() -%}, {% endif -%}
                     {% endif -%}
                     {% if let Some(country) = &member.country -%}
                       {{ country }}
@@ -226,12 +227,10 @@
                       hx-delete="/dashboard/group/members/{{ member.user_id }}/delete"
                       hx-target="#dashboard-content"
                       hx-indicator="#dashboard-spinner"
-                      hx-confirm="Remove this member from the group?">
-                Remove
-              </button>
+                      hx-confirm="Remove this member from the group?">Remove</button>
             {% endif -%}
             <span class="ms-auto text-xs text-stone-400">{{ member.created_at.format("%b %d, %Y") }}</span>
-            </div>
+          </div>
         </div>
       </article>
     {% endfor -%}

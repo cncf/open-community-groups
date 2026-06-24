@@ -33,12 +33,7 @@ test.describe("site header", () => {
     await expect(
       navigation.getByRole("link", { name: "Wiki" }),
     ).toHaveAttribute("href", "/wiki");
-    await expect(
-      navigation.getByRole("button", { name: "Switch to dark mode" }),
-    ).toBeVisible();
-    await expect(
-      navigation.getByRole("link", { name: "Docs" }),
-    ).toHaveCount(0);
+    await expect(navigation.getByRole("link", { name: "Docs" })).toHaveCount(0);
   });
 
   test("guest user menu links point to authentication pages", async ({
@@ -65,17 +60,14 @@ test.describe("site header", () => {
     await expect(
       userMenu.getByRole("menuitem", { name: "Log in" }),
     ).toHaveAttribute("href", "/log-in");
-    await expect(
-      userMenu.getByRole("menuitem", { name: "Jobs" }),
-    ).toHaveAttribute("href", "/jobs");
+    await expect(userMenu.getByRole("menuitem", { name: "Jobs" })).toHaveCount(
+      0,
+    );
     await expect(
       userMenu.getByRole("menuitem", { name: "Landscape" }),
-    ).toHaveAttribute("href", "/landscape");
-    await expect(
-      userMenu.getByRole("menuitem", { name: "Wiki" }),
-    ).toHaveAttribute("href", "/wiki");
-    await expect(
-      userMenu.getByRole("menuitem", { name: "Dark mode" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
+    await expect(userMenu.getByRole("menuitem", { name: "Wiki" })).toHaveCount(
+      0,
+    );
   });
 });

@@ -6,15 +6,15 @@ use async_trait::async_trait;
 
 use crate::db::PgExecutor;
 
-use common::DBDashboardCommon;
 use alliance::DBDashboardAlliance;
+use common::DBDashboardCommon;
 use group::DBDashboardGroup;
 use user::DBDashboardUser;
 
-/// Common dashboard database operations.
-pub(crate) mod common;
 /// Alliance dashboard database operations.
 pub(crate) mod alliance;
+/// Common dashboard database operations.
+pub(crate) mod common;
 /// Group dashboard database operations.
 pub(crate) mod group;
 /// User dashboard database operations.

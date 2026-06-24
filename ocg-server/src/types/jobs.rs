@@ -154,7 +154,7 @@ pub(crate) struct JobApplicationSummary {
     pub applicant_title: Option<String>,
     /// Applicant company.
     pub applicant_company: Option<String>,
-    /// Applicant LinkedIn URL.
+    /// Applicant `LinkedIn` URL.
     pub applicant_linkedin_url: Option<String>,
     /// Optional note to the job poster.
     pub note: Option<String>,

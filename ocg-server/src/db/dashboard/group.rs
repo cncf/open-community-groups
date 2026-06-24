@@ -120,7 +120,7 @@ pub(crate) trait DBDashboardGroup {
         event_ids: &[Uuid],
     ) -> Result<()>;
 
-    /// Blocks a group member's LinkedIn account.
+    /// Blocks a group member's `LinkedIn` account.
     async fn block_group_member_linkedin(
         &self,
         actor_user_id: Uuid,

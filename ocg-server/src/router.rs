@@ -165,7 +165,7 @@ pub(crate) async fn setup(
     };
 
     // Setup authentication layer
-    let auth_layer = crate::auth::setup_layer(server_cfg, db).await?;
+    let auth_layer = crate::auth::setup_layer(server_cfg, db)?;
 
     // Setup sub-routers
     let alliance_dashboard_router = dashboard::setup_alliance_dashboard_router(&state);

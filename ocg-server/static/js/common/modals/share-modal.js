@@ -367,7 +367,8 @@ export class ShareModal extends LitWrapper {
               </div>
               ${this.instagramCaption
                 ? html`<p class="mt-3 text-xs text-stone-500">
-                    Instagram does not support prefilled web posts. Use the Instagram button to copy a caption and event link.
+                    Instagram does not support prefilled web posts. Use the Instagram button to copy a caption
+                    and event link.
                   </p>`
                 : ""}
 

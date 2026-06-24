@@ -251,9 +251,7 @@ impl Batches {
 
     /// Returns whether there is no pending data.
     fn is_empty(&self) -> bool {
-        self.alliance_views.is_empty()
-            && self.event_views.is_empty()
-            && self.group_views.is_empty()
+        self.alliance_views.is_empty() && self.event_views.is_empty() && self.group_views.is_empty()
     }
 }
 

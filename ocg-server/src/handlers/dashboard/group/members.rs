@@ -151,7 +151,7 @@ pub(crate) async fn delete(
     ))
 }
 
-/// Blocks a member's LinkedIn account from future LinkedIn signup/login.
+/// Blocks a member's `LinkedIn` account from future `LinkedIn` signup/login.
 #[instrument(skip_all, err)]
 pub(crate) async fn block_linkedin(
     CurrentUser(user): CurrentUser,

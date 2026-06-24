@@ -69,9 +69,9 @@ pub struct GroupMember {
     pub github_url: Option<String>,
     /// User interests.
     pub interests: Option<Vec<String>>,
-    /// LinkedIn profile URL.
+    /// `LinkedIn` profile URL.
     pub linkedin_url: Option<String>,
-    /// Whether the user has a connected LinkedIn provider.
+    /// Whether the user has a connected `LinkedIn` provider.
     pub linkedin_connected: bool,
     /// Full name.
     pub name: Option<String>,

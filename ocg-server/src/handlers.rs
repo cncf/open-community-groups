@@ -10,10 +10,10 @@ use axum::http::{HeaderMap, HeaderName, HeaderValue, Uri, header::ORIGIN, header
 
 use crate::{config::HttpServerConfig, router::PUBLIC_SHARED_CACHE_HEADERS};
 
-/// Authentication handlers.
-pub(crate) mod auth;
 /// Alliance site handlers.
 pub(crate) mod alliance;
+/// Authentication handlers.
+pub(crate) mod auth;
 /// Dashboards handlers.
 pub(crate) mod dashboard;
 /// Error handling utilities for HTTP handlers.

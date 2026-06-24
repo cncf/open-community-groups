@@ -28,7 +28,7 @@ use crate::{
     config::EmailConfig,
     db::DynDB,
     templates::notifications::{
-        CfsSubmissionUpdated, AllianceTeamInvitation, EmailVerification, EventAttendanceCanceled,
+        AllianceTeamInvitation, CfsSubmissionUpdated, EmailVerification, EventAttendanceCanceled,
         EventCanceled, EventCustom, EventInvitation, EventPublished, EventRefundApproved,
         EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
         EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,

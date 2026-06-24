@@ -52,8 +52,7 @@ pub(crate) async fn accept_alliance_team_invitation(
     Path(alliance_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Accept alliance team invitation
-    db.accept_alliance_team_invitation(user.user_id, alliance_id)
-        .await?;
+    db.accept_alliance_team_invitation(user.user_id, alliance_id).await?;
     messages.success("Team invitation accepted.");
 
     // Select first alliance and group if none selected
@@ -131,8 +130,7 @@ pub(crate) async fn reject_alliance_team_invitation(
     Path(alliance_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Reject the pending invitation
-    db.reject_alliance_team_invitation(user.user_id, alliance_id)
-        .await?;
+    db.reject_alliance_team_invitation(user.user_id, alliance_id).await?;
     messages.success("Team invitation rejected.");
 
     Ok((StatusCode::NO_CONTENT, [("HX-Trigger", "refresh-body")]))

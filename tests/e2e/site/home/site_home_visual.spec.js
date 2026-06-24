@@ -4,7 +4,7 @@ import {
   expectRegionScreenshot,
   getHomeJumbotronContent,
   navigateToSiteHome,
-  TEST_SITE_TITLE,
+  PUBLIC_HOME_TITLE,
 } from "../../utils.js";
 
 test.describe("site home page visual regression @visual", () => {
@@ -14,7 +14,7 @@ test.describe("site home page visual regression @visual", () => {
 
     // Verify desktop home content is ready.
     await expect(
-      page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
+      page.getByRole("heading", { level: 1, name: PUBLIC_HOME_TITLE }),
     ).toBeVisible();
 
     // Capture the desktop jumbotron snapshot.
@@ -32,7 +32,7 @@ test.describe("site home page visual regression @visual", () => {
 
     // Verify mobile home content is ready.
     await expect(
-      page.getByRole("heading", { level: 1, name: TEST_SITE_TITLE }),
+      page.getByRole("heading", { level: 1, name: PUBLIC_HOME_TITLE }),
     ).toBeVisible();
 
     // Capture the mobile jumbotron snapshot.
