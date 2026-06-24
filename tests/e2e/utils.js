@@ -27,7 +27,7 @@ export const TEST_REGISTRATION_QUESTIONS_EVENT = {
 };
 export const TEST_SEARCH_QUERY = "Test";
 export const TEST_SITE_TITLE = "E2E Test Site";
-export const PUBLIC_HOME_TITLE = "GOUP Alliance";
+export const PUBLIC_HOME_TITLE = "Build with people who care";
 export const TEST_ALLIANCE_TITLE = "GOUP Alliance";
 export const TEST_ALLIANCE_TITLE_2 = "Developer Experience Alliance";
 

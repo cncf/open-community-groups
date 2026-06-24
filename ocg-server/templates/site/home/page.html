@@ -5,32 +5,27 @@
 {% block jumbotron -%}
   {# Jumbotron -#}
   <div class="relative overflow-hidden">
-    <div class="absolute inset-x-0 top-0 h-48 bg-linear-to-b from-primary-50/70 to-transparent"></div>
-    <div class="absolute -top-36 left-1/2 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-primary-300/25 blur-3xl">
+    <div class="absolute inset-x-0 top-0 h-56 bg-linear-to-b from-amber-50/80 via-primary-50/60 to-transparent">
     </div>
-    <div class="absolute top-16 right-0 hidden h-96 w-96 rounded-full bg-sky-300/20 blur-3xl lg:block"></div>
-    <div class="absolute bottom-0 left-8 hidden h-80 w-80 rounded-full bg-indigo-200/20 blur-3xl lg:block"></div>
+    <div class="absolute -top-36 left-1/2 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-amber-200/40 blur-3xl">
+    </div>
+    <div class="absolute top-16 right-0 hidden h-96 w-96 rounded-full bg-rose-200/25 blur-3xl lg:block"></div>
+    <div class="absolute bottom-0 left-8 hidden h-80 w-80 rounded-full bg-sky-200/20 blur-3xl lg:block"></div>
 
     <section class="relative container mx-auto max-w-7xl px-4 pt-10 pb-16 sm:px-6 sm:pt-14 lg:px-8 lg:pt-20 lg:pb-24">
       <div class="mx-auto max-w-5xl text-center">
         <div class="mb-7 inline-flex items-center rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-700 shadow-sm shadow-primary-100/50 backdrop-blur-xl">
-          AI. Open Source. Entrepreneurship.
+          dream. connect. achieve.
         </div>
 
         <h1 class="text-balance text-5xl font-black tracking-[-0.055em] text-stone-950 sm:text-6xl lg:text-8xl">
-          GOUP Alliance
+          Build with people who care
         </h1>
 
-        {% if !site_settings.description.is_empty() -%}
-          <div class="jumbotron-description mx-auto mt-7 max-w-2xl text-lg/8 font-medium text-stone-600 lg:text-xl/9">
-            {{ site_settings.description|md_to_html|safe }}
-          </div>
-        {% else -%}
-          <p class="mx-auto mt-7 max-w-2xl text-lg/8 font-medium text-stone-600 lg:text-xl/9">
-            Discover groups, join events, find opportunities, and connect with
-            builders shaping the next wave of open technology.
-          </p>
-        {% endif -%}
+        <p class="jumbotron-description mx-auto mt-7 max-w-3xl text-lg/8 font-medium text-stone-600 lg:text-xl/9">
+          GOUP is a warm circle of founders, engineers, researchers, creators, and community
+          leaders who share help, ideas, jobs, projects, and honest introductions.
+        </p>
 
         <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a href="{{ explore_events }}"
@@ -43,14 +38,37 @@
              hx-boost="true"
              hx-target="body"
              class="inline-flex items-center justify-center rounded-full border border-stone-200 bg-white/80 px-7 py-3.5 text-base font-bold text-stone-900 shadow-sm backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-stone-300 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">
-            Browse groups
+            Meet the community
           </a>
+        </div>
+
+        <div class="mt-10 grid gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-stone-200/50 backdrop-blur">
+            <div class="text-sm font-black text-stone-950">Ask for help</div>
+            <p class="mt-2 text-sm/6 text-stone-600">Get feedback, referrals, intros, and practical advice.</p>
+          </div>
+          <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-stone-200/50 backdrop-blur">
+            <div class="text-sm font-black text-stone-950">Share your work</div>
+            <p class="mt-2 text-sm/6 text-stone-600">Post launches, roles, open-source projects, and events.</p>
+          </div>
+          <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-stone-200/50 backdrop-blur">
+            <div class="text-sm font-black text-stone-950">Meet in real life</div>
+            <p class="mt-2 text-sm/6 text-stone-600">Coffee chats, meetups, workshops, and small gatherings.</p>
+          </div>
+          <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-lg shadow-stone-200/50 backdrop-blur">
+            <div class="text-sm font-black text-stone-950">Grow together</div>
+            <p class="mt-2 text-sm/6 text-stone-600">Give more than you take, and everyone moves faster.</p>
+          </div>
         </div>
       </div>
 
       {# Stats -#}
       <div class="relative z-10 mt-12 lg:mt-16">{% include "site/home/stats.html" %}</div>
       {# End stats -#}
+
+      <div class="mx-auto mt-6 max-w-4xl rounded-full border border-white/70 bg-white/75 px-5 py-3 text-center text-sm/6 font-medium text-stone-600 shadow-sm backdrop-blur">
+        Started from small builder chats. Growing through trust, usefulness, and real relationships.
+      </div>
     </section>
   </div>
   {# End jumbotron -#}
@@ -60,6 +78,76 @@
   {# Main content -#}
   <div class="container mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
     <div class="flex flex-col gap-y-14 lg:gap-y-20">
+      {# Audience -#}
+      <section class="rounded-[2.25rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+        <div class="grid gap-8 lg:grid-cols-[0.9fr_1.3fr] lg:items-start">
+          <div>
+            <div class="inline-flex rounded-full border border-primary-200 bg-primary-50/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-700">
+              Built for
+            </div>
+            <h2 class="mt-3 text-2xl font-black tracking-tight text-stone-950 lg:text-4xl">For people building in public and in community</h2>
+            <p class="mt-3 text-sm/6 text-stone-600 sm:text-base/7">
+              You do not need a big title. Bring curiosity, follow-through, and something useful to
+              offer.
+            </p>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
+              <div class="font-black text-stone-950">AI founders</div>
+              <p class="mt-2 text-sm/6 text-stone-600">Testing ideas, finding users, and learning what works.</p>
+            </div>
+            <div class="rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
+              <div class="font-black text-stone-950">Open-source maintainers</div>
+              <p class="mt-2 text-sm/6 text-stone-600">Looking for contributors, users, feedback, and friends.</p>
+            </div>
+            <div class="rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
+              <div class="font-black text-stone-950">Product builders</div>
+              <p class="mt-2 text-sm/6 text-stone-600">Engineers, designers, operators, and curious makers.</p>
+            </div>
+            <div class="rounded-3xl border border-stone-200 bg-stone-50/80 p-5">
+              <div class="font-black text-stone-950">Community hosts</div>
+              <p class="mt-2 text-sm/6 text-stone-600">People who bring others together and make rooms warmer.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      {# End audience -#}
+
+      {# Why GOUP -#}
+      <section class="overflow-hidden rounded-[2.25rem] border border-amber-100 bg-stone-950 text-white shadow-xl shadow-amber-100/60">
+        <div class="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+          <div class="p-6 sm:p-8 lg:p-10">
+            <div class="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-200">
+              Why GOUP
+            </div>
+            <h2 class="mt-4 text-3xl font-black tracking-tight sm:text-4xl">Growth through useful progress</h2>
+            <p class="mt-4 text-base/7 text-stone-300">
+              The best parts of GOUP are simple: people answer, people introduce, people show up,
+              and people celebrate when someone moves forward.
+            </p>
+          </div>
+          <div class="grid gap-3 border-0 border-t border-white/10 bg-white/[0.03] p-6 sm:grid-cols-2 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
+            <div class="rounded-3xl border border-white/10 bg-white/10 p-5">
+              <div class="text-sm font-black text-white">Growth</div>
+              <p class="mt-2 text-sm/6 text-stone-300">Unlock potential.</p>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-white/10 p-5">
+              <div class="text-sm font-black text-white">Opportunity</div>
+              <p class="mt-2 text-sm/6 text-stone-300">Open doors.</p>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-white/10 p-5">
+              <div class="text-sm font-black text-white">Usefulness</div>
+              <p class="mt-2 text-sm/6 text-stone-300">Create value.</p>
+            </div>
+            <div class="rounded-3xl border border-white/10 bg-white/10 p-5">
+              <div class="text-sm font-black text-white">Progress</div>
+              <p class="mt-2 text-sm/6 text-stone-300">Move forward.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      {# End why GOUP -#}
+
       {# Alliances list -#}
       <div>
         <div class="mb-6 flex flex-col gap-3 sm:mb-8 lg:mb-10">
@@ -69,10 +157,10 @@
           <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 class="text-2xl font-black tracking-tight text-stone-950 lg:text-4xl">
-                Built around active communities
+                Active communities, one alliance
               </h2>
               <p class="mt-2 max-w-2xl text-sm/6 text-stone-600 sm:text-base/7">
-                GOUP brings chapters, members, events, jobs, and ecosystem projects into one place.
+                Chapters, members, events, jobs, and projects in one trusted network.
               </p>
             </div>
             <a href="{{ explore_groups }}"
@@ -126,11 +214,9 @@
             <div class="inline-flex rounded-full border border-primary-200 bg-primary-50/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-700">
               Events
             </div>
-            <h2 class="mt-3 text-2xl font-black tracking-tight text-stone-950 lg:text-4xl">
-              Meet the people building next
-            </h2>
+            <h2 class="mt-3 text-2xl font-black tracking-tight text-stone-950 lg:text-4xl">Meet builders in motion</h2>
             <p class="mt-2 max-w-2xl text-sm/6 text-stone-600 sm:text-base/7">
-              Join upcoming meetups, workshops, and community gatherings across GOUP chapters.
+              Join meetups, workshops, and gatherings across GOUP chapters.
             </p>
           </div>
           <a href="{{ explore_events }}"
@@ -165,9 +251,9 @@
               <div class="inline-flex rounded-full border border-primary-200 bg-primary-50/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-primary-700">
                 Groups
               </div>
-              <h2 class="mt-3 text-2xl font-black tracking-tight text-stone-950 lg:text-4xl">New chapters and circles</h2>
+              <h2 class="mt-3 text-2xl font-black tracking-tight text-stone-950 lg:text-4xl">Find your circle</h2>
               <p class="mt-2 max-w-2xl text-sm/6 text-stone-600 sm:text-base/7">
-                Find a local chapter or interest group and start building with the community.
+                Join a local chapter or interest group and start building.
               </p>
             </div>
             <a href="{{ explore_groups }}"

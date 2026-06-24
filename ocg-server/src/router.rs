@@ -288,6 +288,7 @@ pub(crate) async fn setup(
         .route("/images/og/{file_name}", get(images::serve_open_graph))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))
+        .route("/about", get(site::about::page))
         .route("/jobs", get(site::jobs::page))
         .route("/jobs/{slug}", get(site::jobs::details))
         .route("/landscape", get(site::landscape::page))

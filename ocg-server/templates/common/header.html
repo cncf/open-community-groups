@@ -26,10 +26,47 @@
       {# Desktop links -#}
       <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
         {{ header::link(content = "Home", href = "/", current_path = path) -}}
-        {{ header::link(content = "Explore", href = explore_events, current_path = path, path = "/explore") -}}
-        {{ header::link(content = "Jobs", href = "/jobs", current_path = path, path = "/jobs") -}}
-        {{ header::link(content = "Landscape", href = "/landscape", current_path = path, path = "/landscape") -}}
-        {{ header::link(content = "Wiki", href = "/wiki", current_path = path, path = "/wiki") -}}
+        {{ header::link(content = "Events & Groups", href = explore_events, current_path = path, path = "/explore") -}}
+        <div class="group relative">
+          {{ header::link(content = "Jobs", href = "/jobs", current_path = path, path = "/jobs") -}}
+          <div class="absolute left-1/2 top-full z-[100] hidden w-64 -translate-x-1/2 pt-4 group-hover:block group-focus-within:block">
+            <div class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl shadow-stone-200/70">
+              <a href="/jobs"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="block px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
+                Browse roles
+                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Open roles from GOUP members.</span>
+              </a>
+              <a href="/jobs?remote=true"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
+                Remote roles
+                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Find jobs you can do from anywhere.</span>
+              </a>
+              {% if user.logged_in -%}
+                <a href="/dashboard/jobs"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+                  Post a role
+                  <span class="mt-1 block text-xs/5 font-medium text-stone-500">Share a job with the builder network.</span>
+                </a>
+              {% else -%}
+                <a href="/log-in?next_url=/dashboard/jobs"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+                  Post a role
+                  <span class="mt-1 block text-xs/5 font-medium text-stone-500">Log in to share a hiring need.</span>
+                </a>
+              {% endif -%}
+            </div>
+          </div>
+        </div>
+        {{ header::link(content = "Ecosystem", href = "/landscape", current_path = path, path = "/landscape") -}}
+        {{ header::link(content = "Resources", href = "/wiki", current_path = path, path = "/wiki") -}}
         {{ header::link(content = "Stats", href = "/stats", current_path = path, path = "/stats") -}}
       </div>
       {# End desktop links -#}
@@ -37,7 +74,7 @@
 
     {# Desktop user menu -#}
     <div class="flex flex-1 justify-end items-center gap-3">
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"
@@ -63,7 +100,7 @@
 {% macro user_menu(user) -%}
   {# TODO: Hardcoded alliance until we add more #}
   {% let explore_events = "/explore?alliance[0]=goup" %}
-  <div class="relative">
+  <div class="relative flex items-center gap-3">
     {% if user.logged_in -%}
       <button id="user-dropdown-button"
               data-logged-in="true"
@@ -107,7 +144,7 @@
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-search bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Explore</div>
+                <div class="ms-2 text-xs/6">Events & Groups</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -121,7 +158,33 @@
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-search bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Jobs</div>
+                <div class="ms-2 text-xs/6">Browse roles</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+          <li class="lg:hidden" role="none">
+            <a href="/jobs?remote=true"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-search bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Remote roles</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+          <li class="lg:hidden" role="none">
+            <a href="/dashboard/jobs"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-search bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Post a role</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -135,7 +198,7 @@
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-map bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Landscape</div>
+                <div class="ms-2 text-xs/6">Ecosystem</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -149,7 +212,7 @@
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-list bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Wiki</div>
+                <div class="ms-2 text-xs/6">Resources</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -266,6 +329,11 @@
       </div>
       {# End user dropdown menu -#}
     {% else -%}
+      <a href="/log-in/oidc/linkedin"
+         hx-boost="false"
+         class="hidden rounded-full bg-stone-950 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-md sm:inline-flex">
+        Join GOUP
+      </a>
       <button id="user-dropdown-button"
               data-logged-in="false"
               class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
@@ -277,6 +345,18 @@
            class="dropdown absolute hidden z-[100] right-0 top-10 w-[250px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200"
            role="menu">
         <ul class="text-stone-700 my-2" role="none">
+          <li class="border-b border-stone-200 mb-2 pb-2" role="none">
+            <a href="/log-in/oidc/linkedin"
+               hx-boost="false"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-linkedin bg-stone-600"></div>
+                <div class="ms-2 text-xs/6 font-semibold">Join GOUP</div>
+              </div>
+            </a>
+          </li>
+
           <li class="lg:hidden" role="none">
             <a href="/"
                hx-boost="true"
@@ -299,7 +379,7 @@
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-search bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Explore</div>
+                <div class="ms-2 text-xs/6">Events & Groups</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -319,7 +399,7 @@
             </a>
           </li>
 
-          <li class="lg:hidden border-b border-stone-200 mb-2 pb-2" role="none">
+          <li class="lg:hidden" role="none">
             <a href="/jobs"
                hx-boost="true"
                hx-target="body"
@@ -327,7 +407,33 @@
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-search bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Jobs</div>
+                <div class="ms-2 text-xs/6">Browse roles</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+          <li class="lg:hidden" role="none">
+            <a href="/jobs?remote=true"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-search bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Remote roles</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+          <li class="lg:hidden border-b border-stone-200 mb-2 pb-2" role="none">
+            <a href="/log-in?next_url=/dashboard/jobs"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-search bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Post a role</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -342,7 +448,7 @@
                role="menuitem">
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-map bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Landscape</div>
+                <div class="ms-2 text-xs/6">Ecosystem</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>

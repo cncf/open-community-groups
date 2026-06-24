@@ -54,6 +54,7 @@ pub(crate) async fn page(
     let entity: explore::Entity = query.get("entity").map(String::as_str).into();
     let mut template = explore::Page {
         entity: entity.clone(),
+        title: "Explore Events".to_string(),
         page_id: PageId::SiteExplore,
         path: uri.path().to_string(),
         site_settings,
@@ -67,11 +68,13 @@ pub(crate) async fn page(
         explore::Entity::Events => {
             let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let events_section = prepare_events_section(&db, &filters).await?;
+            template.title = events_section.page_title();
             template.events_section = Some(events_section);
         }
         explore::Entity::Groups => {
             let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
             let groups_section = prepare_groups_section(&db, &filters).await?;
+            template.title = groups_section.page_title();
             template.groups_section = Some(groups_section);
         }
     }

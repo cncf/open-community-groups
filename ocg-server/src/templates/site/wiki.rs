@@ -1,6 +1,7 @@
 //! Templates and types for the public wiki page.
 
 use askama::Template;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -57,4 +58,6 @@ pub(crate) struct WikiLink {
     pub url: String,
     /// Source label.
     pub source: String,
+    /// Publication timestamp from the source feed, when provided.
+    pub published_at: Option<DateTime<Utc>>,
 }
