@@ -17,7 +17,14 @@ test.describe("site search page", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Find what you need" }),
     ).toBeVisible();
-    await expect(page.getByDisplayValue("AI")).toBeVisible();
+    const searchInput = page.getByDisplayValue("AI");
+    await expect(searchInput).toBeVisible();
+    const searchForm = page.locator('form[action="/search"]').first();
+    await expect(searchForm).toHaveAttribute("hx-get", "/search");
+    await expect(searchForm).toHaveAttribute(
+      "hx-trigger",
+      /input changed delay:300ms/,
+    );
     await expect(
       page.getByRole("heading", { name: /Search for/ }),
     ).toContainText('Search for "AI"');
