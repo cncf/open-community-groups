@@ -2,7 +2,7 @@ insert into site (site_id, title, description, theme)
 values (
   '00000000-0000-0000-0000-000000000000',
   'GOUP Alliance',
-  'GOUP Alliance',
+  'dream. connect. achieve.',
   '{"primary_color":"#0EA5E9"}'
 )
 on conflict do nothing;
@@ -19,7 +19,7 @@ insert into alliance (
   '11111111-1111-1111-1111-111111111111',
   'goup',
   'GOUP Alliance',
-  'GOUP Alliance',
+  'dream. connect. achieve.',
   '/static/images/e2e/alliance-primary-banner.svg',
   '/static/images/e2e/alliance-primary-banner-mobile.svg',
   '/static/images/e2e/alliance-primary-logo.svg'

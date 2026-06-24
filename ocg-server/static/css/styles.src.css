@@ -29,6 +29,24 @@
   --color-primary-950: #002152;   /* Deepest navy */
 }
 
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 50% -10%, rgb(224 242 254 / 0.7), transparent 34rem),
+      linear-gradient(180deg, #ffffff 0%, #f8fafc 42%, #f5f5f4 100%);
+  }
+
+  ::selection {
+    background: rgb(14 165 233 / 0.22);
+  }
+}
+
 @layer components {
   breadcrumb-nav {
     display: block;
@@ -1074,18 +1092,30 @@ html.ocg-dark {
 }
 
 html.ocg-dark body {
-  background-color: #020617;
+  background:
+    radial-gradient(circle at 50% -12%, rgb(14 165 233 / 0.2), transparent 34rem),
+    radial-gradient(circle at 90% 10%, rgb(56 189 248 / 0.12), transparent 28rem),
+    linear-gradient(180deg, #020617 0%, #0f172a 48%, #020617 100%);
   color: #e5e7eb;
 }
 
 html.ocg-dark .bg-white,
 html.ocg-dark .bg-stone-50,
 html.ocg-dark .bg-stone-100 {
-  background-color: #0f172a !important;
+  background-color: #111827 !important;
 }
 
 html.ocg-dark .bg-stone-200 {
   background-color: #1e293b !important;
+}
+
+html.ocg-dark .bg-primary-50,
+html.ocg-dark .bg-primary-100 {
+  background-color: rgb(14 165 233 / 0.12) !important;
+}
+
+html.ocg-dark .bg-primary-200 {
+  background-color: rgb(14 165 233 / 0.22) !important;
 }
 
 html.ocg-dark .bg-transparent {
@@ -1095,7 +1125,8 @@ html.ocg-dark .bg-transparent {
 html.ocg-dark .text-stone-950,
 html.ocg-dark .text-stone-900,
 html.ocg-dark .text-stone-800,
-html.ocg-dark .text-stone-700 {
+html.ocg-dark .text-stone-700,
+html.ocg-dark .text-black {
   color: #f8fafc !important;
 }
 
@@ -1108,12 +1139,26 @@ html.ocg-dark .text-stone-400 {
   color: #94a3b8 !important;
 }
 
+html.ocg-dark .text-primary-900,
+html.ocg-dark .text-primary-800,
+html.ocg-dark .text-primary-700,
+html.ocg-dark .text-primary-600,
+html.ocg-dark .text-primary-500 {
+  color: #7dd3fc !important;
+}
+
 html.ocg-dark .border-stone-100,
 html.ocg-dark .border-stone-200,
 html.ocg-dark .border-stone-300,
 html.ocg-dark .divide-stone-100 > :not(:last-child),
 html.ocg-dark .divide-stone-200 > :not(:last-child) {
   border-color: #334155 !important;
+}
+
+html.ocg-dark .border-primary-200,
+html.ocg-dark .border-primary-300,
+html.ocg-dark .border-primary-500 {
+  border-color: rgb(125 211 252 / 0.34) !important;
 }
 
 html.ocg-dark .shadow,
@@ -1135,7 +1180,8 @@ html.ocg-dark .drop-shadow-sm {
 html.ocg-dark .bg-white\/70,
 html.ocg-dark .bg-white\/80,
 html.ocg-dark .bg-white\/85 {
-  background-color: rgb(15 23 42 / 0.85) !important;
+  background-color: rgb(15 23 42 / 0.78) !important;
+  backdrop-filter: blur(22px) saturate(145%);
 }
 
 html.ocg-dark .border-white\/70 {
@@ -1146,11 +1192,23 @@ html.ocg-dark .border-white\/70 {
    The white stops stay light in dark mode, so the inverted heading text
    sits light-on-light. Recolor the gradient stops to the dark surface. */
 html.ocg-dark .from-white {
-  --tw-gradient-from: #0f172a !important;
+  --tw-gradient-from: #020617 !important;
 }
 
 html.ocg-dark .via-white {
   --tw-gradient-via: #0f172a !important;
+}
+
+html.ocg-dark .to-stone-900\/12 {
+  --tw-gradient-to: rgb(14 165 233 / 0.12) !important;
+}
+
+html.ocg-dark .from-primary-50\/70 {
+  --tw-gradient-from: rgb(14 165 233 / 0.13) !important;
+}
+
+html.ocg-dark .to-transparent {
+  --tw-gradient-to: rgb(2 6 23 / 0) !important;
 }
 
 html.ocg-dark :is(input, textarea, select, .input) {
@@ -1174,8 +1232,9 @@ html.ocg-dark .bg-stone-600 {
 }
 
 html.ocg-dark .theme-toggle {
-  background-color: #0f172a !important;
+  background-color: rgb(15 23 42 / 0.82) !important;
   color: #bae6fd !important;
+  border-color: rgb(125 211 252 / 0.34) !important;
 }
 
 html.ocg-dark .theme-toggle-icon {
@@ -1192,6 +1251,11 @@ html.ocg-dark .EasyMDEContainer .editor-preview-active {
 
 html.ocg-dark .EasyMDEContainer button {
   color: #e5e7eb !important;
+}
+
+html.ocg-dark .markdown blockquote {
+  background-color: rgb(15 23 42 / 0.82);
+  border-color: rgb(125 211 252 / 0.35);
 }
 
 /* End dark mode */

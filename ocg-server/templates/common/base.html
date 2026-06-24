@@ -91,7 +91,7 @@
     {# End scripts -#}
   </head>
   {# djlint:off #}
-  <body class="h-full" hx-get
+  <body class="h-full antialiased" hx-get
         hx-trigger="refresh-body">
     {% block skip_link -%}
       {# Skip navigation link -#}
@@ -103,7 +103,7 @@
     {% endblock skip_link -%}
 
     <div class='min-h-full flex flex-col {% if path == "/" %}bg-white{% else %}bg-stone-100{% endif %}'>
-      <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-80% md:from-60% lg:from-40% to-stone-900/12 to-98% lg:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
+      <div class='{%- if path == "/" -%}bg-linear-to-b from-white from-20% via-white from-75% md:from-58% lg:from-38% to-stone-900/12 to-98% lg:to-90% border-b border-stone-200{%- else if path == "/explore" -%}bg-transparent{%- endif -%}'>
         {% block header -%}
           {# Header -#}
           {% if !path.starts_with("/dashboard") -%}
