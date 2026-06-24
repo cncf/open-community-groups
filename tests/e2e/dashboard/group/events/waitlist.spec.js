@@ -216,6 +216,30 @@ test.describe("group dashboard waitlist tab", () => {
     const leaveButton = member2Page.locator(
       '[data-attendance-role="leave-btn"]',
     );
+    const leaveWaitlist = async () => {
+      await leaveButton.click();
+      await expect(
+        member2Page.getByRole("button", { name: "Yes" }),
+      ).toBeVisible();
+
+      await Promise.all([
+        member2Page.waitForResponse(
+          (response) =>
+            response.request().method() === "DELETE" &&
+            response
+              .url()
+              .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
+            response.ok(),
+        ),
+        member2Page.getByRole("button", { name: "Yes" }).click(),
+      ]);
+
+      await expect(attendButton).toContainText("Join waiting list");
+    };
+
+    if (await leaveButton.isVisible()) {
+      await leaveWaitlist();
+    }
 
     // Verify organizer can see a public waitlist entry on the waitlist tab.
     await expect(attendButton).toContainText("Join waiting list");
@@ -236,89 +260,161 @@ test.describe("group dashboard waitlist tab", () => {
     // Assert the expected text is rendered.
     await expect(leaveButton).toContainText("Leave waiting list");
 
-    // Return to the group events dashboard.
-    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    try {
+      // Return to the group events dashboard.
+      await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
-    // Find the event row.
-    const eventRow = organizerGroupPage.locator("tr", {
-      hasText: "Full Event With Waitlist",
-    });
-    await expect(eventRow).toBeVisible();
+      // Find the event row.
+      const eventRow = organizerGroupPage.locator("tr", {
+        hasText: "Full Event With Waitlist",
+      });
+      await expect(eventRow).toBeVisible();
 
-    // Submit and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`,
-            ) &&
-          response.ok(),
-      ),
-      eventRow
-        .locator('td button[aria-label="Edit event: Full Event With Waitlist"]')
-        .click(),
-    ]);
+      // Submit and wait for the server response.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/update`,
+              ) &&
+            response.ok(),
+        ),
+        eventRow
+          .locator(
+            'td button[aria-label="Edit event: Full Event With Waitlist"]',
+          )
+          .click(),
+      ]);
 
-    // Submit and wait for the server response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/waitlist`,
-            ) &&
-          response.ok(),
-      ),
-      organizerGroupPage.locator('button[data-section="waitlist"]').click(),
-    ]);
+      // Submit and wait for the server response.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/waitlist`,
+              ) &&
+            response.ok(),
+        ),
+        organizerGroupPage.locator('button[data-section="waitlist"]').click(),
+      ]);
 
-    // Find the waitlist content.
-    const waitlistContent = organizerGroupPage.locator("#waitlist-content");
-    const waitlistRow = waitlistContent.locator("tr", {
-      hasText: "E2E Member Two",
-    });
+      // Find the waitlist content.
+      const waitlistContent = organizerGroupPage.locator("#waitlist-content");
+      const waitlistRow = waitlistContent.locator("tr", {
+        hasText: "E2E Member Two",
+      });
 
-    // Assert that Waitlist entries is visible.
-    await expect(
-      waitlistContent.getByRole("table", { name: "Waitlist entries" }),
-    ).toBeVisible();
-    await expect(waitlistRow).toBeVisible();
-    await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow).toContainText("1");
+      // Assert that Waitlist entries is visible.
+      await expect(
+        waitlistContent.getByRole("table", { name: "Waitlist entries" }),
+      ).toBeVisible();
+      await expect(waitlistRow).toBeVisible();
+      await expect(waitlistRow).toContainText("e2e-member-2");
+      await expect(waitlistRow).toContainText("1");
 
-    // Open the public event page.
-    await navigateToEvent(
-      member2Page,
-      TEST_COMMUNITY_NAME,
-      TEST_GROUP_SLUGS.community1.alpha,
-      "alpha-waitlist-lab",
-    );
+      // Target the search controls used to submit waitlist filters.
+      const searchInput = waitlistContent.getByRole("textbox", {
+        name: "Search waitlist",
+      });
+      const searchForm = waitlistContent.locator("#waitlist-search-form");
 
-    // Click the leave button.
-    await leaveButton.click();
-    await expect(
-      member2Page.getByRole("button", { name: "Yes" }),
-    ).toBeVisible();
+      // Enter a query expected to match the visible waitlist entry.
+      await searchInput.fill("Two");
 
-    // Click Yes.
-    await Promise.all([
-      member2Page.waitForResponse(
-        (response) =>
-          response.request().method() === "DELETE" &&
-          response
-            .url()
-            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
-          response.ok(),
-      ),
-      member2Page.getByRole("button", { name: "Yes" }).click(),
-    ]);
+      // Submit the matching search and wait for filtered results.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/waitlist?ts_query=Two`,
+              ) &&
+            response.ok(),
+        ),
+        searchInput.press("Enter"),
+      ]);
 
-    // Assert the expected text is rendered.
-    await expect(attendButton).toContainText("Join waiting list");
+      // Verify the matching result is shown with its full waitlist position.
+      await expect(waitlistRow).toBeVisible();
+      await expect(waitlistRow).toContainText("e2e-member-2");
+      await expect(waitlistRow).toContainText("1");
+      await expect(searchInput).toHaveValue("Two");
+
+      // Enter a query expected to return no waitlist entries.
+      await searchInput.fill("");
+      await searchInput.fill("zzzzzzzzzzzz");
+
+      // Submit the empty-result search and wait for the response.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/waitlist?ts_query=zzzzzzzzzzzz`,
+              ) &&
+            response.ok(),
+        ),
+        searchForm.evaluate((form) => {
+          if (form instanceof HTMLFormElement) {
+            form.requestSubmit();
+          }
+        }),
+      ]);
+
+      const noResultsMessage = waitlistContent
+        .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
+        .filter({
+          hasText: "No waitlist entries found matching your search.",
+        });
+
+      // Verify the filtered empty result message is shown.
+      await expect(noResultsMessage.first()).toBeVisible();
+
+      // Clear the waitlist search filter.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/waitlist`,
+              ) &&
+            !response.url().includes("ts_query") &&
+            response.ok(),
+        ),
+        waitlistContent
+          .getByRole("button", { name: "Clear waitlist search" })
+          .click(),
+      ]);
+
+      // Verify clearing removes the empty state and restores the waitlist entry.
+      await expect(noResultsMessage).toHaveCount(0);
+      await expect(waitlistRow).toBeVisible();
+      await expect(waitlistRow).toContainText("e2e-member-2");
+      await expect(searchInput).toHaveValue("");
+    } finally {
+      // Open the public event page and restore the waitlist state.
+      await navigateToEvent(
+        member2Page,
+        TEST_COMMUNITY_NAME,
+        TEST_GROUP_SLUGS.community1.alpha,
+        "alpha-waitlist-lab",
+      );
+
+      if (await leaveButton.isVisible()) {
+        await leaveWaitlist();
+      }
+    }
   });
 });
