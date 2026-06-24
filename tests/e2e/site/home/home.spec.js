@@ -103,6 +103,19 @@ test.describe("site home page", () => {
       ).toBeVisible();
     });
 
+    test("latest feed makes the homepage feel live", async ({ page }) => {
+      // Verify the homepage surfaces dynamic content from across GOUP.
+      await expect(
+        page.getByText("Latest from GOUP", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "What is moving now" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /Search all/ }),
+      ).toHaveAttribute("href", "/search");
+    });
+
     test("stats strip displays all stat labels with values", async ({
       page,
     }) => {

@@ -57,6 +57,10 @@ async fn test_page_success() {
     db.expect_get_site_upcoming_events()
         .times(2)
         .returning(|_| Ok(vec![]));
+    db.expect_search_jobs().times(1).returning(|_| Ok(Default::default()));
+    db.expect_search_landscape_entries()
+        .times(1)
+        .returning(|_| Ok(Default::default()));
     db.expect_list_alliances().times(1).returning(|| Ok(vec![]));
 
     // Setup notifications manager mock

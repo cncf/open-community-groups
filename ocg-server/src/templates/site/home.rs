@@ -27,6 +27,8 @@ pub struct Page {
     pub path: String,
     /// List of groups recently added across all alliances.
     pub recently_added_groups: Vec<GroupCard>,
+    /// Latest dynamic feed items across public GOUP content.
+    pub latest_feed: Vec<HomeFeedItem>,
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Site statistics.
@@ -53,4 +55,21 @@ pub struct EventCard {
 pub struct GroupCard {
     /// Group data.
     pub group: GroupSummary,
+}
+
+/// Latest homepage feed item.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HomeFeedItem {
+    /// Source label, e.g. Event, Job, Ecosystem, Reading.
+    pub label: String,
+    /// Result title.
+    pub title: String,
+    /// Short result summary.
+    pub summary: String,
+    /// Link target.
+    pub href: String,
+    /// Small metadata line.
+    pub meta: String,
+    /// Whether the link should use HTMX page navigation.
+    pub hx_boost: bool,
 }
