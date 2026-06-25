@@ -276,6 +276,14 @@ async fn test_page_success() {
                 && *limit == 9
         })
         .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
+    db.expect_list_group_member_spotlights()
+        .times(1)
+        .withf(move |id, include_unpublished| *id == group_id && !*include_unpublished)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_list_group_store_items()
+        .times(1)
+        .withf(move |id, include_inactive| *id == group_id && !*include_inactive)
+        .returning(|_, _| Ok(vec![]));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -306,6 +314,8 @@ async fn test_page_success() {
     );
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("<title>Test Group</title>"));
+    assert!(body.contains("Member spotlights"));
+    assert!(body.contains("Group store"));
     assert!(body.contains(
         r#"<meta name="description" content="Test Alliance alliance in Open Alliance Groups, where Open Source alliances thrive.">"#
     ));

@@ -77,6 +77,11 @@ pub(crate) async fn page(
     // Only display featured sponsors on the group page
     group.sponsors.retain(|sponsor| sponsor.featured);
 
+    let (spotlights, store_items) = tokio::try_join!(
+        db.list_group_member_spotlights(group.group_id, false),
+        db.list_group_store_items(group.group_id, false)
+    )?;
+
     // Prepare the page template
     let template = Page {
         base_url: server_cfg.base_url,
@@ -88,6 +93,8 @@ pub(crate) async fn page(
             .collect(),
         path: uri.path().to_string(),
         site_settings,
+        spotlights,
+        store_items,
         upcoming_events: upcoming_events
             .into_iter()
             .map(|event| group::UpcomingEventCard { event })

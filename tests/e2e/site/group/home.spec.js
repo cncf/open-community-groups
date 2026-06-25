@@ -50,6 +50,28 @@ test.describe("group page", () => {
       page.getByText("Location not provided", { exact: true }),
     ).toBeVisible();
 
+    // Verify member spotlights and store previews are visible on the group page.
+    await expect(
+      page.getByRole("heading", { name: "Member spotlights" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(
+          `a[href="/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/spotlights"]`,
+        )
+        .first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Group store" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(
+          `a[href="/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/store"]`,
+        )
+        .first(),
+    ).toBeVisible();
+
     // Verify the upcoming events section includes the expected events.
     await expect(
       page.getByText("Upcoming Events", { exact: true }),
