@@ -71,7 +71,7 @@
         {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional spotlight image shown on the group page and spotlight cards.", field_class = "col-span-full") -}}
         <label class="block">
           <span class="label">Link URL</span>
-          <input name="link_url" class="input" placeholder="https://...">
+          <input name="link_url" class="input" type="url" placeholder="https://...">
         </label>
       </div>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -172,55 +172,56 @@
               {% if let Some(image_url) = &spotlight.image_url %}value="{{ image_url }}"{% endif %}
             {%- endlet %}
             {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional spotlight image shown on the group page and spotlight cards.", value_attr = image_value, field_class = "col-span-full") -}}
-              <label class="block">
-                <span class="label">Link URL</span>
-                <input name="link_url"
-                       class="input"
-                       value="{{ spotlight.link_url.as_deref().unwrap_or("") }}">
-              </label>
-            </div>
-            <div class="grid gap-4 sm:grid-cols-2">
-              <label class="block">
-                <span class="label">Featured</span>
-                <select name="featured" class="input">
-                  <option value="false" {% if !spotlight.featured %}selected{% endif %}>No</option>
-                  <option value="true" {% if spotlight.featured %}selected{% endif %}>Yes</option>
-                </select>
-              </label>
-              <label class="block">
-                <span class="label">Published</span>
-                <select name="published" class="input">
-                  <option value="true" {% if spotlight.published %}selected{% endif %}>Yes</option>
-                  <option value="false" {% if !spotlight.published %}selected{% endif %}>No</option>
-                </select>
-              </label>
-            </div>
+            <label class="block">
+              <span class="label">Link URL</span>
+              <input name="link_url"
+                     class="input"
+                     type="url"
+                     value="{{ spotlight.link_url.as_deref().unwrap_or("") }}">
+            </label>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block">
+              <span class="label">Featured</span>
+              <select name="featured" class="input">
+                <option value="false" {% if !spotlight.featured %}selected{% endif %}>No</option>
+                <option value="true" {% if spotlight.featured %}selected{% endif %}>Yes</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="label">Published</span>
+              <select name="published" class="input">
+                <option value="true" {% if spotlight.published %}selected{% endif %}>Yes</option>
+                <option value="false" {% if !spotlight.published %}selected{% endif %}>No</option>
+              </select>
+            </label>
+          </div>
 
-            <div class="flex flex-wrap gap-2">
-              <button type="submit"
-                      class="btn-primary"
-                      {% if !can_manage_spotlights -%}
-                        disabled
-                      {% endif -%}>Save</button>
-              <button type="button"
-                      class="btn-tertiary"
-                      hx-delete="/dashboard/group/spotlights/{{ spotlight.group_member_spotlight_id }}"
-                      hx-target="#dashboard-content"
-                      hx-indicator="#dashboard-spinner"
-                      hx-confirm="Delete this spotlight?"
-                      {% if !can_manage_spotlights -%}
-                        disabled
-                      {% endif -%}>Delete</button>
-              {% if let Some(link_url) = &spotlight.link_url -%}
-                <a href="{{ link_url }}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   class="btn-secondary-anchor">Open link</a>
-              {% endif -%}
-            </div>
-          </form>
-        </article>
-      {% endfor -%}
-    </section>
-  {% endif -%}
+          <div class="flex flex-wrap gap-2">
+            <button type="submit"
+                    class="btn-primary"
+                    {% if !can_manage_spotlights -%}
+                      disabled
+                    {% endif -%}>Save</button>
+            <button type="button"
+                    class="btn-tertiary"
+                    hx-delete="/dashboard/group/spotlights/{{ spotlight.group_member_spotlight_id }}"
+                    hx-target="#dashboard-content"
+                    hx-indicator="#dashboard-spinner"
+                    hx-confirm="Delete this spotlight?"
+                    {% if !can_manage_spotlights -%}
+                      disabled
+                    {% endif -%}>Delete</button>
+            {% if let Some(link_url) = &spotlight.link_url -%}
+              <a href="{{ link_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="btn-secondary-anchor">Open link</a>
+            {% endif -%}
+          </div>
+        </form>
+      </article>
+    {% endfor -%}
+  </section>
+{% endif -%}
 </div>

@@ -3,7 +3,7 @@
 use askama::Template;
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{Path, RawQuery, State},
     http::{HeaderMap, StatusCode, Uri},
     response::{Html, IntoResponse, Redirect},
 };
@@ -20,14 +20,16 @@ use crate::{
         extractors::CurrentUser, request_matches_site, site::not_found, trim_public_gallery_images,
     },
     router::PUBLIC_SHARED_CACHE_HEADERS,
+    router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
         auth::User,
-        group::{self, Page, SpotlightsPage, StorePage},
+        dashboard::group::members::GroupMembersFilters,
+        group::{self, MembersPage, Page, SpotlightsPage, StorePage},
         notifications::GroupWelcome,
     },
-    types::{event::EventKind, group::GroupFull},
+    types::{event::EventKind, group::GroupFull, pagination::NavigationLinks},
 };
 
 use super::{error::HandlerError, extractors::AllianceId};
@@ -137,6 +139,72 @@ pub(crate) async fn spotlights_page(
         site_settings,
         spotlights,
         user: User::from_session(auth_session).await?,
+    };
+
+    Ok(Html(template.render()?).into_response())
+}
+
+/// Handler that renders a logged-in group member directory.
+#[instrument(skip_all)]
+pub(crate) async fn members_page(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((alliance_name, group_slug)): Path<(String, String)>,
+    RawQuery(raw_query): RawQuery,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let Some(mut group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return not_found::render(site_settings);
+    };
+    trim_public_gallery_images(&mut group.photos_urls);
+    group.sponsors.clear();
+
+    let is_member = db.is_group_member(alliance_id, group.group_id, user.user_id).await?;
+    if !is_member {
+        return Err(HandlerError::Forbidden);
+    }
+
+    let filters: GroupMembersFilters =
+        serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    let results = db.list_group_members(group.group_id, &filters).await?;
+    let page_url = format!(
+        "/{}/group/{}/members",
+        group.alliance.name,
+        group.public_slug()
+    );
+    let navigation_links =
+        NavigationLinks::from_filters(&filters, results.total, &page_url, &page_url)?;
+    let template_user = User {
+        logged_in: true,
+        auth_provider: None,
+        belongs_to_any_group_team: user.belongs_to_any_group_team,
+        belongs_to_alliance_team: user.belongs_to_alliance_team,
+        name: Some(user.name),
+        platform_admin: user.platform_admin,
+        username: Some(user.username),
+    };
+
+    let template = MembersPage {
+        base_url: server_cfg.base_url,
+        group,
+        members: results.members,
+        navigation_links,
+        offset: filters.offset,
+        page_id: PageId::Group,
+        path: uri.path().to_string(),
+        query: filters.query.clone(),
+        site_settings,
+        total: results.total,
+        user: template_user,
     };
 
     Ok(Html(template.render()?).into_response())

@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 
 use garde::rules::email::parse_email;
 use reqwest::Url;
+use serde::{Deserialize, Deserializer};
 
 /// Allowed CFS label colors.
 pub const CFS_LABEL_COLORS: [&str; 10] = [
@@ -169,6 +170,18 @@ pub fn trimmed_non_empty_opt(value: &Option<String>, _ctx: &()) -> garde::Result
         ));
     }
     Ok(())
+}
+
+/// Deserializes optional form strings, treating blank values as absent.
+pub(crate) fn optional_trimmed_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    Ok(value.and_then(|value| {
+        let value = value.trim().to_string();
+        (!value.is_empty()).then_some(value)
+    }))
 }
 
 /// Validates that each tag in a vector is non-empty, within max length, and within max items.

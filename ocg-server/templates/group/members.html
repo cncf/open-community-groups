@@ -1,0 +1,156 @@
+{% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ self.preview_description() |demoji }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &group.name) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+    <div class="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}"
+             class="text-sm font-medium text-primary-700 hover:text-primary-900">← Back to {{ group.name|demoji }}</a>
+          <h1 class="mt-4 text-3xl font-semibold text-stone-950 sm:text-4xl">Members</h1>
+          <p class="mt-3 max-w-2xl text-base leading-7 text-stone-600">
+            Browse members of {{ group.name|demoji }}. This directory is visible to logged-in members of the group.
+          </p>
+        </div>
+        <div class="text-sm text-stone-600">
+          {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
+        </div>
+      </div>
+
+      <form action="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/members"
+            method="get"
+            class="mt-8 flex max-w-xl gap-3">
+        <label class="sr-only" for="members-query">Search members</label>
+        <input id="members-query"
+               type="search"
+               name="query"
+               value="{{ query|assigned_or("") }}"
+               class="input-primary"
+               placeholder="Search members"
+               autocomplete="off"
+               autocorrect="off"
+               autocapitalize="off"
+               spellcheck="false">
+        <button type="submit" class="btn-primary">Search</button>
+      </form>
+
+      {% if members.is_empty() -%}
+        <div class="mt-10 rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-8 py-12 text-center">
+          <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-50">
+            <div class="svg-icon size-6 icon-people bg-primary-500"></div>
+          </div>
+          <h2 class="mt-4 text-lg font-semibold text-stone-950">No members found</h2>
+          <p class="mt-2 text-sm text-stone-600">Try a different search or check back after more members join.</p>
+        </div>
+      {% else -%}
+        <div class="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {% for member in members -%}
+            <article class="flex overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+              <div class="flex w-full flex-col gap-5 p-5">
+                <div class="flex items-start gap-4">
+                  <logo-image
+                  {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                  size="size-16" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
+                  </logo-image>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h2 class="truncate text-lg font-semibold text-stone-950">{{ member.name|assigned_or(member.username) }}</h2>
+                      {% if member.linkedin_connected -%}
+                        <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">Verified</span>
+                      {% endif -%}
+                    </div>
+                    <div class="mt-1 text-sm text-stone-500">@{{ member.username }}</div>
+                    <div class="mt-3 text-sm leading-5 text-stone-700">
+                      <span class="font-medium text-stone-900">{{ member.title.as_deref() |assigned_or("Member") }}</span>
+                      {% if let Some(company) = &member.company -%}
+                        <span class="text-stone-400">&nbsp;at&nbsp;</span><span>{{ company }}</span>
+                      {% endif -%}
+                    </div>
+                  </div>
+                </div>
+
+                {% if let Some(bio) = &member.bio -%}
+                  <p class="line-clamp-3 text-sm leading-6 text-stone-600">{{ bio }}</p>
+                {% endif -%}
+
+                {% if let Some(interests) = &member.interests -%}
+                  <div class="flex flex-wrap gap-2">
+                    {% for interest in interests -%}
+                      <span class="rounded-full bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-inset ring-stone-200">{{ interest }}</span>
+                    {% endfor -%}
+                  </div>
+                {% endif -%}
+
+                <div class="mt-auto flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4">
+                  <a class="btn-secondary-anchor btn-mini"
+                     href="/profiles/{{ member.username }}"
+                     hx-boost="true"
+                     hx-target="body">Profile</a>
+                  {% if let Some(linkedin_url) = &member.linkedin_url -%}
+                    <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-primary-50 hover:ring-primary-200"
+                       href="{{ linkedin_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       title="LinkedIn profile">
+                      <div class="svg-icon size-4 icon-linkedin bg-primary-600"></div>
+                    </a>
+                  {% endif -%}
+                  {% if let Some(github_url) = &member.github_url -%}
+                    <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+                       href="{{ github_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       title="GitHub">
+                      <div class="svg-icon size-4 icon-github bg-stone-700"></div>
+                    </a>
+                  {% endif -%}
+                  {% if let Some(website_url) = &member.website_url -%}
+                    <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+                       href="{{ website_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       title="Website">
+                      <div class="svg-icon size-4 icon-link bg-stone-700"></div>
+                    </a>
+                  {% endif -%}
+                </div>
+              </div>
+            </article>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+
+      {% if total > members.len() -%}
+        {{ pagination::navigation_links(links = navigation_links, hx_target = "body") }}
+      {% endif -%}
+    </div>
+  </div>
+{% endblock content -%}

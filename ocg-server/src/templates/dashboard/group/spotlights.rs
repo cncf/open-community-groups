@@ -10,8 +10,8 @@ use uuid::Uuid;
 use crate::{
     templates::{dashboard::group::members::GroupMember, helpers::user_initials},
     validation::{
-        MAX_LEN_DESCRIPTION, MAX_LEN_L, MAX_LEN_M, image_url_opt, trimmed_non_empty,
-        trimmed_non_empty_opt,
+        MAX_LEN_DESCRIPTION, MAX_LEN_L, MAX_LEN_M, image_url_opt, optional_trimmed_string,
+        trimmed_non_empty, trimmed_non_empty_opt,
     },
 };
 
@@ -41,9 +41,11 @@ pub(crate) struct SpotlightInput {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub story: String,
     /// Optional image URL for the story card.
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
     #[garde(custom(image_url_opt))]
     pub image_url: Option<String>,
     /// Optional link to a deeper article, demo, video, or profile.
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
     #[garde(url, length(max = MAX_LEN_L), custom(trimmed_non_empty_opt))]
     pub link_url: Option<String>,
     /// Whether the spotlight should be emphasized.

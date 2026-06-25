@@ -186,72 +186,72 @@
               {% if let Some(image_url) = &item.image_url %}value="{{ image_url }}"{% endif %}
             {%- endlet %}
             {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional product image shown on the group page and store.", value_attr = image_value, field_class = "col-span-full") -}}
-              <label class="block">
-                <span class="label">Price in cents</span>
-                <input name="price_minor"
-                       class="input"
-                       type="number"
-                       min="0"
-                       value="{{ item.price_minor }}"
-                       required>
-              </label>
-            </div>
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <label class="block">
-                <span class="label">Currency</span>
-                <input name="currency_code"
-                       class="input uppercase"
-                       maxlength="3"
-                       value="{{ item.currency_code }}"
-                       required>
-              </label>
-              <label class="block">
-                <span class="label">Inventory</span>
-                <input name="inventory_count"
-                       class="input"
-                       type="number"
-                       min="0"
-                       value="{{ item.inventory_input_value() }}">
-              </label>
-              <label class="block">
-                <span class="label">Featured</span>
-                <select name="featured" class="input">
-                  <option value="false" {% if !item.featured %}selected{% endif %}>No</option>
-                  <option value="true" {% if item.featured %}selected{% endif %}>Yes</option>
-                </select>
-              </label>
-              <label class="block">
-                <span class="label">Active</span>
-                <select name="active" class="input">
-                  <option value="true" {% if item.active %}selected{% endif %}>Yes</option>
-                  <option value="false" {% if !item.active %}selected{% endif %}>No</option>
-                </select>
-              </label>
-            </div>
+            <label class="block">
+              <span class="label">Price in cents</span>
+              <input name="price_minor"
+                     class="input"
+                     type="number"
+                     min="0"
+                     value="{{ item.price_minor }}"
+                     required>
+            </label>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label class="block">
+              <span class="label">Currency</span>
+              <input name="currency_code"
+                     class="input uppercase"
+                     maxlength="3"
+                     value="{{ item.currency_code }}"
+                     required>
+            </label>
+            <label class="block">
+              <span class="label">Inventory</span>
+              <input name="inventory_count"
+                     class="input"
+                     type="number"
+                     min="0"
+                     value="{{ item.inventory_input_value() }}">
+            </label>
+            <label class="block">
+              <span class="label">Featured</span>
+              <select name="featured" class="input">
+                <option value="false" {% if !item.featured %}selected{% endif %}>No</option>
+                <option value="true" {% if item.featured %}selected{% endif %}>Yes</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="label">Active</span>
+              <select name="active" class="input">
+                <option value="true" {% if item.active %}selected{% endif %}>Yes</option>
+                <option value="false" {% if !item.active %}selected{% endif %}>No</option>
+              </select>
+            </label>
+          </div>
 
-            <div class="flex flex-wrap gap-2">
-              <button type="submit"
-                      class="btn-primary"
-                      {% if !can_manage_store -%}
-                        disabled
-                      {% endif -%}>Save</button>
-              <button type="button"
-                      class="btn-tertiary"
-                      hx-delete="/dashboard/group/store/{{ item.group_store_item_id }}"
-                      hx-target="#dashboard-content"
-                      hx-indicator="#dashboard-spinner"
-                      hx-confirm="Delete this store item?"
-                      {% if !can_manage_store -%}
-                        disabled
-                      {% endif -%}>Delete</button>
-              <a href="{{ item.checkout_url }}"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 class="btn-secondary-anchor">Open checkout</a>
-            </div>
-          </form>
-        </article>
-      {% endfor -%}
-    </section>
-  {% endif -%}
+          <div class="flex flex-wrap gap-2">
+            <button type="submit"
+                    class="btn-primary"
+                    {% if !can_manage_store -%}
+                      disabled
+                    {% endif -%}>Save</button>
+            <button type="button"
+                    class="btn-tertiary"
+                    hx-delete="/dashboard/group/store/{{ item.group_store_item_id }}"
+                    hx-target="#dashboard-content"
+                    hx-indicator="#dashboard-spinner"
+                    hx-confirm="Delete this store item?"
+                    {% if !can_manage_store -%}
+                      disabled
+                    {% endif -%}>Delete</button>
+            <a href="{{ item.checkout_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn-secondary-anchor">Open checkout</a>
+          </div>
+        </form>
+      </article>
+    {% endfor -%}
+  </section>
+{% endif -%}
 </div>

@@ -1,4 +1,5 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
 {% import "macros/pagination.html" as pagination -%}
 
 {{ dashboard::page_title(title = "Landscape", description = "Manage startups and GitHub projects shown on the public landscape.") -}}
@@ -73,6 +74,7 @@
           <input id="new-landscape-website"
                  name="website_url"
                  class="input"
+                 type="url"
                  placeholder="https://..." />
         </div>
         <div>
@@ -80,15 +82,10 @@
           <input id="new-landscape-github"
                  name="github_url"
                  class="input"
+                 type="url"
                  placeholder="https://github.com/..." />
         </div>
-        <div>
-          <label class="label" for="new-landscape-logo">Logo URL</label>
-          <input id="new-landscape-logo"
-                 name="logo_url"
-                 class="input"
-                 placeholder="https://..." />
-        </div>
+        {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", legend = "Optional logo shown on public landscape cards.", field_class = "lg:col-span-2") -}}
         <div>
           <label class="label" for="new-landscape-tags">Tags</label>
           <input id="new-landscape-tags"
@@ -211,6 +208,7 @@
               <input id="landscape-website-{{ entry.landscape_entry_id }}"
                      name="website_url"
                      class="input"
+                     type="url"
                      value="{{ entry.website_url.as_deref().unwrap_or("") }}" />
             </div>
             <div>
@@ -218,48 +216,46 @@
               <input id="landscape-github-{{ entry.landscape_entry_id }}"
                      name="github_url"
                      class="input"
+                     type="url"
                      value="{{ entry.github_url.as_deref().unwrap_or("") }}" />
             </div>
-            <div>
-              <label class="label" for="landscape-logo-{{ entry.landscape_entry_id }}">Logo URL</label>
-              <input id="landscape-logo-{{ entry.landscape_entry_id }}"
-                     name="logo_url"
-                     class="input"
-                     value="{{ entry.logo_url.as_deref().unwrap_or("") }}" />
-            </div>
-            <div>
-              <label class="label" for="landscape-tags-{{ entry.landscape_entry_id }}">Tags</label>
-              <input id="landscape-tags-{{ entry.landscape_entry_id }}"
-                     name="tags"
-                     class="input"
-                     value="{{ entry.tags.join(", ") }}" />
-            </div>
+            {% let logo_value -%}
+            {% if let Some(logo_url) = &entry.logo_url %}value="{{ logo_url }}"{% endif %}
+          {%- endlet %}
+          {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", legend = "Optional logo shown on public landscape cards.", value_attr = logo_value, field_class = "lg:col-span-2") -}}
+          <div>
+            <label class="label" for="landscape-tags-{{ entry.landscape_entry_id }}">Tags</label>
+            <input id="landscape-tags-{{ entry.landscape_entry_id }}"
+                   name="tags"
+                   class="input"
+                   value="{{ entry.tags.join(", ") }}" />
           </div>
-          {% if can_manage_landscape -%}
-            <div class="flex flex-wrap gap-2">
-              <button class="btn-primary" type="submit">Save changes</button>
-              {% if entry.published -%}
-                <button class="btn-secondary"
-                        type="button"
-                        hx-put="/dashboard/alliance/landscape/{{ entry.landscape_entry_id }}/unpublish"
-                        hx-target="#dashboard-content">Unpublish</button>
-              {% else -%}
-                <button class="btn-secondary"
-                        type="button"
-                        hx-put="/dashboard/alliance/landscape/{{ entry.landscape_entry_id }}/publish"
-                        hx-target="#dashboard-content">Publish</button>
-              {% endif -%}
-              <button class="btn-tertiary"
+        </div>
+        {% if can_manage_landscape -%}
+          <div class="flex flex-wrap gap-2">
+            <button class="btn-primary" type="submit">Save changes</button>
+            {% if entry.published -%}
+              <button class="btn-secondary"
                       type="button"
-                      hx-delete="/dashboard/alliance/landscape/{{ entry.landscape_entry_id }}/delete"
-                      hx-confirm="Delete this landscape entry?"
-                      hx-target="#dashboard-content">Delete</button>
-            </div>
-          {% endif -%}
-        </form>
-      </article>
-    {% endfor -%}
-  </div>
+                      hx-put="/dashboard/alliance/landscape/{{ entry.landscape_entry_id }}/unpublish"
+                      hx-target="#dashboard-content">Unpublish</button>
+            {% else -%}
+              <button class="btn-secondary"
+                      type="button"
+                      hx-put="/dashboard/alliance/landscape/{{ entry.landscape_entry_id }}/publish"
+                      hx-target="#dashboard-content">Publish</button>
+            {% endif -%}
+            <button class="btn-tertiary"
+                    type="button"
+                    hx-delete="/dashboard/alliance/landscape/{{ entry.landscape_entry_id }}/delete"
+                    hx-confirm="Delete this landscape entry?"
+                    hx-target="#dashboard-content">Delete</button>
+          </div>
+        {% endif -%}
+      </form>
+    </article>
+  {% endfor -%}
+</div>
 
-  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content") }}
+{{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content") }}
 {% endif -%}

@@ -8,8 +8,8 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::validation::{
-    MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_L, MAX_LEN_M, image_url_opt, trimmed_non_empty,
-    trimmed_non_empty_opt,
+    MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_L, MAX_LEN_M, image_url_opt, optional_trimmed_string,
+    trimmed_non_empty, trimmed_non_empty_opt,
 };
 
 /// Group dashboard store management page.
@@ -33,6 +33,7 @@ pub(crate) struct StoreItemInput {
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub description: Option<String>,
     /// Optional product image URL.
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
     #[garde(custom(image_url_opt))]
     pub image_url: Option<String>,
     /// Price in minor units, for example cents.

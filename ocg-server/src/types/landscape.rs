@@ -11,7 +11,8 @@ use crate::{
     types::pagination::{Pagination, ToRawQuery},
     validation::{
         MAX_LEN_DESCRIPTION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_ENTITY_NAME, MAX_LEN_M,
-        MAX_LEN_TAG, MAX_PAGINATION_LIMIT, trimmed_non_empty, trimmed_non_empty_opt,
+        MAX_LEN_TAG, MAX_PAGINATION_LIMIT, image_url_opt, optional_trimmed_string,
+        trimmed_non_empty, trimmed_non_empty_opt,
     },
 };
 
@@ -99,21 +100,27 @@ pub(crate) struct LandscapeEntryInput {
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub summary: String,
     /// Full description.
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION))]
     pub description: Option<String>,
     /// Website URL.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
+    #[garde(url, length(max = MAX_LEN_M), custom(trimmed_non_empty_opt))]
     pub website_url: Option<String>,
     /// GitHub URL.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
+    #[garde(url, length(max = MAX_LEN_M), custom(trimmed_non_empty_opt))]
     pub github_url: Option<String>,
     /// Logo URL.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
+    #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
     /// Category label.
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub category: Option<String>,
     /// Tags, comma-separated.
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
     #[garde(length(max = MAX_LEN_M))]
     pub tags: Option<String>,
 }

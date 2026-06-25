@@ -219,6 +219,10 @@ pub(crate) async fn setup(
             "/{alliance}/group/{group_slug}/spotlights",
             get(group::spotlights_page),
         )
+        .route(
+            "/{alliance}/group/{group_slug}/members",
+            get(group::members_page),
+        )
         .route("/jobs/{job_id}/apply", post(site::jobs::apply))
         // Protected dashboard routes
         .route(

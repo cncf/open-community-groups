@@ -4,7 +4,9 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::dashboard::group::{spotlights::GroupMemberSpotlight, store::GroupStoreItem},
+    templates::dashboard::group::{
+        members::GroupMember, spotlights::GroupMemberSpotlight, store::GroupStoreItem,
+    },
     templates::{
         PageId,
         auth::User,
@@ -14,6 +16,7 @@ use crate::{
     types::{
         event::{EventKind, EventSummary},
         group::GroupFull,
+        pagination,
         site::SiteSettings,
     },
 };
@@ -62,6 +65,34 @@ pub(crate) struct SpotlightsPage {
     pub site_settings: SiteSettings,
     /// Published member spotlights.
     pub spotlights: Vec<GroupMemberSpotlight>,
+    /// Authenticated user information.
+    pub user: User,
+}
+
+/// Logged-in group member directory page template.
+#[derive(Debug, Clone, Template)]
+#[template(path = "group/members.html")]
+pub(crate) struct MembersPage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Detailed information about the group.
+    pub group: GroupFull,
+    /// List of members in the group.
+    pub members: Vec<GroupMember>,
+    /// Pagination navigation links.
+    pub navigation_links: pagination::NavigationLinks,
+    /// Pagination offset for results.
+    pub offset: Option<usize>,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current URL path.
+    pub path: String,
+    /// Text search query used to filter members.
+    pub query: Option<String>,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Total number of members in the group.
+    pub total: usize,
     /// Authenticated user information.
     pub user: User,
 }
@@ -146,6 +177,39 @@ impl SpotlightsPage {
     }
 
     /// Returns the Open Graph image URL for the page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.group
+            .og_image_url
+            .as_deref()
+            .or(self.group.alliance.og_image_url.as_deref())
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+}
+
+impl MembersPage {
+    /// Returns the canonical URL for the group members page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!(
+                "/{}/group/{}/members",
+                self.group.alliance.name,
+                self.group.public_slug()
+            ),
+        )
+    }
+
+    /// Returns the preview title.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} Members", self.group.name)
+    }
+
+    /// Returns the preview description.
+    pub(crate) fn preview_description(&self) -> String {
+        format!("Member directory for {}.", self.group.name)
+    }
+
+    /// Returns the `OpenGraph` image URL for the group members page.
     pub(crate) fn open_graph_image_url(&self) -> Option<String> {
         self.group
             .og_image_url
