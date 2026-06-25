@@ -13,6 +13,7 @@ use tracing::{instrument, warn};
 
 use crate::{
     db::DynDB,
+    db::common::{SearchEventsOutput, SearchGroupsOutput},
     handlers::error::HandlerError,
     router::PUBLIC_SHARED_CACHE_HEADERS,
     templates::{
@@ -24,8 +25,8 @@ use crate::{
         },
     },
     types::{
-        jobs::JobsFilters,
-        landscape::LandscapeFilters,
+        jobs::{JobsFilters, JobsOutput},
+        landscape::{LandscapeFilters, LandscapeOutput},
         search::{SearchEventsFilters, SearchGroupsFilters},
     },
 };
@@ -65,6 +66,7 @@ pub(crate) async fn page(
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))
 }
 
+#[allow(clippy::too_many_lines)]
 async fn search_all(db: &DynDB, query: &str, encoded_query: &str) -> Vec<SearchSection> {
     let events_filters = SearchEventsFilters {
         alliance: vec!["goup".to_string()],
@@ -102,19 +104,19 @@ async fn search_all(db: &DynDB, query: &str, encoded_query: &str) -> Vec<SearchS
     );
     let events = events.unwrap_or_else(|error| {
         warn!("site search events source failed: {error}");
-        Default::default()
+        SearchEventsOutput::default()
     });
     let groups = groups.unwrap_or_else(|error| {
         warn!("site search groups source failed: {error}");
-        Default::default()
+        SearchGroupsOutput::default()
     });
     let jobs = jobs.unwrap_or_else(|error| {
         warn!("site search jobs source failed: {error}");
-        Default::default()
+        JobsOutput::default()
     });
     let landscape = landscape.unwrap_or_else(|error| {
         warn!("site search landscape source failed: {error}");
-        Default::default()
+        LandscapeOutput::default()
     });
 
     let mut sections = Vec::new();

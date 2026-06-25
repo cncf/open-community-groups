@@ -199,7 +199,15 @@ pub(crate) struct GroupCard {
 /// The explore page can display either events or groups. This enum determines which
 /// section is shown.
 #[derive(
-    Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display, strum::EnumString,
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
 )]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Entity {

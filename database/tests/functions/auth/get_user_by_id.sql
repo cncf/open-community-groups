@@ -168,6 +168,7 @@ select is(
         'has_password', true,
         'name', 'Test User',
         'optional_notifications_enabled', true,
+        'platform_admin', false,
         'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
         'user_id', :'userWithTeamsID'::uuid,
         'username', 'testuser'
@@ -190,6 +191,7 @@ select is(
         'name', 'Test User',
         'optional_notifications_enabled', true,
         'password', 'hashed_password_here',
+        'platform_admin', false,
         'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
         'user_id', :'userWithTeamsID'::uuid,
         'username', 'testuser'
@@ -215,6 +217,7 @@ select is(
         'email_verified', true,
         'name', 'No Groups User',
         'optional_notifications_enabled', true,
+        'platform_admin', false,
         'user_id', :'userNoTeamsID'::uuid,
         'username', 'nogroupsuser'
     ),
@@ -232,6 +235,7 @@ select is(
         'email_verified', true,
         'name', 'Group Only User',
         'optional_notifications_enabled', true,
+        'platform_admin', false,
         'user_id', :'userGroupOnlyID'::uuid,
         'username', 'grouponlyuser'
     ),
@@ -249,6 +253,7 @@ select is(
         'email_verified', true,
         'name', 'Alliance Only User',
         'optional_notifications_enabled', true,
+        'platform_admin', false,
         'user_id', :'userAllianceOnlyID'::uuid,
         'username', 'allianceonlyuser'
     ),
@@ -266,6 +271,7 @@ select is(
         'email_verified', true,
         'name', 'Both Teams User',
         'optional_notifications_enabled', true,
+        'platform_admin', false,
         'user_id', :'userBothTeamsID'::uuid,
         'username', 'bothuser'
     ),

@@ -41,6 +41,7 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
     // Read-only alliance dashboard endpoints
     let dashboard_read = Router::new()
         .route("/analytics", get(dashboard::alliance::analytics::page))
+        .route("/create", get(dashboard::alliance::create::page))
         .route(
             "/event-categories",
             get(dashboard::alliance::event_categories::list_page),
@@ -85,6 +86,10 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::alliance::regions::update_page),
         )
         .route_layer(check_selected_alliance_permission(AlliancePermission::Read));
+
+    // Platform-level alliance management endpoints
+    let platform_management =
+        Router::new().route("/create", post(dashboard::alliance::create::add));
 
     // Alliance groups management endpoints
     let groups_management = Router::new()
@@ -204,6 +209,7 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::alliance::home::page).route_layer(check_alliance_dashboard_permission()),
         )
         .merge(dashboard_read)
+        .merge(platform_management)
         .merge(groups_management)
         .merge(landscape_management)
         .merge(settings_management)
@@ -279,6 +285,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         )
         .route("/logs", get(dashboard::group::logs::list_page))
         .route("/members", get(dashboard::group::members::list_page))
+        .route("/spotlights", get(dashboard::group::spotlights::list_page))
         .route(
             "/settings/update",
             get(dashboard::group::settings::update_page),
@@ -289,6 +296,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/sponsors/{group_sponsor_id}/update",
             get(dashboard::group::sponsors::update_page),
         )
+        .route("/store", get(dashboard::group::store::list_page))
         .route("/team", get(dashboard::group::team::list_page))
         .route_layer(check_selected_group_permission(GroupPermission::Read));
 
@@ -375,6 +383,11 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/notifications",
             post(dashboard::group::members::send_group_custom_notification),
         )
+        .route("/spotlights", post(dashboard::group::spotlights::add))
+        .route(
+            "/spotlights/{spotlight_id}",
+            put(dashboard::group::spotlights::update).delete(dashboard::group::spotlights::delete),
+        )
         .route_layer(check_selected_group_permission(
             GroupPermission::MembersWrite,
         ));
@@ -400,6 +413,11 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/sponsors/{group_sponsor_id}/update",
             put(dashboard::group::sponsors::update),
+        )
+        .route("/store", post(dashboard::group::store::add))
+        .route(
+            "/store/{group_store_item_id}",
+            put(dashboard::group::store::update).delete(dashboard::group::store::delete),
         )
         .route_layer(check_selected_group_permission(
             GroupPermission::SponsorsWrite,

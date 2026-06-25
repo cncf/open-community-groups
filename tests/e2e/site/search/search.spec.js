@@ -3,10 +3,9 @@ import { expect, test } from "@playwright/test";
 import { navigateToPath } from "../../utils.js";
 
 const getSearchSection = (page, title) =>
-  page
-    .getByRole("heading", { name: title, exact: true })
-    .locator("..")
-    .locator("..");
+  page.locator("#site-search-results section").filter({
+    has: page.getByRole("heading", { name: title, exact: true }),
+  });
 
 test.describe("site search page", () => {
   test("renders aggregated search sections with continue-search links", async ({
@@ -17,9 +16,10 @@ test.describe("site search page", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Find what you need" }),
     ).toBeVisible();
-    const searchInput = page.getByDisplayValue("AI");
+    const searchInput = page.locator("#site-search-query");
     await expect(searchInput).toBeVisible();
-    const searchForm = page.locator('form[action="/search"]').first();
+    await expect(searchInput).toHaveValue("AI");
+    const searchForm = page.locator("form:has(#site-search-query)");
     await expect(searchForm).toHaveAttribute("hx-get", "/search");
     await expect(searchForm).toHaveAttribute(
       "hx-trigger",

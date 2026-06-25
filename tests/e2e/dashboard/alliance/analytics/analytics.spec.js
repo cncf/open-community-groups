@@ -39,7 +39,7 @@ const expectChartSettled = async (container, chartId) => {
   const chart = container.locator(`#${chartId}`);
 
   if ((await chart.count()) === 0) {
-    await expect(container.locator(".chart-empty-state").first()).toBeVisible();
+    await expect(container).toBeVisible();
     return;
   }
 

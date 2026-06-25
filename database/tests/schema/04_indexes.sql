@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(68);
+select plan(69);
 
 -- ============================================================================
 -- TESTS
@@ -302,6 +302,12 @@ select indexes_are('group_site_layout', array[
 select indexes_are('group_sponsor', array[
     'group_sponsor_pkey',
     'group_sponsor_group_id_idx'
+]);
+
+-- Test: group_store_item indexes should match expected
+select indexes_are('group_store_item', array[
+    'group_store_item_pkey',
+    'group_store_item_group_id_idx'
 ]);
 
 -- Test: event_speaker indexes should match expected

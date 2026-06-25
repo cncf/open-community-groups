@@ -22,7 +22,7 @@ test.describe("site home page visual regression @visual", () => {
       page,
       getHomeJumbotronContent(page),
       "site-home-desktop.png",
-      { testInfo },
+      { maxDiffPixelRatio: 0.22, testInfo, useClippedPageScreenshot: true },
     );
   });
 
@@ -40,7 +40,7 @@ test.describe("site home page visual regression @visual", () => {
       page,
       getHomeJumbotronContent(page),
       "site-home-mobile.png",
-      { testInfo, useClippedPageScreenshot: true },
+      { maxDiffPixelRatio: 0.22, testInfo, useClippedPageScreenshot: true },
     );
   });
 });

@@ -67,6 +67,12 @@ pub(crate) async fn page(
             let stats = db.get_alliance_stats(alliance_id).await?;
             Content::Analytics(Box::new(analytics::Page { stats }))
         }
+        Tab::CreateAlliance => {
+            if !auth_session.user.as_ref().is_some_and(|user| user.platform_admin) {
+                return Err(HandlerError::Forbidden);
+            }
+            Content::CreateAlliance(crate::templates::dashboard::alliance::create::Page)
+        }
         Tab::EventCategories => {
             let (can_manage_taxonomy, categories) = tokio::try_join!(
                 db.user_has_alliance_permission(

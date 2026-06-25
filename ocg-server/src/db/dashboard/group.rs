@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use cached::proc_macro::cached;
 use tokio_postgres::types::Json;
@@ -24,6 +24,8 @@ use crate::{
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
             members::{GroupMembersFilters, GroupMembersOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
+            spotlights::{GroupMemberSpotlight, SpotlightInput},
+            store::{GroupStoreItem, StoreItemInput},
             submissions::{
                 CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters,
                 CfsSubmissionsOutput,
@@ -79,6 +81,22 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         sponsor: &Sponsor,
+    ) -> Result<Uuid>;
+
+    /// Adds a new member spotlight.
+    async fn add_group_member_spotlight(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        input: &SpotlightInput,
+    ) -> Result<Uuid>;
+
+    /// Adds a group store item.
+    async fn add_group_store_item(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        input: &StoreItemInput,
     ) -> Result<Uuid>;
 
     /// Adds a user to the group team (pending by default).
@@ -138,6 +156,22 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         user_id: Uuid,
+    ) -> Result<()>;
+
+    /// Deletes a member spotlight.
+    async fn delete_group_member_spotlight(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_member_spotlight_id: Uuid,
+    ) -> Result<()>;
+
+    /// Deletes a group store item.
+    async fn delete_group_store_item(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_store_item_id: Uuid,
     ) -> Result<()>;
 
     /// Deletes event series events atomically.
@@ -264,6 +298,20 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         filters: &GroupMembersFilters,
     ) -> Result<GroupMembersOutput>;
+
+    /// Lists member spotlights for one group.
+    async fn list_group_member_spotlights(
+        &self,
+        group_id: Uuid,
+        include_unpublished: bool,
+    ) -> Result<Vec<GroupMemberSpotlight>>;
+
+    /// Lists store items for one group.
+    async fn list_group_store_items(
+        &self,
+        group_id: Uuid,
+        include_inactive: bool,
+    ) -> Result<Vec<GroupStoreItem>>;
 
     /// Lists all group member user ids.
     async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
@@ -400,6 +448,24 @@ pub(crate) trait DBDashboardGroup {
         sponsor: &Sponsor,
     ) -> Result<()>;
 
+    /// Updates a member spotlight.
+    async fn update_group_member_spotlight(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_member_spotlight_id: Uuid,
+        input: &SpotlightInput,
+    ) -> Result<()>;
+
+    /// Updates a group store item.
+    async fn update_group_store_item(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        group_store_item_id: Uuid,
+        input: &StoreItemInput,
+    ) -> Result<()>;
+
     /// Updates the featured flag for an existing sponsor.
     async fn update_group_sponsor_featured(
         &self,
@@ -436,6 +502,116 @@ where
         self.execute(
             "select accept_event_invitation_request($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
             &[&actor_user_id, &group_id, &event_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::add_group_member_spotlight`]
+    #[instrument(skip(self, input), err)]
+    async fn add_group_member_spotlight(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        input: &SpotlightInput,
+    ) -> Result<Uuid> {
+        self.fetch_scalar_opt(
+            "
+            insert into group_member_spotlight (
+                group_id,
+                user_id,
+                created_by,
+                title,
+                story,
+                image_url,
+                link_url,
+                featured,
+                published
+            )
+            select
+                $2::uuid,
+                $3::uuid,
+                $1::uuid,
+                $4::text,
+                $5::text,
+                $6::text,
+                $7::text,
+                $8::boolean,
+                $9::boolean
+            where exists (
+                select 1
+                from group_member
+                where group_id = $2::uuid
+                and user_id = $3::uuid
+            )
+            returning group_member_spotlight_id;
+            ",
+            &[
+                &actor_user_id,
+                &group_id,
+                &input.user_id,
+                &input.title,
+                &input.story,
+                &input.image_url,
+                &input.link_url,
+                &input.featured,
+                &input.published,
+            ],
+        )
+        .await?
+        .context("spotlighted user is not a member of this group")
+    }
+
+    /// [`DBDashboardGroup::add_group_store_item`]
+    #[instrument(skip(self, input), err)]
+    async fn add_group_store_item(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        input: &StoreItemInput,
+    ) -> Result<Uuid> {
+        self.fetch_scalar_one(
+            "
+            insert into group_store_item (
+                group_id,
+                created_by,
+                name,
+                description,
+                image_url,
+                price_minor,
+                currency_code,
+                inventory_count,
+                checkout_url,
+                featured,
+                active
+            )
+            values (
+                $2::uuid,
+                $1::uuid,
+                $3::text,
+                $4::text,
+                $5::text,
+                $6::bigint,
+                $7::text,
+                $8::integer,
+                $9::text,
+                $10::boolean,
+                $11::boolean
+            )
+            returning group_store_item_id;
+            ",
+            &[
+                &actor_user_id,
+                &group_id,
+                &input.name,
+                &input.description,
+                &input.image_url,
+                &input.price_minor,
+                &input.currency_code,
+                &input.inventory_count,
+                &input.checkout_url,
+                &input.featured,
+                &input.active,
+            ],
         )
         .await
     }
@@ -618,6 +794,44 @@ where
         self.execute(
             "select delete_group_member($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_group_member_spotlight`]
+    #[instrument(skip(self), err)]
+    async fn delete_group_member_spotlight(
+        &self,
+        _actor_user_id: Uuid,
+        group_id: Uuid,
+        group_member_spotlight_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "
+            delete from group_member_spotlight
+            where group_id = $1::uuid
+            and group_member_spotlight_id = $2::uuid;
+            ",
+            &[&group_id, &group_member_spotlight_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_group_store_item`]
+    #[instrument(skip(self), err)]
+    async fn delete_group_store_item(
+        &self,
+        _actor_user_id: Uuid,
+        group_id: Uuid,
+        group_store_item_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "
+            delete from group_store_item
+            where group_id = $1::uuid
+            and group_store_item_id = $2::uuid;
+            ",
+            &[&group_id, &group_store_item_id],
         )
         .await
     }
@@ -915,6 +1129,79 @@ where
         self.fetch_json_one(
             "select list_group_members($1::uuid, $2::jsonb)",
             &[&group_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_group_member_spotlights`]
+    #[instrument(skip(self), err)]
+    async fn list_group_member_spotlights(
+        &self,
+        group_id: Uuid,
+        include_unpublished: bool,
+    ) -> Result<Vec<GroupMemberSpotlight>> {
+        self.fetch_json_one(
+            "
+            select coalesce(jsonb_agg(jsonb_build_object(
+                'group_member_spotlight_id', s.group_member_spotlight_id,
+                'group_id', s.group_id,
+                'user_id', s.user_id,
+                'created_by', s.created_by,
+                'title', s.title,
+                'story', s.story,
+                'image_url', s.image_url,
+                'link_url', s.link_url,
+                'featured', s.featured,
+                'published', s.published,
+                'created_at', extract(epoch from s.created_at)::bigint,
+                'updated_at', extract(epoch from s.updated_at)::bigint,
+                'username', u.username,
+                'name', u.name,
+                'photo_url', u.photo_url,
+                'member_title', u.title,
+                'company', u.company,
+                'bio', u.bio
+            ) order by s.featured desc, s.created_at desc), '[]'::jsonb)
+            from group_member_spotlight s
+            join \"user\" u using (user_id)
+            where s.group_id = $1::uuid
+            and ($2::boolean or s.published);
+            ",
+            &[&group_id, &include_unpublished],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_group_store_items`]
+    #[instrument(skip(self), err)]
+    async fn list_group_store_items(
+        &self,
+        group_id: Uuid,
+        include_inactive: bool,
+    ) -> Result<Vec<GroupStoreItem>> {
+        self.fetch_json_one(
+            "
+            select coalesce(jsonb_agg(jsonb_build_object(
+                'group_store_item_id', group_store_item_id,
+                'group_id', group_id,
+                'created_by', created_by,
+                'name', name,
+                'description', description,
+                'image_url', image_url,
+                'price_minor', price_minor,
+                'currency_code', currency_code,
+                'inventory_count', inventory_count,
+                'checkout_url', checkout_url,
+                'featured', featured,
+                'active', active,
+                'created_at', extract(epoch from created_at)::bigint,
+                'updated_at', extract(epoch from updated_at)::bigint
+            ) order by featured desc, created_at desc), '[]'::jsonb)
+            from group_store_item
+            where group_id = $1::uuid
+            and ($2::boolean or active);
+            ",
+            &[&group_id, &include_inactive],
         )
         .await
     }
@@ -1234,6 +1521,94 @@ where
         self.execute(
             "select update_group_sponsor($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
             &[&actor_user_id, &group_id, &group_sponsor_id, &Json(sponsor)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_group_member_spotlight`]
+    #[instrument(skip(self, input), err)]
+    async fn update_group_member_spotlight(
+        &self,
+        _actor_user_id: Uuid,
+        group_id: Uuid,
+        group_member_spotlight_id: Uuid,
+        input: &SpotlightInput,
+    ) -> Result<()> {
+        self.execute(
+            "
+            update group_member_spotlight
+            set
+                user_id = $3::uuid,
+                title = $4::text,
+                story = $5::text,
+                image_url = $6::text,
+                link_url = $7::text,
+                featured = $8::boolean,
+                published = $9::boolean,
+                updated_at = current_timestamp
+            where group_id = $1::uuid
+            and group_member_spotlight_id = $2::uuid
+            and exists (
+                select 1
+                from group_member
+                where group_id = $1::uuid
+                and user_id = $3::uuid
+            );
+            ",
+            &[
+                &group_id,
+                &group_member_spotlight_id,
+                &input.user_id,
+                &input.title,
+                &input.story,
+                &input.image_url,
+                &input.link_url,
+                &input.featured,
+                &input.published,
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_group_store_item`]
+    #[instrument(skip(self, input), err)]
+    async fn update_group_store_item(
+        &self,
+        _actor_user_id: Uuid,
+        group_id: Uuid,
+        group_store_item_id: Uuid,
+        input: &StoreItemInput,
+    ) -> Result<()> {
+        self.execute(
+            "
+            update group_store_item
+            set
+                name = $3::text,
+                description = $4::text,
+                image_url = $5::text,
+                price_minor = $6::bigint,
+                currency_code = $7::text,
+                inventory_count = $8::integer,
+                checkout_url = $9::text,
+                featured = $10::boolean,
+                active = $11::boolean,
+                updated_at = current_timestamp
+            where group_id = $1::uuid
+            and group_store_item_id = $2::uuid;
+            ",
+            &[
+                &group_id,
+                &group_store_item_id,
+                &input.name,
+                &input.description,
+                &input.image_url,
+                &input.price_minor,
+                &input.currency_code,
+                &input.inventory_count,
+                &input.checkout_url,
+                &input.featured,
+                &input.active,
+            ],
         )
         .await
     }

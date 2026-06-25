@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(153);
+select plan(162);
 
 -- ============================================================================
 -- TESTS
@@ -25,6 +25,7 @@ select has_pk('alliance_role_group_permission');
 select has_pk('alliance_site_layout');
 select has_pk('alliance_team');
 select hasnt_pk('alliance_views');
+select has_pk('api_token');
 select has_pk('custom_notification');
 select has_pk('email_verification_code');
 select has_pk('event');
@@ -46,11 +47,13 @@ select has_pk('event_waitlist');
 select has_pk('group');
 select has_pk('group_category');
 select has_pk('group_member');
+select has_pk('group_member_spotlight');
 select has_pk('group_permission');
 select has_pk('group_role');
 select has_pk('group_role_group_permission');
 select has_pk('group_site_layout');
 select has_pk('group_sponsor');
+select has_pk('group_store_item');
 select has_pk('group_team');
 select hasnt_pk('group_views');
 select has_pk('images');
@@ -84,6 +87,7 @@ select col_is_fk('alliance_role_group_permission', 'group_permission_id', 'group
 select col_is_fk('alliance_team', 'alliance_id', 'alliance');
 select col_is_fk('alliance_team', 'user_id', 'user');
 select col_is_fk('alliance_views', 'alliance_id', 'alliance');
+select col_is_fk('api_token', 'user_id', 'user');
 select col_is_fk('custom_notification', 'created_by', 'user');
 select col_is_fk('custom_notification', 'event_id', 'event');
 select col_is_fk('custom_notification', 'group_id', 'group');
@@ -135,9 +139,14 @@ select col_is_fk('group', 'region_id', 'region');
 select col_is_fk('group_category', 'alliance_id', 'alliance');
 select col_is_fk('group_member', 'group_id', 'group');
 select col_is_fk('group_member', 'user_id', 'user');
+select col_is_fk('group_member_spotlight', 'created_by', 'user');
+select col_is_fk('group_member_spotlight', 'group_id', 'group');
+select col_is_fk('group_member_spotlight', 'user_id', 'user');
 select col_is_fk('group_role_group_permission', 'group_permission_id', 'group_permission');
 select col_is_fk('group_role_group_permission', 'group_role_id', 'group_role');
 select col_is_fk('group_sponsor', 'group_id', 'group');
+select col_is_fk('group_store_item', 'created_by', 'user');
+select col_is_fk('group_store_item', 'group_id', 'group');
 select col_is_fk('group_team', 'group_id', 'group');
 select col_is_fk('group_team', 'role', 'group_role');
 select col_is_fk('group_team', 'user_id', 'user');

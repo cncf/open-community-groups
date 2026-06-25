@@ -173,7 +173,10 @@ test.describe("site home page", () => {
     }) => {
       // Verify the in-person events section shows a published event.
       await expect(
-        page.getByText(TEST_EVENT_NAMES.alpha[0], { exact: true }),
+        page
+          .getByRole("link")
+          .filter({ hasText: TEST_EVENT_NAMES.alpha[0] })
+          .first(),
       ).toBeVisible();
     });
 
@@ -182,7 +185,10 @@ test.describe("site home page", () => {
     }) => {
       // Verify the virtual events section shows a published event.
       await expect(
-        page.getByText(TEST_EVENT_NAMES.alpha[1], { exact: true }),
+        page
+          .getByRole("link")
+          .filter({ hasText: TEST_EVENT_NAMES.alpha[1] })
+          .first(),
       ).toBeVisible();
     });
 
@@ -194,18 +200,20 @@ test.describe("site home page", () => {
       );
 
       // Target ticketed in-person and virtual event cards.
-      const inPersonCard = page
-        .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.gamma[0] })
-        .first();
-      const virtualCard = page
-        .getByRole("link")
-        .filter({ hasText: TEST_EVENT_NAMES.beta[1] })
-        .first();
+      const inPersonCard = page.getByRole("link").filter({
+        hasText: new RegExp(
+          `${TEST_EVENT_NAMES.gamma[0]}[\\s\\S]*From USD 20\\.00`,
+        ),
+      });
+      const virtualCard = page.getByRole("link").filter({
+        hasText: new RegExp(
+          `${TEST_EVENT_NAMES.beta[1]}[\\s\\S]*From USD 15\\.00`,
+        ),
+      });
 
       // Verify ticketed event cards show their starting prices.
-      await expect(inPersonCard).toContainText("From USD 20.00");
-      await expect(virtualCard).toContainText("From USD 15.00");
+      await expect(inPersonCard.first()).toBeVisible();
+      await expect(virtualCard.first()).toBeVisible();
     });
 
     test("latest groups section renders heading and explore link", async ({
@@ -213,7 +221,7 @@ test.describe("site home page", () => {
     }) => {
       // Verify the latest groups section exposes its explore link.
       await expect(
-        page.getByRole("heading", { name: "New chapters and circles" }),
+        page.getByRole("heading", { name: "Find your circle" }),
       ).toBeVisible();
 
       // Target the latest groups explore link.

@@ -3,6 +3,7 @@
 //! This module sets up the Axum router with all application routes, middleware layers,
 //! and static file handling.
 
+mod api;
 mod dashboard;
 
 #[cfg(test)]
@@ -168,6 +169,7 @@ pub(crate) async fn setup(
     let auth_layer = crate::auth::setup_layer(server_cfg, db)?;
 
     // Setup sub-routers
+    let api_router = api::setup_api_router();
     let alliance_dashboard_router = dashboard::setup_alliance_dashboard_router(&state);
     let group_dashboard_router = dashboard::setup_group_dashboard_router(&state);
     let user_dashboard_router = dashboard::setup_user_dashboard_router();
@@ -213,6 +215,10 @@ pub(crate) async fn setup(
             "/{alliance}/group/{group_id}/membership",
             get(group::membership_status),
         )
+        .route(
+            "/{alliance}/group/{group_slug}/spotlights",
+            get(group::spotlights_page),
+        )
         .route("/jobs/{job_id}/apply", post(site::jobs::apply))
         // Protected dashboard routes
         .route(
@@ -254,6 +260,7 @@ pub(crate) async fn setup(
             login_url = LOG_IN_URL,
             redirect_field = "next_url"
         ))
+        .nest("/api/v1", api_router)
         // Global site routes (no alliance prefix)
         .route("/", get(site::home::page))
         .route(
@@ -292,11 +299,16 @@ pub(crate) async fn setup(
         .route("/jobs", get(site::jobs::page))
         .route("/jobs/{slug}", get(site::jobs::details))
         .route("/landscape", get(site::landscape::page))
+        .route("/profiles/{username}", get(site::profile::page))
         .route("/search", get(site::search::page))
         .route("/stats", get(site::stats::page))
         .route("/wiki", get(site::wiki::page))
         // Alliance-prefixed public routes
         .route("/{alliance}", get(alliance::page))
+        .route(
+            "/{alliance}/group/{group_slug}/store",
+            get(group::store_page),
+        )
         .route("/{alliance}/group/{group_slug}", get(group::page))
         .route(
             "/{alliance}/event/{event_id}/cfs-modal",

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(70);
+select plan(73);
 
 -- ============================================================================
 -- TESTS
@@ -40,6 +40,19 @@ select columns_are('auth_session', array[
     'auth_session_id',
     'data',
     'expires_at'
+]);
+
+-- Test: api_token columns should match expected
+select columns_are('api_token', array[
+    'api_token_id',
+    'created_at',
+    'last_used_at',
+    'name',
+    'revoked_at',
+    'scopes',
+    'token_hash',
+    'token_prefix',
+    'user_id'
 ]);
 
 -- Test: cfs_submission columns should match expected
@@ -565,6 +578,22 @@ select columns_are('group_member', array[
     'created_at'
 ]);
 
+-- Test: group_member_spotlight columns should match expected
+select columns_are('group_member_spotlight', array[
+    'group_member_spotlight_id',
+    'group_id',
+    'user_id',
+    'created_by',
+    'title',
+    'story',
+    'image_url',
+    'link_url',
+    'featured',
+    'published',
+    'created_at',
+    'updated_at'
+]);
+
 -- Test: group_role columns should match expected
 select columns_are('group_role', array[
     'group_role_id',
@@ -598,6 +627,24 @@ select columns_are('group_sponsor', array[
     'name',
 
     'website_url'
+]);
+
+-- Test: group_store_item columns should match expected
+select columns_are('group_store_item', array[
+    'group_store_item_id',
+    'group_id',
+    'created_by',
+    'name',
+    'description',
+    'image_url',
+    'price_minor',
+    'currency_code',
+    'inventory_count',
+    'checkout_url',
+    'featured',
+    'active',
+    'created_at',
+    'updated_at'
 ]);
 
 -- Test: group_team columns should match expected
@@ -831,6 +878,7 @@ select columns_are('user', array[
     'name',
     'optional_notifications_enabled',
     'password',
+    'platform_admin',
     'photo_url',
     'provider',
     'registration_status',

@@ -1,0 +1,95 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
+
+<form id="alliance-create-form"
+      hx-post="/dashboard/alliance/create"
+      hx-ext="no-empty-vals"
+      hx-target="#dashboard-content"
+      hx-history="false"
+      hx-indicator="#dashboard-spinner, #alliance-create-spinner"
+      hx-disabled-elt="button[type=submit], #cancel-button"
+      data-htmx-response
+      data-success-message="You have successfully created the alliance."
+      data-error-message="Something went wrong creating the alliance. Please try again later.">
+  <div class="space-y-12">
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::page_title(title = "Create Alliance", description = "Add a new alliance, seed default taxonomy, and make yourself its first admin.") -}}
+
+      <div class="mt-10 grid max-w-5xl grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+        <div class="col-span-full lg:col-span-3">
+          <label for="display_name" class="form-label">
+            Display Name <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="display_name"
+                   id="display_name"
+                   maxlength="{{ crate::validation::MAX_LEN_DISPLAY_NAME }}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   placeholder="Example Alliance"
+                   required>
+          </div>
+          <p class="form-legend">Public name displayed across the site.</p>
+        </div>
+
+        <div class="col-span-full lg:col-span-3">
+          <label for="name" class="form-label">
+            URL Slug <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <input type="text"
+                   name="name"
+                   id="name"
+                   maxlength="{{ crate::validation::MAX_LEN_S }}"
+                   class="input-primary"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
+                   pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                   placeholder="example-alliance"
+                   required>
+          </div>
+          <p class="form-legend">Used in public URLs, for example /example-alliance.</p>
+        </div>
+
+        <div class="col-span-full">
+          <label for="description" class="form-label">
+            Description <span class="asterisk">*</span>
+          </label>
+          <div class="mt-2">
+            <markdown-editor id="description" name="description" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}" required></markdown-editor>
+          </div>
+          <p class="form-legend">Briefly describe who this alliance serves.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::form_title(title = "Branding", description = "Provide initial public images. You can update these later in settings.") -}}
+
+      <div class="mt-10 grid max-w-5xl grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+        {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", help_prefix_text = "Size required 360 x 360 px.", extra_attrs = "required") -}}
+        {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", extra_attrs = "required") -}}
+        {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", extra_attrs = "required") -}}
+      </div>
+    </div>
+
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::form_title(title = "Website", description = "Optional public website for this alliance.") -}}
+
+      <div class="mt-10 grid max-w-5xl grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
+        {% let website_value -%}{%- endlet %}
+        {{ form_fields::social_url_field(name = "website_url", label = "Website", icon = "icon-link", placeholder = "https://example.com", value_attr = website_value) -}}
+      </div>
+    </div>
+  </div>
+
+  {{ dashboard::form_actions(cancel_href = "/dashboard/alliance",
+    spinner_id = "alliance-create-spinner",
+    submit_label = "Create Alliance") -}}
+</form>
