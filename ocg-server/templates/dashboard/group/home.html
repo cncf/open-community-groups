@@ -97,6 +97,7 @@
       {{ dashboard::menu_title(text = "Members and sponsors", extra_styles = "py-1.5") -}}
       {{ dashboard::menu_item(name = "Members", icon = "members", is_active = content.is_members() , href = "/dashboard/group?tab=members") -}}
       {{ dashboard::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors() , href = "/dashboard/group?tab=sponsors") -}}
+      {{ dashboard::menu_item(name = "Store", icon = "shopping-bag", is_active = content.is_store() , href = "/dashboard/group?tab=store") -}}
     </div>
     {# End members and sponsors -#}
 
@@ -120,7 +121,7 @@
        data-alliance-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
        data-group-name="{{ current_selection.1.name }}"
        data-group-slug="{{ current_selection.1.public_slug() }}"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
+       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_store() -%}store{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"

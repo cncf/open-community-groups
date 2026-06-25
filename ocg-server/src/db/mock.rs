@@ -348,6 +348,12 @@ mock! {
             group_id: Uuid,
             sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
         ) -> Result<Uuid>;
+        async fn add_group_store_item(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            input: &crate::templates::dashboard::group::store::StoreItemInput,
+        ) -> Result<Uuid>;
         async fn add_group_team_member(
             &self,
             actor_user_id: Uuid,
@@ -400,6 +406,12 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             group_sponsor_id: Uuid,
+        ) -> Result<()>;
+        async fn delete_group_store_item(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            group_store_item_id: Uuid,
         ) -> Result<()>;
         async fn delete_group_team_member(
             &self,
@@ -500,6 +512,11 @@ mock! {
             filters: &crate::templates::dashboard::group::sponsors::GroupSponsorsFilters,
             full_list: bool,
         ) -> Result<crate::templates::dashboard::group::sponsors::GroupSponsorsOutput>;
+        async fn list_group_store_items(
+            &self,
+            group_id: Uuid,
+            include_inactive: bool,
+        ) -> Result<Vec<crate::templates::dashboard::group::store::GroupStoreItem>>;
         async fn list_group_team_members(
             &self,
             group_id: Uuid,
@@ -584,6 +601,13 @@ mock! {
             group_id: Uuid,
             group_sponsor_id: Uuid,
             sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
+        ) -> Result<()>;
+        async fn update_group_store_item(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            group_store_item_id: Uuid,
+            input: &crate::templates::dashboard::group::store::StoreItemInput,
         ) -> Result<()>;
         async fn update_group_sponsor_featured(
             &self,

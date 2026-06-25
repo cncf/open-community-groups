@@ -295,6 +295,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/sponsors/{group_sponsor_id}/update",
             get(dashboard::group::sponsors::update_page),
         )
+        .route("/store", get(dashboard::group::store::list_page))
         .route("/team", get(dashboard::group::team::list_page))
         .route_layer(check_selected_group_permission(GroupPermission::Read));
 
@@ -406,6 +407,11 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/sponsors/{group_sponsor_id}/update",
             put(dashboard::group::sponsors::update),
+        )
+        .route("/store", post(dashboard::group::store::add))
+        .route(
+            "/store/{group_store_item_id}",
+            put(dashboard::group::store::update).delete(dashboard::group::store::delete),
         )
         .route_layer(check_selected_group_permission(
             GroupPermission::SponsorsWrite,

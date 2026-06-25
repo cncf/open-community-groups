@@ -1,0 +1,103 @@
+{% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ self.preview_description() |demoji }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &group.name) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+    <div class="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}"
+             class="text-sm font-medium text-primary-700 hover:text-primary-900">← Back to {{ group.name|demoji }}</a>
+          <h1 class="mt-4 text-3xl font-semibold text-stone-950 sm:text-4xl">Group store</h1>
+          <p class="mt-3 max-w-2xl text-base leading-7 text-stone-600">Swag, merch, and community items from {{ group.name|demoji }}.</p>
+        </div>
+      </div>
+
+      {% if store_items.is_empty() -%}
+        <div class="mt-10 rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-8 py-12 text-center">
+          <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-50">
+            <div class="svg-icon size-6 icon-shopping-bag bg-primary-500"></div>
+          </div>
+          <h2 class="mt-4 text-lg font-semibold text-stone-950">The store is empty</h2>
+          <p class="mt-2 text-sm text-stone-600">Check back for group swag and community merch.</p>
+        </div>
+      {% else -%}
+        <div class="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {% for item in store_items -%}
+            <article class="flex overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+              <div class="flex w-full flex-col">
+                {% if let Some(image_url) = &item.image_url -%}
+                  <img src="{{ image_url }}"
+                       alt=""
+                       class="h-56 w-full object-cover"
+                       loading="lazy">
+                {% else -%}
+                  <div class="h-2 bg-gradient-to-r from-primary-500 via-primary-300 to-stone-100"></div>
+                {% endif -%}
+                <div class="flex grow flex-col p-5">
+                  <div class="flex items-start justify-between gap-3">
+                    <h2 class="text-xl font-semibold text-stone-950">{{ item.name }}</h2>
+                    {% if item.featured -%}
+                      <span class="shrink-0 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">Featured</span>
+                    {% endif -%}
+                  </div>
+                  {% if let Some(description) = &item.description -%}
+                    <p class="mt-3 text-sm leading-6 text-stone-600">{{ description }}</p>
+                  {% endif -%}
+                  <div class="mt-5 flex items-center justify-between gap-4 border-t border-stone-100 pt-5">
+                    <div>
+                      <div class="text-lg font-semibold text-stone-950">{{ item.display_price() }}</div>
+                      {% if let Some(inventory_count) = item.inventory_count -%}
+                        <div class="mt-1 text-xs text-stone-500">
+                          {% if item.is_sold_out() -%}
+                            Sold out
+                          {% else -%}
+                            {{ inventory_count }} available
+                          {% endif -%}
+                        </div>
+                      {% endif -%}
+                    </div>
+                    <a href="{{ item.checkout_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn-primary-anchor
+                              {% if item.is_sold_out() %}opacity-50 pointer-events-none{% endif %}"
+                       {% if item.is_sold_out() -%}
+                         aria-disabled="true"
+                       {% endif -%}>Buy</a>
+                  </div>
+                </div>
+              </div>
+            </article>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    </div>
+  </div>
+{% endblock content -%}

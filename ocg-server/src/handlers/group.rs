@@ -23,7 +23,7 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        group::{self, Page},
+        group::{self, Page, StorePage},
         notifications::GroupWelcome,
     },
     types::{event::EventKind, group::GroupFull},
@@ -91,6 +91,42 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| group::UpcomingEventCard { event })
             .collect(),
+        user: User::default(),
+    };
+
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
+}
+
+/// Handler that renders the public group store page.
+#[instrument(skip_all)]
+pub(crate) async fn store_page(
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((alliance_name, group_slug)): Path<(String, String)>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let Some(mut group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return not_found::render(site_settings);
+    };
+    trim_public_gallery_images(&mut group.photos_urls);
+    group.sponsors.retain(|sponsor| sponsor.featured);
+
+    let store_items = db.list_group_store_items(group.group_id, false).await?;
+    let template = StorePage {
+        base_url: server_cfg.base_url,
+        group,
+        page_id: PageId::Group,
+        path: uri.path().to_string(),
+        site_settings,
+        store_items,
         user: User::default(),
     };
 

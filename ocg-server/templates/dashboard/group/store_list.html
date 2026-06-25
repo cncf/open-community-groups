@@ -1,0 +1,250 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{{ dashboard::page_title(title = "Store") -}}
+
+<div class="my-5 grid gap-6">
+  <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-stone-950">Add swag item</h2>
+        <p class="mt-1 text-sm text-stone-600">List group swag with a price, product image, inventory, and checkout link.</p>
+      </div>
+      {% if !can_manage_store -%}
+        <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">Read only</span>
+      {% endif -%}
+    </div>
+
+    <form class="mt-5 grid gap-4"
+          hx-post="/dashboard/group/store"
+          hx-target="#dashboard-content"
+          hx-indicator="#dashboard-spinner"
+          {% if !can_manage_store -%}
+            inert
+          {% endif -%}>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <label class="block">
+          <span class="label-primary">Name</span>
+          <input name="name"
+                 class="input-primary mt-1"
+                 maxlength="{{ crate::validation::MAX_LEN_M }}"
+                 placeholder="Community hoodie"
+                 required>
+        </label>
+        <label class="block">
+          <span class="label-primary">Checkout URL</span>
+          <input name="checkout_url"
+                 class="input-primary mt-1"
+                 placeholder="https://..."
+                 required>
+        </label>
+      </div>
+      <label class="block">
+        <span class="label-primary">Description</span>
+        <textarea name="description"
+                  class="input-primary mt-1 min-h-24"
+                  maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                  placeholder="Describe the item, sizes, shipping, or pickup details."></textarea>
+      </label>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <label class="block">
+          <span class="label-primary">Image URL</span>
+          <input name="image_url" class="input-primary mt-1" placeholder="https://...">
+        </label>
+        <label class="block">
+          <span class="label-primary">Price in cents</span>
+          <input name="price_minor"
+                 class="input-primary mt-1"
+                 type="number"
+                 min="0"
+                 value="0"
+                 required>
+        </label>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label class="block">
+          <span class="label-primary">Currency</span>
+          <input name="currency_code"
+                 class="input-primary mt-1 uppercase"
+                 maxlength="3"
+                 value="USD"
+                 required>
+        </label>
+        <label class="block">
+          <span class="label-primary">Inventory</span>
+          <input name="inventory_count"
+                 class="input-primary mt-1"
+                 type="number"
+                 min="0"
+                 placeholder="Unlimited">
+        </label>
+        <label class="block">
+          <span class="label-primary">Featured</span>
+          <select name="featured" class="input-primary mt-1">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="label-primary">Active</span>
+          <select name="active" class="input-primary mt-1">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <button type="submit"
+                class="btn-primary"
+                {% if !can_manage_store -%}
+                  disabled
+                {% endif -%}>Add item</button>
+      </div>
+    </form>
+  </section>
+
+  {% if items.is_empty() -%}
+    <section class="rounded-2xl border border-dashed border-stone-300 bg-white px-8 py-12 text-center">
+      <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-50">
+        <div class="svg-icon size-6 icon-shopping-bag bg-primary-500"></div>
+      </div>
+      <h2 class="mt-4 text-lg font-semibold text-stone-950">No store items yet</h2>
+      <p class="mt-2 text-sm text-stone-600">Add swag, merch, stickers, books, or sponsor kits to open the group store.</p>
+    </section>
+  {% else -%}
+    <section class="grid gap-5 xl:grid-cols-2">
+      {% for item in items -%}
+        <article class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+          {% if let Some(image_url) = &item.image_url -%}
+            <img src="{{ image_url }}"
+                 alt=""
+                 class="h-44 w-full object-cover"
+                 loading="lazy">
+          {% else -%}
+            <div class="h-2 bg-gradient-to-r from-primary-500 via-primary-300 to-stone-100"></div>
+          {% endif -%}
+          <form class="grid gap-4 p-5"
+                hx-put="/dashboard/group/store/{{ item.group_store_item_id }}"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                {% if !can_manage_store -%}
+                  inert
+                {% endif -%}>
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div class="font-semibold text-stone-950">{{ item.name }}</div>
+                <div class="text-sm text-stone-500">
+                  {{ item.display_price() }}
+                  {% if let Some(inventory_count) = item.inventory_count -%}
+                    · {{ inventory_count }} in stock
+                  {% endif -%}
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                {% if item.featured -%}
+                  <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">Featured</span>
+                {% endif -%}
+                {% if !item.active -%}
+                  <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">Inactive</span>
+                {% endif -%}
+              </div>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block">
+                <span class="label-primary">Name</span>
+                <input name="name"
+                       class="input-primary mt-1"
+                       value="{{ item.name }}"
+                       maxlength="{{ crate::validation::MAX_LEN_M }}"
+                       required>
+              </label>
+              <label class="block">
+                <span class="label-primary">Checkout URL</span>
+                <input name="checkout_url"
+                       class="input-primary mt-1"
+                       value="{{ item.checkout_url }}"
+                       required>
+              </label>
+            </div>
+            <label class="block">
+              <span class="label-primary">Description</span>
+              <textarea name="description"
+                        class="input-primary mt-1 min-h-24"
+                        maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{{ item.description.as_deref().unwrap_or("") }}</textarea>
+            </label>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block">
+                <span class="label-primary">Image URL</span>
+                <input name="image_url"
+                       class="input-primary mt-1"
+                       value="{{ item.image_url.as_deref().unwrap_or("") }}">
+              </label>
+              <label class="block">
+                <span class="label-primary">Price in cents</span>
+                <input name="price_minor"
+                       class="input-primary mt-1"
+                       type="number"
+                       min="0"
+                       value="{{ item.price_minor }}"
+                       required>
+              </label>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <label class="block">
+                <span class="label-primary">Currency</span>
+                <input name="currency_code"
+                       class="input-primary mt-1 uppercase"
+                       maxlength="3"
+                       value="{{ item.currency_code }}"
+                       required>
+              </label>
+              <label class="block">
+                <span class="label-primary">Inventory</span>
+                <input name="inventory_count"
+                       class="input-primary mt-1"
+                       type="number"
+                       min="0"
+                       value="{{ item.inventory_input_value() }}">
+              </label>
+              <label class="block">
+                <span class="label-primary">Featured</span>
+                <select name="featured" class="input-primary mt-1">
+                  <option value="false" {% if !item.featured %}selected{% endif %}>No</option>
+                  <option value="true" {% if item.featured %}selected{% endif %}>Yes</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="label-primary">Active</span>
+                <select name="active" class="input-primary mt-1">
+                  <option value="true" {% if item.active %}selected{% endif %}>Yes</option>
+                  <option value="false" {% if !item.active %}selected{% endif %}>No</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button type="submit"
+                      class="btn-primary"
+                      {% if !can_manage_store -%}
+                        disabled
+                      {% endif -%}>Save</button>
+              <button type="button"
+                      class="btn-tertiary"
+                      hx-delete="/dashboard/group/store/{{ item.group_store_item_id }}"
+                      hx-target="#dashboard-content"
+                      hx-indicator="#dashboard-spinner"
+                      hx-confirm="Delete this store item?"
+                      {% if !can_manage_store -%}
+                        disabled
+                      {% endif -%}>Delete</button>
+              <a href="{{ item.checkout_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="btn-secondary-anchor">Open checkout</a>
+            </div>
+          </form>
+        </article>
+      {% endfor -%}
+    </section>
+  {% endif -%}
+</div>

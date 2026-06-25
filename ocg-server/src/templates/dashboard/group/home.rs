@@ -11,7 +11,7 @@ use crate::{
         auth::User,
         dashboard::{
             audit,
-            group::{analytics, events, members, settings, sponsors, team},
+            group::{analytics, events, members, settings, sponsors, store, team},
         },
         filters,
         helpers::user_initials,
@@ -89,6 +89,8 @@ pub(crate) enum Content {
     Settings(Box<settings::UpdatePage>),
     /// Sponsors management page.
     Sponsors(sponsors::ListPage),
+    /// Group store management page.
+    Store(store::ListPage),
     /// Team management page.
     Team(team::ListPage),
 }
@@ -124,6 +126,11 @@ impl Content {
         matches!(self, Content::Sponsors(_))
     }
 
+    /// Check if the content is the store page.
+    fn is_store(&self) -> bool {
+        matches!(self, Content::Store(_))
+    }
+
     /// Check if the content is the team page.
     fn is_team(&self) -> bool {
         matches!(self, Content::Team(_))
@@ -139,6 +146,7 @@ impl std::fmt::Display for Content {
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
             Content::Sponsors(template) => write!(f, "{}", template.render()?),
+            Content::Store(template) => write!(f, "{}", template.render()?),
             Content::Team(template) => write!(f, "{}", template.render()?),
         }
     }
@@ -164,6 +172,8 @@ pub(crate) enum Tab {
     Settings,
     /// Sponsors management tab.
     Sponsors,
+    /// Group store management tab.
+    Store,
     /// Team management tab.
     Team,
 }

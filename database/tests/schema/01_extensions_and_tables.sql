@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(68);
+select plan(69);
 
 -- ============================================================================
 -- TESTS
@@ -58,6 +58,7 @@ select has_table('group_role');
 select has_table('group_role_group_permission');
 select has_table('group_site_layout');
 select has_table('group_sponsor');
+select has_table('group_store_item');
 select has_table('group_team');
 select has_table('group_views');
 select has_table('images');

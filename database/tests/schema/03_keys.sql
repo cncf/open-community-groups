@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(153);
+select plan(156);
 
 -- ============================================================================
 -- TESTS
@@ -51,6 +51,7 @@ select has_pk('group_role');
 select has_pk('group_role_group_permission');
 select has_pk('group_site_layout');
 select has_pk('group_sponsor');
+select has_pk('group_store_item');
 select has_pk('group_team');
 select hasnt_pk('group_views');
 select has_pk('images');
@@ -138,6 +139,8 @@ select col_is_fk('group_member', 'user_id', 'user');
 select col_is_fk('group_role_group_permission', 'group_permission_id', 'group_permission');
 select col_is_fk('group_role_group_permission', 'group_role_id', 'group_role');
 select col_is_fk('group_sponsor', 'group_id', 'group');
+select col_is_fk('group_store_item', 'created_by', 'user');
+select col_is_fk('group_store_item', 'group_id', 'group');
 select col_is_fk('group_team', 'group_id', 'group');
 select col_is_fk('group_team', 'role', 'group_role');
 select col_is_fk('group_team', 'user_id', 'user');
