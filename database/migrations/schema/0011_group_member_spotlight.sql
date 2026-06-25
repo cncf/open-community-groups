@@ -1,5 +1,5 @@
 create table if not exists group_member_spotlight (
-    group_member_spotlight_id uuid primary key default uuid_generate_v4(),
+    group_member_spotlight_id uuid primary key default gen_random_uuid(),
     group_id uuid not null references "group" (group_id) on delete cascade,
     user_id uuid not null references "user" (user_id) on delete cascade,
     created_by uuid not null references "user" (user_id),
