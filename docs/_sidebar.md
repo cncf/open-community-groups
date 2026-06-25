@@ -17,3 +17,6 @@
 - Support
   - [Frequently Asked Questions](/support/faq.md)
   - [Troubleshooting](/support/troubleshooting.md)
+
+- Developers
+  - [Development Guide](/development.md)

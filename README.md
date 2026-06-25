@@ -110,11 +110,46 @@ directory, wiki, and remote MCP operational tools.
 - Tools for creating and updating draft events and submitting talks when
   mutations are enabled
 
+## Architecture
+
+GOUP is a single Rust web application backed by PostgreSQL. The server renders
+most pages with Askama templates, enhances dashboard workflows with HTMX and
+small browser-side JavaScript modules, and keeps domain-heavy data operations in
+versioned SQL functions.
+
+At a high level:
+
+- `ocg-server/` contains the Axum HTTP server, authentication, handlers,
+  services, templates, static assets, and background workers.
+- `database/migrations/` owns schema changes, reference data, and PostgreSQL
+  functions used by dashboards, public pages, notifications, and payments.
+- `ocg-redirector/` is a small companion service for legacy redirects.
+- `mcp/` contains the remote MCP server and operational tool catalog.
+- `tests/` contains frontend unit tests and Playwright e2e coverage.
+- `docs/` contains user-facing and operator-facing documentation.
+
+The main runtime flow is:
+
+1. Axum routes in `ocg-server/src/router/` dispatch to handlers under
+   `ocg-server/src/handlers/`.
+2. Handlers authorize the current user, call database traits under
+   `ocg-server/src/db/`, and assemble typed template data.
+3. PostgreSQL functions and queries read or mutate normalized tables, often
+   returning JSON payloads for Rust to deserialize.
+4. Askama templates under `ocg-server/templates/` render HTML. HTMX refreshes
+   dashboard fragments without replacing the whole app shell.
+5. Background services process queued notifications, email delivery, reminders,
+   payments, image uploads, and meeting integrations.
+
+For a deeper contributor guide, see [`docs/development.md`](./docs/development.md).
+
 ## Development
 
 This repository contains a Rust web server, PostgreSQL schema/functions,
 Askama templates, Tailwind CSS, browser-side JavaScript, and Playwright tests.
 The app is developed from the repository root unless a command says otherwise.
+For codebase architecture, request flow, and contribution patterns, see the
+full [Development Guide](./docs/development.md).
 
 ### Prerequisites
 
