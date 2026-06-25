@@ -17,10 +17,10 @@ test.describe("site search page", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Find what you need" }),
     ).toBeVisible();
-    const searchInput = page.locator('input[name="query"]').first();
+    const searchInput = page.locator("#site-search-query");
     await expect(searchInput).toBeVisible();
     await expect(searchInput).toHaveValue("AI");
-    const searchForm = page.locator('form[action="/search"]').first();
+    const searchForm = page.locator("form:has(#site-search-query)");
     await expect(searchForm).toHaveAttribute("hx-get", "/search");
     await expect(searchForm).toHaveAttribute(
       "hx-trigger",
