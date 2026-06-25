@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use cached::proc_macro::cached;
+use cached::cached;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::types::Json;
 use tracing::instrument;
@@ -142,11 +142,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_timezones(&self) -> Result<Vec<String>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("timezones") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<String>> {
             let timezones = db

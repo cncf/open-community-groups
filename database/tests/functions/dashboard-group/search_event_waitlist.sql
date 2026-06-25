@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -135,8 +135,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'waitlist', '[
-            {"created_at": 1704067200, "user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/alice.png", "title": "Principal Engineer"},
-            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
+            {"created_at": 1704067200, "user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice", "waitlist_position": 1, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/alice.png", "title": "Principal Engineer"},
+            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "waitlist_position": 2, "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -151,7 +151,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'waitlist', '[
-            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
+            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "waitlist_position": 2, "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
         ]'::jsonb,
         'total', 2
     ),
@@ -195,6 +195,112 @@ select is(
         'total', 0
     ),
     'Should return empty list when event belongs to another group'
+);
+
+-- Should filter waitlist entries by identity search query
+select ok(
+    (
+        with result as (
+            select search_event_waitlist(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'ali'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and data#>>'{waitlist,0,user_id}' = :'user1ID'
+        and data#>>'{waitlist,0,waitlist_position}' = '1'
+        from result
+    ),
+    'Should filter waitlist entries by identity search query'
+);
+
+-- Should filter waitlist entries by company search query
+select ok(
+    (
+        with result as (
+            select search_event_waitlist(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'cloud corp'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and data#>>'{waitlist,0,user_id}' = :'user1ID'
+        and data#>>'{waitlist,0,waitlist_position}' = '1'
+        from result
+    ),
+    'Should filter waitlist entries by company search query'
+);
+
+-- Should filter waitlist entries by title search query
+select ok(
+    (
+        with result as (
+            select search_event_waitlist(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'principal engineer'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and data#>>'{waitlist,0,user_id}' = :'user1ID'
+        and data#>>'{waitlist,0,waitlist_position}' = '1'
+        from result
+    ),
+    'Should filter waitlist entries by title search query'
+);
+
+-- Should keep real waitlist position when search filters earlier entries
+select ok(
+    (
+        with result as (
+            select search_event_waitlist(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'ts_query', 'bob'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and data#>>'{waitlist,0,user_id}' = :'user2ID'
+        and data#>>'{waitlist,0,waitlist_position}' = '2'
+        from result
+    ),
+    'Should keep real waitlist position when search filters earlier entries'
+);
+
+-- Should return no waitlist entries when search has no matches
+select is(
+    search_event_waitlist(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'event_id', :'event1ID'::uuid,
+            'limit', 50,
+            'offset', 0,
+            'ts_query', 'missing person'
+        )
+    )::jsonb,
+    jsonb_build_object(
+        'waitlist', '[]'::jsonb,
+        'total', 0
+    ),
+    'Should return no waitlist entries when search has no matches'
 );
 
 -- ============================================================================

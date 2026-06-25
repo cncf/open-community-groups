@@ -250,6 +250,26 @@ const withEventActionState = (meta, state) => {
 };
 
 /**
+ * Applies registration-window restrictions to attendee registration actions.
+ * @param {{registrationWindowOpen: boolean, registrationWindowUnavailableTitle?: string}} meta - Attendance metadata
+ * @param {object} state - Base render state
+ * @param {{allowManualInvitation?: boolean}} options - Override options
+ * @returns {object} Render state
+ */
+const withRegistrationWindowState = (meta, state, { allowManualInvitation = false } = {}) => {
+  const eventState = withEventActionState(meta, state);
+  if (eventState.disabled || allowManualInvitation || meta.registrationWindowOpen) {
+    return eventState;
+  }
+
+  return {
+    ...eventState,
+    disabled: true,
+    title: meta.registrationWindowUnavailableTitle,
+  };
+};
+
+/**
  * Returns the default sign-in label for a container.
  * @param {{attendeeApprovalRequired: boolean, isSoldOut: boolean, isTicketed: boolean, ticketPurchaseAvailable: boolean, waitlistEnabled: boolean}} meta - Attendance metadata
  * @returns {string} Label text
@@ -304,6 +324,13 @@ const getAttendState = (meta) => {
     });
   }
 
+  if (!meta.registrationWindowOpen) {
+    return withRegistrationWindowState(meta, {
+      icon: meta.attendeeApprovalRequired ? REQUEST_INVITATION_ICON : ATTEND_EVENT_ICON,
+      label: getDefaultAttendLabel(meta),
+    });
+  }
+
   if (meta.isTicketed && !meta.ticketPurchaseAvailable && !meta.isPastEvent) {
     return {
       disabled: true,
@@ -330,9 +357,9 @@ const getAttendState = (meta) => {
 
   if (!meta.isTicketed && meta.isSoldOut && !meta.isPastEvent) {
     if (meta.waitlistEnabled) {
-      return {
+      return withRegistrationWindowState(meta, {
         label: JOIN_WAITLIST_LABEL,
-      };
+      });
     }
 
     return {
@@ -342,7 +369,7 @@ const getAttendState = (meta) => {
     };
   }
 
-  return withEventActionState(meta, {
+  return withRegistrationWindowState(meta, {
     icon: ATTEND_EVENT_ICON,
     label: getDefaultAttendLabel(meta),
   });
@@ -473,15 +500,21 @@ export const showGuestAttendanceState = (container, meta) => {
  * @param {HTMLElement} container - Attendance container element
  * @param {{canceled: boolean, isPastEvent: boolean}} meta - Attendance metadata
  */
-export const showRegistrationQuestionsPendingState = (container, meta) => {
+export const showRegistrationQuestionsPendingState = (container, meta, response = {}) => {
   showPrimaryAttendanceState(
     container,
     meta,
     "attendButton",
-    withEventActionState(meta, {
-      icon: QUESTIONS_TAB_ICON,
-      label: COMPLETE_REGISTRATION_LABEL,
-    }),
+    withRegistrationWindowState(
+      meta,
+      {
+        icon: QUESTIONS_TAB_ICON,
+        label: COMPLETE_REGISTRATION_LABEL,
+      },
+      {
+        allowManualInvitation: response.manually_invited === true,
+      },
+    ),
   );
 
   const { attendButton } = getPrimaryControls(container);
@@ -494,8 +527,11 @@ export const showRegistrationQuestionsPendingState = (container, meta) => {
  * Shows the approved invitation state for an attendee.
  * @param {HTMLElement} container - Attendance container element
  * @param {{isPastEvent: boolean}} meta - Attendance metadata
+ * @param {{manually_invited?: boolean}} response - Attendance response
  */
-export const showInvitationApprovedAttendanceState = (container, meta) => {
+export const showInvitationApprovedAttendanceState = (container, meta, response = {}) => {
+  const allowManualInvitation = response.manually_invited === true;
+
   if (meta.canceled) {
     showPrimaryAttendanceState(
       container,
@@ -509,7 +545,26 @@ export const showInvitationApprovedAttendanceState = (container, meta) => {
     return;
   }
 
-  if (!meta.isPastEvent && meta.hasNoCapacity) {
+  if (!meta.registrationWindowOpen) {
+    showPrimaryAttendanceState(
+      container,
+      meta,
+      "attendButton",
+      withRegistrationWindowState(
+        meta,
+        {
+          icon: ATTEND_EVENT_ICON,
+          label: ATTEND_EVENT_LABEL,
+        },
+        {
+          allowManualInvitation,
+        },
+      ),
+    );
+    return;
+  }
+
+  if (!allowManualInvitation && !meta.isPastEvent && meta.hasNoCapacity) {
     showPrimaryAttendanceState(container, meta, "attendButton", {
       disabled: true,
       icon: ATTEND_EVENT_ICON,
@@ -519,7 +574,7 @@ export const showInvitationApprovedAttendanceState = (container, meta) => {
     return;
   }
 
-  if (!meta.isPastEvent && meta.isSoldOut) {
+  if (!allowManualInvitation && !meta.isPastEvent && meta.isSoldOut) {
     showPrimaryAttendanceState(container, meta, "attendButton", {
       disabled: true,
       icon: ATTEND_EVENT_ICON,
@@ -533,10 +588,16 @@ export const showInvitationApprovedAttendanceState = (container, meta) => {
     container,
     meta,
     "attendButton",
-    withEventActionState(meta, {
-      icon: ATTEND_EVENT_ICON,
-      label: ATTEND_EVENT_LABEL,
-    }),
+    withRegistrationWindowState(
+      meta,
+      {
+        icon: ATTEND_EVENT_ICON,
+        label: ATTEND_EVENT_LABEL,
+      },
+      {
+        allowManualInvitation,
+      },
+    ),
   );
 };
 
@@ -659,13 +720,19 @@ const updateCheckoutButtonState = (container) => {
 
   const selectedTicketType = getSelectedTicketTypeValue(container);
   const shouldDisable =
-    meta.canceled || !meta.ticketPurchaseAvailable || meta.isPastEvent || !selectedTicketType;
+    meta.canceled ||
+    !meta.registrationWindowOpen ||
+    !meta.ticketPurchaseAvailable ||
+    meta.isPastEvent ||
+    !selectedTicketType;
 
   checkoutButton.disabled = shouldDisable;
   setDisabledStyles(checkoutButton, shouldDisable);
 
   if (meta.canceled) {
     checkoutButton.title = CANCELED_EVENT_TITLE;
+  } else if (!meta.registrationWindowOpen) {
+    checkoutButton.title = meta.registrationWindowUnavailableTitle;
   } else if (!meta.ticketPurchaseAvailable) {
     checkoutButton.title = TICKETS_UNAVAILABLE_TITLE;
   } else if (meta.isPastEvent) {
@@ -712,13 +779,15 @@ const syncTicketModalState = (container) => {
     if (ticketTypeOption instanceof HTMLInputElement) {
       ticketTypeOption.disabled =
         meta.canceled ||
+        !meta.registrationWindowOpen ||
         !meta.ticketPurchaseAvailable ||
         ticketTypeOption.dataset.ticketPurchasable !== "true";
     }
   });
 
   if (discountCodeInput instanceof HTMLInputElement) {
-    discountCodeInput.disabled = meta.canceled || !meta.ticketPurchaseAvailable;
+    discountCodeInput.disabled =
+      meta.canceled || !meta.registrationWindowOpen || !meta.ticketPurchaseAvailable;
   }
 
   updateCheckoutButtonState(container);

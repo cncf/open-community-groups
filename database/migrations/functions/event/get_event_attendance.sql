@@ -36,6 +36,16 @@ create or replace function get_event_attendance(
                 ),
                 false
             ) as is_checked_in,
+            coalesce(
+                (
+                    select bool_or(ea.manually_invited)
+                    from event_attendee ea
+                    where ea.event_id = p_event_id
+                    and ea.user_id = p_user_id
+                    and exists (select 1 from scoped_event)
+                ),
+                false
+            ) as manually_invited,
             case
                 when exists (
                     select 1
@@ -54,6 +64,15 @@ create or replace function get_event_attendance(
                     and ep.hold_expires_at > current_timestamp
                     and exists (select 1 from scoped_event)
                 ) then 'pending-payment'
+                when exists (
+                    select 1
+                    from event_attendee ea
+                    where ea.event_id = p_event_id
+                    and ea.user_id = p_user_id
+                    and ea.manually_invited = true
+                    and ea.status = 'invitation-pending'
+                    and exists (select 1 from scoped_event)
+                ) then 'invitation-approved'
                 when exists (
                     select 1
                     from event_attendee ea
@@ -138,12 +157,18 @@ create or replace function get_event_attendance(
         limit 1
     )
     select
-        json_build_object(
-            'is_checked_in', is_checked_in,
-            'purchase_amount_minor', (select amount_minor from purchase_state),
-            'refund_request_status', (select refund_request_status from refund_request_state),
-            'resume_checkout_url', (select provider_checkout_url from purchase_state),
-            'status', status
-        )
+        (
+            jsonb_build_object(
+                'is_checked_in', is_checked_in,
+                'purchase_amount_minor', (select amount_minor from purchase_state),
+                'refund_request_status', (select refund_request_status from refund_request_state),
+                'resume_checkout_url', (select provider_checkout_url from purchase_state),
+                'status', status
+            )
+            || case
+                when manually_invited then jsonb_build_object('manually_invited', true)
+                else '{}'::jsonb
+            end
+        )::json
     from attendance_state;
 $$ language sql;

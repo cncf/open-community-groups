@@ -8,20 +8,29 @@ create or replace function submit_event_registration_answers(
 returns boolean as $$
 declare
     v_group_id uuid;
+    v_has_active_checkout_hold boolean;
     v_has_ticket_types boolean;
+    v_manually_invited boolean;
     v_previous_status text;
+    v_registration_ends_at timestamptz;
     v_registration_questions jsonb;
+    v_registration_starts_at timestamptz;
+    v_registration_window_open boolean;
     v_starts_at timestamptz;
     v_updated_status text;
 begin
     -- Load active event context before validating answer edits
     select
         e.group_id,
+        e.registration_ends_at,
         e.registration_questions,
+        e.registration_starts_at,
         e.starts_at
     into
         v_group_id,
+        v_registration_ends_at,
         v_registration_questions,
+        v_registration_starts_at,
         v_starts_at
     from event e
     join "group" g on g.group_id = e.group_id
@@ -42,6 +51,13 @@ begin
         raise exception 'event does not have registration questions';
     end if;
 
+    -- Resolve the public registration window before applying attendee-specific overrides
+    v_registration_window_open := is_registration_window_open(
+        v_registration_starts_at,
+        v_registration_ends_at,
+        v_starts_at
+    );
+
     -- Block answer edits once the event has started
     if v_starts_at is not null
        and current_timestamp >= v_starts_at then
@@ -58,9 +74,23 @@ begin
         where ett.event_id = p_event_id
     ) into v_has_ticket_types;
 
+    -- Active checkout holds may finish answering questions after public registration closes
+    select exists (
+        select 1
+        from event_purchase ep
+        where ep.event_id = p_event_id
+        and ep.user_id = p_actor_user_id
+        and ep.status = 'pending'
+        and ep.hold_expires_at > current_timestamp
+    ) into v_has_active_checkout_hold;
+
     -- Lock the attendee row before storing answers
-    select ea.status
-    into v_previous_status
+    select
+        ea.manually_invited,
+        ea.status
+    into
+        v_manually_invited,
+        v_previous_status
     from event_attendee ea
     where ea.event_id = p_event_id
     and ea.user_id = p_actor_user_id
@@ -69,6 +99,13 @@ begin
 
     if not found then
         raise exception 'event registration not found';
+    end if;
+
+    -- Only manual invitations and active checkout holds can answer outside the public window
+    if not coalesce(v_manually_invited, false)
+       and not v_has_active_checkout_hold
+       and not v_registration_window_open then
+        raise exception 'event registration is not open';
     end if;
 
     -- Store answers and confirm pending non-ticketed registrations

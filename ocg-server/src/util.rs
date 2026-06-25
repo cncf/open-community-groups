@@ -145,7 +145,7 @@ pub(crate) fn build_user_dashboard_events_link(base_url: &str) -> String {
 pub(crate) fn compute_hash(bytes: &[u8]) -> String {
     let mut hasher = Sha256::new();
     hasher.update(bytes);
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 /// Helper function to format `DateTime` with timezone for ICS format (YYYYMMDDTHHMMSS)
@@ -339,6 +339,8 @@ mod tests {
             meeting_provider: None,
             payment_currency_code: None,
             popover_html: None,
+            registration_ends_at: None,
+            registration_starts_at: None,
             remaining_capacity: Some(15),
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),
             ticket_types: None,

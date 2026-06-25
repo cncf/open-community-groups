@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -43,6 +43,7 @@ select plan(19);
 \set user6ID '5e050000-0000-0000-0000-000000000020'
 \set user7ID '5e050000-0000-0000-0000-000000000021'
 \set user8ID '5e050000-0000-0000-0000-000000000022'
+\set user9ID '5e050000-0000-0000-0000-000000000023'
 
 -- ============================================================================
 -- SEED DATA
@@ -126,6 +127,8 @@ insert into "user" (
     :'user7ID', 'h7', 'att7@example.com', true, 'att7', 'Att Seven'
 ), (
     :'user8ID', 'h8', 'att8@example.com', true, 'att8', 'Att Eight'
+), (
+    :'user9ID', 'h12', 'att9@example.com', true, 'att9', 'Att Nine'
 ), (
     :'questionsCheckoutUserID', 'h9', 'rq-checkout@test.com', true, 'rq-checkout', null
 ), (
@@ -297,9 +300,13 @@ values (:'eventCanceledID', :'user1ID', false);
 insert into event_attendee (event_id, user_id, checked_in)
 values (:'eventDraftCanceledID', :'user2ID', false);
 
--- Event Attendee - pending organizer invitation should not report attendee
+-- Event Attendee - pending organizer invitation should report approved invitation
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (:'eventID', :'user8ID', true, 'invitation-pending');
+
+-- Event Attendee - pending non-manual invitation should not report attendee
 insert into event_attendee (event_id, user_id, status)
-values (:'eventID', :'user8ID', 'invitation-pending');
+values (:'eventID', :'user9ID', 'invitation-pending');
 
 -- Event Attendee - pending registration questions should report pending state
 insert into event_attendee (event_id, user_id, manually_invited, status)
@@ -530,9 +537,23 @@ select is(
     'Should return waitlisted status for a waitlisted user'
 );
 
--- Should return none for pending organizer-created invitations
+-- Should return invitation approved for pending organizer-created invitations
 select is(
     get_event_attendance(:'allianceID'::uuid, :'eventID'::uuid, :'user8ID'::uuid)::jsonb,
+    '{
+        "is_checked_in": false,
+        "manually_invited": true,
+        "purchase_amount_minor": null,
+        "refund_request_status": null,
+        "resume_checkout_url": null,
+        "status": "invitation-approved"
+    }'::jsonb,
+    'Should return invitation approved for pending organizer-created invitations'
+);
+
+-- Should return none for pending non-manual invitations
+select is(
+    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user9ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,
@@ -540,7 +561,7 @@ select is(
         "resume_checkout_url": null,
         "status": "none"
     }'::jsonb,
-    'Should return none for pending organizer-created invitations'
+    'Should return none for pending non-manual invitations'
 );
 
 -- Should return pending approval status for pending invitation request

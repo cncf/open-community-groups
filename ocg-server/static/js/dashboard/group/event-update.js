@@ -50,6 +50,8 @@ export const initializeEventUpdatePage = (root = document) => {
   const {
     startsAtInput,
     endsAtInput,
+    registrationStartsAtInput,
+    registrationEndsAtInput,
     cfsEnabledInput,
     cfsStartsAtInput,
     cfsEndsAtInput,
@@ -231,6 +233,8 @@ export const initializeEventUpdatePage = (root = document) => {
     pageRoot,
     startsAtInput,
     endsAtInput,
+    registrationStartsAtInput,
+    registrationEndsAtInput,
     cfsEnabledInput,
     cfsStartsAtInput,
     cfsEndsAtInput,

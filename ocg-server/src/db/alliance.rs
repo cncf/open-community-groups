@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use async_trait::async_trait;
-use cached::proc_macro::cached;
+use cached::cached;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -50,11 +50,10 @@ where
     #[instrument(skip(self), err)]
     async fn get_alliance_id_by_name(&self, name: &str) -> Result<Option<Uuid>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from(name) }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>, name: &str) -> Result<Option<Uuid>> {
             let alliance_id = db
@@ -76,11 +75,10 @@ where
     #[instrument(skip(self), err)]
     async fn get_alliance_name_by_id(&self, alliance_id: Uuid) -> Result<Option<String>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "Uuid",
             convert = r#"{ alliance_id }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>, alliance_id: Uuid) -> Result<Option<String>> {
             let name = db

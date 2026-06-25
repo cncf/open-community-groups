@@ -7,7 +7,7 @@ use axum::{
     extract::State,
     response::{Html, IntoResponse},
 };
-use cached::proc_macro::cached;
+use cached::cached;
 use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use quick_xml::{Reader, events::Event};
 use tracing::{debug, instrument};
@@ -188,7 +188,7 @@ pub(crate) async fn page(
     ))
 }
 
-#[cached(time = 900)]
+#[cached(ttl = 900)]
 pub(crate) async fn load_wiki_sections() -> Vec<WikiSection> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(8))

@@ -11,15 +11,24 @@ declare
     v_attendee_status text;
     v_capacity int;
     v_alliance_id uuid;
+    v_registration_ends_at timestamptz;
     v_registration_answers jsonb;
+    v_registration_starts_at timestamptz;
+    v_starts_at timestamptz;
 begin
     -- Lock the event and verify it belongs to the selected group
     select
         e.capacity,
-        g.alliance_id
+        g.alliance_id,
+        e.registration_ends_at,
+        e.registration_starts_at,
+        e.starts_at
     into
         v_capacity,
-        v_alliance_id
+        v_alliance_id,
+        v_registration_ends_at,
+        v_registration_starts_at,
+        v_starts_at
     from event e
     join "group" g on g.group_id = e.group_id
     where e.event_id = p_event_id
@@ -37,6 +46,15 @@ begin
 
     if not found then
         raise exception 'event not found or inactive';
+    end if;
+
+    -- Attendee-requested invitations stay bound by the registration window
+    if not is_registration_window_open(
+        v_registration_starts_at,
+        v_registration_ends_at,
+        v_starts_at
+    ) then
+        raise exception 'event registration is not open';
     end if;
 
     -- Ensure the request is still pending and load any submitted registration answers

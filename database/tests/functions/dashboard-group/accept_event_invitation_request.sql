@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(20);
 
 -- ============================================================================
 -- VARIABLES
@@ -20,6 +20,7 @@ select plan(19);
 \set eventPastID '3a010000-0000-0000-0000-000000000009'
 \set eventPendingInvitationID '3a010000-0000-0000-0000-000000000010'
 \set eventQuestionsApprovalID '3a010000-0000-0000-0000-000000000011'
+\set eventRegistrationOpenUntilStartID '3a010000-0000-0000-0000-000000000023'
 \set eventUnpublishedID '3a010000-0000-0000-0000-000000000012'
 \set groupCategoryID '3a010000-0000-0000-0000-000000000013'
 \set groupID '3a010000-0000-0000-0000-000000000014'
@@ -31,6 +32,7 @@ select plan(19);
 \set requester3ID '3a010000-0000-0000-0000-000000000020'
 \set requester4ID '3a010000-0000-0000-0000-000000000021'
 \set requester5ID '3a010000-0000-0000-0000-000000000022'
+\set requester6ID '3a010000-0000-0000-0000-000000000024'
 
 -- ============================================================================
 -- SEED DATA
@@ -73,6 +75,7 @@ values
     (:'requester3ID', 'h', 'requester3@test.com', 'requester3'),
     (:'requester4ID', 'h', 'requester4@test.com', 'requester4'),
     (:'requester5ID', 'h', 'requester5@test.com', 'requester5'),
+    (:'requester6ID', 'h', 'requester6@test.com', 'requester6'),
     (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request');
 
 -- Groups
@@ -102,7 +105,8 @@ insert into event (
     capacity,
     attendee_approval_required,
     starts_at,
-    ends_at
+    ends_at,
+    registration_starts_at
 )
 values
     (
@@ -117,6 +121,7 @@ values
         true,
         2,
         true,
+        null,
         null,
         null
     ),
@@ -133,6 +138,7 @@ values
         1,
         true,
         null,
+        null,
         null
     ),
     (
@@ -147,6 +153,7 @@ values
         false,
         null,
         true,
+        null,
         null,
         null
     ),
@@ -163,6 +170,7 @@ values
         null,
         true,
         null,
+        null,
         null
     ),
     (
@@ -177,6 +185,7 @@ values
         true,
         null,
         false,
+        null,
         null,
         null
     ),
@@ -193,7 +202,8 @@ values
         null,
         true,
         current_timestamp - interval '2 hours',
-        current_timestamp - interval '1 hour'
+        current_timestamp - interval '1 hour',
+        null
     ),
     (
         :'eventPendingInvitationID',
@@ -207,6 +217,7 @@ values
         true,
         null,
         true,
+        null,
         null,
         null
     ),
@@ -223,7 +234,24 @@ values
         null,
         true,
         null,
+        null,
         null
+    ),
+    (
+        :'eventRegistrationOpenUntilStartID',
+        'Registration Open Until Start Event',
+        'registration-open-until-start-event',
+        'd',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        null,
+        true,
+        current_timestamp - interval '1 hour',
+        current_timestamp + interval '1 hour',
+        current_timestamp - interval '2 hours'
     );
 
 -- Event with registration questions used to verify answer copying on accept
@@ -270,7 +298,8 @@ values
     (:'eventPastID', :'requesterID'),
     (:'eventPendingInvitationID', :'requester3ID'),
     (:'eventAttendeeConflictID', :'requester4ID'),
-    (:'eventAttendeeConflictID', :'requester5ID');
+    (:'eventAttendeeConflictID', :'requester5ID'),
+    (:'eventRegistrationOpenUntilStartID', :'requester6ID');
 
 -- Invitation request with registration answers copied when accepted
 insert into event_invitation_request (event_id, user_id, registration_answers)
@@ -475,6 +504,16 @@ select throws_ok(
     ),
     'event not found or inactive',
     'Should reject accepting when event is past'
+);
+
+-- Should reject accepting attendee-requested invitations after an open-only registration window reaches the event start
+select throws_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
+        :'actorID', :'groupID', :'eventRegistrationOpenUntilStartID', :'requester6ID'
+    ),
+    'event registration is not open',
+    'Should reject accepting attendee-requested invitations after an open-only registration window reaches the event start'
 );
 
 -- Should reject accepting an already reviewed request

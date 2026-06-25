@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,8 @@ select plan(7);
 \set eventID '79430000-0000-0000-0000-000000000004'
 \set eventInactiveID '79430000-0000-0000-0000-000000000005'
 \set eventInactiveTicketTypeID '79430000-0000-0000-0000-000000000006'
+\set eventOpenUntilStartID '79430000-0000-0000-0000-000000000022'
+\set eventOpenUntilStartTicketTypeID '79430000-0000-0000-0000-000000000023'
 \set eventTicketTypeID '79430000-0000-0000-0000-000000000007'
 \set expiredPurchaseID '79430000-0000-0000-0000-000000000008'
 \set freePurchaseID '79430000-0000-0000-0000-000000000009'
@@ -22,6 +24,7 @@ select plan(7);
 \set groupID '79430000-0000-0000-0000-000000000011'
 \set inactivePurchaseID '79430000-0000-0000-0000-000000000012'
 \set invitedPurchaseID '79430000-0000-0000-0000-000000000013'
+\set openUntilStartPurchaseID '79430000-0000-0000-0000-000000000024'
 \set paidPurchaseID '79430000-0000-0000-0000-000000000014'
 \set priceWindowID '79430000-0000-0000-0000-000000000015'
 \set registrationQuestionID '79430000-0000-0000-0000-000000000016'
@@ -30,6 +33,7 @@ select plan(7);
 \set user3ID '79430000-0000-0000-0000-000000000019'
 \set user4ID '79430000-0000-0000-0000-000000000020'
 \set user5ID '79430000-0000-0000-0000-000000000021'
+\set user6ID '79430000-0000-0000-0000-000000000025'
 
 -- ============================================================================
 -- SEED DATA
@@ -99,6 +103,13 @@ values
         'user5@example.com',
         true,
         'user-5'
+    ),
+    (
+        :'user6ID',
+        'hash-6',
+        'user6@example.com',
+        true,
+        'user-6'
     );
 
 -- Group
@@ -115,10 +126,12 @@ insert into event (
     slug,
     description,
     timezone,
+    ends_at,
     starts_at,
     published,
     published_at,
-    registration_questions
+    registration_questions,
+    registration_starts_at
 ) values (
     -- Event with pending registration answers created during checkout
     :'eventID',
@@ -129,6 +142,7 @@ insert into event (
     'free-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     true,
     now(),
@@ -138,7 +152,8 @@ insert into event (
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
-    ))
+    )),
+    null
 ), (
     :'eventInactiveID',
     :'eventCategoryID',
@@ -148,10 +163,27 @@ insert into event (
     'inactive-free-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    null
+), (
+    :'eventOpenUntilStartID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Open Until Start Free Event',
+    'open-until-start-free-event',
+    'Test event',
+    'UTC',
+    now() + interval '1 hour',
+    now() - interval '1 hour',
+    true,
+    now(),
+    '[]'::jsonb,
+    now() - interval '2 hours'
 );
 
 -- Ticket type
@@ -173,6 +205,13 @@ values
     (
         :'eventInactiveTicketTypeID',
         :'eventInactiveID',
+        1,
+        10,
+        'General admission'
+    ),
+    (
+        :'eventOpenUntilStartTicketTypeID',
+        :'eventOpenUntilStartID',
         1,
         10,
         'General admission'
@@ -260,6 +299,16 @@ insert into event_purchase (
     'pending',
     'General admission',
     :'user5ID'
+), (
+    :'openUntilStartPurchaseID',
+    0,
+    'USD',
+    :'eventOpenUntilStartID',
+    :'eventOpenUntilStartTicketTypeID',
+    now() + interval '10 minutes',
+    'pending',
+    'General admission',
+    :'user6ID'
 );
 
 -- Pending attendee row with registration answers created during checkout
@@ -382,6 +431,54 @@ select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'inactivePurchaseID'),
     'event not found or inactive',
     'Should reject free purchases when the event becomes inactive'
+);
+
+-- Should complete active free holds after an open-only registration window reaches the event start
+select is(
+    complete_free_event_purchase(:'openUntilStartPurchaseID'::uuid)::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'eventOpenUntilStartID'::uuid,
+        'user_id', :'user6ID'::uuid
+    ),
+    'Should complete active free holds after an open-only registration window reaches the event start'
+);
+
+-- Should persist the open-only registration window free hold completion
+select results_eq(
+    format($$
+        with ids as (
+            select
+                %L::uuid as event_purchase_id,
+                %L::uuid as event_id,
+                %L::uuid as user_id
+        )
+        select
+            (
+                select completed_at is not null
+                from event_purchase
+                where event_purchase_id = ids.event_purchase_id
+            ),
+            (
+                select hold_expires_at is null
+                from event_purchase
+                where event_purchase_id = ids.event_purchase_id
+            ),
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = ids.event_purchase_id
+            ),
+            (
+                select status
+                from event_attendee
+                where event_id = ids.event_id
+                and user_id = ids.user_id
+            )
+        from ids
+    $$, :'openUntilStartPurchaseID', :'eventOpenUntilStartID', :'user6ID'),
+    $$ values (true, true, 'completed'::text, 'confirmed'::text) $$,
+    'Should persist the completed open-only free hold purchase and attendee row'
 );
 
 -- Should reject non-free purchases

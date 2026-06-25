@@ -25,6 +25,7 @@
 {{ template "common/get_alliance_full.sql" }}
 {{ template "common/get_alliance_summary.sql" }} -- Do not sort alphabetically, has dependency
 {{ template "common/get_event_occupied_seat_count.sql" }} -- Dependency for event capacity counts
+{{ template "common/is_registration_window_open.sql" }} -- Dependency for attendee registration flows
 {{ template "common/list_event_discount_codes.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
@@ -167,6 +168,7 @@
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/publish_event_series_events.sql" }}
 {{ template "dashboard-group/reject_event_invitation_request.sql" }}
+{{ template "dashboard-group/resolve_event_custom_notification_recipient_ids.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
 {{ template "dashboard-group/search_event_invitation_requests.sql" }}
 {{ template "dashboard-group/search_event_waitlist.sql" }}

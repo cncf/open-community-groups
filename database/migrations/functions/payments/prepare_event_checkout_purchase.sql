@@ -14,7 +14,10 @@ declare
     v_currency_code text;
     v_discount_amount_minor bigint;
     v_event_discount_code_id uuid;
+    v_event_registration_ends_at timestamptz;
+    v_event_registration_starts_at timestamptz;
     v_event_slug text;
+    v_event_starts_at timestamptz;
     v_existing_purchase_id uuid;
     v_existing_purchase_matches_selection boolean;
     v_existing_purchase_status text;
@@ -42,15 +45,21 @@ begin
     -- Load the route and recipient details needed by the checkout provider
     select
         c.name,
-        e.slug,
+        e.registration_ends_at,
         e.registration_questions,
+        e.registration_starts_at,
+        e.slug,
+        e.starts_at,
         g.slug,
         g.slug_pretty,
         g.payment_recipient
     into
         v_alliance_name,
-        v_event_slug,
+        v_event_registration_ends_at,
         v_registration_questions,
+        v_event_registration_starts_at,
+        v_event_slug,
+        v_event_starts_at,
         v_group_slug,
         v_group_slug_pretty,
         v_recipient
@@ -102,6 +111,15 @@ begin
                     'recipient', v_recipient
                 );
         end if;
+    end if;
+
+    -- Reject new or replacement checkout holds outside the registration window
+    if not is_registration_window_open(
+        v_event_registration_starts_at,
+        v_event_registration_ends_at,
+        v_event_starts_at
+    ) then
+        raise exception 'event registration is not open';
     end if;
 
     -- Resolve the requested ticket, discount, and final amount

@@ -76,8 +76,10 @@ Check event editor completeness:
 
 1. Required details are filled (name, type, category, description).
 2. Date/time is valid (end on/after start).
-3. Meeting constraints are satisfied when automatic meeting is requested.
-4. CFS rules are valid if CFS is enabled.
+3. Registration open and close dates are not after the event start date, and close is after open if a
+   registration window is set.
+4. Meeting constraints are satisfied when automatic meeting is requested.
+5. CFS rules are valid if CFS is enabled.
 
 For ticketed events also verify:
 
@@ -93,10 +95,12 @@ not complete, check:
 
 1. The selected ticket type is active and not sold out.
 2. The ticket type has a price window that is currently in effect.
-3. The discount code is active, still has remaining uses, and has not reached any total-use
+3. The event registration window is currently open for starting checkout, if one is configured.
+   Existing active ticket holds can still complete until the hold expires.
+4. The discount code is active, still has remaining uses, and has not reached any total-use
    limit. Remaining uses are reserved by active holds and active purchases, then released again if
    the hold expires or the ticket is refunded.
-4. The event has not been canceled.
+5. The event has not been canceled.
 
 ## Check-In Is Unavailable
 

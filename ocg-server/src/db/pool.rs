@@ -13,16 +13,13 @@ const DB_POOL_RECYCLE_TIMEOUT: Duration = Duration::from_secs(5);
 /// Default timeout when waiting for an available database connection.
 const DB_POOL_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 
-/// SQL used to reset transaction and advisory lock state when recycling a connection.
-const DB_RECYCLE_SQL: &str = "ROLLBACK; SELECT pg_advisory_unlock_all();";
-
 /// Apply server defaults to the database pool configuration.
 pub(crate) fn config_with_defaults(cfg: &Config) -> Config {
     let mut cfg = cfg.clone();
 
-    // Reset leaked transaction and advisory lock state when recycling connections
-    cfg.manager.get_or_insert_with(|| ManagerConfig {
-        recycling_method: RecyclingMethod::Custom(DB_RECYCLE_SQL.to_string()),
+    // Reset session state when recycling connections
+    cfg.manager.get_or_insert(ManagerConfig {
+        recycling_method: RecyclingMethod::Clean,
     });
 
     // Bound pool capacity and waits when deployment config does not override them
@@ -42,10 +39,7 @@ mod tests {
         let cfg = config_with_defaults(&Config::new());
 
         let manager = cfg.manager.expect("manager config should be set");
-        assert_eq!(
-            manager.recycling_method,
-            RecyclingMethod::Custom(DB_RECYCLE_SQL.to_string())
-        );
+        assert_eq!(manager.recycling_method, RecyclingMethod::Clean);
 
         let pool = cfg.pool.expect("pool config should be set");
         assert_eq!(pool.max_size, DB_POOL_MAX_SIZE);

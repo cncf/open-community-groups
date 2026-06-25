@@ -113,6 +113,12 @@ pub struct EventSummary {
     pub payment_currency_code: Option<String>,
     /// Pre-rendered HTML for map/calendar popovers.
     pub popover_html: Option<String>,
+    /// Registration end time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub registration_ends_at: Option<DateTime<Utc>>,
+    /// Registration start time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub registration_starts_at: Option<DateTime<Utc>>,
     /// Remaining capacity after subtracting registered attendees.
     pub remaining_capacity: Option<i32>,
     /// UTC timestamp when the event starts.
@@ -160,11 +166,6 @@ impl EventSummary {
         )
     }
 
-    /// Returns true when attendees can currently select a ticket.
-    pub fn has_sellable_ticket_types(&self) -> bool {
-        has_sellable_ticket_types(self.ticket_types.as_deref())
-    }
-
     /// Check if the event is in the past.
     pub fn is_past(&self) -> bool {
         let reference_time = self.ends_at.or(self.starts_at);
@@ -195,6 +196,35 @@ impl EventSummary {
     /// Returns the group slug to use in public URLs.
     pub fn public_group_slug(&self) -> &str {
         self.group_slug_pretty.as_deref().unwrap_or(&self.group_slug)
+    }
+
+    /// Returns true when attendee registration is currently open.
+    pub fn registration_window_is_open(&self) -> bool {
+        registration_window_is_open(
+            self.registration_starts_at,
+            self.registration_ends_at,
+            self.starts_at,
+        )
+    }
+
+    /// Returns user-facing registration window copy.
+    pub fn registration_window_message(&self) -> Option<String> {
+        registration_window_message(
+            self.registration_starts_at,
+            self.registration_ends_at,
+            self.starts_at,
+            self.timezone,
+        )
+    }
+
+    /// Returns disabled-control tooltip copy when registration is unavailable.
+    pub fn registration_window_unavailable_title(&self) -> Option<String> {
+        registration_window_unavailable_title(
+            self.registration_starts_at,
+            self.registration_ends_at,
+            self.starts_at,
+            self.timezone,
+        )
     }
 }
 
@@ -343,8 +373,14 @@ pub struct EventFull {
     /// When the event was published.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub published_at: Option<DateTime<Utc>>,
+    /// Registration end time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub registration_ends_at: Option<DateTime<Utc>>,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
+    /// Registration start time in UTC.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub registration_starts_at: Option<DateTime<Utc>>,
     /// Remaining capacity after subtracting registered attendees.
     pub remaining_capacity: Option<i32>,
     /// Event start time in UTC.
@@ -465,6 +501,35 @@ impl EventFull {
         build_location(&parts, max_len)
     }
 
+    /// Returns true when attendee registration is currently open.
+    pub fn registration_window_is_open(&self) -> bool {
+        registration_window_is_open(
+            self.registration_starts_at,
+            self.registration_ends_at,
+            self.starts_at,
+        )
+    }
+
+    /// Returns user-facing registration window copy.
+    pub fn registration_window_message(&self) -> Option<String> {
+        registration_window_message(
+            self.registration_starts_at,
+            self.registration_ends_at,
+            self.starts_at,
+            self.timezone,
+        )
+    }
+
+    /// Returns disabled-control tooltip copy when registration is unavailable.
+    pub fn registration_window_unavailable_title(&self) -> Option<String> {
+        registration_window_unavailable_title(
+            self.registration_starts_at,
+            self.registration_ends_at,
+            self.starts_at,
+            self.timezone,
+        )
+    }
+
     /// Returns the attendee-selectable ticket types for the event page.
     pub fn sellable_ticket_types(&self) -> Vec<&EventTicketType> {
         self.ticket_types
@@ -557,6 +622,8 @@ impl From<&EventFull> for EventSummary {
             meeting_provider: event.meeting_provider,
             payment_currency_code: event.payment_currency_code.clone(),
             popover_html: None,
+            registration_ends_at: event.registration_ends_at,
+            registration_starts_at: event.registration_starts_at,
             remaining_capacity: event.remaining_capacity,
             starts_at: event.starts_at,
             venue_address: event.venue_address.clone(),
@@ -572,6 +639,37 @@ impl From<&EventFull> for EventSummary {
 }
 
 // Other related types.
+
+/// Attendance details for a user's relationship to an event.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventAttendanceInfo {
+    /// Whether the user has checked in.
+    pub is_checked_in: bool,
+    /// Whether this attendance row comes from a manual organizer invitation.
+    #[serde(default)]
+    pub manually_invited: bool,
+    /// Current attendance status.
+    pub status: EventAttendanceStatus,
+
+    /// Refund request state associated with the user purchase.
+    pub refund_request_status: Option<EventRefundRequestStatus>,
+    /// Purchase amount associated with the user and event.
+    pub purchase_amount_minor: Option<i64>,
+    /// Provider URL for resuming a pending checkout.
+    pub resume_checkout_url: Option<String>,
+}
+
+impl EventAttendanceInfo {
+    /// Returns true when the attendee can submit a refund request.
+    pub fn can_request_refund(&self, starts_at: Option<DateTime<Utc>>) -> bool {
+        self.status == EventAttendanceStatus::Attendee
+            && self
+                .purchase_amount_minor
+                .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
+            && self.refund_request_status.is_none()
+            && starts_at.is_none_or(|starts_at| starts_at > Utc::now())
+    }
+}
 
 /// Attendance status for the current user on an event.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, strum::EnumString)]
@@ -594,34 +692,6 @@ pub enum EventAttendanceStatus {
     Rejected,
     /// The user joined the waiting list.
     Waitlisted,
-}
-
-/// Attendance details for a user's relationship to an event.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventAttendanceInfo {
-    /// Whether the user has checked in.
-    pub is_checked_in: bool,
-    /// Current attendance status.
-    pub status: EventAttendanceStatus,
-
-    /// Refund request state associated with the user purchase.
-    pub refund_request_status: Option<EventRefundRequestStatus>,
-    /// Purchase amount associated with the user and event.
-    pub purchase_amount_minor: Option<i64>,
-    /// Provider URL for resuming a pending checkout.
-    pub resume_checkout_url: Option<String>,
-}
-
-impl EventAttendanceInfo {
-    /// Returns true when the attendee can submit a refund request.
-    pub fn can_request_refund(&self, starts_at: Option<DateTime<Utc>>) -> bool {
-        self.status == EventAttendanceStatus::Attendee
-            && self
-                .purchase_amount_minor
-                .is_some_and(|purchase_amount_minor| purchase_amount_minor > 0)
-            && self.refund_request_status.is_none()
-            && starts_at.is_none_or(|starts_at| starts_at > Utc::now())
-    }
 }
 
 /// Event category information.
@@ -827,6 +897,13 @@ pub struct Speaker {
 
 // Helpers.
 
+/// Returns a local datetime label for registration window copy.
+fn format_registration_window_time(time: DateTime<Utc>, timezone: Tz) -> String {
+    time.with_timezone(&timezone)
+        .format("%b %-e, %Y at %-I:%M %p %Z")
+        .to_string()
+}
+
 /// Returns the attendee-facing ticket price badge content.
 fn format_ticket_price_badge(
     payment_currency_code: Option<&str>,
@@ -865,4 +942,115 @@ fn has_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
 fn has_sellable_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
     ticket_types
         .is_some_and(|ticket_types| ticket_types.iter().any(EventTicketType::is_sellable_now))
+}
+
+/// Returns true when a registration window has been configured.
+fn registration_window_configured(
+    starts_at: Option<DateTime<Utc>>,
+    ends_at: Option<DateTime<Utc>>,
+) -> bool {
+    starts_at.is_some() || ends_at.is_some()
+}
+
+/// Returns the configured or implied registration close time.
+fn registration_window_effective_ends_at(
+    starts_at: Option<DateTime<Utc>>,
+    ends_at: Option<DateTime<Utc>>,
+    event_starts_at: Option<DateTime<Utc>>,
+) -> Option<DateTime<Utc>> {
+    if ends_at.is_some() {
+        ends_at
+    } else if starts_at.is_some() {
+        event_starts_at
+    } else {
+        None
+    }
+}
+
+/// Returns true when the registration window is currently open.
+fn registration_window_is_open(
+    starts_at: Option<DateTime<Utc>>,
+    ends_at: Option<DateTime<Utc>>,
+    event_starts_at: Option<DateTime<Utc>>,
+) -> bool {
+    let now = Utc::now();
+    let effective_ends_at =
+        registration_window_effective_ends_at(starts_at, ends_at, event_starts_at);
+
+    starts_at.is_none_or(|starts_at| now >= starts_at)
+        && effective_ends_at.is_none_or(|ends_at| now < ends_at)
+}
+
+/// Returns user-facing registration window copy.
+fn registration_window_message(
+    starts_at: Option<DateTime<Utc>>,
+    ends_at: Option<DateTime<Utc>>,
+    event_starts_at: Option<DateTime<Utc>>,
+    timezone: Tz,
+) -> Option<String> {
+    if !registration_window_configured(starts_at, ends_at) {
+        return None;
+    }
+
+    let now = Utc::now();
+    let effective_ends_at =
+        registration_window_effective_ends_at(starts_at, ends_at, event_starts_at);
+    match (starts_at, effective_ends_at) {
+        (Some(starts_at), Some(ends_at)) if now < starts_at => Some(format!(
+            "Registration opens {} and closes {}.",
+            format_registration_window_time(starts_at, timezone),
+            format_registration_window_time(ends_at, timezone),
+        )),
+        (_, Some(ends_at)) if now >= ends_at => Some(format!(
+            "Registration closed {}.",
+            format_registration_window_time(ends_at, timezone),
+        )),
+        (Some(_) | None, Some(ends_at)) => Some(format!(
+            "Registration is open until {}.",
+            format_registration_window_time(ends_at, timezone),
+        )),
+        (Some(starts_at), None) if now < starts_at => Some(format!(
+            "Registration opens {}.",
+            format_registration_window_time(starts_at, timezone),
+        )),
+        (Some(starts_at), None) => Some(format!(
+            "Registration opened {}.",
+            format_registration_window_time(starts_at, timezone),
+        )),
+        (None, None) => None,
+    }
+}
+
+/// Returns disabled-control tooltip copy when registration is unavailable.
+fn registration_window_unavailable_title(
+    starts_at: Option<DateTime<Utc>>,
+    ends_at: Option<DateTime<Utc>>,
+    event_starts_at: Option<DateTime<Utc>>,
+    timezone: Tz,
+) -> Option<String> {
+    let now = Utc::now();
+    let effective_ends_at =
+        registration_window_effective_ends_at(starts_at, ends_at, event_starts_at);
+
+    // Explain why controls are disabled before registration opens
+    if let Some(starts_at) = starts_at
+        && now < starts_at
+    {
+        return Some(format!(
+            "Registration opens {}.",
+            format_registration_window_time(starts_at, timezone)
+        ));
+    }
+
+    // Explain why controls are disabled after the configured or implicit close
+    if let Some(ends_at) = effective_ends_at
+        && now >= ends_at
+    {
+        return Some(format!(
+            "Registration closed {}.",
+            format_registration_window_time(ends_at, timezone)
+        ));
+    }
+
+    None
 }

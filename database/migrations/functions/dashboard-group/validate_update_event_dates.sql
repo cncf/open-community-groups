@@ -10,6 +10,8 @@ declare
     v_is_past_event boolean;
     v_new_ends_at timestamptz;
     v_new_starts_at timestamptz;
+    v_registration_ends_at timestamptz;
+    v_registration_starts_at timestamptz;
     v_session jsonb;
     v_session_before jsonb;
     v_session_before_ends_at timestamptz;
@@ -27,10 +29,41 @@ begin
         v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
     end if;
 
+    -- Parse an optional registration opening date using the event timezone
+    if p_event->>'registration_starts_at' is not null then
+        v_registration_starts_at := (p_event->>'registration_starts_at')::timestamp at time zone v_timezone;
+    end if;
+
+    -- Parse an optional registration close date independently to allow close-only windows
+    if p_event->>'registration_ends_at' is not null then
+        v_registration_ends_at := (p_event->>'registration_ends_at')::timestamp at time zone v_timezone;
+    end if;
+
     -- Published events must keep the start date required by publish_event
     if (p_event_before->>'published')::boolean = true
        and v_new_starts_at is null then
         raise exception 'published event must have a start date';
+    end if;
+
+    -- Require configured registration openings to leave time before close
+    if v_registration_starts_at is not null
+       and v_registration_ends_at is not null
+       and v_registration_starts_at >= v_registration_ends_at then
+        raise exception 'registration starts_at must be before registration ends_at';
+    end if;
+
+    -- Keep configured registration openings from extending past the event start
+    if v_registration_starts_at is not null
+       and v_new_starts_at is not null
+       and v_registration_starts_at > v_new_starts_at then
+        raise exception 'registration starts_at cannot be after event starts_at';
+    end if;
+
+    -- Keep configured registration closes from extending past the event start
+    if v_registration_ends_at is not null
+       and v_new_starts_at is not null
+       and v_registration_ends_at > v_new_starts_at then
+        raise exception 'registration ends_at cannot be after event starts_at';
     end if;
 
     -- Detect whether the current event snapshot is already in the past,

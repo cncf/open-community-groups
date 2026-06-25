@@ -61,6 +61,70 @@ describe("dashboard group attendees list template", () => {
     );
   });
 
+  it("uses all-attendee eligibility for the attendee email modal entrypoint", async () => {
+    // Load the attendees list template before checking notification entrypoint guards.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the primary entrypoint uses all-attendee eligibility.
+    expect(template).to.include('id="attendee-email-actions-button"');
+    expect(template).to.include('data-attendee-email-actions-dropdown');
+    expect(template).to.include("all_attendees_email_recipient_total == 0");
+    expect(template).to.include('data-notification-recipient-total="{{ all_attendees_email_recipient_total }}"');
+    expect(template).to.include('data-notification-scope="all"');
+    expect(template).to.include("All eligible attendees");
+    expect(template).to.include("No attendees with verified email addresses and email notifications enabled.");
+    expect(template).not.to.include(
+      "No confirmed attendees with verified email addresses and email notifications enabled.",
+    );
+  });
+
+  it("uses the shared attendee search convention for table filtering", async () => {
+    // Load the attendees list template before checking search markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify attendee search follows the existing dashboard HTMX pattern.
+    expect(template).to.include('id="attendees-search-form"');
+    expect(template).to.include('hx-trigger="change, submit"');
+    expect(template).to.include('hx-target="#attendees-content"');
+    expect(template).to.include('<label for="search_attendees" class="sr-only">Search attendees</label>');
+    expect(template).to.include('name="ts_query"');
+    expect(template).to.include('placeholder="Search attendees"');
+    expect(template).to.include('aria-label="Clear attendee search"');
+    expect(template).to.include("dashboard/placeholders/group_attendees_no_results.html");
+  });
+
+  it("integrates selected attendee email sends with the attendees table", async () => {
+    // Load the attendees list template before checking table selection markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify selected-recipient sends are table-integrated.
+    expect(template).to.include("Choose attendees");
+    expect(template).to.include("data-attendee-email-selection-start");
+    expect(template).to.include("data-attendee-email-selection-bar");
+    expect(template).to.include("data-attendee-email-selection-count");
+    expect(template).to.include("<span data-attendee-email-selection-count>0</span>");
+    expect(template).to.include(
+      "<span data-attendee-email-selection-label>attendees selected</span>",
+    );
+    expect(template).not.to.include(
+      "Only attendees eligible for optional email notifications can be selected.",
+    );
+    expect(template).to.include("data-attendee-email-selection-column");
+    expect(template).to.include("data-attendee-email-selection-checkbox");
+    expect(template).to.include('class="checkbox-primary"');
+    expect(template).to.include("attendee.can_receive_attendee_email");
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle"');
+    expect(template).to.include('class="btn-primary-outline btn-mini h-7!"');
+    expect(template).to.include('class="btn-primary btn-mini h-7!"');
+    expect(template).to.include("Continue");
+    expect(template).to.include('data-notification-scope="selected"');
+    expect(template).to.include('id="attendee-notification-recipient-scope"');
+    expect(template).to.include('id="attendee-notification-selected-fields"');
+    expect(template).not.to.include("attendee-notification-recipient-search");
+    expect(template).not.to.include("data-recipients-url");
+  });
+
   it("renders registration answers in the review modal layout", async () => {
     // Load the attendees list template before checking answers markup.
     const template = normalizeWhitespace(await loadTemplate());

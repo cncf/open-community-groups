@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,6 +12,16 @@ select plan(14);
 \set attendeeUserID '79100000-0000-0000-0000-000000000022'
 \set checkoutUserID '79100000-0000-0000-0000-000000000023'
 \set allianceID '79100000-0000-0000-0000-000000000001'
+\set closedWindowEventID '79100000-0000-0000-0000-000000000041'
+\set closedWindowMatchingPurchaseID '79100000-0000-0000-0000-000000000042'
+\set closedWindowMatchingUserID '79100000-0000-0000-0000-000000000043'
+\set closedWindowMismatchedPurchaseID '79100000-0000-0000-0000-000000000044'
+\set closedWindowMismatchedUserID '79100000-0000-0000-0000-000000000045'
+\set closedWindowNewUserID '79100000-0000-0000-0000-000000000046'
+\set closedWindowTicketTypeAID '79100000-0000-0000-0000-000000000047'
+\set closedWindowTicketTypeBID '79100000-0000-0000-0000-000000000048'
+\set closedWindowPriceWindowAID '79100000-0000-0000-0000-000000000049'
+\set closedWindowPriceWindowBID '79100000-0000-0000-0000-00000000004a'
 \set completedPurchaseID '79100000-0000-0000-0000-000000000019'
 \set completedUserID '79100000-0000-0000-0000-000000000024'
 \set discountUserID '79100000-0000-0000-0000-000000000028'
@@ -41,6 +51,8 @@ select plan(14);
 \set registrationQuestionID '79100000-0000-0000-0000-000000000101'
 \set soldOutEventID '79100000-0000-0000-0000-000000000004'
 \set soldOutHolderUserID '79100000-0000-0000-0000-000000000032'
+\set soldOutPendingPurchaseID '79100000-0000-0000-0000-00000000004b'
+\set soldOutPendingUserID '79100000-0000-0000-0000-00000000004c'
 \set soldOutPriceWindowID '79100000-0000-0000-0000-000000000014'
 \set soldOutPurchaseID '79100000-0000-0000-0000-000000000021'
 \set soldOutTicketTypeID '79100000-0000-0000-0000-000000000008'
@@ -86,6 +98,9 @@ values (:'eventCategoryID', :'allianceID', 'General');
 insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'attendeeUserID', 'hash-1', 'attendee@example.com', true, 'attendee'),
     (:'checkoutUserID', 'hash-2', 'checkout@example.com', true, 'checkout-user'),
+    (:'closedWindowMatchingUserID', 'hash-15', 'closed-matching@example.com', true, 'closed-matching-user'),
+    (:'closedWindowMismatchedUserID', 'hash-16', 'closed-mismatched@example.com', true, 'closed-mismatched-user'),
+    (:'closedWindowNewUserID', 'hash-17', 'closed-new@example.com', true, 'closed-new-user'),
     (:'completedUserID', 'hash-3', 'completed@example.com', true, 'completed-user'),
     (:'invalidDiscountUserID', 'hash-4', 'invalid@example.com', true, 'invalid-user'),
     (:'unavailableDiscountUserID', 'hash-5', 'unavailable@example.com', true, 'unavailable-user'),
@@ -95,6 +110,7 @@ insert into "user" (user_id, auth_hash, email, email_verified, username) values
     (:'inactiveUserID', 'hash-9', 'inactive@example.com', true, 'inactive-user'),
     (:'redeemedUserID', 'hash-10', 'redeemed@example.com', true, 'redeemed-user'),
     (:'soldOutHolderUserID', 'hash-11', 'holder@example.com', true, 'holder-user'),
+    (:'soldOutPendingUserID', 'hash-18', 'soldout-pending@example.com', true, 'soldout-pending-user'),
     (:'underMinimumUserID', 'hash-12', 'under-minimum@example.com', true, 'under-minimum-user'),
     (:'questionsUserID', 'hash-13', 'questions@example.com', true, 'questions-user'),
     (:'invitedUserID', 'hash-14', 'invited@example.com', true, 'invited-user');
@@ -199,11 +215,48 @@ insert into event (
     ))
 );
 
+-- Closed registration window event that is still active
+insert into event (
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    starts_at,
+    ends_at,
+    payment_currency_code,
+    published,
+    published_at,
+    registration_starts_at,
+    registration_questions
+) values (
+    :'closedWindowEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Closed Window Event',
+    'closed-window-event',
+    'Test event',
+    'UTC',
+    now() - interval '30 minutes',
+    now() + interval '90 minutes',
+    'USD',
+    true,
+    now(),
+    now() - interval '2 hours',
+    '[]'::jsonb
+);
+
 -- Ticket types
 insert into event_ticket_type (event_ticket_type_id, active, event_id, "order", seats_total, title)
 values
     (:'ticketTypeAID', true, :'mainEventID', 1, 10, 'General admission'),
     (:'ticketTypeBID', true, :'mainEventID', 2, 10, 'VIP'),
+    (:'closedWindowTicketTypeAID', true, :'closedWindowEventID', 1, 10, 'General admission'),
+    (:'closedWindowTicketTypeBID', true, :'closedWindowEventID', 2, 10, 'VIP'),
     (:'soldOutTicketTypeID', true, :'soldOutEventID', 1, 1, 'General admission'),
     (:'inactiveTicketTypeID', false, :'inactiveEventID', 1, 10, 'General admission'),
     (:'questionsTicketTypeID', true, :'questionsEventID', 1, 10, 'General admission');
@@ -216,6 +269,8 @@ insert into event_ticket_price_window (
 ) values
     (:'priceWindowAID', 2500, :'ticketTypeAID'),
     (:'priceWindowBID', 4000, :'ticketTypeBID'),
+    (:'closedWindowPriceWindowAID', 2500, :'closedWindowTicketTypeAID'),
+    (:'closedWindowPriceWindowBID', 4000, :'closedWindowTicketTypeBID'),
     (:'soldOutPriceWindowID', 2500, :'soldOutTicketTypeID'),
     (:'inactivePriceWindowID', 2500, :'inactiveTicketTypeID'),
     (:'questionsPriceWindowID', 2500, :'questionsTicketTypeID');
@@ -309,6 +364,53 @@ insert into event_purchase (
     'pending',
     'General admission',
     :'invitedUserID'
+);
+
+-- Pending purchases that should remain reusable after registration or availability closes
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'closedWindowMatchingPurchaseID',
+    2500,
+    'USD',
+    0,
+    :'closedWindowEventID',
+    :'closedWindowTicketTypeAID',
+    now() + interval '15 minutes',
+    'pending',
+    'General admission',
+    :'closedWindowMatchingUserID'
+), (
+    :'closedWindowMismatchedPurchaseID',
+    2500,
+    'USD',
+    0,
+    :'closedWindowEventID',
+    :'closedWindowTicketTypeAID',
+    now() + interval '15 minutes',
+    'pending',
+    'General admission',
+    :'closedWindowMismatchedUserID'
+), (
+    :'soldOutPendingPurchaseID',
+    2500,
+    'USD',
+    0,
+    :'soldOutEventID',
+    :'soldOutTicketTypeID',
+    now() + interval '15 minutes',
+    'pending',
+    'General admission',
+    :'soldOutPendingUserID'
 );
 
 -- Existing completed purchases
@@ -513,6 +615,89 @@ select is(
         'ticket_title', 'General admission'
     ),
     'Should return an existing completed purchase as-is'
+);
+
+-- Should reuse an equivalent pending purchase after registration closes
+select is(
+    (
+        select prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'closedWindowEventID'::uuid,
+            :'closedWindowTicketTypeAID'::uuid,
+            :'closedWindowMatchingUserID'::uuid,
+            null,
+            'stripe'
+        )::jsonb->>'event_purchase_id'
+    ),
+    :'closedWindowMatchingPurchaseID',
+    'Should reuse an equivalent pending purchase after registration closes'
+);
+
+-- Should reject replacing a pending purchase after registration closes
+select throws_ok(
+    format($$select prepare_event_checkout_purchase(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        null,
+        'stripe'
+    )$$,
+        :'communityID',
+        :'closedWindowEventID',
+        :'closedWindowTicketTypeBID',
+        :'closedWindowMismatchedUserID'
+    ),
+    'event registration is not open',
+    'Should reject replacing a pending purchase after registration closes'
+);
+
+-- Should keep rejected replacement holds active
+select results_eq(
+    $$
+        select
+            status,
+            hold_expires_at > current_timestamp
+        from event_purchase
+        where event_purchase_id = '79100000-0000-0000-0000-000000000044'::uuid
+    $$,
+    $$ values ('pending'::text, true) $$,
+    'Should keep rejected replacement holds active'
+);
+
+-- Should reject creating a checkout purchase after registration closes
+select throws_ok(
+    format($$select prepare_event_checkout_purchase(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        null,
+        'stripe'
+    )$$,
+        :'communityID',
+        :'closedWindowEventID',
+        :'closedWindowTicketTypeAID',
+        :'closedWindowNewUserID'
+    ),
+    'event registration is not open',
+    'Should reject creating a checkout purchase after registration closes'
+);
+
+-- Should reuse an equivalent pending purchase when the ticket type is sold out
+select is(
+    (
+        select prepare_event_checkout_purchase(
+            :'communityID'::uuid,
+            :'soldOutEventID'::uuid,
+            :'soldOutTicketTypeID'::uuid,
+            :'soldOutPendingUserID'::uuid,
+            null,
+            'stripe'
+        )::jsonb->>'event_purchase_id'
+    ),
+    :'soldOutPendingPurchaseID',
+    'Should reuse an equivalent pending purchase when the ticket type is sold out'
 );
 
 -- Should apply a valid discount and decrement its availability

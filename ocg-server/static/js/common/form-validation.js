@@ -557,6 +557,68 @@ export const validateCfsWindow = ({
 };
 
 /**
+ * Clears registration window custom validity state.
+ * @param {Object} params - Inputs to clear
+ * @param {HTMLInputElement|null} params.registrationStartsInput - Registration start input
+ * @param {HTMLInputElement|null} params.registrationEndsInput - Registration end input
+ */
+export const clearRegistrationWindowValidity = ({ registrationStartsInput, registrationEndsInput } = {}) => {
+  if (registrationStartsInput) registrationStartsInput.setCustomValidity("");
+  if (registrationEndsInput) registrationEndsInput.setCustomValidity("");
+};
+
+/**
+ * Validates registration window dates against each other and event start date.
+ * @param {Object} params - Validation params
+ * @param {HTMLInputElement|null} params.registrationStartsInput - Registration start input
+ * @param {HTMLInputElement|null} params.registrationEndsInput - Registration end input
+ * @param {HTMLInputElement|null} params.eventStartsInput - Event start input
+ * @param {Function} [params.onDateSection] - Callback to show date tab
+ * @returns {boolean} True when valid
+ */
+export const validateRegistrationWindow = ({
+  registrationStartsInput,
+  registrationEndsInput,
+  eventStartsInput,
+  onDateSection,
+} = {}) => {
+  clearRegistrationWindowValidity({
+    registrationStartsInput,
+    registrationEndsInput,
+  });
+
+  const registrationStartsAt = parseLocalDate(registrationStartsInput?.value);
+  const registrationEndsAt = parseLocalDate(registrationEndsInput?.value);
+  const eventStartsAt = parseLocalDate(eventStartsInput?.value);
+
+  if (registrationStartsAt && registrationEndsAt && registrationStartsAt >= registrationEndsAt) {
+    return reportWithSection(
+      registrationEndsInput,
+      "Registration close date must be after registration open date.",
+      onDateSection,
+    );
+  }
+
+  if (registrationEndsAt && eventStartsAt && registrationEndsAt > eventStartsAt) {
+    return reportWithSection(
+      registrationEndsInput,
+      "Registration close date cannot be after the event start date.",
+      onDateSection,
+    );
+  }
+
+  if (registrationStartsAt && eventStartsAt && registrationStartsAt > eventStartsAt) {
+    return reportWithSection(
+      registrationStartsInput,
+      "Registration open date cannot be after the event start date.",
+      onDateSection,
+    );
+  }
+
+  return true;
+};
+
+/**
  * Builds a map of session date inputs grouped by index.
  * @param {HTMLElement|Document} root - Root element to query
  * @returns {Object} Map keyed by session index

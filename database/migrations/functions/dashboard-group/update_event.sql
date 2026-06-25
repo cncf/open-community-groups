@@ -29,7 +29,9 @@ declare
     v_new_starts_at timestamptz;
     v_payment_currency_code text;
     v_promoted_user_ids uuid[] := array[]::uuid[];
+    v_registration_ends_at timestamptz;
     v_registration_questions jsonb;
+    v_registration_starts_at timestamptz;
     v_ticket_capacity int;
     v_ticket_types jsonb;
     v_timezone text := p_event->>'timezone';
@@ -83,12 +85,23 @@ begin
         else coalesce(v_event_before->'registration_questions', '[]'::jsonb)
     end;
 
-    -- Validate registration questions and prevent changing definitions once answers exist
+    -- Validate registration questions and prevent changing definitions with live user state
     perform validate_questionnaire_questions_payload(v_registration_questions);
 
-    if v_registration_questions <> coalesce(v_event_before->'registration_questions', '[]'::jsonb)
-       and questionnaire_answers_exist_for_event(p_event_id) then
-        raise exception 'registration questions cannot be changed after attendees have submitted answers';
+    if v_registration_questions <> coalesce(v_event_before->'registration_questions', '[]'::jsonb) then
+        if questionnaire_answers_exist_for_event(p_event_id) then
+            raise exception 'registration questions cannot be changed after attendees have submitted answers';
+        end if;
+
+        if exists (
+            select 1
+            from event_purchase ep
+            where ep.event_id = p_event_id
+            and ep.status = 'pending'
+            and ep.hold_expires_at > current_timestamp
+        ) then
+            raise exception 'registration questions cannot be changed while checkout holds are active';
+        end if;
     end if;
 
     -- Load current event state required by registration and ticketing guards
@@ -158,6 +171,14 @@ begin
         v_new_starts_at := (p_event->>'starts_at')::timestamp at time zone v_timezone;
     end if;
 
+    if p_event->>'registration_ends_at' is not null then
+        v_registration_ends_at := (p_event->>'registration_ends_at')::timestamp at time zone v_timezone;
+    end if;
+
+    if p_event->>'registration_starts_at' is not null then
+        v_registration_starts_at := (p_event->>'registration_starts_at')::timestamp at time zone v_timezone;
+    end if;
+
     -- Precompute promotion conditions for waitlist processing
     v_has_new_waitlist_capacity := (
         -- Removing the capacity limit makes every queued seat available
@@ -177,6 +198,11 @@ begin
 
     -- Only published events that are still upcoming or dateless can promote the waitlist
     v_is_promotable_event := (v_event_before->>'published')::boolean = true
+        and is_registration_window_open(
+            v_registration_starts_at,
+            v_registration_ends_at,
+            v_new_starts_at
+        )
         and (
             coalesce(v_new_ends_at, v_new_starts_at) is null
             or coalesce(v_new_ends_at, v_new_starts_at) >= current_timestamp
@@ -256,8 +282,10 @@ begin
         meetup_url = nullif(p_event->>'meetup_url', ''),
         payment_currency_code = v_payment_currency_code,
         photos_urls = v_event_photos_urls,
+        registration_ends_at = v_registration_ends_at,
         registration_required = (p_event->>'registration_required')::boolean,
         registration_questions = v_registration_questions,
+        registration_starts_at = v_registration_starts_at,
         starts_at = v_new_starts_at,
         tags = v_event_tags,
         venue_address = nullif(p_event->>'venue_address', ''),

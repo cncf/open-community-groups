@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(7);
 \set missingRecipientGroupID '79270000-0000-0000-0000-000000000009'
 \set nonStripeEventID '79270000-0000-0000-0000-000000000005'
 \set nonStripeGroupID '79270000-0000-0000-0000-000000000010'
+\set openUntilStartEventID '79270000-0000-0000-0000-000000000013'
 \set validEventID '79270000-0000-0000-0000-000000000003'
 \set validGroupID '79270000-0000-0000-0000-000000000008'
 
@@ -99,10 +100,12 @@ insert into event (
     slug,
     description,
     timezone,
+    ends_at,
     starts_at,
     payment_currency_code,
     published,
-    published_at
+    published_at,
+    registration_starts_at
 ) values (
     false,
     :'inactiveEventID',
@@ -113,9 +116,11 @@ insert into event (
     'inactive-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     'USD',
     false,
+    null,
     null
 ), (
     false,
@@ -127,10 +132,12 @@ insert into event (
     'missing-currency-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     null,
     true,
-    now()
+    now(),
+    null
 ), (
     false,
     :'missingRecipientEventID',
@@ -141,10 +148,12 @@ insert into event (
     'missing-recipient-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     'USD',
     true,
-    now()
+    now(),
+    null
 ), (
     false,
     :'nonStripeEventID',
@@ -155,10 +164,12 @@ insert into event (
     'non-stripe-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     'USD',
     true,
-    now()
+    now(),
+    null
 ), (
     false,
     :'validEventID',
@@ -169,10 +180,12 @@ insert into event (
     'valid-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     'USD',
     true,
-    now()
+    now(),
+    null
 ), (
     false,
     :'invalidCurrencyEventID',
@@ -183,10 +196,28 @@ insert into event (
     'invalid-currency-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     'USDD',
     true,
-    now()
+    now(),
+    null
+), (
+    false,
+    :'openUntilStartEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'validGroupID',
+    'Open Until Start Event',
+    'open-until-start-event',
+    'Test event',
+    'UTC',
+    now() + interval '1 hour',
+    now() - interval '1 hour',
+    'USD',
+    true,
+    now(),
+    now() - interval '2 hours'
 );
 
 -- ============================================================================
@@ -253,6 +284,17 @@ select throws_ok(
     )$$, :'allianceID', :'inactiveEventID'),
     'event not found or inactive',
     'Should reject inactive events'
+);
+
+-- Should return the payment currency after an open-only registration window reaches the event start
+select is(
+    prepare_event_checkout_validate_event(
+        :'communityID'::uuid,
+        :'openUntilStartEventID'::uuid,
+        'stripe'
+    ),
+    'USD',
+    'Should return the payment currency after an open-only registration window reaches the event start'
 );
 
 -- Should reject events whose currency code is unsupported

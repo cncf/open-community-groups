@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(276);
+select plan(278);
 
 -- ============================================================================
 -- VARIABLES
@@ -179,6 +179,10 @@ select has_function('is_event_check_in_window_open', array['uuid', 'uuid']::name
 select has_function('is_event_meeting_in_sync', array['jsonb', 'jsonb']::name[]);
 select has_function('is_group_member', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('is_open_graph_image', array['text']::name[]);
+select has_function(
+    'is_registration_window_open',
+    array['timestamp with time zone', 'timestamp with time zone', 'timestamp with time zone']::name[]
+);
 select has_function('is_session_meeting_in_sync', array['jsonb', 'jsonb', 'jsonb', 'jsonb']::name[]);
 select has_function('join_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('jsonb_geography_point', array['jsonb']::name[]);
@@ -258,6 +262,7 @@ select has_function('release_event_discount_code_availability', array['uuid', 'i
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
+select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revert_event_refund_approval', array['uuid', 'uuid', 'uuid']::name[]);

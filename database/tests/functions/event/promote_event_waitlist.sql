@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(17);
 
 -- ============================================================================
 -- VARIABLES
@@ -15,6 +15,8 @@ select plan(13);
 \set eventFullID '5e0b0000-0000-0000-0000-000000000004'
 \set eventLimitedID '5e0b0000-0000-0000-0000-000000000005'
 \set eventQuestionsID '5e0b0000-0000-0000-0000-000000000006'
+\set eventRegistrationClosedID '5e0b0000-0000-0000-0000-000000000015'
+\set eventRegistrationOpenUntilStartID '5e0b0000-0000-0000-0000-000000000016'
 \set eventUnlimitedID '5e0b0000-0000-0000-0000-000000000007'
 \set groupCategoryID '5e0b0000-0000-0000-0000-000000000008'
 \set groupID '5e0b0000-0000-0000-0000-000000000009'
@@ -29,6 +31,7 @@ select plan(13);
 \set user6ID '5e0b0000-0000-0000-0000-000000000012'
 \set user7ID '5e0b0000-0000-0000-0000-000000000013'
 \set user8ID '5e0b0000-0000-0000-0000-000000000014'
+\set user9ID '5e0b0000-0000-0000-0000-000000000017'
 
 -- ============================================================================
 -- SEED DATA
@@ -76,6 +79,7 @@ values
     (:'user6ID', 'h6', 'u6@test.com', true, 'u6'),
     (:'user7ID', 'h7', 'u7@test.com', true, 'u7'),
     (:'user8ID', 'h8', 'u8@test.com', true, 'u8'),
+    (:'user9ID', 'h10', 'u9@test.com', true, 'u9'),
     (:'questionsWaitlistUserID', 'h9', 'rq-waitlist@test.com', true, 'rq-waitlist');
 
 -- Events
@@ -92,6 +96,10 @@ insert into event (
     canceled,
     deleted,
     capacity,
+    ends_at,
+    registration_ends_at,
+    registration_starts_at,
+    starts_at,
     waitlist_enabled
 )
 values
@@ -108,6 +116,10 @@ values
         false,
         false,
         5,
+        null,
+        null,
+        null,
+        null,
         true
     ),
     (
@@ -123,6 +135,10 @@ values
         false,
         false,
         1,
+        null,
+        null,
+        null,
+        null,
         true
     ),
     (
@@ -138,6 +154,10 @@ values
         false,
         false,
         3,
+        null,
+        null,
+        null,
+        null,
         true
     ),
     (
@@ -153,7 +173,49 @@ values
         false,
         false,
         null,
+        null,
+        null,
+        null,
+        null,
         false
+    ),
+    (
+        :'eventRegistrationClosedID',
+        'Closed Registration',
+        'closed-registration',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        2,
+        null,
+        current_timestamp - interval '1 hour',
+        null,
+        null,
+        true
+    ),
+    (
+        :'eventRegistrationOpenUntilStartID',
+        'Registration Open Until Start',
+        'registration-open-until-start',
+        'Test event',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        false,
+        false,
+        2,
+        current_timestamp + interval '1 hour',
+        null,
+        current_timestamp - interval '2 hours',
+        current_timestamp - interval '1 hour',
+        true
     );
 
 -- Event requiring registration answers before promoted waitlist users are confirmed
@@ -205,6 +267,8 @@ values
     (:'eventLimitedID', :'user2ID', '2024-01-01 00:00:00+00'),
     (:'eventLimitedID', :'user3ID', '2024-01-02 00:00:00+00'),
     (:'eventLimitedID', :'user4ID', '2024-01-03 00:00:00+00'),
+    (:'eventRegistrationClosedID', :'user8ID', '2024-01-01 00:00:00+00'),
+    (:'eventRegistrationOpenUntilStartID', :'user9ID', '2024-01-01 00:00:00+00'),
     (:'eventUnlimitedID', :'user7ID', '2024-01-01 00:00:00+00'),
     (:'eventUnlimitedID', :'user8ID', '2024-01-02 00:00:00+00'),
     (:'eventQuestionsID', :'questionsWaitlistUserID', '2024-01-01 00:00:00+00');
@@ -251,6 +315,42 @@ select is(
     promote_event_waitlist(:'unknownEventID'::uuid),
     array[]::uuid[],
     'Returns an empty list for an unknown event'
+);
+
+-- Should return no promoted users when the registration window is closed
+select is(
+    promote_event_waitlist(:'eventRegistrationClosedID'::uuid),
+    array[]::uuid[],
+    'Returns an empty list when the registration window is closed'
+);
+
+-- Should keep queued users when the registration window is closed
+select is(
+    (
+        select jsonb_agg(user_id order by created_at asc, user_id asc)
+        from event_waitlist
+        where event_id = :'eventRegistrationClosedID'::uuid
+    ),
+    format('["%s"]', :'user8ID')::jsonb,
+    'Keeps waitlist entries queued when the registration window is closed'
+);
+
+-- Should return no promoted users when open-only registration reached event start
+select is(
+    promote_event_waitlist(:'eventRegistrationOpenUntilStartID'::uuid),
+    array[]::uuid[],
+    'Returns an empty list when an open-only registration window reaches the event start'
+);
+
+-- Should keep queued users when open-only registration reached event start
+select is(
+    (
+        select jsonb_agg(user_id order by created_at asc, user_id asc)
+        from event_waitlist
+        where event_id = :'eventRegistrationOpenUntilStartID'::uuid
+    ),
+    format('["%s"]', :'user9ID')::jsonb,
+    'Keeps waitlist entries queued when an open-only registration window reaches the event start'
 );
 
 -- Should return an empty list when no seats are available

@@ -533,11 +533,113 @@ test.describe("group dashboard attendees tab", () => {
         attendeesContent.getByRole("button", { name: "Send email" }),
       ).toHaveAttribute(
         "title",
-        "No confirmed attendees with verified email addresses.",
+        "No attendees with verified email addresses and email notifications enabled.",
       );
     } finally {
       await deleteEventFromList(organizerGroupPage, eventId);
     }
+  });
+
+  test("organizer can search attendees and clear the filter", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the attendees tab for the seeded event.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Upcoming In-Person Event",
+      TEST_EVENT_IDS.alpha.one,
+    );
+
+    // Target the search controls used to submit attendee filters.
+    const searchInput = attendeesContent.getByRole("textbox", {
+      name: "Search attendees",
+    });
+    const searchForm = attendeesContent.locator("#attendees-search-form");
+
+    // Enter a query expected to match a seeded attendee.
+    await searchInput.fill("member");
+
+    // Submit the matching search and wait for filtered results.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees?ts_query=member`,
+            ) &&
+          response.ok(),
+      ),
+      searchInput.press("Enter"),
+    ]);
+
+    // Verify the matching result is shown and non-matching attendees are hidden.
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Member One" }),
+    ).toBeVisible();
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Organizer One" }),
+    ).toHaveCount(0);
+    await expect(searchInput).toHaveValue("member");
+
+    // Enter a query expected to return no attendees.
+    await searchInput.fill("");
+    await searchInput.fill("zzzzzzzzzzzz");
+
+    // Submit the empty-result search and wait for the response.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees?ts_query=zzzzzzzzzzzz`,
+            ) &&
+          response.ok(),
+      ),
+      searchForm.evaluate((form) => {
+        if (form instanceof HTMLFormElement) {
+          form.requestSubmit();
+        }
+      }),
+    ]);
+
+    const noResultsMessage = attendeesContent
+      .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
+      .filter({ hasText: "No attendees found matching your search." });
+
+    // Verify the filtered empty result message is shown.
+    await expect(noResultsMessage.first()).toBeVisible();
+
+    // Clear the attendee search filter.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`,
+            ) &&
+          !response.url().includes("ts_query") &&
+          response.ok(),
+      ),
+      attendeesContent
+        .getByRole("button", { name: "Clear attendee search" })
+        .click(),
+    ]);
+
+    // Verify clearing removes the empty state and restores seeded attendees.
+    await expect(noResultsMessage).toHaveCount(0);
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Member One" }),
+    ).toBeVisible();
+    await expect(
+      attendeesContent.locator("tr", { hasText: "E2E Organizer One" }),
+    ).toBeVisible();
+    await expect(searchInput).toHaveValue("");
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({
@@ -892,6 +994,101 @@ test.describe("group dashboard attendees tab", () => {
         requestsContent.getByRole("table", { name: "Invitation requests" }),
       ).toBeVisible();
 
+      // Target the search controls used to submit request filters.
+      const searchInput = requestsContent.getByRole("textbox", {
+        name: "Search invitation requests",
+      });
+      const searchForm = requestsContent.locator(
+        "#invitation-requests-search-form",
+      );
+
+      // Enter a query expected to match one seeded requester.
+      await searchInput.fill("Two");
+
+      // Submit the matching search and wait for filtered results.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests?ts_query=Two`,
+              ) &&
+            response.ok(),
+        ),
+        searchInput.press("Enter"),
+      ]);
+
+      // Verify the matching result is shown and non-matching requests are hidden.
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending Two" }),
+      ).toBeVisible();
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending One" }),
+      ).toHaveCount(0);
+      await expect(searchInput).toHaveValue("Two");
+
+      // Enter a query expected to return no requests.
+      await searchInput.fill("");
+      await searchInput.fill("zzzzzzzzzzzz");
+
+      // Submit the empty-result search and wait for the response.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests?ts_query=zzzzzzzzzzzz`,
+              ) &&
+            response.ok(),
+        ),
+        searchForm.evaluate((form) => {
+          if (form instanceof HTMLFormElement) {
+            form.requestSubmit();
+          }
+        }),
+      ]);
+
+      const noResultsMessage = requestsContent
+        .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
+        .filter({
+          hasText: "No invitation requests found matching your search.",
+        });
+
+      // Verify the filtered empty result message is shown.
+      await expect(noResultsMessage.first()).toBeVisible();
+
+      // Clear the invitation request search filter.
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response
+              .url()
+              .includes(
+                `/dashboard/group/events/${eventId}/invitation-requests`,
+              ) &&
+            !response.url().includes("ts_query") &&
+            response.ok(),
+        ),
+        requestsContent
+          .getByRole("button", { name: "Clear invitation request search" })
+          .click(),
+      ]);
+
+      // Verify clearing removes the empty state and restores request rows.
+      await expect(noResultsMessage).toHaveCount(0);
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending One" }),
+      ).toBeVisible();
+      await expect(
+        requestsContent.locator("tr", { hasText: "E2E Pending Two" }),
+      ).toBeVisible();
+      await expect(searchInput).toHaveValue("");
+
       // Reject one invitation request.
       const pendingOneRow = requestsContent.locator("tr", {
         hasText: "E2E Pending One",
@@ -1155,6 +1352,9 @@ test.describe("group dashboard attendees tab", () => {
     // Assert that the answers modal can open.
     await expect(openModalButton).toBeEnabled();
     await openModalButton.click();
+    await attendeesContent
+      .getByRole("menuitem", { name: "All eligible attendees" })
+      .click();
 
     // Verify the modal opens with the default message fields.
     const modal = organizerGroupPage.locator("#attendee-notification-modal");
@@ -1163,7 +1363,7 @@ test.describe("group dashboard attendees tab", () => {
       modal.getByRole("heading", { name: "Send email" }),
     ).toBeVisible();
     await expect(
-      modal.getByText("This email will be sent to all event attendees."),
+      modal.getByText("This email will be sent to 1 eligible attendee."),
     ).toBeVisible();
     await expect(modal.locator("#attendee-subject")).toHaveValue(
       "Platform Ops Meetup: Full Event With Waitlist",
@@ -1228,6 +1428,9 @@ test.describe("group dashboard attendees tab", () => {
     // Assert that the answers modal can open.
     await expect(openModalButton).toBeEnabled();
     await openModalButton.click();
+    await attendeesContent
+      .getByRole("menuitem", { name: "All eligible attendees" })
+      .click();
 
     // Find the modal.
     const modal = organizerGroupPage.locator("#attendee-notification-modal");
@@ -1259,6 +1462,197 @@ test.describe("group dashboard attendees tab", () => {
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
       "Email sent successfully to all event attendees!",
     );
+    await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toBeHidden();
+  });
+
+  test("organizer can choose attendees for attendee email", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the attendees tab for the seeded waitlist event.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Full Event With Waitlist",
+      TEST_EVENT_IDS.alpha.waitlistLab,
+    );
+
+    // Open attendee email actions and enter selection mode.
+    const openEmailActionsButton = attendeesContent.getByRole("button", {
+      name: "Send email",
+    });
+    await expect(openEmailActionsButton).toBeEnabled();
+    await openEmailActionsButton.click();
+    await attendeesContent
+      .getByRole("menuitem", { name: "Choose attendees" })
+      .click();
+
+    // Find the attendee email selection controls.
+    const selectionBar = attendeesContent.locator(
+      "[data-attendee-email-selection-bar]",
+    );
+    const selectionCheckboxes = attendeesContent.locator(
+      "[data-attendee-email-selection-checkbox]",
+    );
+    const selectionSendButton = selectionBar.getByRole("button", {
+      name: "Continue",
+    });
+
+    // Verify selection mode starts empty and cannot send without a selection.
+    await expect(selectionBar).toBeVisible();
+    await expect(selectionBar).toContainText("0 attendees selected");
+    await expect(openEmailActionsButton).toBeDisabled();
+    await expect(selectionSendButton).toBeDisabled();
+    await expect(selectionCheckboxes).toHaveCount(1);
+    await expect(selectionCheckboxes).toBeVisible();
+
+    // Select the eligible attendee and open the email modal.
+    await selectionCheckboxes.check();
+    await expect(selectionBar).toContainText("1 attendee selected");
+    await expect(selectionSendButton).toBeEnabled();
+
+    await selectionSendButton.click();
+
+    // Verify the email modal is configured for selected recipients.
+    const modal = organizerGroupPage.locator("#attendee-notification-modal");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.getByText("This email will be sent to 1 selected attendee."),
+    ).toBeVisible();
+    await expect(
+      modal.locator("#attendee-notification-recipient-scope"),
+    ).toHaveValue("selected");
+    await expect(
+      modal.locator("#attendee-notification-selected-fields input"),
+    ).toHaveCount(1);
+
+    // Close the modal and exit selection mode.
+    await modal.getByRole("button", { name: "Cancel" }).click();
+    await expect(modal).toBeHidden();
+    await selectionBar.getByRole("button", { name: "Cancel" }).click();
+    await expect(selectionBar).toBeHidden();
+    await expect(openEmailActionsButton).toBeEnabled();
+  });
+
+  test("organizer can send an attendee email to selected attendees", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the attendees tab for the seeded waitlist event.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Full Event With Waitlist",
+      TEST_EVENT_IDS.alpha.waitlistLab,
+    );
+
+    // Open attendee email actions and enter selection mode.
+    await attendeesContent
+      .getByRole("button", { name: "Send email" })
+      .click();
+    await attendeesContent
+      .getByRole("menuitem", { name: "Choose attendees" })
+      .click();
+
+    // Find the attendee email selection controls.
+    const selectionBar = attendeesContent.locator(
+      "[data-attendee-email-selection-bar]",
+    );
+    const selectionCheckboxes = attendeesContent.locator(
+      "[data-attendee-email-selection-checkbox]",
+    );
+
+    // Select the eligible attendee and open the email modal.
+    await expect(selectionCheckboxes).toHaveCount(1);
+    await selectionCheckboxes.check();
+    await selectionBar.getByRole("button", { name: "Continue" }).click();
+
+    // Verify the email modal is configured for selected recipients.
+    const modal = organizerGroupPage.locator("#attendee-notification-modal");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.getByText("This email will be sent to 1 selected attendee."),
+    ).toBeVisible();
+    await expect(
+      modal.locator("#attendee-notification-recipient-scope"),
+    ).toHaveValue("selected");
+
+    // Fill and submit the selected attendee email.
+    await modal
+      .locator("#attendee-subject")
+      .fill(ATTENDEE_NOTIFICATION_SUBJECT);
+    await modal.locator("#attendee-body").fill(ATTENDEE_NOTIFICATION_BODY);
+
+    const [notificationResponse] = await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/notifications/${TEST_EVENT_IDS.alpha.waitlistLab}`,
+            ) &&
+          response.ok(),
+      ),
+      modal.getByRole("button", { name: "Send email" }).click(),
+    ]);
+
+    // Verify the selected-recipient parameters were submitted.
+    expect(notificationResponse.request().postData()).toContain(
+      "recipient_scope=selected",
+    );
+    expect(notificationResponse.request().postData()).toContain(
+      "recipient_user_ids%5B0%5D=",
+    );
+
+    // Verify the selected email send closes the modal and clears selection mode.
+    await expect(modal).toBeHidden();
+    await expect(selectionBar).toBeHidden();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Email sent successfully to selected attendees!",
+    );
+    await organizerGroupPage.getByRole("button", { name: "OK" }).click();
+    await expect(organizerGroupPage.locator(".swal2-popup")).toBeHidden();
+  });
+
+  test("organizer can open attendee email from an attendee row", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the attendees tab for the seeded waitlist event.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Full Event With Waitlist",
+      TEST_EVENT_IDS.alpha.waitlistLab,
+    );
+
+    // Find the eligible attendee row.
+    const attendeeRow = attendeesContent.locator("tr", {
+      hasText: "E2E Organizer One",
+    });
+    await expect(attendeeRow).toBeVisible();
+
+    // Open the attendee row actions and choose the row-level email action.
+    const rowActionsMenu = attendeeRow.locator(
+      "[data-attendee-row-actions-menu]",
+    );
+    await rowActionsMenu.locator("summary").click();
+    await rowActionsMenu
+      .getByRole("menuitem", { name: "Send email" })
+      .click();
+
+    // Verify the email modal is configured for the selected attendee.
+    const modal = organizerGroupPage.locator("#attendee-notification-modal");
+    await expect(modal).toBeVisible();
+    await expect(
+      modal.getByText("This email will be sent to 1 selected attendee."),
+    ).toBeVisible();
+    await expect(
+      modal.locator("#attendee-notification-recipient-scope"),
+    ).toHaveValue("selected");
+    await expect(
+      modal.locator("#attendee-notification-selected-fields input"),
+    ).toHaveCount(1);
+
+    // Close the attendee email modal without sending.
+    await modal.getByRole("button", { name: "Cancel" }).click();
+    await expect(modal).toBeHidden();
   });
 
   test("organizer can open the event QR code modal from the attendees tab", async ({

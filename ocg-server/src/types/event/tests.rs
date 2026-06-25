@@ -10,6 +10,7 @@ use super::*;
 fn event_attendance_info_can_request_refund_allows_tbd_events() {
     let attendance = EventAttendanceInfo {
         is_checked_in: false,
+        manually_invited: false,
         status: EventAttendanceStatus::Attendee,
 
         purchase_amount_minor: Some(2_500),
@@ -30,6 +31,8 @@ fn event_full_to_summary_maps_event_fields() {
     let group_id = Uuid::new_v4();
     let starts_at = Utc.with_ymd_and_hms(2030, 1, 2, 3, 4, 5).unwrap();
     let ends_at = starts_at + Duration::hours(2);
+    let registration_starts_at = starts_at - Duration::days(14);
+    let registration_ends_at = starts_at - Duration::hours(1);
     let event = EventFull {
         canceled: true,
         alliance: AllianceSummary {
@@ -60,6 +63,8 @@ fn event_full_to_summary_maps_event_fields() {
         name: "Event Name".to_string(),
         payment_currency_code: Some("USD".to_string()),
         published: true,
+        registration_ends_at: Some(registration_ends_at),
+        registration_starts_at: Some(registration_starts_at),
         remaining_capacity: Some(7),
         slug: "event-slug".to_string(),
         starts_at: Some(starts_at),
@@ -96,6 +101,8 @@ fn event_full_to_summary_maps_event_fields() {
     assert_eq!(summary.payment_currency_code.as_deref(), Some("USD"));
     assert_eq!(summary.popover_html, None);
     assert!(summary.published);
+    assert_eq!(summary.registration_ends_at, Some(registration_ends_at));
+    assert_eq!(summary.registration_starts_at, Some(registration_starts_at));
     assert_eq!(summary.remaining_capacity, Some(7));
     assert_eq!(summary.slug, "event-slug");
     assert_eq!(summary.starts_at, Some(starts_at));
@@ -441,6 +448,23 @@ fn event_full_sellable_ticket_types_filters_unsellable_tiers() {
 }
 
 #[test]
+fn event_full_unconfigured_registration_window_stays_open_after_event_start() {
+    let now = Utc::now();
+    let event = EventFull {
+        ends_at: Some(now + Duration::hours(1)),
+        registration_ends_at: None,
+        registration_starts_at: None,
+        starts_at: Some(now - Duration::hours(1)),
+        timezone: chrono_tz::UTC,
+        ..Default::default()
+    };
+
+    assert!(event.registration_window_is_open());
+    assert_eq!(event.registration_window_message(), None);
+    assert_eq!(event.registration_window_unavailable_title(), None);
+}
+
+#[test]
 fn event_full_visible_ticket_types_include_sold_out_tiers_sorted_by_price() {
     let event = EventFull {
         ticket_types: Some(vec![
@@ -460,6 +484,29 @@ fn event_full_visible_ticket_types_include_sold_out_tiers_sorted_by_price() {
         .collect();
 
     assert_eq!(ticket_titles, vec!["Sold out", "Regular", "General"]);
+}
+
+#[test]
+fn event_summary_registration_window_closes_open_only_window_at_event_start() {
+    let now = Utc::now();
+    let mut event = sample_event_summary(vec![]);
+    event.ends_at = Some(now + Duration::hours(1));
+    event.registration_ends_at = None;
+    event.registration_starts_at = Some(now - Duration::hours(2));
+    event.starts_at = Some(now - Duration::hours(1));
+    event.timezone = chrono_tz::UTC;
+
+    assert!(!event.registration_window_is_open());
+    assert!(
+        event
+            .registration_window_message()
+            .is_some_and(|message| message.starts_with("Registration closed "))
+    );
+    assert!(
+        event
+            .registration_window_unavailable_title()
+            .is_some_and(|message| message.starts_with("Registration closed "))
+    );
 }
 
 #[test]
@@ -487,18 +534,6 @@ fn event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
         event.formatted_ticket_price_badge(),
         Some("Free and up".to_string())
     );
-}
-
-#[test]
-fn event_summary_has_sellable_ticket_types_returns_false_when_no_tier_is_purchasable() {
-    let event = sample_event_summary(vec![
-        sample_ticket_type(false, Some(0), false, "Inactive free"),
-        sample_ticket_type(true, Some(1000), true, "Sold out early bird"),
-        sample_ticket_type(true, None, false, "No current price"),
-    ]);
-
-    assert!(!event.has_sellable_ticket_types());
-    assert!(event.is_ticketed());
 }
 
 #[test]
@@ -585,6 +620,8 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         name: "Event".to_string(),
         payment_currency_code: Some("USD".to_string()),
         published: true,
+        registration_ends_at: None,
+        registration_starts_at: None,
         slug: "event".to_string(),
         test_event: false,
         ticket_types: Some(ticket_types),
