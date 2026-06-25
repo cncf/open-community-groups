@@ -95,7 +95,13 @@ insert into "user" (
     'https://linkedin.com/in/alice',
     'Alice Johnson',
     'https://example.com/alice.png',
-    jsonb_build_object('github', jsonb_build_object('username', 'alice-gh')),
+    jsonb_build_object(
+        'linuxfoundation', jsonb_build_object(
+            'issuer', 'https://issuer.example.com',
+            'subject', 'auth0|alice',
+            'username', 'alice-lf'
+        )
+    ),
     'Manager',
     'https://twitter.com/alice',
     'https://alice.com'
@@ -369,8 +375,8 @@ select is(
                 "linkedin_url": "https://linkedin.com/in/alice",
                 "photo_url": "https://example.com/alice.png",
                 "provider": {
-                    "github": {
-                        "username": "alice-gh"
+                    "linuxfoundation": {
+                        "username": "alice-lf"
                     }
                 },
                 "title": "Manager",

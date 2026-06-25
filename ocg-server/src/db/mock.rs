@@ -51,6 +51,11 @@ mock! {
             email: &str,
         ) -> Result<Option<crate::auth::User>>;
         async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<crate::auth::User>>;
+        async fn get_user_by_linuxfoundation_identity_for_external_auth(
+            &self,
+            issuer: &str,
+            subject: &str,
+        ) -> Result<Option<crate::auth::User>>;
         async fn get_user_by_username(
             &self,
             username: &str,
@@ -76,6 +81,11 @@ mock! {
             actor_user_id: &Uuid,
             user: &crate::templates::auth::UserDetails,
         ) -> Result<()>;
+        async fn update_user_external_auth(
+            &self,
+            user_id: &Uuid,
+            user_summary: &crate::auth::UserSummary,
+        ) -> Result<crate::auth::User>;
         async fn update_user_password(
             &self,
             actor_user_id: &Uuid,

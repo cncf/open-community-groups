@@ -120,6 +120,44 @@ insert into "user" (
         '00000000-0000-0000-0000-00000000c043',
         'contract-waitlist',
         'https://example.com/waitlist'
+    ),
+    (
+        'contract_hash_external_lookup',
+        'Used for LF identity contract lookup',
+        'Open Community Groups',
+        'external-lookup.contract@example.com',
+        true,
+        'https://github.com/contract-external-lookup',
+        null,
+        null,
+        'https://example.com/external-lookup.png',
+        '{
+            "linuxfoundation": {
+                "issuer": "https://issuer.example.com",
+                "subject": "auth0|contract-external-lookup",
+                "username": "contract-external-lookup"
+            }
+        }'::jsonb,
+        'External auth lookup',
+        '00000000-0000-0000-0000-00000000c046',
+        'contract-external-lookup',
+        'https://example.com/external-lookup'
+    ),
+    (
+        'contract_hash_external_update',
+        'Used for external auth contract update',
+        'Open Community Groups',
+        'external-update.contract@example.com',
+        true,
+        'https://github.com/contract-external-update',
+        'Contract External Update',
+        null,
+        'https://example.com/external-update.png',
+        '{"github": {"username": "contract-external-update"}}'::jsonb,
+        'External auth update',
+        '00000000-0000-0000-0000-00000000c047',
+        'contract-external-update',
+        'https://example.com/external-update'
     );
 
 insert into "user" (

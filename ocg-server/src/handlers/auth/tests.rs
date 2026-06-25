@@ -1192,6 +1192,124 @@ async fn test_oidc_callback_authorization_error() {
 }
 
 #[tokio::test]
+async fn test_oidc_callback_uses_friendly_external_auth_email_conflict_message() {
+    // Setup in-memory session
+    let store = Arc::new(MemoryStore::default());
+    let session = Session::new(None, store, None);
+    session
+        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
+        .await
+        .unwrap();
+    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_list_user_groups().times(0);
+
+    // Setup callback auth mock
+    let mut callback_auth = MockCallbackAuth {
+        login_called: false,
+        login_result: Some(Ok(())),
+        oidc_result: Some(Err(format!(
+            "db error: {}",
+            crate::auth::EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR
+        ))),
+        oauth2_result: None,
+    };
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let captured_error_message = error_message.clone();
+    let redirect = oidc_callback_with_auth(
+        &mut callback_auth,
+        session,
+        &db,
+        OidcProvider::LinuxFoundation,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        move |message| {
+            let mut guard = captured_error_message.lock().unwrap();
+            *guard = Some(message);
+        },
+    )
+    .await
+    .unwrap();
+
+    // Check callback result and side effects
+    let response = redirect.into_response();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION).unwrap(),
+        &HeaderValue::from_static(LOG_IN_URL),
+    );
+    assert_eq!(
+        *error_message.lock().unwrap(),
+        Some(LF_SSO_EMAIL_CONFLICT_MESSAGE.to_string()),
+    );
+    assert!(!callback_auth.login_called);
+}
+
+#[tokio::test]
+async fn test_oidc_callback_uses_friendly_external_auth_identity_conflict_message() {
+    // Setup in-memory session
+    let store = Arc::new(MemoryStore::default());
+    let session = Session::new(None, store, None);
+    session
+        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
+        .await
+        .unwrap();
+    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_list_user_groups().times(0);
+
+    // Setup callback auth mock
+    let mut callback_auth = MockCallbackAuth {
+        login_called: false,
+        login_result: Some(Ok(())),
+        oidc_result: Some(Err(format!(
+            "db error: {}",
+            crate::auth::EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR
+        ))),
+        oauth2_result: None,
+    };
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let captured_error_message = error_message.clone();
+    let redirect = oidc_callback_with_auth(
+        &mut callback_auth,
+        session,
+        &db,
+        OidcProvider::LinuxFoundation,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        move |message| {
+            let mut guard = captured_error_message.lock().unwrap();
+            *guard = Some(message);
+        },
+    )
+    .await
+    .unwrap();
+
+    // Check callback result and side effects
+    let response = redirect.into_response();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION).unwrap(),
+        &HeaderValue::from_static(LOG_IN_URL),
+    );
+    assert_eq!(
+        *error_message.lock().unwrap(),
+        Some(LF_SSO_IDENTITY_CONFLICT_MESSAGE.to_string()),
+    );
+    assert!(!callback_auth.login_called);
+}
+
+#[tokio::test]
 async fn test_oidc_callback_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

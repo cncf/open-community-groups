@@ -122,7 +122,13 @@ insert into "user" (
     'https://linkedin.com/in/sarahchen',
     'Sarah Chen',
     'https://example.com/sarah.png',
-    jsonb_build_object('linuxfoundation', jsonb_build_object('username', 'sarah-lf')),
+    jsonb_build_object(
+        'linuxfoundation', jsonb_build_object(
+            'issuer', 'https://issuer.example.com',
+            'subject', 'auth0|sarah',
+            'username', 'sarah-lf'
+        )
+    ),
     'Principal Engineer',
     'https://twitter.com/sarahchen',
     'https://sarahchen.dev'

@@ -8,9 +8,11 @@
 {{ template "auth/get_user_by_email.sql" }}
 {{ template "auth/get_user_by_email_for_external_auth.sql" }}
 {{ template "auth/get_user_by_id_verified.sql" }}
+{{ template "auth/get_user_by_linuxfoundation_identity_for_external_auth.sql" }}
 {{ template "auth/get_user_by_username.sql" }}
 {{ template "auth/sign_up_user.sql" }}
 {{ template "auth/update_user_details.sql" }}
+{{ template "auth/update_user_external_auth.sql" }}
 {{ template "auth/update_user_password.sql" }}
 {{ template "auth/update_user_provider.sql" }}
 {{ template "auth/user_has_community_permission.sql" }}
@@ -27,6 +29,7 @@
 {{ template "common/list_event_discount_codes.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/list_event_ticket_types.sql" }} -- Dependency for get_event_full and payments
 {{ template "common/get_group_summary.sql" }} -- Do not sort alphabetically, has dependency
+{{ template "common/get_public_user_provider.sql" }} -- Dependency for public user profile payloads
 {{ template "common/questionnaire_answers_exist_for_event.sql" }} -- Do not sort alphabetically, dependency for get_event_full and update_event
 {{ template "common/stats_label_count_series.sql" }}
 {{ template "common/stats_label_count_series_by_name.sql" }}

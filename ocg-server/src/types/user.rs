@@ -78,11 +78,20 @@ impl UserProvider {
         }
     }
 
-    /// Build provider metadata for a Linux Foundation SSO account.
-    pub(crate) fn from_linuxfoundation_username(username: String) -> Self {
+    /// Build provider metadata for a Linux Foundation OIDC identity.
+    pub(crate) fn from_linuxfoundation_identity(
+        issuer: String,
+        subject: String,
+        username: String,
+    ) -> Self {
         Self {
             github: None,
-            linuxfoundation: Some(LinuxFoundationUserProvider { username }),
+            linuxfoundation: Some(LinuxFoundationUserProvider {
+                username,
+
+                issuer: Some(issuer),
+                subject: Some(subject),
+            }),
         }
     }
 
@@ -105,8 +114,14 @@ pub(crate) struct GitHubUserProvider {
 }
 
 /// Linux Foundation-specific user metadata.
+#[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct LinuxFoundationUserProvider {
     /// Username on Linux Foundation SSO.
     pub username: String,
+
+    /// OIDC issuer for the Linux Foundation SSO account.
+    pub issuer: Option<String>,
+    /// OIDC subject for the Linux Foundation SSO account.
+    pub subject: Option<String>,
 }

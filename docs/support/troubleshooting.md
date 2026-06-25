@@ -45,6 +45,19 @@ For events:
 - Capacity limits can block new attendance.
 - Canceled events disable normal participation.
 
+## LF SSO Email Changes
+
+OCG can recognize returning LF SSO users after their LF email changes when the account has already
+been linked through LF SSO. If login reports that the account cannot be safely connected, an
+administrator should check whether another OCG user row already owns the new email or whether the
+user's older account needs to be reconnected.
+
+This reconciliation happens during login. Organizer-created email invitations still resolve by the
+email supplied at invitation time: if that email does not match an existing registered account, OCG
+creates a pre-registered placeholder. A verified LF SSO login activates that placeholder when the LF
+account email still matches the invited email. OCG does not transfer placeholders by LF SSO identity
+when the email differs, and ownership conflicts must be reconciled before the user tries again.
+
 ## CFS Submit Button Is Disabled
 
 Check:

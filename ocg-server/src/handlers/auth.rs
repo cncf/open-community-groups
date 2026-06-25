@@ -52,6 +52,16 @@ pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 /// Session value for password authentication.
 pub(crate) const AUTH_PROVIDER_EMAIL: &str = "email";
 
+/// Friendly message for LF SSO email ownership conflicts.
+const LF_SSO_EMAIL_CONFLICT_MESSAGE: &str = concat!(
+    "Your LF SSO account matches an existing OCG account, but its email address is already used ",
+    "by another account. Please contact the site administrators."
+);
+
+/// Friendly message for LF SSO identity ownership conflicts.
+const LF_SSO_IDENTITY_CONFLICT_MESSAGE: &str =
+    "This LF SSO account is already linked to another OCG account.";
+
 /// URL for the log in page.
 pub(crate) const LOG_IN_URL: &str = "/log-in";
 
@@ -614,7 +624,7 @@ where
             return Ok(Redirect::to(&log_in_url));
         }
         Err(err) => {
-            on_error(format!("{OIDC_AUTHORIZATION_FAILED}: {err}"));
+            on_error(oidc_authorization_error_message(&err));
             return Ok(Redirect::to(&log_in_url));
         }
     };
@@ -1050,6 +1060,19 @@ pub(crate) async fn log_out_for_stale_dashboard_context(
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
     Ok(redirect_to_log_in_for_request(headers))
+}
+
+/// Formats OIDC authorization errors for user-facing flash messages.
+fn oidc_authorization_error_message(err: &str) -> String {
+    if err.contains(auth::EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR) {
+        return LF_SSO_EMAIL_CONFLICT_MESSAGE.to_string();
+    }
+
+    if err.contains(auth::EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR) {
+        return LF_SSO_IDENTITY_CONFLICT_MESSAGE.to_string();
+    }
+
+    format!("OpenID Connect authorization failed: {err}")
 }
 
 /// Builds the log-in redirect response expected by the request type.

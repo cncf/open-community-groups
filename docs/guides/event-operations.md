@@ -445,10 +445,12 @@ and can promote the next waitlisted user when a seat opens. Paid attendees stay 
 workflow instead.
 
 `Invite` is available for free RSVP events when you have event write access. You can select a
-registered platform user or enter an email address. For email invitations, the address must match
-the invitee's LF account primary email because they must log in with LF SSO to accept. Pending
-invitations show in the attendee table and can be canceled from the row actions menu. Rejected
-invitations remain visible and cannot be sent again for the same event and user.
+registered platform user or enter an email address. For new invitees, use their LF account primary
+email because LF SSO activates the email invitation by that address. For existing users, select the
+registered platform user when possible; LF-linked accounts can keep logging in after an LF email
+change because OCG reconciles them by LF SSO identity. Pending invitations show in the attendee table
+and can be canceled from the row actions menu. Rejected invitations remain visible and cannot be sent
+again for the same event and user.
 
 The attendee actions menu has two CSV exports: `Attendees list CSV` exports attendee name,
 company, title, and whether the confirmed attendee was manually invited; `Attendees + answers CSV`
