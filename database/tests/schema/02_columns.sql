@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(72);
+select plan(73);
 
 -- ============================================================================
 -- TESTS
@@ -627,6 +627,24 @@ select columns_are('group_sponsor', array[
     'name',
 
     'website_url'
+]);
+
+-- Test: group_store_item columns should match expected
+select columns_are('group_store_item', array[
+    'group_store_item_id',
+    'group_id',
+    'created_by',
+    'name',
+    'description',
+    'image_url',
+    'price_minor',
+    'currency_code',
+    'inventory_count',
+    'checkout_url',
+    'featured',
+    'active',
+    'created_at',
+    'updated_at'
 ]);
 
 -- Test: group_team columns should match expected

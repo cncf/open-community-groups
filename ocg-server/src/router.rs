@@ -305,6 +305,10 @@ pub(crate) async fn setup(
         .route("/wiki", get(site::wiki::page))
         // Alliance-prefixed public routes
         .route("/{alliance}", get(alliance::page))
+        .route(
+            "/{alliance}/group/{group_slug}/store",
+            get(group::store_page),
+        )
         .route("/{alliance}/group/{group_slug}", get(group::page))
         .route(
             "/{alliance}/event/{event_id}/cfs-modal",
