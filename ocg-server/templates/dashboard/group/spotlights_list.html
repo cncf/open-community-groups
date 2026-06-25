@@ -4,18 +4,36 @@
 {{ dashboard::page_title(title = "Member Spotlights") -}}
 
 <div class="my-5 grid gap-6">
-  <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h2 class="text-lg font-semibold text-stone-950">Add a success story</h2>
-        <p class="mt-1 text-sm text-stone-600">Highlight a member story with an optional image and link. Only group admins can manage these cards.</p>
+  <section class="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
+    <div class="border-b border-stone-100 bg-linear-to-br from-primary-50/80 via-white to-stone-50 px-5 py-5 sm:px-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div class="inline-flex rounded-full border border-primary-200 bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary-700">
+            New member story
+          </div>
+          <h2 class="mt-3 text-xl font-black tracking-tight text-stone-950">Add member spotlight</h2>
+          <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
+            Highlight a group member with a story, optional image, and a link to a deeper profile,
+            demo, article, or launch.
+          </p>
+        </div>
+        {% if can_manage_spotlights && !members.is_empty() -%}
+          <div class="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-xs/5 font-medium text-stone-500 shadow-sm">
+            Use Published to control visibility.
+          </div>
+        {% else -%}
+          <div class="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-xs/5 font-medium text-stone-500 shadow-sm">
+            {% if members.is_empty() -%}
+              Add group members first.
+            {% else -%}
+              Read only.
+            {% endif -%}
+          </div>
+        {% endif -%}
       </div>
-      {% if !can_manage_spotlights -%}
-        <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">Read only</span>
-      {% endif -%}
     </div>
 
-    <form class="mt-5 grid gap-4"
+    <form class="grid gap-5 p-5 sm:p-6"
           hx-post="/dashboard/group/spotlights"
           hx-target="#dashboard-content"
           hx-indicator="#dashboard-spinner"
@@ -24,57 +42,57 @@
           {% endif -%}>
       <div class="grid gap-4 lg:grid-cols-2">
         <label class="block">
-          <span class="label-primary">Member</span>
-          <select name="user_id" class="input-primary mt-1" required>
+          <span class="label">Member</span>
+          <select name="user_id" class="input" required>
             {% for member in members -%}
               <option value="{{ member.user_id }}">{{ member.name.as_deref().unwrap_or(&member.username) }} (@{{ member.username }})</option>
             {% endfor -%}
           </select>
         </label>
         <label class="block">
-          <span class="label-primary">Title</span>
+          <span class="label">Title</span>
           <input name="title"
-                 class="input-primary mt-1"
+                 class="input"
                  maxlength="{{ crate::validation::MAX_LEN_M }}"
                  placeholder="How this member moved the community forward"
                  required>
         </label>
       </div>
       <label class="block">
-        <span class="label-primary">Story</span>
+        <span class="label">Story</span>
         <textarea name="story"
-                  class="input-primary mt-1 min-h-32"
+                  class="input min-h-32"
                   maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
                   placeholder="Tell the member story, result, or lesson."
                   required></textarea>
       </label>
       <div class="grid gap-4 lg:grid-cols-2">
         <label class="block">
-          <span class="label-primary">Image URL</span>
-          <input name="image_url" class="input-primary mt-1" placeholder="https://...">
+          <span class="label">Image URL</span>
+          <input name="image_url" class="input" placeholder="https://...">
         </label>
         <label class="block">
-          <span class="label-primary">Link URL</span>
-          <input name="link_url" class="input-primary mt-1" placeholder="https://...">
+          <span class="label">Link URL</span>
+          <input name="link_url" class="input" placeholder="https://...">
         </label>
       </div>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label class="block">
-          <span class="label-primary">Featured</span>
-          <select name="featured" class="input-primary mt-1">
+          <span class="label">Featured</span>
+          <select name="featured" class="input">
             <option value="false">No</option>
             <option value="true">Yes</option>
           </select>
         </label>
         <label class="block">
-          <span class="label-primary">Published</span>
-          <select name="published" class="input-primary mt-1">
+          <span class="label">Published</span>
+          <select name="published" class="input">
             <option value="true">Yes</option>
             <option value="false">No</option>
           </select>
         </label>
       </div>
-      <div>
+      <div class="flex justify-end border-t border-stone-100 pt-5">
         <button type="submit"
                 class="btn-primary"
                 {% if !can_manage_spotlights || members.is_empty() -%}
@@ -137,45 +155,45 @@
             <input type="hidden" name="user_id" value="{{ spotlight.user_id }}">
 
             <label class="block">
-              <span class="label-primary">Title</span>
+              <span class="label">Title</span>
               <input name="title"
-                     class="input-primary mt-1"
+                     class="input"
                      value="{{ spotlight.title }}"
                      maxlength="{{ crate::validation::MAX_LEN_M }}"
                      required>
             </label>
             <label class="block">
-              <span class="label-primary">Story</span>
+              <span class="label">Story</span>
               <textarea name="story"
-                        class="input-primary mt-1 min-h-32"
+                        class="input min-h-32"
                         maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
                         required>{{ spotlight.story }}</textarea>
             </label>
             <div class="grid gap-4 lg:grid-cols-2">
               <label class="block">
-                <span class="label-primary">Image URL</span>
+                <span class="label">Image URL</span>
                 <input name="image_url"
-                       class="input-primary mt-1"
+                       class="input"
                        value="{{ spotlight.image_url.as_deref().unwrap_or("") }}">
               </label>
               <label class="block">
-                <span class="label-primary">Link URL</span>
+                <span class="label">Link URL</span>
                 <input name="link_url"
-                       class="input-primary mt-1"
+                       class="input"
                        value="{{ spotlight.link_url.as_deref().unwrap_or("") }}">
               </label>
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="block">
-                <span class="label-primary">Featured</span>
-                <select name="featured" class="input-primary mt-1">
+                <span class="label">Featured</span>
+                <select name="featured" class="input">
                   <option value="false" {% if !spotlight.featured %}selected{% endif %}>No</option>
                   <option value="true" {% if spotlight.featured %}selected{% endif %}>Yes</option>
                 </select>
               </label>
               <label class="block">
-                <span class="label-primary">Published</span>
-                <select name="published" class="input-primary mt-1">
+                <span class="label">Published</span>
+                <select name="published" class="input">
                   <option value="true" {% if spotlight.published %}selected{% endif %}>Yes</option>
                   <option value="false" {% if !spotlight.published %}selected{% endif %}>No</option>
                 </select>
