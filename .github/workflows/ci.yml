@@ -147,7 +147,7 @@ jobs:
       - name: Run djlint
         run: |
           djlint \
-            --reformat \
+            --check \
             --configuration ocg-server/templates/.djlintrc \
             ocg-server/templates
 
