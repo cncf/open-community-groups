@@ -1,4 +1,5 @@
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
 
 {{ dashboard::page_title(title = "Store") -}}
 
@@ -57,10 +58,7 @@
                   placeholder="Describe the item, sizes, shipping, or pickup details."></textarea>
       </label>
       <div class="grid gap-4 lg:grid-cols-2">
-        <label class="block">
-          <span class="label">Image URL</span>
-          <input name="image_url" class="input" placeholder="https://...">
-        </label>
+        {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional product image shown on the group page and store.", field_class = "col-span-full") -}}
         <label class="block">
           <span class="label">Price in cents</span>
           <input name="price_minor"
@@ -184,12 +182,10 @@
                         maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{{ item.description.as_deref().unwrap_or("") }}</textarea>
             </label>
             <div class="grid gap-4 lg:grid-cols-2">
-              <label class="block">
-                <span class="label">Image URL</span>
-                <input name="image_url"
-                       class="input"
-                       value="{{ item.image_url.as_deref().unwrap_or("") }}">
-              </label>
+              {% let image_value -%}
+              {% if let Some(image_url) = &item.image_url %}value="{{ image_url }}"{% endif %}
+            {%- endlet %}
+            {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional product image shown on the group page and store.", value_attr = image_value, field_class = "col-span-full") -}}
               <label class="block">
                 <span class="label">Price in cents</span>
                 <input name="price_minor"
