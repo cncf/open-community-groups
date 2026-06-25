@@ -3,10 +3,9 @@ import { expect, test } from "@playwright/test";
 import { navigateToPath } from "../../utils.js";
 
 const getSearchSection = (page, title) =>
-  page
-    .getByRole("heading", { name: title, exact: true })
-    .locator("..")
-    .locator("..");
+  page.locator("#site-search-results section").filter({
+    has: page.getByRole("heading", { name: title, exact: true }),
+  });
 
 test.describe("site search page", () => {
   test("renders aggregated search sections with continue-search links", async ({
