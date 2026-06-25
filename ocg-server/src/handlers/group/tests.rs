@@ -276,14 +276,7 @@ async fn test_page_success() {
                 && *limit == 9
         })
         .returning(move |_, _, _, _| Ok(vec![sample_event_summary(event_id, group_id)]));
-    db.expect_list_group_member_spotlights()
-        .times(1)
-        .withf(move |id, include_unpublished| *id == group_id && !*include_unpublished)
-        .returning(|_, _| Ok(vec![]));
-    db.expect_list_group_store_items()
-        .times(1)
-        .withf(move |id, include_inactive| *id == group_id && !*include_inactive)
-        .returning(|_, _| Ok(vec![]));
+    expect_empty_group_home_previews(&mut db, group_id);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -339,6 +332,17 @@ async fn test_page_success() {
     assert!(body.contains(
         r#"<meta name="twitter:image" content="https://example.test/images/og/group-og.png">"#
     ));
+}
+
+fn expect_empty_group_home_previews(db: &mut MockDB, group_id: Uuid) {
+    db.expect_list_group_member_spotlights()
+        .times(1)
+        .withf(move |id, include_unpublished| *id == group_id && !*include_unpublished)
+        .returning(|_, _| Ok(vec![]));
+    db.expect_list_group_store_items()
+        .times(1)
+        .withf(move |id, include_inactive| *id == group_id && !*include_inactive)
+        .returning(|_, _| Ok(vec![]));
 }
 
 #[tokio::test]

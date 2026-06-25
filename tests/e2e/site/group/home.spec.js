@@ -54,23 +54,27 @@ test.describe("group page", () => {
     await expect(
       page.getByRole("heading", { name: "Member spotlights" }),
     ).toBeVisible();
+    const spotlightsPreview = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Member spotlights" }),
+    });
     await expect(
-      page
-        .locator(
-          `a[href="/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/spotlights"]`,
-        )
-        .first(),
-    ).toBeVisible();
+      spotlightsPreview.getByRole("link", { name: "View all" }),
+    ).toHaveAttribute(
+      "href",
+      `/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/spotlights`,
+    );
     await expect(
       page.getByRole("heading", { name: "Group store" }),
     ).toBeVisible();
+    const storePreview = page.locator("section").filter({
+      has: page.getByRole("heading", { name: "Group store" }),
+    });
     await expect(
-      page
-        .locator(
-          `a[href="/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/store"]`,
-        )
-        .first(),
-    ).toBeVisible();
+      storePreview.getByRole("link", { name: "View store" }),
+    ).toHaveAttribute(
+      "href",
+      `/${TEST_ALLIANCE_NAME}/group/${TEST_GROUP_SLUGS.alliance1.alpha}/store`,
+    );
 
     // Verify the upcoming events section includes the expected events.
     await expect(
