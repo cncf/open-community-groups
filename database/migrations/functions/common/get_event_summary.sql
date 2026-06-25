@@ -45,6 +45,8 @@ returns json as $$
         'meeting_password', m_event.password,
         'meeting_provider', e.meeting_provider_id,
         'payment_currency_code', e.payment_currency_code,
+        'registration_ends_at', floor(extract(epoch from e.registration_ends_at)),
+        'registration_starts_at', floor(extract(epoch from e.registration_starts_at)),
         'starts_at', floor(extract(epoch from e.starts_at)),
         'ticket_types', list_event_ticket_types(e.event_id),
         'venue_address', e.venue_address,

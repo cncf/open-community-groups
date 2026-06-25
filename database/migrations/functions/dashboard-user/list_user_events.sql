@@ -29,6 +29,7 @@ returns json as $$
                     else 'attendee'
                 end as attendance_status,
                 ea.event_id,
+                ea.manually_invited,
                 ea.registration_answers,
                 'attendee'::text as role,
                 case
@@ -57,6 +58,7 @@ returns json as $$
             select
                 null::text as attendance_status,
                 eh.event_id,
+                false as manually_invited,
                 null::jsonb as registration_answers,
                 'host'::text as role,
                 null::text as resume_checkout_url
@@ -69,6 +71,7 @@ returns json as $$
             select
                 null::text as attendance_status,
                 es.event_id,
+                false as manually_invited,
                 null::jsonb as registration_answers,
                 'speaker'::text as role,
                 null::text as resume_checkout_url
@@ -81,6 +84,7 @@ returns json as $$
             select
                 null::text as attendance_status,
                 s.event_id,
+                false as manually_invited,
                 null::jsonb as registration_answers,
                 'speaker'::text as role,
                 null::text as resume_checkout_url
@@ -95,6 +99,7 @@ returns json as $$
                 ve.alliance_id,
                 ve.event_id,
                 ve.group_id,
+                bool_or(rr.manually_invited) as manually_invited,
                 (max(rr.registration_answers::text) filter (where rr.registration_answers is not null))::jsonb
                     as registration_answers,
                 max(rr.resume_checkout_url) as resume_checkout_url,
@@ -111,6 +116,7 @@ returns json as $$
                 er.alliance_id,
                 er.event_id,
                 er.group_id,
+                er.manually_invited,
                 er.registration_answers,
                 er.resume_checkout_url,
                 er.roles,
@@ -126,32 +132,38 @@ returns json as $$
         (
             select coalesce(
                 json_agg(
-                    json_build_object(
-                        'event',
-                        get_event_summary(
-                            erp.alliance_id,
-                            erp.group_id,
-                            erp.event_id
-                        ),
-                        'has_paid_purchase',
-                        exists (
-                            select 1
-                            from event_purchase ep
-                            where ep.event_id = erp.event_id
-                            and ep.user_id = p_user_id
-                            and ep.status in ('completed', 'refund-requested')
-                            and ep.amount_minor > 0
-                        ),
-                        'registration_questions',
-                        rq.registration_questions,
-                        'roles',
-                        erp.roles,
-                        'attendance_status',
-                        erp.attendance_status,
-                        'registration_answers',
-                        erp.registration_answers,
-                        'resume_checkout_url',
-                        erp.resume_checkout_url
+                    (
+                        jsonb_build_object(
+                            'event',
+                            get_event_summary(
+                                erp.alliance_id,
+                                erp.group_id,
+                                erp.event_id
+                            ),
+                            'has_paid_purchase',
+                            exists (
+                                select 1
+                                from event_purchase ep
+                                where ep.event_id = erp.event_id
+                                and ep.user_id = p_user_id
+                                and ep.status in ('completed', 'refund-requested')
+                                and ep.amount_minor > 0
+                            ),
+                            'registration_questions',
+                            rq.registration_questions,
+                            'roles',
+                            erp.roles,
+                            'attendance_status',
+                            erp.attendance_status,
+                            'registration_answers',
+                            erp.registration_answers,
+                            'resume_checkout_url',
+                            erp.resume_checkout_url
+                        )
+                        || case
+                            when erp.manually_invited then jsonb_build_object('manually_invited', true)
+                            else '{}'::jsonb
+                        end
                     )
                     order by erp.starts_at asc, erp.event_id asc
                 ),

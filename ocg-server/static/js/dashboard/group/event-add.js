@@ -150,6 +150,8 @@ export const initializeEventAddPage = (root = document) => {
   const {
     startsAtInput,
     endsAtInput,
+    registrationStartsAtInput,
+    registrationEndsAtInput,
     cfsEnabledInput,
     cfsStartsAtInput,
     cfsEndsAtInput,
@@ -226,6 +228,8 @@ export const initializeEventAddPage = (root = document) => {
     pageRoot,
     startsAtInput,
     endsAtInput,
+    registrationStartsAtInput,
+    registrationEndsAtInput,
     cfsEnabledInput,
     cfsStartsAtInput,
     cfsEndsAtInput,

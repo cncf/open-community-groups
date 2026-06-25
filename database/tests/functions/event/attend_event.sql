@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(47);
+select plan(52);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,6 +22,9 @@ select plan(47);
 \set eventQuestionsApprovalID '5e020000-0000-0000-0000-00000000000b'
 \set eventQuestionsFullWaitlistID '5e020000-0000-0000-0000-00000000000c'
 \set eventQuestionsID '5e020000-0000-0000-0000-00000000000d'
+\set eventRegistrationClosedID '5e020000-0000-0000-0000-000000000025'
+\set eventRegistrationOpenUntilStartID '5e020000-0000-0000-0000-000000000029'
+\set eventRegistrationUpcomingID '5e020000-0000-0000-0000-000000000026'
 \set eventUnpublishedID '5e020000-0000-0000-0000-00000000000e'
 \set groupCategoryID '5e020000-0000-0000-0000-00000000000f'
 \set groupID '5e020000-0000-0000-0000-000000000010'
@@ -45,6 +48,9 @@ select plan(47);
 \set user4ID '5e020000-0000-0000-0000-000000000022'
 \set user5ID '5e020000-0000-0000-0000-000000000023'
 \set user6ID '5e020000-0000-0000-0000-000000000024'
+\set user7ID '5e020000-0000-0000-0000-000000000027'
+\set user8ID '5e020000-0000-0000-0000-000000000028'
+\set user9ID '5e020000-0000-0000-0000-00000000002a'
 
 -- ============================================================================
 -- SEED DATA
@@ -145,6 +151,30 @@ insert into "user" (
     true,
     'user-6',
     'User Six',
+    'registered'
+), (
+    :'user7ID',
+    'user-7-hash',
+    'user-7@example.com',
+    true,
+    'user-7',
+    'User Seven',
+    'registered'
+), (
+    :'user8ID',
+    'user-8-hash',
+    'user-8@example.com',
+    true,
+    'user-8',
+    'User Eight',
+    'registered'
+), (
+    :'user9ID',
+    'user-9-hash',
+    'user-9@example.com',
+    true,
+    'user-9',
+    'User Nine',
     'registered'
 ), (
     :'questionsAttendeeUserID',
@@ -254,6 +284,8 @@ insert into event (
     description,
     ends_at,
     published,
+    registration_ends_at,
+    registration_starts_at,
     starts_at,
     timezone,
     waitlist_enabled
@@ -274,6 +306,8 @@ values
         null,
         true,
         null,
+        null,
+        null,
         'UTC',
         false
     ),
@@ -291,6 +325,8 @@ values
         'Test event',
         null,
         false,
+        null,
+        null,
         null,
         'UTC',
         false
@@ -310,6 +346,8 @@ values
         null,
         false,
         null,
+        null,
+        null,
         'UTC',
         false
     ),
@@ -327,6 +365,8 @@ values
         'Test event',
         null,
         false,
+        null,
+        null,
         null,
         'UTC',
         false
@@ -346,6 +386,8 @@ values
         null,
         true,
         null,
+        null,
+        null,
         'UTC',
         false
     ),
@@ -363,6 +405,8 @@ values
         'Past event',
         current_timestamp - interval '1 hour',
         true,
+        null,
+        null,
         current_timestamp - interval '2 hours',
         'UTC',
         false
@@ -382,6 +426,8 @@ values
         null,
         true,
         null,
+        null,
+        null,
         'UTC',
         false
     ),
@@ -399,6 +445,8 @@ values
         'Waitlist event',
         null,
         true,
+        null,
+        null,
         null,
         'UTC',
         true
@@ -418,6 +466,68 @@ values
         null,
         true,
         null,
+        null,
+        null,
+        'UTC',
+        false
+    ),
+    (
+        :'eventRegistrationClosedID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Registration Closed',
+        'registration-closed',
+        false,
+        false,
+        null,
+        false,
+        'Closed registration event',
+        null,
+        true,
+        current_timestamp - interval '1 hour',
+        null,
+        '2030-01-04 10:00:00+00',
+        'UTC',
+        false
+    ),
+    (
+        :'eventRegistrationUpcomingID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Registration Upcoming',
+        'registration-upcoming',
+        false,
+        false,
+        null,
+        false,
+        'Upcoming registration event',
+        null,
+        true,
+        current_timestamp + interval '2 days',
+        current_timestamp + interval '1 day',
+        '2030-01-05 10:00:00+00',
+        'UTC',
+        false
+    ),
+    (
+        :'eventRegistrationOpenUntilStartID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Registration Open Until Start',
+        'registration-open-until-start',
+        false,
+        false,
+        null,
+        false,
+        'Open-only registration event',
+        current_timestamp + interval '1 hour',
+        true,
+        null,
+        current_timestamp - interval '2 hours',
+        current_timestamp - interval '1 hour',
         'UTC',
         false
     );
@@ -520,7 +630,9 @@ values
     (:'eventOKID', :'user3ID', true, 'invitation-canceled'),
     (:'eventFullWaitlistID', :'user3ID', false, 'invitation-canceled'),
     (:'eventFullNoWaitlistID', :'user5ID', true, 'invitation-pending'),
-    (:'eventFullNoWaitlistID', :'user6ID', true, 'invitation-rejected');
+    (:'eventFullNoWaitlistID', :'user6ID', true, 'invitation-rejected'),
+    (:'eventRegistrationClosedID', :'user8ID', true, 'invitation-pending'),
+    (:'eventRegistrationOpenUntilStartID', :'user9ID', true, 'invitation-pending');
 
 -- Event invitation requests
 insert into event_invitation_request (
@@ -574,6 +686,50 @@ select is(
     attend_event(:'allianceID'::uuid, :'eventOKID'::uuid, :'user1ID'::uuid),
     'attendee',
     'Returns attendee when the user gets a confirmed seat'
+);
+
+-- Should reject attendee registration before the registration window opens
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'allianceID', :'eventRegistrationUpcomingID', :'user1ID'
+    ),
+    'event registration is not open',
+    'Rejects attendee registration before the registration window opens'
+);
+
+-- Should reject attendee registration after the registration window closes
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'allianceID', :'eventRegistrationClosedID', :'user7ID'
+    ),
+    'event registration is not open',
+    'Rejects attendee registration after the registration window closes'
+);
+
+-- Should reject open-only registration after the event starts
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'allianceID', :'eventRegistrationOpenUntilStartID', :'user7ID'
+    ),
+    'event registration is not open',
+    'Rejects attendee registration after an open-only registration window reaches the event start'
+);
+
+-- Should allow manually invited attendees after the registration window closes
+select is(
+    attend_event(:'allianceID'::uuid, :'eventRegistrationClosedID'::uuid, :'user8ID'::uuid),
+    'attendee',
+    'Allows manually invited attendees to accept after the registration window closes'
+);
+
+-- Should allow manually invited attendees after open-only registration reaches event start
+select is(
+    attend_event(:'allianceID'::uuid, :'eventRegistrationOpenUntilStartID'::uuid, :'user9ID'::uuid),
+    'attendee',
+    'Allows manually invited attendees to accept after an open-only registration window reaches the event start'
 );
 
 -- Should create an attendee row after a successful RSVP

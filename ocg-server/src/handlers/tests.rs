@@ -276,21 +276,22 @@ pub(crate) fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
 /// Sample attendee used in dashboard group home tests.
 pub(crate) fn sample_attendee() -> Attendee {
     Attendee {
-        amount_minor: None,
+        can_receive_attendee_email: true,
         checked_in: true,
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
-        currency_code: None,
-        discount_code: None,
         email: "attendee@example.test".to_string(),
-        event_purchase_id: None,
         manually_invited: false,
         registration_answers: None,
         status: "confirmed".to_string(),
         user_id: Uuid::new_v4(),
         username: "attendee".to_string(),
 
+        amount_minor: None,
         checked_in_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 13, 0, 0).unwrap()),
         company: Some("Example".to_string()),
+        currency_code: None,
+        discount_code: None,
+        event_purchase_id: None,
         name: Some("Event Attendee".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),
         refund_request_status: None,
@@ -691,6 +692,8 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         meeting_provider: None,
         payment_currency_code: None,
         popover_html: None,
+        registration_ends_at: None,
+        registration_starts_at: None,
         remaining_capacity: None,
         starts_at: Some(starts_at),
         ticket_types: None,
@@ -1390,6 +1393,7 @@ pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
         user_id: Uuid::new_v4(),
         username: "waitlisted-user".to_string(),
+        waitlist_position: 1,
 
         company: Some("Example".to_string()),
         name: Some("Waitlisted User".to_string()),

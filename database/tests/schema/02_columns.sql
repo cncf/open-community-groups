@@ -250,8 +250,10 @@ select columns_are('event', array[
     'photos_urls',
     'published_at',
     'published_by',
+    'registration_ends_at',
     'registration_questions',
     'registration_required',
+    'registration_starts_at',
     'starts_at',
     'tags',
     'venue_address',
@@ -863,6 +865,7 @@ select columns_are('user', array[
     'created_at',
     'email',
     'email_verified',
+    'tsdoc',
     'username',
 
     'bio',

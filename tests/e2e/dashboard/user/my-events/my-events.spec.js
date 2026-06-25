@@ -5,6 +5,7 @@ import {
   TEST_EVENT_NAMES,
   TEST_GROUP_SLUGS,
   TEST_REGISTRATION_QUESTIONS_EVENT,
+  TEST_REGISTRATION_WINDOW_EVENTS,
   getAttendButton,
   getLeaveButton,
   navigateToEvent,
@@ -48,6 +49,20 @@ const fillRegistrationQuestions = async (modal, values) => {
     })
     .locator("textarea")
     .fill(values.organizerNote);
+};
+
+// Open the actions menu for a My Events row.
+const openEventActions = async (eventRow) => {
+  await eventRow.getByLabel("Open event actions").click();
+};
+
+// Close the actions menu for a My Events row.
+const closeEventActions = async (eventRow) => {
+  await eventRow
+    .locator("[data-user-event-actions-dropdown]")
+    .evaluate((dropdown) => {
+      dropdown.open = false;
+    });
 };
 
 test.describe("user dashboard my events view", () => {
@@ -201,5 +216,65 @@ test.describe("user dashboard my events view", () => {
         hasText: TEST_REGISTRATION_QUESTIONS_EVENT.name,
       }),
     ).toHaveCount(0);
+  });
+
+  test("my events respects closed registration windows for pending actions", async ({
+    member2Page,
+  }) => {
+    // Load My Events before checking registration-window actions.
+    await navigateToPath(member2Page, "/dashboard/user?tab=events");
+
+    // Target dashboard content after the events tab loads.
+    const dashboardContent = member2Page.locator("#dashboard-content");
+    await expect(
+      dashboardContent.getByText("My Events", { exact: true }),
+    ).toBeVisible();
+
+    // Verify normal pending registration cannot continue after closing.
+    const closedQuestionsRow = dashboardContent.locator("tr", {
+      hasText: TEST_REGISTRATION_WINDOW_EVENTS.questionsClosed.name,
+    });
+    await expect(closedQuestionsRow).toContainText("Registration pending");
+    await openEventActions(closedQuestionsRow);
+    const closedCompleteRegistration = closedQuestionsRow.getByRole(
+      "menuitem",
+      { name: "Complete registration" },
+    );
+    await expect(closedCompleteRegistration).toBeDisabled();
+    await expect(closedCompleteRegistration).toHaveAttribute(
+      "title",
+      /Registration closed/,
+    );
+    await closeEventActions(closedQuestionsRow);
+
+    // Verify manual invitations can still complete pending questions.
+    const manualInviteRow = dashboardContent.locator("tr", {
+      hasText: TEST_REGISTRATION_WINDOW_EVENTS.questionsManualInviteClosed.name,
+    });
+    await expect(manualInviteRow).toContainText("Registration pending");
+    await openEventActions(manualInviteRow);
+    const manualCompleteRegistration = manualInviteRow.getByRole("menuitem", {
+      name: "Complete registration",
+    });
+    await expect(manualCompleteRegistration).toBeEnabled();
+    await closeEventActions(manualInviteRow);
+
+    // Verify an active checkout hold can still be resumed after closing.
+    const pendingPaymentRow = dashboardContent.locator("tr", {
+      hasText: TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed.name,
+    });
+    await expect(pendingPaymentRow).toContainText("Payment pending");
+    await openEventActions(pendingPaymentRow);
+    await expect(
+      pendingPaymentRow.getByRole("menuitem", { name: "Complete payment" }),
+    ).toHaveAttribute(
+      "href",
+      "https://example.test/checkout/registration-window-pending",
+    );
+    await expect(
+      pendingPaymentRow.getByRole("menuitem", {
+        name: "Complete registration",
+      }),
+    ).toBeEnabled();
   });
 });

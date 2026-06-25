@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use cached::proc_macro::cached;
+use cached::cached;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ use crate::{
         audit::{AuditLogFilters, AuditLogsOutput},
         group::{
             analytics::GroupDashboardStats,
-            attendees::{AttendeesFilters, AttendeesOutput},
+            attendees::{AttendeesOutput, SearchEventAttendeesFilters},
             events::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
@@ -383,11 +383,21 @@ pub(crate) trait DBDashboardGroup {
         user_id: Uuid,
     ) -> Result<()>;
 
+    /// Resolves custom email recipient user ids for an event and recipient scope.
+    /// Selected scopes are constrained to `requested_user_ids`.
+    async fn resolve_event_custom_notification_recipient_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        recipient_scope: &str,
+        requested_user_ids: Option<Vec<Uuid>>,
+    ) -> Result<Vec<Uuid>>;
+
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &AttendeesFilters,
+        filters: &SearchEventAttendeesFilters,
     ) -> Result<AttendeesOutput>;
 
     /// Searches invitation requests for a group's event using filters.
@@ -938,11 +948,10 @@ where
         group_id: Uuid,
     ) -> Result<GroupDashboardStats> {
         #[cached(
-            time = 3600,
+            ttl = 3600,
             key = "(Uuid, Uuid)",
             convert = "{ (alliance_id, group_id) }",
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(
             db: PgClient<'_>,
@@ -1050,11 +1059,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("event_kinds") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<EventKind>> {
             let row = db.query_one("select list_event_kinds()", &[]).await?;
@@ -1217,11 +1225,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("group_roles") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<GroupRoleSummary>> {
             let row = db.query_one("select list_group_roles()", &[]).await?;
@@ -1274,11 +1281,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_payment_currency_codes(&self) -> Result<Vec<String>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("payment_currency_codes") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<String>> {
             let row = db.query_one("select list_payment_currency_codes()", &[]).await?;
@@ -1295,11 +1301,10 @@ where
     #[instrument(skip(self), err)]
     async fn list_session_kinds(&self) -> Result<Vec<SessionKind>> {
         #[cached(
-            time = 86400,
+            ttl = 86400,
             key = "String",
             convert = r#"{ String::from("session_kinds") }"#,
-            sync_writes = "by_key",
-            result = true
+            sync_writes = "by_key"
         )]
         async fn inner(db: PgClient<'_>) -> Result<Vec<SessionKind>> {
             let row = db.query_one("select list_session_kinds()", &[]).await?;
@@ -1393,12 +1398,28 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::resolve_event_custom_notification_recipient_ids`]
+    #[instrument(skip(self, requested_user_ids), err)]
+    async fn resolve_event_custom_notification_recipient_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        recipient_scope: &str,
+        requested_user_ids: Option<Vec<Uuid>>,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select resolve_event_custom_notification_recipient_ids($1::uuid, $2::uuid, $3::text, $4::uuid[])",
+            &[&group_id, &event_id, &recipient_scope, &requested_user_ids],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::search_event_attendees`]
     #[instrument(skip(self, filters), err)]
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &AttendeesFilters,
+        filters: &SearchEventAttendeesFilters,
     ) -> Result<AttendeesOutput> {
         self.fetch_json_one(
             "select search_event_attendees($1::uuid, $2::jsonb)",

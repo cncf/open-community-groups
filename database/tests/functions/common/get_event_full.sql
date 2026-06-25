@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(14);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
@@ -382,6 +382,8 @@ insert into event (
     starts_at,
     timezone,
     legacy_id,
+    registration_ends_at,
+    registration_starts_at,
     registration_questions
 ) values (
     :'eventUnpublishedID',
@@ -395,6 +397,8 @@ insert into event (
     '2024-07-15 09:00:00+00',
     'America/New_York',
     1234,
+    '2024-07-14 09:00:00+00',
+    '2024-07-01 09:00:00+00',
     format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Question", "required": true, "options": []}]',
         :'questionID'
@@ -1371,6 +1375,31 @@ select is(
     )->>'registration_questions_locked',
     'true',
     'Should lock registration questions when answers exist'
+);
+
+-- Should include configured registration window timestamps in full event payloads
+select is(
+    jsonb_build_object(
+        'registration_ends_at', (
+            get_event_full(
+                :'allianceID'::uuid,
+                :'groupID'::uuid,
+                :'eventUnpublishedID'::uuid
+            )::jsonb
+        )->'registration_ends_at',
+        'registration_starts_at', (
+            get_event_full(
+                :'allianceID'::uuid,
+                :'groupID'::uuid,
+                :'eventUnpublishedID'::uuid
+            )::jsonb
+        )->'registration_starts_at'
+    ),
+    jsonb_build_object(
+        'registration_ends_at', floor(extract(epoch from '2024-07-14 09:00:00+00'::timestamptz)),
+        'registration_starts_at', floor(extract(epoch from '2024-07-01 09:00:00+00'::timestamptz))
+    ),
+    'Should include configured registration window timestamps in full event payloads'
 );
 
 -- Should include normalized ticketing fields in the full event payload

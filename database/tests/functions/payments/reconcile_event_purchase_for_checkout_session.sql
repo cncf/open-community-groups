@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -28,8 +28,11 @@ select plan(17);
 \set purchaseExpiredID '79000000-0000-0000-0000-000000000013'
 \set purchaseInvitedID '79000000-0000-0000-0000-000000000027'
 \set purchaseMissingRefID '79000000-0000-0000-0000-000000000015'
+\set purchaseOpenUntilStartID '79000000-0000-0000-0000-000000000031'
 \set purchaseStartedID '79000000-0000-0000-0000-000000000022'
 \set registrationQuestionID '79000000-0000-0000-0000-000000000101'
+\set openUntilStartEventID '79000000-0000-0000-0000-000000000032'
+\set openUntilStartTicketTypeID '79000000-0000-0000-0000-000000000033'
 \set startedEventID '79000000-0000-0000-0000-000000000023'
 \set startedTicketTypeID '79000000-0000-0000-0000-000000000024'
 \set user1ID '79000000-0000-0000-0000-000000000017'
@@ -40,6 +43,7 @@ select plan(17);
 \set user6ID '79000000-0000-0000-0000-000000000025'
 \set user7ID '79000000-0000-0000-0000-000000000029'
 \set user8ID '79000000-0000-0000-0000-000000000030'
+\set user9ID '79000000-0000-0000-0000-000000000034'
 
 -- ============================================================================
 -- SEED DATA
@@ -82,7 +86,8 @@ values
     (:'user5ID', 'hash-5', 'user5@example.com', true, 'buyer-5'),
     (:'user6ID', 'hash-6', 'user6@example.com', true, 'buyer-6'),
     (:'user7ID', 'hash-7', 'user7@example.com', true, 'buyer-7'),
-    (:'user8ID', 'hash-8', 'user8@example.com', true, 'buyer-8');
+    (:'user8ID', 'hash-8', 'user8@example.com', true, 'buyer-8'),
+    (:'user9ID', 'hash-9', 'user9@example.com', true, 'buyer-9');
 
 -- Group
 insert into "group" (group_id, alliance_id, group_category_id, name, slug)
@@ -99,10 +104,12 @@ insert into event (
     slug,
     description,
     timezone,
+    ends_at,
     starts_at,
     published,
     published_at,
-    registration_questions
+    registration_questions,
+    registration_starts_at
 ) values (
     -- Event with pending registration answers created during checkout
     false,
@@ -114,6 +121,7 @@ insert into event (
     'active-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     true,
     now(),
@@ -123,7 +131,8 @@ insert into event (
         'options', jsonb_build_array(),
         'prompt', 'Note',
         'required', true
-    ))
+    )),
+    null
 ), (
     false,
     :'startedEventID',
@@ -134,10 +143,28 @@ insert into event (
     'started-event',
     'Test event',
     'UTC',
+    null,
     now() - interval '1 hour',
     true,
     now(),
-    '[]'::jsonb
+    '[]'::jsonb,
+    null
+), (
+    false,
+    :'openUntilStartEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Open Until Start Event',
+    'open-until-start-event',
+    'Test event',
+    'UTC',
+    now() + interval '1 hour',
+    now() - interval '1 hour',
+    true,
+    now(),
+    '[]'::jsonb,
+    now() - interval '2 hours'
 ), (
     true,
     :'canceledEventID',
@@ -148,10 +175,12 @@ insert into event (
     'canceled-event',
     'Test event',
     'UTC',
+    null,
     now() + interval '1 day',
     false,
     null,
-    '[]'::jsonb
+    '[]'::jsonb,
+    null
 );
 
 -- Ticket types
@@ -159,6 +188,7 @@ insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_to
 values
     (:'activeTicketTypeID', :'activeEventID', 1, 10, 'General admission'),
     (:'canceledTicketTypeID', :'canceledEventID', 1, 10, 'General admission'),
+    (:'openUntilStartTicketTypeID', :'openUntilStartEventID', 1, 10, 'General admission'),
     (:'startedTicketTypeID', :'startedEventID', 1, 10, 'General admission');
 
 -- Ticket price windows
@@ -304,6 +334,22 @@ insert into event_purchase (
     'pending',
     'General admission',
     :'user6ID'
+), (
+    :'purchaseOpenUntilStartID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'openUntilStartEventID',
+    :'openUntilStartTicketTypeID',
+    now() + interval '15 minutes',
+    'stripe',
+    'cs_open_until_start',
+    null,
+    'pending',
+    'General admission',
+    :'user9ID'
 ), (
     :'purchaseInvitedID',
     2500,
@@ -570,6 +616,57 @@ select is(
         'provider_payment_reference', 'pi_started'
     ),
     'Should require refund when the event has already started'
+);
+
+-- Should complete active holds after an open-only registration window reaches the event start
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe',
+        'cs_open_until_start',
+        'pi_open_until_start'
+    )::jsonb,
+    jsonb_build_object(
+        'alliance_id', :'allianceID'::uuid,
+        'event_id', :'openUntilStartEventID'::uuid,
+        'outcome', 'completed',
+        'user_id', :'user9ID'::uuid
+    ),
+    'Should complete active holds after an open-only registration window reaches the event start'
+);
+
+-- Should persist the open-only registration window completion
+select results_eq(
+    $$
+        select
+            (
+                select completed_at is not null
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000031'::uuid
+            ),
+            (
+                select hold_expires_at is null
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000031'::uuid
+            ),
+            (
+                select provider_payment_reference
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000031'::uuid
+            ),
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = '79000000-0000-0000-0000-000000000031'::uuid
+            ),
+            (
+                select status
+                from event_attendee
+                where event_id = '79000000-0000-0000-0000-000000000032'::uuid
+                and user_id = '79000000-0000-0000-0000-000000000034'::uuid
+            )
+    $$,
+    $$ values (true, true, 'pi_open_until_start'::text, 'completed'::text, 'confirmed'::text) $$,
+    'Should persist the completed open-only hold purchase and attendee row'
 );
 
 -- Should persist the canceled purchase fields when refunding

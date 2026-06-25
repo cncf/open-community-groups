@@ -2,7 +2,10 @@ import { expect } from "@open-wc/testing";
 
 import "/static/js/event/attendance.js";
 import { getAttendanceMeta } from "/static/js/event/attendance-dom.js";
-import { showSignedOutAttendanceState } from "/static/js/event/attendance-view.js";
+import {
+  showRegistrationQuestionsPendingState,
+  showSignedOutAttendanceState,
+} from "/static/js/event/attendance-view.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
 import {
@@ -27,6 +30,8 @@ const renderAttendanceDom = ({
   availabilityUrl = "",
   attendeeApprovalRequired = "false",
   includeRegistrationQuestions = false,
+  registrationWindowOpen = "true",
+  registrationWindowUnavailableTitle = "",
 } = {}) => {
   document.body.innerHTML = `
     <div
@@ -37,6 +42,12 @@ const renderAttendanceDom = ({
       data-waitlist-enabled="${waitlistEnabled}"
       data-canceled="${canceled}"
       ${availabilityUrl ? `data-availability-url="${availabilityUrl}"` : ""}
+      data-registration-window-open="${registrationWindowOpen}"
+      ${
+        registrationWindowUnavailableTitle
+          ? `data-registration-window-unavailable-title="${registrationWindowUnavailableTitle}"`
+          : ""
+      }
       data-attendee-meeting-access-open="${attendeeMeetingAccessOpen}"
       data-attendee-approval-required="${attendeeApprovalRequired}"
     >
@@ -251,6 +262,29 @@ describe("event attendance", () => {
     expect(meetingDetails[0].classList.contains("hidden")).to.equal(false);
   });
 
+  it("allows manually invited users to complete registration questions after the window closes", () => {
+    // Render an event after the public registration window closed.
+    const { attendButton, container } = renderAttendanceDom({
+      registrationWindowOpen: "false",
+      registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
+    });
+    const meta = getAttendanceMeta(container);
+
+    // Non-manual pending registrations are blocked by the closed window.
+    showRegistrationQuestionsPendingState(container, meta, {
+      manually_invited: false,
+    });
+    expect(attendButton.disabled).to.equal(true);
+    expect(attendButton.title).to.equal("Registration closed May 1, 2099.");
+
+    // Organizer-created invitations can still answer the required questions.
+    showRegistrationQuestionsPendingState(container, meta, {
+      manually_invited: true,
+    });
+    expect(attendButton.disabled).to.equal(false);
+    expect(attendButton.hasAttribute("title")).to.equal(false);
+  });
+
   it("handles attendance clicks after the page body is swapped", () => {
     // Prepare replacement body for handling attendance clicks after the page body.
     const replacementBody = document.createElement("body");
@@ -368,6 +402,26 @@ describe("event attendance", () => {
         .querySelector("[data-attendance-icon]")
         ?.classList.contains("icon-user-plus"),
     ).to.equal(false);
+  });
+
+  it("keeps sign-in available after the registration window closes", () => {
+    // Render a signed-out fixture after the public registration window closed.
+    const { attendButton, container, signinButton } = renderAttendanceDom({
+      registrationWindowOpen: "false",
+      registrationWindowUnavailableTitle: "Registration closed May 1, 2099.",
+    });
+
+    // Apply the signed-out state before the user-specific attendance check can run.
+    showSignedOutAttendanceState(container, getAttendanceMeta(container));
+
+    // Anonymous users may need to sign in before manual invitation status is known.
+    expect(signinButton.classList.contains("hidden")).to.equal(false);
+    expect(signinButton.disabled).to.equal(false);
+    expect(signinButton.hasAttribute("title")).to.equal(false);
+    expect(
+      signinButton.querySelector("[data-attendance-label]")?.textContent,
+    ).to.equal("Attend event");
+    expect(attendButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("keeps no-capacity events behind sign-in when signed out", () => {

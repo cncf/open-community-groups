@@ -479,7 +479,8 @@ const appendPreviewFormValue = (payload, name, value) => {
  * @returns {string} Normalized value.
  */
 const normalizePreviewParameterValue = (name, value) => {
-  const isEventDate = /^(starts_at|ends_at|cfs_starts_at|cfs_ends_at)$/.test(name);
+  const isEventDate =
+    /^(starts_at|ends_at|registration_starts_at|registration_ends_at|cfs_starts_at|cfs_ends_at)$/.test(name);
   const isSessionDate = /^sessions\[\d+\]\[(starts_at|ends_at)\]$/.test(name);
   return isEventDate || isSessionDate ? convertDateTimeLocalToISO(value) : value;
 };

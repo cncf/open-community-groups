@@ -25,7 +25,7 @@ use crate::db::activity_tracker::DynDBActivityTracker;
 
 /// Format used to represent the date in the tracker.
 static DATE_FORMAT: LazyLock<Vec<FormatItem<'static>>> = LazyLock::new(|| {
-    format_description::parse("[year]-[month]-[day]").expect("format to be valid")
+    format_description::parse_borrowed::<1>("[year]-[month]-[day]").expect("format to be valid")
 });
 
 /// How often activities will be written to the database.

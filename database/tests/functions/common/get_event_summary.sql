@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
@@ -367,6 +367,8 @@ insert into event (
     starts_at,
     capacity,
     waitlist_enabled,
+    registration_ends_at,
+    registration_starts_at,
     registration_questions
 ) values (
     :'eventQuestionsID',
@@ -381,6 +383,8 @@ insert into event (
     '2030-01-03 10:00:00+00',
     2,
     true,
+    '2030-01-02 10:00:00+00',
+    '2030-01-01 10:00:00+00',
     format(
         '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]',
         :'questionID'
@@ -532,6 +536,31 @@ select is(
     )->>'has_registration_questions',
     'true',
     'Should indicate whether registration questions are configured'
+);
+
+-- Should include configured registration window timestamps in event summaries
+select is(
+    jsonb_build_object(
+        'registration_ends_at', (
+            get_event_summary(
+                :'allianceID'::uuid,
+                :'groupID'::uuid,
+                :'eventQuestionsID'::uuid
+            )::jsonb
+        )->'registration_ends_at',
+        'registration_starts_at', (
+            get_event_summary(
+                :'allianceID'::uuid,
+                :'groupID'::uuid,
+                :'eventQuestionsID'::uuid
+            )::jsonb
+        )->'registration_starts_at'
+    ),
+    jsonb_build_object(
+        'registration_ends_at', floor(extract(epoch from '2030-01-02 10:00:00+00'::timestamptz)),
+        'registration_starts_at', floor(extract(epoch from '2030-01-01 10:00:00+00'::timestamptz))
+    ),
+    'Should include configured registration window timestamps in event summaries'
 );
 
 -- Should include payment currency and normalized ticket types in event summaries

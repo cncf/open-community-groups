@@ -4,10 +4,10 @@
 {# Groups list header with title -#}
 {{ dashboard::page_title(title = "Groups") -}}
 
-<div class="flex justify-between my-10">
-  <div class="flex items-center gap-x-6">
+<div class="flex justify-between gap-4 my-10">
+  <div class="flex min-w-0 flex-1 items-center gap-x-6">
     {# Search groups input -#}
-    <div class="relative">
+    <div class="relative w-[36rem] max-w-full">
       <div class="absolute inset-y-0 rtl:inset-r-0 start-0 flex items-center ps-3 pointer-events-none">
         <div class="svg-icon size-4 icon-search bg-stone-300"></div>
       </div>
@@ -16,32 +16,35 @@
             hx-trigger="change, submit"
             hx-target="#dashboard-content"
             hx-indicator="#dashboard-spinner">
+        <label for="search_groups" class="sr-only">Search groups</label>
         <input id="search_groups"
                name="ts_query"
                type="text"
                value="{{ ts_query|assigned_or("") }}"
-               class="input-primary peer ps-9 w-96"
+               class="input-primary peer ps-9 w-full"
                placeholder="Search groups"
                autocomplete="off"
                autocorrect="off"
                autocapitalize="off"
                spellcheck="false">
+        <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+          <button type="button"
+                  hx-get="/dashboard/alliance/groups"
+                  hx-trigger="click"
+                  hx-target="#dashboard-content"
+                  hx-indicator="#dashboard-spinner"
+                  class="cursor-pointer mt-0.5"
+                  aria-label="Clear group search">
+            <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+          </button>
+        </div>
       </form>
-      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-        <button hx-get="/dashboard/alliance/groups"
-                hx-trigger="click"
-                hx-target="#dashboard-content"
-                hx-indicator="#dashboard-spinner"
-                class="cursor-pointer mt-0.5">
-          <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
-        </button>
-      </div>
     </div>
     {# End search groups input -#}
   </div>
 
   {# Add group button -#}
-  <div>
+  <div class="shrink-0">
     <button id="add-group-button"
             hx-get="/dashboard/alliance/groups/add"
             hx-target="#dashboard-content"

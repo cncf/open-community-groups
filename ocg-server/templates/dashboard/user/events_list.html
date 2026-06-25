@@ -143,22 +143,27 @@ description = "Upcoming events where you'll participate.") -}}
                         </a>
                       </li>
                     {% endif -%}
-                    {% if item.can_complete_registration_questions() -%}
+                    {% if item.has_registration_questions_action() -%}
                       <li>
-                        <button type="button"
-                                data-user-event-questions-open
-                                data-user-event-questions-modal="user-event-questions-modal-{{ item.event.event_id }}"
-                                role="menuitem"
-                                class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
-                          <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
-                          <span>
-                            {% if item.registration_questions_pending() -%}
-                              Complete registration
-                            {% else -%}
-                              Update answers
-                            {% endif -%}
-                          </span>
-                        </button>
+                        {% if item.can_complete_registration_questions() -%}
+                          <button type="button"
+                                  data-user-event-questions-open
+                                  data-user-event-questions-modal="user-event-questions-modal-{{ item.event.event_id }}"
+                                  role="menuitem"
+                                  class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
+                            <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+                            <span>{{ item.registration_questions_label() }}</span>
+                          </button>
+                        {% else -%}
+                          <button type="button"
+                                  role="menuitem"
+                                  disabled
+                                  {% if let Some(title) = item.registration_questions_disabled_title() %}title="{{ title }}"{% endif %}
+                                  class="flex items-center w-full px-4 py-2 gap-3 text-left disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-stone-700">
+                            <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
+                            <span>{{ item.registration_questions_label() }}</span>
+                          </button>
+                        {% endif -%}
                       </li>
                     {% endif -%}
                     <li>
