@@ -985,7 +985,7 @@ async function readTernConfig(path) {
 
 function renderToolOutput(tool, args) {
   return tool.output.text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
-    const value = args[key];
+    const value = args[key] ?? tool.inputSchema?.properties?.[key]?.default;
     return value === undefined || value === null ? "" : String(value);
   });
 }

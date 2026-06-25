@@ -5,11 +5,19 @@
     "description": "Commands to run after pulling new GOUP code on EC2.",
     "inputSchema": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "build_jobs": {
+          "type": "integer",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Cargo build job count for the EC2 release build."
+        }
+      },
       "additionalProperties": false
     },
     "output": {
-      "text": "cd ~/goup.vc\ngit pull\n\ncd database/migrations\nTERN_CONF=\"$HOME/.config/ocg/tern.conf\" ./migrate.sh\n\ncd ~/goup.vc\nnohup env CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &\ntail -f ~/goup-build.log\n\nsudo systemctl restart ocg-server\nsudo systemctl status ocg-server --no-pager\ncurl -I http://127.0.0.1:9000"
+      "text": "cd ~/goup.vc\ngit pull origin main\n\ncd ~/goup.vc/database/migrations\nTERN_CONF=\"$HOME/.config/ocg/tern.conf\" ./migrate.sh\n\ncd ~/goup.vc\nnohup env CARGO_BUILD_JOBS={{ build_jobs }} cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &\ntail -f ~/goup-build.log\n\nsudo systemctl restart ocg-server\nsudo systemctl status ocg-server --no-pager\ncurl -I http://127.0.0.1:9000"
     }
   },
   {
@@ -31,11 +39,19 @@
     "description": "Build the ocg-server release binary in the background and stream the log.",
     "inputSchema": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "build_jobs": {
+          "type": "integer",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Cargo build job count for the EC2 release build."
+        }
+      },
       "additionalProperties": false
     },
     "output": {
-      "text": "cd ~/goup.vc\nnohup env CARGO_BUILD_JOBS=1 cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &\ntail -f ~/goup-build.log"
+      "text": "cd ~/goup.vc\nnohup env CARGO_BUILD_JOBS={{ build_jobs }} cargo build --release -p ocg-server > ~/goup-build.log 2>&1 &\ntail -f ~/goup-build.log"
     }
   },
   {

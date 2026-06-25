@@ -4,6 +4,21 @@ This directory contains a lightweight remote MCP server for GOUP operational
 tools. It exposes MCP JSON-RPC over HTTP at `/mcp` and loads tool definitions
 from `tools.json`.
 
+## Architecture
+
+- `server.mjs` is the HTTP JSON-RPC server. It handles MCP initialization,
+  `tools/list`, `tools/call`, simple health checks, bearer-token auth, and the
+  built-in database-backed tool actions.
+- `tools.json` is the tool catalog. Static tools render `output.text` templates;
+  action tools call JavaScript handlers in `server.mjs`.
+- `package.json` declares the Node runtime and local scripts.
+- `scripts/setup-mcp-ec2.sh` in the repository root installs the EC2 systemd
+  service and writes `~/.config/ocg/mcp.env`.
+
+Static tool output supports `{{ name }}` placeholders from tool arguments. If an
+argument is omitted and the corresponding JSON schema property has a `default`,
+the default value is rendered.
+
 ## Run Locally
 
 ```bash
@@ -18,6 +33,13 @@ Useful checks:
 ```bash
 curl http://127.0.0.1:8787/health
 curl http://127.0.0.1:8787/tools
+```
+
+Validate server syntax and `tools.json`:
+
+```bash
+cd mcp
+npm run check
 ```
 
 ## Run Remotely
@@ -56,6 +78,30 @@ MCP_ENABLE_MUTATIONS=true
 
 The event creation tool uses `psql` and reads database connection details from
 `DATABASE_URL`, `TERN_CONF`, or `$HOME/.config/ocg/tern.conf`.
+
+## Update an Existing EC2 MCP Service
+
+After MCP code or `tools.json` changes are merged to `main`, update EC2 with:
+
+```bash
+cd ~/goup.vc
+git pull origin main
+cd mcp
+npm run check
+sudo systemctl restart goup-mcp
+sudo systemctl status goup-mcp --no-pager
+```
+
+Check the remote endpoint locally on EC2:
+
+```bash
+source "$HOME/.config/ocg/mcp.env"
+curl -H "Authorization: Bearer $MCP_BEARER_TOKEN" http://127.0.0.1:8787/health
+curl -H "Authorization: Bearer $MCP_BEARER_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+  http://127.0.0.1:8787/mcp
+```
 
 Authentication is done with an HTTP bearer token. Clients must send:
 
@@ -109,9 +155,11 @@ through the standard `tools/list` method.
 
 ## Included Tools
 
-- `goup_deploy_after_pull`: full EC2 update flow after `git pull`.
+- `goup_deploy_after_pull`: full EC2 update flow after pulling `origin main`.
+  Accepts optional `build_jobs` from `1` to `4`; default is `2`.
 - `goup_run_migrations`: run `tern` migrations.
 - `goup_release_build_background`: build `ocg-server` in the background.
+  Accepts optional `build_jobs` from `1` to `4`; default is `2`.
 - `goup_service_status`: inspect systemd logs and local HTTP status.
 - `goup_create_event`: create an unpublished draft event through `add_event`.
 - `goup_update_event`: update an existing event through `update_event`.
