@@ -30,10 +30,12 @@ test.describe("site header", () => {
     await navigation.getByRole("link", { name: "Jobs" }).hover();
     const browseRolesLink = navigation
       .locator('a[href="/jobs"]')
-      .filter({ hasText: "Browse roles" });
+      .filter({ hasText: "Browse roles" })
+      .first();
     const postRoleLink = navigation
       .locator('a[href="/log-in?next_url=/dashboard/jobs"]')
-      .filter({ hasText: "Post a role" });
+      .filter({ hasText: "Post a role" })
+      .first();
     await expect(browseRolesLink).toHaveAttribute("href", "/jobs");
     await expect(
       navigation
