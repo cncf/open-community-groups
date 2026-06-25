@@ -718,7 +718,7 @@ select is(
         'registration_answers',
         null,
         'registration_questions',
-        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
+        get_event_registration_questions(:'allianceID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
         'resume_checkout_url',
         null,
         'roles',
@@ -757,7 +757,7 @@ select is(
             :'registrationQuestionID'
         )::jsonb,
         'registration_questions',
-        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
+        get_event_registration_questions(:'allianceID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
         'resume_checkout_url',
         null,
         'roles',
@@ -784,7 +784,7 @@ select is(
             :'registrationQuestionID'
         )::jsonb,
         'registration_questions',
-        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
+        get_event_registration_questions(:'allianceID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
         'resume_checkout_url',
         'https://example.test/checkout/resume',
         'roles',
@@ -811,7 +811,7 @@ select is(
             :'registrationQuestionID'
         )::jsonb,
         'registration_questions',
-        get_event_registration_questions(:'communityID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
+        get_event_registration_questions(:'allianceID'::uuid, :'eventQuestionsID'::uuid)::jsonb,
         'resume_checkout_url',
         null,
         'roles',

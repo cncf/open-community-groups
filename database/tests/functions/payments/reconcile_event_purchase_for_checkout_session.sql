@@ -626,7 +626,7 @@ select is(
         'pi_open_until_start'
     )::jsonb,
     jsonb_build_object(
-        'community_id', :'communityID'::uuid,
+        'alliance_id', :'allianceID'::uuid,
         'event_id', :'openUntilStartEventID'::uuid,
         'outcome', 'completed',
         'user_id', :'user9ID'::uuid

@@ -553,7 +553,7 @@ select is(
 
 -- Should return none for pending non-manual invitations
 select is(
-    get_event_attendance(:'communityID'::uuid, :'eventID'::uuid, :'user9ID'::uuid)::jsonb,
+    get_event_attendance(:'allianceID'::uuid, :'eventID'::uuid, :'user9ID'::uuid)::jsonb,
     '{
         "is_checked_in": false,
         "purchase_amount_minor": null,

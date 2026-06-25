@@ -543,14 +543,14 @@ select is(
     jsonb_build_object(
         'registration_ends_at', (
             get_event_summary(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventQuestionsID'::uuid
             )::jsonb
         )->'registration_ends_at',
         'registration_starts_at', (
             get_event_summary(
-                :'communityID'::uuid,
+                :'allianceID'::uuid,
                 :'groupID'::uuid,
                 :'eventQuestionsID'::uuid
             )::jsonb

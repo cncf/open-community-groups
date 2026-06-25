@@ -692,7 +692,7 @@ select is(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventRegistrationUpcomingID', :'user1ID'
+        :'allianceID', :'eventRegistrationUpcomingID', :'user1ID'
     ),
     'event registration is not open',
     'Rejects attendee registration before the registration window opens'
@@ -702,7 +702,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventRegistrationClosedID', :'user7ID'
+        :'allianceID', :'eventRegistrationClosedID', :'user7ID'
     ),
     'event registration is not open',
     'Rejects attendee registration after the registration window closes'
@@ -712,7 +712,7 @@ select throws_ok(
 select throws_ok(
     format(
         'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
-        :'communityID', :'eventRegistrationOpenUntilStartID', :'user7ID'
+        :'allianceID', :'eventRegistrationOpenUntilStartID', :'user7ID'
     ),
     'event registration is not open',
     'Rejects attendee registration after an open-only registration window reaches the event start'
@@ -720,14 +720,14 @@ select throws_ok(
 
 -- Should allow manually invited attendees after the registration window closes
 select is(
-    attend_event(:'communityID'::uuid, :'eventRegistrationClosedID'::uuid, :'user8ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventRegistrationClosedID'::uuid, :'user8ID'::uuid),
     'attendee',
     'Allows manually invited attendees to accept after the registration window closes'
 );
 
 -- Should allow manually invited attendees after open-only registration reaches event start
 select is(
-    attend_event(:'communityID'::uuid, :'eventRegistrationOpenUntilStartID'::uuid, :'user9ID'::uuid),
+    attend_event(:'allianceID'::uuid, :'eventRegistrationOpenUntilStartID'::uuid, :'user9ID'::uuid),
     'attendee',
     'Allows manually invited attendees to accept after an open-only registration window reaches the event start'
 );

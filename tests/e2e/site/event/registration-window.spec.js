@@ -1,7 +1,7 @@
 import { expect, test } from "../../fixtures.js";
 
 import {
-  TEST_COMMUNITY_NAME,
+  TEST_ALLIANCE_NAME,
   TEST_GROUP_SLUGS,
   TEST_REGISTRATION_WINDOW_EVENTS,
   getAttendanceContainer,
@@ -30,8 +30,8 @@ const getTicketOption = (page) =>
 const navigateToRegistrationWindowEvent = async (page, event) => {
   await navigateToEvent(
     page,
-    TEST_COMMUNITY_NAME,
-    TEST_GROUP_SLUGS.community1.alpha,
+    TEST_ALLIANCE_NAME,
+    TEST_GROUP_SLUGS.alliance1.alpha,
     event.slug,
   );
 

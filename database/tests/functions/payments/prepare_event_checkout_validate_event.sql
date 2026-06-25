@@ -289,7 +289,7 @@ select throws_ok(
 -- Should return the payment currency after an open-only registration window reaches the event start
 select is(
     prepare_event_checkout_validate_event(
-        :'communityID'::uuid,
+        :'allianceID'::uuid,
         :'openUntilStartEventID'::uuid,
         'stripe'
     ),

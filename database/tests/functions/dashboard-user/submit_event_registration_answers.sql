@@ -571,7 +571,7 @@ select throws_ok(
             )
         $$,
         :'windowSelfUserID',
-        :'communityID',
+        :'allianceID',
         :'eventRegistrationClosedID',
         :'questionID',
         :'optionVegetarianID'
@@ -592,7 +592,7 @@ select results_eq(
             )
         $$,
         :'windowCheckoutUserID',
-        :'communityID',
+        :'allianceID',
         :'eventTicketedRegistrationClosedID',
         :'questionID',
         :'optionVegetarianID'
@@ -638,7 +638,7 @@ select results_eq(
             )
         $$,
         :'windowManualUserID',
-        :'communityID',
+        :'allianceID',
         :'eventRegistrationClosedID',
         :'questionID',
         :'optionVegetarianID'

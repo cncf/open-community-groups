@@ -621,7 +621,7 @@ select is(
 select is(
     (
         select prepare_event_checkout_purchase(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'closedWindowEventID'::uuid,
             :'closedWindowTicketTypeAID'::uuid,
             :'closedWindowMatchingUserID'::uuid,
@@ -643,7 +643,7 @@ select throws_ok(
         null,
         'stripe'
     )$$,
-        :'communityID',
+        :'allianceID',
         :'closedWindowEventID',
         :'closedWindowTicketTypeBID',
         :'closedWindowMismatchedUserID'
@@ -675,7 +675,7 @@ select throws_ok(
         null,
         'stripe'
     )$$,
-        :'communityID',
+        :'allianceID',
         :'closedWindowEventID',
         :'closedWindowTicketTypeAID',
         :'closedWindowNewUserID'
@@ -688,7 +688,7 @@ select throws_ok(
 select is(
     (
         select prepare_event_checkout_purchase(
-            :'communityID'::uuid,
+            :'allianceID'::uuid,
             :'soldOutEventID'::uuid,
             :'soldOutTicketTypeID'::uuid,
             :'soldOutPendingUserID'::uuid,

@@ -437,7 +437,7 @@ select throws_ok(
 select is(
     complete_free_event_purchase(:'openUntilStartPurchaseID'::uuid)::jsonb,
     jsonb_build_object(
-        'community_id', :'communityID'::uuid,
+        'alliance_id', :'allianceID'::uuid,
         'event_id', :'eventOpenUntilStartID'::uuid,
         'user_id', :'user6ID'::uuid
     ),
