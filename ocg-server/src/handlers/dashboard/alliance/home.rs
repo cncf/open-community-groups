@@ -21,7 +21,7 @@ use crate::{
         PageId,
         auth::User,
         dashboard::alliance::{
-            analytics, event_categories, group_categories,
+            analytics, email_templates, event_categories, group_categories,
             home::{Content, Page, Tab},
             regions, settings,
         },
@@ -72,6 +72,20 @@ pub(crate) async fn page(
                 return Err(HandlerError::Forbidden);
             }
             Content::CreateAlliance(crate::templates::dashboard::alliance::create::Page)
+        }
+        Tab::EmailTemplates => {
+            let (can_manage_settings, onboarding) = tokio::try_join!(
+                db.user_has_alliance_permission(
+                    &alliance_id,
+                    &user_id,
+                    AlliancePermission::SettingsWrite
+                ),
+                db.get_site_onboarding_email_template()
+            )?;
+            Content::EmailTemplates(Box::new(email_templates::Page {
+                can_manage_settings,
+                onboarding,
+            }))
         }
         Tab::EventCategories => {
             let (can_manage_taxonomy, categories) = tokio::try_join!(

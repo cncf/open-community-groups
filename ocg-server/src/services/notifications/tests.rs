@@ -453,8 +453,10 @@ fn test_delivery_worker_prepare_content_site_onboarding() {
     let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
 
     // Check content matches expectations
-    assert_eq!(subject, "Welcome to GOUP");
+    assert_eq!(subject, "Custom onboarding subject");
     assert!(body.contains("Hi Test User"));
+    assert!(body.contains("Custom onboarding body"));
+    assert!(body.contains("Start now"));
     assert!(body.contains("https://example.test/explore"));
     assert!(body.contains("https://example.test/jobs"));
     assert!(body.contains("https://example.test/landscape"));
@@ -1092,10 +1094,14 @@ fn sample_email_verification_template_data() -> serde_json::Value {
 /// Sample template payload for site onboarding notifications.
 fn sample_site_onboarding_template_data() -> serde_json::Value {
     json!({
+        "body": "Custom onboarding body",
+        "cta_text": "Start now",
         "explore_link": "https://example.test/explore",
         "jobs_link": "https://example.test/jobs",
         "landscape_link": "https://example.test/landscape",
+        "preheader": "Custom onboarding preheader",
         "search_link": "https://example.test/search",
+        "subject": "Custom onboarding subject",
         "theme": {
             "primary_color": "#000000"
         },

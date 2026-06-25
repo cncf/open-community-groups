@@ -1046,13 +1046,20 @@ async fn try_enqueue_site_onboarding_notification(
     server_cfg: &HttpServerConfig,
     user: &auth::User,
 ) -> Result<(), HandlerError> {
-    let site_settings = db.get_site_settings().await?;
+    let (site_settings, onboarding_template) = tokio::try_join!(
+        db.get_site_settings(),
+        db.get_site_onboarding_email_template()
+    )?;
     let base_url = server_cfg.base_url.trim_end_matches('/');
     let template_data = SiteOnboarding {
+        body: onboarding_template.body,
+        cta_text: onboarding_template.cta_text,
         explore_link: format!("{base_url}/explore"),
         jobs_link: format!("{base_url}/jobs"),
         landscape_link: format!("{base_url}/landscape"),
+        preheader: onboarding_template.preheader,
         search_link: format!("{base_url}/search"),
+        subject: onboarding_template.subject,
         theme: site_settings.theme,
         user_dashboard_link: format!("{base_url}/dashboard/user"),
         user_name: user.name.clone(),

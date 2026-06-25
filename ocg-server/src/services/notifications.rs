@@ -454,8 +454,8 @@ impl DeliveryWorker {
                 (subject, body)
             }
             NotificationKind::SiteOnboarding => {
-                let subject = "Welcome to GOUP".to_string();
                 let template: SiteOnboarding = serde_json::from_value(template_data)?;
+                let subject = template.subject.clone();
                 let body = template.render()?;
                 (subject, body)
             }

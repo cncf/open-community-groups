@@ -1220,6 +1220,9 @@ mock! {
         async fn get_site_recently_added_groups(
             &self,
         ) -> Result<Vec<crate::types::group::GroupSummary>>;
+        async fn get_site_onboarding_email_template(
+            &self,
+        ) -> Result<crate::templates::dashboard::alliance::email_templates::SiteOnboardingEmailTemplate>;
         async fn get_site_settings(&self) -> Result<crate::types::site::SiteSettings>;
         async fn get_site_stats(&self) -> Result<crate::templates::site::stats::SiteStats>;
         async fn get_site_upcoming_events(
@@ -1227,5 +1230,10 @@ mock! {
             event_kinds: Vec<crate::types::event::EventKind>,
         ) -> Result<Vec<crate::types::event::EventSummary>>;
         async fn list_alliances(&self) -> Result<Vec<crate::types::alliance::AllianceSummary>>;
+        async fn update_site_onboarding_email_template(
+            &self,
+            user_id: Uuid,
+            template: &crate::templates::dashboard::alliance::email_templates::SiteOnboardingEmailTemplate,
+        ) -> Result<()>;
     }
 }

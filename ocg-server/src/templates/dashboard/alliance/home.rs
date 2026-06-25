@@ -11,8 +11,8 @@ use crate::{
         auth::User,
         dashboard::{
             alliance::{
-                analytics, create, event_categories, group_categories, groups, landscape, regions,
-                settings, team,
+                analytics, create, email_templates, event_categories, group_categories, groups,
+                landscape, regions, settings, team,
             },
             audit,
         },
@@ -51,6 +51,8 @@ pub(crate) enum Content {
     Analytics(Box<analytics::Page>),
     /// Alliance create page.
     CreateAlliance(create::Page),
+    /// Email templates page.
+    EmailTemplates(Box<email_templates::Page>),
     /// Event categories management page.
     EventCategories(event_categories::ListPage),
     /// Group categories management page.
@@ -78,6 +80,11 @@ impl Content {
     /// Check if the content is the alliance create page.
     fn is_create_alliance(&self) -> bool {
         matches!(self, Content::CreateAlliance(_))
+    }
+
+    /// Check if the content is the email templates page.
+    fn is_email_templates(&self) -> bool {
+        matches!(self, Content::EmailTemplates(_))
     }
 
     /// Check if the content is the event categories page.
@@ -126,6 +133,7 @@ impl std::fmt::Display for Content {
         match self {
             Content::Analytics(template) => write!(f, "{}", template.render()?),
             Content::CreateAlliance(template) => write!(f, "{}", template.render()?),
+            Content::EmailTemplates(template) => write!(f, "{}", template.render()?),
             Content::EventCategories(template) => write!(f, "{}", template.render()?),
             Content::GroupCategories(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
@@ -150,6 +158,8 @@ pub(crate) enum Tab {
     Analytics,
     /// Alliance create tab.
     CreateAlliance,
+    /// Email templates tab.
+    EmailTemplates,
     /// Event categories management tab.
     EventCategories,
     /// Group categories management tab.

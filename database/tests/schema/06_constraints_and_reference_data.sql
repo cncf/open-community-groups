@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(57);
+select plan(59);
 
 -- ============================================================================
 -- VARIABLES
@@ -179,6 +179,9 @@ select has_check('group', 'group_slug_pretty_chk');
 -- Test: site table expected constraints exist
 select has_check('site', 'site_og_image_url_check');
 
+-- Test: site email template table expected constraints exist
+select has_check('site_email_template');
+
 -- Test: session table expected constraints exist
 select has_check('session', 'session_check');
 select has_check('session', 'session_meeting_conflict_chk');
@@ -330,6 +333,25 @@ select results_eq(
         ('speaker-welcome', false)
     $$,
     'Notification kinds should exist'
+);
+
+-- Test: site email template defaults should exist
+select results_eq(
+    $$
+        select notification_kind_name, subject, preheader, body, cta_text
+        from site_email_template
+        order by notification_kind_name
+    $$,
+    $$ values
+        (
+            'site-onboarding',
+            'Welcome to GOUP',
+            'Start with events, groups, jobs, and your profile.',
+            'Welcome to GOUP. Here are the best places to start:',
+            'Open your dashboard'
+        )
+    $$,
+    'Site email template defaults should exist'
 );
 
 -- Test: session kinds should match expected values

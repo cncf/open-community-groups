@@ -1327,6 +1327,11 @@ async fn test_oidc_callback_enqueues_onboarding_for_new_external_user() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    db.expect_get_site_onboarding_email_template()
+        .times(1)
+        .returning(|| {
+            Ok(crate::templates::dashboard::alliance::email_templates::SiteOnboardingEmailTemplate::default())
+        });
 
     // Setup callback auth mock
     let mut user = sample_auth_user(user_id, &auth_hash);
@@ -1521,6 +1526,7 @@ async fn test_oidc_redirect_success() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
 async fn test_sign_up_success() {
     // Setup identifiers and data structures
     let session_id = session::Id::default();
@@ -1541,6 +1547,11 @@ async fn test_sign_up_success() {
     db.expect_get_site_settings()
         .times(2)
         .returning(move || Ok(site_settings.clone()));
+    db.expect_get_site_onboarding_email_template()
+        .times(1)
+        .returning(|| {
+            Ok(crate::templates::dashboard::alliance::email_templates::SiteOnboardingEmailTemplate::default())
+        });
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
         .withf(move |summary, verification| {
@@ -1655,6 +1666,11 @@ async fn test_sign_up_activates_pre_registered_user() {
     db.expect_get_site_settings()
         .times(2)
         .returning(move || Ok(site_settings.clone()));
+    db.expect_get_site_onboarding_email_template()
+        .times(1)
+        .returning(|| {
+            Ok(crate::templates::dashboard::alliance::email_templates::SiteOnboardingEmailTemplate::default())
+        });
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
         .withf(move |summary, verification| {

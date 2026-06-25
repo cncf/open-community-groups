@@ -43,6 +43,10 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
         .route("/analytics", get(dashboard::alliance::analytics::page))
         .route("/create", get(dashboard::alliance::create::page))
         .route(
+            "/email-templates",
+            get(dashboard::alliance::email_templates::page),
+        )
+        .route(
             "/event-categories",
             get(dashboard::alliance::event_categories::list_page),
         )
@@ -139,6 +143,10 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
 
     // Alliance settings management endpoints
     let settings_management = Router::new()
+        .route(
+            "/email-templates",
+            put(dashboard::alliance::email_templates::update),
+        )
         .route(
             "/settings/update",
             put(dashboard::alliance::settings::update),

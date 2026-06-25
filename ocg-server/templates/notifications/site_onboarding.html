@@ -3,11 +3,11 @@
 
 {# Site Onboarding Notification -#}
 {% block subject -%}
-  Welcome to GOUP
+  {{ subject }}
 {% endblock subject -%}
 
 {% block preheader -%}
-  Start with events, groups, jobs, and your profile.
+  {{ preheader }}
 {% endblock preheader -%}
 
 {% block content -%}
@@ -15,7 +15,7 @@
     Hi {{ user_name }},
     <br />
     <br />
-    Welcome to <strong>GOUP</strong>. Here are the best places to start:
+    {{ body }}
   </p>
 
   <ul class="default mb-30"
@@ -42,7 +42,7 @@
     </li>
   </ul>
 
-  {{ email::button(link = user_dashboard_link, text = "Open your dashboard", color = theme.primary_color) }}
+  {{ email::button(link = user_dashboard_link, text = cta_text, color = theme.primary_color) }}
 
   <p class="default mt-30 mb-15"
      style="margin-top: 30px;

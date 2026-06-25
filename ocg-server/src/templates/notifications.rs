@@ -323,6 +323,12 @@ pub(crate) struct GroupWelcome {
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/site_onboarding.html")]
 pub(crate) struct SiteOnboarding {
+    /// Editable body copy for the onboarding email.
+    #[serde(default = "default_site_onboarding_body")]
+    pub body: String,
+    /// Editable call-to-action button text.
+    #[serde(default = "default_site_onboarding_cta_text")]
+    pub cta_text: String,
     /// Link to the public events and groups page.
     pub explore_link: String,
     /// Link to the public jobs board.
@@ -331,12 +337,34 @@ pub(crate) struct SiteOnboarding {
     pub landscape_link: String,
     /// Link to the public search page.
     pub search_link: String,
+    /// Editable preheader text for the onboarding email.
+    #[serde(default = "default_site_onboarding_preheader")]
+    pub preheader: String,
+    /// Editable subject for the onboarding email.
+    #[serde(default = "default_site_onboarding_subject")]
+    pub subject: String,
     /// Theme configuration for the site.
     pub theme: Theme,
     /// Link to the user's dashboard.
     pub user_dashboard_link: String,
     /// Display name for the recipient.
     pub user_name: String,
+}
+
+pub(crate) fn default_site_onboarding_subject() -> String {
+    "Welcome to GOUP".to_string()
+}
+
+pub(crate) fn default_site_onboarding_preheader() -> String {
+    "Start with events, groups, jobs, and your profile.".to_string()
+}
+
+pub(crate) fn default_site_onboarding_body() -> String {
+    "Welcome to GOUP. Here are the best places to start:".to_string()
+}
+
+pub(crate) fn default_site_onboarding_cta_text() -> String {
+    "Open your dashboard".to_string()
 }
 
 /// Template for session proposal co-speaker invitation notification.

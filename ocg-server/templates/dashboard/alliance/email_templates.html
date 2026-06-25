@@ -1,0 +1,102 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/ui.html" as ui -%}
+
+<form id="email-templates-form"
+      hx-put="/dashboard/alliance/email-templates"
+      hx-target="#dashboard-content"
+      hx-indicator="#dashboard-spinner, #email-templates-spinner"
+      hx-disabled-elt="button[type=submit]"
+      data-htmx-response
+      data-success-message="You have successfully updated the email template."
+      data-error-message="Something went wrong updating the email template. Please try again later.">
+  <div class="space-y-12">
+    {{ dashboard::page_title(title = "Email Templates", description = "Update copy for automated emails sent by the site.") -}}
+
+    {% if !can_manage_settings -%}
+      {{ dashboard::permission_warning(message = "Your role cannot update email templates.") -}}
+    {% endif -%}
+
+    <div class="inert-form space-y-12"
+         {% if !can_manage_settings -%}
+           inert
+         {% endif -%}>
+      <div class="border-b border-stone-900/10 pb-12">
+        {{ dashboard::form_title(title = "Onboarding Email", description = "Sent once after a user creates an account. Links and layout are managed by the app; these fields control the editable copy.") -}}
+
+        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          <div class="col-span-full lg:col-span-3">
+            <label for="subject" class="form-label">
+              Subject <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <input type="text"
+                     name="subject"
+                     id="subject"
+                     maxlength="{{ crate::validation::MAX_LEN_M }}"
+                     class="input-primary"
+                     value="{{ onboarding.subject }}"
+                     required>
+            </div>
+          </div>
+
+          <div class="col-span-full lg:col-span-3">
+            <label for="preheader" class="form-label">
+              Preheader <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <input type="text"
+                     name="preheader"
+                     id="preheader"
+                     maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                     class="input-primary"
+                     value="{{ onboarding.preheader }}"
+                     required>
+            </div>
+            <p class="form-legend">Short preview text shown by email clients.</p>
+          </div>
+
+          <div class="col-span-full">
+            <label for="body" class="form-label">
+              Body <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <textarea name="body"
+                        id="body"
+                        maxlength="{{ crate::validation::MAX_LEN_NOTIFICATION_BODY }}"
+                        class="input-primary min-h-32"
+                        required>{{ onboarding.body }}</textarea>
+            </div>
+            <p class="form-legend">
+              Intro copy shown before the fixed Events, Jobs, Landscape, and Search links.
+            </p>
+          </div>
+
+          <div class="col-span-full lg:col-span-3">
+            <label for="cta_text" class="form-label">
+              Button Text <span class="asterisk">*</span>
+            </label>
+            <div class="mt-2">
+              <input type="text"
+                     name="cta_text"
+                     id="cta_text"
+                     maxlength="{{ crate::validation::MAX_LEN_M }}"
+                     class="input-primary"
+                     value="{{ onboarding.cta_text }}"
+                     required>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button type="submit" class="btn-primary">
+          Save email template
+          <span id="email-templates-spinner"
+                class="group hx-spinner relative align-text-bottom inline-block -mt-0.5">
+            {{ ui::spinner(size = "size-4") -}}
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+</form>

@@ -8,8 +8,11 @@ use tracing::instrument;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    templates::site::explore::{Entity, FiltersOptions},
     templates::site::stats::SiteStats,
+    templates::{
+        dashboard::alliance::email_templates::SiteOnboardingEmailTemplate,
+        site::explore::{Entity, FiltersOptions},
+    },
     types::{
         alliance::AllianceSummary,
         event::{EventKind, EventSummary},
@@ -40,6 +43,9 @@ pub(crate) trait DBSite {
     /// Retrieves the site settings.
     async fn get_site_settings(&self) -> Result<SiteSettings>;
 
+    /// Retrieves the editable site onboarding email template.
+    async fn get_site_onboarding_email_template(&self) -> Result<SiteOnboardingEmailTemplate>;
+
     /// Retrieves the site stats for the stats page.
     async fn get_site_stats(&self) -> Result<SiteStats>;
 
@@ -51,6 +57,13 @@ pub(crate) trait DBSite {
 
     /// Lists all active alliances.
     async fn list_alliances(&self) -> Result<Vec<AllianceSummary>>;
+
+    /// Updates the editable site onboarding email template.
+    async fn update_site_onboarding_email_template(
+        &self,
+        user_id: uuid::Uuid,
+        template: &SiteOnboardingEmailTemplate,
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -102,6 +115,27 @@ where
     }
 
     #[instrument(skip(self), err)]
+    async fn get_site_onboarding_email_template(&self) -> Result<SiteOnboardingEmailTemplate> {
+        let template = self
+            .fetch_json_opt(
+                "select (
+                    select json_strip_nulls(json_build_object(
+                        'body', body,
+                        'cta_text', cta_text,
+                        'preheader', preheader,
+                        'subject', subject
+                    ))
+                    from site_email_template
+                    where notification_kind_name = 'site-onboarding'
+                )",
+                &[],
+            )
+            .await?;
+
+        Ok(template.unwrap_or_default())
+    }
+
+    #[instrument(skip(self), err)]
     async fn get_site_stats(&self) -> Result<SiteStats> {
         self.fetch_json_one("select get_site_stats()", &[]).await
     }
@@ -136,5 +170,39 @@ where
 
         let db = self.client().await?;
         inner(db).await
+    }
+
+    #[instrument(skip(self, template), err)]
+    async fn update_site_onboarding_email_template(
+        &self,
+        user_id: uuid::Uuid,
+        template: &SiteOnboardingEmailTemplate,
+    ) -> Result<()> {
+        self.execute(
+            "insert into site_email_template (
+                notification_kind_name,
+                subject,
+                preheader,
+                body,
+                cta_text,
+                updated_by
+            )
+            values ('site-onboarding', $1::text, $2::text, $3::text, $4::text, $5::uuid)
+            on conflict (notification_kind_name) do update
+            set subject = excluded.subject,
+                preheader = excluded.preheader,
+                body = excluded.body,
+                cta_text = excluded.cta_text,
+                updated_at = current_timestamp,
+                updated_by = excluded.updated_by",
+            &[
+                &template.subject,
+                &template.preheader,
+                &template.body,
+                &template.cta_text,
+                &user_id,
+            ],
+        )
+        .await
     }
 }
