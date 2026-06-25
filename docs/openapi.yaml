@@ -165,7 +165,7 @@ paths:
       responses:
         "200":
           description: Full job.
-  /jobs/{job_id}:
+  /jobs/id/{job_id}:
     patch:
       summary: Update a job.
       description: Requires `write:jobs`.

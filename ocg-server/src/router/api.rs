@@ -53,7 +53,7 @@ pub(super) fn setup_api_router() -> Router<State> {
         .route("/jobs", get(public::jobs).post(admin::create_job))
         .route("/jobs/{slug}", get(public::job))
         .route(
-            "/jobs/{job_id}",
+            "/jobs/id/{job_id}",
             patch(admin::update_job).delete(admin::delete_job),
         )
         .route("/jobs/{job_id}/applications", post(user::apply_to_job))

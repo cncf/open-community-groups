@@ -1,5 +1,5 @@
 create table if not exists api_token (
-    api_token_id uuid primary key default uuid_generate_v4(),
+    api_token_id uuid primary key default gen_random_uuid(),
     user_id uuid not null references "user" (user_id) on delete cascade,
     token_hash text not null unique,
     token_prefix text not null,
