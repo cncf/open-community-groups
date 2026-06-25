@@ -285,8 +285,7 @@ export class UserInfoModal extends LitWrapper {
                 <span class="hidden sm:inline">User Information</span>
               </h3>
               <div class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2">
-                ${this._renderLinuxFoundationLink()}
-                ${this._renderProfileCardLink()}
+                ${this._renderLinuxFoundationLink()} ${this._renderProfileCardLink()}
                 <button
                   type="button"
                   class="group shrink-0 text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"
