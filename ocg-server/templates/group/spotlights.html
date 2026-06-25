@@ -1,0 +1,110 @@
+{% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
+{% import "macros/ui.html" as ui -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ self.preview_description() |demoji }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &group.name) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
+
+{% block scripts -%}
+  <script type="module" src="/static/js/common/modals/share-modal.js"></script>
+{% endblock scripts -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+    <div class="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}"
+             class="text-sm font-medium text-primary-700 hover:text-primary-900">← Back to {{ group.name|demoji }}</a>
+          <h1 class="mt-4 text-3xl font-semibold text-stone-950 sm:text-4xl">Member spotlights</h1>
+          <p class="mt-3 max-w-2xl text-base leading-7 text-stone-600">Success stories from {{ group.name|demoji }} members.</p>
+        </div>
+        <share-modal trigger-variant="button" title="{{ self.preview_title() }}" url="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/spotlights">
+        </share-modal>
+      </div>
+
+      {% if spotlights.is_empty() -%}
+        <div class="mt-10 rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-8 py-12 text-center">
+          <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-50">
+            <div class="svg-icon size-6 icon-star bg-primary-500"></div>
+          </div>
+          <h2 class="mt-4 text-lg font-semibold text-stone-950">No spotlights published yet</h2>
+          <p class="mt-2 text-sm text-stone-600">Check back for member stories and community wins.</p>
+        </div>
+      {% else -%}
+        <div class="mt-10 grid gap-6 lg:grid-cols-2">
+          {% for spotlight in spotlights -%}
+            <article class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+              {% if let Some(image_url) = &spotlight.image_url -%}
+                <img src="{{ image_url }}"
+                     alt=""
+                     class="h-56 w-full object-cover"
+                     loading="lazy">
+              {% else -%}
+                <div class="h-2 bg-gradient-to-r from-primary-500 via-primary-300 to-stone-100"></div>
+              {% endif -%}
+              <div class="p-6">
+                {% if spotlight.featured -%}
+                  <span class="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700">
+                    <div class="svg-icon size-3 icon-star bg-primary-600"></div>
+                    Featured
+                  </span>
+                {% endif -%}
+                <h2 class="mt-4 text-2xl font-semibold text-stone-950">{{ spotlight.title }}</h2>
+                <p class="mt-4 whitespace-pre-line text-base leading-7 text-stone-700">{{ spotlight.story }}</p>
+                <div class="mt-6 flex items-center gap-3 border-t border-stone-100 pt-5">
+                  <logo-image
+                  {% if let Some(photo_url) = &spotlight.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                  size="size-12" placeholder="{{ self::user_initials(spotlight.name.as_deref() , spotlight.username.as_str()) }}">
+                  </logo-image>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-semibold text-stone-950">{{ spotlight.member_display_name() }}</div>
+                    <div class="text-sm text-stone-500">
+                      @{{ spotlight.username }}
+                      {% if let Some(member_title) = &spotlight.member_title -%}
+                        · {{ member_title }}
+                      {% endif -%}
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-5 flex flex-wrap gap-2">
+                  <a href="{{ spotlight.profile_path() }}"
+                     class="btn-primary-outline-anchor">View profile card</a>
+                  {% if let Some(link_url) = &spotlight.link_url -%}
+                    <a href="{{ link_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="btn-secondary-anchor">Read more</a>
+                  {% endif -%}
+                </div>
+              </div>
+            </article>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    </div>
+  </div>
+{% endblock content -%}

@@ -11,7 +11,7 @@ use crate::{
         auth::User,
         dashboard::{
             audit,
-            group::{analytics, events, members, settings, sponsors, store, team},
+            group::{analytics, events, members, settings, sponsors, spotlights, store, team},
         },
         filters,
         helpers::user_initials,
@@ -89,6 +89,8 @@ pub(crate) enum Content {
     Settings(Box<settings::UpdatePage>),
     /// Sponsors management page.
     Sponsors(sponsors::ListPage),
+    /// Member spotlight management page.
+    Spotlights(spotlights::ListPage),
     /// Group store management page.
     Store(store::ListPage),
     /// Team management page.
@@ -126,6 +128,11 @@ impl Content {
         matches!(self, Content::Sponsors(_))
     }
 
+    /// Check if the content is the spotlights page.
+    fn is_spotlights(&self) -> bool {
+        matches!(self, Content::Spotlights(_))
+    }
+
     /// Check if the content is the store page.
     fn is_store(&self) -> bool {
         matches!(self, Content::Store(_))
@@ -146,6 +153,7 @@ impl std::fmt::Display for Content {
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
             Content::Sponsors(template) => write!(f, "{}", template.render()?),
+            Content::Spotlights(template) => write!(f, "{}", template.render()?),
             Content::Store(template) => write!(f, "{}", template.render()?),
             Content::Team(template) => write!(f, "{}", template.render()?),
         }
@@ -172,6 +180,8 @@ pub(crate) enum Tab {
     Settings,
     /// Sponsors management tab.
     Sponsors,
+    /// Member spotlight management tab.
+    Spotlights,
     /// Group store management tab.
     Store,
     /// Team management tab.

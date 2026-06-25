@@ -71,6 +71,10 @@ mock! {
             &self,
             username: &str,
         ) -> Result<Option<crate::auth::User>>;
+        async fn get_public_user_profile_by_username(
+            &self,
+            username: &str,
+        ) -> Result<Option<crate::types::user::PublicUserProfile>>;
         async fn get_user_password(&self, user_id: &Uuid) -> Result<Option<String>>;
         async fn is_linkedin_subject_blocked(&self, linkedin_subject: &str) -> Result<bool>;
         async fn group_belongs_to_alliance(
@@ -369,6 +373,12 @@ mock! {
             group_id: Uuid,
             sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
         ) -> Result<Uuid>;
+        async fn add_group_member_spotlight(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            input: &crate::templates::dashboard::group::spotlights::SpotlightInput,
+        ) -> Result<Uuid>;
         async fn add_group_store_item(
             &self,
             actor_user_id: Uuid,
@@ -422,17 +432,23 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
-        async fn delete_group_sponsor(
+        async fn delete_group_member_spotlight(
             &self,
             actor_user_id: Uuid,
             group_id: Uuid,
-            group_sponsor_id: Uuid,
+            group_member_spotlight_id: Uuid,
         ) -> Result<()>;
         async fn delete_group_store_item(
             &self,
             actor_user_id: Uuid,
             group_id: Uuid,
             group_store_item_id: Uuid,
+        ) -> Result<()>;
+        async fn delete_group_sponsor(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            group_sponsor_id: Uuid,
         ) -> Result<()>;
         async fn delete_group_team_member(
             &self,
@@ -521,6 +537,16 @@ mock! {
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::members::GroupMembersFilters,
         ) -> Result<crate::templates::dashboard::group::members::GroupMembersOutput>;
+        async fn list_group_member_spotlights(
+            &self,
+            group_id: Uuid,
+            include_unpublished: bool,
+        ) -> Result<Vec<crate::templates::dashboard::group::spotlights::GroupMemberSpotlight>>;
+        async fn list_group_store_items(
+            &self,
+            group_id: Uuid,
+            include_inactive: bool,
+        ) -> Result<Vec<crate::templates::dashboard::group::store::GroupStoreItem>>;
         async fn list_group_members_ids(
             &self,
             group_id: Uuid,
@@ -533,11 +559,6 @@ mock! {
             filters: &crate::templates::dashboard::group::sponsors::GroupSponsorsFilters,
             full_list: bool,
         ) -> Result<crate::templates::dashboard::group::sponsors::GroupSponsorsOutput>;
-        async fn list_group_store_items(
-            &self,
-            group_id: Uuid,
-            include_inactive: bool,
-        ) -> Result<Vec<crate::templates::dashboard::group::store::GroupStoreItem>>;
         async fn list_group_team_members(
             &self,
             group_id: Uuid,
@@ -622,6 +643,13 @@ mock! {
             group_id: Uuid,
             group_sponsor_id: Uuid,
             sponsor: &crate::templates::dashboard::group::sponsors::Sponsor,
+        ) -> Result<()>;
+        async fn update_group_member_spotlight(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            group_member_spotlight_id: Uuid,
+            input: &crate::templates::dashboard::group::spotlights::SpotlightInput,
         ) -> Result<()>;
         async fn update_group_store_item(
             &self,

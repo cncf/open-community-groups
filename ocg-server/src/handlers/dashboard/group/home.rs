@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{events, logs, members, sponsors, store, team};
+use super::{events, logs, members, sponsors, spotlights, store, team};
 
 use crate::{
     auth::AuthSession,
@@ -129,6 +129,11 @@ pub(crate) async fn page(
             )
             .await?;
             Content::Sponsors(template)
+        }
+        Tab::Spotlights => {
+            let template =
+                spotlights::prepare_list_page(&db, alliance_id, group_id, user.user_id).await?;
+            Content::Spotlights(template)
         }
         Tab::Store => {
             let template =

@@ -4,7 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    templates::dashboard::group::store::GroupStoreItem,
+    templates::dashboard::group::{spotlights::GroupMemberSpotlight, store::GroupStoreItem},
     templates::{
         PageId,
         auth::User,
@@ -38,6 +38,26 @@ pub(crate) struct Page {
     pub site_settings: SiteSettings,
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
+    /// Authenticated user information.
+    pub user: User,
+}
+
+/// Logged-in group member spotlights page template.
+#[derive(Debug, Clone, Template)]
+#[template(path = "group/spotlights.html")]
+pub(crate) struct SpotlightsPage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Detailed information about the group.
+    pub group: GroupFull,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current URL path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Published member spotlights.
+    pub spotlights: Vec<GroupMemberSpotlight>,
     /// Authenticated user information.
     pub user: User,
 }
@@ -98,6 +118,39 @@ impl Page {
     }
 }
 
+impl SpotlightsPage {
+    /// Returns the canonical URL for the group spotlights page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!(
+                "/{}/group/{}/spotlights",
+                self.group.alliance.name,
+                self.group.public_slug()
+            ),
+        )
+    }
+
+    /// Returns the preview title.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} Member Spotlights", self.group.name)
+    }
+
+    /// Returns the preview description.
+    pub(crate) fn preview_description(&self) -> String {
+        format!("Success stories from members of {}.", self.group.name)
+    }
+
+    /// Returns the Open Graph image URL for the page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.group
+            .og_image_url
+            .as_deref()
+            .or(self.group.alliance.og_image_url.as_deref())
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+}
+
 impl StorePage {
     /// Returns the canonical URL for the group store page.
     pub(crate) fn canonical_url(&self) -> String {
@@ -122,7 +175,7 @@ impl StorePage {
 
     /// Returns the preview description for the group store page.
     pub(crate) fn preview_description(&self) -> String {
-        format!("Swag and merch from {}.", self.group.name)
+        format!("Swag and items from {}.", self.group.name)
     }
 
     /// Returns the preview title for the group store page.
