@@ -1,5 +1,6 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/form_fields.html" as form_fields -%}
 
 {{ dashboard::page_title(title = "Member Spotlights") -}}
 
@@ -67,10 +68,7 @@
                   required></textarea>
       </label>
       <div class="grid gap-4 lg:grid-cols-2">
-        <label class="block">
-          <span class="label">Image URL</span>
-          <input name="image_url" class="input" placeholder="https://...">
-        </label>
+        {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional spotlight image shown on the group page and spotlight cards.", field_class = "col-span-full") -}}
         <label class="block">
           <span class="label">Link URL</span>
           <input name="link_url" class="input" placeholder="https://...">
@@ -170,12 +168,10 @@
                         required>{{ spotlight.story }}</textarea>
             </label>
             <div class="grid gap-4 lg:grid-cols-2">
-              <label class="block">
-                <span class="label">Image URL</span>
-                <input name="image_url"
-                       class="input"
-                       value="{{ spotlight.image_url.as_deref().unwrap_or("") }}">
-              </label>
+              {% let image_value -%}
+              {% if let Some(image_url) = &spotlight.image_url %}value="{{ image_url }}"{% endif %}
+            {%- endlet %}
+            {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional spotlight image shown on the group page and spotlight cards.", value_attr = image_value, field_class = "col-span-full") -}}
               <label class="block">
                 <span class="label">Link URL</span>
                 <input name="link_url"
