@@ -47,7 +47,7 @@ test.describe("site header", () => {
       "/log-in?next_url=/dashboard/jobs",
     );
     await expect(
-      navigation.getByRole("link", { name: "Ecosystem" }),
+      navigation.getByRole("link", { name: "Landscape" }),
     ).toHaveAttribute("href", "/landscape");
     await expect(
       navigation.getByRole("link", { name: "Resources" }),
@@ -95,7 +95,7 @@ test.describe("site header", () => {
       0,
     );
     await expect(
-      userMenu.getByRole("menuitem", { name: "Ecosystem" }),
+      userMenu.getByRole("menuitem", { name: "Landscape" }),
     ).toHaveCount(0);
     await expect(
       userMenu.getByRole("menuitem", { name: "Resources" }),
