@@ -22,7 +22,7 @@ test.describe("site home page visual regression @visual", () => {
       page,
       getHomeJumbotronContent(page),
       "site-home-desktop.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 
