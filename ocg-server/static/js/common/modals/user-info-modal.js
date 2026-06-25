@@ -216,6 +216,26 @@ export class UserInfoModal extends LitWrapper {
     `;
   }
 
+  _renderProfileCardLink() {
+    const username = this._userData?.username?.trim();
+
+    if (!username) {
+      return "";
+    }
+
+    return html`
+      <a
+        href=${`/profiles/${encodeURIComponent(username)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="group btn-primary-outline-anchor inline-flex max-w-full items-center justify-center gap-2 h-10 md:h-[30px]"
+      >
+        <span>Share profile card</span>
+        <div class="svg-icon size-3 icon-external-link"></div>
+      </a>
+    `;
+  }
+
   _renderProfilePlaceholder(bio, socialLinks) {
     if (this._hasProfileDetails(bio, socialLinks)) {
       return "";
@@ -266,6 +286,7 @@ export class UserInfoModal extends LitWrapper {
               </h3>
               <div class="flex shrink-0 items-center gap-3 sm:gap-5 sm:pe-2">
                 ${this._renderLinuxFoundationLink()}
+                ${this._renderProfileCardLink()}
                 <button
                   type="button"
                   class="group shrink-0 text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-10 h-10 inline-flex justify-center items-center"

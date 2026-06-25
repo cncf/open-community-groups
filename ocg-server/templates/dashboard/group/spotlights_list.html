@@ -1,0 +1,212 @@
+{% import "macros/ui.html" as ui -%}
+{% import "macros/dashboard.html" as dashboard -%}
+
+{{ dashboard::page_title(title = "Member Spotlights") -}}
+
+<div class="my-5 grid gap-6">
+  <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-stone-950">Add a success story</h2>
+        <p class="mt-1 text-sm text-stone-600">Highlight a member story with an optional image and link. Only group admins can manage these cards.</p>
+      </div>
+      {% if !can_manage_spotlights -%}
+        <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">Read only</span>
+      {% endif -%}
+    </div>
+
+    <form class="mt-5 grid gap-4"
+          hx-post="/dashboard/group/spotlights"
+          hx-target="#dashboard-content"
+          hx-indicator="#dashboard-spinner"
+          {% if !can_manage_spotlights || members.is_empty() -%}
+            inert
+          {% endif -%}>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <label class="block">
+          <span class="label-primary">Member</span>
+          <select name="user_id" class="input-primary mt-1" required>
+            {% for member in members -%}
+              <option value="{{ member.user_id }}">{{ member.name.as_deref().unwrap_or(&member.username) }} (@{{ member.username }})</option>
+            {% endfor -%}
+          </select>
+        </label>
+        <label class="block">
+          <span class="label-primary">Title</span>
+          <input name="title"
+                 class="input-primary mt-1"
+                 maxlength="{{ crate::validation::MAX_LEN_M }}"
+                 placeholder="How this member moved the community forward"
+                 required>
+        </label>
+      </div>
+      <label class="block">
+        <span class="label-primary">Story</span>
+        <textarea name="story"
+                  class="input-primary mt-1 min-h-32"
+                  maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
+                  placeholder="Tell the member story, result, or lesson."
+                  required></textarea>
+      </label>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <label class="block">
+          <span class="label-primary">Image URL</span>
+          <input name="image_url" class="input-primary mt-1" placeholder="https://...">
+        </label>
+        <label class="block">
+          <span class="label-primary">Link URL</span>
+          <input name="link_url" class="input-primary mt-1" placeholder="https://...">
+        </label>
+      </div>
+      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label class="block">
+          <span class="label-primary">Featured</span>
+          <select name="featured" class="input-primary mt-1">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="label-primary">Published</span>
+          <select name="published" class="input-primary mt-1">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <button type="submit"
+                class="btn-primary"
+                {% if !can_manage_spotlights || members.is_empty() -%}
+                  disabled
+                {% endif -%}>Add spotlight</button>
+      </div>
+    </form>
+  </section>
+
+  {% if spotlights.is_empty() -%}
+    <section class="rounded-2xl border border-dashed border-stone-300 bg-white px-8 py-12 text-center">
+      <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-50">
+        <div class="svg-icon size-6 icon-star bg-primary-500"></div>
+      </div>
+      <h2 class="mt-4 text-lg font-semibold text-stone-950">No member spotlights yet</h2>
+      <p class="mt-2 text-sm text-stone-600">Add a story to celebrate members, projects, launches, and community wins.</p>
+    </section>
+  {% else -%}
+    <section class="grid gap-5 xl:grid-cols-2">
+      {% for spotlight in spotlights -%}
+        <article class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+          {% if let Some(image_url) = &spotlight.image_url -%}
+            <img src="{{ image_url }}"
+                 alt=""
+                 class="h-44 w-full object-cover"
+                 loading="lazy">
+          {% else -%}
+            <div class="h-2 bg-gradient-to-r from-primary-500 via-primary-300 to-stone-100"></div>
+          {% endif -%}
+          <form class="grid gap-4 p-5"
+                hx-put="/dashboard/group/spotlights/{{ spotlight.group_member_spotlight_id }}"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                {% if !can_manage_spotlights -%}
+                  inert
+                {% endif -%}>
+            <div class="flex items-start gap-3">
+              <logo-image
+              {% if let Some(photo_url) = &spotlight.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+              size="size-12" placeholder="{{ self::user_initials(spotlight.name.as_deref() , spotlight.username.as_str()) }}">
+              </logo-image>
+              <div class="min-w-0 flex-1">
+                <div class="font-semibold text-stone-950">{{ spotlight.member_display_name() }}</div>
+                <div class="text-sm text-stone-500">
+                  @{{ spotlight.username }}
+                  {% if let Some(member_title) = &spotlight.member_title -%}
+                    · {{ member_title }}
+                  {% endif -%}
+                  {% if let Some(company) = &spotlight.company -%}
+                    at {{ company }}
+                  {% endif -%}
+                </div>
+              </div>
+              <a href="{{ spotlight.profile_path() }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="btn-secondary-anchor btn-mini">Profile</a>
+            </div>
+
+            <input type="hidden" name="user_id" value="{{ spotlight.user_id }}">
+
+            <label class="block">
+              <span class="label-primary">Title</span>
+              <input name="title"
+                     class="input-primary mt-1"
+                     value="{{ spotlight.title }}"
+                     maxlength="{{ crate::validation::MAX_LEN_M }}"
+                     required>
+            </label>
+            <label class="block">
+              <span class="label-primary">Story</span>
+              <textarea name="story"
+                        class="input-primary mt-1 min-h-32"
+                        maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
+                        required>{{ spotlight.story }}</textarea>
+            </label>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="block">
+                <span class="label-primary">Image URL</span>
+                <input name="image_url"
+                       class="input-primary mt-1"
+                       value="{{ spotlight.image_url.as_deref().unwrap_or("") }}">
+              </label>
+              <label class="block">
+                <span class="label-primary">Link URL</span>
+                <input name="link_url"
+                       class="input-primary mt-1"
+                       value="{{ spotlight.link_url.as_deref().unwrap_or("") }}">
+              </label>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <label class="block">
+                <span class="label-primary">Featured</span>
+                <select name="featured" class="input-primary mt-1">
+                  <option value="false" {% if !spotlight.featured %}selected{% endif %}>No</option>
+                  <option value="true" {% if spotlight.featured %}selected{% endif %}>Yes</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="label-primary">Published</span>
+                <select name="published" class="input-primary mt-1">
+                  <option value="true" {% if spotlight.published %}selected{% endif %}>Yes</option>
+                  <option value="false" {% if !spotlight.published %}selected{% endif %}>No</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <button type="submit"
+                      class="btn-primary"
+                      {% if !can_manage_spotlights -%}
+                        disabled
+                      {% endif -%}>Save</button>
+              <button type="button"
+                      class="btn-tertiary"
+                      hx-delete="/dashboard/group/spotlights/{{ spotlight.group_member_spotlight_id }}"
+                      hx-target="#dashboard-content"
+                      hx-indicator="#dashboard-spinner"
+                      hx-confirm="Delete this spotlight?"
+                      {% if !can_manage_spotlights -%}
+                        disabled
+                      {% endif -%}>Delete</button>
+              {% if let Some(link_url) = &spotlight.link_url -%}
+                <a href="{{ link_url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="btn-secondary-anchor">Open link</a>
+              {% endif -%}
+            </div>
+          </form>
+        </article>
+      {% endfor -%}
+    </section>
+  {% endif -%}
+</div>

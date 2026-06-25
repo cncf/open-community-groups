@@ -39,6 +39,39 @@ pub(crate) struct User {
     pub website_url: Option<String>,
 }
 
+/// Public profile data safe to show on shareable profile cards.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct PublicUserProfile {
+    /// User identifier.
+    pub user_id: Uuid,
+    /// Username.
+    pub username: String,
+
+    /// Short biography.
+    pub bio: Option<String>,
+    /// Bluesky profile URL.
+    pub bluesky_url: Option<String>,
+    /// Company the user works for.
+    pub company: Option<String>,
+    /// Facebook profile URL.
+    pub facebook_url: Option<String>,
+    /// GitHub profile URL.
+    pub github_url: Option<String>,
+    /// `LinkedIn` profile URL.
+    pub linkedin_url: Option<String>,
+    /// Full name.
+    pub name: Option<String>,
+    /// URL to user's avatar.
+    pub photo_url: Option<String>,
+    /// User's job title.
+    pub title: Option<String>,
+    /// Twitter profile URL.
+    pub twitter_url: Option<String>,
+    /// Personal website URL.
+    pub website_url: Option<String>,
+}
+
 /// Summary user information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct UserSummary {

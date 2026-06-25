@@ -30,6 +30,7 @@ pub(crate) mod logs;
 pub(crate) mod members;
 pub(crate) mod settings;
 pub(crate) mod sponsors;
+pub(crate) mod spotlights;
 pub(crate) mod submissions;
 pub(crate) mod team;
 pub(crate) mod waitlist;
