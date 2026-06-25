@@ -1938,12 +1938,12 @@ async fn test_start_checkout_allows_active_hold_after_registration_window_closes
         .returning(move |_, _| Ok(event_summary.clone()));
     db.expect_get_event_registration_questions()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Ok(vec![]));
     db.expect_prepare_event_checkout_purchase()
         .times(1)
         .withf(move |cid, input| {
-            *cid == community_id
+            *cid == alliance_id
                 && input.configured_provider.is_none()
                 && input.event_id == event_id
                 && input.event_ticket_type_id == ticket_type_id
@@ -1951,7 +1951,7 @@ async fn test_start_checkout_allows_active_hold_after_registration_window_closes
         })
         .returning(move |_, _| {
             Ok(PreparedEventCheckout {
-                community_name: "test-community".to_string(),
+                alliance_name: "test-alliance".to_string(),
                 event_id,
                 event_slug: "event".to_string(),
                 group_slug: "group".to_string(),
@@ -2006,7 +2006,7 @@ async fn test_start_checkout_allows_active_hold_after_registration_window_closes
 #[allow(clippy::too_many_lines)]
 async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
     // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
+    let alliance_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -2044,26 +2044,26 @@ async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
-    db.expect_get_community_id_by_name()
+    db.expect_get_alliance_id_by_name()
         .times(1)
-        .withf(|name| name == "test-community")
-        .returning(move |_| Ok(Some(community_id)));
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
     db.expect_ensure_event_is_active()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Ok(()));
     db.expect_get_event_summary_by_id()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(move |_, _| Ok(event_summary.clone()));
     db.expect_get_event_registration_questions()
         .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .withf(move |cid, eid| *cid == alliance_id && *eid == event_id)
         .returning(|_, _| Ok(vec![]));
     db.expect_prepare_event_checkout_purchase()
         .times(1)
         .withf(move |cid, input| {
-            *cid == community_id
+            *cid == alliance_id
                 && input.configured_provider.is_none()
                 && input.event_id == event_id
                 && input.event_ticket_type_id == ticket_type_id
@@ -2071,7 +2071,7 @@ async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
         })
         .returning(move |_, _| {
             Ok(PreparedEventCheckout {
-                community_name: "test-community".to_string(),
+                alliance_name: "test-alliance".to_string(),
                 event_id,
                 event_slug: "event".to_string(),
                 group_slug: "group".to_string(),
@@ -2106,7 +2106,7 @@ async fn test_start_checkout_allows_active_hold_when_tickets_are_unavailable() {
         .await;
     let request = Request::builder()
         .method("POST")
-        .uri(format!("/test-community/event/{event_id}/checkout"))
+        .uri(format!("/test-alliance/event/{event_id}/checkout"))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(format!("event_ticket_type_id={ticket_type_id}")))
