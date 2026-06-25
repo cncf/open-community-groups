@@ -28,15 +28,22 @@ test.describe("site header", () => {
       navigation.getByRole("link", { name: "Jobs" }),
     ).toHaveAttribute("href", "/jobs");
     await navigation.getByRole("link", { name: "Jobs" }).hover();
+    const browseRolesLink = navigation
+      .locator('a[href="/jobs"]')
+      .filter({ hasText: "Browse roles" });
+    const postRoleLink = navigation
+      .locator('a[href="/log-in?next_url=/dashboard/jobs"]')
+      .filter({ hasText: "Post a role" });
+    await expect(browseRolesLink).toHaveAttribute("href", "/jobs");
     await expect(
-      navigation.getByRole("link", { name: /Browse roles/ }),
-    ).toHaveAttribute("href", "/jobs");
-    await expect(
-      navigation.getByRole("link", { name: /Remote roles/ }),
+      navigation
+        .locator('a[href="/jobs?location=remote"]')
+        .filter({ hasText: "Remote roles" }),
     ).toHaveCount(0);
-    await expect(
-      navigation.getByRole("link", { name: /Post a role/ }),
-    ).toHaveAttribute("href", "/log-in?next_url=/dashboard/jobs");
+    await expect(postRoleLink).toHaveAttribute(
+      "href",
+      "/log-in?next_url=/dashboard/jobs",
+    );
     await expect(
       navigation.getByRole("link", { name: "Ecosystem" }),
     ).toHaveAttribute("href", "/landscape");

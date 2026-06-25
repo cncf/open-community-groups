@@ -221,7 +221,7 @@ test.describe("site home page", () => {
     }) => {
       // Verify the latest groups section exposes its explore link.
       await expect(
-        page.getByRole("heading", { name: "New chapters and circles" }),
+        page.getByRole("heading", { name: "Find your circle" }),
       ).toBeVisible();
 
       // Target the latest groups explore link.

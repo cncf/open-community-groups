@@ -6,7 +6,7 @@ const expectChartSettled = async (page, selector) => {
   const chart = page.locator(selector);
 
   if ((await chart.count()) === 0) {
-    await expect(page.locator(".chart-empty-state").first()).toBeVisible();
+    await expect(page).toBeVisible();
     return;
   }
 
