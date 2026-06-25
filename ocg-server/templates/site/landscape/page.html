@@ -22,11 +22,12 @@
           hx-get="/landscape"
           hx-target="body"
           hx-push-url="true"
-          hx-trigger="input changed delay:300ms from:#landscape-query, input changed delay:300ms from:#landscape-category, change from:#landscape-kind"
+          hx-trigger="submit, search from:#landscape-query, change from:#landscape-category, change from:#landscape-kind"
           class="mb-8 grid gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_180px_220px_auto]">
       <label class="sr-only" for="landscape-query">Search landscape</label>
       <input id="landscape-query"
              name="query"
+             type="search"
              value="{{ filters.query.as_deref().unwrap_or("") }}"
              class="input"
              placeholder="Search startups, GitHub projects, categories, or tags" />
