@@ -36,6 +36,10 @@ pub(crate) struct Page {
     pub path: String,
     /// Global site settings.
     pub site_settings: SiteSettings,
+    /// Published member spotlights for homepage discovery.
+    pub spotlights: Vec<GroupMemberSpotlight>,
+    /// Active store items for homepage discovery.
+    pub store_items: Vec<GroupStoreItem>,
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
     /// Authenticated user information.
