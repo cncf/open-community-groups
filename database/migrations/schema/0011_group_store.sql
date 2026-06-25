@@ -1,5 +1,5 @@
 create table if not exists group_store_item (
-    group_store_item_id uuid primary key default uuid_generate_v4(),
+    group_store_item_id uuid primary key default gen_random_uuid(),
     group_id uuid not null references "group" (group_id) on delete cascade,
     created_by uuid not null references "user" (user_id),
     name text not null,

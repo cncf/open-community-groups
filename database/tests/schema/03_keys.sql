@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(156);
+select plan(158);
 
 -- ============================================================================
 -- TESTS
@@ -25,6 +25,7 @@ select has_pk('alliance_role_group_permission');
 select has_pk('alliance_site_layout');
 select has_pk('alliance_team');
 select hasnt_pk('alliance_views');
+select has_pk('api_token');
 select has_pk('custom_notification');
 select has_pk('email_verification_code');
 select has_pk('event');
@@ -85,6 +86,7 @@ select col_is_fk('alliance_role_group_permission', 'group_permission_id', 'group
 select col_is_fk('alliance_team', 'alliance_id', 'alliance');
 select col_is_fk('alliance_team', 'user_id', 'user');
 select col_is_fk('alliance_views', 'alliance_id', 'alliance');
+select col_is_fk('api_token', 'user_id', 'user');
 select col_is_fk('custom_notification', 'created_by', 'user');
 select col_is_fk('custom_notification', 'event_id', 'event');
 select col_is_fk('custom_notification', 'group_id', 'group');

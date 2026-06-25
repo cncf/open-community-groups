@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(71);
+select plan(72);
 
 -- ============================================================================
 -- TESTS
@@ -40,6 +40,19 @@ select columns_are('auth_session', array[
     'auth_session_id',
     'data',
     'expires_at'
+]);
+
+-- Test: api_token columns should match expected
+select columns_are('api_token', array[
+    'api_token_id',
+    'created_at',
+    'last_used_at',
+    'name',
+    'revoked_at',
+    'scopes',
+    'token_hash',
+    'token_prefix',
+    'user_id'
 ]);
 
 -- Test: cfs_submission columns should match expected

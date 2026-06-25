@@ -38,6 +38,14 @@ mock! {
             &self,
             record: &axum_login::tower_sessions::session::Record,
         ) -> Result<()>;
+        async fn create_api_token(
+            &self,
+            user_id: Uuid,
+            token_hash: &str,
+            token_prefix: &str,
+            name: Option<String>,
+            scopes: &[crate::handlers::api::auth::ApiScope],
+        ) -> Result<crate::handlers::api::auth::ApiToken>;
         async fn delete_session(
             &self,
             session_id: &axum_login::tower_sessions::session::Id,
@@ -50,6 +58,14 @@ mock! {
             &self,
             email: &str,
         ) -> Result<Option<crate::auth::User>>;
+        async fn get_api_token_auth(
+            &self,
+            token_hash: &str,
+        ) -> Result<Option<crate::handlers::api::auth::ApiUser>>;
+        async fn list_api_tokens(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<crate::handlers::api::auth::ApiToken>>;
         async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<crate::auth::User>>;
         async fn get_user_by_username(
             &self,
@@ -68,6 +84,11 @@ mock! {
             email_verified: bool,
             verification: Option<crate::db::auth::EmailVerificationNotification>,
         ) -> Result<(crate::auth::User, Option<Uuid>)>;
+        async fn revoke_api_token(
+            &self,
+            user_id: Uuid,
+            api_token_id: Uuid,
+        ) -> Result<()>;
         async fn update_session(
             &self,
             record: &axum_login::tower_sessions::session::Record,
@@ -805,6 +826,7 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<crate::types::event::EventAttendanceInfo>;
+        async fn get_event_group_id(&self, event_id: Uuid) -> Result<Option<Uuid>>;
         async fn is_event_check_in_window_open(
             &self,
             alliance_id: Uuid,

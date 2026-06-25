@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::{
     auth::{User, UserSummary},
     db::PgExecutor,
+    handlers::api::auth::{ApiScope, ApiToken, ApiUser},
     templates::{auth::UserDetails, notifications::EmailVerification},
     types::permissions::{AlliancePermission, GroupPermission},
     types::user::UserProvider,
@@ -35,6 +36,16 @@ pub(crate) trait DBAuth {
     /// Creates a new session in the database.
     async fn create_session(&self, record: &session::Record) -> Result<()>;
 
+    /// Creates a new API token.
+    async fn create_api_token(
+        &self,
+        user_id: Uuid,
+        token_hash: &str,
+        token_prefix: &str,
+        name: Option<String>,
+        scopes: &[ApiScope],
+    ) -> Result<ApiToken>;
+
     /// Deletes a session from the database.
     async fn delete_session(&self, session_id: &session::Id) -> Result<()>;
 
@@ -43,6 +54,12 @@ pub(crate) trait DBAuth {
 
     /// Retrieves a registered or pre-registered user by email for external auth.
     async fn get_user_by_email_for_external_auth(&self, email: &str) -> Result<Option<User>>;
+
+    /// Resolves a non-revoked API token to an authenticated API user.
+    async fn get_api_token_auth(&self, token_hash: &str) -> Result<Option<ApiUser>>;
+
+    /// Lists a user's API tokens.
+    async fn list_api_tokens(&self, user_id: Uuid) -> Result<Vec<ApiToken>>;
 
     /// Retrieves a user by their unique ID.
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>>;
@@ -66,6 +83,9 @@ pub(crate) trait DBAuth {
         email_verified: bool,
         verification: Option<EmailVerificationNotification>,
     ) -> Result<(User, Option<Uuid>)>;
+
+    /// Revokes one API token owned by a user.
+    async fn revoke_api_token(&self, user_id: Uuid, api_token_id: Uuid) -> Result<()>;
 
     /// Updates an existing session in the database.
     async fn update_session(&self, record: &session::Record) -> Result<()>;
@@ -180,6 +200,47 @@ where
         .await
     }
 
+    #[instrument(skip(self, token_hash), err)]
+    async fn create_api_token(
+        &self,
+        user_id: Uuid,
+        token_hash: &str,
+        token_prefix: &str,
+        name: Option<String>,
+        scopes: &[ApiScope],
+    ) -> Result<ApiToken> {
+        let scope_texts = scopes.iter().map(|scope| scope.as_str()).collect::<Vec<_>>();
+        self.fetch_json_one(
+            "
+            insert into api_token (
+                user_id,
+                token_hash,
+                token_prefix,
+                name,
+                scopes
+            ) values (
+                $1::uuid,
+                $2::text,
+                $3::text,
+                $4::text,
+                $5::text[]
+            )
+            returning jsonb_build_object(
+                'api_token_id', api_token_id,
+                'user_id', user_id,
+                'name', name,
+                'token_prefix', token_prefix,
+                'scopes', scopes,
+                'created_at', extract(epoch from created_at)::bigint,
+                'last_used_at', null,
+                'revoked_at', null
+            );
+            ",
+            &[&user_id, &token_hash, &token_prefix, &name, &scope_texts],
+        )
+        .await
+    }
+
     #[instrument(skip(self, session_id), err)]
     async fn delete_session(&self, session_id: &session::Id) -> Result<()> {
         self.execute(
@@ -216,6 +277,57 @@ where
         self.fetch_json_opt(
             "select get_user_by_email_for_external_auth($1::text);",
             &[&email],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, token_hash), err)]
+    async fn get_api_token_auth(&self, token_hash: &str) -> Result<Option<ApiUser>> {
+        let db = self.client().await?;
+        let Some(row) = db
+            .query_opt(
+                "
+                update api_token
+                set last_used_at = now()
+                where token_hash = $1::text
+                and revoked_at is null
+                returning get_user_by_id(user_id), scopes;
+                ",
+                &[&token_hash],
+            )
+            .await?
+        else {
+            return Ok(None);
+        };
+
+        let user = row.try_get::<_, Json<User>>(0)?.0;
+        let scopes = row
+            .get::<_, Vec<String>>(1)
+            .into_iter()
+            .filter_map(|scope| scope.parse().ok())
+            .collect();
+
+        Ok(Some(ApiUser { user, scopes }))
+    }
+
+    #[instrument(skip(self), err)]
+    async fn list_api_tokens(&self, user_id: Uuid) -> Result<Vec<ApiToken>> {
+        self.fetch_json_one(
+            "
+            select coalesce(jsonb_agg(jsonb_build_object(
+                'api_token_id', api_token_id,
+                'user_id', user_id,
+                'name', name,
+                'token_prefix', token_prefix,
+                'scopes', scopes,
+                'created_at', extract(epoch from created_at)::bigint,
+                'last_used_at', extract(epoch from last_used_at)::bigint,
+                'revoked_at', extract(epoch from revoked_at)::bigint
+            ) order by created_at desc), '[]'::jsonb)
+            from api_token
+            where user_id = $1::uuid;
+            ",
+            &[&user_id],
         )
         .await
     }
@@ -305,6 +417,20 @@ where
         let verification_code: Option<Uuid> = row.get(1);
 
         Ok((user, verification_code))
+    }
+
+    #[instrument(skip(self), err)]
+    async fn revoke_api_token(&self, user_id: Uuid, api_token_id: Uuid) -> Result<()> {
+        self.execute(
+            "
+            update api_token
+            set revoked_at = coalesce(revoked_at, now())
+            where user_id = $1::uuid
+            and api_token_id = $2::uuid;
+            ",
+            &[&user_id, &api_token_id],
+        )
+        .await
     }
 
     #[instrument(skip(self, record), err)]
