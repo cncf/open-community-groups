@@ -33,7 +33,7 @@ use crate::{
         EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
         EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,
         EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-        SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
+        SessionProposalCoSpeakerInvitation, SiteOnboarding, SpeakerSeriesWelcome, SpeakerWelcome,
     },
 };
 
@@ -453,6 +453,12 @@ impl DeliveryWorker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::SiteOnboarding => {
+                let subject = "Welcome to GOUP".to_string();
+                let template: SiteOnboarding = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::SessionProposalCoSpeakerInvitation => {
                 let subject = "Session proposal co-speaker invitation".to_string();
                 let template: SessionProposalCoSpeakerInvitation =
@@ -709,6 +715,8 @@ pub(crate) enum NotificationKind {
     GroupTeamInvitation,
     /// Notification welcoming a new group member.
     GroupWelcome,
+    /// Notification with first steps for a newly created account.
+    SiteOnboarding,
     /// Notification inviting a co-speaker to respond to a session proposal invitation.
     SessionProposalCoSpeakerInvitation,
     /// Notification welcoming a speaker to multiple events in a linked series.

@@ -325,6 +325,7 @@ select results_eq(
         ('group-team-invitation', false),
         ('group-welcome', false),
         ('session-proposal-co-speaker-invitation', false),
+        ('site-onboarding', false),
         ('speaker-series-welcome', false),
         ('speaker-welcome', false)
     $$,

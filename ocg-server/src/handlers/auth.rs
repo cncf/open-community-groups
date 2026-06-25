@@ -34,10 +34,11 @@ use crate::{
             ValidatedFormQs,
         },
     },
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         self, PageId,
         auth::{User, UserDetails},
-        notifications::EmailVerification,
+        notifications::{EmailVerification, SiteOnboarding},
     },
     types::permissions::{AlliancePermission, GroupPermission},
     validation::{MAX_LEN_S, trimmed_non_empty},
@@ -343,6 +344,7 @@ pub(crate) async fn oidc_redirect(
 pub(crate) async fn sign_up(
     messages: Messages,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
     Query(query): Query<HashMap<String, String>>,
     Form(mut user_summary): Form<auth::UserSummary>,
@@ -379,11 +381,13 @@ pub(crate) async fn sign_up(
         Ok(None) => db.sign_up_user(&user_summary, false, Some(verification)).await,
         Err(err) => Err(err),
     };
-    let Ok((_user, email_verification_code)) = sign_up_result else {
+    let Ok((user, email_verification_code)) = sign_up_result else {
         // Redirect to the sign up page on error
         messages.error("Something went wrong while signing up. Please try again later.");
         return Ok(Redirect::to(SIGN_UP_URL).into_response());
     };
+
+    enqueue_site_onboarding_notification(&db, &notifications_manager, &server_cfg, &user).await;
 
     // Notify the user that database-side verification email enqueue was requested
     if email_verification_code.is_some() {
@@ -991,6 +995,53 @@ async fn build_email_verification_notification(
         code,
         template_data,
     })
+}
+
+/// Enqueues first-step guidance for a newly created account.
+async fn enqueue_site_onboarding_notification(
+    db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    user: &auth::User,
+) {
+    if let Err(err) =
+        try_enqueue_site_onboarding_notification(db, notifications_manager, server_cfg, user).await
+    {
+        warn!(
+            error = %err,
+            user_id = %user.user_id,
+            "failed to enqueue site onboarding notification"
+        );
+    }
+}
+
+/// Builds and enqueues the new-user onboarding email.
+async fn try_enqueue_site_onboarding_notification(
+    db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    user: &auth::User,
+) -> Result<(), HandlerError> {
+    let site_settings = db.get_site_settings().await?;
+    let base_url = server_cfg.base_url.trim_end_matches('/');
+    let template_data = SiteOnboarding {
+        explore_link: format!("{base_url}/explore"),
+        jobs_link: format!("{base_url}/jobs"),
+        landscape_link: format!("{base_url}/landscape"),
+        search_link: format!("{base_url}/search"),
+        theme: site_settings.theme,
+        user_dashboard_link: format!("{base_url}/dashboard/user"),
+        user_name: user.name.clone(),
+    };
+    let notification = NewNotification {
+        attachments: vec![],
+        kind: NotificationKind::SiteOnboarding,
+        recipients: vec![user.user_id],
+        template_data: Some(serde_json::to_value(&template_data)?),
+    };
+
+    notifications_manager.enqueue(&notification).await?;
+    Ok(())
 }
 
 /// Percent-encode a `next_url` so it can be safely embedded in a query string.

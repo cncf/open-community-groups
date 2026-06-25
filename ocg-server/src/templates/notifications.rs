@@ -319,6 +319,26 @@ pub(crate) struct GroupWelcome {
     pub theme: Theme,
 }
 
+/// Template for site onboarding notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/site_onboarding.html")]
+pub(crate) struct SiteOnboarding {
+    /// Link to the public events and groups page.
+    pub explore_link: String,
+    /// Link to the public jobs board.
+    pub jobs_link: String,
+    /// Link to the public landscape page.
+    pub landscape_link: String,
+    /// Link to the public search page.
+    pub search_link: String,
+    /// Theme configuration for the site.
+    pub theme: Theme,
+    /// Link to the user's dashboard.
+    pub user_dashboard_link: String,
+    /// Display name for the recipient.
+    pub user_name: String,
+}
+
 /// Template for session proposal co-speaker invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/session_proposal_co_speaker_invitation.html")]

@@ -439,6 +439,30 @@ fn test_delivery_worker_prepare_content_email_verification() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_site_onboarding() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::SiteOnboarding,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_site_onboarding_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "Welcome to GOUP");
+    assert!(body.contains("Hi Test User"));
+    assert!(body.contains("https://example.test/explore"));
+    assert!(body.contains("https://example.test/jobs"));
+    assert!(body.contains("https://example.test/landscape"));
+    assert!(body.contains("https://example.test/search"));
+    assert!(body.contains("https://example.test/dashboard/user"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_event_attendance_canceled() {
     // Setup notification
     let notification = Notification {
@@ -1062,6 +1086,21 @@ fn sample_email_verification_template_data() -> serde_json::Value {
         "theme": {
             "primary_color": "#000000"
         }
+    })
+}
+
+/// Sample template payload for site onboarding notifications.
+fn sample_site_onboarding_template_data() -> serde_json::Value {
+    json!({
+        "explore_link": "https://example.test/explore",
+        "jobs_link": "https://example.test/jobs",
+        "landscape_link": "https://example.test/landscape",
+        "search_link": "https://example.test/search",
+        "theme": {
+            "primary_color": "#000000"
+        },
+        "user_dashboard_link": "https://example.test/dashboard/user",
+        "user_name": "Test User"
     })
 }
 

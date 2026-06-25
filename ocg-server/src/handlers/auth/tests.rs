@@ -1430,9 +1430,11 @@ async fn test_sign_up_success() {
     let session_id = session::Id::default();
     let session_record = sample_empty_session_record(session_id);
     let user_for_db = sample_auth_user(Uuid::new_v4(), "hash");
+    let user_id = user_for_db.user_id;
     let site_settings = sample_site_settings();
     let activation_primary_color = site_settings.theme.primary_color.clone();
     let sign_up_primary_color = site_settings.theme.primary_color.clone();
+    let onboarding_primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1441,7 +1443,7 @@ async fn test_sign_up_success() {
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
     db.expect_get_site_settings()
-        .times(1)
+        .times(2)
         .returning(move || Ok(site_settings.clone()));
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
@@ -1480,7 +1482,25 @@ async fn test_sign_up_success() {
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::SiteOnboarding)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|data| {
+                    serde_json::from_value::<SiteOnboarding>(data.clone()).is_ok_and(|onboarding| {
+                        onboarding.explore_link == "https://app.example/explore"
+                            && onboarding.jobs_link == "https://app.example/jobs"
+                            && onboarding.landscape_link == "https://app.example/landscape"
+                            && onboarding.search_link == "https://app.example/search"
+                            && onboarding.user_dashboard_link
+                                == "https://app.example/dashboard/user"
+                            && onboarding.user_name == "Test User"
+                            && onboarding.theme.primary_color == onboarding_primary_color
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
 
     // Setup router
     let server_cfg = HttpServerConfig {
@@ -1525,8 +1545,10 @@ async fn test_sign_up_activates_pre_registered_user() {
     let session_id = session::Id::default();
     let session_record = sample_empty_session_record(session_id);
     let user_for_db = sample_auth_user(Uuid::new_v4(), "hash");
+    let user_id = user_for_db.user_id;
     let site_settings = sample_site_settings();
     let activation_primary_color = site_settings.theme.primary_color.clone();
+    let onboarding_primary_color = site_settings.theme.primary_color.clone();
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -1535,7 +1557,7 @@ async fn test_sign_up_activates_pre_registered_user() {
         .withf(move |id| *id == session_id)
         .returning(move |_| Ok(Some(session_record.clone())));
     db.expect_get_site_settings()
-        .times(1)
+        .times(2)
         .returning(move || Ok(site_settings.clone()));
     db.expect_activate_pre_registered_user_email_password()
         .times(1)
@@ -1565,7 +1587,22 @@ async fn test_sign_up_activates_pre_registered_user() {
 
     // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
-    nm.expect_enqueue().times(0);
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::SiteOnboarding)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|data| {
+                    serde_json::from_value::<SiteOnboarding>(data.clone()).is_ok_and(|onboarding| {
+                        onboarding.explore_link == "https://app.example/explore"
+                            && onboarding.user_dashboard_link
+                                == "https://app.example/dashboard/user"
+                            && onboarding.user_name == "Test User"
+                            && onboarding.theme.primary_color == onboarding_primary_color
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
 
     // Setup router
     let server_cfg = HttpServerConfig {
