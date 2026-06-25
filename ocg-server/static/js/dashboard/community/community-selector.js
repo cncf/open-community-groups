@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { showErrorAlert } from "/static/js/common/alerts.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { selectDashboardAndKeepTab } from "/static/js/common/dashboard-selection.js";

@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { readTrustedHtml } from "/static/js/common/trusted-html.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";

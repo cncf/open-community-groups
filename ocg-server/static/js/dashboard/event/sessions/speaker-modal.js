@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { focusUserSearchField } from "/static/js/common/users/user-search-field.js";
 import "/static/js/common/media/logo-image.js";

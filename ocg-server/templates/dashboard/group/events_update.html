@@ -676,7 +676,9 @@
                            value="enabled"
                            type="checkbox"
                            class="sr-only peer"
-                           {% if event.event_reminder_is_enabled() %}checked{% endif %}>
+                           {% if event.event_reminder_is_enabled() %}
+                             checked
+                           {% endif %}>
                     <input type="hidden"
                            id="event_reminder_enabled"
                            name="event_reminder_enabled"
@@ -832,7 +834,9 @@
                                name="toggle_meeting_recording_published"
                                class="sr-only peer"
                                value="true"
-                               {% if event.meeting_recording_published.unwrap_or(false) %}checked{% endif %}>
+                               {% if event.meeting_recording_published.unwrap_or(false) %}
+                                 checked
+                               {% endif %}>
                         <input type="hidden"
                                id="meeting_recording_published"
                                name="meeting_recording_published"
@@ -915,9 +919,7 @@
                       <option value="">Select currency</option>
                       {% for payment_currency_code in payment_currency_codes -%}
                         <option value="{{ payment_currency_code }}"
-                                {% if self.is_selected_payment_currency_code(payment_currency_code) %}
-                                  selected
-                                {% endif %}>{{ payment_currency_code }}</option>
+                                {% if self.is_selected_payment_currency_code(payment_currency_code) %}selected{% endif %}>{{ payment_currency_code }}</option>
                       {% endfor -%}
                     </select>
                   </div>

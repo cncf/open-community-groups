@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 
 const TAB_BUTTON_CLASS =
   "cursor-pointer inline-flex items-center justify-center p-2 sm:p-3 border-b-2 " +

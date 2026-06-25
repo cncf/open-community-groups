@@ -1,4 +1,4 @@
-import { html, repeat } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { ComboboxController } from "/static/js/common/combobox.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 

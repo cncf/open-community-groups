@@ -16,7 +16,7 @@ import {
   scheduleDelayedPopover,
 } from "/static/js/community/explore/widgets.js";
 
-const FULLCALENDAR_SCRIPT_SRC = "/static/vendor/js/fullcalendar.v6.1.19.min.js";
+const FULLCALENDAR_SCRIPT_SRC = "/static/vendor/js/fullcalendar.v6.1.21.min.js";
 const MAIN_LOADING_CALENDAR_ID = "main-loading-calendar";
 const LOADING_CALENDAR_ID = "loading-calendar";
 const CALENDAR_ELEMENT_ID = "calendar-box";

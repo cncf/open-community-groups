@@ -1,4 +1,4 @@
-import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
+import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { DEFAULT_MAP_ZOOM } from "/static/js/common/location/search-utils.js";
 
 /**
