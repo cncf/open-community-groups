@@ -241,12 +241,15 @@ pub(crate) async fn log_out(
 }
 
 /// Handler that completes the oauth2 authorization process.
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
 pub(crate) async fn oauth2_callback(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(provider): Path<OAuth2Provider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -254,6 +257,8 @@ pub(crate) async fn oauth2_callback(
         &mut auth_session,
         session,
         &db,
+        &notifications_manager,
+        &server_cfg,
         provider,
         code,
         state,
@@ -288,12 +293,15 @@ pub(crate) async fn oauth2_redirect(
 }
 
 /// Handler that completes the oidc authorization process.
+#[allow(clippy::too_many_arguments)]
 #[instrument(skip_all)]
 pub(crate) async fn oidc_callback(
     mut auth_session: AuthSession,
     messages: Messages,
     session: Session,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     Path(provider): Path<OidcProvider>,
     Query(OAuth2AuthorizationResponse { code, state }): Query<OAuth2AuthorizationResponse>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -301,6 +309,8 @@ pub(crate) async fn oidc_callback(
         &mut auth_session,
         session,
         &db,
+        &notifications_manager,
+        &server_cfg,
         provider,
         code,
         state,
@@ -510,10 +520,13 @@ impl CallbackAuth for AuthSession {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn oauth2_callback_with_auth<A, F>(
     auth: &mut A,
     session: Session,
     db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
     provider: OAuth2Provider,
     code: String,
     state: oauth2::CsrfToken,
@@ -559,6 +572,10 @@ where
     // LinkedIn users should automatically join the Baku chapter when it exists.
     auto_join_linkedin_baku_chapter(db, &user.user_id).await;
 
+    if user.newly_registered {
+        enqueue_site_onboarding_notification(db, notifications_manager, server_cfg, &user).await;
+    }
+
     // Select the first alliance and group as selected in the session
     select_first_alliance_and_group(db, &session, &user.user_id).await?;
 
@@ -602,10 +619,13 @@ async fn try_auto_join_linkedin_baku_chapter(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn oidc_callback_with_auth<A, F>(
     auth: &mut A,
     session: Session,
     db: &DynDB,
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
     provider: OidcProvider,
     code: String,
     state: oauth2::CsrfToken,
@@ -659,6 +679,10 @@ where
 
     // Select the first alliance and group as selected in the session
     select_first_alliance_and_group(db, &session, &user.user_id).await?;
+
+    if user.newly_registered {
+        enqueue_site_onboarding_notification(db, notifications_manager, server_cfg, &user).await;
+    }
 
     // Track auth provider in the session
     session.insert(AUTH_PROVIDER_KEY, provider).await?;

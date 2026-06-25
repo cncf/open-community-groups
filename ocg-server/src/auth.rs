@@ -280,10 +280,12 @@ impl AuthnBackend {
             .await?
         {
             if user.registration_status == "pre-registered" {
-                return self
+                let mut user = self
                     .db
                     .activate_pre_registered_user_external_provider(&user.user_id, user_summary)
-                    .await;
+                    .await?;
+                user.newly_registered = true;
+                return Ok(user);
             }
 
             if let Some(provider) = user_summary.provider.clone() {
@@ -305,7 +307,8 @@ impl AuthnBackend {
             }
             Ok(user)
         } else {
-            let (user, _) = self.db.sign_up_user(user_summary, true, None).await?;
+            let (mut user, _) = self.db.sign_up_user(user_summary, true, None).await?;
+            user.newly_registered = true;
             Ok(user)
         }
     }
@@ -550,6 +553,7 @@ pub(crate) struct PasswordCredentials {
 // User types and implementations.
 
 /// Represents a user in the system.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub(crate) struct User {
     /// Unique user ID.
@@ -562,6 +566,9 @@ pub(crate) struct User {
     pub email_verified: bool,
     /// User's display name.
     pub name: String,
+    /// Whether this request just created or activated the user account.
+    #[serde(default, skip_serializing)]
+    pub newly_registered: bool,
     /// Whether the user receives optional notifications.
     pub optional_notifications_enabled: bool,
     /// Whether the user can manage platform-level resources.

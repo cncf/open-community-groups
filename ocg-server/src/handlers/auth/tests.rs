@@ -29,7 +29,10 @@ use crate::{
         extractors::{OAuth2, Oidc},
         tests::*,
     },
-    services::{images::MockImageStorage, notifications::MockNotificationsManager},
+    services::{
+        images::MockImageStorage,
+        notifications::{DynNotificationsManager, MockNotificationsManager},
+    },
 };
 
 use super::*;
@@ -755,6 +758,8 @@ async fn test_oauth2_callback_authorization_error() {
         &mut callback_auth,
         session.clone(),
         &db,
+        &sample_notifications_manager(),
+        &sample_tracking_server_cfg(),
         OAuth2Provider::GitHub,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
@@ -830,6 +835,8 @@ async fn test_oauth2_callback_success() {
         &mut callback_auth,
         session.clone(),
         &db,
+        &sample_notifications_manager(),
+        &sample_tracking_server_cfg(),
         OAuth2Provider::GitHub,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
@@ -1189,6 +1196,8 @@ async fn test_oidc_callback_authorization_error() {
         &mut callback_auth,
         session.clone(),
         &db,
+        &sample_notifications_manager(),
+        &sample_tracking_server_cfg(),
         OidcProvider::LinkedIn,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
@@ -1263,6 +1272,8 @@ async fn test_oidc_callback_success() {
         &mut callback_auth,
         session.clone(),
         &db,
+        &sample_notifications_manager(),
+        &sample_tracking_server_cfg(),
         OidcProvider::LinkedIn,
         "test-code".to_string(),
         oauth2::CsrfToken::new("state-in-session".to_string()),
@@ -1287,6 +1298,91 @@ async fn test_oidc_callback_success() {
     assert_eq!(auth_provider, Some(OidcProvider::LinkedIn));
     assert_eq!(selected_alliance_id, Some(alliance_id));
     assert_eq!(selected_group_id, Some(group_id));
+}
+
+#[tokio::test]
+async fn test_oidc_callback_enqueues_onboarding_for_new_external_user() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
+
+    // Setup in-memory session
+    let store = Arc::new(MemoryStore::default());
+    let session = Session::new(None, store, None);
+    session
+        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
+        .await
+        .unwrap();
+    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(groups.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup callback auth mock
+    let mut user = sample_auth_user(user_id, &auth_hash);
+    user.newly_registered = true;
+    let mut callback_auth = MockCallbackAuth {
+        login_called: false,
+        login_result: Some(Ok(())),
+        oidc_result: Some(Ok(Some(user))),
+        oauth2_result: None,
+    };
+    let db: DynDB = Arc::new(db);
+
+    // Setup notifications manager mock
+    let mut nm = MockNotificationsManager::new();
+    nm.expect_enqueue()
+        .times(1)
+        .withf(move |notification| {
+            matches!(notification.kind, NotificationKind::SiteOnboarding)
+                && notification.recipients == vec![user_id]
+                && notification.template_data.as_ref().is_some_and(|data| {
+                    serde_json::from_value::<SiteOnboarding>(data.clone()).is_ok_and(|onboarding| {
+                        onboarding.explore_link == "https://example.test/explore"
+                            && onboarding.user_dashboard_link
+                                == "https://example.test/dashboard/user"
+                            && onboarding.user_name == "Test User"
+                    })
+                })
+        })
+        .returning(|_| Box::pin(async { Ok(()) }));
+    let notifications_manager: DynNotificationsManager = Arc::new(nm);
+
+    // Execute helper
+    let redirect = oidc_callback_with_auth(
+        &mut callback_auth,
+        session.clone(),
+        &db,
+        &notifications_manager,
+        &sample_tracking_server_cfg(),
+        OidcProvider::LinkedIn,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        |_| {
+            panic!("oidc callback success should not emit an error message");
+        },
+    )
+    .await
+    .unwrap();
+
+    // Check callback result and side effects
+    let response = redirect.into_response();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION).unwrap(),
+        &HeaderValue::from_static("/")
+    );
+    assert!(callback_auth.login_called);
 }
 
 #[tokio::test]
@@ -4941,4 +5037,8 @@ impl CallbackAuth for MockCallbackAuth {
             .take()
             .expect("callback login result should be configured in tests")
     }
+}
+
+fn sample_notifications_manager() -> DynNotificationsManager {
+    Arc::new(MockNotificationsManager::new())
 }
