@@ -9,6 +9,7 @@ returns jsonb language sql stable as $$
         'description', p_job.description,
         'location', p_job.location,
         'remote', p_job.remote,
+        'members_only', p_job.members_only,
         'apply_url', p_job.apply_url,
         'tags', p_job.tags,
         'published', p_job.published,

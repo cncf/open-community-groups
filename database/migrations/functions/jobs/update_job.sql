@@ -9,6 +9,7 @@ begin
         apply_url = trim(p_input->>'apply_url'),
         location = nullif(trim(p_input->>'location'), ''),
         remote = coalesce((p_input->>'remote')::boolean, false),
+        members_only = coalesce((p_input->>'members_only')::boolean, false),
         tags = coalesce(p_tags, '{}'::text[]),
         updated_at = current_timestamp
     where job_id = p_job_id

@@ -123,6 +123,13 @@
                    class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
             Remote-friendly role
           </label>
+          <label class="inline-flex w-fit items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-700">
+            <input type="checkbox"
+                   name="members_only"
+                   value="true"
+                   class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
+            Members-only visibility
+          </label>
           <button class="btn-primary" type="submit">Post job</button>
         </div>
       </form>
@@ -151,6 +158,11 @@
                     <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">Published</span>
                   {% else -%}
                     <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">Draft</span>
+                  {% endif -%}
+                  {% if job.members_only -%}
+                    <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">Members only</span>
+                  {% else -%}
+                    <span class="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">Public</span>
                   {% endif -%}
                 </div>
                 <p class="mt-1 text-sm text-stone-600">
@@ -232,6 +244,14 @@
                        {% if job.remote %}checked{% endif %}
                        class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
                 Remote-friendly role
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm text-stone-700">
+                <input type="checkbox"
+                       name="members_only"
+                       value="true"
+                       {% if job.members_only %}checked{% endif %}
+                       class="rounded border-stone-300 text-primary-600 focus:ring-primary-500" />
+                Members-only visibility
               </label>
               <div class="flex flex-wrap gap-2">
                 <button class="btn-primary" type="submit">Save changes</button>

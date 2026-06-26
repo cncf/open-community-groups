@@ -28,6 +28,10 @@ pub(crate) struct JobsFilters {
     /// Remote-only filter.
     #[garde(skip)]
     pub remote: Option<bool>,
+    /// Whether member-only jobs should be included in search results.
+    #[serde(default, skip_deserializing)]
+    #[garde(skip)]
+    pub include_members_only: bool,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
@@ -46,6 +50,7 @@ impl Default for JobsFilters {
             query: None,
             location: None,
             remote: None,
+            include_members_only: false,
             limit: Some(20),
             offset: Some(0),
         }
@@ -102,6 +107,9 @@ pub(crate) struct JobInput {
     /// Remote-friendly role.
     #[garde(skip)]
     pub remote: Option<bool>,
+    /// Restrict visibility to logged-in GOUP members.
+    #[garde(skip)]
+    pub members_only: Option<bool>,
     /// Job tags, comma-separated.
     #[garde(length(max = MAX_LEN_M))]
     pub tags: Option<String>,
@@ -183,6 +191,9 @@ pub(crate) struct JobSummary {
     pub location: Option<String>,
     /// Remote-friendly role.
     pub remote: bool,
+    /// Whether only logged-in members can view the role.
+    #[serde(default)]
+    pub members_only: bool,
     /// Apply URL.
     pub apply_url: String,
     /// Tags.

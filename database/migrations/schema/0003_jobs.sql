@@ -9,6 +9,7 @@ create table jobs_job (
     apply_url text not null,
     location text,
     remote boolean default false not null,
+    members_only boolean default false not null,
     tags text[] default '{}'::text[] not null,
     published boolean default true not null,
     expires_at timestamp with time zone default current_timestamp + interval '30 days' not null,

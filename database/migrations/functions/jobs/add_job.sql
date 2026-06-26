@@ -22,6 +22,7 @@ begin
         apply_url,
         location,
         remote,
+        members_only,
         tags
     )
     values (
@@ -34,6 +35,7 @@ begin
         trim(p_input->>'apply_url'),
         nullif(trim(p_input->>'location'), ''),
         coalesce((p_input->>'remote')::boolean, false),
+        coalesce((p_input->>'members_only')::boolean, false),
         coalesce(p_tags, '{}'::text[])
     )
     returning job_id into v_job_id;

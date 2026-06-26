@@ -23,78 +23,77 @@
         </div>
       </div>
     </div>
-    <form class="grid gap-5 p-5 sm:p-6"
+    <form class="inert-form grid gap-6 p-5 sm:p-6 lg:p-8"
           hx-post="/dashboard/alliance/landscape/add"
-          hx-target="#dashboard-content">
-      <div class="grid gap-4 lg:grid-cols-3">
-        <div>
-          <label class="label" for="new-landscape-name">Name</label>
+          hx-target="#dashboard-content"
+          hx-indicator="#dashboard-spinner">
+      <div class="grid gap-5 lg:grid-cols-12">
+        <div class="space-y-2 lg:col-span-6">
+          <label class="form-label" for="new-landscape-name">Name</label>
           <input id="new-landscape-name"
                  name="name"
-                 class="input"
+                 class="input-primary"
                  placeholder="Project or startup name"
                  required />
         </div>
-        <div>
-          <label class="label" for="new-landscape-kind">Kind</label>
-          <select id="new-landscape-kind" name="kind" class="input" required>
+        <div class="space-y-2 lg:col-span-3">
+          <label class="form-label" for="new-landscape-kind">Kind</label>
+          <select id="new-landscape-kind" name="kind" class="select-primary" required>
             <option value="startup">Startup</option>
             <option value="github_project">GitHub project</option>
           </select>
         </div>
-        <div>
-          <label class="label" for="new-landscape-category">Category</label>
+        <div class="space-y-2 lg:col-span-3">
+          <label class="form-label" for="new-landscape-category">Category</label>
           <input id="new-landscape-category"
                  name="category"
-                 class="input"
+                 class="input-primary"
                  placeholder="AI, DevOps, Fintech" />
         </div>
-      </div>
-      <div>
-        <label class="label" for="new-landscape-summary">Summary</label>
-        <input id="new-landscape-summary"
-               name="summary"
-               class="input"
-               placeholder="One sentence explaining the project or startup"
-               required
-               maxlength="500" />
-        <p class="mt-1 text-xs text-stone-500">Shown on public landscape cards. Max 500 characters.</p>
-      </div>
-      <div>
-        <label class="label" for="new-landscape-description">Description</label>
-        <textarea id="new-landscape-description"
-                  name="description"
-                  rows="4"
-                  class="input"
-                  placeholder="What it does, who it is for, and why it belongs in the ecosystem"></textarea>
-      </div>
-      <div class="grid gap-4 lg:grid-cols-4">
-        <div>
-          <label class="label" for="new-landscape-website">Website URL</label>
+        <div class="space-y-2 lg:col-span-12">
+          <label class="form-label" for="new-landscape-summary">Summary</label>
+          <input id="new-landscape-summary"
+                 name="summary"
+                 class="input-primary"
+                 placeholder="One sentence explaining the project or startup"
+                 required
+                 maxlength="500" />
+          <p class="form-legend">Shown on public landscape cards. Max 500 characters.</p>
+        </div>
+        <div class="space-y-2 lg:col-span-12">
+          <label class="form-label" for="new-landscape-description">Description</label>
+          <textarea id="new-landscape-description"
+                    name="description"
+                    rows="6"
+                    class="input-primary min-h-40 resize-y"
+                    placeholder="What it does, who it is for, and why it belongs in the ecosystem"></textarea>
+        </div>
+        <div class="space-y-2 lg:col-span-5">
+          <label class="form-label" for="new-landscape-website">Website URL</label>
           <input id="new-landscape-website"
                  name="website_url"
-                 class="input"
+                 class="input-primary"
                  type="url"
                  placeholder="https://..." />
         </div>
-        <div>
-          <label class="label" for="new-landscape-github">GitHub URL</label>
+        <div class="space-y-2 lg:col-span-4">
+          <label class="form-label" for="new-landscape-github">GitHub URL</label>
           <input id="new-landscape-github"
                  name="github_url"
-                 class="input"
+                 class="input-primary"
                  type="url"
                  placeholder="https://github.com/..." />
         </div>
-        {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", legend = "Optional logo shown on public landscape cards.", field_class = "lg:col-span-2") -}}
-        <div>
-          <label class="label" for="new-landscape-tags">Tags</label>
+        <div class="space-y-2 lg:col-span-3">
+          <label class="form-label" for="new-landscape-tags">Tags</label>
           <input id="new-landscape-tags"
                  name="tags"
-                 class="input"
+                 class="input-primary"
                  placeholder="Rust, SaaS, OSS" />
         </div>
+        {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", legend = "Optional logo shown on public landscape cards.", field_class = "lg:col-span-12") -}}
       </div>
-      <div class="flex justify-end border-t border-stone-100 pt-5">
+      <div class="flex flex-col gap-4 rounded-3xl border border-stone-100 bg-stone-50/80 p-4 sm:flex-row sm:items-center sm:justify-end">
         <button class="btn-primary" type="submit">Add entry</button>
       </div>
     </form>
@@ -111,7 +110,7 @@
   <input id="landscape-dashboard-query"
          name="query"
          value="{{ filters.query.as_deref().unwrap_or("") }}"
-         class="input"
+         class="input-primary"
          placeholder="Search landscape entries" />
   <button class="btn-primary" type="submit">Search</button>
 </form>
@@ -154,68 +153,78 @@
           </div>
         </div>
 
-        <form class="grid gap-4"
+        <form class="inert-form grid gap-4"
               hx-put="/dashboard/alliance/landscape/{{ entry.landscape_entry_id }}/update"
-              hx-target="#dashboard-content">
+              hx-target="#dashboard-content"
+              hx-indicator="#dashboard-spinner"
+              {% if !can_manage_landscape -%}
+                inert
+              {% endif -%}>
           <div class="grid gap-4 lg:grid-cols-3">
-            <div>
-              <label class="label" for="landscape-name-{{ entry.landscape_entry_id }}">Name</label>
+            <div class="space-y-2">
+              <label class="form-label"
+                     for="landscape-name-{{ entry.landscape_entry_id }}">Name</label>
               <input id="landscape-name-{{ entry.landscape_entry_id }}"
                      name="name"
-                     class="input"
+                     class="input-primary"
                      value="{{ entry.name }}"
                      required />
             </div>
-            <div>
-              <label class="label" for="landscape-kind-{{ entry.landscape_entry_id }}">Kind</label>
+            <div class="space-y-2">
+              <label class="form-label"
+                     for="landscape-kind-{{ entry.landscape_entry_id }}">Kind</label>
               <select id="landscape-kind-{{ entry.landscape_entry_id }}"
                       name="kind"
-                      class="input"
+                      class="select-primary"
                       required>
                 <option value="startup" {% if entry.kind == "startup" %}selected{% endif %}>Startup</option>
                 <option value="github_project"
                         {% if entry.kind == "github_project" %}selected{% endif %}>GitHub project</option>
               </select>
             </div>
-            <div>
-              <label class="label" for="landscape-category-{{ entry.landscape_entry_id }}">Category</label>
+            <div class="space-y-2">
+              <label class="form-label"
+                     for="landscape-category-{{ entry.landscape_entry_id }}">Category</label>
               <input id="landscape-category-{{ entry.landscape_entry_id }}"
                      name="category"
-                     class="input"
+                     class="input-primary"
                      value="{{ entry.category.as_deref().unwrap_or("") }}" />
             </div>
           </div>
-          <div>
-            <label class="label" for="landscape-summary-{{ entry.landscape_entry_id }}">Summary</label>
+          <div class="space-y-2">
+            <label class="form-label"
+                   for="landscape-summary-{{ entry.landscape_entry_id }}">Summary</label>
             <input id="landscape-summary-{{ entry.landscape_entry_id }}"
                    name="summary"
-                   class="input"
+                   class="input-primary"
                    value="{{ entry.summary }}"
                    required
                    maxlength="500" />
           </div>
-          <div>
-            <label class="label"
+          <div class="space-y-2">
+            <label class="form-label"
                    for="landscape-description-{{ entry.landscape_entry_id }}">Description</label>
             <textarea id="landscape-description-{{ entry.landscape_entry_id }}"
                       name="description"
                       rows="4"
-                      class="input">{{ entry.description.as_deref().unwrap_or("") }}</textarea>
+                      class="input-primary min-h-32 resize-y">{{ entry.description.as_deref().unwrap_or("") }}</textarea>
           </div>
           <div class="grid gap-4 lg:grid-cols-4">
-            <div>
-              <label class="label" for="landscape-website-{{ entry.landscape_entry_id }}">Website URL</label>
+            <div class="space-y-2">
+              <label class="form-label"
+                     for="landscape-website-{{ entry.landscape_entry_id }}">Website URL</label>
               <input id="landscape-website-{{ entry.landscape_entry_id }}"
                      name="website_url"
-                     class="input"
+                     class="input-primary"
                      type="url"
                      value="{{ entry.website_url.as_deref().unwrap_or("") }}" />
             </div>
-            <div>
-              <label class="label" for="landscape-github-{{ entry.landscape_entry_id }}">GitHub URL</label>
+            <div class="space-y-2">
+              <label class="form-label"
+                     for="landscape-github-{{ entry.landscape_entry_id }}">GitHub URL</label>
               <input id="landscape-github-{{ entry.landscape_entry_id }}"
                      name="github_url"
-                     class="input"
+                     class="input-primary"
                      type="url"
                      value="{{ entry.github_url.as_deref().unwrap_or("") }}" />
             </div>
@@ -223,11 +232,12 @@
             {% if let Some(logo_url) = &entry.logo_url %}value="{{ logo_url }}"{% endif %}
           {%- endlet %}
           {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", legend = "Optional logo shown on public landscape cards.", value_attr = logo_value, field_class = "lg:col-span-2") -}}
-          <div>
-            <label class="label" for="landscape-tags-{{ entry.landscape_entry_id }}">Tags</label>
+          <div class="space-y-2">
+            <label class="form-label"
+                   for="landscape-tags-{{ entry.landscape_entry_id }}">Tags</label>
             <input id="landscape-tags-{{ entry.landscape_entry_id }}"
                    name="tags"
-                   class="input"
+                   class="input-primary"
                    value="{{ entry.tags.join(", ") }}" />
           </div>
         </div>

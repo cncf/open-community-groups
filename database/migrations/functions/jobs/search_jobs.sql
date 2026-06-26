@@ -6,6 +6,7 @@ declare
     v_query text := nullif(trim(p_filters->>'query'), '');
     v_location text := nullif(trim(p_filters->>'location'), '');
     v_remote boolean := (p_filters->>'remote')::boolean;
+    v_include_members_only boolean := coalesce((p_filters->>'include_members_only')::boolean, false);
     v_total int;
     v_jobs jsonb;
 begin
@@ -14,6 +15,7 @@ begin
         from jobs_job j
         where j.published = true
         and j.expires_at > current_timestamp
+        and (v_include_members_only or j.members_only = false)
         and (
             v_query is null
             or j.title ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'

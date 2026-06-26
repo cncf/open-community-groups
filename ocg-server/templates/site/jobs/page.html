@@ -79,6 +79,9 @@
                   {% if job.remote -%}
                     <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">Remote</span>
                   {% endif -%}
+                  {% if job.members_only -%}
+                    <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">Members only</span>
+                  {% endif -%}
                   {% if let Some(location) = &job.location -%}
                     <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ location }}</span>
                   {% endif -%}

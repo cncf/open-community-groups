@@ -33,6 +33,7 @@ pub(crate) fn alliance_brand_path<S: AsRef<str>>(
         "alliances",
         "api",
         "dashboard",
+        "docs",
         "event",
         "explore",
         "favicon.ico",
@@ -44,6 +45,7 @@ pub(crate) fn alliance_brand_path<S: AsRef<str>>(
         "profiles",
         "search",
         "sign-up",
+        "sponsor",
         "static",
         "stats",
         "wiki",
@@ -124,6 +126,14 @@ mod tests {
         );
         assert_eq!(
             alliance_brand_path::default().execute("/jobs", values).unwrap(),
+            ""
+        );
+        assert_eq!(
+            alliance_brand_path::default().execute("/sponsor", values).unwrap(),
+            ""
+        );
+        assert_eq!(
+            alliance_brand_path::default().execute("/docs", values).unwrap(),
             ""
         );
         assert_eq!(

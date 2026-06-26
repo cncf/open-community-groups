@@ -3,7 +3,7 @@
 use askama::Template;
 use axum::{
     extract::{Path, RawQuery, State},
-    http::StatusCode,
+    http::{StatusCode, header::CACHE_CONTROL},
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
@@ -16,10 +16,9 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extend_public_shared_cache_headers,
         extractors::{CurrentUser, ValidatedForm},
     },
-    router::serde_qs_config,
+    router::{CACHE_CONTROL_PRIVATE_NO_STORE, serde_qs_config},
     templates::{PageId, auth::User, site::jobs},
     types::{
         jobs::{JobApplicationInput, JobsFilters},
@@ -36,7 +35,8 @@ pub(crate) async fn page(
     State(db): State<DynDB>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let filters = parse_filters(raw_query.as_deref().unwrap_or_default())?;
+    let mut filters = parse_filters(raw_query.as_deref().unwrap_or_default())?;
+    filters.include_members_only = auth_session.user.is_some();
     let output = db.search_jobs(&filters).await?;
     let site_settings = db.get_site_settings().await?;
     let navigation_links =
@@ -54,7 +54,7 @@ pub(crate) async fn page(
     };
 
     Ok((
-        extend_public_shared_cache_headers(&[])?,
+        [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
         Html(template.render()?),
     ))
 }
@@ -79,7 +79,7 @@ pub(crate) async fn details(
     };
 
     Ok((
-        extend_public_shared_cache_headers(&[])?,
+        [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
         Html(template.render()?),
     ))
 }
