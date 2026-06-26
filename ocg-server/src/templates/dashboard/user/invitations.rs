@@ -24,6 +24,15 @@ pub(crate) struct ListPage {
     pub group_invitations: Vec<GroupTeamInvitation>,
 }
 
+impl ListPage {
+    /// Returns the total number of pending invitations shown on the page.
+    pub(crate) fn total_invitations(&self) -> i64 {
+        (self.alliance_invitations.len()
+            + self.event_invitations.len()
+            + self.group_invitations.len()) as i64
+    }
+}
+
 // Types.
 
 /// Alliance team invitation summary information.

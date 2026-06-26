@@ -24,6 +24,9 @@ use crate::{
 /// Link preview description for alliance pages.
 pub(crate) const PREVIEW_DESCRIPTION: &str =
     "Open Alliance Groups, where Open Source alliances thrive.";
+/// Link preview description for alliance brand pages.
+pub(crate) const BRAND_PREVIEW_DESCRIPTION: &str =
+    "Brand assets and identity links for this alliance.";
 
 // Pages and sections templates.
 
@@ -70,6 +73,45 @@ impl Page {
     /// Returns the preview title for the alliance page.
     pub(crate) fn preview_title(&self) -> String {
         format!("{} alliance", self.alliance.display_name)
+    }
+}
+
+/// Template for the alliance brand page.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "alliance/brand.html")]
+pub(crate) struct BrandPage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Alliance information.
+    pub alliance: AllianceFull,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Authenticated user information.
+    pub user: User,
+}
+
+impl BrandPage {
+    /// Returns the canonical public URL for the alliance brand page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(&self.base_url, &format!("/{}/brand", self.alliance.name))
+    }
+
+    /// Returns the Open Graph image URL for the alliance brand page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.alliance
+            .og_image_url
+            .as_deref()
+            .or(Some(self.alliance.logo_url.as_str()))
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+
+    /// Returns the preview title for the alliance brand page.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} brand", self.alliance.display_name)
     }
 }
 

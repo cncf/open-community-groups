@@ -18,6 +18,44 @@ use num_format::{Locale, ToFormattedString};
 use tracing::error;
 use unicode_segmentation::UnicodeSegmentation;
 
+/// Returns the current alliance brand page path for alliance-prefixed public pages.
+#[askama::filter_fn]
+pub(crate) fn alliance_brand_path<S: AsRef<str>>(
+    s: S,
+    _: &dyn askama::Values,
+) -> askama::Result<String> {
+    let path = s.as_ref().trim_start_matches('/');
+    let Some(alliance_slug) = path.split('/').next().filter(|segment| !segment.is_empty()) else {
+        return Ok(String::new());
+    };
+    let reserved_roots = [
+        "about",
+        "alliances",
+        "api",
+        "dashboard",
+        "event",
+        "explore",
+        "favicon.ico",
+        "health-check",
+        "images",
+        "jobs",
+        "landscape",
+        "log-in",
+        "profiles",
+        "search",
+        "sign-up",
+        "static",
+        "stats",
+        "wiki",
+    ];
+
+    if reserved_roots.contains(&alliance_slug) || alliance_slug.contains('.') {
+        return Ok(String::new());
+    }
+
+    Ok(format!("/{alliance_slug}/brand"))
+}
+
 /// Removes all emoji characters from a string.
 #[askama::filter_fn]
 pub(crate) fn demoji<S: AsRef<str>>(s: S, _: &dyn askama::Values) -> askama::Result<String> {
@@ -69,6 +107,30 @@ mod tests {
     use chrono::TimeZone;
 
     use super::*;
+
+    #[test]
+    fn test_alliance_brand_path() {
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            alliance_brand_path::default()
+                .execute("/goup/group/builders", values)
+                .unwrap(),
+            "/goup/brand"
+        );
+        assert_eq!(
+            alliance_brand_path::default().execute("/goup", values).unwrap(),
+            "/goup/brand"
+        );
+        assert_eq!(
+            alliance_brand_path::default().execute("/jobs", values).unwrap(),
+            ""
+        );
+        assert_eq!(
+            alliance_brand_path::default().execute("/", values).unwrap(),
+            ""
+        );
+    }
 
     #[test]
     fn test_demoji() {

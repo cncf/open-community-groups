@@ -305,9 +305,14 @@ pub(crate) async fn setup(
         .route("/landscape", get(site::landscape::page))
         .route("/profiles/{username}", get(site::profile::page))
         .route("/search", get(site::search::page))
+        .route(
+            "/sponsor",
+            get(site::sponsor::page).post(site::sponsor::submit),
+        )
         .route("/stats", get(site::stats::page))
         .route("/wiki", get(site::wiki::page))
         // Alliance-prefixed public routes
+        .route("/{alliance}/brand", get(alliance::brand_page))
         .route("/{alliance}", get(alliance::page))
         .route(
             "/{alliance}/group/{group_slug}/store",

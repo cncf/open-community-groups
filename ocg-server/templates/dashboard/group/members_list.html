@@ -137,7 +137,9 @@
                   <dd class="mt-1 truncate text-stone-700">
                     {% if let Some(city) = &member.city -%}
                       {{ city }}
-                      {% if member.country.is_some() -%}, {% endif -%}
+                      {% if member.country.is_some() -%}
+                        ,
+                      {% endif -%}
                     {% endif -%}
                     {% if let Some(country) = &member.country -%}
                       {{ country }}

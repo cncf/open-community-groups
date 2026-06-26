@@ -703,6 +703,7 @@ mock! {
             actor_user_id: Uuid,
             session_proposal_id: Uuid,
         ) -> Result<()>;
+        async fn count_user_pending_invitations(&self, user_id: Uuid) -> Result<i64>;
         async fn add_session_proposal(
             &self,
             actor_user_id: Uuid,

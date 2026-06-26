@@ -89,6 +89,15 @@
                  hx-target="body"
                  class="text-stone-300 transition hover:text-white">About GOUP</a>
             </li>
+            {% let alliance_brand_path = path|alliance_brand_path -%}
+            {% if !alliance_brand_path.is_empty() -%}
+              <li>
+                <a href="{{ alliance_brand_path }}"
+                   hx-boost="true"
+                   hx-target="body"
+                   class="text-stone-300 transition hover:text-white">Brand</a>
+              </li>
+            {% endif -%}
             <li>
               <a href="/search"
                  hx-boost="true"

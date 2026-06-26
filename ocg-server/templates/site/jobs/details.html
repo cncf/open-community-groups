@@ -9,7 +9,9 @@
     <a class="mb-5 inline-flex text-sm font-medium text-primary-700 hover:text-primary-900"
        href="/jobs">Back to jobs</a>
     <div class="relative max-w-4xl">
-      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-primary-600">{{ job.summary.company_name }}</p>
+      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-primary-600">
+        {{ job.summary.company_name }}
+      </p>
       <h1 class="mb-4 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
         {{ job.summary.title }}
       </h1>
@@ -59,13 +61,17 @@
           </div>
           <div class="min-w-0">
             <div class="text-xs font-semibold uppercase tracking-wide text-primary-700">Posted by</div>
-            <div class="truncate font-semibold text-stone-950">{{ job.summary.poster_name.as_deref().unwrap_or(job.summary.poster_username.as_str()) }}</div>
+            <div class="truncate font-semibold text-stone-950">
+              {{ job.summary.poster_name.as_deref().unwrap_or(job.summary.poster_username.as_str()) }}
+            </div>
             <div class="truncate text-xs text-stone-500">
               {% if let Some(title) = &job.summary.poster_title -%}
                 {{ title }}
                 {% if job.summary.poster_company.is_some() %}·{% endif %}
               {% endif -%}
-              {% if let Some(company) = &job.summary.poster_company -%}{{ company }}{% endif -%}
+              {% if let Some(company) = &job.summary.poster_company -%}
+                {{ company }}
+              {% endif -%}
             </div>
           </div>
         </div>

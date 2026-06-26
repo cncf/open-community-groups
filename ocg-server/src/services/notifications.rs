@@ -85,6 +85,9 @@ const PAUSE_ON_ENQUEUE_NONE: Duration = Duration::from_mins(5);
 pub(crate) trait NotificationsManager {
     /// Enqueue a notification for delivery.
     async fn enqueue(&self, notification: &NewNotification) -> Result<()>;
+
+    /// Send an email directly to an external address.
+    async fn send_email(&self, email: &OutboundEmail) -> Result<()>;
 }
 
 /// Shared trait object for a notifications manager.
@@ -92,8 +95,12 @@ pub(crate) type DynNotificationsManager = Arc<dyn NotificationsManager + Send + 
 
 /// PostgreSQL-backed notifications manager implementation.
 pub(crate) struct PgNotificationsManager {
+    /// Email configuration used for direct sends.
+    cfg: EmailConfig,
     /// Handle to the database for notification operations.
     db: DynDB,
+    /// Shared email sender.
+    email_sender: DynEmailSender,
 }
 
 impl PgNotificationsManager {
@@ -142,7 +149,11 @@ impl PgNotificationsManager {
             });
         }
 
-        Self { db }
+        Self {
+            cfg: cfg.clone(),
+            db,
+            email_sender: email_sender.clone(),
+        }
     }
 }
 
@@ -151,6 +162,19 @@ impl NotificationsManager for PgNotificationsManager {
     /// Enqueue a notification for delivery.
     async fn enqueue(&self, notification: &NewNotification) -> Result<()> {
         self.db.enqueue_notification(notification).await
+    }
+
+    /// Send an email directly to an external address.
+    async fn send_email(&self, email: &OutboundEmail) -> Result<()> {
+        let worker = DeliveryWorker {
+            db: self.db.clone(),
+            cfg: self.cfg.clone(),
+            cancellation_token: CancellationToken::new(),
+            email_sender: self.email_sender.clone(),
+        };
+        worker
+            .send_email_with_retries(&email.to, &email.subject, email.body.clone(), &[])
+            .await
     }
 }
 
@@ -648,6 +672,17 @@ pub(crate) struct NewNotification {
 
     /// Optional template data for the notification content.
     pub template_data: Option<serde_json::Value>,
+}
+
+/// Data required to send an email outside the user notification queue.
+#[derive(Debug, Clone)]
+pub(crate) struct OutboundEmail {
+    /// Plain text email body.
+    pub body: String,
+    /// Email subject.
+    pub subject: String,
+    /// Recipient email address.
+    pub to: String,
 }
 
 /// Data required to deliver a notification to a user.

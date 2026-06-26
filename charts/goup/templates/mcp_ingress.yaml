@@ -1,0 +1,27 @@
+{{- if and .Values.mcp.enabled .Values.mcp.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "chart.resourceNamePrefix" . }}mcp
+  labels:
+    app.kubernetes.io/component: mcp
+    {{- include "chart.labels" . | nindent 4 }}
+  {{- with .Values.mcp.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  defaultBackend:
+    service:
+      name: {{ include "chart.resourceNamePrefix" . }}mcp
+      port:
+        number: {{ .Values.mcp.ingress.backendServicePort }}
+  {{- with .Values.mcp.ingress.rules }}
+  rules:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.mcp.ingress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -112,6 +112,73 @@ async fn test_page_success() {
     assert!(body.contains(
         r#"<meta name="twitter:image" content="https://example.test/images/og/alliance-og.png">"#
     ));
+    assert!(body.contains(r#"href="/test-alliance/brand""#));
+    assert!(body.contains(">Brand</a>"));
+}
+
+#[tokio::test]
+async fn test_brand_page_success() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let mut alliance = sample_alliance_full(alliance_id);
+    alliance.banner_mobile_url = "/images/alliance-banner-mobile.png".to_string();
+    alliance.banner_url = "/images/alliance-banner.png".to_string();
+    alliance.display_name = "Test Alliance".to_string();
+    alliance.logo_url = "/images/alliance-logo.png".to_string();
+    alliance.name = "test-alliance".to_string();
+    alliance.og_image_url = Some("/images/alliance-og.png".to_string());
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_alliance_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
+    db.expect_get_alliance_full()
+        .times(1)
+        .withf(move |id| *id == alliance_id)
+        .returning(move |_| Ok(alliance.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm)
+        .with_server_cfg(sample_tracking_server_cfg())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-alliance/brand")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CONTENT_TYPE).unwrap(),
+        &HeaderValue::from_static("text/html; charset=utf-8")
+    );
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+    );
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("<title>Test Alliance brand</title>"));
+    assert!(
+        body.contains(r#"<link rel="canonical" href="https://example.test/test-alliance/brand">"#)
+    );
+    assert!(body.contains("Brand assets"));
+    assert!(body.contains(r#"src="/images/alliance-logo.png""#));
+    assert!(body.contains(r#"src="/images/alliance-banner.png""#));
+    assert!(body.contains(r#"src="/images/alliance-banner-mobile.png""#));
+    assert!(body.contains(r#"src="/images/alliance-og.png""#));
 }
 
 #[tokio::test]

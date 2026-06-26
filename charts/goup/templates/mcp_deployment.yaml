@@ -1,0 +1,74 @@
+{{- if .Values.mcp.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart.resourceNamePrefix" . }}mcp
+  labels:
+    app.kubernetes.io/component: mcp
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.mcp.deploy.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: mcp
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: mcp
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+    {{- with .Values.mcp.deploy.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      initContainers:
+        - {{- include "chart.checkDbIsReadyInitContainer" . | nindent 10 }}
+      containers:
+        - name: mcp
+          image: {{ .Values.mcp.deploy.image.repository }}:{{ .Values.imageTag | default (printf "v%s" .Chart.AppVersion) }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          {{- with .Values.mcp.deploy.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: HOST
+              value: {{ .Values.mcp.host | quote }}
+            - name: PORT
+              value: {{ .Values.mcp.port | quote }}
+            - name: MCP_BEARER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.resourceNamePrefix" . }}mcp-config
+                  key: MCP_BEARER_TOKEN
+            - name: MCP_ENABLE_MUTATIONS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.resourceNamePrefix" . }}mcp-config
+                  key: MCP_ENABLE_MUTATIONS
+            - name: TERN_CONF
+              value: {{ printf "%s/tern.conf" .Values.configDir | quote }}
+          volumeMounts:
+            - name: mcp-config
+              mountPath: {{ .Values.configDir | quote }}
+              readOnly: true
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcp.port }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.mcp.deploy.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.mcp.port }}
+      volumes:
+        - name: mcp-config
+          secret:
+            secretName: {{ include "chart.resourceNamePrefix" . }}mcp-config
+{{- end }}

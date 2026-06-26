@@ -51,6 +51,9 @@ pub(crate) trait DBDashboardUser {
         session_proposal_id: Uuid,
     ) -> Result<()>;
 
+    /// Counts pending dashboard invitations the user can act on.
+    async fn count_user_pending_invitations(&self, user_id: Uuid) -> Result<i64>;
+
     /// Adds a new session proposal for the user.
     async fn add_session_proposal(
         &self,
@@ -238,6 +241,16 @@ where
         self.execute(
             "select accept_session_proposal_co_speaker_invitation($1::uuid, $2::uuid)",
             &[&actor_user_id, &session_proposal_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::count_user_pending_invitations`]
+    #[instrument(skip(self), err)]
+    async fn count_user_pending_invitations(&self, user_id: Uuid) -> Result<i64> {
+        self.fetch_scalar_one(
+            "select count_user_pending_invitations($1::uuid)::bigint",
+            &[&user_id],
         )
         .await
     }

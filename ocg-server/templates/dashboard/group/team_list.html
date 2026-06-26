@@ -53,7 +53,9 @@
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Member -#}
             {% let member_image_attr -%}
-            {% if let Some(photo_url) = &member.photo_url -%}image-url="{{ photo_url }}"{% endif -%}
+            {% if let Some(photo_url) = &member.photo_url -%}
+              image-url="{{ photo_url }}"
+            {% endif -%}
           {%- endlet %}
           {% let member_placeholder -%}{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}{%- endlet %}
           {% let member_display_name -%}{{ member.name.as_deref() |assigned_or(member.username) }}{%- endlet %}

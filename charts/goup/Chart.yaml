@@ -1,14 +1,16 @@
 apiVersion: v2
-name: ocg
-description: Open Alliance Groups
+name: goup-vc
+description: GOUP VC web app, redirector, database migrator, and MCP server
 type: application
 version: 0.1.1-1
 appVersion: 0.1.0
 kubeVersion: ">= 1.19.0-0"
 keywords:
   - goup
+  - goup-vc
   - alliance
   - groups
+  - mcp
 maintainers:
   - name: Sergio
     email: tegioz@icloud.com

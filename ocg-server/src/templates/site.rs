@@ -16,6 +16,8 @@ pub(crate) mod not_found;
 pub(crate) mod profile;
 /// Templates for the site search page.
 pub(crate) mod search;
+/// Templates for the sponsor inquiry page.
+pub(crate) mod sponsor;
 /// Templates for the stats page.
 pub(crate) mod stats;
 /// Templates for the wiki page.

@@ -26,6 +26,8 @@ pub(crate) struct Page {
     pub content: Content,
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
+    /// Pending invitations the user can review and accept or reject.
+    pub pending_invitation_count: i64,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// Current request path.

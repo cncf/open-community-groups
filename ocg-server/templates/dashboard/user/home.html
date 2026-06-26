@@ -27,7 +27,7 @@
       {{ dashboard::menu_title(text = "User", extra_styles = "py-1.5") -}}
       {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events") -}}
       {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
-      {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations") -}}
+      {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations", items_count = pending_invitation_count) -}}
     </div>
     {# End User -#}
     {# Call for Speakers -#}
@@ -55,7 +55,31 @@
        hx-trigger="refresh-user-dashboard-content"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"
-       class="p-4 sm:p-6 lg:p-12">
+       class="dashboard-scroll-area p-4 sm:p-6 lg:p-12">
+    {% if pending_invitation_count > 0 && !content.is_invitations() -%}
+      <div class="mb-6 rounded-xl border border-primary-200 bg-primary-50 p-4">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5 shrink-0 rounded-full bg-white p-2 ring-1 ring-primary-200">
+              <div class="svg-icon size-4 icon-pending-invitation bg-primary-500"></div>
+            </div>
+            <div>
+              <div class="text-sm font-semibold text-stone-900">
+                You have {{ pending_invitation_count }} pending invitation
+                {% if pending_invitation_count != 1 %}s{% endif %}
+              </div>
+              <p class="mt-1 text-sm text-stone-600">Review your invitations to accept or reject them.</p>
+            </div>
+          </div>
+          <a href="/dashboard/user?tab=invitations"
+             hx-get="/dashboard/user?tab=invitations"
+             hx-target="body"
+             hx-indicator="#dashboard-spinner"
+             hx-push-url="true"
+             class="btn-primary whitespace-nowrap">Review invitations</a>
+        </div>
+      </div>
+    {% endif -%}
     {# Content -#}
     {{ content|safe }}
     {# End Content -#}

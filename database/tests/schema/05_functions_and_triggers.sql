@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(278);
+select plan(279);
 
 -- ============================================================================
 -- VARIABLES
@@ -114,6 +114,7 @@ select has_function('claim_meeting_for_auto_end', '{}'::name[]);
 select has_function('claim_meeting_out_of_sync', '{}'::name[]);
 select has_function('claim_pending_notification', array['integer', 'integer']::name[]);
 select has_function('complete_free_event_purchase', array['uuid']::name[]);
+select has_function('count_user_pending_invitations', array['uuid']::name[]);
 select has_function('deactivate_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_alliance_team_member', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_event', array['uuid', 'uuid', 'uuid']::name[]);

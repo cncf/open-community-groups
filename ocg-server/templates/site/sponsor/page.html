@@ -1,0 +1,143 @@
+{% extends "common/base.html" -%}
+
+{% block jumbotron -%}
+  <div class="relative overflow-hidden">
+    <div class="absolute inset-x-0 top-0 h-72 bg-linear-to-b from-primary-50/80 to-transparent"></div>
+    <section class="relative container mx-auto max-w-7xl px-4 pt-10 pb-12 sm:px-6 lg:px-8 lg:pt-16 lg:pb-20">
+      <div class="max-w-3xl">
+        <div class="mb-6 inline-flex items-center rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-700 shadow-sm backdrop-blur-xl">
+          Sponsor GOUP
+        </div>
+        <h1 class="text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
+          Support the builder community
+        </h1>
+        <p class="mt-6 max-w-2xl text-lg/8 font-medium text-stone-600">
+          Partner with GOUP to support events, hackathons, community programs, and useful
+          opportunities for builders.
+        </p>
+      </div>
+    </section>
+  </div>
+{% endblock jumbotron -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
+    <div class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
+      <aside class="rounded-[2rem] border border-stone-200 bg-stone-950 p-6 text-white shadow-sm sm:p-8">
+        <h2 class="text-2xl font-black tracking-tight">Why sponsor?</h2>
+        <div class="mt-6 grid gap-4 text-sm/6 text-stone-200">
+          <p>Reach a trusted network of founders, engineers, researchers, creators, and community leaders.</p>
+          <p>Support high-signal events, learning, open source, AI, startup, and career initiatives.</p>
+          <p>Help GOUP stay useful, warm, and accessible to people who build.</p>
+        </div>
+        <div class="mt-8 rounded-3xl border border-white/10 bg-white/10 p-5 text-sm/6 text-stone-200">
+          We’ll reply from <a href="mailto:{{ crate::templates::site::sponsor::SPONSOR_INQUIRY_RECIPIENT }}"
+    class="font-bold text-white underline decoration-white/30 underline-offset-4">{{ crate::templates::site::sponsor::SPONSOR_INQUIRY_RECIPIENT }}</a>.
+        </div>
+      </aside>
+
+      <section class="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+        {% if submitted -%}
+          <div class="rounded-3xl border border-primary-200 bg-primary-50 p-6">
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Thanks for reaching out.</h2>
+            <p class="mt-3 text-base/7 text-stone-600">
+              Your sponsorship inquiry was sent to the GOUP team. We’ll follow up soon.
+            </p>
+            <a href="/"
+               hx-boost="true"
+               hx-target="body"
+               class="btn-primary-anchor mt-6">Back to GOUP</a>
+          </div>
+        {% else -%}
+          <div>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Tell us about your sponsorship idea</h2>
+            <p class="mt-2 text-sm/6 text-stone-600">
+              Share enough context for us to understand fit, timing, and how you would like to support GOUP.
+            </p>
+          </div>
+
+          <form method="post"
+                action="/sponsor"
+                hx-post="/sponsor"
+                hx-target="body"
+                hx-disabled-elt="button[type='submit']"
+                class="mt-8 grid gap-5">
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label for="sponsor-name" class="form-label">Name</label>
+                <input id="sponsor-name"
+                       name="name"
+                       required
+                       maxlength="{{ crate::validation::MAX_LEN_S }}"
+                       autocomplete="name"
+                       class="input"
+                       placeholder="Your name" />
+              </div>
+              <div>
+                <label for="sponsor-email" class="form-label">Email</label>
+                <input id="sponsor-email"
+                       name="email"
+                       type="email"
+                       required
+                       maxlength="{{ crate::validation::MAX_LEN_M }}"
+                       autocomplete="email"
+                       class="input"
+                       placeholder="you@example.com" />
+              </div>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label for="sponsor-company" class="form-label">Company / organization</label>
+                <input id="sponsor-company"
+                       name="company"
+                       required
+                       maxlength="{{ crate::validation::MAX_LEN_S }}"
+                       autocomplete="organization"
+                       class="input"
+                       placeholder="Company name" />
+              </div>
+              <div>
+                <label for="sponsor-website" class="form-label">Website</label>
+                <input id="sponsor-website"
+                       name="website"
+                       maxlength="{{ crate::validation::MAX_LEN_M }}"
+                       autocomplete="url"
+                       class="input"
+                       placeholder="https://example.com" />
+              </div>
+            </div>
+
+            <div>
+              <label for="sponsor-budget" class="form-label">Budget or sponsorship range</label>
+              <input id="sponsor-budget"
+                     name="budget"
+                     maxlength="{{ crate::validation::MAX_LEN_S }}"
+                     class="input"
+                     placeholder="Optional" />
+            </div>
+
+            <div>
+              <label for="sponsor-message" class="form-label">Message</label>
+              <textarea id="sponsor-message"
+                        name="message"
+                        required
+                        maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
+                        rows="7"
+                        class="textarea"
+                        placeholder="What would you like to sponsor? What goals, audience, timing, or package are you considering?"></textarea>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <a href="/"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="btn-secondary-anchor text-center">Cancel</a>
+              <button type="submit" class="btn-primary">Send sponsor inquiry</button>
+            </div>
+          </form>
+        {% endif -%}
+      </section>
+    </div>
+  </div>
+{% endblock content -%}

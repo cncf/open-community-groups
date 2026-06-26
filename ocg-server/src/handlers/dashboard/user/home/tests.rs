@@ -41,6 +41,10 @@ async fn test_page_account_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(3));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -59,6 +63,9 @@ async fn test_page_account_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("You have 3 pending invitations"));
+    assert!(body.contains("Review invitations"));
 }
 
 #[tokio::test]
@@ -94,6 +101,10 @@ async fn test_page_events_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(0));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -152,6 +163,7 @@ async fn test_page_invitations_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    db.expect_count_user_pending_invitations().times(0);
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -203,6 +215,10 @@ async fn test_page_logs_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(0));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -263,6 +279,10 @@ async fn test_page_session_proposals_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(0));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -316,6 +336,10 @@ async fn test_page_submissions_tab_success() {
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |uid| *uid == user_id)
+        .returning(|_| Ok(0));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

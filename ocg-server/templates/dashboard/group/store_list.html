@@ -29,7 +29,7 @@
       </div>
     </div>
 
-    <form class="grid gap-5 p-5 sm:p-6"
+    <form class="inert-form grid gap-5 p-5 sm:p-6"
           hx-post="/dashboard/group/store"
           hx-target="#dashboard-content"
           hx-indicator="#dashboard-spinner"
@@ -38,31 +38,34 @@
           {% endif -%}>
       <div class="grid gap-4 lg:grid-cols-2">
         <label class="block">
-          <span class="label">Name</span>
+          <span class="form-label">Name</span>
           <input name="name"
-                 class="input"
+                 class="input-primary mt-2"
                  maxlength="{{ crate::validation::MAX_LEN_M }}"
                  placeholder="Community hoodie"
                  required>
         </label>
         <label class="block">
-          <span class="label">Checkout URL</span>
-          <input name="checkout_url" class="input" placeholder="https://..." required>
+          <span class="form-label">Checkout URL</span>
+          <input name="checkout_url"
+                 class="input-primary mt-2"
+                 placeholder="https://..."
+                 required>
         </label>
       </div>
       <label class="block">
-        <span class="label">Description</span>
+        <span class="form-label">Description</span>
         <textarea name="description"
-                  class="input min-h-24"
+                  class="input-primary mt-2 min-h-24"
                   maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
                   placeholder="Describe the item, sizes, shipping, or pickup details."></textarea>
       </label>
       <div class="grid gap-4 lg:grid-cols-2">
         {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional product image shown on the group page and store.", field_class = "col-span-full") -}}
         <label class="block">
-          <span class="label">Price in cents</span>
+          <span class="form-label">Price in cents</span>
           <input name="price_minor"
-                 class="input"
+                 class="input-primary mt-2"
                  type="number"
                  min="0"
                  value="0"
@@ -71,31 +74,31 @@
       </div>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label class="block">
-          <span class="label">Currency</span>
+          <span class="form-label">Currency</span>
           <input name="currency_code"
-                 class="input uppercase"
+                 class="input-primary mt-2 uppercase"
                  maxlength="3"
                  value="USD"
                  required>
         </label>
         <label class="block">
-          <span class="label">Inventory</span>
+          <span class="form-label">Inventory</span>
           <input name="inventory_count"
-                 class="input"
+                 class="input-primary mt-2"
                  type="number"
                  min="0"
                  placeholder="Unlimited">
         </label>
         <label class="block">
-          <span class="label">Featured</span>
-          <select name="featured" class="input">
+          <span class="form-label">Featured</span>
+          <select name="featured" class="select-primary mt-2">
             <option value="false">No</option>
             <option value="true">Yes</option>
           </select>
         </label>
         <label class="block">
-          <span class="label">Active</span>
-          <select name="active" class="input">
+          <span class="form-label">Active</span>
+          <select name="active" class="select-primary mt-2">
             <option value="true">Yes</option>
             <option value="false">No</option>
           </select>
@@ -117,7 +120,9 @@
         <div class="svg-icon size-6 icon-shopping-bag bg-primary-500"></div>
       </div>
       <h2 class="mt-4 text-lg font-semibold text-stone-950">No store items yet</h2>
-      <p class="mt-2 text-sm text-stone-600">Add swag, merch, stickers, books, or sponsor kits to open the group store.</p>
+      <p class="mt-2 text-sm text-stone-600">
+        Add swag, merch, stickers, books, or sponsor kits to open the group store.
+      </p>
     </section>
   {% else -%}
     <section class="grid gap-5 xl:grid-cols-2">
@@ -131,7 +136,7 @@
           {% else -%}
             <div class="h-2 bg-gradient-to-r from-primary-500 via-primary-300 to-stone-100"></div>
           {% endif -%}
-          <form class="grid gap-4 p-5"
+          <form class="inert-form grid gap-4 p-5"
                 hx-put="/dashboard/group/store/{{ item.group_store_item_id }}"
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
@@ -160,25 +165,25 @@
 
             <div class="grid gap-4 lg:grid-cols-2">
               <label class="block">
-                <span class="label">Name</span>
+                <span class="form-label">Name</span>
                 <input name="name"
-                       class="input"
+                       class="input-primary mt-2"
                        value="{{ item.name }}"
                        maxlength="{{ crate::validation::MAX_LEN_M }}"
                        required>
               </label>
               <label class="block">
-                <span class="label">Checkout URL</span>
+                <span class="form-label">Checkout URL</span>
                 <input name="checkout_url"
-                       class="input"
+                       class="input-primary mt-2"
                        value="{{ item.checkout_url }}"
                        required>
               </label>
             </div>
             <label class="block">
-              <span class="label">Description</span>
+              <span class="form-label">Description</span>
               <textarea name="description"
-                        class="input min-h-24"
+                        class="input-primary mt-2 min-h-24"
                         maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}">{{ item.description.as_deref().unwrap_or("") }}</textarea>
             </label>
             <div class="grid gap-4 lg:grid-cols-2">
@@ -187,9 +192,9 @@
             {%- endlet %}
             {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional product image shown on the group page and store.", value_attr = image_value, field_class = "col-span-full") -}}
             <label class="block">
-              <span class="label">Price in cents</span>
+              <span class="form-label">Price in cents</span>
               <input name="price_minor"
-                     class="input"
+                     class="input-primary mt-2"
                      type="number"
                      min="0"
                      value="{{ item.price_minor }}"
@@ -198,31 +203,31 @@
           </div>
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label class="block">
-              <span class="label">Currency</span>
+              <span class="form-label">Currency</span>
               <input name="currency_code"
-                     class="input uppercase"
+                     class="input-primary mt-2 uppercase"
                      maxlength="3"
                      value="{{ item.currency_code }}"
                      required>
             </label>
             <label class="block">
-              <span class="label">Inventory</span>
+              <span class="form-label">Inventory</span>
               <input name="inventory_count"
-                     class="input"
+                     class="input-primary mt-2"
                      type="number"
                      min="0"
                      value="{{ item.inventory_input_value() }}">
             </label>
             <label class="block">
-              <span class="label">Featured</span>
-              <select name="featured" class="input">
+              <span class="form-label">Featured</span>
+              <select name="featured" class="select-primary mt-2">
                 <option value="false" {% if !item.featured %}selected{% endif %}>No</option>
                 <option value="true" {% if item.featured %}selected{% endif %}>Yes</option>
               </select>
             </label>
             <label class="block">
-              <span class="label">Active</span>
-              <select name="active" class="input">
+              <span class="form-label">Active</span>
+              <select name="active" class="select-primary mt-2">
                 <option value="true" {% if item.active %}selected{% endif %}>Yes</option>
                 <option value="false" {% if !item.active %}selected{% endif %}>No</option>
               </select>

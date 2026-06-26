@@ -34,7 +34,7 @@
       </div>
     </div>
 
-    <form class="grid gap-5 p-5 sm:p-6"
+    <form class="inert-form grid gap-5 p-5 sm:p-6"
           hx-post="/dashboard/group/spotlights"
           hx-target="#dashboard-content"
           hx-indicator="#dashboard-spinner"
@@ -43,26 +43,28 @@
           {% endif -%}>
       <div class="grid gap-4 lg:grid-cols-2">
         <label class="block">
-          <span class="label">Member</span>
-          <select name="user_id" class="input" required>
+          <span class="form-label">Member</span>
+          <select name="user_id" class="select-primary mt-2" required>
             {% for member in members -%}
-              <option value="{{ member.user_id }}">{{ member.name.as_deref().unwrap_or(&member.username) }} (@{{ member.username }})</option>
+              <option value="{{ member.user_id }}">
+                {{ member.name.as_deref().unwrap_or(&member.username) }} (@{{ member.username }})
+              </option>
             {% endfor -%}
           </select>
         </label>
         <label class="block">
-          <span class="label">Title</span>
+          <span class="form-label">Title</span>
           <input name="title"
-                 class="input"
+                 class="input-primary mt-2"
                  maxlength="{{ crate::validation::MAX_LEN_M }}"
                  placeholder="How this member moved the community forward"
                  required>
         </label>
       </div>
       <label class="block">
-        <span class="label">Story</span>
+        <span class="form-label">Story</span>
         <textarea name="story"
-                  class="input min-h-32"
+                  class="input-primary mt-2 min-h-32"
                   maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
                   placeholder="Tell the member story, result, or lesson."
                   required></textarea>
@@ -70,21 +72,24 @@
       <div class="grid gap-4 lg:grid-cols-2">
         {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional spotlight image shown on the group page and spotlight cards.", field_class = "col-span-full") -}}
         <label class="block">
-          <span class="label">Link URL</span>
-          <input name="link_url" class="input" type="url" placeholder="https://...">
+          <span class="form-label">Link URL</span>
+          <input name="link_url"
+                 class="input-primary mt-2"
+                 type="url"
+                 placeholder="https://...">
         </label>
       </div>
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label class="block">
-          <span class="label">Featured</span>
-          <select name="featured" class="input">
+          <span class="form-label">Featured</span>
+          <select name="featured" class="select-primary mt-2">
             <option value="false">No</option>
             <option value="true">Yes</option>
           </select>
         </label>
         <label class="block">
-          <span class="label">Published</span>
-          <select name="published" class="input">
+          <span class="form-label">Published</span>
+          <select name="published" class="select-primary mt-2">
             <option value="true">Yes</option>
             <option value="false">No</option>
           </select>
@@ -106,7 +111,9 @@
         <div class="svg-icon size-6 icon-star bg-primary-500"></div>
       </div>
       <h2 class="mt-4 text-lg font-semibold text-stone-950">No member spotlights yet</h2>
-      <p class="mt-2 text-sm text-stone-600">Add a story to celebrate members, projects, launches, and community wins.</p>
+      <p class="mt-2 text-sm text-stone-600">
+        Add a story to celebrate members, projects, launches, and community wins.
+      </p>
     </section>
   {% else -%}
     <section class="grid gap-5 xl:grid-cols-2">
@@ -120,14 +127,14 @@
           {% else -%}
             <div class="h-2 bg-gradient-to-r from-primary-500 via-primary-300 to-stone-100"></div>
           {% endif -%}
-          <form class="grid gap-4 p-5"
+          <form class="inert-form grid gap-4 p-5"
                 hx-put="/dashboard/group/spotlights/{{ spotlight.group_member_spotlight_id }}"
                 hx-target="#dashboard-content"
                 hx-indicator="#dashboard-spinner"
                 {% if !can_manage_spotlights -%}
                   inert
                 {% endif -%}>
-            <div class="flex items-start gap-3">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
               <logo-image
               {% if let Some(photo_url) = &spotlight.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
               size="size-12" placeholder="{{ self::user_initials(spotlight.name.as_deref() , spotlight.username.as_str()) }}">
@@ -147,23 +154,23 @@
               <a href="{{ spotlight.profile_path() }}"
                  target="_blank"
                  rel="noopener noreferrer"
-                 class="btn-secondary-anchor btn-mini">Profile</a>
+                 class="btn-secondary-anchor btn-mini self-start whitespace-nowrap sm:ms-auto">Profile</a>
             </div>
 
             <input type="hidden" name="user_id" value="{{ spotlight.user_id }}">
 
             <label class="block">
-              <span class="label">Title</span>
+              <span class="form-label">Title</span>
               <input name="title"
-                     class="input"
+                     class="input-primary mt-2"
                      value="{{ spotlight.title }}"
                      maxlength="{{ crate::validation::MAX_LEN_M }}"
                      required>
             </label>
             <label class="block">
-              <span class="label">Story</span>
+              <span class="form-label">Story</span>
               <textarea name="story"
-                        class="input min-h-32"
+                        class="input-primary mt-2 min-h-32"
                         maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
                         required>{{ spotlight.story }}</textarea>
             </label>
@@ -173,24 +180,24 @@
             {%- endlet %}
             {{ form_fields::image_field(label = "Image", name = "image_url", image_kind = "banner", legend = "Optional spotlight image shown on the group page and spotlight cards.", value_attr = image_value, field_class = "col-span-full") -}}
             <label class="block">
-              <span class="label">Link URL</span>
+              <span class="form-label">Link URL</span>
               <input name="link_url"
-                     class="input"
+                     class="input-primary mt-2"
                      type="url"
                      value="{{ spotlight.link_url.as_deref().unwrap_or("") }}">
             </label>
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="block">
-              <span class="label">Featured</span>
-              <select name="featured" class="input">
+              <span class="form-label">Featured</span>
+              <select name="featured" class="select-primary mt-2">
                 <option value="false" {% if !spotlight.featured %}selected{% endif %}>No</option>
                 <option value="true" {% if spotlight.featured %}selected{% endif %}>Yes</option>
               </select>
             </label>
             <label class="block">
-              <span class="label">Published</span>
-              <select name="published" class="input">
+              <span class="form-label">Published</span>
+              <select name="published" class="select-primary mt-2">
                 <option value="true" {% if spotlight.published %}selected{% endif %}>Yes</option>
                 <option value="false" {% if !spotlight.published %}selected{% endif %}>No</option>
               </select>

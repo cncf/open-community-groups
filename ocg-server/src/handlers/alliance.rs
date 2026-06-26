@@ -87,6 +87,36 @@ pub(crate) async fn page(
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
+/// Handler that renders the alliance brand assets page.
+#[instrument(skip_all, err)]
+pub(crate) async fn brand_page(
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path(alliance_name): Path<String>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get alliance and site settings.
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let alliance = db.get_alliance_full(alliance_id).await?;
+    let template = alliance::BrandPage {
+        base_url: server_cfg.base_url,
+        alliance,
+        page_id: PageId::Alliance,
+        path: uri.path().to_string(),
+        site_settings,
+        user: User::default(),
+    };
+
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
+}
+
 // Actions handlers.
 
 /// Tracks a alliance page view.

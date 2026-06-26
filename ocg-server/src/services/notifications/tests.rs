@@ -43,7 +43,12 @@ async fn test_notifications_manager_enqueue() {
     let db: DynDB = Arc::new(db);
 
     // Execute enqueue call
-    let manager = PgNotificationsManager { db: db.clone() };
+    let email_sender: DynEmailSender = Arc::new(MockEmailSender::new());
+    let manager = PgNotificationsManager {
+        cfg: sample_email_config(None),
+        db: db.clone(),
+        email_sender,
+    };
     manager.enqueue(&notification).await.unwrap();
 }
 

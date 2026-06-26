@@ -294,6 +294,21 @@
     @apply flex items-center justify-center bg-stone-50 rounded-lg text-stone-500 text-sm p-4 min-h-[220px];
   }
 
+  .dashboard-scroll-area {
+    @apply min-w-0 overflow-x-auto;
+  }
+
+  .dashboard-scroll-area table {
+    min-width: 42rem;
+  }
+
+  .dashboard-scroll-area input,
+  .dashboard-scroll-area select,
+  .dashboard-scroll-area textarea,
+  .dashboard-scroll-area button {
+    max-width: 100%;
+  }
+
   .modal-panel {
     @apply relative w-full max-h-[90vh];
   }

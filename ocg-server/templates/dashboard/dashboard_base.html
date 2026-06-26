@@ -19,27 +19,19 @@
 {% endblock header -%}
 
 {% block main -%}
-  {# View for small devices -#}
-  <div class="fixed inset-0 z-10 md:hidden flex items-center justify-center bg-stone-100">
-    <div class="text-center bg-stone-100 border-4 border-primary-600 border-dashed rounded-lg text-2xl font-medium text-stone-800 p-10 m-10">
-      This dashboard is not optimized yet for mobile devices
-    </div>
-  </div>
-  {# End view for small devices -#}
-
   {# Main Content -#}
-  <div class="hidden md:flex">
-    {# Sticky menu -#}
-    <aside class="h-dvh sticky top-0 w-[225px] lg:w-[300px] shrink-0"
+  <div class="flex min-h-dvh flex-col bg-stone-100 pt-20 md:flex-row md:bg-transparent md:pt-0">
+    {# Dashboard menu -#}
+    <aside class="w-full shrink-0 border-b border-stone-200 bg-stone-100 md:h-dvh md:sticky md:top-0 md:w-[225px] md:border-b-0 lg:w-[300px]"
            role="navigation"
            aria-label="Dashboard navigation">
-      <div class="flex flex-col justify-between py-5 pt-24 h-full">
+      <div class="flex h-full flex-col justify-between gap-4 py-4 md:gap-0 md:py-5 md:pt-24">
         <div class="flex flex-col grow min-h-0 w-full">
           {% block menu -%}
           {% endblock menu -%}
         </div>
 
-        <div class="w-full px-3 lg:px-5 shrink-0">
+        <div class="w-full px-3 pb-1 md:pb-0 lg:px-5 shrink-0">
           {# Logout -#}
           <a href="/log-out"
              hx-boost="false"
@@ -52,10 +44,10 @@
         </div>
       </div>
     </aside>
-    {# End sticky menu -#}
+    {# End dashboard menu -#}
 
     <main id="dashboard-main-content"
-          class="min-w-0 w-[calc(100%-225px)] lg:w-[calc(100%-300px)] bg-white border border-stone-200 rounded-lg m-5 ms-0 mt-[6.25rem] relative"
+          class="min-w-0 w-full bg-white border-y border-stone-200 md:w-[calc(100%-225px)] md:border md:rounded-lg md:m-5 md:ms-0 md:mt-[6.25rem] lg:w-[calc(100%-300px)] relative"
           role="main">
       {% block dashboard_main -%}
       {% endblock dashboard_main -%}

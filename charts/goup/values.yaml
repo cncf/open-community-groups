@@ -1,4 +1,4 @@
-# Open Alliance Groups chart default configuration values
+# GOUP VC chart default configuration values
 
 imagePullSecrets: []
 imageTag: ""
@@ -109,7 +109,53 @@ dbmigrator:
     containerSecurityContext: {}
     image:
       # Database migrator image repository (without the tag)
-      repository: ocg/dbmigrator
+      repository: ghcr.io/sakomws/goup.vc/dbmigrator
+
+# MCP server configuration
+mcp:
+  enabled: false
+
+  # Address to listen on
+  host: 0.0.0.0
+
+  # Port to listen on
+  port: 8787
+
+  # Bearer token required for MCP requests. Leave empty to allow unauthenticated access.
+  bearerToken: ""
+
+  # Whether MCP tools that mutate application state are enabled.
+  enableMutations: false
+
+  # Ingress configuration
+  ingress:
+    enabled: false
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    backendServicePort: 80
+    rules: []
+    tls: []
+
+  # Service configuration
+  service:
+    allocateLoadBalancerNodePorts: true
+    annotations: {}
+    ports:
+      - name: http
+        port: 80
+        protocol: TCP
+        targetPort: 8787
+    type: NodePort
+
+  # Deployment configuration
+  deploy:
+    containerSecurityContext: {}
+    image:
+      # MCP server image repository (without the tag)
+      repository: ghcr.io/sakomws/goup.vc/mcp-server
+    podSecurityContext: {}
+    replicaCount: 1
+    resources: {}
     podSecurityContext: {}
 
 # Redirector configuration
@@ -120,7 +166,7 @@ redirector:
   addr: 0.0.0.0:9001
 
   # Base URL used for matched redirect targets
-  baseRedirectUrl: "https://{YOUR_OCG_SERVER_HOSTNAME}"
+  baseRedirectUrl: "https://{YOUR_GOUP_SERVER_HOSTNAME}"
 
   # Ingress configuration
   ingress:
@@ -147,7 +193,7 @@ redirector:
     containerSecurityContext: {}
     image:
       # Redirector image repository (without the tag)
-      repository: ocg/redirector
+      repository: ghcr.io/sakomws/goup.vc/redirector
     podSecurityContext: {}
     replicaCount: 1
     resources: {}
@@ -158,7 +204,7 @@ server:
   addr: 0.0.0.0:9000
 
   # Base URL
-  baseUrl: "https://{YOUR_OCG_SERVER_HOSTNAME}"
+  baseUrl: "https://{YOUR_GOUP_SERVER_HOSTNAME}"
 
   # Cookie configuration
   cookie:
@@ -187,7 +233,7 @@ server:
       # Client secret
       clientSecret: ""
       # Redirect URI
-      redirectUri: "https://{YOUR_OCG_HOSTNAME}/log-in/oauth2/github/callback"
+      redirectUri: "https://{YOUR_GOUP_HOSTNAME}/log-in/oauth2/github/callback"
       # Scopes
       scopes:
         - "read:user"
@@ -206,7 +252,7 @@ server:
       # Issuer URL
       issuerUrl: https://www.linkedin.com
       # Redirect URI
-      redirectUri: "https://{YOUR_OCG_HOSTNAME}/log-in/oidc/linkedin/callback"
+      redirectUri: "https://{YOUR_GOUP_HOSTNAME}/log-in/oidc/linkedin/callback"
       # Scopes
       scopes:
         - openid
@@ -240,8 +286,8 @@ server:
   deploy:
     containerSecurityContext: {}
     image:
-      # Database migrator image repository (without the tag)
-      repository: ocg/server
+      # Server image repository (without the tag)
+      repository: ghcr.io/sakomws/goup.vc/server
     podSecurityContext: {}
     replicaCount: 1
     resources: {}

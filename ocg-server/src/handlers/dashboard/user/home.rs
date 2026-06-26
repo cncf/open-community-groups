@@ -41,6 +41,7 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user = auth_session.user.as_ref().expect("user to be logged in").clone();
+    let user_id = user.user_id;
 
     // Get selected tab from query
     let raw_query = raw_query.as_deref().unwrap_or_default();
@@ -62,32 +63,37 @@ pub(crate) async fn page(
             }))
         }
         Tab::Events => {
-            let (_, template) = events::prepare_list_page(&db, user.user_id, raw_query).await?;
+            let (_, template) = events::prepare_list_page(&db, user_id, raw_query).await?;
             Content::Events(template)
         }
         Tab::Invitations => {
-            Content::Invitations(invitations::prepare_list_page(&db, user.user_id).await?)
+            Content::Invitations(invitations::prepare_list_page(&db, user_id).await?)
         }
         Tab::Logs => {
-            let (_, template) = logs::prepare_list_page(&db, user.user_id, raw_query).await?;
+            let (_, template) = logs::prepare_list_page(&db, user_id, raw_query).await?;
             Content::Logs(template)
         }
         Tab::SessionProposals => {
             let (_, template) =
-                session_proposals::prepare_list_page(&db, user.user_id, raw_query).await?;
+                session_proposals::prepare_list_page(&db, user_id, raw_query).await?;
             Content::SessionProposals(template)
         }
         Tab::Submissions => {
-            let (_, template) =
-                submissions::prepare_list_page(&db, user.user_id, raw_query).await?;
+            let (_, template) = submissions::prepare_list_page(&db, user_id, raw_query).await?;
             Content::Submissions(template)
         }
+    };
+
+    let pending_invitation_count = match &content {
+        Content::Invitations(template) => template.total_invitations(),
+        _ => db.count_user_pending_invitations(user_id).await?,
     };
 
     // Render the page
     let page = Page {
         content,
         messages: messages.into_iter().collect(),
+        pending_invitation_count,
         page_id: PageId::UserDashboard,
         path: "/dashboard/user".to_string(),
         site_settings,
