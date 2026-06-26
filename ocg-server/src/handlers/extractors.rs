@@ -105,7 +105,12 @@ impl FromRequestParts<router::State> for OAuth2 {
 }
 
 /// Extractor for `Oidc` provider details from the authenticated session.
-pub(crate) struct Oidc(pub Arc<OidcProviderDetails>);
+pub(crate) struct Oidc {
+    /// Provider selected in the route.
+    pub provider: OidcProvider,
+    /// Provider configuration details.
+    pub details: Arc<OidcProviderDetails>,
+}
 
 impl FromRequestParts<router::State> for Oidc {
     type Rejection = (StatusCode, &'static str);
@@ -124,7 +129,10 @@ impl FromRequestParts<router::State> for Oidc {
         let Some(provider_details) = auth_session.backend.oidc_providers.get(&provider) else {
             return Err((StatusCode::BAD_REQUEST, "oidc provider not supported"));
         };
-        Ok(Oidc(provider_details.clone()))
+        Ok(Oidc {
+            provider: provider.0,
+            details: provider_details.clone(),
+        })
     }
 }
 

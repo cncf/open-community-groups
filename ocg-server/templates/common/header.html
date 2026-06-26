@@ -58,10 +58,10 @@
             </div>
           </div>
         </div>
-        {{ header::link(content = "Sponsor", href = "/sponsor", current_path = path, path = "/sponsor") -}}
         {{ header::link(content = "Landscape", href = "/landscape", current_path = path, path = "/landscape") -}}
         {{ header::link(content = "Resources", href = "/wiki", current_path = path, path = "/wiki") -}}
         {{ header::link(content = "Stats", href = "/stats", current_path = path, path = "/stats") -}}
+        {{ header::link(content = "Sponsor", href = "/sponsor", current_path = path, path = "/sponsor") -}}
       </div>
       {# End desktop links -#}
     </div>
@@ -230,20 +230,6 @@
           </li>
 
           <li class="lg:hidden" role="none">
-            <a href="/sponsor"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-handshake bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Sponsor GOUP</div>
-                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
-              </div>
-            </a>
-          </li>
-
-          <li class="lg:hidden" role="none">
             <a href="/wiki"
                hx-boost="true"
                hx-target="body"
@@ -266,6 +252,20 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-charts bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">Stats</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="/sponsor"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-handshake bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Sponsor GOUP</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -439,20 +439,6 @@
           </li>
 
           <li class="lg:hidden" role="none">
-            <a href="/sponsor"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-handshake bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Sponsor GOUP</div>
-                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
-              </div>
-            </a>
-          </li>
-
-          <li class="lg:hidden" role="none">
             <a href="/jobs"
                hx-boost="true"
                hx-target="body"
@@ -502,6 +488,20 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-map bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">Landscape</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="/sponsor"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-handshake bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Sponsor GOUP</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>

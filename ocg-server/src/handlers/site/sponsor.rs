@@ -3,8 +3,8 @@
 use askama::Template;
 use axum::{
     extract::State,
-    http::Uri,
-    response::{Html, IntoResponse},
+    http::{Uri, header::CACHE_CONTROL},
+    response::{Html, IntoResponse, Redirect},
 };
 use tracing::instrument;
 
@@ -12,7 +12,7 @@ use crate::{
     auth::AuthSession,
     db::DynDB,
     handlers::{error::HandlerError, extractors::ValidatedForm},
-    router::PUBLIC_SHARED_CACHE_HEADERS,
+    router::CACHE_CONTROL_PRIVATE_NO_STORE,
     services::notifications::{DynNotificationsManager, OutboundEmail},
     templates::{
         PageId,
@@ -32,7 +32,7 @@ pub(crate) async fn page(
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     Ok((
-        PUBLIC_SHARED_CACHE_HEADERS,
+        [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
         Html(render_page(auth_session, &db, uri.path(), false).await?),
     ))
 }
@@ -45,6 +45,10 @@ pub(crate) async fn submit(
     State(notifications_manager): State<DynNotificationsManager>,
     ValidatedForm(input): ValidatedForm<SponsorInquiry>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    if auth_session.user.is_none() {
+        return Ok(Redirect::to("/log-in?next_url=/sponsor").into_response());
+    }
+
     let email = OutboundEmail {
         body: input.email_body(),
         subject: input.email_subject(),
@@ -53,9 +57,10 @@ pub(crate) async fn submit(
     notifications_manager.send_email(&email).await?;
 
     Ok((
-        PUBLIC_SHARED_CACHE_HEADERS,
+        [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
         Html(render_page(auth_session, &db, "/sponsor", true).await?),
-    ))
+    )
+        .into_response())
 }
 
 async fn render_page(

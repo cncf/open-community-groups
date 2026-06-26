@@ -15,6 +15,11 @@
           Partner with GOUP to support events, hackathons, community programs, and useful
           opportunities for builders.
         </p>
+        <p class="mt-4 max-w-2xl text-base/7 text-stone-600">
+          Sponsorship helps keep GOUP warm, practical, and accessible: more rooms for builders to meet,
+          more projects discovered, more jobs shared, and more community programs that turn introductions
+          into real momentum.
+        </p>
       </div>
     </section>
   </div>
@@ -28,7 +33,14 @@
         <div class="mt-6 grid gap-4 text-sm/6 text-stone-200">
           <p>Reach a trusted network of founders, engineers, researchers, creators, and community leaders.</p>
           <p>Support high-signal events, learning, open source, AI, startup, and career initiatives.</p>
-          <p>Help GOUP stay useful, warm, and accessible to people who build.</p>
+          <p>Help members find collaborators, talent, sponsors, and opportunities without turning the community into noise.</p>
+        </div>
+        <div class="mt-8 rounded-3xl border border-white/10 bg-white/10 p-5 text-sm/6 text-stone-200">
+          <div class="font-bold text-white">Members-first sponsorship</div>
+          <p class="mt-2">
+            We prioritize useful support: community calls, member spotlights, event support, project visibility,
+            and jobs that help builders move forward.
+          </p>
         </div>
         <div class="mt-8 rounded-3xl border border-white/10 bg-white/10 p-5 text-sm/6 text-stone-200">
           We’ll reply from <a href="mailto:{{ crate::templates::site::sponsor::SPONSOR_INQUIRY_RECIPIENT }}"
@@ -47,6 +59,17 @@
                hx-boost="true"
                hx-target="body"
                class="btn-primary-anchor mt-6">Back to GOUP</a>
+          </div>
+        {% elif !user.logged_in -%}
+          <div class="rounded-3xl border border-primary-200 bg-primary-50 p-6">
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Log in to send a sponsor inquiry</h2>
+            <p class="mt-3 text-base/7 text-stone-600">
+              Please log in first so the GOUP team can follow up with a trusted account.
+            </p>
+            <a href="/log-in?next_url=/sponsor"
+               hx-boost="true"
+               hx-target="body"
+               class="btn-primary-anchor mt-6">Log in to continue</a>
           </div>
         {% else -%}
           <div>
@@ -139,5 +162,47 @@
         {% endif -%}
       </section>
     </div>
+
+    <section class="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+      <div class="max-w-3xl">
+        <h2 class="text-2xl font-black tracking-tight text-stone-950">Memberships to suit your organization</h2>
+        <p class="mt-3 text-sm/6 text-stone-600">
+          GOUP sponsorships are flexible. Start with a community contribution, grow into deeper ecosystem
+          support, or design a strategic partnership around events, hiring, open source, AI, and builder programs.
+        </p>
+      </div>
+
+      <div class="mt-8 grid gap-5 lg:grid-cols-3">
+        <article class="rounded-3xl border border-stone-200 bg-stone-50 p-6">
+          <h3 class="text-lg font-black tracking-tight text-stone-950">Community</h3>
+          <p class="mt-2 text-sm/6 text-stone-600">For academic, nonprofit, and early community partners.</p>
+          <ul class="mt-5 grid gap-3 text-sm/6 text-stone-700">
+            <li>Recognition on GOUP community channels.</li>
+            <li>Member-friendly event or hackathon support.</li>
+            <li>Access to share relevant opportunities with the network.</li>
+          </ul>
+        </article>
+
+        <article class="rounded-3xl border border-primary-200 bg-primary-50 p-6">
+          <h3 class="text-lg font-black tracking-tight text-stone-950">Builder</h3>
+          <p class="mt-2 text-sm/6 text-stone-600">For teams that want steady visibility and community touchpoints.</p>
+          <ul class="mt-5 grid gap-3 text-sm/6 text-stone-700">
+            <li>Everything in Community.</li>
+            <li>Featured member, job, project, or event spotlights.</li>
+            <li>Support for focused programs, workshops, and founder/operator sessions.</li>
+          </ul>
+        </article>
+
+        <article class="rounded-3xl border border-stone-900 bg-stone-950 p-6 text-white">
+          <h3 class="text-lg font-black tracking-tight">Ecosystem</h3>
+          <p class="mt-2 text-sm/6 text-stone-300">For organizations investing deeply in the builder network.</p>
+          <ul class="mt-5 grid gap-3 text-sm/6 text-stone-200">
+            <li>Everything in Builder.</li>
+            <li>Custom partnership around events, hiring, landscape visibility, or community programs.</li>
+            <li>Founder, engineering, research, and community leader engagement opportunities.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
   </div>
 {% endblock content -%}

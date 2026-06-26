@@ -7,7 +7,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE, HOST, LOCATION},
+        header::{CONTENT_TYPE, COOKIE, HOST, LOCATION, SET_COOKIE},
     },
     middleware,
     response::IntoResponse,
@@ -511,6 +511,17 @@ async fn test_log_in_validation_error() {
         parts.headers.get(LOCATION).unwrap(),
         &HeaderValue::from_static(LOG_IN_URL),
     );
+    let set_cookies = parts.headers.get_all(SET_COOKIE);
+    assert!(set_cookies.iter().any(|value| {
+        value
+            .to_str()
+            .is_ok_and(|cookie| cookie.contains("id=") && cookie.contains("Max-Age=0"))
+    }));
+    assert!(set_cookies.iter().any(|value| {
+        value
+            .to_str()
+            .is_ok_and(|cookie| cookie.contains("auth_provider=") && cookie.contains("Max-Age=0"))
+    }));
     assert!(bytes.is_empty());
 }
 
@@ -1490,10 +1501,17 @@ async fn test_oidc_redirect_success() {
     };
 
     // Execute handler
-    let response = oidc_redirect(session.clone(), Oidc(Arc::new(provider)), query)
-        .await
-        .expect("oidc redirect should succeed")
-        .into_response();
+    let response = oidc_redirect(
+        session.clone(),
+        Oidc {
+            provider: OidcProvider::LinkedIn,
+            details: Arc::new(provider),
+        },
+        query,
+    )
+    .await
+    .expect("oidc redirect should succeed")
+    .into_response();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
     let location = parts.headers.get(LOCATION).unwrap().to_str().unwrap();
@@ -1521,6 +1539,7 @@ async fn test_oidc_redirect_success() {
             .find_map(|pair| pair.strip_prefix("nonce=").map(String::from))
             .as_deref(),
     );
+    assert!(query.split('&').any(|pair| pair == "prompt=select_account"));
     assert_eq!(next_url, Some(Some("/dashboard".to_string())));
     assert!(bytes.is_empty());
 }

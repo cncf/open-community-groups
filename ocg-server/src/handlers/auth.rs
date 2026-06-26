@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use axum::{
     Form,
     extract::{Path, Query, Request, State},
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, HeaderValue, StatusCode, header::SET_COOKIE},
     middleware::Next,
     response::{Html, IntoResponse, Redirect, Response},
 };
@@ -64,6 +64,13 @@ pub(crate) const LOG_OUT_URL: &str = "/log-out";
 
 /// Key used to store the next URL in the session.
 pub(crate) const NEXT_URL_KEY: &str = "next_url";
+
+/// Expired cookie for the app session identifier.
+const EXPIRED_SESSION_COOKIE: &str = "id=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax; Secure";
+
+/// Expired cookie for legacy auth provider state if it was ever set client-side.
+const EXPIRED_AUTH_PROVIDER_COOKIE: &str =
+    "auth_provider=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax; Secure";
 
 /// Key used to store the `OAuth2` CSRF state in the session.
 pub(crate) const OAUTH2_CSRF_STATE_KEY: &str = "oauth2.csrf_state";
@@ -237,7 +244,9 @@ pub(crate) async fn log_out(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    Ok(Redirect::to(LOG_IN_URL))
+    let mut response = Redirect::to(LOG_IN_URL).into_response();
+    append_logout_cookie_expirations(&mut response);
+    Ok(response)
 }
 
 /// Handler that completes the oauth2 authorization process.
@@ -323,7 +332,10 @@ pub(crate) async fn oidc_callback(
 #[instrument(skip_all)]
 pub(crate) async fn oidc_redirect(
     session: Session,
-    Oidc(oidc_provider): Oidc,
+    Oidc {
+        provider,
+        details: oidc_provider,
+    }: Oidc,
     Query(NextUrl { next_url }): Query<NextUrl>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Generate the authorization url
@@ -335,6 +347,9 @@ pub(crate) async fn oidc_redirect(
     for scope in &oidc_provider.scopes {
         builder = builder.add_scope(oidc::Scope::new(scope.clone()));
     }
+    builder = match provider {
+        OidcProvider::LinkedIn => builder.add_extra_param("prompt", "select_account"),
+    };
     let (authorize_url, csrf_state, nonce) = builder.url();
 
     // Sanitize the next url (if provided)
@@ -1159,7 +1174,19 @@ pub(crate) async fn log_out_for_stale_dashboard_context(
         .await
         .map_err(|e| HandlerError::Auth(e.to_string()))?;
 
-    Ok(redirect_to_log_in_for_request(headers))
+    let mut response = redirect_to_log_in_for_request(headers);
+    append_logout_cookie_expirations(&mut response);
+    Ok(response)
+}
+
+/// Adds cookie expirations for browser auth state controlled by this app.
+fn append_logout_cookie_expirations(response: &mut Response) {
+    let headers = response.headers_mut();
+    headers.append(SET_COOKIE, HeaderValue::from_static(EXPIRED_SESSION_COOKIE));
+    headers.append(
+        SET_COOKIE,
+        HeaderValue::from_static(EXPIRED_AUTH_PROVIDER_COOKIE),
+    );
 }
 
 /// Builds the log-in redirect response expected by the request type.

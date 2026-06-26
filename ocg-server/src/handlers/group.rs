@@ -170,7 +170,11 @@ pub(crate) async fn members_page(
 
     let is_member = db.is_group_member(alliance_id, group.group_id, user.user_id).await?;
     if !is_member {
-        return Err(HandlerError::Forbidden);
+        return Ok((
+            StatusCode::FORBIDDEN,
+            "Join this group first to see members.",
+        )
+            .into_response());
     }
 
     let filters: GroupMembersFilters =
