@@ -59,7 +59,28 @@
           </div>
         </div>
         {{ header::link(content = "Landscape", href = "/landscape", current_path = path, path = "/landscape") -}}
-        {{ header::link(content = "Resources", href = "/wiki", current_path = path, path = "/wiki") -}}
+        <div class="group relative">
+          {{ header::link(content = "Resources", href = "/wiki", current_path = path, path = "/wiki") -}}
+          <div class="absolute left-1/2 top-full z-[100] hidden w-64 -translate-x-1/2 pt-4 group-hover:block group-focus-within:block">
+            <div class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl shadow-stone-200/70">
+              <a href="/wiki"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="block px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
+                Reading brief
+                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Browse GOUP community resources.</span>
+              </a>
+              <a href="https://github.com/sakomws/goup.vc/tree/main/docs"
+                 hx-boost="false"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+                Docs
+                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Guides and runbooks for members, leads, and contributors.</span>
+              </a>
+            </div>
+          </div>
+        </div>
         {{ header::link(content = "Stats", href = "/stats", current_path = path, path = "/stats") -}}
         {{ header::link(content = "Sponsor", href = "/sponsor", current_path = path, path = "/sponsor") -}}
       </div>
@@ -238,6 +259,21 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-list bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">Resources</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="https://github.com/sakomws/goup.vc/tree/main/docs"
+               hx-boost="false"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-list bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Docs</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>
@@ -447,6 +483,21 @@
               <div class="flex items-center">
                 <div class="svg-icon size-4 icon-search bg-stone-600"></div>
                 <div class="ms-2 text-xs/6">Browse roles</div>
+                <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+              </div>
+            </a>
+          </li>
+
+          <li class="lg:hidden" role="none">
+            <a href="https://github.com/sakomws/goup.vc/tree/main/docs"
+               hx-boost="false"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-list bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Docs</div>
                 <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
               </div>
             </a>

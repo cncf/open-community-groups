@@ -14,10 +14,13 @@ issues when something does not work as expected.
 | Understand where to work                   | [Choose Your Dashboard](getting-started/choose-dashboard.md) |
 | Understand role permissions                | [Choose Your Dashboard](getting-started/choose-dashboard.md#fixed-role-model) |
 | Discover groups and attend events          | [Public Site Guide](guides/public-site.md)                   |
+| Participate as a group member              | [Group Members Runbook](guides/group-members-runbook.md)     |
 | Manage events, profile, proposals, and submissions | [User Dashboard Guide](guides/user-dashboard.md)             |
 | Run a alliance                            | [Alliance Dashboard Guide](guides/alliance-dashboard.md)   |
 | Run a group and events                     | [Group Dashboard Guide](guides/group-dashboard.md)           |
+| Lead a group week to week                  | [Group Leads Runbook](guides/group-leads-runbook.md)         |
 | Run the full event lifecycle               | [Event Operations](guides/event-operations.md)               |
+| Add projects or contribute code            | [Project Contributors Runbook](guides/project-contributors-runbook.md) |
 
 ## How OCG Is Organized
 
@@ -51,7 +54,8 @@ it to manage events, organizers, members, sponsors, and communication.
 
 1. [Quickstart](getting-started/quickstart.md)
 2. [Public Site Guide](guides/public-site.md)
-3. [Troubleshooting](support/troubleshooting.md)
+3. [Group Members Runbook](guides/group-members-runbook.md)
+4. [Troubleshooting](support/troubleshooting.md)
 
 ### Speaker path
 
@@ -64,8 +68,15 @@ it to manage events, organizers, members, sponsors, and communication.
 1. [Choose Your Dashboard](getting-started/choose-dashboard.md)
 2. [Alliance Dashboard Guide](guides/alliance-dashboard.md) or
    [Group Dashboard Guide](guides/group-dashboard.md)
-3. [Event Operations Guide](guides/event-operations.md)
-4. [Troubleshooting](support/troubleshooting.md)
+3. [Group Leads Runbook](guides/group-leads-runbook.md)
+4. [Event Operations Guide](guides/event-operations.md)
+5. [Troubleshooting](support/troubleshooting.md)
+
+### Project contributor path
+
+1. [Project Contributors Runbook](guides/project-contributors-runbook.md)
+2. [Development Guide](development.md)
+3. [Troubleshooting](support/troubleshooting.md)
 
 ## If You Get Stuck
 

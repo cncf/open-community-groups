@@ -52,6 +52,10 @@ test.describe("site header", () => {
     await expect(
       navigation.getByRole("link", { name: "Resources" }),
     ).toHaveAttribute("href", "/wiki");
+    await navigation.getByRole("link", { name: "Resources" }).hover();
+    await expect(
+      navigation.getByRole("link", { name: "Docs" }),
+    ).toHaveAttribute("href", "https://github.com/sakomws/goup.vc/tree/main/docs");
     await expect(
       navigation.getByRole("link", { name: "Join GOUP" }),
     ).toHaveAttribute("href", "/log-in/oidc/linkedin");
@@ -61,7 +65,6 @@ test.describe("site header", () => {
     await expect(navigation.getByRole("link", { name: "About" })).toHaveCount(
       0,
     );
-    await expect(navigation.getByRole("link", { name: "Docs" })).toHaveCount(0);
   });
 
   test("guest user menu links point to authentication pages", async ({
