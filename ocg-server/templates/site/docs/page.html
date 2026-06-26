@@ -1,0 +1,23 @@
+{% extends "common/base.html" -%}
+
+{% block jumbotron -%}
+  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8">
+    <div class="relative max-w-3xl">
+      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-primary-600">Docs</p>
+      <h1 class="mb-4 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
+        GOUP documentation
+      </h1>
+      <p class="max-w-2xl text-base/7 text-stone-600">
+        Guides and runbooks for members, group leads, alliance managers, and project contributors.
+      </p>
+    </div>
+  </div>
+{% endblock jumbotron -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-5xl p-4 pb-12 sm:p-6 lg:p-8 lg:pb-16">
+    <article class="markdown rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-8 lg:p-10">
+      {{ content_html|safe }}
+    </article>
+  </div>
+{% endblock content -%}

@@ -84,19 +84,19 @@
                 hx-post="/sponsor"
                 hx-target="body"
                 hx-disabled-elt="button[type='submit']"
-                class="mt-8 grid gap-5">
-            <div class="grid gap-5 sm:grid-cols-2">
-              <div>
+                class="mt-8 grid gap-6">
+            <div class="grid gap-5 lg:grid-cols-12">
+              <div class="space-y-2 lg:col-span-6">
                 <label for="sponsor-name" class="form-label">Name</label>
                 <input id="sponsor-name"
                        name="name"
                        required
                        maxlength="{{ crate::validation::MAX_LEN_S }}"
                        autocomplete="name"
-                       class="input"
+                       class="input-primary"
                        placeholder="Your name" />
               </div>
-              <div>
+              <div class="space-y-2 lg:col-span-6">
                 <label for="sponsor-email" class="form-label">Email</label>
                 <input id="sponsor-email"
                        name="email"
@@ -104,54 +104,49 @@
                        required
                        maxlength="{{ crate::validation::MAX_LEN_M }}"
                        autocomplete="email"
-                       class="input"
+                       class="input-primary"
                        placeholder="you@example.com" />
               </div>
-            </div>
-
-            <div class="grid gap-5 sm:grid-cols-2">
-              <div>
+              <div class="space-y-2 lg:col-span-6">
                 <label for="sponsor-company" class="form-label">Company / organization</label>
                 <input id="sponsor-company"
                        name="company"
                        required
                        maxlength="{{ crate::validation::MAX_LEN_S }}"
                        autocomplete="organization"
-                       class="input"
+                       class="input-primary"
                        placeholder="Company name" />
               </div>
-              <div>
+              <div class="space-y-2 lg:col-span-6">
                 <label for="sponsor-website" class="form-label">Website</label>
                 <input id="sponsor-website"
                        name="website"
                        maxlength="{{ crate::validation::MAX_LEN_M }}"
                        autocomplete="url"
-                       class="input"
+                       class="input-primary"
                        placeholder="https://example.com" />
+              </div>
+              <div class="space-y-2 lg:col-span-12">
+                <label for="sponsor-budget" class="form-label">Budget or sponsorship range</label>
+                <input id="sponsor-budget"
+                       name="budget"
+                       maxlength="{{ crate::validation::MAX_LEN_S }}"
+                       class="input-primary"
+                       placeholder="Optional" />
+              </div>
+              <div class="space-y-2 lg:col-span-12">
+                <label for="sponsor-message" class="form-label">Message</label>
+                <textarea id="sponsor-message"
+                          name="message"
+                          required
+                          maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
+                          rows="7"
+                          class="input-primary min-h-48 resize-y"
+                          placeholder="What would you like to sponsor? What goals, audience, timing, or package are you considering?"></textarea>
               </div>
             </div>
 
-            <div>
-              <label for="sponsor-budget" class="form-label">Budget or sponsorship range</label>
-              <input id="sponsor-budget"
-                     name="budget"
-                     maxlength="{{ crate::validation::MAX_LEN_S }}"
-                     class="input"
-                     placeholder="Optional" />
-            </div>
-
-            <div>
-              <label for="sponsor-message" class="form-label">Message</label>
-              <textarea id="sponsor-message"
-                        name="message"
-                        required
-                        maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION }}"
-                        rows="7"
-                        class="textarea"
-                        placeholder="What would you like to sponsor? What goals, audience, timing, or package are you considering?"></textarea>
-            </div>
-
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div class="flex flex-col gap-4 rounded-3xl border border-stone-100 bg-stone-50/80 p-4 sm:flex-row sm:items-center sm:justify-end">
               <a href="/"
                  hx-boost="true"
                  hx-target="body"

@@ -70,10 +70,9 @@
                 Reading brief
                 <span class="mt-1 block text-xs/5 font-medium text-stone-500">Browse GOUP community resources.</span>
               </a>
-              <a href="https://github.com/sakomws/goup.vc/tree/main/docs"
-                 hx-boost="false"
-                 target="_blank"
-                 rel="noopener noreferrer"
+              <a href="/docs"
+                 hx-boost="true"
+                 hx-target="body"
                  class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
                 Docs
                 <span class="mt-1 block text-xs/5 font-medium text-stone-500">Guides and runbooks for members, leads, and contributors.</span>
@@ -106,7 +105,7 @@
           <span class="svg-icon block size-4 bg-current icon-magnifying-glass"></span>
         </button>
       </form>
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteSearch || page_id == PageId::SiteSponsor || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteDocs || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteSearch || page_id == PageId::SiteSponsor || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"
@@ -265,10 +264,9 @@
           </li>
 
           <li class="lg:hidden" role="none">
-            <a href="https://github.com/sakomws/goup.vc/tree/main/docs"
-               hx-boost="false"
-               target="_blank"
-               rel="noopener noreferrer"
+            <a href="/docs"
+               hx-boost="true"
+               hx-target="body"
                class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
                role="menuitem">
               <div class="flex items-center">
@@ -489,10 +487,9 @@
           </li>
 
           <li class="lg:hidden" role="none">
-            <a href="https://github.com/sakomws/goup.vc/tree/main/docs"
-               hx-boost="false"
-               target="_blank"
-               rel="noopener noreferrer"
+            <a href="/docs"
+               hx-boost="true"
+               hx-target="body"
                class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
                role="menuitem">
               <div class="flex items-center">

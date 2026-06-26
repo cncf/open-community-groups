@@ -55,7 +55,7 @@ test.describe("site header", () => {
     await navigation.getByRole("link", { name: "Resources" }).hover();
     await expect(
       navigation.getByRole("link", { name: "Docs" }),
-    ).toHaveAttribute("href", "https://github.com/sakomws/goup.vc/tree/main/docs");
+    ).toHaveAttribute("href", "/docs");
     await expect(
       navigation.getByRole("link", { name: "Join GOUP" }),
     ).toHaveAttribute("href", "/log-in/oidc/linkedin");
