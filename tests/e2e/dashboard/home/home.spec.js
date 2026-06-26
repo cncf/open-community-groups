@@ -18,7 +18,9 @@ test.describe("dashboard home", () => {
 
       // Verify requires login for route.
       await expect(page).toHaveURL(/\/log-in/);
-      await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Welcome back." }),
+      ).toBeVisible();
     });
   }
 
@@ -27,10 +29,7 @@ test.describe("dashboard home", () => {
       adminAlliancePage,
     }) => {
       // Load the alliance dashboard on a mobile viewport.
-      await navigateToPath(
-        adminAlliancePage,
-        "/dashboard/alliance?tab=groups",
-      );
+      await navigateToPath(adminAlliancePage, "/dashboard/alliance?tab=groups");
 
       // Verify alliance dashboard shows the mobile unsupported state.
       await expect(

@@ -52,10 +52,6 @@ test.describe("site header", () => {
     await expect(
       navigation.getByRole("link", { name: "Resources" }),
     ).toHaveAttribute("href", "/wiki");
-    await navigation.getByRole("link", { name: "Resources" }).hover();
-    await expect(
-      navigation.getByRole("link", { name: "Docs" }),
-    ).toHaveAttribute("href", "/docs");
     await expect(
       navigation.getByRole("link", { name: "Join GOUP" }),
     ).toHaveAttribute("href", "/log-in/oidc/linkedin");

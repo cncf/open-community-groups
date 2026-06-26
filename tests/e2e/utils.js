@@ -300,7 +300,7 @@ const submitSeededLogin = async (page) => {
         page.waitForURL((url) => !url.pathname.includes("/log-in"), {
           timeout: LOGIN_NAVIGATION_TIMEOUT_MS,
         }),
-        page.getByRole("button", { name: "Sign In" }).click(),
+        page.getByRole("button", { name: "Sign in" }).click(),
       ]);
 
       return;
@@ -754,7 +754,9 @@ export const selectTimezone = async (page, timezone) => {
 export const logInWithSeededUser = async (page, credentials) => {
   await navigateToPath(page, "/log-in");
 
-  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Welcome back." }),
+  ).toBeVisible();
   await page.getByLabel("Username").fill(credentials.username);
   await page
     .getByRole("textbox", { name: "Password required" })

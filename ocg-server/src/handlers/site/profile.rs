@@ -94,6 +94,7 @@ pub(crate) async fn request_mentorship(
     .into_response())
 }
 
+#[derive(Clone, Copy)]
 enum MentorshipRequestAlertKind {
     Error,
     Success,

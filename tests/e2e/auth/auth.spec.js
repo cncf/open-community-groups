@@ -191,17 +191,21 @@ const signUpWithEmail = async (page, user) => {
     .fill(user.password);
 
   await page.getByRole("button", { name: "Create Account" }).click();
-  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Welcome back." }),
+  ).toBeVisible();
 };
 
 // Log in using email username and password credentials.
 const logInWithEmail = async (page, user) => {
-  await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Welcome back." }),
+  ).toBeVisible();
   await page.getByLabel("Username").fill(user.username);
   await page
     .getByRole("textbox", { name: "Password required" })
     .fill(user.password);
-  await page.getByRole("button", { name: "Sign In" }).click();
+  await page.getByRole("button", { name: "Sign in" }).click();
 };
 
 test.describe("authentication", () => {
@@ -217,7 +221,7 @@ test.describe("authentication", () => {
 
     // Verify email sign up requires verification before log in.
     await expect(page).toHaveURL(/\/log-in/);
-    await expect(page.getByRole("button", { name: "Sign In" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   });
 
   test("email sign up can verify and then log in", async ({ page }) => {
@@ -313,7 +317,9 @@ test.describe("authentication", () => {
     // Submit the action and wait for navigation.
     await Promise.all([page.waitForURL(/\/log-in/), logOutLink.click()]);
 
-    // Assert that Log In is visible.
-    await expect(page.getByRole("heading", { name: "Log In" })).toBeVisible();
+    // Assert that the login page is visible.
+    await expect(
+      page.getByRole("heading", { name: "Welcome back." }),
+    ).toBeVisible();
   });
 });

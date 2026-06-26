@@ -17,6 +17,7 @@ or contributing to the codebase.
 | Participate as a member | [Group Members Runbook](guides/group-members-runbook.md) |
 | Lead a group | [Group Leads Runbook](guides/group-leads-runbook.md) |
 | Run alliance operations | [Alliance Dashboard Guide](guides/alliance-dashboard.md) |
+| Add or manage multiple alliances | [Alliance Dashboard: Multiple Alliances](guides/alliance-dashboard.md#creating-and-managing-multiple-alliances) |
 | Manage a group dashboard | [Group Dashboard Guide](guides/group-dashboard.md) |
 | Run event operations | [Event Operations](guides/event-operations.md) |
 | Contribute projects or code | [Project Contributors Runbook](guides/project-contributors-runbook.md) |
@@ -71,6 +72,7 @@ Alliance-level features include:
 - Shared region and category taxonomy.
 - Cross-group member directory.
 - Public brand page.
+- Platform-admin alliance creation for multi-alliance operations.
 - Landscape management.
 - Alliance and group role permissions.
 

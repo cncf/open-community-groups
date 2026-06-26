@@ -40,7 +40,7 @@ pub(crate) async fn page(
     Path(doc_path): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
     if let Some(asset_path) = normalize_doc_asset_path(&doc_path) {
-        return render_asset(asset_path);
+        return render_asset(&asset_path);
     }
 
     let Some(doc_path) = normalize_doc_path(&doc_path) else {
@@ -81,11 +81,11 @@ async fn render_doc(
         .into_response())
 }
 
-fn render_asset(asset_path: String) -> Result<Response, HandlerError> {
-    let Some(file) = DocsAsset::get(&asset_path) else {
+fn render_asset(asset_path: &str) -> Result<Response, HandlerError> {
+    let Some(file) = DocsAsset::get(asset_path) else {
         return Err(HandlerError::NotFound);
     };
-    let Some(content_type) = docs_asset_content_type(&asset_path) else {
+    let Some(content_type) = docs_asset_content_type(asset_path) else {
         return Err(HandlerError::NotFound);
     };
 
@@ -176,12 +176,12 @@ fn docs_asset_content_type(path: &str) -> Option<&'static str> {
 fn strip_missing_markdown_images(markdown: &str, doc_path: &str) -> String {
     let mut output = String::with_capacity(markdown.len());
     for line in markdown.lines() {
-        if let Some(image_path) = markdown_image_path(line.trim()) {
-            if is_relative_url(image_path) {
-                let normalized = normalize_doc_relative_path(image_path, doc_path);
-                if DocsAsset::get(&normalized).is_none() {
-                    continue;
-                }
+        if let Some(image_path) = markdown_image_path(line.trim())
+            && is_relative_url(image_path)
+        {
+            let normalized = normalize_doc_relative_path(image_path, doc_path);
+            if DocsAsset::get(&normalized).is_none() {
+                continue;
             }
         }
         output.push_str(line);

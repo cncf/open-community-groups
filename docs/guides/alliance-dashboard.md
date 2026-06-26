@@ -14,6 +14,7 @@ Path: [/dashboard/alliance](/dashboard/alliance ':ignore')
 
 - [What This Dashboard Owns](#what-this-dashboard-owns)
 - [Access and Context](#access-and-context)
+- [Creating and Managing Multiple Alliances](#creating-and-managing-multiple-alliances)
 - [Roles and Permissions](#roles-and-permissions)
 - [Settings: Alliance Identity](#settings-alliance-identity)
 - [Team: Alliance Access](#team-alliance-access)
@@ -58,6 +59,90 @@ If no alliance is selected yet, some actions stay unavailable until you choose o
 
 For invitation acceptance and dashboard access, see
 [User Dashboard Guide](user-dashboard.md).
+
+## Creating and Managing Multiple Alliances
+
+Multiple alliances are supported. Use this when GOUP needs separate public identities, teams,
+groups, categories, regions, and brand pages for different communities.
+
+Only platform admins can create a new alliance.
+
+### Make a User a Platform Admin
+
+Platform admin is a user-level flag in the database. On a Docker deployment, connect to the
+Postgres container and update the user:
+
+```bash
+docker exec -it goup-postgis psql -U postgres
+```
+
+Then in `psql`:
+
+```sql
+\c ocg
+update "user"
+set platform_admin = true
+where username = 'your-username';
+
+select username, platform_admin
+from "user"
+where username = 'your-username';
+```
+
+The result should show `platform_admin` as `t`. Sign out and sign back in so the dashboard reloads
+the user permissions.
+
+### Create the Alliance
+
+After signing in as a platform admin:
+
+1. Open [Alliance Dashboard](/dashboard/alliance ':ignore').
+2. Select `Create Alliance` from the sidebar.
+3. Fill the alliance basics and submit.
+
+The direct dashboard tab is:
+
+```text
+/dashboard/alliance?tab=create-alliance
+```
+
+The create form loads from:
+
+```text
+/dashboard/alliance/create
+```
+
+### Where the New Alliance Appears
+
+After creation, the new alliance appears in the Alliance Dashboard context selector/list. Use the
+selector to switch between alliances before managing settings, groups, taxonomy, team access, or
+analytics.
+
+Publicly, an alliance is available at its slug path:
+
+```text
+/{alliance-name}
+```
+
+For example:
+
+```text
+/goup
+```
+
+### First Setup Checklist
+
+For each new alliance, configure these before inviting many users:
+
+1. `Settings`: display name, description, logo, banner, social links, and brand content.
+2. `Team`: add at least one accepted alliance `admin`.
+3. `Regions`: add the geography values groups will use.
+4. `Group Categories`: add the categories shown in group setup and Explore filters.
+5. `Event Categories`: add the event taxonomy organizers will use.
+6. `Groups`: create or import the first active groups.
+
+!> Keep at least one accepted alliance admin per alliance. The app blocks removing or demoting the
+final accepted admin.
 
 ## Roles and Permissions
 

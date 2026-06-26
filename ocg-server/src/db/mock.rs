@@ -786,6 +786,10 @@ mock! {
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::GroupTeamInvitation,
         >>;
+        async fn list_user_mentorship_requests(
+            &self,
+            user_id: Uuid,
+        ) -> Result<crate::templates::dashboard::user::mentorship::ListPage>;
         async fn list_user_pending_session_proposal_co_speaker_invitations(
             &self,
             user_id: Uuid,
