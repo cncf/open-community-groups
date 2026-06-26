@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(279);
+select plan(281);
 
 -- ============================================================================
 -- VARIABLES
@@ -86,6 +86,7 @@ select has_function('accept_session_proposal_co_speaker_invitation', array['uuid
 select has_function('activate_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('activate_pre_registered_user_email_password', array['jsonb', 'uuid', 'jsonb']::name[]);
 select has_function('activate_pre_registered_user_external_provider', array['uuid', 'jsonb']::name[]);
+select has_function('add_mentorship_request', array['uuid', 'text', 'jsonb']::name[]);
 select has_function('add_cfs_submission', array['uuid', 'uuid', 'uuid', 'uuid', 'uuid[]']::name[]);
 select has_function('add_alliance_team_member', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('add_event', array['uuid', 'uuid', 'jsonb', 'jsonb']::name[]);
@@ -192,6 +193,7 @@ select has_function('leave_event', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('leave_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('list_cfs_submission_statuses_for_review', '{}'::name[]);
 select has_function('list_alliances', '{}'::name[]);
+select has_function('list_alliance_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_alliance_audit_logs', array['uuid', 'jsonb']::name[]);
 select has_function('list_alliance_roles', '{}'::name[]);
 select has_function('list_alliance_team_members', array['uuid', 'jsonb']::name[]);

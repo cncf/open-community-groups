@@ -2,28 +2,28 @@
 {% import "macros/pagination.html" as pagination -%}
 
 {% block jumbotron -%}
-  <div class="relative container mx-auto max-w-7xl px-4 pt-4 xl:pt-7 sm:px-6 lg:px-8">
-    <div class="relative max-w-3xl">
-      <p class="mb-3 text-sm font-semibold uppercase tracking-[0.22em] text-primary-600">Landscape</p>
-      <h1 class="mb-4 text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl lg:text-5xl">
+  <section class="container mx-auto max-w-7xl px-4 pt-10 pb-8 sm:px-6 lg:px-8 lg:pt-16">
+    <div class="relative max-w-4xl rounded-[2.25rem] border border-stone-200 bg-white/90 p-6 shadow-xl shadow-stone-200/50 backdrop-blur sm:p-8 lg:p-10">
+      <p class="mb-4 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">Landscape</p>
+      <h1 class="mb-4 text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
         Startups and open projects
       </h1>
-      <p class="max-w-2xl text-base/7 text-stone-600">
+      <p class="max-w-2xl text-base/7 font-medium text-stone-600">
         Browse alliance startups, GitHub projects, tools, and community-built products.
       </p>
     </div>
-  </div>
+  </section>
 {% endblock jumbotron -%}
 
 {% block content -%}
-  <div class="container mx-auto max-w-7xl p-4 pb-12 sm:p-6 lg:p-8 lg:pb-16">
+  <div class="container mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-16">
     <form method="get"
           action="/landscape"
           hx-get="/landscape"
           hx-target="body"
           hx-push-url="true"
           hx-trigger="submit, search from:#landscape-query, change from:#landscape-category, change from:#landscape-kind"
-          class="mb-8 grid gap-3 rounded-2xl border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_180px_220px_auto]">
+          class="mb-8 grid gap-3 rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_180px_220px_auto]">
       <label class="sr-only" for="landscape-query">Search landscape</label>
       <input id="landscape-query"
              name="query"
@@ -48,7 +48,8 @@
              class="input"
              placeholder="Category" />
 
-      <button class="btn-primary" type="submit">Search</button>
+      <button class="inline-flex h-10 items-center justify-center rounded-full bg-stone-950 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-stone-800"
+              type="submit">Search</button>
     </form>
 
     <div class="mb-5 flex items-center justify-between gap-3">
@@ -56,7 +57,8 @@
         {{ pagination::range_display(offset = filters.offset.unwrap_or(0) , count = entries.len(), total = total, label = "entry") }}
       </div>
       {% if user.belongs_to_alliance_team.unwrap_or(false) -%}
-        <a class="btn-secondary" href="/dashboard/alliance?tab=landscape">Manage landscape</a>
+        <a class="inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-white px-5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-stone-950 hover:bg-stone-950 hover:text-white"
+           href="/dashboard/alliance?tab=landscape">Manage landscape</a>
       {% endif -%}
     </div>
 
@@ -68,7 +70,7 @@
     {% else -%}
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {% for entry in entries -%}
-          <article class="flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-primary-200 hover:shadow-md">
+          <article class="flex h-full flex-col rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-stone-300 hover:shadow-md">
             <div class="mb-4 flex items-start gap-4">
               <div class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-stone-100 ring-1 ring-inset ring-stone-200">
                 {% if let Some(logo_url) = &entry.logo_url -%}
@@ -77,12 +79,12 @@
                        class="h-full w-full object-cover"
                        loading="lazy" />
                 {% else -%}
-                  <div class="svg-icon size-7 icon-buildings bg-primary-600"></div>
+                  <div class="svg-icon size-7 icon-buildings bg-stone-700"></div>
                 {% endif -%}
               </div>
               <div class="min-w-0">
                 <div class="mb-2 flex flex-wrap items-center gap-2">
-                  <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                  <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-medium text-white">
                     {% if entry.kind == "github_project" %}
                       GitHub project
                     {% else %}
@@ -109,14 +111,14 @@
 
             <div class="mt-auto flex flex-wrap gap-2 pt-5">
               {% if let Some(website_url) = &entry.website_url -%}
-                <a class="btn-secondary-anchor"
+                <a class="inline-flex items-center justify-center rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-stone-950 hover:bg-stone-950 hover:text-white"
                    href="{{ website_url }}"
                    target="_blank"
                    rel="noopener noreferrer"
                    hx-boost="false">Website</a>
               {% endif -%}
               {% if let Some(github_url) = &entry.github_url -%}
-                <a class="btn-secondary-anchor"
+                <a class="inline-flex items-center justify-center rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-stone-950 hover:bg-stone-950 hover:text-white"
                    href="{{ github_url }}"
                    target="_blank"
                    rel="noopener noreferrer"

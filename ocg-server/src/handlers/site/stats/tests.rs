@@ -7,6 +7,7 @@ use axum::{
     },
 };
 use tower::ServiceExt;
+use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_PUBLIC_SHARED,
@@ -49,6 +50,9 @@ async fn test_page_success() {
     db.expect_get_site_stats()
         .times(1)
         .returning(|| Ok(sample_site_stats()));
+    db.expect_search_groups()
+        .times(1)
+        .returning(|_| Ok(sample_search_groups_output(Uuid::new_v4())));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

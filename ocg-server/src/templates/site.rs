@@ -16,6 +16,8 @@ pub(crate) mod landscape;
 pub(crate) mod not_found;
 /// Templates for shareable profile cards.
 pub(crate) mod profile;
+/// Templates for the privacy policy page.
+pub(crate) mod privacy;
 /// Templates for the site search page.
 pub(crate) mod search;
 /// Templates for the sponsor inquiry page.

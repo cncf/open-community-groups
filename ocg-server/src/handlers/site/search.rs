@@ -237,7 +237,7 @@ fn search_wiki(query: &str, wiki_sections: &[WikiSection]) -> SearchSection {
     results.truncate(SEARCH_LIMIT);
 
     SearchSection {
-        title: "Reading Brief".to_string(),
+        title: "Tech News".to_string(),
         href: "/wiki".to_string(),
         total,
         results,

@@ -15,15 +15,15 @@
                 {# TODO: Hardcoded alliance until we add more #}
                 hx-vals='{"alliance[0]":"goup"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
           {# djlint:on #}
-          class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
+          class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-2xl cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
           {{ entity_content(kind = "events", title = "Events", icon_styles = Some("bg-stone-500") ) -}}
         </button>
         {# End events button -#}
       </li>
       <li class="w-full">
         {# Selected entity: groups -#}
-        <div class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-r-lg text-primary-500 border-primary-500">
-          {{ entity_content(kind = "groups", title = "Groups", styles = Some("select-none") , icon_styles = Some("bg-primary-500")) -}}
+        <div class="inline-flex items-center justify-between w-full p-3 bg-[#f5efe7] border rounded-r-2xl text-stone-900 border-[#eadcc9] shadow-sm">
+          {{ entity_content(kind = "groups", title = "Groups", styles = Some("select-none font-bold") , icon_styles = Some("bg-stone-700")) -}}
         </div>
         {# End selected entity: groups -#}
       </li>
@@ -31,8 +31,8 @@
       {% when Entity::Events -%}
       <li class="w-full">
         {# Selected entity: events -#}
-        <div class="inline-flex items-center justify-between w-full p-3 bg-white border rounded-l-lg text-primary-500 border-primary-500">
-          {{ entity_content(kind = "events", title = "Events", styles = Some("select-none") , icon_styles = Some("bg-primary-500")) -}}
+        <div class="inline-flex items-center justify-between w-full p-3 bg-[#f5efe7] border rounded-l-2xl text-stone-900 border-[#eadcc9] shadow-sm">
+          {{ entity_content(kind = "events", title = "Events", styles = Some("select-none font-bold") , icon_styles = Some("bg-stone-700")) -}}
         </div>
         {# End selected entity: events -#}
       </li>
@@ -47,7 +47,7 @@
           {# TODO: Hardcoded alliance until we add more #}
           hx-vals='{"alliance[0]":"goup"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
           {# djlint:on #}
-          class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-lg cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
+          class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-2xl cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
           {{ entity_content(kind = "groups", title = "Groups", icon_styles = Some("bg-stone-500") ) -}}
         </button>
         {# End groups button -#}
@@ -84,7 +84,7 @@
              validate="false"
              value="{%- if let Some(date) = &value -%} {{ date }} {%- endif -%}"
              type="date"
-             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[29px] text-center rounded-lg focus:ring-0 focus:border-primary-500 w-full px-2 py-1.5 hover:bg-stone-50 transition-colors"
+             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[32px] text-center rounded-xl focus:ring-0 focus:border-[#d8c7b2] w-full px-2 py-1.5 hover:bg-stone-50 transition-colors"
              placeholder="Date {{ label }}">
     </div>
   </div>

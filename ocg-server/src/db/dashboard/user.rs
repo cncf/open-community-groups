@@ -13,6 +13,7 @@ use crate::{
         user::{
             events::{UserEventsFilters, UserEventsOutput},
             invitations::{AllianceTeamInvitation, EventInvitation, GroupTeamInvitation},
+            mentorship::{ListPage as MentorshipRequestsOutput, MentorshipRequest},
             session_proposals::{
                 PendingCoSpeakerInvitation, SessionProposalInput, SessionProposalLevel,
                 SessionProposalsFilters, SessionProposalsOutput,
@@ -113,6 +114,12 @@ pub(crate) trait DBDashboardUser {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<GroupTeamInvitation>>;
+
+    /// Lists mentorship requests received by the user.
+    async fn list_user_mentorship_requests(
+        &self,
+        user_id: Uuid,
+    ) -> Result<MentorshipRequestsOutput>;
 
     /// Lists pending co-speaker invitations for the user.
     async fn list_user_pending_session_proposal_co_speaker_invitations(
@@ -388,6 +395,60 @@ where
             &[&user_id],
         )
         .await
+    }
+
+    /// [`DBDashboardUser::list_user_mentorship_requests`]
+    #[instrument(skip(self), err)]
+    async fn list_user_mentorship_requests(
+        &self,
+        user_id: Uuid,
+    ) -> Result<MentorshipRequestsOutput> {
+        let db = self.client().await?;
+        let rows = db
+            .query(
+                "
+                select
+                    mr.mentorship_request_id,
+                    mr.requester_user_id,
+                    requester.email as requester_email,
+                    requester.username as requester_username,
+                    requester.name as requester_name,
+                    requester.company as requester_company,
+                    requester.title as requester_title,
+                    requester.photo_url as requester_photo_url,
+                    mr.audience_type,
+                    mr.message,
+                    mr.created_at,
+                    count(*) over()::bigint as total
+                from mentorship_request mr
+                join \"user\" requester on requester.user_id = mr.requester_user_id
+                where mr.mentor_user_id = $1::uuid
+                order by mr.created_at desc
+                limit 100;
+                ",
+                &[&user_id],
+            )
+            .await?;
+
+        let total = rows.first().map_or(0, |row| row.get("total"));
+        let requests = rows
+            .into_iter()
+            .map(|row| MentorshipRequest {
+                mentorship_request_id: row.get("mentorship_request_id"),
+                requester_user_id: row.get("requester_user_id"),
+                requester_email: row.get("requester_email"),
+                requester_username: row.get("requester_username"),
+                requester_name: row.get("requester_name"),
+                requester_company: row.get("requester_company"),
+                requester_title: row.get("requester_title"),
+                requester_photo_url: row.get("requester_photo_url"),
+                audience_type: row.get("audience_type"),
+                message: row.get("message"),
+                created_at: row.get("created_at"),
+            })
+            .collect();
+
+        Ok(MentorshipRequestsOutput { total, requests })
     }
 
     /// [`DBDashboardUser::list_user_pending_session_proposal_co_speaker_invitations`]

@@ -1,5 +1,6 @@
 //! HTTP handlers for the global site stats page.
 
+use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::State,
@@ -9,10 +10,18 @@ use axum::{
 use tracing::instrument;
 
 use crate::{
-    db::DynDB,
+    db::{DynDB, common::SearchGroupsOutput},
     handlers::error::HandlerError,
     router::PUBLIC_SHARED_CACHE_HEADERS,
-    templates::{PageId, auth::User, site::stats},
+    templates::{
+        PageId,
+        auth::User,
+        site::{
+            explore::{self, render_group_popover},
+            stats,
+        },
+    },
+    types::search::{SearchGroupsFilters, ViewMode},
 };
 
 #[cfg(test)]
@@ -27,14 +36,46 @@ pub(crate) async fn page(
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (site_settings, stats) = tokio::try_join!(db.get_site_settings(), db.get_site_stats())?;
+    let (site_settings, stats, group_map) = tokio::try_join!(
+        db.get_site_settings(),
+        db.get_site_stats(),
+        prepare_group_map(&db)
+    )?;
     let template = stats::Page {
         page_id: PageId::SiteStats,
         path: uri.path().to_string(),
         site_settings,
         stats,
+        group_map_groups: group_map.0,
+        group_map_bbox: group_map.1,
         user: User::default(),
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))
+}
+
+async fn prepare_group_map(
+    db: &DynDB,
+) -> Result<(Vec<explore::GroupCard>, Option<crate::db::BBox>)> {
+    let filters = SearchGroupsFilters {
+        alliance: vec!["goup".to_string()],
+        include_bbox: Some(true),
+        limit: Some(100),
+        offset: Some(0),
+        sort_by: Some("name".to_string()),
+        view_mode: Some(ViewMode::Map),
+        ..Default::default()
+    };
+    let SearchGroupsOutput {
+        mut groups, bbox, ..
+    } = db.search_groups(&filters).await?;
+
+    for group in &mut groups {
+        group.popover_html = Some(render_group_popover(group)?);
+    }
+
+    Ok((
+        groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
+        bbox,
+    ))
 }

@@ -128,6 +128,60 @@
   </div>
   {# End Personal Details section -#}
 
+  {# Mentorship services section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "Mentorship services", description = "Let members know if you offer mentoring for individuals or businesses.") -}}
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      <div class="col-span-full">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <label class="inline-flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-700">
+            <input type="checkbox"
+                   name="mentorship_individuals"
+                   value="true"
+                   {% if user.mentorship_individuals %}checked{% endif %}
+                   class="rounded border-stone-300 text-primary-600 focus:ring-primary-500">
+            Available for individual mentorship
+          </label>
+          <label class="inline-flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-700">
+            <input type="checkbox"
+                   name="mentorship_businesses"
+                   value="true"
+                   {% if user.mentorship_businesses %}checked{% endif %}
+                   class="rounded border-stone-300 text-primary-600 focus:ring-primary-500">
+            Available for business mentorship
+          </label>
+        </div>
+        <p class="form-legend">These options appear on your public member profile when enabled.</p>
+      </div>
+      <div class="col-span-full">
+        <label for="mentorship_price" class="form-label">Mentorship price</label>
+        <div class="mt-2">
+          <input id="mentorship_price"
+                 name="mentorship_price"
+                 type="text"
+                 maxlength="{{ crate::validation::MAX_LEN_S }}"
+                 value="{{ user.mentorship_price.as_deref().unwrap_or("") }}"
+                 class="input-primary"
+                 placeholder="Free, $150/hour, or custom for teams">
+        </div>
+        <p class="form-legend">Optional. Shown on your public profile and member cards.</p>
+      </div>
+      <div class="col-span-full">
+        <label for="mentorship_note" class="form-label">Mentorship description</label>
+        <div class="mt-2">
+          <textarea id="mentorship_note"
+                    name="mentorship_note"
+                    rows="4"
+                    maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                    class="input-primary"
+                    placeholder="Share topics, audience, format, or how people should approach you.">{% if let Some(mentorship_note) = &user.mentorship_note -%}{{ mentorship_note }}{% endif %}</textarea>
+        </div>
+        <p class="form-legend">Optional. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.</p>
+      </div>
+    </div>
+  </div>
+  {# End Mentorship services section -#}
+
   {# Location section -#}
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Location", description = "Optional location information.") -}}

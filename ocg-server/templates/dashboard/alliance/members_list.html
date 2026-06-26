@@ -1,0 +1,163 @@
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{{ dashboard::page_title(title = "Members") -}}
+
+<div class="my-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div class="text-sm text-stone-600">
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = members.len(), total = total, label = "member") }}
+  </div>
+  <form id="alliance-members-search-form"
+        hx-get="/dashboard/alliance/members"
+        hx-target="#dashboard-content"
+        hx-indicator="#dashboard-spinner"
+        hx-push-url="true"
+        class="grid w-full gap-2 sm:grid-cols-[1fr_auto_auto] lg:max-w-2xl">
+    <label class="sr-only" for="search_alliance_members">Search members</label>
+    <input id="search_alliance_members"
+           type="search"
+           name="query"
+           value="{{ query|assigned_or("") }}"
+           class="input-primary"
+           placeholder="Search members, groups, interests, or mentorship"
+           autocomplete="off"
+           autocorrect="off"
+           autocapitalize="off"
+           spellcheck="false">
+    <button type="submit"
+            class="inline-flex h-10 items-center justify-center rounded-full bg-stone-950 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950">
+      Search
+    </button>
+    <button hx-get="/dashboard/alliance/members"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            hx-push-url="true"
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-white px-5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-300">
+      Reset
+    </button>
+  </form>
+</div>
+
+{% if members.is_empty() -%}
+  <div class="rounded-2xl border border-dashed border-stone-300 bg-white px-8 py-12 text-center">
+    <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-primary-50">
+      <div class="svg-icon size-6 icon-people bg-primary-500"></div>
+    </div>
+    <h2 class="mt-4 text-lg font-semibold text-stone-950">No members found</h2>
+    <p class="mt-2 text-sm text-stone-600">Try a different search or check back after more members join.</p>
+  </div>
+{% else -%}
+  <div class="grid gap-4 xl:grid-cols-2">
+    {% for member in members -%}
+      <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start gap-4">
+          <logo-image
+          {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+          size="size-14" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
+          </logo-image>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="truncate text-base font-semibold text-stone-950">{{ member.name|assigned_or(member.username) }}</h2>
+              {% if member.linkedin_connected -%}
+                <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">Verified</span>
+              {% endif -%}
+            </div>
+            <div class="mt-1 text-sm text-stone-500">@{{ member.username }}</div>
+            <div class="mt-2 text-sm leading-5 text-stone-700">
+              <span class="font-medium text-stone-900">{{ member.title.as_deref() |assigned_or("Member") }}</span>
+              {% if let Some(company) = &member.company -%}
+                <span class="text-stone-400">&nbsp;at&nbsp;</span><span>{{ company }}</span>
+              {% endif -%}
+            </div>
+          </div>
+        </div>
+
+        {% if !member.group_names.is_empty() -%}
+          <div class="mt-4 flex flex-wrap gap-2">
+            {% for group_name in member.group_names -%}
+              <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-100">{{ group_name }}</span>
+            {% endfor -%}
+          </div>
+        {% endif -%}
+
+        {% if member.mentorship_individuals || member.mentorship_businesses -%}
+          <div class="mt-4 rounded-2xl border border-primary-100 bg-primary-50/60 p-3">
+            <div class="flex flex-wrap gap-2">
+              {% if member.mentorship_individuals -%}
+                <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-primary-700">Individual mentorship</span>
+              {% endif -%}
+              {% if member.mentorship_businesses -%}
+                <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-primary-700">Business mentorship</span>
+              {% endif -%}
+            </div>
+            {% if let Some(mentorship_note) = &member.mentorship_note -%}
+              <p class="mt-3 line-clamp-2 text-sm/6 text-stone-700">{{ mentorship_note }}</p>
+            {% endif -%}
+            {% if let Some(mentorship_price) = &member.mentorship_price -%}
+              <div class="mt-3 inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-stone-800">
+                Price: {{ mentorship_price }}
+              </div>
+            {% endif -%}
+          </div>
+        {% endif -%}
+
+        {% if let Some(bio) = &member.bio -%}
+          <p class="mt-4 line-clamp-2 text-sm leading-6 text-stone-600">{{ bio }}</p>
+        {% endif -%}
+
+        {% if let Some(interests) = &member.interests -%}
+          <div class="mt-4 flex flex-wrap gap-2">
+            {% for interest in interests -%}
+              <span class="rounded-full bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700 ring-1 ring-inset ring-stone-200">{{ interest }}</span>
+            {% endfor -%}
+          </div>
+        {% endif -%}
+
+        <div class="mt-5 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4">
+          <a class="btn-secondary-anchor btn-mini"
+             href="/profiles/{{ member.username }}"
+             hx-boost="true"
+             hx-target="body">Profile</a>
+          {% if member.mentorship_individuals || member.mentorship_businesses -%}
+            <a class="btn-primary-anchor btn-mini"
+               href="/profiles/{{ member.username }}#mentorship"
+               hx-boost="true"
+               hx-target="body">Request mentorship</a>
+          {% endif -%}
+          {% if let Some(linkedin_url) = &member.linkedin_url -%}
+            <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-primary-50 hover:ring-primary-200"
+               href="{{ linkedin_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               title="LinkedIn profile">
+              <div class="svg-icon size-4 icon-linkedin bg-primary-600"></div>
+            </a>
+          {% endif -%}
+          {% if let Some(github_url) = &member.github_url -%}
+            <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+               href="{{ github_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               title="GitHub">
+              <div class="svg-icon size-4 icon-github bg-stone-700"></div>
+            </a>
+          {% endif -%}
+          {% if let Some(website_url) = &member.website_url -%}
+            <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+               href="{{ website_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               title="Website">
+              <div class="svg-icon size-4 icon-link bg-stone-700"></div>
+            </a>
+          {% endif -%}
+        </div>
+      </article>
+    {% endfor -%}
+  </div>
+{% endif -%}
+
+{% if total > members.len() -%}
+  {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner") }}
+{% endif -%}

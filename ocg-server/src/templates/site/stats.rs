@@ -4,6 +4,8 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    db::BBox,
+    templates::site::explore::GroupCard,
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::site::SiteSettings,
 };
@@ -20,6 +22,10 @@ pub struct Page {
     pub site_settings: SiteSettings,
     /// Site statistics for charts.
     pub stats: SiteStats,
+    /// Groups shown on the embedded ecosystem map.
+    pub group_map_groups: Vec<GroupCard>,
+    /// Geographic bounds for all groups on the embedded ecosystem map.
+    pub group_map_bbox: Option<BBox>,
     /// Authenticated user information.
     pub user: User,
 }

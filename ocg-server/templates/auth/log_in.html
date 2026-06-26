@@ -1,124 +1,144 @@
 {% extends "common/base.html" -%}
 
 {% block content -%}
-  <div class="flex items-center justify-center w-full">
-    <div class="container max-w-md m-auto px-4 py-8 md:px-6 md:py-12">
-      <div class="bg-white p-8 md:p-10 border border-stone-200 rounded-lg shadow-sm">
-        {# Header -#}
-        <div class="mb-8">
-          <h1 id="login-form-title" class="text-2xl font-bold text-stone-900 mb-2">Log In</h1>
-        </div>
-        {# End header -#}
+  <div class="relative flex w-full items-center justify-center overflow-hidden bg-stone-50">
+    <div class="absolute inset-x-0 top-0 h-72 bg-linear-to-b from-[#f5efe7] to-transparent"></div>
+    <div class="absolute -top-32 left-1/2 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-[#eadcc9]/70 blur-3xl">
+    </div>
+    <div class="absolute bottom-10 right-0 hidden h-72 w-72 rounded-full bg-white blur-3xl lg:block"></div>
 
-        <div class="flex flex-col items-center space-y-4 mb-6">
-          {# GitHub login -#}
-          {% if login.github -%}
-            <div class="w-full">
-              <a href="/log-in/oauth2/github{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                 class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-                <div class="svg-icon size-4 icon-github group-hover:bg-white transition-colors"></div>
-                <span>GitHub</span>
-              </a>
-            </div>
-          {% endif -%}
-          {# End GitHub login -#}
-
-          {# LinkedIn login -#}
-          {% if login.linkedin -%}
-            <div class="w-full">
-              <a href="/log-in/oidc/linkedin{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                 class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-                <div class="svg-icon size-4 icon-linkedin group-hover:bg-white transition-colors"></div>
-                <span>LinkedIn</span>
-              </a>
-            </div>
-          {% endif -%}
-          {# End LinkedIn login -#}
-        </div>
-
-        {# Email login -#}
-        {% if login.email -%}
-          {% if login.linkedin || login.github -%}
-            <div class="inline-flex items-center justify-center w-full relative mb-6">
-              <hr class="w-full h-px bg-stone-200 border-0">
-              <div class="absolute px-3 bg-white text-xs text-stone-500 uppercase tracking-wide">OR</div>
-            </div>
-          {% endif -%}
-
-          <form action="/log-in{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                method="post"
-                role="form"
-                aria-labelledby="login-form-title">
-            <div class="space-y-5">
-              {# Username field -#}
-              <div>
-                <label for="username" class="form-label">
-                  Username <span class="asterisk" aria-label="required">*</span>
-                </label>
-                <div class="mt-2">
-                  <input type="text"
-                         id="username"
-                         name="username"
-                         maxlength="{{ crate::validation::MAX_LEN_S }}"
-                         class="input-primary"
-                         autocomplete="username"
-                         autocorrect="off"
-                         autocapitalize="off"
-                         spellcheck="false"
-                         required
-                         aria-required="true"
-                         aria-describedby="username-help" />
-                </div>
-              </div>
-              {# End username field -#}
-
-              {# Password field -#}
-              <div>
-                <label for="password" class="form-label">
-                  Password <span class="asterisk" aria-label="required">*</span>
-                </label>
-                <div class="mt-2">
-                  <input type="password"
-                         id="password"
-                         name="password"
-                         class="input-primary"
-                         autocomplete="current-password"
-                         minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
-                         maxlength="{{ crate::validation::MAX_LEN_S }}"
-                         required
-                         aria-required="true"
-                         aria-describedby="password-help" />
-                </div>
-              </div>
-              {# End password field -#}
-
-              {# Submit button -#}
-              <button type="submit" class="btn-primary w-full">Sign In</button>
-              {# End submit button -#}
-            </div>
-          </form>
-        {% endif -%}
-        {# End email login -#}
-
-        {# Sign up link -#}
-        <div class="mt-6 text-center text-sm text-stone-600">
-          Don't have an account?
-          <a href="/sign-up{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-             class="text-primary-500 hover:text-primary-700 font-medium transition-colors">Sign up</a>
-        </div>
-        {# End sign up link -#}
-
-        {# Messages -#}
-        {% if !messages.is_empty() -%}
-          <div class="mt-6">
-            {% for message in messages -%}
-              <div class="flex items-center p-4 mb-3 text-yellow-800 border border-yellow-600 rounded-lg bg-yellow-50">
-                <div class="text-sm">{{ message }}</div>
-              </div>
-            {% endfor -%}
+    <div class="container relative m-auto max-w-lg px-4 py-12 md:px-6 md:py-20">
+      <div class="overflow-hidden rounded-[2.25rem] border border-[#d8c7b2] bg-white shadow-2xl shadow-[#d8c7b2]/30">
+        <div class="border-0 border-b border-solid border-[#eadcc9] bg-[#f5efe7] px-8 py-8 md:px-10">
+          {# Header -#}
+          <div>
+            <p class="mb-4 inline-flex rounded-full border border-[#d8c7b2] bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">Account</p>
+            <h1 id="login-form-title"
+                class="text-4xl font-black tracking-[-0.045em] text-stone-950 md:text-5xl">Welcome back.</h1>
+            <p class="mt-3 text-sm/6 font-medium text-stone-700">
+              Sign in to manage your GOUP profile, events, mentorship requests, and community access.
+            </p>
           </div>
-        {% endif -%}
-        {# End messages -#}
+          {# End header -#}
+        </div>
+
+        <div class="p-8 md:p-10">
+          {# Header -#}
+          {# End header -#}
+
+          <div class="flex flex-col items-center space-y-4 mb-6">
+            {# GitHub login -#}
+            {% if login.github -%}
+              <div class="w-full">
+                <a href="/log-in/oauth2/github{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                   class="group flex w-full items-center justify-center gap-3 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-bold text-stone-800 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">
+                  <div class="svg-icon size-4 icon-github bg-stone-700 transition-colors group-hover:bg-[#6f6253]"></div>
+                  <span>Continue with GitHub</span>
+                </a>
+              </div>
+            {% endif -%}
+            {# End GitHub login -#}
+
+            {# LinkedIn login -#}
+            {% if login.linkedin -%}
+              <div class="w-full">
+                <a href="/log-in/oidc/linkedin{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                   class="group flex w-full items-center justify-center gap-3 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-bold text-stone-800 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">
+                  <div class="svg-icon size-4 icon-linkedin bg-stone-700 transition-colors group-hover:bg-[#6f6253]"></div>
+                  <span>Continue with LinkedIn</span>
+                </a>
+              </div>
+            {% endif -%}
+            {# End LinkedIn login -#}
+          </div>
+
+          {# Email login -#}
+          {% if login.email -%}
+            {% if login.linkedin || login.github -%}
+              <div class="inline-flex items-center justify-center w-full relative mb-6">
+                <hr class="w-full h-px bg-stone-200 border-0">
+                <div class="absolute bg-white px-3 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">OR</div>
+              </div>
+            {% endif -%}
+
+            <form action="/log-in{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                  method="post"
+                  role="form"
+                  aria-labelledby="login-form-title">
+              <div class="space-y-5">
+                {# Username field -#}
+                <div>
+                  <label for="username" class="form-label">
+                    Username <span class="asterisk" aria-label="required">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           maxlength="{{ crate::validation::MAX_LEN_S }}"
+                           class="input-primary !rounded-2xl !border-stone-200 !bg-stone-50/60 !py-3 focus:!outline-[#d8c7b2]"
+                           placeholder="your username"
+                           autocomplete="username"
+                           autocorrect="off"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           required
+                           aria-required="true"
+                           aria-describedby="username-help" />
+                  </div>
+                </div>
+                {# End username field -#}
+
+                {# Password field -#}
+                <div>
+                  <label for="password" class="form-label">
+                    Password <span class="asterisk" aria-label="required">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           class="input-primary !rounded-2xl !border-stone-200 !bg-stone-50/60 !py-3 focus:!outline-[#d8c7b2]"
+                           placeholder="your password"
+                           autocomplete="current-password"
+                           minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                           maxlength="{{ crate::validation::MAX_LEN_S }}"
+                           required
+                           aria-required="true"
+                           aria-describedby="password-help" />
+                  </div>
+                </div>
+                {# End password field -#}
+
+                {# Submit button -#}
+                <button type="submit"
+                        class="w-full rounded-full border border-[#d8c7b2] bg-[#f5efe7] px-5 py-3 text-sm font-black text-stone-950 shadow-sm transition hover:bg-[#eadcc9] focus:ring-4 focus:ring-[#eadcc9]">Sign in</button>
+                {# End submit button -#}
+              </div>
+            </form>
+          {% endif -%}
+          {# End email login -#}
+
+          {# Sign up link -#}
+          <div class="mt-7 rounded-3xl border border-stone-200 bg-stone-50 p-4 text-center text-sm text-stone-600">
+            Don't have an account?
+            <a href="/sign-up{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+               class="font-bold text-stone-950 underline decoration-[#d8c7b2] underline-offset-4 transition-colors hover:text-stone-700">Create one</a>
+          </div>
+          {# End sign up link -#}
+
+          {# Messages -#}
+          {% if !messages.is_empty() -%}
+            <div class="mt-6">
+              {% for message in messages -%}
+                <div class="mb-3 flex items-center rounded-3xl border border-[#d8c7b2] bg-[#fffaf5] p-4 text-stone-800">
+                  <div class="text-sm">{{ message }}</div>
+                </div>
+              {% endfor -%}
+            </div>
+          {% endif -%}
+          {# End messages -#}
+        </div>
       </div>
     </div>
   </div>

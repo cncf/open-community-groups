@@ -1,6 +1,9 @@
 //! Templates for shareable public profile cards.
 
 use askama::Template;
+use garde::Validate;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     templates::{
@@ -10,6 +13,7 @@ use crate::{
         helpers::{self, user_initials},
     },
     types::{site::SiteSettings, user::PublicUserProfile},
+    validation::{MAX_LEN_DESCRIPTION_SHORT, trimmed_non_empty},
 };
 
 /// Shareable user profile card page.
@@ -24,6 +28,8 @@ pub(crate) struct Page {
     pub page_id: PageId,
     /// Public user profile.
     pub profile: PublicUserProfile,
+    /// Whether a mentorship request was just submitted.
+    pub mentorship_request_sent: bool,
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
@@ -73,5 +79,76 @@ impl Page {
             .as_deref()
             .or(self.site_settings.og_image_url.as_deref())
             .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+}
+
+/// Mentorship request form input.
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+pub(crate) struct MentorshipRequestInput {
+    /// Whether this is for an individual or business.
+    #[garde(custom(valid_audience_type))]
+    pub audience_type: String,
+    /// Request details.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub message: String,
+}
+
+/// Stored mentorship request metadata returned from the database.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct MentorshipRequestRecord {
+    /// Request identifier.
+    pub mentorship_request_id: Uuid,
+    /// Mentor user identifier.
+    pub mentor_user_id: Uuid,
+    /// Mentor email address.
+    pub mentor_email: String,
+    /// Mentor username.
+    pub mentor_username: String,
+    /// Mentor display name.
+    pub mentor_name: Option<String>,
+    /// Mentor's listed mentorship price, if configured.
+    pub mentor_price: Option<String>,
+    /// Requester user identifier.
+    pub requester_user_id: Uuid,
+    /// Requester email address.
+    pub requester_email: String,
+    /// Requester username.
+    pub requester_username: String,
+    /// Requester display name.
+    pub requester_name: Option<String>,
+    /// Whether this is for an individual or business.
+    pub audience_type: String,
+    /// Request details.
+    pub message: String,
+    /// Total requests received by this mentor.
+    pub request_count: i32,
+}
+
+impl MentorshipRequestRecord {
+    /// Mentor display label.
+    pub(crate) fn mentor_label(&self) -> &str {
+        self.mentor_name.as_deref().unwrap_or(&self.mentor_username)
+    }
+
+    /// Requester display label.
+    pub(crate) fn requester_label(&self) -> &str {
+        self.requester_name.as_deref().unwrap_or(&self.requester_username)
+    }
+
+    /// Audience display label.
+    pub(crate) fn audience_label(&self) -> &'static str {
+        match self.audience_type.as_str() {
+            "business" => "Business",
+            _ => "Individual",
+        }
+    }
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn valid_audience_type(value: &str, _ctx: &()) -> garde::Result {
+    if matches!(value, "individual" | "business") {
+        Ok(())
+    } else {
+        Err(garde::Error::new("invalid mentorship request type"))
     }
 }

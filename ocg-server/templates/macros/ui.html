@@ -32,22 +32,25 @@
         {% match spinner_variant.as_str() %}
         {% when "1" %}
           --spinner-base: #e5e7eb;
-          --spinner-accent: var(--color-primary-500);
+          --spinner-accent: var(--color-stone-700);
         {% when "2" %}
           --spinner-base: #e5e7eb;
-          --spinner-accent: var(--color-primary-300);
+          --spinner-accent: var(--color-stone-300);
         {% when "3" %}
           --spinner-base: #ffffff;
-          --spinner-accent: var(--color-primary-900);
+          --spinner-accent: var(--color-stone-900);
         {% when "4" %}
           --spinner-base: #d1d5db;
           --spinner-accent: var(--color-secondary-500);
         {% when "5" %}
           --spinner-base: #ffffff;
-          --spinner-accent: var(--color-primary-500);
+          --spinner-accent: var(--color-stone-700);
+        {% when "6" %}
+          --spinner-base: #ffffff;
+          --spinner-accent: var(--color-stone-700);
         {% else %}
           --spinner-base: #e5e7eb;
-          --spinner-accent: var(--color-primary-500);
+          --spinner-accent: var(--color-stone-700);
         {% endmatch %}
       }
       .spinner-base {
@@ -84,7 +87,7 @@
   <div class="w-20 h-20 text-stone-200 animate-spin">
     <style>
       .spinner-accent {
-        fill: var(--color-primary-500);
+        fill: var(--color-stone-700);
       }
     </style>
     <svg aria-hidden="true"

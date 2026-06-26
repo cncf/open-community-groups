@@ -517,7 +517,7 @@
         },
         "kind": {
           "type": "string",
-          "description": "Optional kind filter, for example startup or open_source."
+          "description": "Optional kind filter, for example startup or github_project."
         },
         "category": {
           "type": "string",
@@ -543,6 +543,140 @@
       "additionalProperties": false
     },
     "action": "search_landscape"
+  },
+  {
+    "name": "goup_create_startup",
+    "title": "GOUP Create Startup Landscape Entry",
+    "description": "Add a startup to the GOUP landscape through the database add_landscape_entry function. Requires MCP_ENABLE_MUTATIONS=true and database access through DATABASE_URL or TERN_CONF.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actor_user_id": {
+          "type": "string",
+          "description": "User ID that should be recorded as the landscape entry creator."
+        },
+        "alliance_id": {
+          "type": "string",
+          "description": "Alliance ID where the landscape entry will be created."
+        },
+        "name": {
+          "type": "string",
+          "description": "Startup name."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short summary for cards and search results."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional full description."
+        },
+        "website_url": {
+          "type": "string",
+          "description": "Optional startup website URL."
+        },
+        "github_url": {
+          "type": "string",
+          "description": "Optional GitHub URL."
+        },
+        "logo_url": {
+          "type": "string",
+          "description": "Optional logo image URL."
+        },
+        "category": {
+          "type": "string",
+          "description": "Optional category label, for example AI, DevTools, Fintech, or Infrastructure."
+        },
+        "tags": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Optional tags as an array or comma-separated string."
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Whether the entry should be public immediately. Defaults to true."
+        }
+      },
+      "required": ["actor_user_id", "alliance_id", "name", "summary"],
+      "additionalProperties": false
+    },
+    "action": "create_startup"
+  },
+  {
+    "name": "goup_create_github_project",
+    "title": "GOUP Create GitHub Project Landscape Entry",
+    "description": "Add an open-source GitHub project to the GOUP landscape through the database add_landscape_entry function. Requires MCP_ENABLE_MUTATIONS=true and database access through DATABASE_URL or TERN_CONF.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "actor_user_id": {
+          "type": "string",
+          "description": "User ID that should be recorded as the landscape entry creator."
+        },
+        "alliance_id": {
+          "type": "string",
+          "description": "Alliance ID where the landscape entry will be created."
+        },
+        "name": {
+          "type": "string",
+          "description": "Project name."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Short summary for cards and search results."
+        },
+        "github_url": {
+          "type": "string",
+          "description": "GitHub repository or organization URL."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional full description."
+        },
+        "website_url": {
+          "type": "string",
+          "description": "Optional project website or docs URL."
+        },
+        "logo_url": {
+          "type": "string",
+          "description": "Optional logo image URL."
+        },
+        "category": {
+          "type": "string",
+          "description": "Optional category label, for example AI, DevTools, Infrastructure, or Open Source."
+        },
+        "tags": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Optional tags as an array or comma-separated string."
+        },
+        "published": {
+          "type": "boolean",
+          "description": "Whether the entry should be public immediately. Defaults to true."
+        }
+      },
+      "required": ["actor_user_id", "alliance_id", "name", "summary", "github_url"],
+      "additionalProperties": false
+    },
+    "action": "create_github_project"
   },
   {
     "name": "goup_search_wiki",

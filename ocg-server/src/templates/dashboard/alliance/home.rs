@@ -12,7 +12,7 @@ use crate::{
         dashboard::{
             alliance::{
                 analytics, create, email_templates, event_categories, group_categories, groups,
-                landscape, regions, settings, team,
+                landscape, members, regions, settings, team,
             },
             audit,
         },
@@ -61,6 +61,8 @@ pub(crate) enum Content {
     Groups(groups::ListPage),
     /// Landscape management page.
     Landscape(landscape::ListPage),
+    /// Members page across all alliance groups.
+    Members(members::ListPage),
     /// Audit logs page.
     Logs(audit::ListPage),
     /// Regions management page.
@@ -107,6 +109,11 @@ impl Content {
         matches!(self, Content::Landscape(_))
     }
 
+    /// Check if the content is the members page.
+    fn is_members(&self) -> bool {
+        matches!(self, Content::Members(_))
+    }
+
     /// Check if the content is the logs page.
     fn is_logs(&self) -> bool {
         matches!(self, Content::Logs(_))
@@ -138,6 +145,7 @@ impl std::fmt::Display for Content {
             Content::GroupCategories(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
             Content::Landscape(template) => write!(f, "{}", template.render()?),
+            Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Regions(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
@@ -168,6 +176,8 @@ pub(crate) enum Tab {
     Groups,
     /// Landscape management tab.
     Landscape,
+    /// Members tab across all alliance groups.
+    Members,
     /// Audit logs tab.
     Logs,
     /// Regions management tab.

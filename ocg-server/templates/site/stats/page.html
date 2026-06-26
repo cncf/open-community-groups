@@ -1,6 +1,7 @@
 {% extends "common/base.html" -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/stats.html" as stats_macro -%}
+{% import "macros/ui.html" as ui -%}
 
 {% block content -%}
   <div class="relative overflow-hidden">
@@ -10,24 +11,84 @@
     <div class="absolute top-24 right-0 hidden h-72 w-72 rounded-full bg-sky-300/20 blur-3xl lg:block"></div>
 
     <div class="relative container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-16">
-      <div class="mx-auto max-w-3xl text-center">
-        <div class="mb-5 inline-flex rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-700 shadow-sm backdrop-blur">
-          GOUP intelligence
+      <div class="grid items-center gap-8 lg:grid-cols-[1fr_0.85fr] lg:gap-12">
+        <div>
+          <div class="mb-5 inline-flex rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-primary-700 shadow-sm backdrop-blur">
+            GOUP intelligence
+          </div>
+          <h1 class="text-balance text-4xl font-black tracking-tight text-stone-950 sm:text-5xl lg:text-6xl">
+            GOUP momentum at a glance
+          </h1>
+          <p class="mt-5 max-w-2xl text-lg/8 text-stone-600">
+            A live-feeling view of community growth, alliance groups, event activity, and ecosystem signals
+            as they come online.
+          </p>
+          <div class="mt-7 flex flex-wrap gap-3">
+            <a href="#alliance"
+               class="inline-flex items-center justify-center rounded-full border border-[#d8c7b2] bg-[#f5efe7] px-5 py-2.5 text-sm font-bold text-stone-950 shadow-lg shadow-[#d8c7b2]/25 transition hover:bg-[#eadcc9]">Explore metrics</a>
+            <a href="/explore?alliance[0]=goup&entity=groups&view_mode=map"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-flex items-center justify-center rounded-full border border-stone-200 bg-white px-5 py-2.5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">Open alliance map</a>
+          </div>
         </div>
-        <h1 class="text-balance text-4xl font-black tracking-tight text-stone-950 sm:text-5xl lg:text-6xl">
-          GOUP momentum at a glance
-        </h1>
-        <p class="mx-auto mt-5 max-w-2xl text-lg/8 text-stone-600">
-          A clean view of community growth, event activity, and ecosystem signals as they come online.
-        </p>
+
+        <div class="relative overflow-hidden rounded-[2rem] border border-[#d8c7b2] bg-[#f5efe7] p-5 text-stone-950 shadow-2xl shadow-[#d8c7b2]/30">
+          <div class="absolute -right-16 -top-16 size-44 rounded-full bg-white/70 blur-3xl"></div>
+          <div class="absolute -bottom-20 left-4 size-52 rounded-full bg-[#eadcc9]/70 blur-3xl"></div>
+          <div class="relative">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-xs font-bold uppercase tracking-[0.22em] text-stone-600">Live signals</div>
+                <div class="mt-1 text-2xl font-black tracking-tight">Community pulse</div>
+              </div>
+              <div class="flex items-center gap-2 rounded-full border border-[#d8c7b2] bg-white/60 px-3 py-1.5 text-xs font-bold text-stone-700 backdrop-blur">
+                <span class="relative flex size-2">
+                  <span class="absolute inline-flex size-full animate-ping rounded-full bg-[#b9a68e] opacity-75"></span>
+                  <span class="relative inline-flex size-2 rounded-full bg-[#b9a68e]"></span>
+                </span>
+                Updating
+              </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-2 gap-3">
+              <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 p-4 backdrop-blur">
+                <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-600">Active members</div>
+                <div class="mt-2 text-3xl font-black">{{ stats.summary.active_members|num_fmt }}</div>
+              </div>
+              <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 p-4 backdrop-blur">
+                <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-600">Upcoming events</div>
+                <div class="mt-2 text-3xl font-black">{{ stats.summary.upcoming_events|num_fmt }}</div>
+              </div>
+              <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 p-4 backdrop-blur">
+                <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-600">Active roles</div>
+                <div class="mt-2 text-3xl font-black">{{ stats.summary.active_jobs|num_fmt }}</div>
+              </div>
+              <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 p-4 backdrop-blur">
+                <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-600">Ecosystem entries</div>
+                <div class="mt-2 text-3xl font-black">{{ stats.summary.landscape_entries|num_fmt }}</div>
+              </div>
+            </div>
+
+            <div class="mt-4 rounded-2xl border border-[#d8c7b2] bg-white/60 p-4">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-600">Opportunity signal</div>
+                  <div class="mt-1 text-sm text-stone-600">Saved job interest from the member network</div>
+                </div>
+                <div class="text-3xl font-black">{{ stats.summary.job_interests|num_fmt }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {# Summary cards #}
       <div class="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur">
+        <div class="group rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur transition hover:-translate-y-1 hover:border-primary-200 hover:shadow-2xl hover:shadow-primary-100/70">
           <div class="flex items-center justify-between gap-3">
             <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Groups</div>
-            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50">
+            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50 transition group-hover:scale-110">
               <div class="svg-icon size-5 icon-groups bg-primary-600"></div>
             </div>
           </div>
@@ -35,10 +96,10 @@
           <p class="mt-1 text-sm text-stone-500">Active communities</p>
         </div>
 
-        <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur">
+        <div class="group rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur transition hover:-translate-y-1 hover:border-primary-200 hover:shadow-2xl hover:shadow-primary-100/70">
           <div class="flex items-center justify-between gap-3">
             <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Members</div>
-            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50">
+            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50 transition group-hover:scale-110">
               <div class="svg-icon size-5 icon-members bg-primary-600"></div>
             </div>
           </div>
@@ -46,10 +107,10 @@
           <p class="mt-1 text-sm text-stone-500">People in network</p>
         </div>
 
-        <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur">
+        <div class="group rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur transition hover:-translate-y-1 hover:border-primary-200 hover:shadow-2xl hover:shadow-primary-100/70">
           <div class="flex items-center justify-between gap-3">
             <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Events</div>
-            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50">
+            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50 transition group-hover:scale-110">
               <div class="svg-icon size-5 icon-events bg-primary-600"></div>
             </div>
           </div>
@@ -57,10 +118,10 @@
           <p class="mt-1 text-sm text-stone-500">Published gatherings</p>
         </div>
 
-        <div class="rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur">
+        <div class="group rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur transition hover:-translate-y-1 hover:border-primary-200 hover:shadow-2xl hover:shadow-primary-100/70">
           <div class="flex items-center justify-between gap-3">
             <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Attendees</div>
-            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50">
+            <div class="flex size-10 items-center justify-center rounded-2xl bg-primary-50 transition group-hover:scale-110">
               <div class="svg-icon size-5 icon-attendees bg-primary-600"></div>
             </div>
           </div>
@@ -69,6 +130,71 @@
         </div>
       </div>
       {# End summary cards #}
+
+      {# Alliance map callout #}
+      <div class="mt-4 overflow-hidden rounded-[2rem] border border-primary-100 bg-white/85 shadow-xl shadow-stone-200/60 backdrop-blur">
+        <div class="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
+          <div class="p-5 lg:p-6">
+            <div class="flex items-center gap-3">
+              <div class="flex size-11 items-center justify-center rounded-2xl bg-primary-50">
+                <div class="svg-icon size-5 icon-map bg-primary-600"></div>
+              </div>
+              <div>
+                <div class="text-xs font-bold uppercase tracking-[0.22em] text-primary-700">Alliance map</div>
+                <h2 class="mt-1 text-2xl font-black tracking-tight text-stone-950">Groups across the network</h2>
+              </div>
+            </div>
+            <p class="mt-4 max-w-2xl text-sm/6 text-stone-600">
+              See where GOUP groups are active, then jump into the map view to explore local communities,
+              events, and member momentum by geography.
+            </p>
+            <div class="mt-5 flex flex-wrap gap-3">
+              <a href="/explore?alliance[0]=goup&entity=groups&view_mode=map"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="inline-flex items-center justify-center rounded-full border border-[#d8c7b2] bg-[#f5efe7] px-5 py-2.5 text-sm font-bold text-stone-950 shadow-lg shadow-[#d8c7b2]/25 transition hover:bg-[#eadcc9]">Open groups map</a>
+              <a href="/explore?alliance[0]=goup&entity=groups"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="inline-flex items-center justify-center rounded-full border border-stone-200 bg-white px-5 py-2.5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">Browse group cards</a>
+            </div>
+          </div>
+          <div class="relative min-h-[22rem] overflow-hidden bg-[#f5efe7] text-stone-950 lg:min-h-[26rem]">
+            <div class="absolute inset-0">
+              <div class="relative h-full w-full">
+                <div id="loading-map" class="absolute left-4 top-4 z-[450] w-6 group">{{ ui::spinner(htmx = false) -}}</div>
+                {% if group_map_groups.is_empty() -%}
+                  <div class="absolute inset-0 bg-[url('/static/images/map.png')] bg-cover bg-center opacity-25"></div>
+                  <div class="absolute inset-0 bg-linear-to-br from-[#f5efe7]/75 via-[#eadcc9]/70 to-[#6f6253]/35"></div>
+                {% endif -%}
+                <div id="map-box"
+                     class="relative h-full w-full leaflet-container leaflet-touch leaflet-retina leaflet-fade-anim leaflet-grab leaflet-touch-drag leaflet-touch-zoom
+                            {% if group_map_groups.is_empty() -%}opacity-30{%- endif %}">
+                  <div id="main-loading-map"
+                       role="status"
+                       class="absolute inset-0 hidden items-center justify-center">
+                    {{ ui::main_loading() -}}
+                    <span class="sr-only">Loading...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="pointer-events-none absolute inset-x-0 bottom-0 z-[410] bg-linear-to-t from-[#f5efe7]/95 to-transparent p-5 lg:p-6">
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl border border-[#d8c7b2] bg-white/70 p-4 backdrop-blur">
+                  <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-600">Pinned groups</div>
+                  <div class="mt-2 text-3xl font-black">{{ group_map_groups.len() }}</div>
+                </div>
+                <div class="rounded-2xl border border-[#d8c7b2] bg-white/70 p-4 backdrop-blur">
+                  <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-600">Members connected</div>
+                  <div class="mt-2 text-3xl font-black">{{ stats.members.total|num_fmt }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {# End alliance map callout #}
 
       {# Engagement cards #}
       <div id="engagement"
@@ -105,43 +231,43 @@
 
       <div class="mt-12 flex flex-wrap justify-center gap-2">
         <a href="#alliance"
-           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700">Alliance</a>
+           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">Alliance</a>
         <a href="#engagement"
-           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700">Engagement</a>
+           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">Engagement</a>
         <a href="#jobs"
-           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700">Jobs</a>
+           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">Jobs</a>
         <a href="#landscape"
-           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700">Landscape</a>
+           class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">Landscape</a>
       </div>
 
       <div class="mt-12 space-y-12">
         {# Alliance section #}
         <section id="alliance"
                  class="overflow-hidden rounded-[2rem] border border-stone-200 bg-white/80 shadow-xl shadow-stone-200/50">
-          <div class="border-0 border-b border-solid border-stone-200 bg-linear-to-r from-stone-950 to-stone-800 p-6 text-white lg:p-8">
+          <div class="border-0 border-b border-solid border-[#d8c7b2] bg-linear-to-r from-[#f5efe7] to-[#eadcc9] p-6 text-stone-950 lg:p-8">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <div class="text-xs font-bold uppercase tracking-[0.22em] text-primary-200">Alliance</div>
+                <div class="text-xs font-bold uppercase tracking-[0.22em] text-stone-600">Alliance</div>
                 <h2 class="mt-2 text-2xl font-black tracking-tight lg:text-4xl">Community growth</h2>
-                <p class="mt-2 max-w-2xl text-sm/6 text-stone-300">
+                <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
                   Groups, members, events, and attendee growth across active GOUP alliances.
                 </p>
               </div>
               <div class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-                <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-                  <div class="text-stone-300">Groups</div>
+                <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 px-4 py-3 backdrop-blur">
+                  <div class="text-stone-600">Groups</div>
                   <div class="text-xl font-black">{{ stats.groups.total|num_fmt }}</div>
                 </div>
-                <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-                  <div class="text-stone-300">Members</div>
+                <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 px-4 py-3 backdrop-blur">
+                  <div class="text-stone-600">Members</div>
                   <div class="text-xl font-black">{{ stats.members.total|num_fmt }}</div>
                 </div>
-                <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-                  <div class="text-stone-300">Events</div>
+                <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 px-4 py-3 backdrop-blur">
+                  <div class="text-stone-600">Events</div>
                   <div class="text-xl font-black">{{ stats.events.total|num_fmt }}</div>
                 </div>
-                <div class="rounded-2xl bg-white/10 px-4 py-3 backdrop-blur">
-                  <div class="text-stone-300">Attendees</div>
+                <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 px-4 py-3 backdrop-blur">
+                  <div class="text-stone-600">Attendees</div>
                   <div class="text-xl font-black">{{ stats.attendees.total|num_fmt }}</div>
                 </div>
               </div>
@@ -323,7 +449,7 @@
                 Once roles are posted, this section will show active opportunities and saved interest.
               </p>
               <a href="/jobs"
-                 class="mt-5 inline-flex rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-stone-800">
+                 class="mt-5 inline-flex rounded-full border border-[#d8c7b2] bg-[#f5efe7] px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-[#eadcc9]">
                 View jobs
               </a>
             </div>
@@ -422,7 +548,7 @@
                 Once startups and open-source projects are published, this page will show category and growth trends.
               </p>
               <a href="/landscape"
-                 class="mt-5 inline-flex rounded-full bg-stone-950 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-stone-800">
+                 class="mt-5 inline-flex rounded-full border border-[#d8c7b2] bg-[#f5efe7] px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-[#eadcc9]">
                 View ecosystem
               </a>
             </div>
@@ -437,6 +563,16 @@
 {% block scripts -%}
   {# djlint:off #}
   <script type="application/json" data-site-stats>{{ stats | json | safe }}</script>
+  <script type="application/json" data-explore-map-data data-entity="groups">{ "groups": {{ group_map_groups|json|safe }}, "bbox": {{ group_map_bbox|json|safe }}, "query": "alliance[0]=goup&limit=100&offset=0&sort_by=name" }</script>
   {# djlint:on #}
   <script type="module" src="/static/js/site/stats.js"></script>
+  <script type="module">
+    import {
+      initializeExploreWidgets
+    } from "/static/js/alliance/explore/page-controls.js";
+
+    initializeExploreWidgets(document, {
+      force: true
+    });
+  </script>
 {% endblock scripts -%}

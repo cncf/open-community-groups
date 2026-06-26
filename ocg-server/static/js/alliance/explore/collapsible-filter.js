@@ -246,14 +246,14 @@ export class CollapsibleFilter extends LitWrapper {
                 aria-controls=${optionsId}
                 aria-expanded=${String(!this.isCollapsed)}
                 aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
-                class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
+                class="group/btn collapse-btn border border-stone-200 hover:border-[#d8c7b2] hover:bg-[#f5efe7] focus:ring-0 focus:outline-none focus:ring-[#eadcc9] font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
               >
                 ${this.isCollapsed
                   ? html`<div
-                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-down"
+                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-stone-700 icon-caret-down"
                     ></div>`
                   : html`<div
-                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-up"
+                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-stone-700 icon-caret-up"
                     ></div>`}
               </button>`
             : ""}
@@ -270,7 +270,7 @@ export class CollapsibleFilter extends LitWrapper {
             aria-label=${`Any ${this.title}`}
             class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${this
               .selected.length === 0
-              ? "border-primary-500 text-primary-500"
+              ? "border-[#d8c7b2] bg-[#f5efe7] text-stone-950"
               : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"}"
           >
             <div class="text-[0.775rem] text-center text-nowrap">Any</div>
@@ -285,7 +285,7 @@ export class CollapsibleFilter extends LitWrapper {
                 class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${this.selected.includes(
                   opt.value,
                 )
-                  ? "border-primary-500 text-primary-500"
+                  ? "border-[#d8c7b2] bg-[#f5efe7] text-stone-950"
                   : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"}"
               >
                 <input

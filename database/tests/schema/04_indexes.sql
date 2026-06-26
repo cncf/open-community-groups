@@ -486,6 +486,7 @@ select indexes_are('site', array[
 select indexes_are('user', array[
     'user_pkey',
     'user_email_lower_idx',
+    'user_mentorship_idx',
     'user_name_lower_idx',
     'user_tsdoc_idx',
     'user_username_lower_idx'

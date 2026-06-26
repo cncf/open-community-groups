@@ -258,6 +258,10 @@ async function runAction(action, args) {
       return searchJobs(args);
     case "search_landscape":
       return searchLandscape(args);
+    case "create_startup":
+      return createLandscapeEntry(args, "startup");
+    case "create_github_project":
+      return createLandscapeEntry(args, "github_project");
     case "search_wiki":
       return searchWiki(args);
     case "submit_talk":
@@ -336,7 +340,7 @@ async function searchAll(args) {
         },
         {
           key: "wiki",
-          title: "Reading Brief",
+          title: "Tech News",
           total: wiki.length,
           results: wiki.map((source) => ({
             title: source.source_label,
@@ -379,6 +383,64 @@ async function searchLandscape(args) {
   const sql = sqlWithJsonArgs(filters, `
 select search_landscape_entries(j)::text from args;
 `);
+
+  return (await runPsql(sql)).trim();
+}
+
+async function createLandscapeEntry(args, kind) {
+  if (!ENABLE_MUTATIONS) {
+    throw new Error("Mutating MCP tools are disabled. Set MCP_ENABLE_MUTATIONS=true to allow landscape entry creation.");
+  }
+
+  if (!["startup", "github_project"].includes(kind)) {
+    throw new Error("kind must be one of: startup, github_project");
+  }
+
+  const actorUserId = requireUuid(args.actor_user_id, "actor_user_id");
+  const allianceId = requireUuid(args.alliance_id, "alliance_id");
+  const entry = buildLandscapeEntryPayload(args, kind);
+  const tags = normalizeTags(args.tags);
+  const entryJsonBase64 = Buffer.from(JSON.stringify(entry), "utf8").toString("base64");
+  const tagArray = tags.length ? `array[${tags.map((tag) => sqlStringLiteral(tag)).join(", ")}]` : "array[]::text[]";
+  const published = args.published !== false;
+  const publishSql =
+    published
+      ? ""
+      : `,
+unpublished as (
+  select
+    created.landscape_entry_id,
+    update_landscape_entry_published(
+      '${actorUserId}'::uuid,
+      '${allianceId}'::uuid,
+      created.landscape_entry_id,
+      false
+    )
+  from created
+)`;
+  const resultJoin = published ? "" : "\nleft join unpublished using (landscape_entry_id)";
+  const status = published ? "published" : "draft";
+  const message = published
+    ? "Landscape entry created and published."
+    : "Landscape entry created as an unpublished draft.";
+
+  const sql = `
+with created as (
+  select add_landscape_entry(
+    '${actorUserId}'::uuid,
+    '${allianceId}'::uuid,
+    convert_from(decode('${entryJsonBase64}', 'base64'), 'UTF8')::jsonb,
+    ${tagArray}
+  ) as landscape_entry_id
+)${publishSql}
+select json_build_object(
+  'landscape_entry_id', landscape_entry_id,
+  'kind', '${kind}',
+  'status', '${status}',
+  'message', ${sqlStringLiteral(message)}
+)::text
+from created${resultJoin};
+`;
 
   return (await runPsql(sql)).trim();
 }
@@ -883,6 +945,39 @@ function buildEventPayload(args) {
     venue_state: args.venue_state || "",
     venue_zip_code: args.venue_zip_code || "",
   };
+}
+
+function buildLandscapeEntryPayload(args, kind) {
+  const payload = {
+    name: requireString(args.name, "name"),
+    kind,
+    summary: requireString(args.summary, "summary"),
+    description: optionalString(args.description) || "",
+    website_url: optionalString(args.website_url) || "",
+    github_url: optionalString(args.github_url) || "",
+    logo_url: optionalString(args.logo_url) || "",
+    category: optionalString(args.category) || "",
+    tags: normalizeTags(args.tags).join(", "),
+  };
+
+  if (kind === "github_project" && !payload.github_url) {
+    throw new Error("github_url is required for GitHub project landscape entries");
+  }
+
+  return payload;
+}
+
+function normalizeTags(value) {
+  if (value === undefined || value === null || value === "") {
+    return [];
+  }
+
+  const rawTags = Array.isArray(value) ? value : String(value).split(",");
+  return [...new Set(rawTags.map((tag) => String(tag).trim()).filter(Boolean))];
+}
+
+function sqlStringLiteral(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
 }
 
 function requireUuid(value, name) {

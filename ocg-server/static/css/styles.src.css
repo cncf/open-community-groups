@@ -66,19 +66,19 @@
   }
 
   .btn-primary {
-     @apply py-1.5 px-5 h-10 text-sm text-center text-white rounded-full bg-primary-500 transition-colors enabled:hover:bg-primary-700 enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden;
+     @apply py-1.5 px-5 h-10 text-sm font-bold text-center text-white rounded-full bg-stone-950 shadow-sm transition-colors enabled:hover:bg-stone-800 enabled:focus:ring-4 enabled:focus:ring-stone-200 enabled:active:ring-4 enabled:active:ring-stone-200 enabled:focus:bg-stone-800 enabled:focus:text-white relative overflow-hidden;
   }
 
   .btn-primary-anchor {
-    @apply py-2 px-5 inline-block text-sm text-center text-white rounded-full bg-primary-500 transition-colors hover:bg-primary-700 focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden;
+    @apply py-2 px-5 inline-block text-sm font-bold text-center text-white rounded-full bg-stone-950 shadow-sm transition-colors hover:bg-stone-800 focus:ring-4 focus:ring-stone-200 active:ring-4 active:ring-stone-200 focus:bg-stone-800 focus:text-white relative overflow-hidden;
   }
 
   .btn-secondary {
-    @apply py-1.5 px-5 h-10 bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors enabled:hover:bg-primary-500 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-primary-300 enabled:active:ring-4 enabled:active:ring-primary-300 enabled:focus:bg-primary-700 enabled:focus:text-white relative overflow-hidden;
+    @apply py-1.5 px-5 h-10 bg-white items-center text-sm font-bold text-center text-stone-700 rounded-full border border-stone-200 shadow-sm transition-colors enabled:hover:border-stone-950 enabled:hover:bg-stone-950 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-stone-200 enabled:active:ring-4 enabled:active:ring-stone-200 enabled:focus:bg-stone-950 enabled:focus:text-white relative overflow-hidden;
   }
 
   .btn-secondary-anchor {
-    @apply py-2 px-5 inline-block bg-white items-center text-sm text-center text-primary-500 rounded-full border border-primary-500 transition-colors hover:bg-primary-500 hover:text-white focus:ring-4 focus:ring-primary-300 active:ring-4 active:ring-primary-300 focus:bg-primary-700 focus:text-white relative overflow-hidden;
+    @apply py-2 px-5 inline-block bg-white items-center text-sm font-bold text-center text-stone-700 rounded-full border border-stone-200 shadow-sm transition-colors hover:border-stone-950 hover:bg-stone-950 hover:text-white focus:ring-4 focus:ring-stone-200 active:ring-4 active:ring-stone-200 focus:bg-stone-950 focus:text-white relative overflow-hidden;
   }
 
   .btn-tertiary {
@@ -95,11 +95,11 @@
   }
 
   .btn-primary-outline {
-    @apply enabled:cursor-pointer text-center text-primary-500 border border-primary-500 transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-primary-500 hover:enabled:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply enabled:cursor-pointer text-center font-bold text-stone-700 border border-stone-200 shadow-sm transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-stone-950 hover:enabled:border-stone-950 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }
 
   .btn-primary-outline-anchor {
-    @apply cursor-pointer text-center text-primary-500 border border-primary-500 bg-white transition-colors rounded-full hover:text-white hover:bg-primary-500 hover:border-primary-500 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply cursor-pointer text-center font-bold text-stone-700 border border-stone-200 shadow-sm bg-white transition-colors rounded-full hover:text-white hover:bg-stone-950 hover:border-stone-950 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }
 
   .btn-primary-outline .svg-icon,
@@ -200,19 +200,19 @@
   }
 
   .input-primary {
-    @apply block w-full rounded-md bg-white px-3 py-1.5 text-base text-stone-900 border border-stone-200 placeholder:text-stone-500/75 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
+    @apply block w-full rounded-xl bg-white px-3 py-2 text-base text-stone-900 border border-stone-200 placeholder:text-stone-500/75 shadow-sm focus:outline-2 focus:-outline-offset-2 focus:outline-stone-400 focus:ring-transparent sm:text-sm/6;
   }
 
   .select-primary {
-    @apply relative col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
+    @apply relative col-start-1 row-start-1 w-full appearance-none rounded-xl bg-white py-2 pl-3 pr-8 text-base text-stone-900 border border-stone-200 shadow-sm focus:outline-2 focus:-outline-offset-2 focus:outline-stone-400 focus:ring-transparent sm:text-sm/6;
   }
 
   .radio-primary {
-    @apply size-4 text-primary-700 border border-stone-200 bg-stone-50 checked:border-primary-500 checked:bg-primary-500 cursor-pointer focus:ring-0 focus:ring-transparent;
+    @apply size-4 text-stone-950 border border-stone-300 bg-stone-50 checked:border-stone-950 checked:bg-stone-950 cursor-pointer focus:ring-0 focus:ring-transparent;
   }
 
   .checkbox-primary {
-    @apply size-4 rounded-sm text-primary-700 border border-stone-200 bg-stone-50 checked:border-primary-500 checked:bg-primary-500 cursor-pointer focus:ring-0 focus:ring-transparent;
+    @apply size-4 rounded-sm text-stone-950 border border-stone-300 bg-stone-50 checked:border-stone-950 checked:bg-stone-950 cursor-pointer focus:ring-0 focus:ring-transparent;
   }
 
   .asterisk {
@@ -918,6 +918,168 @@ input:placeholder-shown {
   white-space: normal;
   overflow-wrap: break-word;
   word-wrap: break-word;
+}
+
+.docs-markdown {
+  color: var(--color-stone-700);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.docs-markdown > h1:first-child {
+  display: none;
+}
+
+.docs-markdown h2 {
+  margin-top: 2.5rem;
+  margin-bottom: 0.9rem;
+  color: var(--color-stone-950);
+  font-size: clamp(1.55rem, 2vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+}
+
+.docs-markdown h3 {
+  margin-top: 1.9rem;
+  margin-bottom: 0.7rem;
+  color: var(--color-stone-950);
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.docs-markdown h4,
+.docs-markdown h5,
+.docs-markdown h6 {
+  margin-top: 1.5rem;
+  color: var(--color-stone-900);
+  font-weight: 800;
+}
+
+.docs-markdown p {
+  margin-bottom: 1rem;
+}
+
+.docs-markdown p,
+.docs-markdown li {
+  color: var(--color-stone-700);
+}
+
+.docs-markdown ul,
+.docs-markdown ol {
+  margin-top: 0.75rem;
+  margin-bottom: 1.25rem;
+  border-radius: 1.5rem;
+  background: var(--color-stone-50);
+  padding: 1rem 1.25rem;
+}
+
+.docs-markdown ul li,
+.docs-markdown ol li {
+  margin-left: 1.2rem;
+  padding-left: 0.25rem;
+}
+
+.docs-markdown li + li {
+  margin-top: 0.45rem;
+}
+
+.docs-markdown a {
+  color: var(--color-stone-950);
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-color: var(--color-stone-300);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+.docs-markdown a:hover {
+  color: var(--color-stone-700);
+  text-decoration-color: var(--color-stone-950);
+}
+
+.docs-markdown table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  overflow: hidden;
+  border: 1px solid var(--color-stone-200);
+  border-radius: 1.5rem;
+  background: var(--color-white);
+  box-shadow: 0 18px 45px rgb(120 113 108 / 0.12);
+}
+
+.docs-markdown thead {
+  background: #f5efe7;
+  color: var(--color-stone-800);
+}
+
+.docs-markdown table th {
+  color: var(--color-stone-800);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.docs-markdown table td,
+.docs-markdown table th {
+  border: 0;
+  border-bottom: 1px solid var(--color-stone-200);
+  padding: 0.9rem 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.docs-markdown table tr:last-child td {
+  border-bottom: 0;
+}
+
+.docs-markdown table tbody tr:nth-child(even) {
+  background: var(--color-stone-50);
+}
+
+.docs-markdown code {
+  border-radius: 0.65rem;
+  background: var(--color-stone-100);
+  padding: 0.15rem 0.4rem;
+  color: var(--color-stone-950);
+  font-size: 0.92em;
+  font-weight: 700;
+}
+
+.docs-markdown pre {
+  border-radius: 1.5rem;
+  border: 1px solid var(--color-stone-800);
+  background: var(--color-stone-950);
+  padding: 1rem;
+  color: var(--color-stone-100);
+}
+
+.docs-markdown pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.docs-markdown blockquote {
+  border-left: 0;
+  border-radius: 1.5rem;
+  background: var(--color-stone-50);
+  padding: 1rem 1.25rem;
+  color: var(--color-stone-700);
+  font-style: normal;
+}
+
+.docs-markdown img {
+  display: block;
+  height: auto;
+  margin: 1.5rem auto;
+  border-radius: 1.5rem;
+  border: 1px solid var(--color-stone-200);
+  background: var(--color-white);
+  box-shadow: 0 18px 45px rgb(120 113 108 / 0.16);
 }
 
 /* End markdown */

@@ -54,9 +54,9 @@
   <breadcrumb-nav banner-url="{{ group.banner_url.as_ref().unwrap_or(&group.alliance.banner_url) }}" banner-mobile-url="{{ group.banner_mobile_url.as_ref().unwrap_or(&group.alliance.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ group.alliance.display_name|json }}, "href": "/{{ group.alliance.name }}", "icon": "alliance"}, {"label": {{ group.name|demoji|json }}, "icon": "groups", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
-  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full">
-      <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
+  <div class="relative container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14 flex grow h-full">
+    <div class="bg-white border border-stone-200 rounded-[2rem] shadow-xl shadow-stone-200/50 flex flex-col w-full">
+      <div class="flex gap-y-8 lg:gap-y-14 flex-col px-5 sm:px-8 lg:px-12 py-6 sm:py-8 lg:py-12">
         {# Group header -#}
         <div>
           {# Main flex container -#}
@@ -71,7 +71,7 @@
               <div class="min-w-0 flex justify-between">
                 <div class="min-w-0 flex flex-col">
                   {# Region/Category legend -#}
-                  <span class="text-sm font-semibold tracking-wide uppercase text-stone-400 lg:-mt-1 md:mb-0.5">
+                  <span class="text-sm font-black tracking-[0.18em] uppercase text-stone-500 lg:-mt-1 md:mb-1">
                     {% if let Some(region) = &group.region -%}
                       {{ region.name }}
                     {% else -%}
@@ -82,11 +82,11 @@
 
                   {# Group name -#}
                   {% if group.name.len() > 68 -%}
-                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
+                    <h1 class="text-3xl lg:text-5xl font-black tracking-[-0.045em] text-stone-950 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ group.name|demoji }}
                     </h1>
                   {% else -%}
-                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
+                    <h1 class="text-3xl lg:text-5xl font-black tracking-[-0.045em] text-stone-950 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ group.name|demoji }}
                     </h1>
                   {% endif -%}
@@ -138,7 +138,7 @@
                          title="More actions">
                   <div class="svg-icon size-4 icon-vertical-dots"></div>
                 </summary>
-                <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
+                <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-stone-200 bg-white py-1 shadow-xl shadow-stone-200/70 sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
                   <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/members"
                      class="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">
                     <div class="svg-icon size-4 icon-people bg-stone-600"></div>
@@ -169,11 +169,11 @@
         <div class="py-4">
           <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8">
             {# Next event section -#}
-            <div class="border border-stone-200 rounded-lg flex flex-col bg-white">
+            <div class="border border-stone-200 rounded-[1.75rem] flex flex-col bg-white shadow-sm">
               <div class="flex flex-col p-4 h-full">
                 {% let next_event = upcoming_events.first() -%}
                 <div class="flex items-center justify-between mb-4 min-h-[25px]">
-                  <div class="text-base/3 uppercase font-semibold text-stone-400">Next event</div>
+                  <div class="text-xs uppercase tracking-[0.18em] font-black text-stone-500">Next event</div>
                   {% if let Some(next_event_card) = &next_event -%}
                     <a href="/{{ group.alliance.name }}/group/{{ next_event_card.event.public_group_slug() }}/event/{{ next_event_card.event.slug }}"
                        class="btn-secondary-anchor btn-mini"
@@ -182,7 +182,7 @@
                   {% endif -%}
                 </div>
 
-                <div class="rounded-lg border border-dashed border-stone-200 bg-white p-4 text-stone-400 min-h-[108px] grow">
+                <div class="rounded-2xl border border-dashed border-stone-200 bg-stone-50 p-4 text-stone-400 min-h-[108px] grow">
                   {% if let Some(next_event_card) = &next_event -%}
                     {% if let Some(starts_at) = &next_event_card.event.starts_at -%}
                       <div>
@@ -251,13 +251,13 @@
           {# End next event section -#}
 
           {# Location and map section -#}
-          <div class="border border-stone-200 rounded-lg flex flex-col bg-white">
+          <div class="border border-stone-200 rounded-[1.75rem] flex flex-col bg-white shadow-sm">
             {# Location details -#}
             <div class="flex flex-col p-4 h-full">
               <div class="flex items-center justify-between mb-4 min-h-[25px]">
-                <div class="text-base/3 uppercase font-semibold text-stone-400">Location</div>
+                <div class="text-xs uppercase tracking-[0.18em] font-black text-stone-500">Location</div>
               </div>
-              <div class="relative rounded-lg border border-dashed border-stone-200 bg-white overflow-hidden grow min-h-[108px]">
+              <div class="relative rounded-2xl border border-dashed border-stone-200 bg-stone-50 overflow-hidden grow min-h-[108px]">
                 {% if let Some(lat) = &group.latitude %}
                   {% if let Some(lng) = &group.longitude %}
                     {% let location_text = self.group.location(70) -%}
@@ -296,8 +296,8 @@
         <section class="rounded-2xl border border-stone-200 bg-stone-50/70 p-5 sm:p-6">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <div class="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-700">
-                <div class="svg-icon size-3 icon-star bg-primary-600"></div>
+              <div class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-stone-700">
+                <div class="svg-icon size-3 icon-star bg-stone-700"></div>
                 Member stories
               </div>
               <h2 class="mt-4 text-2xl font-semibold text-stone-950">Member spotlights</h2>
@@ -329,14 +329,14 @@
                         <div class="flex flex-wrap items-center gap-2">
                           <h3 class="font-semibold text-stone-950">{{ spotlight.title }}</h3>
                           {% if spotlight.featured -%}
-                            <span class="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">Featured</span>
+                            <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">Featured</span>
                           {% endif -%}
                         </div>
                         <p class="mt-2 line-clamp-2 text-sm/6 text-stone-600">{{ spotlight.story }}</p>
                         <div class="mt-3 flex flex-wrap items-center gap-2 text-sm">
                           <span class="font-medium text-stone-800">{{ spotlight.member_display_name() }}</span>
                           <a href="{{ spotlight.profile_path() }}"
-                             class="font-semibold text-primary-700 hover:text-primary-900">Profile card</a>
+                             class="font-semibold text-stone-900 underline decoration-stone-300 underline-offset-4 hover:text-stone-700">Profile card</a>
                         </div>
                       </div>
                     </div>
@@ -350,8 +350,8 @@
         <section class="rounded-2xl border border-stone-200 bg-stone-50/70 p-5 sm:p-6">
           <div class="flex items-start justify-between gap-4">
             <div>
-              <div class="inline-flex items-center gap-2 rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-700">
-                <div class="svg-icon size-3 icon-shopping-bag bg-primary-600"></div>
+              <div class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-stone-700">
+                <div class="svg-icon size-3 icon-shopping-bag bg-stone-700"></div>
                 Group swag
               </div>
               <h2 class="mt-4 text-2xl font-semibold text-stone-950">Group store</h2>
@@ -382,7 +382,7 @@
                       <div class="flex items-start justify-between gap-3">
                         <h3 class="font-semibold text-stone-950">{{ item.name }}</h3>
                         {% if item.featured -%}
-                          <span class="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">Featured</span>
+                          <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700">Featured</span>
                         {% endif -%}
                       </div>
                       {% if let Some(description) = &item.description -%}

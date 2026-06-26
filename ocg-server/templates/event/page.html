@@ -57,8 +57,8 @@
   <breadcrumb-nav banner-url="{{ event.banner_url.as_ref().or(event.group.banner_url.as_ref()).unwrap_or(&event.alliance.banner_url) }}" banner-mobile-url="{{ event.banner_mobile_url.as_ref().or(event.group.banner_mobile_url.as_ref()).unwrap_or(&event.alliance.banner_mobile_url) }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ event.alliance.display_name|json }}, "href": "/{{ event.alliance.name }}", "icon": "alliance"}, {"label": {{ event.group.name|json }}, "href": "/{{ event.alliance.name }}/group/{{ event.group.public_slug() }}", "icon": "groups"}, {"label": {{ event.name|demoji|json }}, "icon": "date", "current": true}]'></breadcrumb-nav>
   {# End breadcrumb -#}
 
-  <div class="relative container mx-auto max-w-7xl p-4 sm:p-6 lg:p-8 pb-8 md:pb-10 lg:pb-16 flex grow h-full">
-    <div class="bg-white border border-stone-200 rounded-lg flex flex-col w-full relative overflow-visible">
+  <div class="relative container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14 flex grow h-full">
+    <div class="bg-white border border-stone-200 rounded-[2rem] shadow-xl shadow-stone-200/50 flex flex-col w-full relative overflow-visible">
       {# Status badge -#}
       {% if event.canceled -%}
         {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity,
@@ -74,7 +74,7 @@
       {% endif -%}
       {# End status badge -#}
 
-      <div class="flex gap-y-6 sm:gap-y-8 lg:gap-y-12 flex-col px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
+      <div class="flex gap-y-8 lg:gap-y-14 flex-col px-5 sm:px-8 lg:px-12 py-6 sm:py-8 lg:py-12">
         {# Event header -#}
         <div>
           {# Main flex container -#}
@@ -90,18 +90,18 @@
                 <div class="min-w-0 flex flex-col">
                   {# Group/Category legend -#}
                   <a href="/{{ event.alliance.name }}/group/{{ event.group.public_slug() }}"
-                     class="text-sm font-semibold tracking-wide uppercase text-stone-400 hover:underline lg:-mt-1 md:mb-0.5"
+                     class="text-sm font-black tracking-[0.18em] uppercase text-stone-500 hover:text-stone-950 lg:-mt-1 md:mb-1"
                      hx-boost="true"
                      hx-target="body">{{ event.group.name }}</a>
                   {# End group/category legend -#}
 
                   {# Event name -#}
                   {% if event.name.len() > 68 -%}
-                    <h1 class="text-[0.95rem]/5 xl:text-[1.45rem]/[1.35] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
+                    <h1 class="text-3xl lg:text-5xl font-black tracking-[-0.045em] text-stone-950 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ event.name|demoji }}
                     </h1>
                   {% else -%}
-                    <h1 class="text-[1.05rem]/6 xl:text-[1.65rem]/[1.2] font-semibold text-stone-900 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
+                    <h1 class="text-3xl lg:text-5xl font-black tracking-[-0.045em] text-stone-950 line-clamp-2 mt-2 md:mt-1 xl:mt-0">
                       {{ event.name|demoji }}
                     </h1>
                   {% endif -%}
@@ -209,7 +209,7 @@
                  class="group btn-primary-outline-anchor hidden h-10 items-center justify-center gap-2 px-4 md:inline-flex"
                  aria-label="Share on LinkedIn"
                  title="Share on LinkedIn">
-                <div class="svg-icon size-4 icon-linkedin bg-primary-500 transition-colors group-hover:bg-white"></div>
+                <div class="svg-icon size-4 icon-linkedin bg-stone-700 transition-colors group-hover:bg-white"></div>
                 <span>LinkedIn</span>
               </a>
               {# Attend button section -#}
@@ -555,7 +555,7 @@
                   <button type="button"
                           data-day-tab="day-{{ loop.index0 }}"
                           data-active="{%- if loop.first -%}true{%- else -%}false{%- endif -%}"
-                          class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-primary-500 data-[active=true]:border-primary-500 text-nowrap">
+                          class="cursor-pointer inline-flex items-center justify-center p-2 pt-0 sm:p-3 sm:pt-0 border-b-2 border-transparent rounded-t-lg hover:text-stone-600 hover:border-stone-300 data-[active=true]:text-stone-950 data-[active=true]:border-stone-950 text-nowrap">
                     <span class="hidden md:inline">{{ day.0.format("%A, %B %e") }}</span>
                     <span class="inline md:hidden">{{ day.0.format("%e %b") }}</span>
                   </button>
@@ -733,7 +733,7 @@
   <a href="{{ url }}"
      target="_blank"
      rel="noopener noreferrer"
-     class="group p-1.5 bg-stone-100 hover:bg-primary-500 rounded-full transition-colors"
+     class="group p-1.5 bg-stone-100 hover:bg-stone-950 rounded-full transition-colors"
      aria-label="{{ label }}">
     <div class="svg-icon size-3 bg-stone-600 group-hover:bg-white icon-{{ icon }}"></div>
   </a>

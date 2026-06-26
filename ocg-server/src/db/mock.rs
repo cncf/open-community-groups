@@ -46,6 +46,12 @@ mock! {
             name: Option<String>,
             scopes: &[crate::handlers::api::auth::ApiScope],
         ) -> Result<crate::handlers::api::auth::ApiToken>;
+        async fn add_mentorship_request(
+            &self,
+            requester_user_id: Uuid,
+            mentor_username: &str,
+            input: &crate::templates::site::profile::MentorshipRequestInput,
+        ) -> Result<crate::templates::site::profile::MentorshipRequestRecord>;
         async fn delete_session(
             &self,
             session_id: &axum_login::tower_sessions::session::Id,
@@ -198,6 +204,16 @@ mock! {
             alliance_id: Uuid,
             event_kinds: Vec<crate::types::event::EventKind>,
         ) -> Result<Vec<crate::types::event::EventSummary>>;
+        async fn is_alliance_group_member(
+            &self,
+            alliance_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<bool>;
+        async fn list_alliance_members(
+            &self,
+            alliance_id: Uuid,
+            filters: &crate::templates::alliance::AllianceMembersFilters,
+        ) -> Result<crate::templates::alliance::AllianceMembersOutput>;
     }
 
     impl crate::db::dashboard::DBDashboard for DB {}

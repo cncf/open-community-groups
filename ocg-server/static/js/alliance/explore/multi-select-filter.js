@@ -250,7 +250,7 @@ export class MultiSelectFilter extends LitWrapper {
                                 >
                                   <span class="shrink-0 w-4 h-4 flex items-center justify-center">
                                     ${isSelected
-                                      ? html`<div class="svg-icon size-3 icon-check bg-primary-500"></div>`
+                                      ? html`<div class="svg-icon size-3 icon-check bg-stone-700"></div>`
                                       : ""}
                                   </span>
                                   <span class="text-stone-700">${opt.name}</span>
@@ -274,7 +274,7 @@ export class MultiSelectFilter extends LitWrapper {
                   (opt) => opt.value,
                   (opt) => html`
                     <span
-                      class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-primary-500 border border-primary-500 rounded-lg"
+                      class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-stone-950 border border-[#d8c7b2] bg-[#f5efe7] rounded-lg"
                     >
                       <span>${opt.name}</span>
                       <button

@@ -3,20 +3,28 @@
   {% if data.len() > min_points + 0 -%}
     {% if href.len() > 0 -%}
       <a href="{{ href }}"
-         class="group block bg-white border border-stone-200 rounded-lg px-2 py-4 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-xl hover:shadow-stone-200/60 md:p-6 {{ wrapper_class }}">
-        <div class="mb-3 flex justify-end">
-          <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-500 transition group-hover:bg-primary-50 group-hover:text-primary-700">
+         class="group relative block overflow-hidden rounded-2xl border border-stone-200 bg-white px-2 py-4 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-xl hover:shadow-stone-200/60 md:p-6 {{ wrapper_class }}">
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-b from-stone-100/80 to-transparent opacity-0 transition group-hover:opacity-100">
+        </div>
+        <div class="relative mb-3 flex items-center justify-between">
+          <span class="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-500 transition group-hover:bg-[#f5efe7] group-hover:text-stone-950">
+            <span class="size-1.5 rounded-full bg-stone-400 transition group-hover:bg-[#b9a68e]"></span>
+            Live trend
+          </span>
+          <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-500 transition group-hover:bg-[#f5efe7] group-hover:text-stone-950">
             View source
           </span>
         </div>
-        <div id="{{ chart_id }}" class="{{ class }}">
+        <div id="{{ chart_id }}" class="relative {{ class }}">
           <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
           </svg-spinner>
         </div>
       </a>
     {%- else -%}
-      <div class="bg-white border border-stone-200 rounded-lg px-2 py-4 md:p-6 {{ wrapper_class }}">
-        <div id="{{ chart_id }}" class="{{ class }}">
+      <div class="relative overflow-hidden rounded-2xl border border-stone-200 bg-white px-2 py-4 md:p-6 {{ wrapper_class }}">
+        <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-b from-stone-100/80 to-transparent">
+        </div>
+        <div id="{{ chart_id }}" class="relative {{ class }}">
           <svg-spinner size="size-10" class="flex items-center justify-center h-full text-gray-500">
           </svg-spinner>
         </div>

@@ -35,7 +35,7 @@ test.describe("site search page", () => {
     await expect(getSearchSection(page, "Groups")).toBeVisible();
     await expect(getSearchSection(page, "Jobs")).toBeVisible();
     await expect(getSearchSection(page, "Ecosystem")).toBeVisible();
-    await expect(getSearchSection(page, "Reading Brief")).toBeVisible();
+    await expect(getSearchSection(page, "Tech News")).toBeVisible();
 
     await expect(
       getSearchSection(page, "Events").getByRole("link", { name: "View all" }),

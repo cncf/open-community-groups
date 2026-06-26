@@ -42,6 +42,7 @@ pub(crate) fn alliance_brand_path<S: AsRef<str>>(
         "jobs",
         "landscape",
         "log-in",
+        "privacy",
         "profiles",
         "search",
         "sign-up",

@@ -174,10 +174,18 @@ pub(crate) async fn sign_up_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn user_menu_section(
     auth_session: AuthSession,
+    State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    let notification_count = if let Some(user) = auth_session.user.as_ref() {
+        db.count_user_pending_invitations(user.user_id).await?
+    } else {
+        0
+    };
+
     // Prepare template
     let template = templates::auth::UserMenuSection {
         user: User::from_session(auth_session).await?,
+        notification_count,
     };
 
     Ok(Html(template.render()?))

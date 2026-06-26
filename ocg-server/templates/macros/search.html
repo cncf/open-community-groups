@@ -10,7 +10,7 @@
              id="ts_query"
              name="ts_query"
              value="{{ value_ }}"
-             class="peer w-[100%] rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-18"
+             class="peer w-[100%] rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-[#d8c7b2] focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-18"
              placeholder="{{ placeholder }}"
              autocomplete="off" />
       <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
@@ -22,7 +22,7 @@
       <div class="absolute right-[6px] top-[5px]">
         <button id="search-btn"
                 class="btn-secondary group p-1.5 h-[30px] w-[30px] mt-[3px] mr-[3px]">
-          <div class="svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white transition-colors icon-magnifying-glass">
+          <div class="svg-icon h-4 w-4 mx-auto bg-stone-700 group-hover:bg-white transition-colors icon-magnifying-glass">
           </div>
         </button>
       </div>
@@ -41,16 +41,16 @@
              class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
           <div id="overlay-search-tips"
                data-modal-toggle="search-tips"
-               class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+               class="modal-overlay absolute w-full h-full bg-[#3a2f25] opacity-[0.32]"></div>
           <div class="modal-panel p-4 max-w-2xl">
-            <div class="modal-card rounded-lg">
+            <div class="modal-card rounded-[1.75rem]">
               {# Modal header -#}
               <div class="flex items-center justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-                <h3 class="text-xl font-semibold text-stone-900">Search tips</h3>
+                <h3 class="text-xl font-black tracking-tight text-stone-950">Search tips</h3>
                 <button id="close-search-tips-modal"
                         type="button"
                         data-modal-toggle="search-tips"
-                        class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                        class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-full text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
                   <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
                   <span class="sr-only">Close modal</span>
                 </button>

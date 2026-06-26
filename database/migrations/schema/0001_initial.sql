@@ -1223,6 +1223,10 @@ CREATE TABLE public."user" (
     interests text[],
     legacy_id integer,
     linkedin_url text,
+    mentorship_businesses boolean DEFAULT false NOT NULL,
+    mentorship_individuals boolean DEFAULT false NOT NULL,
+    mentorship_note text,
+    mentorship_price text,
     name text,
     password text,
     photo_url text,
@@ -1245,6 +1249,8 @@ CREATE TABLE public."user" (
     CONSTRAINT user_facebook_url_check CHECK ((btrim(facebook_url) <> ''::text)),
     CONSTRAINT user_github_url_check CHECK ((btrim(github_url) <> ''::text)),
     CONSTRAINT user_linkedin_url_check CHECK ((btrim(linkedin_url) <> ''::text)),
+    CONSTRAINT user_mentorship_note_check CHECK ((btrim(mentorship_note) <> ''::text)),
+    CONSTRAINT user_mentorship_price_check CHECK ((btrim(mentorship_price) <> ''::text)),
     CONSTRAINT user_password_check CHECK ((btrim(password) <> ''::text)),
     CONSTRAINT user_photo_url_check CHECK ((btrim(photo_url) <> ''::text)),
     CONSTRAINT user_registration_status_check CHECK ((registration_status = ANY (ARRAY['pre-registered'::text, 'registered'::text]))),
@@ -1253,6 +1259,17 @@ CREATE TABLE public."user" (
     CONSTRAINT user_twitter_url_check CHECK ((btrim(twitter_url) <> ''::text)),
     CONSTRAINT user_username_check CHECK ((btrim(username) <> ''::text)),
     CONSTRAINT user_website_url_check CHECK ((btrim(website_url) <> ''::text))
+);
+
+CREATE TABLE public.mentorship_request (
+    mentorship_request_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    mentor_user_id uuid NOT NULL,
+    requester_user_id uuid NOT NULL,
+    audience_type text NOT NULL,
+    message text NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT mentorship_request_audience_type_check CHECK ((audience_type = ANY (ARRAY['individual'::text, 'business'::text]))),
+    CONSTRAINT mentorship_request_message_check CHECK ((btrim(message) <> ''::text))
 );
 
 INSERT INTO public.alliance_permission VALUES
@@ -1676,6 +1693,9 @@ ALTER TABLE ONLY public.session_speaker
 ALTER TABLE ONLY public.site
     ADD CONSTRAINT site_pkey PRIMARY KEY (site_id);
 
+ALTER TABLE ONLY public.mentorship_request
+    ADD CONSTRAINT mentorship_request_pkey PRIMARY KEY (mentorship_request_id);
+
 ALTER TABLE ONLY public."user"
     ADD CONSTRAINT user_pkey PRIMARY KEY (user_id);
 
@@ -1858,6 +1878,10 @@ CREATE UNIQUE INDEX meeting_event_id_idx ON public.meeting USING btree (event_id
 CREATE INDEX meeting_meeting_provider_id_idx ON public.meeting USING btree (meeting_provider_id);
 
 CREATE INDEX meeting_meeting_provider_id_provider_host_user_id_idx ON public.meeting USING btree (meeting_provider_id, provider_host_user_id);
+
+CREATE INDEX mentorship_request_mentor_user_id_created_at_idx ON public.mentorship_request USING btree (mentor_user_id, created_at DESC);
+
+CREATE INDEX mentorship_request_requester_user_id_created_at_idx ON public.mentorship_request USING btree (requester_user_id, created_at DESC);
 
 CREATE UNIQUE INDEX meeting_meeting_provider_id_provider_meeting_id_idx ON public.meeting USING btree (meeting_provider_id, provider_meeting_id);
 
@@ -2194,6 +2218,12 @@ ALTER TABLE ONLY public.notification
 
 ALTER TABLE ONLY public.notification
     ADD CONSTRAINT notification_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(user_id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.mentorship_request
+    ADD CONSTRAINT mentorship_request_mentor_user_id_fkey FOREIGN KEY (mentor_user_id) REFERENCES public."user"(user_id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY public.mentorship_request
+    ADD CONSTRAINT mentorship_request_requester_user_id_fkey FOREIGN KEY (requester_user_id) REFERENCES public."user"(user_id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY public.region
     ADD CONSTRAINT region_alliance_id_fkey FOREIGN KEY (alliance_id) REFERENCES public.alliance(alliance_id);

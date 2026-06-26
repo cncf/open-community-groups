@@ -224,6 +224,10 @@ pub(crate) async fn setup(
             get(group::members_page),
         )
         .route("/jobs/{job_id}/apply", post(site::jobs::apply))
+        .route(
+            "/profiles/{username}/mentorship-requests",
+            post(site::profile::request_mentorship),
+        )
         // Protected dashboard routes
         .route(
             "/dashboard/account/update/details",
@@ -305,6 +309,7 @@ pub(crate) async fn setup(
         .route("/jobs", get(site::jobs::page))
         .route("/jobs/{slug}", get(site::jobs::details))
         .route("/landscape", get(site::landscape::page))
+        .route("/privacy", get(site::privacy::page))
         .route("/profiles/{username}", get(site::profile::page))
         .route("/search", get(site::search::page))
         .route(
@@ -315,6 +320,7 @@ pub(crate) async fn setup(
         .route("/wiki", get(site::wiki::page))
         // Alliance-prefixed public routes
         .route("/{alliance}/brand", get(alliance::brand_page))
+        .route("/{alliance}/members", get(alliance::members_page))
         .route("/{alliance}", get(alliance::page))
         .route(
             "/{alliance}/group/{group_slug}/store",

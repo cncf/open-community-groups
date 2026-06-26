@@ -604,6 +604,16 @@ pub(crate) struct User {
     pub interests: Option<Vec<String>>,
     /// User's `LinkedIn` URL.
     pub linkedin_url: Option<String>,
+    /// Whether the user offers mentorship services for businesses.
+    #[serde(default)]
+    pub mentorship_businesses: bool,
+    /// Whether the user offers mentorship services for individuals.
+    #[serde(default)]
+    pub mentorship_individuals: bool,
+    /// Optional description of the user's mentorship offering.
+    pub mentorship_note: Option<String>,
+    /// Optional price or pricing guidance for mentorship.
+    pub mentorship_price: Option<String>,
     /// User's password hash (if present).
     pub password: Option<String>,
     /// User's photo URL.

@@ -4,5 +4,6 @@ pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod invitations;
 pub(crate) mod logs;
+pub(crate) mod mentorship;
 pub(crate) mod session_proposals;
 pub(crate) mod submissions;

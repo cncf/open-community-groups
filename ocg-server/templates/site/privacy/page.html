@@ -1,0 +1,113 @@
+{% extends "common/base.html" -%}
+
+{% block jumbotron -%}
+  <section class="relative overflow-hidden bg-[#f5efe7]">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.9),transparent_34rem),radial-gradient(circle_at_bottom_right,rgba(234,220,201,0.75),transparent_30rem)]">
+    </div>
+    <div class="relative container mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
+      <div class="mx-auto max-w-4xl text-center">
+        <div class="mb-7 inline-flex rounded-full border border-[#d8c7b2] bg-white/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-stone-700 shadow-sm backdrop-blur-xl">
+          Privacy Policy
+        </div>
+        <h1 class="text-balance text-5xl font-black tracking-[-0.055em] text-stone-950 sm:text-6xl lg:text-7xl">
+          How GOUP handles community data.
+        </h1>
+        <p class="mx-auto mt-7 max-w-3xl text-lg/8 font-medium text-stone-700 lg:text-xl/9">
+          We collect only what we need to run the community, review membership, connect members, and keep the platform useful and safe.
+        </p>
+      </div>
+    </div>
+  </section>
+{% endblock jumbotron -%}
+
+{% block content -%}
+  <div class="bg-stone-50">
+    <div class="container mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+      <article class="mx-auto max-w-4xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-xl shadow-stone-200/50 sm:p-8 lg:p-10">
+        <div class="rounded-3xl border border-[#d8c7b2] bg-[#f5efe7] p-5 text-sm/6 text-stone-700">
+          <span class="font-black text-stone-950">Last updated:</span>
+          June 26, 2026. This policy explains how GOUP uses information submitted through goup.vc and related community workflows.
+        </div>
+
+        <div class="mt-10 space-y-10">
+          <section>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Information we collect</h2>
+            <div class="mt-4 space-y-4 text-base/8 text-stone-600">
+              <p>
+                We may collect account details, profile information, city or group membership requests, event participation, job or sponsorship submissions, mentorship requests, messages you submit through forms, and basic technical information such as browser, device, and security logs.
+              </p>
+              <p>
+                If you share links such as LinkedIn profiles, websites, social handles, company details, photos, or bios, we use them to review fit, build trust, and help other members understand who you are.
+              </p>
+            </div>
+          </section>
+
+          <section>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">How we use information</h2>
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+              <div class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
+                <h3 class="font-black text-stone-950">Membership review</h3>
+                <p class="mt-2 text-sm/6 text-stone-600">To review registrations, approve city/group access, and maintain a high-trust community.</p>
+              </div>
+              <div class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
+                <h3 class="font-black text-stone-950">Community features</h3>
+                <p class="mt-2 text-sm/6 text-stone-600">To power profiles, events, jobs, mentorship, search, invitations, and member discovery.</p>
+              </div>
+              <div class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
+                <h3 class="font-black text-stone-950">Communication</h3>
+                <p class="mt-2 text-sm/6 text-stone-600">To send confirmations, notifications, updates, and relevant operational messages.</p>
+              </div>
+              <div class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
+                <h3 class="font-black text-stone-950">Safety and operations</h3>
+                <p class="mt-2 text-sm/6 text-stone-600">To prevent abuse, debug issues, improve reliability, and understand aggregate platform usage.</p>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">What may be visible</h2>
+            <div class="mt-4 space-y-4 text-base/8 text-stone-600">
+              <p>
+                Some profile and community information may be visible to other members or public visitors depending on the feature. This can include your name, username, bio, photo, social links, city/group affiliation, event participation, and content you choose to publish.
+              </p>
+              <p>Private form submissions, admin review notes, and operational logs are not intended to be public.</p>
+            </div>
+          </section>
+
+          <section>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Sharing and service providers</h2>
+            <p class="mt-4 text-base/8 text-stone-600">
+              We do not sell member data. We may share information with service providers that help us operate GOUP, such as hosting, email delivery, analytics, security, and automation tools. We may also disclose information if required by law, to protect the community, or with your direction.
+            </p>
+          </section>
+
+          <section>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Data retention</h2>
+            <p class="mt-4 text-base/8 text-stone-600">
+              We keep information for as long as needed to provide the service, support community operations, comply with legal obligations, resolve disputes, and maintain security. You can ask us to update or remove information where appropriate.
+            </p>
+          </section>
+
+          <section>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Your choices</h2>
+            <div class="mt-4 space-y-4 text-base/8 text-stone-600">
+              <p>
+                You can update your profile information from your account settings where available. You can also choose what optional information you share, such as bio, website, LinkedIn, social links, and profile photo.
+              </p>
+              <p>
+                To request access, correction, or deletion of your information, contact the GOUP team through the site or community administrators.
+              </p>
+            </div>
+          </section>
+
+          <section class="rounded-3xl border border-[#d8c7b2] bg-[#fffaf5] p-6">
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Contact</h2>
+            <p class="mt-4 text-base/8 text-stone-600">
+              Questions about privacy or data handling can be sent to GOUP community administrators. If a dedicated privacy contact is added later, this page will be updated.
+            </p>
+          </section>
+        </div>
+      </article>
+    </div>
+  </div>
+{% endblock content -%}

@@ -140,6 +140,9 @@ async fn test_sign_up_page_success() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("Notifications"));
+    assert!(body.contains(">2</span>"));
 }
 
 #[tokio::test]
@@ -203,6 +206,10 @@ async fn test_user_menu_section_success() {
         .times(1)
         .withf(move |id| *id == user_id)
         .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_count_user_pending_invitations()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(|_| Ok(2));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();

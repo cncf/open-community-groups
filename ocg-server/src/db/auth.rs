@@ -11,6 +11,7 @@ use crate::{
     auth::{User, UserSummary},
     db::PgExecutor,
     handlers::api::auth::{ApiScope, ApiToken, ApiUser},
+    templates::site::profile::{MentorshipRequestInput, MentorshipRequestRecord},
     templates::{auth::UserDetails, notifications::EmailVerification},
     types::permissions::{AlliancePermission, GroupPermission},
     types::user::{PublicUserProfile, UserProvider},
@@ -45,6 +46,14 @@ pub(crate) trait DBAuth {
         name: Option<String>,
         scopes: &[ApiScope],
     ) -> Result<ApiToken>;
+
+    /// Records a mentorship request.
+    async fn add_mentorship_request(
+        &self,
+        requester_user_id: Uuid,
+        mentor_username: &str,
+        input: &MentorshipRequestInput,
+    ) -> Result<MentorshipRequestRecord>;
 
     /// Deletes a session from the database.
     async fn delete_session(&self, session_id: &session::Id) -> Result<()>;
@@ -247,6 +256,20 @@ where
         .await
     }
 
+    #[instrument(skip(self, input), err)]
+    async fn add_mentorship_request(
+        &self,
+        requester_user_id: Uuid,
+        mentor_username: &str,
+        input: &MentorshipRequestInput,
+    ) -> Result<MentorshipRequestRecord> {
+        self.fetch_json_one(
+            "select add_mentorship_request($1::uuid, $2::text, $3::jsonb)",
+            &[&requester_user_id, &mentor_username, &Json(input)],
+        )
+        .await
+    }
+
     #[instrument(skip(self, session_id), err)]
     async fn delete_session(&self, session_id: &session::Id) -> Result<()> {
         self.execute(
@@ -366,6 +389,10 @@ where
                 'facebook_url', facebook_url,
                 'github_url', github_url,
                 'linkedin_url', linkedin_url,
+                'mentorship_businesses', mentorship_businesses,
+                'mentorship_individuals', mentorship_individuals,
+                'mentorship_note', mentorship_note,
+                'mentorship_price', mentorship_price,
                 'name', name,
                 'photo_url', photo_url,
                 'title', title,

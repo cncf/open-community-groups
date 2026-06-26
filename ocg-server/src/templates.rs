@@ -45,6 +45,7 @@ pub(crate) enum PageId {
     SiteJobs,
     SiteLandscape,
     SiteNotFound,
+    SitePrivacy,
     SiteSearch,
     SiteSponsor,
     SiteStats,

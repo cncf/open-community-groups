@@ -72,6 +72,7 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
         )
         .route("/groups", get(dashboard::alliance::groups::list_page))
         .route("/groups/add", get(dashboard::alliance::groups::add_page))
+        .route("/members", get(dashboard::alliance::members::list_page))
         .route(
             "/groups/{group_id}/update",
             get(dashboard::alliance::groups::update_page),
@@ -478,6 +479,7 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             put(dashboard::user::events::submit_registration_answers),
         )
         .route("/invitations", get(dashboard::user::invitations::list_page))
+        .route("/mentorship", get(dashboard::user::mentorship::list_page))
         .route(
             "/invitations/alliance/{alliance_id}/accept",
             put(dashboard::user::invitations::accept_alliance_team_invitation),

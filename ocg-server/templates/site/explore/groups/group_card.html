@@ -26,7 +26,7 @@
 
 {% block preheader -%}
   <span>
-    <span class="hidden text-primary-500 sm:inline">{{ group.alliance_display_name }}</span>
+    <span class="hidden text-stone-700 sm:inline">{{ group.alliance_display_name }}</span>
     <span class="px-1 hidden sm:inline">·</span>
     {% if let Some(region) = &group.region -%}
       {{- region.name -}}

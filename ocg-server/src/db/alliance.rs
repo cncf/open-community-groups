@@ -3,12 +3,13 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cached::cached;
+use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     db::{PgClient, PgExecutor},
-    templates::alliance,
+    templates::alliance::{self, AllianceMembersFilters, AllianceMembersOutput},
     types::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
@@ -39,6 +40,16 @@ pub(crate) trait DBAlliance {
         alliance_id: Uuid,
         event_kinds: Vec<EventKind>,
     ) -> Result<Vec<EventSummary>>;
+
+    /// Checks whether a user belongs to at least one group in the alliance.
+    async fn is_alliance_group_member(&self, alliance_id: Uuid, user_id: Uuid) -> Result<bool>;
+
+    /// Lists members across all groups in the alliance.
+    async fn list_alliance_members(
+        &self,
+        alliance_id: Uuid,
+        filters: &AllianceMembersFilters,
+    ) -> Result<AllianceMembersOutput>;
 }
 
 #[async_trait]
@@ -124,6 +135,40 @@ where
         self.fetch_json_one(
             "select get_alliance_upcoming_events($1::uuid, $2::text[])",
             &[&alliance_id, &event_kinds],
+        )
+        .await
+    }
+
+    /// [`DBAlliance::is_alliance_group_member`]
+    #[instrument(skip(self), err)]
+    async fn is_alliance_group_member(&self, alliance_id: Uuid, user_id: Uuid) -> Result<bool> {
+        self.fetch_scalar_one(
+            r#"
+            select exists (
+                select 1
+                from group_member gm
+                join "group" g using (group_id)
+                where g.alliance_id = $1::uuid
+                  and g.active = true
+                  and g.deleted = false
+                  and gm.user_id = $2::uuid
+            );
+            "#,
+            &[&alliance_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBAlliance::list_alliance_members`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_alliance_members(
+        &self,
+        alliance_id: Uuid,
+        filters: &AllianceMembersFilters,
+    ) -> Result<AllianceMembersOutput> {
+        self.fetch_json_one(
+            "select list_alliance_members($1::uuid, $2::jsonb)",
+            &[&alliance_id, &Json(filters)],
         )
         .await
     }

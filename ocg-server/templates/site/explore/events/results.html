@@ -11,7 +11,7 @@
 <div class="mt-5 border-t border-stone-100 md:mt-7 p-5 md:p-7">
   <div class="flex justify-between items-center mb-8">
     <div id="calendar-date"
-         class="text-xl font-semibold text-stone-600 md:text-2xl lg:text-[2rem]"></div>
+         class="text-xl font-black tracking-tight text-stone-950 md:text-2xl lg:text-[2rem]"></div>
 
     <div class="flex items-center">
       {# Loading spinner -#}
@@ -26,14 +26,14 @@
       <div class="inline-flex ml-4" role="group">
         <button id="prev-month-btn"
                 type="button"
-                class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-s-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-4 focus:ring-primary-300 focus:bg-primary-500 focus:text-white active:ring-4 active:ring-primary-300 active:bg-primary-500 active:text-white">
-          <div class="svg-icon h-5 w-5 bg-primary-500 group-hover:bg-white group-focus:bg-white transition-colors icon-arrow-left">
+                class="group cursor-pointer inline-flex items-center pr-4 pl-3 py-1 text-xs font-bold text-stone-700 bg-transparent border border-stone-200 rounded-s-full hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950 transition-colors focus:z-10 focus:ring-4 focus:ring-[#eadcc9] focus:bg-[#f5efe7] focus:text-stone-950 active:ring-4 active:ring-[#eadcc9] active:bg-[#f5efe7] active:text-stone-950">
+          <div class="svg-icon h-5 w-5 bg-stone-700 group-hover:bg-white group-focus:bg-white transition-colors icon-arrow-left">
           </div>
         </button>
         <button id="next-month-btn"
                 type="button"
-                class="group cursor-pointer inline-flex items-center -ml-px pl-4 pr-3 py-1 text-xs font-medium text-primary-500 bg-transparent border border-primary-500 rounded-e-full hover:bg-primary-500 hover:text-white transition-colors focus:z-10 focus:ring-2 focus:ring-primary-300 focus:bg-primary-500 focus:text-white active:ring-4 active:ring-primary-300 active:bg-primary-500 active:text-white">
-          <div class="svg-icon h-5 w-5 bg-primary-500 group-hover:bg-white group-focus:bg-white transition-colors icon-arrow-right">
+                class="group cursor-pointer inline-flex items-center -ml-px pl-4 pr-3 py-1 text-xs font-bold text-stone-700 bg-transparent border border-stone-200 rounded-e-full hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950 transition-colors focus:z-10 focus:ring-2 focus:ring-[#eadcc9] focus:bg-[#f5efe7] focus:text-stone-950 active:ring-4 active:ring-[#eadcc9] active:bg-[#f5efe7] active:text-stone-950">
+          <div class="svg-icon h-5 w-5 bg-stone-700 group-hover:bg-white group-focus:bg-white transition-colors icon-arrow-right">
           </div>
         </button>
       </div>
@@ -101,7 +101,7 @@
 {% when ViewMode::Map -%}
 {# Map view -#}
 <div class="mt-5 border-t border-stone-100 md:mt-7 p-5 md:p-7">
-  <div class="relative w-full border border-stone-200 h-[600px] md:h-[820px] overflow-hidden">
+  <div class="relative w-full border border-stone-200 h-[600px] md:h-[820px] overflow-hidden rounded-[1.75rem]">
     {# Loading spinner -#}
     <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">{{ ui::spinner(htmx = false) -}}</div>
     {# End loading spinner -#}

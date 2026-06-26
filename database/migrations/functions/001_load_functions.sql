@@ -5,6 +5,7 @@
 {{ template "auth/resolve_unique_username.sql" }} -- Dependency for signup and pre-registration activation
 {{ template "auth/activate_pre_registered_user_email_password.sql" }}
 {{ template "auth/activate_pre_registered_user_external_provider.sql" }}
+{{ template "auth/add_mentorship_request.sql" }}
 {{ template "auth/get_user_by_email.sql" }}
 {{ template "auth/get_user_by_email_for_external_auth.sql" }}
 {{ template "auth/get_user_by_id_verified.sql" }}
@@ -74,6 +75,7 @@
 {{ template "alliance/get_alliance_recently_added_groups.sql" }}
 {{ template "alliance/get_alliance_site_stats.sql" }}
 {{ template "alliance/get_alliance_upcoming_events.sql" }}
+{{ template "alliance/list_alliance_members.sql" }}
 {{ template "alliance/update_alliance_views.sql" }}
 
 {{ template "dashboard-common/search_user.sql" }}

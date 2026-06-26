@@ -14,9 +14,9 @@ use crate::{
     templates::{PageId, filters, helpers::user_initials},
     types::site::SiteSettings,
     validation::{
-        MAX_LEN_BIO, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, MAX_LEN_M, MAX_LEN_S, MAX_LEN_TIMEZONE,
-        MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt,
-        trimmed_non_empty_tag_vec,
+        MAX_LEN_BIO, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, MAX_LEN_M,
+        MAX_LEN_S, MAX_LEN_TIMEZONE, MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty,
+        trimmed_non_empty_opt, trimmed_non_empty_tag_vec,
     },
 };
 
@@ -82,6 +82,8 @@ pub(crate) struct UpdateUserPage {
 pub(crate) struct UserMenuSection {
     /// Authenticated user information.
     pub user: User,
+    /// Count of pending actions for the notification bell.
+    pub notification_count: i64,
 }
 
 // Types.
@@ -125,6 +127,7 @@ impl User {
 
 /// User details that can be updated.
 #[skip_serializing_none]
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub(crate) struct UserDetails {
     /// User's display name.
@@ -161,6 +164,20 @@ pub(crate) struct UserDetails {
     /// User's `LinkedIn` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
+    /// Whether the user offers mentorship services for businesses.
+    #[serde(default)]
+    #[garde(skip)]
+    pub mentorship_businesses: bool,
+    /// Whether the user offers mentorship services for individuals.
+    #[serde(default)]
+    #[garde(skip)]
+    pub mentorship_individuals: bool,
+    /// Optional description of the user's mentorship offering.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub mentorship_note: Option<String>,
+    /// Optional price or pricing guidance for mentorship.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
+    pub mentorship_price: Option<String>,
     /// Whether the user authenticated with `LinkedIn`.
     #[serde(default)]
     #[garde(skip)]
@@ -201,6 +218,10 @@ impl From<crate::auth::User> for UserDetails {
                 .and_then(|provider| provider.linkedin.as_ref())
                 .is_some(),
             linkedin_url: user.linkedin_url,
+            mentorship_businesses: user.mentorship_businesses,
+            mentorship_individuals: user.mentorship_individuals,
+            mentorship_note: user.mentorship_note,
+            mentorship_price: user.mentorship_price,
             photo_url: user.photo_url,
             timezone: user.timezone,
             title: user.title,

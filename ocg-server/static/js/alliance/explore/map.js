@@ -22,7 +22,7 @@ const MAP_STATUS = Object.freeze({
   ready: "ready",
 });
 const MARKER_ICON_CONFIG = {
-  html: '<div class="svg-icon h-[30px] w-[30px] bg-primary-500 hover:bg-primary-900 icon-marker"></div>',
+  html: '<div class="svg-icon h-[30px] w-[30px] bg-stone-700 hover:bg-[#6f6253] icon-marker"></div>',
   iconSize: [30, 30],
   iconAnchor: [15, 30],
   popupAnchor: [0, -25],
@@ -187,12 +187,14 @@ export class Map {
     // Check if map is already initialized
     if (Map._instance) {
       Map._instance.entity = entity;
+      Map._instance.baseQuery = data.query || "";
       Map._instance.enabledMoveEnd = false;
       Map._instance.setup(data);
       return Map._instance;
     }
 
     this.entity = entity;
+    this.baseQuery = data.query || "";
     this.enabledMoveEnd = false;
     this.tooltipTimers = new WeakMap();
     this.state = { status: MAP_STATUS.idle };
@@ -338,7 +340,7 @@ export class Map {
    */
   async fetchLocationData(overwriteBounds) {
     // Prepare query params
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(this.baseQuery || location.search);
 
     // Remove view mode and virtual kind from query params
     params.delete("view_mode");

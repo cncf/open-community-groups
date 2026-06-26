@@ -42,7 +42,7 @@
                 <a href="/dashboard/jobs"
                    hx-boost="true"
                    hx-target="body"
-                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
                   Post a role
                   <span class="mt-1 block text-xs/5 font-medium text-stone-500">Share a job with the builder network.</span>
                 </a>
@@ -50,7 +50,7 @@
                 <a href="/log-in?next_url=/dashboard/jobs"
                    hx-boost="true"
                    hx-target="body"
-                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
                   Post a role
                   <span class="mt-1 block text-xs/5 font-medium text-stone-500">Log in to share a hiring need.</span>
                 </a>
@@ -67,13 +67,13 @@
                  hx-boost="true"
                  hx-target="body"
                  class="block px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
-                Reading brief
+                Tech News
                 <span class="mt-1 block text-xs/5 font-medium text-stone-500">Browse GOUP community resources.</span>
               </a>
               <a href="/docs"
                  hx-boost="true"
                  hx-target="body"
-                 class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-primary-700 transition hover:bg-primary-50">
+                 class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
                 Docs
                 <span class="mt-1 block text-xs/5 font-medium text-stone-500">Guides and runbooks for members, leads, and contributors.</span>
               </a>
@@ -98,27 +98,27 @@
                type="search"
                autocomplete="off"
                placeholder="Search GOUP"
-               class="w-44 rounded-full border border-stone-200 bg-white/80 px-4 py-2 pr-9 text-sm font-medium text-stone-900 placeholder-stone-400 shadow-sm transition focus:w-56 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-0" />
+               class="w-44 rounded-full border border-stone-200 bg-white/80 px-4 py-2 pr-9 text-sm font-medium text-stone-900 placeholder-stone-400 shadow-sm transition focus:w-56 focus:border-stone-950 focus:bg-white focus:outline-none focus:ring-0" />
         <button type="submit"
-                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-primary-600 transition hover:bg-primary-50"
+                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
                 aria-label="Search GOUP">
           <span class="svg-icon block size-4 bg-current icon-magnifying-glass"></span>
         </button>
       </form>
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteDocs || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SiteSearch || page_id == PageId::SiteSponsor || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
+      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteDocs || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SitePrivacy || page_id == PageId::SiteSearch || page_id == PageId::SiteSponsor || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
         <div hx-get="/section/user-menu"
              hx-trigger="load"
              hx-target="this"
              hx-boost="true"
              class="relative">
-          <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-primary-500 text-primary-700 size-[38px] p-0.5 overflow-hidden"
+          <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-stone-200 text-stone-700 size-[38px] p-0.5 overflow-hidden shadow-sm"
                   disabled>
-            {{ ui::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "5", htmx = false) -}}
-            <div class="svg-icon size-4 mx-auto bg-primary-500 icon-user"></div>
+            {{ ui::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "6", htmx = false) -}}
+            <div class="svg-icon size-4 mx-auto bg-stone-700 icon-user"></div>
           </button>
         </div>
       {% else -%}
-        {{ user_menu(user) -}}
+        {{ user_menu(user, 0) -}}
       {% endif -%}
     </div>
     {# End desktop user menu -#}
@@ -128,14 +128,26 @@
 {# End header -#}
 
 {# User menu macro -#}
-{% macro user_menu(user) -%}
+{% macro user_menu(user, notification_count) -%}
   {# TODO: Hardcoded alliance until we add more #}
   {% let explore_events = "/explore?alliance[0]=goup" %}
   <div class="relative flex items-center gap-3">
     {% if user.logged_in -%}
+      <a href="/dashboard/user?tab=invitations"
+         hx-boost="true"
+         hx-target="body"
+         class="relative inline-flex size-[38px] items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 shadow-sm transition hover:border-stone-950 hover:bg-stone-50 hover:text-stone-950"
+         aria-label="Notifications">
+        <div class="svg-icon size-5 icon-pending-invitation bg-current"></div>
+        {% if notification_count > 0 -%}
+          <span class="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-stone-950 px-1.5 py-0.5 text-[10px] font-black leading-none text-white ring-2 ring-white">
+            {{ notification_count }}
+          </span>
+        {% endif -%}
+      </a>
       <button id="user-dropdown-button"
               data-logged-in="true"
-              class="cursor-pointer group rounded-full bg-white border text-base leading-none border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
+              class="cursor-pointer group rounded-full bg-white border text-base leading-none border-stone-200 text-stone-700 shadow-sm hover:text-stone-950 hover:border-stone-950 size-[38px] p-0.5 overflow-hidden">
         <div class="font-semibold uppercase mt-px">
           {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
         </div>
@@ -306,6 +318,25 @@
           </li>
 
           <li class="hidden lg:block" role="none">
+            <a href="/dashboard/user?tab=invitations"
+               hx-boost="true"
+               hx-target="body"
+               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
+               role="menuitem">
+              <div class="flex items-center">
+                <div class="svg-icon size-4 icon-pending-invitation bg-stone-600"></div>
+                <div class="ms-2 text-xs/6">Notifications</div>
+                {% if notification_count > 0 -%}
+                  <div class="ms-auto rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-700">
+                    {{ notification_count }}
+                  </div>
+                {% else -%}
+                  <div class="ms-auto hx-spinner">{{ ui::spinner(size = "size-4") -}}</div>
+                {% endif -%}
+              </div>
+            </a>
+          </li>
+          <li class="hidden lg:block" role="none">
             <a href="/dashboard/user?tab=events"
                hx-boost="true"
                hx-target="body"
@@ -404,13 +435,13 @@
     {% else -%}
       <a href="/log-in/oidc/linkedin"
          hx-boost="false"
-         class="hidden rounded-full bg-stone-950 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-primary-700 hover:shadow-md sm:inline-flex">
+         class="hidden rounded-full bg-stone-950 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-stone-800 hover:shadow-md sm:inline-flex">
         Join GOUP
       </a>
       <button id="user-dropdown-button"
               data-logged-in="false"
-              class="cursor-pointer group rounded-full bg-white border text-xl border-primary-500 text-primary-700 hover:text-primary-900 hover:border-primary-900 size-[38px] p-0.5 overflow-hidden">
-        <div class="svg-icon size-4 mx-auto bg-primary-500 group-hover:bg-primary-900 icon-user"></div>
+              class="cursor-pointer group rounded-full bg-white border text-xl border-stone-200 text-stone-700 shadow-sm hover:text-stone-950 hover:border-stone-950 size-[38px] p-0.5 overflow-hidden">
+        <div class="svg-icon size-4 mx-auto bg-stone-700 group-hover:bg-stone-950 icon-user"></div>
       </button>
 
       {# User dropdown menu for non-logged users -#}

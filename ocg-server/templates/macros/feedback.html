@@ -1,9 +1,9 @@
 {# Alert -#}
 {% macro alert(title, content) -%}
   <div class="p-10 md:p-14">
-    <div class="border border-primary-300 p-10 text-sm text-stone-800 rounded-lg bg-primary-50 text-center"
+    <div class="border border-stone-200 p-10 text-sm text-stone-700 rounded-[1.75rem] bg-stone-50 text-center"
          role="alert">
-      <div class="text-xl mb-6">{{ title }}</div>
+      <div class="text-xl mb-6 font-black tracking-tight text-stone-950">{{ title }}</div>
       {{ content }}
     </div>
   </div>
@@ -12,9 +12,9 @@
 
 {# Placeholder -#}
 {% macro placeholder(title, content) -%}
-  <div class="border-2 border-dashed border-stone-300 p-10 text-sm text-stone-800 rounded-lg bg-stone-50 text-center"
+  <div class="border-2 border-dashed border-stone-300 p-10 text-sm text-stone-800 rounded-[1.75rem] bg-stone-50 text-center"
        role="alert">
-    <div class="text-xl mb-6 text-stone-600">{{ title }}</div>
+    <div class="text-xl mb-6 font-black tracking-tight text-stone-950">{{ title }}</div>
     <p class="text-stone-600">{{ content }}</p>
   </div>
 {% endmacro placeholder -%}
