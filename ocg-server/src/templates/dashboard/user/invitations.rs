@@ -27,9 +27,10 @@ pub(crate) struct ListPage {
 impl ListPage {
     /// Returns the total number of pending invitations shown on the page.
     pub(crate) fn total_invitations(&self) -> i64 {
-        (self.alliance_invitations.len()
+        let total = self.alliance_invitations.len()
             + self.event_invitations.len()
-            + self.group_invitations.len()) as i64
+            + self.group_invitations.len();
+        i64::try_from(total).expect("invitation count to fit in i64")
     }
 }
 
