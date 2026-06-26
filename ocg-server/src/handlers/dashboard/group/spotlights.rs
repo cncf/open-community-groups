@@ -3,7 +3,7 @@
 use askama::Template;
 use axum::{
     extract::{Path, State},
-    http::{HeaderName, StatusCode},
+    http::HeaderName,
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -45,21 +45,22 @@ pub(crate) async fn list_page(
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
     CurrentUser(user): CurrentUser,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     ValidatedForm(input): ValidatedForm<SpotlightInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     db.add_group_member_spotlight(user.user_id, group_id, &input).await?;
-    Ok((
-        StatusCode::CREATED,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
-    ))
+    let template = prepare_list_page(&db, alliance_id, group_id, user.user_id).await?;
+
+    Ok(Html(template.render()?))
 }
 
 /// Updates a group member spotlight.
 #[instrument(skip_all, err)]
 pub(crate) async fn update(
     CurrentUser(user): CurrentUser,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(spotlight_id): Path<Uuid>,
@@ -67,26 +68,25 @@ pub(crate) async fn update(
 ) -> Result<impl IntoResponse, HandlerError> {
     db.update_group_member_spotlight(user.user_id, group_id, spotlight_id, &input)
         .await?;
-    Ok((
-        StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
-    ))
+    let template = prepare_list_page(&db, alliance_id, group_id, user.user_id).await?;
+
+    Ok(Html(template.render()?))
 }
 
 /// Deletes a group member spotlight.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
     CurrentUser(user): CurrentUser,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
     Path(spotlight_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     db.delete_group_member_spotlight(user.user_id, group_id, spotlight_id)
         .await?;
-    Ok((
-        StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-group-dashboard-table")],
-    ))
+    let template = prepare_list_page(&db, alliance_id, group_id, user.user_id).await?;
+
+    Ok(Html(template.render()?))
 }
 
 /// Prepares the spotlights list template.
