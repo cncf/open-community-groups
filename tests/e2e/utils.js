@@ -318,7 +318,10 @@ const submitSeededLogin = async (page) => {
 
 /** Waits for the page to finish the visual work needed before snapshotting. */
 const waitForVisualReady = async (page) => {
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
+  await page
+    .waitForLoadState("networkidle", { timeout: 5_000 })
+    .catch(() => undefined);
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise((resolve) => {
@@ -536,8 +539,13 @@ export const getEventLogo = (page) =>
  */
 export const getIntroSection = (page) =>
   page
-    .getByRole("heading", { level: 1 })
-    .locator("xpath=ancestor::div[parent::div[contains(@class,'gap-y-6')]][1]");
+    .locator('[data-testid="intro-section"]')
+    .or(
+      page
+        .getByRole("heading", { level: 1 })
+        .locator("xpath=ancestor::div[parent::div[contains(@class,'gap-y-6')]][1]"),
+    )
+    .first();
 
 /**
  * Selects the alliance about block without including the following sections.

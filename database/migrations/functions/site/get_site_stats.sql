@@ -126,6 +126,27 @@ landscape_open_source as (
       and le.published = true
       and le.kind = 'github_project'
 ),
+mentorship_requests as (
+    select
+        mr.created_at,
+        mr.mentor_user_id,
+        mr.mentorship_request_id,
+        timezone(
+            'UTC',
+            date_trunc('month', mr.created_at at time zone 'UTC')
+        ) as created_month
+    from mentorship_request mr
+),
+mentorship_group_requests as (
+    select distinct
+        mr.mentorship_request_id,
+        fg.group_id,
+        g.name as group_name
+    from mentorship_requests mr
+    join group_member gm on gm.user_id = mr.mentor_user_id
+    join filtered_groups fg on fg.group_id = gm.group_id
+    join "group" g on g.group_id = fg.group_id
+),
 job_applications as (
     select ja.created_at, ja.job_id, ja.applicant_user_id
     from jobs_application ja
@@ -326,6 +347,26 @@ select json_strip_nulls(json_build_object(
             from jobs j
             left join job_applications ja on ja.job_id = j.job_id
         ), 0)
+    ),
+    'mentorship_overview', json_build_object(
+        'requests', (select count(*)::int from mentorship_requests),
+        'requests_per_group_avg', coalesce((
+            select round(count(mgr.mentorship_request_id)::numeric / nullif(count(distinct fg.group_id), 0), 1)
+            from filtered_groups fg
+            left join mentorship_group_requests mgr on mgr.group_id = fg.group_id
+        ), 0),
+        'by_group', coalesce((
+            select json_agg(json_build_array(group_name, request_count) order by request_count desc, group_name)
+            from (
+                select
+                    group_name,
+                    count(*)::int as request_count
+                from mentorship_group_requests
+                group by group_name
+                order by request_count desc, group_name
+                limit 12
+            ) counts
+        ), '[]'::json)
     ),
     'landscape_overview', json_build_object(
         'entries', (

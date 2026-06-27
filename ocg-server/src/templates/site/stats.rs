@@ -41,6 +41,8 @@ pub struct SiteStats {
     pub event_breakdown: SiteEventBreakdown,
     /// Jobs overview metrics.
     pub jobs_overview: SiteJobsOverview,
+    /// Mentorship request overview metrics.
+    pub mentorship_overview: SiteMentorshipOverview,
     /// Landscape overview metrics.
     pub landscape_overview: SiteLandscapeOverview,
     /// Attendees statistics.
@@ -120,6 +122,17 @@ pub struct SiteJobsOverview {
     pub interests: i64,
     /// Average saved-interest applications per job.
     pub avg_interests_per_job: f64,
+}
+
+/// Mentorship request metrics for the public stats page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SiteMentorshipOverview {
+    /// Total mentorship requests submitted.
+    pub requests: i64,
+    /// Average mentorship requests per active group.
+    pub requests_per_group_avg: f64,
+    /// Mentorship requests grouped by active group membership of the mentor.
+    pub by_group: Vec<(String, i64)>,
 }
 
 /// Landscape overview metrics for the public stats page.

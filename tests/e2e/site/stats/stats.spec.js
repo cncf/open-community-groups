@@ -30,7 +30,7 @@ test.describe("site stats page", () => {
     ).toBeVisible();
     await expect(
       mainContent.getByText(
-        "A clean view of community growth, event activity, and ecosystem signals as they come online.",
+        "A live-feeling view of community growth, alliance groups, event activity, and ecosystem signals as they come online.",
         { exact: true },
       ),
     ).toBeVisible();

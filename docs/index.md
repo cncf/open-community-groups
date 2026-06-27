@@ -34,7 +34,7 @@ Important pages:
 
 - [Explore](/explore) for groups and events.
 - [Jobs](/jobs) for public and member-only roles.
-- [Landscape](/landscape) for startups and GitHub projects.
+- [Landscape](/landscape) for startups, GitHub projects, partner communities, and podcast leads.
 - [Stats](/stats) for platform activity and engagement.
 - [Sponsor](/sponsor) for partnership inquiries.
 

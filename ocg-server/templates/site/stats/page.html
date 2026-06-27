@@ -133,7 +133,7 @@
 
       {# Alliance map callout #}
       <div class="mt-4 overflow-hidden rounded-[2rem] border border-primary-100 bg-white/85 shadow-xl shadow-stone-200/60 backdrop-blur">
-        <div class="grid gap-0 lg:grid-cols-[1.25fr_0.75fr]">
+        <div class="grid gap-0 lg:grid-cols-[0.85fr_1.15fr] xl:grid-cols-[0.7fr_1.3fr]">
           <div class="p-5 lg:p-6">
             <div class="flex items-center gap-3">
               <div class="flex size-11 items-center justify-center rounded-2xl bg-primary-50">
@@ -158,8 +158,18 @@
                  hx-target="body"
                  class="inline-flex items-center justify-center rounded-full border border-stone-200 bg-white px-5 py-2.5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">Browse group cards</a>
             </div>
+            <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div class="rounded-2xl border border-[#d8c7b2] bg-[#f8f3ec] p-4">
+                <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-600">Pinned groups</div>
+                <div class="mt-2 text-3xl font-black">{{ group_map_groups.len() }}</div>
+              </div>
+              <div class="rounded-2xl border border-[#d8c7b2] bg-[#f8f3ec] p-4">
+                <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-600">Members connected</div>
+                <div class="mt-2 text-3xl font-black">{{ stats.members.total|num_fmt }}</div>
+              </div>
+            </div>
           </div>
-          <div class="relative min-h-[22rem] overflow-hidden bg-[#f5efe7] text-stone-950 lg:min-h-[26rem]">
+          <div class="relative min-h-[30rem] overflow-hidden bg-[#f5efe7] text-stone-950 lg:min-h-[34rem] xl:min-h-[38rem]">
             <div class="absolute inset-0">
               <div class="relative h-full w-full">
                 <div id="loading-map" class="absolute left-4 top-4 z-[450] w-6 group">{{ ui::spinner(htmx = false) -}}</div>
@@ -176,18 +186,6 @@
                     {{ ui::main_loading() -}}
                     <span class="sr-only">Loading...</span>
                   </div>
-                </div>
-              </div>
-            </div>
-            <div class="pointer-events-none absolute inset-x-0 bottom-0 z-[410] bg-linear-to-t from-[#f5efe7]/95 to-transparent p-5 lg:p-6">
-              <div class="grid gap-3 sm:grid-cols-2">
-                <div class="rounded-2xl border border-[#d8c7b2] bg-white/70 p-4 backdrop-blur">
-                  <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-600">Pinned groups</div>
-                  <div class="mt-2 text-3xl font-black">{{ group_map_groups.len() }}</div>
-                </div>
-                <div class="rounded-2xl border border-[#d8c7b2] bg-white/70 p-4 backdrop-blur">
-                  <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-600">Members connected</div>
-                  <div class="mt-2 text-3xl font-black">{{ stats.members.total|num_fmt }}</div>
                 </div>
               </div>
             </div>
@@ -224,8 +222,47 @@
                 <div class="mt-1 text-sm font-bold text-stone-500">Building</div>
               {% endif -%}
             </div>
+            <div class="rounded-2xl bg-stone-50 px-4 py-3">
+              <div class="text-sm font-bold text-stone-500">Mentorship requests</div>
+              {% if stats.mentorship_overview.requests > 0 -%}
+                <div class="mt-1 text-2xl font-black text-stone-950">{{ stats.mentorship_overview.requests|num_fmt }}</div>
+              {% else -%}
+                <div class="mt-1 text-sm font-bold text-stone-500">Building</div>
+              {% endif -%}
+            </div>
+            <div class="rounded-2xl bg-stone-50 px-4 py-3">
+              <div class="text-sm font-bold text-stone-500">Requests / group</div>
+              {% if stats.mentorship_overview.requests_per_group_avg > 0.0 -%}
+                <div class="mt-1 text-2xl font-black text-stone-950">{{ stats.mentorship_overview.requests_per_group_avg }}</div>
+              {% else -%}
+                <div class="mt-1 text-sm font-bold text-stone-500">Building</div>
+              {% endif -%}
+            </div>
           </div>
         </div>
+        {% if stats.mentorship_overview.by_group.len() > 0 -%}
+          <div class="mt-5 rounded-2xl border border-stone-200 bg-white p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-black text-stone-950">Mentorship requests by group</h3>
+                <p class="mt-1 text-sm/6 text-stone-500">
+                  Requests are attributed to active groups where the mentor is a member.
+                </p>
+              </div>
+              <div class="inline-flex items-center rounded-full border border-stone-200 bg-white px-4 py-2 text-sm text-stone-500">
+                Total <span class="ms-2 font-black text-stone-950">{{ stats.mentorship_overview.requests|num_fmt }}</span>
+              </div>
+            </div>
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {% for (label, count) in stats.mentorship_overview.by_group -%}
+                <div class="flex items-center justify-between gap-4 rounded-xl bg-stone-50 px-4 py-3">
+                  <span class="truncate text-sm font-semibold text-stone-700">{{ label }}</span>
+                  <span class="text-sm font-black text-stone-950">{{ count|num_fmt }}</span>
+                </div>
+              {% endfor -%}
+            </div>
+          </div>
+        {% endif -%}
       </div>
       {# End engagement cards #}
 

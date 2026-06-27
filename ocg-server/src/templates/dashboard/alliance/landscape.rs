@@ -3,9 +3,12 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{
-    landscape::{DashboardLandscapeFilters, LandscapeEntry},
-    pagination::NavigationLinks,
+use crate::{
+    templates::filters,
+    types::{
+        landscape::{DashboardLandscapeFilters, LandscapeEntry},
+        pagination::NavigationLinks,
+    },
 };
 
 /// Alliance landscape list page.

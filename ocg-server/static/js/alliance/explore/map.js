@@ -35,6 +35,12 @@ const TOOLTIP_OPTIONS = {
   offset: [0, -18],
   opacity: 1,
 };
+const FIT_BOUNDS_OPTIONS = {
+  animate: false,
+  maxZoom: 9,
+  noMoveStart: true,
+  padding: [48, 48],
+};
 
 /**
  * Gets the collection for the selected explore entity.
@@ -123,7 +129,7 @@ const fitMapToBbox = (map, bbox) => {
   const southWest = L.latLng(bbox.sw_lat, bbox.sw_lon);
   const northEast = L.latLng(bbox.ne_lat, bbox.ne_lon);
   const bounds = L.latLngBounds(southWest, northEast);
-  map.flyToBounds(bounds, { animate: false, noMoveStart: true });
+  map.flyToBounds(bounds, FIT_BOUNDS_OPTIONS);
 };
 
 /**
@@ -229,7 +235,7 @@ export class Map {
   setup(data) {
     this.map = L.map(MAP_ELEMENT_ID, {
       maxZoom: 20,
-      minZoom: 3,
+      minZoom: 1,
       zoomControl: false,
       maxBounds: L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180)),
       maxBoundsViscosity: 1.0,
@@ -255,7 +261,7 @@ export class Map {
     });
 
     // Center map view
-    this.map.setView([0, 0], 0);
+    this.map.setView([0, 0], 1);
 
     // Adding the base layer to the map
     L.tileLayer(
@@ -375,7 +381,7 @@ export class Map {
    * @param {object} bbox - Optional bounding box to fit the map view
    */
   addMarkers(items, bbox) {
-    fitMapToBbox(this.map, bbox);
+    let markerCount = 0;
 
     // Create marker cluster group
     const markers = window.L.markerClusterGroup({
@@ -406,9 +412,16 @@ export class Map {
 
       // Add marker to the marker cluster group
       markers.addLayer(marker);
+      markerCount += 1;
     });
 
     // Add marker cluster group to the map
     this.map.addLayer(markers);
+
+    if (bbox && checkValidBbox(bbox)) {
+      fitMapToBbox(this.map, bbox);
+    } else if (markerCount > 0 && typeof markers.getBounds === "function") {
+      this.map.flyToBounds(markers.getBounds(), FIT_BOUNDS_OPTIONS);
+    }
   }
 }

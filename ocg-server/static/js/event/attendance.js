@@ -814,10 +814,16 @@ const handleAttendanceClick = (event) => {
   // Signed-out actions do not submit; they show the login path for this page.
   const signinButton = closestElement(event.target, '[data-attendance-role="signin-btn"]');
   if (signinButton instanceof HTMLElement) {
+    event.preventDefault();
     const path = signinButton.dataset.path || window.location.pathname;
     const nextUrl = encodeURIComponent(path);
     const label = getAttendanceControlLabel(signinButton) || ATTEND_EVENT_LABEL;
     const actionText = getSigninActionText(label);
+
+    if (label === REQUEST_INVITATION_LABEL) {
+      window.location.assign(`/log-in?next_url=${nextUrl}`);
+      return;
+    }
 
     showInfoAlert(
       `You need to be <a href='/log-in?next_url=${nextUrl}' class='underline font-medium' hx-boost='true'>logged in</a> to ${actionText}.`,

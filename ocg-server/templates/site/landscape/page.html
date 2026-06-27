@@ -6,10 +6,10 @@
     <div class="relative max-w-4xl rounded-[2.25rem] border border-stone-200 bg-white/90 p-6 shadow-xl shadow-stone-200/50 backdrop-blur sm:p-8 lg:p-10">
       <p class="mb-4 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">Landscape</p>
       <h1 class="mb-4 text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
-        Startups and open projects
+        Ecosystem landscape
       </h1>
       <p class="max-w-2xl text-base/7 font-medium text-stone-600">
-        Browse alliance startups, GitHub projects, tools, and community-built products.
+        Browse alliance startups, GitHub projects, partner communities, podcast leads, tools, and community-built products.
       </p>
     </div>
   </section>
@@ -30,7 +30,7 @@
              type="search"
              value="{{ filters.query.as_deref().unwrap_or("") }}"
              class="input"
-             placeholder="Search startups, GitHub projects, categories, or tags" />
+             placeholder="Search startups, GitHub projects, communities, podcasts, categories, or tags" />
 
       <label class="sr-only" for="landscape-kind">Kind</label>
       <select id="landscape-kind" name="kind" class="input">
@@ -39,6 +39,10 @@
                 {% if filters.kind.as_deref() == Some("startup") %}selected{% endif %}>Startups</option>
         <option value="github_project"
                 {% if filters.kind.as_deref() == Some("github_project") %}selected{% endif %}>GitHub projects</option>
+        <option value="partner_community"
+                {% if filters.kind.as_deref() == Some("partner_community") %}selected{% endif %}>Partner communities</option>
+        <option value="podcast_lead"
+                {% if filters.kind.as_deref() == Some("podcast_lead") %}selected{% endif %}>Podcast leads</option>
       </select>
 
       <label class="sr-only" for="landscape-category">Category</label>
@@ -51,6 +55,57 @@
       <button class="inline-flex h-10 items-center justify-center rounded-full bg-stone-950 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-stone-800"
               type="submit">Search</button>
     </form>
+
+    {% if !github_leaderboard.is_empty() -%}
+      <section class="mb-8 overflow-hidden rounded-[2rem] border border-stone-200 bg-stone-950 text-white shadow-xl shadow-stone-200/60">
+        <div class="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)] lg:p-8">
+          <div>
+            <p class="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-stone-200">
+              GitHub leaderboard
+            </p>
+            <h2 class="mt-4 text-3xl font-black tracking-tight text-white">Most starred projects</h2>
+            <p class="mt-3 text-sm/6 font-medium text-stone-300">
+              Live repository metrics from GitHub, ranked by stars with forks as the tie-breaker.
+            </p>
+          </div>
+          <div class="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.06]">
+            {% for project in github_leaderboard -%}
+              <a class="grid gap-4 border-b border-white/10 px-4 py-4 transition last:border-b-0 hover:bg-white/10 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"
+                 href="{{ project.entry.github_url.as_deref().unwrap_or("#") }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 hx-boost="false">
+                <div class="flex size-10 items-center justify-center rounded-2xl bg-white text-sm font-black text-stone-950">
+                  {{ loop.index }}
+                </div>
+                <div class="min-w-0">
+                  <div class="truncate text-base font-bold text-white">{{ project.entry.name }}</div>
+                  <div class="truncate text-xs font-medium text-stone-400">{{ project.repository }}</div>
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-right sm:grid-cols-4">
+                  <div>
+                    <div class="text-sm font-black text-white">{{ project.metrics.stargazers_count|num_fmt }}</div>
+                    <div class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-stone-500">Stars</div>
+                  </div>
+                  <div>
+                    <div class="text-sm font-black text-white">{{ project.metrics.forks_count|num_fmt }}</div>
+                    <div class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-stone-500">Forks</div>
+                  </div>
+                  <div>
+                    <div class="text-sm font-black text-white">{{ project.metrics.open_issues_count|num_fmt }}</div>
+                    <div class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-stone-500">Issues</div>
+                  </div>
+                  <div>
+                    <div class="text-sm font-black text-white">{{ project.metrics.watchers_count|num_fmt }}</div>
+                    <div class="text-[0.68rem] font-bold uppercase tracking-[0.16em] text-stone-500">Watchers</div>
+                  </div>
+                </div>
+              </a>
+            {% endfor -%}
+          </div>
+        </div>
+      </section>
+    {% endif -%}
 
     <div class="mb-5 flex items-center justify-between gap-3">
       <div class="text-sm text-stone-600">
@@ -85,11 +140,7 @@
               <div class="min-w-0">
                 <div class="mb-2 flex flex-wrap items-center gap-2">
                   <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-medium text-white">
-                    {% if entry.kind == "github_project" %}
-                      GitHub project
-                    {% else %}
-                      Startup
-                    {% endif %}
+                    {{ entry.kind|landscape_kind_label }}
                   </span>
                   {% if let Some(category) = &entry.category -%}
                     <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ category }}</span>

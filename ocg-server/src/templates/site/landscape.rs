@@ -26,10 +26,38 @@ pub(crate) struct Page {
     pub user: User,
     /// Search filters.
     pub filters: LandscapeFilters,
+    /// GitHub projects ranked by live repository metrics.
+    pub github_leaderboard: Vec<GitHubProjectLeaderboardEntry>,
     /// Matching landscape entries.
     pub entries: Vec<LandscapeEntry>,
     /// Total matching entries.
     pub total: usize,
     /// Pagination links.
     pub navigation_links: NavigationLinks,
+}
+
+/// GitHub project with live repository metrics for leaderboard display.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GitHubProjectLeaderboardEntry {
+    /// Landscape entry backing the leaderboard row.
+    pub entry: LandscapeEntry,
+    /// Repository path in owner/name form.
+    pub repository: String,
+    /// Primary leaderboard score.
+    pub score: i64,
+    /// Live repository metrics.
+    pub metrics: GitHubRepositoryMetrics,
+}
+
+/// Public GitHub repository metrics displayed on the landscape leaderboard.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct GitHubRepositoryMetrics {
+    /// GitHub star count.
+    pub stargazers_count: i64,
+    /// GitHub fork count.
+    pub forks_count: i64,
+    /// GitHub open issue count.
+    pub open_issues_count: i64,
+    /// GitHub watcher count.
+    pub watchers_count: i64,
 }

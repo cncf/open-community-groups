@@ -16,6 +16,13 @@ use crate::{
     },
 };
 
+const LANDSCAPE_KINDS: [&str; 4] = [
+    "startup",
+    "github_project",
+    "partner_community",
+    "podcast_lead",
+];
+
 /// Public landscape search filters.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -93,8 +100,8 @@ pub(crate) struct LandscapeEntryInput {
     /// Entry name.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_ENTITY_NAME))]
     pub name: String,
-    /// Entry kind, either startup or `github_project`.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_M))]
+    /// Entry kind.
+    #[garde(custom(valid_landscape_kind), length(max = MAX_LEN_M))]
     pub kind: String,
     /// Short summary.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION_SHORT))]
@@ -185,4 +192,28 @@ pub(crate) fn parse_tags(input: Option<&str>) -> Vec<String> {
         .take(12)
         .map(|tag| tag.chars().take(MAX_LEN_TAG).collect())
         .collect()
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn valid_landscape_kind(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
+    let value = value.as_ref().trim();
+    if LANDSCAPE_KINDS.contains(&value) {
+        Ok(())
+    } else {
+        Err(garde::Error::new("invalid landscape kind"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validates_landscape_kinds() {
+        assert!(valid_landscape_kind(&"startup", &()).is_ok());
+        assert!(valid_landscape_kind(&"github_project", &()).is_ok());
+        assert!(valid_landscape_kind(&"partner_community", &()).is_ok());
+        assert!(valid_landscape_kind(&"podcast_lead", &()).is_ok());
+        assert!(valid_landscape_kind(&"unknown", &()).is_err());
+    }
 }

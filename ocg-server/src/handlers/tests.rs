@@ -1186,6 +1186,11 @@ pub(crate) fn sample_site_stats() -> crate::templates::site::stats::SiteStats {
             interests: 0,
             avg_interests_per_job: 0.0,
         },
+        mentorship_overview: crate::templates::site::stats::SiteMentorshipOverview {
+            requests: 0,
+            requests_per_group_avg: 0.0,
+            by_group: vec![],
+        },
         landscape_overview: crate::templates::site::stats::SiteLandscapeOverview {
             entries: 0,
             by_category: vec![],

@@ -103,6 +103,22 @@ pub(crate) fn num_fmt(n: &i64, _: &dyn askama::Values) -> askama::Result<String>
     Ok(n.to_formatted_string(&Locale::en))
 }
 
+/// Displays the public label for a landscape entry kind.
+#[askama::filter_fn]
+pub(crate) fn landscape_kind_label<S: AsRef<str>>(
+    kind: S,
+    _: &dyn askama::Values,
+) -> askama::Result<String> {
+    let label = match kind.as_ref() {
+        "github_project" => "GitHub project",
+        "partner_community" => "Partner community",
+        "podcast_lead" => "Podcast lead",
+        "startup" => "Startup",
+        other => other,
+    };
+    Ok(label.to_string())
+}
+
 // Tests.
 
 #[cfg(test)]
@@ -236,6 +252,24 @@ mod tests {
         assert_eq!(
             num_fmt::default().execute(&1_234_567_890, values).unwrap(),
             "1,234,567,890"
+        );
+    }
+
+    #[test]
+    fn test_landscape_kind_label() {
+        let values = askama::NO_VALUES;
+
+        assert_eq!(
+            landscape_kind_label::default()
+                .execute("partner_community", values)
+                .unwrap(),
+            "Partner community"
+        );
+        assert_eq!(
+            landscape_kind_label::default()
+                .execute("podcast_lead", values)
+                .unwrap(),
+            "Podcast lead"
         );
     }
 }

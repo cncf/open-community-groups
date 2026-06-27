@@ -507,7 +507,7 @@
   {
     "name": "goup_search_landscape",
     "title": "GOUP Search Landscape",
-    "description": "Search published GOUP landscape entries for startups, open source projects, and tools.",
+    "description": "Search published GOUP landscape entries for startups, open source projects, partner communities, podcast leads, and tools.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -517,7 +517,7 @@
         },
         "kind": {
           "type": "string",
-          "description": "Optional kind filter, for example startup or github_project."
+          "description": "Optional kind filter, for example startup, github_project, partner_community, or podcast_lead."
         },
         "category": {
           "type": "string",

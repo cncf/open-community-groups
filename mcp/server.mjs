@@ -11,6 +11,7 @@ const BEARER_TOKEN = process.env.MCP_BEARER_TOKEN || "";
 const ENABLE_MUTATIONS = process.env.MCP_ENABLE_MUTATIONS === "true";
 const PROTOCOL_VERSION = "2024-11-05";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LANDSCAPE_KINDS = ["startup", "github_project", "partner_community", "podcast_lead"];
 const WIKI_SECTIONS = [
   {
     id: "ai",
@@ -392,8 +393,8 @@ async function createLandscapeEntry(args, kind) {
     throw new Error("Mutating MCP tools are disabled. Set MCP_ENABLE_MUTATIONS=true to allow landscape entry creation.");
   }
 
-  if (!["startup", "github_project"].includes(kind)) {
-    throw new Error("kind must be one of: startup, github_project");
+  if (!LANDSCAPE_KINDS.includes(kind)) {
+    throw new Error(`kind must be one of: ${LANDSCAPE_KINDS.join(", ")}`);
   }
 
   const actorUserId = requireUuid(args.actor_user_id, "actor_user_id");
