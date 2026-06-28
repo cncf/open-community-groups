@@ -385,6 +385,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     // Group member management endpoints
     let members_management = Router::new()
         .route(
+            "/members/requests/{user_id}/approve",
+            post(dashboard::group::members::approve_join_request),
+        )
+        .route(
+            "/members/requests/{user_id}/reject",
+            post(dashboard::group::members::reject_join_request),
+        )
+        .route(
             "/members/{user_id}/delete",
             delete(dashboard::group::members::delete),
         )

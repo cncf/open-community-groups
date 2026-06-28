@@ -132,9 +132,9 @@ export class ImagesGallery extends LitWrapper {
 
       <!-- Modal full page -->
       <div
-        class="modal ${this._isModalOpen
-          ? ""
-          : "opacity-0 pointer-events-none"} fixed w-full h-full top-0 left-0 flex items-center justify-center z-1000"
+        class="modal ${
+          this._isModalOpen ? "" : "opacity-0 pointer-events-none"
+        } fixed w-full h-full top-0 left-0 flex items-center justify-center z-1000"
       >
         <!-- Modal overlay -->
         <div class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
@@ -166,10 +166,9 @@ export class ImagesGallery extends LitWrapper {
                 ${this.images.map(
                   (image, index) => html`
                     <div
-                      class="duration-700 ease-in-out absolute inset-0 transition-transform transform ${index ===
-                      this._currentIndex
-                        ? "z-30 translate-x-0"
-                        : "hidden z-10 translate-x-full"}"
+                      class="duration-700 ease-in-out absolute inset-0 transition-transform transform ${
+                        index === this._currentIndex ? "z-30 translate-x-0" : "hidden z-10 translate-x-full"
+                      }"
                     >
                       <img
                         src=${image}

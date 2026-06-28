@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(73);
+select plan(74);
 
 -- ============================================================================
 -- TESTS
@@ -555,6 +555,7 @@ select columns_are('group', array[
     'linkedin_url',
     'location',
     'logo_url',
+    'membership_approval_required',
     'og_image_url',
     'payment_recipient',
     'photos_urls',
@@ -579,6 +580,16 @@ select columns_are('group_category', array[
     'normalized_name',
 
     'order'
+]);
+
+-- Test: group_join_request columns should match expected
+select columns_are('group_join_request', array[
+    'group_id',
+    'user_id',
+    'status',
+    'created_at',
+    'reviewed_at',
+    'reviewed_by'
 ]);
 
 -- Test: group_member columns should match expected

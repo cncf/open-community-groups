@@ -94,6 +94,7 @@ select is(
         "description": "A simple test group",
         "description_short": "Brief overview of the test group",
         "logo_url": "https://example.com/logo.png",
+        "membership_approval_required": false,
         "organizers": [],
         "sponsors": []
     }',
@@ -232,6 +233,7 @@ select is(
         "tags": ["technology", "alliance", "open-source"],
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}],
+        "membership_approval_required": false,
         "organizers": [],
         "sponsors": []
     }',

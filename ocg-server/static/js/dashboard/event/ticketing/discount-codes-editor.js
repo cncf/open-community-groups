@@ -525,7 +525,32 @@ class DiscountCodesEditor extends TicketingEditorBase {
                 >
                   ${this._discountValueSummary(row)}
                 </span>
-                ${row.active
+                ${
+                  row.active
+                    ? html`<span
+                        class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
+                      >
+                        Active
+                      </span>`
+                    : html`<span
+                        class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
+                      >
+                        Inactive
+                      </span>`
+                }
+              </div>
+            </td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
+              ${this._discountSeatsSummary(row)}
+              ${
+                this._discountSeatsDetail(row)
+                  ? html`<div class="mt-1 text-xs text-stone-500">${this._discountSeatsDetail(row)}</div>`
+                  : null
+              }
+            </td>
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
+              ${
+                row.active
                   ? html`<span
                       class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
                     >
@@ -535,27 +560,8 @@ class DiscountCodesEditor extends TicketingEditorBase {
                       class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
                     >
                       Inactive
-                    </span>`}
-              </div>
-            </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">
-              ${this._discountSeatsSummary(row)}
-              ${this._discountSeatsDetail(row)
-                ? html`<div class="mt-1 text-xs text-stone-500">${this._discountSeatsDetail(row)}</div>`
-                : null}
-            </td>
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
-              ${row.active
-                ? html`<span
-                    class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
-                  >
-                    Active
-                  </span>`
-                : html`<span
-                    class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
-                  >
-                    Inactive
-                  </span>`}
+                    </span>`
+              }
             </td>
             <td class="px-3 xl:px-5 py-4">
               <div class="text-sm text-stone-700">${this._discountAvailabilitySummary(row)}</div>
@@ -570,9 +576,9 @@ class DiscountCodesEditor extends TicketingEditorBase {
               <div class="flex items-center justify-start gap-1 xl:justify-end">
                 <button
                   type="button"
-                  class="rounded-full p-2 transition-colors ${this.disabled
-                    ? "opacity-60 cursor-not-allowed"
-                    : "hover:bg-stone-100"}"
+                  class="rounded-full p-2 transition-colors ${
+                    this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"
+                  }"
                   data-ticketing-action="edit-discount"
                   data-row-id=${String(row._row_id)}
                   title="Edit"
@@ -583,9 +589,9 @@ class DiscountCodesEditor extends TicketingEditorBase {
                 </button>
                 <button
                   type="button"
-                  class="rounded-full p-2 transition-colors ${this.disabled
-                    ? "opacity-60 cursor-not-allowed"
-                    : "hover:bg-stone-100"}"
+                  class="rounded-full p-2 transition-colors ${
+                    this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"
+                  }"
                   data-ticketing-action="delete-discount"
                   data-row-id=${String(row._row_id)}
                   title="Delete"
@@ -714,9 +720,9 @@ class DiscountCodesEditor extends TicketingEditorBase {
 
       <div
         data-ticketing-role="discount-modal"
-        class="fixed inset-0 z-[1000] ${this._isModalOpen
-          ? "flex"
-          : "hidden"} items-center justify-center overflow-y-auto overflow-x-hidden"
+        class="fixed inset-0 z-[1000] ${
+          this._isModalOpen ? "flex" : "hidden"
+        } items-center justify-center overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="discount-code-modal-title"

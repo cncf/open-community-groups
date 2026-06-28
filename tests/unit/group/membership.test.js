@@ -3,10 +3,7 @@ import { expect } from "@open-wc/testing";
 import "/static/js/group/membership.js";
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { useDashboardTestEnv } from "/tests/unit/test-utils/env.js";
-import {
-  dispatchHtmxAfterRequest,
-  dispatchHtmxBeforeRequest,
-} from "/tests/unit/test-utils/htmx.js";
+import { dispatchHtmxAfterRequest, dispatchHtmxBeforeRequest } from "/tests/unit/test-utils/htmx.js";
 
 // Render the component fixture.
 const renderMembershipDom = () => {
@@ -16,6 +13,7 @@ const renderMembershipDom = () => {
       <button id="loading-btn" class="hidden">Loading</button>
       <button id="signin-btn" class="hidden" data-path="/groups/test-group">Sign in</button>
       <button id="join-btn" class="hidden">Join</button>
+      <button id="pending-btn" class="hidden">Pending</button>
       <button id="leave-btn" class="hidden">Leave</button>
     </div>
   `;
@@ -25,6 +23,7 @@ const renderMembershipDom = () => {
     loadingButton: document.getElementById("loading-btn"),
     signinButton: document.getElementById("signin-btn"),
     joinButton: document.getElementById("join-btn"),
+    pendingButton: document.getElementById("pending-btn"),
     leaveButton: document.getElementById("leave-btn"),
   };
 };
@@ -40,8 +39,7 @@ describe("group membership", () => {
 
   it("shows the leave action after a successful membership check", () => {
     // Read controls after a successful membership join.
-    const { checker, leaveButton, signinButton, joinButton } =
-      renderMembershipDom();
+    const { checker, leaveButton, signinButton, joinButton, pendingButton } = renderMembershipDom();
 
     // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
@@ -52,12 +50,31 @@ describe("group membership", () => {
     expect(leaveButton.classList.contains("hidden")).to.equal(false);
     expect(signinButton.classList.contains("hidden")).to.equal(true);
     expect(joinButton.classList.contains("hidden")).to.equal(true);
+    expect(pendingButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows pending state after a pending membership check", () => {
+    // Read controls after a pending membership request.
+    const { checker, leaveButton, signinButton, joinButton, pendingButton } = renderMembershipDom();
+
+    // Dispatch the HTMX after-request event.
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        is_member: false,
+        has_pending_request: true,
+      }),
+    });
+
+    // Verify pending requests show the pending action.
+    expect(pendingButton.classList.contains("hidden")).to.equal(false);
+    expect(leaveButton.classList.contains("hidden")).to.equal(true);
+    expect(signinButton.classList.contains("hidden")).to.equal(true);
+    expect(joinButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("falls back to the sign-in action when the membership response is invalid", () => {
     // Keep references to the fixture controls under assertion.
-    const { checker, signinButton, joinButton, leaveButton } =
-      renderMembershipDom();
+    const { checker, signinButton, joinButton, pendingButton, leaveButton } = renderMembershipDom();
 
     // Dispatch the HTMX after-request event.
     dispatchHtmxAfterRequest(checker, {
@@ -67,12 +84,13 @@ describe("group membership", () => {
     // Verify falls back to the sign-in action when the membership response.
     expect(signinButton.classList.contains("hidden")).to.equal(false);
     expect(joinButton.classList.contains("hidden")).to.equal(true);
+    expect(pendingButton.classList.contains("hidden")).to.equal(true);
     expect(leaveButton.classList.contains("hidden")).to.equal(true);
   });
 
   it("shows loading state before a join request and restores the button on failure", () => {
     // Render the membership fixture.
-    const { joinButton, loadingButton } = renderMembershipDom();
+    const { joinButton, loadingButton, pendingButton } = renderMembershipDom();
 
     // Dispatch the HTMX before-request event.
     dispatchHtmxBeforeRequest(joinButton);
@@ -88,6 +106,7 @@ describe("group membership", () => {
 
     // Verify shows loading state before a join request and restores the button.
     expect(joinButton.classList.contains("hidden")).to.equal(false);
+    expect(pendingButton.classList.contains("hidden")).to.equal(true);
     expect(loadingButton.classList.contains("hidden")).to.equal(true);
     expect(env.current.swal.calls.at(-1)).to.include({
       text: "Something went wrong joining this group. Please try again later.",
@@ -105,9 +124,7 @@ describe("group membership", () => {
 
     // Assert the captured calls.
     expect(env.current.swal.calls[0].icon).to.equal("info");
-    expect(env.current.swal.calls[0].html).to.include(
-      "/log-in?next_url=%2Fgroups%2Ftest-group",
-    );
+    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=%2Fgroups%2Ftest-group");
 
     // Confirm the leave action.
     env.current.swal.setNextResult({ isConfirmed: true });
@@ -119,9 +136,7 @@ describe("group membership", () => {
       text: "Are you sure you want to leave this group?",
       icon: "warning",
     });
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      ["#leave-btn", "confirmed"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([["#leave-btn", "confirmed"]]);
   });
 
   it("handles membership clicks after the page body is swapped", () => {
@@ -135,9 +150,7 @@ describe("group membership", () => {
 
     // Verify membership clicks work after the page body is swapped.
     expect(env.current.swal.calls[0].icon).to.equal("info");
-    expect(env.current.swal.calls[0].html).to.include(
-      "/log-in?next_url=%2Fgroups%2Ftest-group",
-    );
+    expect(env.current.swal.calls[0].html).to.include("/log-in?next_url=%2Fgroups%2Ftest-group");
   });
 
   it("escapes the sign-in return path in membership alerts", () => {
@@ -172,7 +185,7 @@ describe("group membership", () => {
 
   it("emits membership-changed after a successful join request", () => {
     // Render the membership fixture.
-    const { joinButton } = renderMembershipDom();
+    const { joinButton, pendingButton } = renderMembershipDom();
     let changedEvents = 0;
     document.body.addEventListener("membership-changed", () => {
       changedEvents += 1;
@@ -185,6 +198,29 @@ describe("group membership", () => {
     expect(changedEvents).to.equal(1);
     expect(env.current.swal.calls.at(-1)).to.include({
       text: "You have successfully joined this group.",
+      icon: "success",
+    });
+    expect(pendingButton.classList.contains("hidden")).to.equal(true);
+  });
+
+  it("shows pending state after a successful pending join request", () => {
+    // Render the membership fixture.
+    const { joinButton, pendingButton } = renderMembershipDom();
+    let changedEvents = 0;
+    document.body.addEventListener("membership-changed", () => {
+      changedEvents += 1;
+    });
+
+    // Dispatch the HTMX after-request event.
+    dispatchHtmxAfterRequest(joinButton, {
+      responseText: JSON.stringify({ status: "pending" }),
+    });
+
+    // Pending join requests emit membership-changed and show the pending state.
+    expect(changedEvents).to.equal(1);
+    expect(pendingButton.classList.contains("hidden")).to.equal(false);
+    expect(env.current.swal.calls.at(-1)).to.include({
+      text: "Your request to join this group is pending approval.",
       icon: "success",
     });
   });

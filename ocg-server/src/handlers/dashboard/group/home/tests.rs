@@ -298,6 +298,10 @@ async fn test_page_members_tab_success() {
                 && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
+    db.expect_list_group_join_requests()
+        .times(1)
+        .withf(move |id| *id == group_id)
+        .returning(|_| Ok(Vec::new()));
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)

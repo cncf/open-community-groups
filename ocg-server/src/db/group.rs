@@ -9,7 +9,7 @@ use crate::{
     db::PgExecutor,
     types::{
         event::{EventKind, EventSummary},
-        group::GroupFull,
+        group::{GroupFull, GroupJoinOutcome, GroupMembershipStatus},
     },
 };
 
@@ -49,8 +49,21 @@ pub(crate) trait DBGroup {
         user_id: Uuid,
     ) -> Result<bool>;
 
+    /// Checks the current user's public group membership status.
+    async fn get_group_membership_status(
+        &self,
+        alliance_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<GroupMembershipStatus>>;
+
     /// Adds a user as a member of a group.
-    async fn join_group(&self, alliance_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()>;
+    async fn join_group(
+        &self,
+        alliance_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<GroupJoinOutcome>;
 
     /// Removes a user from a group.
     async fn leave_group(&self, alliance_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()>;
@@ -124,14 +137,39 @@ where
         .await
     }
 
-    /// [`DB::join_group`]
+    /// [`DB::get_group_membership_status`]
     #[instrument(skip(self), err)]
-    async fn join_group(&self, alliance_id: Uuid, group_id: Uuid, user_id: Uuid) -> Result<()> {
-        self.execute(
-            "select join_group($1::uuid, $2::uuid, $3::uuid)",
+    async fn get_group_membership_status(
+        &self,
+        alliance_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Option<GroupMembershipStatus>> {
+        self.fetch_json_opt(
+            "select get_group_membership_status($1::uuid, $2::uuid, $3::uuid)",
             &[&alliance_id, &group_id, &user_id],
         )
         .await
+    }
+
+    /// [`DB::join_group`]
+    #[instrument(skip(self), err)]
+    async fn join_group(
+        &self,
+        alliance_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<GroupJoinOutcome> {
+        let status: String = self
+            .fetch_scalar_one(
+                "select join_group($1::uuid, $2::uuid, $3::uuid)::text",
+                &[&alliance_id, &group_id, &user_id],
+            )
+            .await?;
+
+        status.parse().map_err(|_| {
+            anyhow::anyhow!("unknown group join outcome returned by database: {status}")
+        })
     }
 
     /// [`DB::leave_group`]

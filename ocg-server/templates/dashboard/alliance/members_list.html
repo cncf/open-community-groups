@@ -58,7 +58,9 @@
           </logo-image>
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="truncate text-base font-semibold text-stone-950">{{ member.name|assigned_or(member.username) }}</h2>
+              <h2 class="truncate text-base font-semibold text-stone-950">
+                {{ member.name|assigned_or(member.username) }}
+              </h2>
               {% if member.linkedin_connected -%}
                 <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">Verified</span>
               {% endif -%}

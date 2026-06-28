@@ -77,6 +77,10 @@ async fn test_list_page_success() {
                 && filters.offset == Some(0)
         })
         .returning(move |_, _| Ok(output.clone()));
+    db.expect_list_group_join_requests()
+        .times(1)
+        .withf(move |id| *id == group_id)
+        .returning(|_| Ok(Vec::new()));
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
@@ -164,6 +168,10 @@ async fn test_list_page_with_pagination_params() {
             *id == group_id && filters.limit == Some(5) && filters.offset == Some(10)
         })
         .returning(move |_, _| Ok(output.clone()));
+    db.expect_list_group_join_requests()
+        .times(1)
+        .withf(move |id| *id == group_id)
+        .returning(|_| Ok(Vec::new()));
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)

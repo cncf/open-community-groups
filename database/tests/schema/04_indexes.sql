@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(69);
+select plan(70);
 
 -- ============================================================================
 -- TESTS
@@ -274,6 +274,12 @@ select indexes_are('group_member', array[
     'group_member_group_id_idx',
     'group_member_user_id_idx',
     'group_member_group_id_created_at_idx'
+]);
+
+-- Test: group_join_request indexes should match expected
+select indexes_are('group_join_request', array[
+    'group_join_request_pkey',
+    'group_join_request_group_status_created_at_idx'
 ]);
 
 -- Test: group_role indexes should match expected

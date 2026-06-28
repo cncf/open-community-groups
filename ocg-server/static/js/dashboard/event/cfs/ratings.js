@@ -116,12 +116,16 @@ const renderRatingsList = ({ currentUserId, renderPersonRow, submission }) => {
             <div class="rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3">
               <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div class="min-w-0 flex-1">
-                  ${rating?.reviewer
-                    ? renderPersonRow(rating.reviewer)
-                    : html`<div class="text-sm text-stone-500">Unknown reviewer</div>`}
-                  ${comments
-                    ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">${comments}</p>`
-                    : html`<p class="mt-3 text-sm text-stone-400">No notes provided.</p>`}
+                  ${
+                    rating?.reviewer
+                      ? renderPersonRow(rating.reviewer)
+                      : html`<div class="text-sm text-stone-500">Unknown reviewer</div>`
+                  }
+                  ${
+                    comments
+                      ? html`<p class="mt-3 text-sm text-stone-700 whitespace-pre-line">${comments}</p>`
+                      : html`<p class="mt-3 text-sm text-stone-400">No notes provided.</p>`
+                  }
                 </div>
                 <div class="inline-flex items-center whitespace-nowrap md:shrink-0">
                   <rating-stars .averageRating=${stars} size="size-5"></rating-stars>

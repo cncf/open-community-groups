@@ -29,7 +29,11 @@ use crate::{
         group::{self, MembersPage, Page, SpotlightsPage, StorePage},
         notifications::GroupWelcome,
     },
-    types::{event::EventKind, group::GroupFull, pagination::NavigationLinks},
+    types::{
+        event::EventKind,
+        group::{GroupFull, GroupJoinOutcome},
+        pagination::NavigationLinks,
+    },
 };
 
 use super::{error::HandlerError, extractors::AllianceId};
@@ -280,46 +284,48 @@ pub(crate) async fn join_group(
     AllianceId(alliance_id): AllianceId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Join the group
-    db.join_group(alliance_id, group_id, user.user_id).await?;
+    // Join immediately or create a pending approval request.
+    let outcome = db.join_group(alliance_id, group_id, user.user_id).await?;
 
-    // Enqueue welcome notification best-effort after the membership mutation
-    if let Err(err) = async {
-        let (site_settings, group) = tokio::try_join!(
-            db.get_site_settings(),
-            db.get_group_summary(alliance_id, group_id)
-        )?;
-        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
-        let template_data = GroupWelcome {
-            link: format!(
-                "{}/{}/group/{}",
-                base_url,
-                group.alliance_name,
-                group.public_slug()
-            ),
-            group,
-            theme: site_settings.theme,
-        };
-        let notification = NewNotification {
-            attachments: vec![],
-            kind: NotificationKind::GroupWelcome,
-            recipients: vec![user.user_id],
-            template_data: Some(serde_json::to_value(&template_data)?),
-        };
-        notifications_manager.enqueue(&notification).await
-    }
-    .await
-    {
-        warn!(
-            error = %err,
-            %alliance_id,
-            %group_id,
-            user_id = %user.user_id,
-            "failed to enqueue group welcome notification"
-        );
+    if outcome == GroupJoinOutcome::Joined {
+        // Enqueue welcome notification best-effort after the membership mutation.
+        if let Err(err) = async {
+            let (site_settings, group) = tokio::try_join!(
+                db.get_site_settings(),
+                db.get_group_summary(alliance_id, group_id)
+            )?;
+            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+            let template_data = GroupWelcome {
+                link: format!(
+                    "{}/{}/group/{}",
+                    base_url,
+                    group.alliance_name,
+                    group.public_slug()
+                ),
+                group,
+                theme: site_settings.theme,
+            };
+            let notification = NewNotification {
+                attachments: vec![],
+                kind: NotificationKind::GroupWelcome,
+                recipients: vec![user.user_id],
+                template_data: Some(serde_json::to_value(&template_data)?),
+            };
+            notifications_manager.enqueue(&notification).await
+        }
+        .await
+        {
+            warn!(
+                error = %err,
+                %alliance_id,
+                %group_id,
+                user_id = %user.user_id,
+                "failed to enqueue group welcome notification"
+            );
+        }
     }
 
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(json!({ "status": outcome })))
 }
 
 /// Handler for leaving a group.
@@ -344,12 +350,15 @@ pub(crate) async fn membership_status(
     AllianceId(alliance_id): AllianceId,
     Path((_, group_id)): Path<(String, Uuid)>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Check membership
-    let is_member = db.is_group_member(alliance_id, group_id, user.user_id).await?;
+    // Check membership.
+    let status = db
+        .get_group_membership_status(alliance_id, group_id, user.user_id)
+        .await?;
+    let Some(status) = status else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
 
-    Ok(Json(json!({
-        "is_member": is_member
-    })))
+    Ok(Json(status).into_response())
 }
 
 /// Tracks a group page view.

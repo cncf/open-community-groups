@@ -129,6 +129,8 @@ pub struct GroupFull {
     pub logo_url: String,
     /// Total number of group members.
     pub members_count: i64,
+    /// Whether new members must be approved by group admins.
+    pub membership_approval_required: bool,
     /// Group name.
     pub name: String,
     /// List of group organizers.
@@ -221,6 +223,28 @@ impl GroupFull {
 }
 
 // Other related types.
+
+/// Public membership status for the current user.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GroupMembershipStatus {
+    /// Whether the current user is already a group member.
+    pub is_member: bool,
+    /// Whether group admins must approve new members.
+    pub approval_required: bool,
+    /// Whether the current user has a pending join request.
+    pub has_pending_request: bool,
+}
+
+/// Result of attempting to join a group.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::EnumString)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum GroupJoinOutcome {
+    /// The user was added as a member immediately.
+    Joined,
+    /// The user's request is pending admin approval.
+    Pending,
+}
 
 /// Group category information.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

@@ -148,9 +148,9 @@ export class AllianceSelector extends LitWrapper {
         <button
           id="alliance-selector-button"
           type="button"
-          class="select select-primary relative text-left pe-9 ${isDisabled
-            ? "opacity-80 cursor-not-allowed"
-            : "cursor-pointer"}"
+          class="select select-primary relative text-left pe-9 ${
+            isDisabled ? "opacity-80 cursor-not-allowed" : "cursor-pointer"
+          }"
           ?disabled=${isDisabled}
           aria-haspopup="listbox"
           aria-expanded=${this._combobox.isOpen ? "true" : "false"}
@@ -158,9 +158,11 @@ export class AllianceSelector extends LitWrapper {
         >
           <div class="flex flex-col justify-center min-h-10">
             <div class="text-xs/4 text-stone-900 line-clamp-2">
-              ${selectedAlliance
-                ? selectedAlliance.display_name || selectedAlliance.name
-                : "Select a alliance"}
+              ${
+                selectedAlliance
+                  ? selectedAlliance.display_name || selectedAlliance.name
+                  : "Select a alliance"
+              }
             </div>
           </div>
           <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
@@ -169,10 +171,9 @@ export class AllianceSelector extends LitWrapper {
         </button>
 
         <div
-          class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
-            ._combobox.isOpen
-            ? ""
-            : "hidden"}"
+          class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${
+            this._combobox.isOpen ? "" : "hidden"
+          }"
         >
           <div class="p-3 border-b border-stone-200">
             <div class="relative">
@@ -194,53 +195,55 @@ export class AllianceSelector extends LitWrapper {
             </div>
           </div>
 
-          ${this._filteredAlliances.length > 0
-            ? html`
-                <ul
-                  id="alliance-selector-list"
-                  class="max-h-48 overflow-y-auto text-stone-700"
-                  role="listbox"
-                >
-                  ${repeat(
-                    this._filteredAlliances,
-                    (alliance) => alliance.alliance_id,
-                    (alliance, index) => {
-                      const isSelected = this._isSelected(alliance);
-                      const isActive = this._combobox.activeIndex === index;
-                      const isDisabled = isSelected || this._isSubmitting;
+          ${
+            this._filteredAlliances.length > 0
+              ? html`
+                  <ul
+                    id="alliance-selector-list"
+                    class="max-h-48 overflow-y-auto text-stone-700"
+                    role="listbox"
+                  >
+                    ${repeat(
+                      this._filteredAlliances,
+                      (alliance) => alliance.alliance_id,
+                      (alliance, index) => {
+                        const isSelected = this._isSelected(alliance);
+                        const isActive = this._combobox.activeIndex === index;
+                        const isDisabled = isSelected || this._isSubmitting;
 
-                      let statusClass = "";
-                      if (isDisabled) {
-                        statusClass =
-                          "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
-                      } else if (isActive) {
-                        statusClass = "cursor-pointer text-stone-900 bg-stone-50";
-                      } else {
-                        statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
-                      }
+                        let statusClass = "";
+                        if (isDisabled) {
+                          statusClass =
+                            "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
+                        } else if (isActive) {
+                          statusClass = "cursor-pointer text-stone-900 bg-stone-50";
+                        } else {
+                          statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
+                        }
 
-                      return html`
-                        <li role="presentation" data-index=${index}>
-                          <button
-                            id="alliance-option-${alliance.alliance_id}"
-                            type="button"
-                            class="alliance-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
-                            role="option"
-                            ?disabled=${isDisabled}
-                            @click=${(event) => this._handleAllianceClick(event, alliance)}
-                            @mouseover=${() => this._combobox.setActiveIndex(index)}
-                          >
-                            <div class="text-xs/4 line-clamp-2">
-                              ${alliance.display_name || alliance.name}
-                            </div>
-                          </button>
-                        </li>
-                      `;
-                    },
-                  )}
-                </ul>
-              `
-            : html`<div class="px-4 py-3 text-sm text-stone-500">No alliances found.</div>`}
+                        return html`
+                          <li role="presentation" data-index=${index}>
+                            <button
+                              id="alliance-option-${alliance.alliance_id}"
+                              type="button"
+                              class="alliance-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                              role="option"
+                              ?disabled=${isDisabled}
+                              @click=${(event) => this._handleAllianceClick(event, alliance)}
+                              @mouseover=${() => this._combobox.setActiveIndex(index)}
+                            >
+                              <div class="text-xs/4 line-clamp-2">
+                                ${alliance.display_name || alliance.name}
+                              </div>
+                            </button>
+                          </li>
+                        `;
+                      },
+                    )}
+                  </ul>
+                `
+              : html`<div class="px-4 py-3 text-sm text-stone-500">No alliances found.</div>`
+          }
         </div>
       </div>
     `;

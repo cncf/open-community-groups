@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(64);
+select plan(66);
 
 -- ============================================================================
 -- VARIABLES
@@ -177,6 +177,10 @@ select has_check('group', 'group_google_photos_url_check');
 select has_check('group', 'group_og_image_url_check');
 select has_check('group', 'group_slug_pretty_chk');
 select has_check('group', 'group_substack_url_check');
+
+-- Test: group join request table expected constraints exist
+select has_check('group_join_request', 'group_join_request_status_chk');
+select has_check('group_join_request', 'group_join_request_review_chk');
 
 -- Test: site table expected constraints exist
 select has_check('site', 'site_og_image_url_check');

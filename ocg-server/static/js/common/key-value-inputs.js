@@ -278,19 +278,21 @@ export class KeyValueInputs extends LitWrapper {
         </button>
 
         <!-- Hidden inputs for form submission -->
-        ${this.fieldName
-          ? this._itemsArray.map((item, index) =>
-              item.key.trim() !== "" && item.value.trim() !== ""
-                ? html`
-                    <input
-                      type="hidden"
-                      name="${this.fieldName}[${item.key.trim()}]"
-                      value=${item.value.trim()}
-                    />
-                  `
-                : "",
-            )
-          : ""}
+        ${
+          this.fieldName
+            ? this._itemsArray.map((item, index) =>
+                item.key.trim() !== "" && item.value.trim() !== ""
+                  ? html`
+                      <input
+                        type="hidden"
+                        name="${this.fieldName}[${item.key.trim()}]"
+                        value=${item.value.trim()}
+                      />
+                    `
+                  : "",
+              )
+            : ""
+        }
       </div>
     `;
   }

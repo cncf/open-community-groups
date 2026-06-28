@@ -430,7 +430,7 @@ async fn test_join_group_success() {
     db.expect_join_group()
         .times(1)
         .withf(move |id, gid, uid| *id == alliance_id && *gid == group_id && *uid == user_id)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _| Ok(crate::types::group::GroupJoinOutcome::Joined));
     let mut notification_group = sample_group_summary(group_id);
     notification_group.slug_pretty = Some("pretty-group".to_string());
     db.expect_get_group_summary()
@@ -472,8 +472,9 @@ async fn test_join_group_success() {
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::NO_CONTENT);
-    assert!(bytes.is_empty());
+    assert_eq!(parts.status, StatusCode::OK);
+    let body: serde_json::Value = from_slice(&bytes).unwrap();
+    assert_eq!(body, json!({ "status": "joined" }));
 }
 
 #[tokio::test]
@@ -549,10 +550,16 @@ async fn test_membership_status_success() {
         .times(1)
         .withf(|name| name == "test-alliance")
         .returning(move |_| Ok(Some(alliance_id)));
-    db.expect_is_group_member()
+    db.expect_get_group_membership_status()
         .times(1)
         .withf(move |id, gid, uid| *id == alliance_id && *gid == group_id && *uid == user_id)
-        .returning(|_, _, _| Ok(true));
+        .returning(|_, _, _| {
+            Ok(Some(crate::types::group::GroupMembershipStatus {
+                is_member: true,
+                approval_required: false,
+                has_pending_request: false,
+            }))
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -576,7 +583,14 @@ async fn test_membership_status_success() {
         &HeaderValue::from_static("application/json")
     );
     let body: serde_json::Value = from_slice(&bytes).unwrap();
-    assert_eq!(body, json!({ "is_member": true }));
+    assert_eq!(
+        body,
+        json!({
+            "approval_required": false,
+            "has_pending_request": false,
+            "is_member": true
+        })
+    );
 }
 
 #[tokio::test]

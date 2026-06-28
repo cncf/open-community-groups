@@ -559,12 +559,14 @@ class EventSelector extends LitWrapper {
           aria-label="Select event"
           @click=${(event) => this._toggleDropdown(event)}
         >
-          ${selectedEvent
-            ? renderEventSelectorPreview(selectedEvent)
-            : html`<div class="flex flex-col min-w-0">
-                <div class="max-w-full truncate">Select event</div>
-                <div class="text-xs text-stone-500 truncate">Choose an event to copy</div>
-              </div>`}
+          ${
+            selectedEvent
+              ? renderEventSelectorPreview(selectedEvent)
+              : html`<div class="flex flex-col min-w-0">
+                  <div class="max-w-full truncate">Select event</div>
+                  <div class="text-xs text-stone-500 truncate">Choose an event to copy</div>
+                </div>`
+          }
           <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none gap-2">
             ${this._loading ? html`<svg-spinner label="Loading events"></svg-spinner>` : ""}
             <div class="svg-icon size-3 icon-caret-down bg-stone-600"></div>
@@ -572,9 +574,9 @@ class EventSelector extends LitWrapper {
         </button>
         <div
           id="dropdown-events"
-          class="${this._isOpen
-            ? ""
-            : "hidden"} absolute top-14 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200"
+          class="${
+            this._isOpen ? "" : "hidden"
+          } absolute top-14 start-0 w-full z-10 bg-white rounded-lg shadow-sm border border-stone-200"
         >
           <div class="p-3 border-b border-stone-200">
             <div class="relative">
@@ -597,16 +599,18 @@ class EventSelector extends LitWrapper {
                 @input=${(event) => this._handleSearchInput(event)}
                 @keydown=${(event) => this._handleInputKeydown(event)}
               />
-              ${this._query.trim().length > 0
-                ? html`<button
-                    type="button"
-                    class="absolute inset-y-0 end-2 flex items-center"
-                    @click=${() => this._clearSearch()}
-                  >
-                    <div class="svg-icon size-4 icon-close bg-stone-400 hover:bg-stone-600"></div>
-                    <span class="sr-only">Clear search</span>
-                  </button>`
-                : null}
+              ${
+                this._query.trim().length > 0
+                  ? html`<button
+                      type="button"
+                      class="absolute inset-y-0 end-2 flex items-center"
+                      @click=${() => this._clearSearch()}
+                    >
+                      <div class="svg-icon size-4 icon-close bg-stone-400 hover:bg-stone-600"></div>
+                      <span class="sr-only">Clear search</span>
+                    </button>`
+                  : null
+              }
             </div>
           </div>
           ${renderEventSelectorDropdownContent({

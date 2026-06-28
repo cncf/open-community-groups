@@ -30,6 +30,15 @@
   </button>
   {# End join button -#}
 
+  {# Pending approval button -#}
+  <button id="pending-btn"
+          disabled
+          class="hidden group btn-primary-outline h-10 md:h-[30px] opacity-70 cursor-not-allowed flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 overflow-visible whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
+    <div class="svg-icon size-3 icon-clock"></div>
+    <span>Request pending</span>
+  </button>
+  {# End pending approval button -#}
+
   {# Leave button -#}
   <button id="leave-btn"
           hx-delete="/{{ group.alliance.name }}/group/{{ group.group_id }}/leave"

@@ -104,11 +104,15 @@ export class UserChip extends LitWrapper {
     if (this.small) {
       return html`
         <div
-          class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 ${this.featured
-            ? "bg-amber-50/50 border border-amber-200 text-amber-800"
-            : "bg-stone-100 text-stone-700"} ${isClickable
-            ? `cursor-pointer ${this.featured ? "hover:border-amber-400 hover:bg-amber-100/70" : "hover:bg-stone-200"} transition-colors`
-            : ""}"
+          class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 ${
+            this.featured
+              ? "bg-amber-50/50 border border-amber-200 text-amber-800"
+              : "bg-stone-100 text-stone-700"
+          } ${
+            isClickable
+              ? `cursor-pointer ${this.featured ? "hover:border-amber-400 hover:bg-amber-100/70" : "hover:bg-stone-200"} transition-colors`
+              : ""
+          }"
           @click=${isClickable ? this._handleClick : null}
           role=${isClickable ? "button" : ""}
           tabindex=${isClickable ? "0" : "-1"}
@@ -131,9 +135,11 @@ export class UserChip extends LitWrapper {
 
     return html`
       <div
-        class="relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full ${isClickable
-          ? `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-300"} hover:shadow-sm transition-all`
-          : ""}"
+        class="relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full ${
+          isClickable
+            ? `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-300"} hover:shadow-sm transition-all`
+            : ""
+        }"
         @click=${isClickable ? this._handleClick : null}
         role=${isClickable ? "button" : ""}
         tabindex=${isClickable ? "0" : "-1"}

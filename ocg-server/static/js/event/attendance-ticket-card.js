@@ -75,8 +75,9 @@ class AttendanceTicketCard extends LitWrapper {
         />
         <div
           data-attendance-role="ticket-type-card-body"
-          class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200 ${this
-            ._cardStateClasses}"
+          class="rounded-xl border border-stone-200 p-4 transition group-has-[input:checked]:border-primary-400 group-has-[input:checked]:ring-2 group-has-[input:checked]:ring-primary-200 ${
+            this._cardStateClasses
+          }"
         >
           <div
             data-attendance-role="ticket-type-summary"
@@ -88,16 +89,18 @@ class AttendanceTicketCard extends LitWrapper {
             >
               ${this._title}
             </div>
-            ${this._priceLabel
-              ? html`
-                  <div
-                    data-attendance-role="ticket-type-price-badge"
-                    class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800"
-                  >
-                    ${this._priceLabel}
-                  </div>
-                `
-              : nothing}
+            ${
+              this._priceLabel
+                ? html`
+                    <div
+                      data-attendance-role="ticket-type-price-badge"
+                      class="inline-flex w-fit shrink-0 self-center rounded-full border border-green-800 bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-800"
+                    >
+                      ${this._priceLabel}
+                    </div>
+                  `
+                : nothing
+            }
           </div>
           <div class="mt-2 text-xs font-medium">
             <span data-attendance-role="ticket-type-status-label" class="text-stone-500">

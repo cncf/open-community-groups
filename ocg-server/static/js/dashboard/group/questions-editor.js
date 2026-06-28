@@ -536,11 +536,13 @@ class QuestionsEditor extends LitWrapper {
           </div>
 
           <div class="mt-5 space-y-3">
-            ${this.questions.length === 0
-              ? this._renderEmptyState()
-              : this.questions.map((question, questionIndex) =>
-                  this._renderQuestionCard(question, questionIndex),
-                )}
+            ${
+              this.questions.length === 0
+                ? this._renderEmptyState()
+                : this.questions.map((question, questionIndex) =>
+                    this._renderQuestionCard(question, questionIndex),
+                  )
+            }
           </div>
         </div>
       </div>
@@ -624,10 +626,11 @@ class QuestionsEditor extends LitWrapper {
       >
         <button
           type="button"
-          class="shrink-0 rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled ||
-          this.questions.length <= 1
-            ? "cursor-not-allowed opacity-60"
-            : "cursor-grab active:cursor-grabbing"}"
+          class="shrink-0 rounded-full p-2 transition-colors hover:bg-stone-100 ${
+            this.disabled || this.questions.length <= 1
+              ? "cursor-not-allowed opacity-60"
+              : "cursor-grab active:cursor-grabbing"
+          }"
           draggable=${this.disabled || this.questions.length <= 1 ? "false" : "true"}
           ?disabled=${this.disabled || this.questions.length <= 1}
           @dragstart=${(event) => this._handleQuestionDragStart(event, questionIndex)}
@@ -660,21 +663,23 @@ class QuestionsEditor extends LitWrapper {
                   <div class="font-semibold text-stone-900">${question.prompt || "Untitled question"}</div>
                   <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-600">
                     <span class="text-stone-500">${this._getQuestionTypeLabel(question.kind)}</span>
-                    ${question.required
-                      ? html`
-                          <span class="text-stone-400">•</span>
-                          <span class="font-medium text-stone-700">Required</span>
-                        `
-                      : ""}
+                    ${
+                      question.required
+                        ? html`
+                            <span class="text-stone-400">•</span>
+                            <span class="font-medium text-stone-700">Required</span>
+                          `
+                        : ""
+                    }
                   </div>
                 </div>
 
                 <div class="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
-                    class="rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled
-                      ? "cursor-not-allowed opacity-60"
-                      : ""}"
+                    class="rounded-full p-2 transition-colors hover:bg-stone-100 ${
+                      this.disabled ? "cursor-not-allowed opacity-60" : ""
+                    }"
                     ?disabled=${this.disabled}
                     @click=${() => this._openQuestionModal(questionIndex)}
                     aria-label="Edit question"
@@ -684,9 +689,9 @@ class QuestionsEditor extends LitWrapper {
                   </button>
                   <button
                     type="button"
-                    class="rounded-full p-2 transition-colors hover:bg-stone-100 ${this.disabled
-                      ? "cursor-not-allowed opacity-60"
-                      : ""}"
+                    class="rounded-full p-2 transition-colors hover:bg-stone-100 ${
+                      this.disabled ? "cursor-not-allowed opacity-60" : ""
+                    }"
                     ?disabled=${this.disabled}
                     @click=${() => this._removeQuestion(questionIndex)}
                     aria-label="Delete question"
@@ -733,9 +738,9 @@ class QuestionsEditor extends LitWrapper {
   _renderQuestionModal() {
     return html`
       <div
-        class="fixed inset-0 z-[1000] ${this._isModalOpen
-          ? "flex"
-          : "hidden"} items-center justify-center overflow-y-auto overflow-x-hidden"
+        class="fixed inset-0 z-[1000] ${
+          this._isModalOpen ? "flex" : "hidden"
+        } items-center justify-center overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="question-modal-title"
@@ -817,9 +822,11 @@ class QuestionsEditor extends LitWrapper {
                 <span class="ms-3 text-sm font-medium text-stone-900">Required</span>
               </label>
 
-              ${this._draftQuestion && this._draftQuestion.kind !== "free-text"
-                ? this._renderDraftOptions()
-                : ""}
+              ${
+                this._draftQuestion && this._draftQuestion.kind !== "free-text"
+                  ? this._renderDraftOptions()
+                  : ""
+              }
             </div>
 
             <div class="flex shrink-0 items-center justify-end gap-3 border-t border-stone-200 p-5">
@@ -883,10 +890,11 @@ class QuestionsEditor extends LitWrapper {
             >
               <button
                 type="button"
-                class="shrink-0 rounded-full p-2 transition-colors hover:bg-stone-100 ${!this._isModalOpen ||
-                this._draftQuestion.options.length <= 1
-                  ? "cursor-not-allowed opacity-60"
-                  : "cursor-grab active:cursor-grabbing"}"
+                class="shrink-0 rounded-full p-2 transition-colors hover:bg-stone-100 ${
+                  !this._isModalOpen || this._draftQuestion.options.length <= 1
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-grab active:cursor-grabbing"
+                }"
                 draggable="true"
                 ?disabled=${!this._isModalOpen || this._draftQuestion.options.length <= 1}
                 @dragstart=${(event) => this._handleDraftOptionDragStart(event, optionIndex)}

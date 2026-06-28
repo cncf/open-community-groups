@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(286);
+select plan(290);
 
 -- ============================================================================
 -- VARIABLES
@@ -159,6 +159,7 @@ select has_function('get_event_ticket_capacity', array['jsonb']::name[]);
 select has_function('get_filters_options', array['text', 'text']::name[]);
 select has_function('get_group_full', array['uuid', 'uuid']::name[]);
 select has_function('get_group_full_by_slug', array['uuid', 'text']::name[]);
+select has_function('get_group_membership_status', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_group_past_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
 select has_function('get_group_sponsor', array['uuid', 'uuid']::name[]);
 select has_function('get_group_stats', array['uuid', 'uuid']::name[]);
@@ -177,6 +178,7 @@ select has_function('get_user_by_id_verified', array['uuid']::name[]);
 select has_function('get_user_by_username', array['text']::name[]);
 select has_function('i_array_to_string', array['text[]', 'text']::name[]);
 select has_function('insert_audit_log', array['text', 'uuid', 'text', 'uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]);
+select has_function('approve_group_join_request', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('invite_event_attendee', array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('is_event_check_in_window_open', array['uuid', 'uuid']::name[]);
 select has_function('is_event_meeting_in_sync', array['jsonb', 'jsonb']::name[]);
@@ -212,6 +214,7 @@ select has_function('list_event_waitlist_ids', array['uuid', 'uuid']::name[]);
 select has_function('list_group_audit_logs', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_categories', array['uuid']::name[]);
 select has_function('list_group_events', array['uuid', 'jsonb']::name[]);
+select has_function('list_group_join_requests', array['uuid']::name[]);
 select has_function('list_group_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members_ids', array['uuid']::name[]);
 select has_function('list_group_roles', '{}'::name[]);
@@ -261,6 +264,7 @@ select has_function('reject_alliance_team_invitation', array['uuid', 'uuid']::na
 select has_function('reject_event_attendee_invitation', array['uuid', 'uuid']::name[]);
 select has_function('reject_event_invitation_request', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('reject_event_refund_request', array['uuid', 'uuid', 'uuid', 'uuid', 'text']::name[]);
+select has_function('reject_group_join_request', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('reject_group_team_invitation', array['uuid', 'uuid']::name[]);
 select has_function('reject_session_proposal_co_speaker_invitation', array['uuid', 'uuid']::name[]);
 select has_function('release_event_checkout_attendee_hold', array['uuid', 'uuid']::name[]);

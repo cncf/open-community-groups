@@ -408,6 +408,12 @@ mock! {
             user_id: Uuid,
             role: &crate::types::group::GroupRole,
         ) -> Result<()>;
+        async fn approve_group_join_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
         async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn cancel_event_attendee_attendance(
             &self,
@@ -558,6 +564,10 @@ mock! {
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::members::GroupMembersFilters,
         ) -> Result<crate::templates::dashboard::group::members::GroupMembersOutput>;
+        async fn list_group_join_requests(
+            &self,
+            group_id: Uuid,
+        ) -> Result<Vec<crate::templates::dashboard::group::members::GroupJoinRequest>>;
         async fn list_group_member_spotlights(
             &self,
             group_id: Uuid,
@@ -622,6 +632,12 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<()>;
+        async fn reject_group_join_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
         async fn resolve_event_custom_notification_recipient_ids(
@@ -946,12 +962,18 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<bool>;
+        async fn get_group_membership_status(
+            &self,
+            alliance_id: Uuid,
+            group_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<Option<crate::types::group::GroupMembershipStatus>>;
         async fn join_group(
             &self,
             alliance_id: Uuid,
             group_id: Uuid,
             user_id: Uuid,
-        ) -> Result<()>;
+        ) -> Result<crate::types::group::GroupJoinOutcome>;
         async fn leave_group(
             &self,
             alliance_id: Uuid,

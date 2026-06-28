@@ -151,6 +151,38 @@ pub(crate) async fn delete(
     ))
 }
 
+/// Approves a pending group join request.
+#[instrument(skip_all, err)]
+pub(crate) async fn approve_join_request(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.approve_group_join_request(user.user_id, group_id, user_id).await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
+}
+
+/// Rejects a pending group join request.
+#[instrument(skip_all, err)]
+pub(crate) async fn reject_join_request(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.reject_group_join_request(user.user_id, group_id, user_id).await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
+}
+
 /// Blocks a member's `LinkedIn` account from future `LinkedIn` signup/login.
 #[instrument(skip_all, err)]
 pub(crate) async fn block_linkedin(
@@ -204,6 +236,11 @@ pub(crate) async fn prepare_list_page(
         db.get_group_summary(alliance_id, group_id),
         db.list_group_members(group_id, &filters)
     )?;
+    let join_requests = if can_manage_members {
+        db.list_group_join_requests(group_id).await?
+    } else {
+        Vec::new()
+    };
 
     // Prepare template
     let navigation_links =
@@ -211,6 +248,7 @@ pub(crate) async fn prepare_list_page(
     let template = members::ListPage {
         can_manage_members,
         default_notification_subject: group.name,
+        join_requests,
         members: results.members,
         navigation_links,
         total: results.total,

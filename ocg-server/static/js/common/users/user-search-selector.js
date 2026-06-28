@@ -157,24 +157,28 @@ export class UserSearchSelector extends LitWrapper {
         ${this._renderModal()}
 
         <!-- Selected Users -->
-        ${this.selectedUsers.length > 0
-          ? html`
-              <div class="flex flex-wrap gap-2">
-                ${repeat(
-                  this.selectedUsers,
-                  (user) => user.username,
-                  (user) => this._renderSelectedUser(user),
-                )}
-              </div>
-            `
-          : ""}
+        ${
+          this.selectedUsers.length > 0
+            ? html`
+                <div class="flex flex-wrap gap-2">
+                  ${repeat(
+                    this.selectedUsers,
+                    (user) => user.username,
+                    (user) => this._renderSelectedUser(user),
+                  )}
+                </div>
+              `
+            : ""
+        }
 
         <!-- Hidden inputs for form submission -->
-        ${this.fieldName
-          ? this.selectedUsers.map(
-              (user) => html` <input type="hidden" name="${this.fieldName}[]" value=${user.user_id} /> `,
-            )
-          : ""}
+        ${
+          this.fieldName
+            ? this.selectedUsers.map(
+                (user) => html` <input type="hidden" name="${this.fieldName}[]" value=${user.user_id} /> `,
+              )
+            : ""
+        }
       </div>
     `;
   }

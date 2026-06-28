@@ -60,15 +60,17 @@ const handleMembershipCheckResponse = (event) => {
   const loadingButton = getElementById(container, "loading-btn");
   const signinButton = getElementById(container, "signin-btn");
   const joinButton = getElementById(container, "join-btn");
+  const pendingButton = getElementById(container, "pending-btn");
   const leaveButton = getElementById(container, "leave-btn");
 
-  if (!loadingButton || !signinButton || !joinButton || !leaveButton) {
+  if (!loadingButton || !signinButton || !joinButton || !pendingButton || !leaveButton) {
     return;
   }
 
   setElementHidden(loadingButton, true);
   setElementHidden(signinButton, true);
   setElementHidden(joinButton, true);
+  setElementHidden(pendingButton, true);
   setElementHidden(leaveButton, true);
 
   const xhr = event.detail?.xhr;
@@ -82,6 +84,8 @@ const handleMembershipCheckResponse = (event) => {
 
     if (response.is_member) {
       setElementHidden(leaveButton, false);
+    } else if (response.has_pending_request) {
+      setElementHidden(pendingButton, false);
     } else {
       setElementHidden(joinButton, false);
     }
@@ -146,17 +150,24 @@ const handleJoinAfterRequest = (event) => {
 
   const loadingButton = getElementById(container, "loading-btn");
   const joinButton = getElementById(container, "join-btn");
-  if (!loadingButton || !joinButton) {
+  const pendingButton = getElementById(container, "pending-btn");
+  if (!loadingButton || !joinButton || !pendingButton) {
     return;
   }
 
   const xhr = event.detail?.xhr;
+  const response = parseJsonText(xhr?.responseText, null);
+  const requestedApproval = response?.status === "pending";
   const ok = handleHtmxResponse({
     xhr,
-    successMessage: "You have successfully joined this group.",
+    successMessage: requestedApproval
+      ? "Your request to join this group is pending approval."
+      : "You have successfully joined this group.",
     errorMessage: "Something went wrong joining this group. Please try again later.",
   });
   if (ok) {
+    setElementHidden(loadingButton, true);
+    setElementHidden(pendingButton, !requestedApproval);
     document.body.dispatchEvent(new Event("membership-changed"));
   } else {
     setElementHidden(loadingButton, true);

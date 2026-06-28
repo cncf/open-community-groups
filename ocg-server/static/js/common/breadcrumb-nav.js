@@ -222,24 +222,28 @@ export class BreadcrumbNav extends LitWrapper {
     return html`
       <div class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-3 sm:pt-8">
         <div class="bg-white border border-stone-200 rounded-lg">
-          ${this.bannerMobileUrl
-            ? html`
-                <div
-                  class="aspect-[61/12] w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg"
-                >
-                  <img src="${this.bannerMobileUrl}" class="w-full h-full object-cover" alt="Banner" />
-                </div>
-              `
-            : ""}
-          ${this.bannerUrl
-            ? html`
-                <div
-                  class="aspect-[607/48] w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg"
-                >
-                  <img src="${this.bannerUrl}" class="w-full h-full object-cover" alt="Banner" />
-                </div>
-              `
-            : ""}
+          ${
+            this.bannerMobileUrl
+              ? html`
+                  <div
+                    class="aspect-[61/12] w-full border-b border-stone-200 sm:hidden overflow-hidden rounded-t-lg"
+                  >
+                    <img src="${this.bannerMobileUrl}" class="w-full h-full object-cover" alt="Banner" />
+                  </div>
+                `
+              : ""
+          }
+          ${
+            this.bannerUrl
+              ? html`
+                  <div
+                    class="aspect-[607/48] w-full border-b border-stone-200 hidden sm:block overflow-hidden rounded-t-lg"
+                  >
+                    <img src="${this.bannerUrl}" class="w-full h-full object-cover" alt="Banner" />
+                  </div>
+                `
+              : ""
+          }
           <nav class="px-4 sm:px-6 lg:px-10 py-3" aria-label="Breadcrumb">
             <!-- Mobile breadcrumb dropdown -->
             <div class="relative sm:hidden">
@@ -254,19 +258,19 @@ export class BreadcrumbNav extends LitWrapper {
                 <div class="svg-icon size-4 bg-stone-400 icon-tree-list"></div>
                 <span class="text-stone-600 truncate flex-1 text-left">${currentItem.label}</span>
                 <div
-                  class="svg-icon size-3 bg-stone-400 icon-caret-down transition-transform duration-200 motion-reduce:transition-none ${this
-                    ._isOpen
-                    ? "rotate-180"
-                    : ""}"
+                  class="svg-icon size-3 bg-stone-400 icon-caret-down transition-transform duration-200 motion-reduce:transition-none ${
+                    this._isOpen ? "rotate-180" : ""
+                  }"
                 ></div>
               </button>
               <div
                 id="${this._dropdownId}"
                 data-breadcrumb-dropdown
-                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto ${this
-                  ._isOpen
-                  ? "opacity-100 scale-y-100 translate-y-0"
-                  : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"}"
+                class="origin-top transition-all duration-150 ease-out motion-reduce:transition-none absolute top-full left-0 mt-3 -mx-4 w-[calc(100%+2rem)] bg-white rounded-xl shadow-lg border border-stone-200 z-50 max-h-64 overflow-y-auto ${
+                  this._isOpen
+                    ? "opacity-100 scale-y-100 translate-y-0"
+                    : "opacity-0 scale-y-95 -translate-y-1 pointer-events-none"
+                }"
                 role="listbox"
               >
                 <div class="py-1">${this.items.map((item) => this._renderMobileDropdownItem(item))}</div>

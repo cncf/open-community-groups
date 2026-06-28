@@ -281,7 +281,8 @@ select is(
             "name": "Technology",
             "normalized_name": "technology"
         },
-        "members_count": 3
+        "members_count": 3,
+        "membership_approval_required": false
     }
         $json$,
         :'groupID',

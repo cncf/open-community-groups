@@ -345,6 +345,7 @@ select is(
         "tags": ["updated", "test"],
         "logo_url": "https://example.com/updated-logo.png",
         "og_image_url": "https://example.com/updated-og.png",
+        "membership_approval_required": false,
         "organizers": [],
         "sponsors": []
     }
@@ -503,7 +504,7 @@ select lives_ok(
 
 -- Should keep minimal fields after empty-string conversion
 select is(
-    (select get_group_full(:'allianceID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'allianceID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'membership_approval_required' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Empty Strings",
         "slug": "pqr4jkl",
@@ -553,7 +554,7 @@ select lives_ok(
 
 -- Should persist explicit null arrays in result
 select is(
-    (select get_group_full(:'allianceID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'allianceID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'membership_approval_required' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
         "name": "Updated Group Null Arrays",
         "slug": "mno3ghi",

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(162);
+select plan(166);
 
 -- ============================================================================
 -- TESTS
@@ -46,6 +46,7 @@ select hasnt_pk('event_views');
 select has_pk('event_waitlist');
 select has_pk('group');
 select has_pk('group_category');
+select has_pk('group_join_request');
 select has_pk('group_member');
 select has_pk('group_member_spotlight');
 select has_pk('group_permission');
@@ -137,6 +138,9 @@ select col_is_fk('group', 'group_category_id', 'group_category');
 select col_is_fk('group', 'group_site_layout_id', 'group_site_layout');
 select col_is_fk('group', 'region_id', 'region');
 select col_is_fk('group_category', 'alliance_id', 'alliance');
+select col_is_fk('group_join_request', 'group_id', 'group');
+select col_is_fk('group_join_request', 'reviewed_by', 'user');
+select col_is_fk('group_join_request', 'user_id', 'user');
 select col_is_fk('group_member', 'group_id', 'group');
 select col_is_fk('group_member', 'user_id', 'user');
 select col_is_fk('group_member_spotlight', 'created_by', 'user');

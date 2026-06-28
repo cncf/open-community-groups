@@ -70,17 +70,19 @@ export class PeopleList extends LitWrapper {
       <ul class="space-y-3">
         ${visiblePeople.map((person) => this._renderPerson(person))}
       </ul>
-      ${people.length > this.initialCount
-        ? html`
-            <button
-              type="button"
-              class="mt-4 text-sm font-semibold text-primary-700"
-              @click=${this._toggleExpanded}
-            >
-              ${this._expanded ? "Show less" : `Show ${hiddenCount} more`}
-            </button>
-          `
-        : ""}
+      ${
+        people.length > this.initialCount
+          ? html`
+              <button
+                type="button"
+                class="mt-4 text-sm font-semibold text-primary-700"
+                @click=${this._toggleExpanded}
+              >
+                ${this._expanded ? "Show less" : `Show ${hiddenCount} more`}
+              </button>
+            `
+          : ""
+      }
     `;
   }
 }

@@ -21,6 +21,7 @@ returns json as $$
             from group_member
             where group_id = g.group_id
         ),
+        'membership_approval_required', g.membership_approval_required,
         'name', g.name,
         'slug', g.slug,
 

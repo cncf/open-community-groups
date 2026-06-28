@@ -170,6 +170,26 @@
             </p>
           </div>
           {# End Group Description -#}
+
+          {# Membership approval -#}
+          <div class="col-span-full rounded-xl border border-stone-200 bg-stone-50 p-4">
+            <label for="membership_approval_required"
+                   class="flex cursor-pointer items-start gap-3">
+              <input id="membership_approval_required"
+                     name="membership_approval_required"
+                     type="checkbox"
+                     value="true"
+                     class="mt-1 size-4 rounded border-stone-300 text-primary-600 focus:ring-primary-500"
+                     {% if group.membership_approval_required %}
+                       checked
+                     {% endif %}>
+              <span>
+                <span class="block text-sm font-semibold text-stone-900">Require approval to join</span>
+                <span class="mt-1 block text-sm text-stone-600">When enabled, users can request to join and group admins approve or reject them from the Members tab.</span>
+              </span>
+            </label>
+          </div>
+          {# End membership approval -#}
         </div>
       </div>
 

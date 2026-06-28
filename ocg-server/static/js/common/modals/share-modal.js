@@ -365,12 +365,14 @@ export class ShareModal extends LitWrapper {
                 ${this._renderShareButton("bluesky", "bluesky", "Bluesky")}
                 ${this._renderInstagramCopyButton()}
               </div>
-              ${this.instagramCaption
-                ? html`<p class="mt-3 text-xs text-stone-500">
-                    Instagram does not support prefilled web posts. Use the Instagram button to copy a caption
-                    and event link.
-                  </p>`
-                : ""}
+              ${
+                this.instagramCaption
+                  ? html`<p class="mt-3 text-xs text-stone-500">
+                      Instagram does not support prefilled web posts. Use the Instagram button to copy a
+                      caption and event link.
+                    </p>`
+                  : ""
+              }
 
               <div class="border-t border-stone-200 mt-5 pt-5">
                 <div class="text-sm font-medium text-stone-700 mb-3">Copy link</div>

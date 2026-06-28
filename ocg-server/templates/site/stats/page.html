@@ -233,7 +233,9 @@
             <div class="rounded-2xl bg-stone-50 px-4 py-3">
               <div class="text-sm font-bold text-stone-500">Requests / group</div>
               {% if stats.mentorship_overview.requests_per_group_avg > 0.0 -%}
-                <div class="mt-1 text-2xl font-black text-stone-950">{{ stats.mentorship_overview.requests_per_group_avg }}</div>
+                <div class="mt-1 text-2xl font-black text-stone-950">
+                  {{ stats.mentorship_overview.requests_per_group_avg }}
+                </div>
               {% else -%}
                 <div class="mt-1 text-sm font-bold text-stone-500">Building</div>
               {% endif -%}

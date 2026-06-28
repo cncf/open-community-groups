@@ -25,6 +25,8 @@ pub(crate) struct ListPage {
     pub default_notification_subject: String,
     /// List of members in the group.
     pub members: Vec<GroupMember>,
+    /// Pending join requests awaiting admin review.
+    pub join_requests: Vec<GroupJoinRequest>,
     /// Pagination navigation links.
     pub navigation_links: pagination::NavigationLinks,
     /// Total number of members in the group.
@@ -83,6 +85,51 @@ pub struct GroupMember {
     pub mentorship_note: Option<String>,
     /// Optional price or pricing guidance for mentorship.
     pub mentorship_price: Option<String>,
+    /// Full name.
+    pub name: Option<String>,
+    /// URL to user's avatar.
+    pub photo_url: Option<String>,
+    /// Title held by the user.
+    pub title: Option<String>,
+    /// X/Twitter profile URL.
+    pub twitter_url: Option<String>,
+    /// Website URL.
+    pub website_url: Option<String>,
+}
+
+/// Pending group join request summary information.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupJoinRequest {
+    /// Request creation time.
+    #[serde(with = "chrono::serde::ts_seconds")]
+    pub created_at: DateTime<Utc>,
+    /// Email address.
+    pub email: String,
+    /// User identifier.
+    pub user_id: Uuid,
+    /// Username.
+    pub username: String,
+
+    /// Company the user represents.
+    pub company: Option<String>,
+    /// User biography.
+    pub bio: Option<String>,
+    /// Bluesky profile URL.
+    pub bluesky_url: Option<String>,
+    /// City where the user is based.
+    pub city: Option<String>,
+    /// Country where the user is based.
+    pub country: Option<String>,
+    /// Facebook profile URL.
+    pub facebook_url: Option<String>,
+    /// GitHub profile URL.
+    pub github_url: Option<String>,
+    /// User interests.
+    pub interests: Option<Vec<String>>,
+    /// `LinkedIn` profile URL.
+    pub linkedin_url: Option<String>,
+    /// Whether the user has a connected `LinkedIn` provider.
+    pub linkedin_connected: bool,
     /// Full name.
     pub name: Option<String>,
     /// URL to user's avatar.

@@ -97,9 +97,11 @@ export class ImageField extends LitWrapper {
         <img
           src=${this.value}
           alt="Image preview"
-          class=${isWide
-            ? "h-full w-full object-contain rounded p-1"
-            : "max-h-[86px] max-w-[86px] object-contain mx-auto"}
+          class=${
+            isWide
+              ? "h-full w-full object-contain rounded p-1"
+              : "max-h-[86px] max-w-[86px] object-contain mx-auto"
+          }
           loading="lazy"
         />
       `;
@@ -272,12 +274,11 @@ export class ImageField extends LitWrapper {
       </label>
       <div class="mt-3 flex flex-col gap-4 items-stretch sm:flex-row">
         <div
-          class="relative ${isWide
-            ? "w-full sm:max-w-md h-24"
-            : "size-24"} min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${this
-            ._isDragActive && !this._isUploading
-            ? "ring-2 ring-primary-300"
-            : ""} cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
+          class="relative ${
+            isWide ? "w-full sm:max-w-md h-24" : "size-24"
+          } min-w-24 flex items-center justify-center bg-stone-200/50 rounded-lg border border-dashed border-stone-300 overflow-hidden ${
+            this._isDragActive && !this._isUploading ? "ring-2 ring-primary-300" : ""
+          } cursor-pointer ${this.previewBgClass ? ` ${this.previewBgClass}` : ""}"
           role="button"
           tabindex="0"
           aria-label="Upload image"
@@ -288,9 +289,9 @@ export class ImageField extends LitWrapper {
           @drop=${this._handleDrop}
         >
           <div
-            class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${this._isUploading
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none"} transition-opacity duration-200"
+            class="absolute inset-0 flex items-center justify-center bg-white/50 z-10 ${
+              this._isUploading ? "opacity-100" : "opacity-0 pointer-events-none"
+            } transition-opacity duration-200"
           >
             <svg-spinner
               size="size-8"
@@ -305,10 +306,9 @@ export class ImageField extends LitWrapper {
           <p class="form-legend hidden xl:block">${combinedHelpText}</p>
           <div class="flex flex-wrap gap-3 mb-1">
             <label
-              class="btn-primary btn-mini inline-flex items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${this
-                ._isUploading
-                ? "opacity-75 pointer-events-none"
-                : ""}"
+              class="btn-primary btn-mini inline-flex items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
+                this._isUploading ? "opacity-75 pointer-events-none" : ""
+              }"
             >
               <input
                 type="file"
@@ -322,9 +322,9 @@ export class ImageField extends LitWrapper {
             </label>
             <button
               type="button"
-              class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${removeDisabled
-                ? "cursor-not-allowed opacity-60"
-                : "enabled:cursor-pointer"}"
+              class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${
+                removeDisabled ? "cursor-not-allowed opacity-60" : "enabled:cursor-pointer"
+              }"
               ?disabled=${removeDisabled}
               @click=${this._handleRemove}
             >

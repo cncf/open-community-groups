@@ -22,7 +22,7 @@ use crate::{
             },
             home::UserGroupsByAlliance,
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
-            members::{GroupMembersFilters, GroupMembersOutput},
+            members::{GroupJoinRequest, GroupMembersFilters, GroupMembersOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
             spotlights::{GroupMemberSpotlight, SpotlightInput},
             store::{GroupStoreItem, StoreItemInput},
@@ -106,6 +106,14 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         user_id: Uuid,
         role: &GroupRole,
+    ) -> Result<()>;
+
+    /// Approves a pending group join request.
+    async fn approve_group_join_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
     ) -> Result<()>;
 
     /// Cancels an event (sets canceled=true).
@@ -306,6 +314,9 @@ pub(crate) trait DBDashboardGroup {
         filters: &GroupMembersFilters,
     ) -> Result<GroupMembersOutput>;
 
+    /// Lists pending group join requests.
+    async fn list_group_join_requests(&self, group_id: Uuid) -> Result<Vec<GroupJoinRequest>>;
+
     /// Lists member spotlights for one group.
     async fn list_group_member_spotlights(
         &self,
@@ -325,6 +336,14 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all available group roles.
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>>;
+
+    /// Rejects a pending group join request.
+    async fn reject_group_join_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()>;
 
     /// Lists sponsors for a group.
     /// When `full_list` is true, ignores pagination filters.
@@ -712,6 +731,21 @@ where
         self.execute(
             "select add_group_team_member($1::uuid, $2::uuid, $3::uuid, $4::text)",
             &[&actor_user_id, &group_id, &user_id, &role.to_string()],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::approve_group_join_request`]
+    #[instrument(skip(self), err)]
+    async fn approve_group_join_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select approve_group_join_request($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &user_id],
         )
         .await
     }
@@ -1177,6 +1211,13 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::list_group_join_requests`]
+    #[instrument(skip(self), err)]
+    async fn list_group_join_requests(&self, group_id: Uuid) -> Result<Vec<GroupJoinRequest>> {
+        self.fetch_json_one("select list_group_join_requests($1::uuid)", &[&group_id])
+            .await
+    }
+
     /// [`DBDashboardGroup::list_group_member_spotlights`]
     #[instrument(skip(self), err)]
     async fn list_group_member_spotlights(
@@ -1430,6 +1471,21 @@ where
         self.execute(
             "select reject_event_invitation_request($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
             &[&actor_user_id, &group_id, &event_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::reject_group_join_request`]
+    #[instrument(skip(self), err)]
+    async fn reject_group_join_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select reject_group_join_request($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &user_id],
         )
         .await
     }

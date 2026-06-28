@@ -256,9 +256,9 @@ export class SessionsSection extends LitWrapper {
           <h3 class="text-lg font-semibold text-stone-900">${formatDayHeader(day)}</h3>
           <button
             type="button"
-            class="btn-primary-outline btn-mini ${buttonClass} ${this.disabled
-              ? "opacity-60 cursor-not-allowed"
-              : ""}"
+            class="btn-primary-outline btn-mini ${buttonClass} ${
+              this.disabled ? "opacity-60 cursor-not-allowed" : ""
+            }"
             @click=${() => this._openAddModal(day)}
             ?disabled=${this.disabled}
           >
@@ -323,17 +323,19 @@ export class SessionsSection extends LitWrapper {
             `,
           }),
         )}
-        ${outOfRangeSessions.length > 0
-          ? html`
-              <div class="border-t border-stone-200 pt-6">
-                <h3 class="text-lg font-semibold text-stone-900">Sessions outside event dates</h3>
-                <p class="text-sm text-stone-500 mt-1">
-                  These sessions do not match the event date range. You can edit or delete them.
-                </p>
-                ${this._renderSessionsGrid(outOfRangeSessions, "grid gap-3 mt-4")}
-              </div>
-            `
-          : ""}
+        ${
+          outOfRangeSessions.length > 0
+            ? html`
+                <div class="border-t border-stone-200 pt-6">
+                  <h3 class="text-lg font-semibold text-stone-900">Sessions outside event dates</h3>
+                  <p class="text-sm text-stone-500 mt-1">
+                    These sessions do not match the event date range. You can edit or delete them.
+                  </p>
+                  ${this._renderSessionsGrid(outOfRangeSessions, "grid gap-3 mt-4")}
+                </div>
+              `
+            : ""
+        }
       </div>
     `;
   }
@@ -344,11 +346,13 @@ export class SessionsSection extends LitWrapper {
 
     return html`
       <div id="sessions-section">
-        ${scenario === "no-dates"
-          ? this._renderNoDatesPlaceholder()
-          : scenario === "single-day"
-            ? this._renderSingleDay()
-            : this._renderMultiDay()}
+        ${
+          scenario === "no-dates"
+            ? this._renderNoDatesPlaceholder()
+            : scenario === "single-day"
+              ? this._renderSingleDay()
+              : this._renderMultiDay()
+        }
       </div>
 
       ${renderSessionsHiddenInputs(this.sessions)}

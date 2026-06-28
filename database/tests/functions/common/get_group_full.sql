@@ -309,6 +309,7 @@ select is(
         "created_at": 1705312800,
         "group_id": "0c0a0000-0000-0000-0000-000000000003",
         "members_count": 4,
+        "membership_approval_required": false,
         "name": "Seattle Kubernetes Meetup",
         "slug": "abc1234",
         "banner_url": "https://example.com/group-banner.png",

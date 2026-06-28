@@ -155,6 +155,10 @@ pub(crate) struct Group {
     /// URL to the group logo.
     #[garde(custom(image_url_opt))]
     pub logo_url: Option<String>,
+    /// Whether new members must be approved by group admins.
+    #[serde(default)]
+    #[garde(skip)]
+    pub membership_approval_required: bool,
     /// URL to the group's Open Graph image.
     #[garde(custom(image_url_opt))]
     pub og_image_url: Option<String>,

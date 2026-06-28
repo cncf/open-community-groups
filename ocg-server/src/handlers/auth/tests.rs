@@ -892,7 +892,7 @@ async fn test_auto_join_linkedin_baku_chapter_joins_missing_member() {
     db.expect_join_group()
         .times(1)
         .withf(move |id, gid, uid| *id == alliance_id && *gid == group_id && *uid == user_id)
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _| Ok(crate::types::group::GroupJoinOutcome::Joined));
     let db: DynDB = Arc::new(db);
 
     // Execute helper
