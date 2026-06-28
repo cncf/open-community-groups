@@ -173,6 +173,7 @@ select has_check('event_ticket_price_window', 'event_ticket_price_window_window_
 
 -- Test: group table expected constraints exist
 select has_check('group', 'group_check');
+select has_check('group', 'group_google_photos_url_check');
 select has_check('group', 'group_og_image_url_check');
 select has_check('group', 'group_slug_pretty_chk');
 

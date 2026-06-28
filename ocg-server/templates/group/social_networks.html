@@ -32,6 +32,9 @@
 {% if let Some(flickr_url) = &group.flickr_url -%}
   {{ social::social_link(url = flickr_url, icon_name = "flickr", platform_name = "Flickr") -}}
 {% endif -%}
+{% if let Some(google_photos_url) = &group.google_photos_url -%}
+  {{ social::social_link(url = google_photos_url, icon_name = "link", platform_name = "Google Photos") -}}
+{% endif -%}
 {% if let Some(extra_links) = &group.extra_links -%}
   {% for (name, url) in extra_links -%}
     <a href="{{ url }}"

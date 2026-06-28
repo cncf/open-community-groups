@@ -72,6 +72,7 @@ begin
         extra_links = p_group->'extra_links',
         facebook_url = nullif(p_group->>'facebook_url', ''),
         flickr_url = nullif(p_group->>'flickr_url', ''),
+        google_photos_url = nullif(p_group->>'google_photos_url', ''),
         github_url = nullif(p_group->>'github_url', ''),
         instagram_url = nullif(p_group->>'instagram_url', ''),
         linkedin_url = nullif(p_group->>'linkedin_url', ''),

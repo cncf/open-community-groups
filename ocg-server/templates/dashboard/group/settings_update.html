@@ -254,6 +254,9 @@
   {% let flickr_value -%}
   {% if let Some(flickr_url) = &group.flickr_url %}value="{{ flickr_url }}"{% endif %}
 {%- endlet %}
+{% let google_photos_value -%}
+{% if let Some(google_photos_url) = &group.google_photos_url %}value="{{ google_photos_url }}"{% endif %}
+{%- endlet %}
 {% let github_value -%}
 {% if let Some(github_url) = &group.github_url %}value="{{ github_url }}"{% endif %}
 {%- endlet %}
@@ -291,6 +294,10 @@
 {# Flickr URL -#}
 {{ form_fields::social_url_field(name = "flickr_url", label = "Flickr", icon = "icon-flickr", placeholder = "https://flickr.com/photos/account", value_attr = flickr_value) -}}
 {# End Flickr URL -#}
+
+{# Google Photos URL -#}
+{{ form_fields::social_url_field(name = "google_photos_url", label = "Google Photos", icon = "icon-link", placeholder = "https://photos.app.goo.gl/album", value_attr = google_photos_value) -}}
+{# End Google Photos URL -#}
 
 {# GitHub URL -#}
 {{ form_fields::social_url_field(name = "github_url", label = "GitHub", icon = "icon-github", placeholder = "https://github.com/organization", value_attr = github_value) -}}

@@ -546,6 +546,7 @@ select columns_are('group', array[
     'extra_links',
     'facebook_url',
     'flickr_url',
+    'google_photos_url',
     'github_url',
     'instagram_url',
     'legacy_id',

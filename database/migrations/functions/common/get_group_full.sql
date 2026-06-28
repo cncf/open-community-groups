@@ -36,6 +36,7 @@ returns json as $$
         'extra_links', g.extra_links,
         'facebook_url', g.facebook_url,
         'flickr_url', g.flickr_url,
+        'google_photos_url', g.google_photos_url,
         'github_url', g.github_url,
         'instagram_url', g.instagram_url,
         'latitude', st_y(g.location::geometry),

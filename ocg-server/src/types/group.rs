@@ -159,6 +159,8 @@ pub struct GroupFull {
     pub facebook_url: Option<String>,
     /// Flickr profile URL.
     pub flickr_url: Option<String>,
+    /// Google Photos album URL.
+    pub google_photos_url: Option<String>,
     /// GitHub organization URL.
     pub github_url: Option<String>,
     /// Instagram profile URL.

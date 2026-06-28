@@ -134,6 +134,9 @@ pub(crate) struct Group {
     /// Flickr profile URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub flickr_url: Option<String>,
+    /// Google Photos album URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub google_photos_url: Option<String>,
     /// GitHub organization URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub github_url: Option<String>,
