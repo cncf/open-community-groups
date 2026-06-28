@@ -47,6 +47,8 @@ pub(crate) struct AddPage {
     pub categories: Vec<EventCategory>,
     /// List of available event kinds.
     pub event_kinds: Vec<EventKindSummary>,
+    /// Default event payload configured for this group.
+    pub event_defaults: Option<Value>,
     /// Group identifier.
     pub group_id: Uuid,
     /// Flag indicating if meetings functionality is enabled.

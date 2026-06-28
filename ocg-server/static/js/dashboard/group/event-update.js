@@ -1,4 +1,4 @@
-import { showConfirmAlert } from "/static/js/common/alerts.js";
+import { bindHtmxResponseAlert, showConfirmAlert } from "/static/js/common/alerts.js";
 import {
   getElementById,
   initializeMatchingRoots,
@@ -58,6 +58,7 @@ export const initializeEventUpdatePage = (root = document) => {
     onlineEventDetails,
   } = controls;
   const updateEventButton = getElementById(pageRoot, "update-event-button");
+  const setEventDefaultsButton = getElementById(pageRoot, "set-event-defaults-button");
   const locationSearchField = queryOne("location-search-field");
   const inertForm = queryOne(".inert-form");
   const capacityInput = getElementById(pageRoot, "capacity");
@@ -187,6 +188,11 @@ export const initializeEventUpdatePage = (root = document) => {
 
   initializeEventPreview({
     pageRoot,
+  });
+
+  bindHtmxResponseAlert(setEventDefaultsButton, {
+    successMessage: "Group event defaults updated.",
+    errorMessage: "Something went wrong updating group event defaults. Please try again later.",
   });
 
   if (!updateEventButton) {

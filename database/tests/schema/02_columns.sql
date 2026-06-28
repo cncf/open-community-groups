@@ -543,6 +543,7 @@ select columns_are('group', array[
     'deleted_at',
     'description',
     'description_short',
+    'event_defaults',
     'extra_links',
     'facebook_url',
     'flickr_url',

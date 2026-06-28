@@ -212,6 +212,13 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
     ) -> Result<Option<GroupPaymentRecipient>>;
 
+    /// Retrieves default event payload for a group.
+    async fn get_group_event_defaults(
+        &self,
+        alliance_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Option<serde_json::Value>>;
+
     /// Gets a single sponsor from the database.
     async fn get_group_sponsor(
         &self,
@@ -474,6 +481,14 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         group_store_item_id: Uuid,
         input: &StoreItemInput,
+    ) -> Result<()>;
+
+    /// Updates the default event payload for a group.
+    async fn update_group_event_defaults(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_defaults: Option<serde_json::Value>,
     ) -> Result<()>;
 
     /// Updates the featured flag for an existing sponsor.
@@ -916,6 +931,27 @@ where
             "
             select (
                 select payment_recipient
+                from \"group\"
+                where alliance_id = $1::uuid
+                and group_id = $2::uuid
+            )
+            ",
+            &[&alliance_id, &group_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_group_event_defaults`]
+    #[instrument(skip(self), err)]
+    async fn get_group_event_defaults(
+        &self,
+        alliance_id: Uuid,
+        group_id: Uuid,
+    ) -> Result<Option<serde_json::Value>> {
+        self.fetch_json_opt(
+            "
+            select (
+                select event_defaults
                 from \"group\"
                 where alliance_id = $1::uuid
                 and group_id = $2::uuid
@@ -1630,6 +1666,21 @@ where
                 &input.featured,
                 &input.active,
             ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_group_event_defaults`]
+    #[instrument(skip(self, event_defaults), err)]
+    async fn update_group_event_defaults(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_defaults: Option<serde_json::Value>,
+    ) -> Result<()> {
+        self.execute(
+            "select update_group_event_defaults($1::uuid, $2::uuid, $3::jsonb)",
+            &[&actor_user_id, &group_id, &Json(&event_defaults)],
         )
         .await
     }

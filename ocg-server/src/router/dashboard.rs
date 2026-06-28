@@ -358,6 +358,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::events::publish),
         )
         .route(
+            "/events/{event_id}/defaults",
+            put(dashboard::group::events::set_group_defaults),
+        )
+        .route(
             "/events/{event_id}/submissions/{cfs_submission_id}",
             put(dashboard::group::submissions::update),
         )

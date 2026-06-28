@@ -3,7 +3,15 @@
 {% import "macros/form_fields.html" as form_fields -%}
 
 {# Events form -#}
-<div class="space-y-12" data-event-page="add" hx-history="false">
+{% let event_defaults_json -%}{%- if let Some(event_defaults) = &event_defaults -%}{{ event_defaults|json }}{%- else -%}null{%- endif -%}{%- endlet %}
+<div class="space-y-12"
+     data-event-page="add"
+     data-event-defaults="{{ event_defaults_json }}"
+     hx-history="false">
+  <div id="event-defaults-applied-alert"
+       class="hidden rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-sm text-primary-900">
+    Group event defaults have been applied. You can still edit any field before saving.
+  </div>
   <div class="space-y-3 w-full">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <label for="copy-event-selector" class="form-label m-0">

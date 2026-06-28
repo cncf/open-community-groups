@@ -305,6 +305,7 @@ select has_function('update_event_category', array['uuid', 'uuid', 'uuid', 'json
 select has_function('update_event_views', array['jsonb']::name[]);
 select has_function('update_group', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_group_category', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
+select has_function('update_group_event_defaults', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_group_sponsor', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_group_sponsor_featured', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
 select has_function('update_group_team_member_role', array['uuid', 'uuid', 'uuid', 'text']::name[]);

@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
@@ -153,6 +154,8 @@ pub struct GroupFull {
     pub description: Option<String>,
     /// Short group description text.
     pub description_short: Option<String>,
+    /// Default payload applied when creating new events for this group.
+    pub event_defaults: Option<Value>,
     /// Additional links as key-value pairs.
     pub extra_links: Option<BTreeMap<String, String>>,
     /// Facebook profile URL.

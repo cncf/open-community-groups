@@ -69,6 +69,10 @@ begin
         country_name = nullif(p_group->>'country_name', ''),
         description = nullif(p_group->>'description', ''),
         description_short = nullif(p_group->>'description_short', ''),
+        event_defaults = case
+            when p_group ? 'event_defaults' then nullif(p_group->'event_defaults', 'null'::jsonb)
+            else event_defaults
+        end,
         extra_links = p_group->'extra_links',
         facebook_url = nullif(p_group->>'facebook_url', ''),
         flickr_url = nullif(p_group->>'flickr_url', ''),

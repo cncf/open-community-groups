@@ -819,6 +819,38 @@ export class OnlineEventDetails extends LitWrapper {
   }
 
   /**
+   * Applies automatic meeting fields after clearing generated meeting access details.
+   * @param {object} fields Automatic meeting field values.
+   * @param {string} [fields.meeting_join_instructions] Join instructions.
+   * @param {string} [fields.meeting_provider_id] Provider identifier.
+   * @param {string} [fields.meeting_provider] Provider identifier alias.
+   * @param {Array<string>} [fields.meeting_hosts] Provider host emails.
+   * @param {boolean} [fields.meeting_recording_requested] Whether recordings should be requested.
+   * @param {boolean} [fields.meeting_recording_published] Whether recordings are public.
+   */
+  setAutomaticMeetingDetails({
+    meeting_join_instructions: joinInstructions = "",
+    meeting_provider_id: providerId = "",
+    meeting_provider: providerAlias = "",
+    meeting_hosts: hosts = [],
+    meeting_recording_requested: recordingRequested = true,
+    meeting_recording_published: recordingPublished = false,
+  }) {
+    this._mode = "automatic";
+    this._joinInstructions = joinInstructions || "";
+    this._joinUrl = "";
+    this._recordingUrl = "";
+    this._recordingRequested = recordingRequested !== false;
+    this._recordingPublished = recordingPublished === true;
+    this._createMeeting = true;
+    this._providerId = this._normalizeProviderId(providerId || providerAlias);
+    this._hosts = Array.isArray(hosts) ? [...hosts] : [];
+    this.meetingJoinInstructions = this._joinInstructions;
+    this.meetingJoinUrl = "";
+    this.requestUpdate();
+  }
+
+  /**
    * Renders hidden inputs for form submission.
    * @returns {import('lit').TemplateResult} Hidden input elements
    */

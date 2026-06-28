@@ -7,6 +7,7 @@ import {
   initializeOnReadyAndHtmxLoad,
   setElementHidden,
 } from "/static/js/common/dom.js";
+import { parseJsonAttribute } from "/static/js/common/utils.js";
 import {
   attachEventSaveAfterRequest,
   attachEventSaveBeforeRequestValidation,
@@ -17,6 +18,7 @@ import {
   initializeSharedEventPageControls,
   resolveSharedEventPageControls,
 } from "/static/js/dashboard/group/event-page-shared.js";
+import { applyEventDefaults } from "/static/js/dashboard/group/event-selector/copy.js";
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
 const EVENT_ADD_PAGE_SELECTOR = '[data-event-page="add"]';
@@ -198,6 +200,13 @@ export const initializeEventAddPage = (root = document) => {
     recurrencePatternSelect,
     startsAtInput,
   });
+
+  const eventDefaults = parseJsonAttribute(pageRoot.dataset?.eventDefaults, null);
+  if (eventDefaults && typeof eventDefaults === "object") {
+    void applyEventDefaults(eventDefaults).then(() => {
+      setElementHidden(getElementById(pageRoot, "event-defaults-applied-alert"), false);
+    });
+  }
 
   initializeEventPagePendingChanges({
     pageRoot,

@@ -13,6 +13,7 @@ use axum::{
 use chrono::Utc;
 use garde::Validate;
 use serde::Deserialize;
+use serde_json::{Map, Value};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -76,6 +77,7 @@ pub(crate) async fn add_page(
         can_manage_events,
         categories,
         event_kinds,
+        event_defaults,
         payment_currency_codes,
         payment_recipient,
         session_kinds,
@@ -90,6 +92,7 @@ pub(crate) async fn add_page(
         ),
         db.list_event_categories(alliance_id),
         db.list_event_kinds(),
+        db.get_group_event_defaults(alliance_id, group_id),
         db.list_payment_currency_codes(),
         db.get_group_payment_recipient(alliance_id, group_id),
         db.list_session_kinds(),
@@ -102,6 +105,7 @@ pub(crate) async fn add_page(
         can_manage_events,
         categories,
         event_kinds,
+        event_defaults,
         group_id,
         meetings_enabled,
         payments_enabled: payments_cfg.is_some(),
@@ -239,6 +243,30 @@ pub(crate) async fn details(
     let event = db.get_event_full(alliance_id, group_id, event_id).await?;
 
     Ok(Json(event).into_response())
+}
+
+/// Stores the current event details as the default template for new group events.
+#[instrument(skip_all, err)]
+pub(crate) async fn set_group_defaults(
+    CurrentUser(user): CurrentUser,
+    SelectedAllianceId(alliance_id): SelectedAllianceId,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let event = db.get_event_full(alliance_id, group_id, event_id).await?;
+    let event_defaults = sanitize_event_defaults(
+        serde_json::to_value(event)
+            .map_err(|err| HandlerError::Deserialization(err.to_string()))?,
+    );
+    db.update_group_event_defaults(user.user_id, group_id, event_defaults)
+        .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "group-event-defaults-updated")],
+    )
+        .into_response())
 }
 
 // Actions handlers.
@@ -644,6 +672,76 @@ fn build_event_payload(event: &Event) -> Result<serde_json::Value, HandlerError>
     event
         .to_db_payload()
         .map_err(|err| HandlerError::Deserialization(err.to_string()))
+}
+
+/// Removes volatile event fields before storing an event as reusable group defaults.
+fn sanitize_event_defaults(event: Value) -> Option<Value> {
+    let Value::Object(mut payload) = event else {
+        return None;
+    };
+
+    for key in [
+        "attendee_count",
+        "canceled",
+        "created_at",
+        "ends_at",
+        "event_id",
+        "event_series_id",
+        "has_related_events",
+        "meeting_error",
+        "meeting_in_sync",
+        "meeting_join_url",
+        "meeting_password",
+        "meeting_recording_raw_urls",
+        "meeting_recording_url",
+        "published",
+        "published_at",
+        "registration_ends_at",
+        "registration_starts_at",
+        "sessions",
+        "slug",
+        "starts_at",
+        "waitlist_count",
+    ] {
+        payload.remove(key);
+    }
+
+    clear_nested_ids(&mut payload);
+
+    Some(Value::Object(payload))
+}
+
+/// Clears IDs from nested collections so defaults create fresh child rows.
+fn clear_nested_ids(payload: &mut Map<String, Value>) {
+    clear_array_object_ids(payload, "discount_codes", &["event_discount_code_id"]);
+    clear_array_object_ids(payload, "ticket_types", &["event_ticket_type_id"]);
+    if let Some(Value::Array(ticket_types)) = payload.get_mut("ticket_types") {
+        for ticket_type in ticket_types {
+            if let Value::Object(ticket_type) = ticket_type {
+                clear_array_object_ids(
+                    ticket_type,
+                    "price_windows",
+                    &["event_ticket_price_window_id"],
+                );
+            }
+        }
+    }
+    clear_array_object_ids(payload, "cfs_labels", &["event_cfs_label_id"]);
+}
+
+/// Removes identifier keys from each object in an array field.
+fn clear_array_object_ids(payload: &mut Map<String, Value>, field: &str, keys: &[&str]) {
+    let Some(Value::Array(items)) = payload.get_mut(field) else {
+        return;
+    };
+
+    for item in items {
+        if let Value::Object(item) = item {
+            for key in keys {
+                item.remove(*key);
+            }
+        }
+    }
 }
 
 /// Builds a `HashMap` of meeting provider to max participants from config.

@@ -72,6 +72,21 @@
         </svg>
         <span>Preview</span>
       </button>
+      <button id="set-event-defaults-button"
+              type="button"
+              hx-put="/dashboard/group/events/{{ event.event_id }}/defaults"
+              hx-target="this"
+              hx-swap="none"
+              hx-indicator="#dashboard-spinner"
+              class="group btn-primary-outline btn-mini inline-flex h-7 min-w-28 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot update event defaults."
+              {% else -%}
+                title="Use this event as the default template for new group events."
+              {% endif -%}>
+        <div class="svg-icon size-3 icon-copy shrink-0"></div>
+        <span>Use as defaults</span>
+      </button>
       {% if event_public_url_enabled -%}
         <a id="event-public-page-link"
            href="{{ event_public_url }}"

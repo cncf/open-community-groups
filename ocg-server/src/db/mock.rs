@@ -482,6 +482,11 @@ mock! {
             alliance_id: Uuid,
             group_id: Uuid,
         ) -> Result<Option<crate::types::payments::GroupPaymentRecipient>>;
+        async fn get_group_event_defaults(
+            &self,
+            alliance_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<Option<serde_json::Value>>;
         async fn get_group_sponsor(
             &self,
             group_id: Uuid,
@@ -680,6 +685,12 @@ mock! {
             group_id: Uuid,
             group_store_item_id: Uuid,
             input: &crate::templates::dashboard::group::store::StoreItemInput,
+        ) -> Result<()>;
+        async fn update_group_event_defaults(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            event_defaults: Option<serde_json::Value>,
         ) -> Result<()>;
         async fn update_group_sponsor_featured(
             &self,

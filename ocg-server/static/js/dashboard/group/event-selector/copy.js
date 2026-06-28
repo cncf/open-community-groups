@@ -58,17 +58,34 @@ const copyManualMeetingFields = (details) => {
 };
 
 /**
- * Applies copied event details into the event form.
+ * Copies automatic meeting defaults into the event form.
  * @param {object} details Event details payload
+ */
+const copyAutomaticMeetingFields = (details) => {
+  if (details.meeting_requested !== true) {
+    return;
+  }
+
+  const meetingDetails = getOnlineEventDetails();
+  if (meetingDetails && typeof meetingDetails.setAutomaticMeetingDetails === "function") {
+    meetingDetails.setAutomaticMeetingDetails(details);
+  }
+};
+
+/**
+ * Applies event details into the event form.
+ * @param {object} details Event details payload
+ * @param {object} [options] Apply options
+ * @param {boolean} [options.appendNameSuffix] Whether to append copy suffix to the event name
  * @returns {Promise<void>}
  */
-export const applyCopiedEventDetails = async (details) => {
+const applyEventDetails = async (details, { appendNameSuffix = false } = {}) => {
   if (!details || typeof details !== "object") {
     return;
   }
 
   resetCopiedMeetingFields();
-  setTextValue("name", appendCopySuffix(details.name));
+  setTextValue("name", appendNameSuffix ? appendCopySuffix(details.name) : details.name);
   setTextValue("registration_ends_at", "");
   setTextValue("registration_starts_at", "");
   setCategoryValue(details);
@@ -97,8 +114,27 @@ export const applyCopiedEventDetails = async (details) => {
   setTextValue("venue_address", details.venue_address);
   setTextValue("venue_city", details.venue_city);
   setTextValue("venue_zip_code", details.venue_zip_code);
+  copyAutomaticMeetingFields(details);
   copyManualMeetingFields(details);
   setHosts(details.hosts);
   setSponsors(details.sponsors);
   setSessions([]);
+};
+
+/**
+ * Applies copied event details into the event form.
+ * @param {object} details Event details payload
+ * @returns {Promise<void>}
+ */
+export const applyCopiedEventDetails = async (details) => {
+  await applyEventDetails(details, { appendNameSuffix: true });
+};
+
+/**
+ * Applies group event defaults into the event form.
+ * @param {object} details Group event defaults payload
+ * @returns {Promise<void>}
+ */
+export const applyEventDefaults = async (details) => {
+  await applyEventDetails(details);
 };

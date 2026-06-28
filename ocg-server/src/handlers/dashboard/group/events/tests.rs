@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_login::tower_sessions::session;
 use chrono::Utc;
-use serde_json::{from_slice, from_value, to_value};
+use serde_json::{from_slice, from_value, json, to_value};
 use tower::ServiceExt;
 use uuid::Uuid;
 
@@ -54,6 +54,52 @@ fn test_build_meetings_max_participants_includes_google_meet() {
         max_participants.get(&MeetingProvider::GoogleMeet),
         Some(&250)
     );
+}
+
+#[test]
+fn test_sanitize_event_defaults_removes_volatile_fields() {
+    let defaults = super::sanitize_event_defaults(json!({
+        "name": "Monthly Meetup",
+        "kind": "hybrid",
+        "category_name": "Meetup",
+        "starts_at": 1_725_000_000,
+        "ends_at": 1_725_003_600,
+        "registration_starts_at": 1_724_000_000,
+        "registration_ends_at": 1_724_900_000,
+        "sessions": [{"session_id": "4ab3cf32-27f4-49dc-93c9-bbbcd753cf34"}],
+        "meeting_requested": true,
+        "meeting_provider": "google_meet",
+        "meeting_join_url": "https://meet.google.com/generated",
+        "meeting_recording_url": "https://youtube.test/generated",
+        "ticket_types": [{
+            "event_ticket_type_id": "89177d43-0e3e-471a-8b99-3a55911ed1f8",
+            "title": "General",
+            "price_windows": [{
+                "event_ticket_price_window_id": "db8d9572-2836-4ca4-b78f-f5772e25d72e",
+                "amount_minor": 1000
+            }]
+        }],
+        "discount_codes": [{
+            "event_discount_code_id": "9cc0aa3d-b108-40ab-b0a9-e117be762af0",
+            "code": "COMMUNITY"
+        }]
+    }))
+    .expect("defaults payload");
+
+    assert_eq!(defaults["name"], json!("Monthly Meetup"));
+    assert_eq!(defaults["meeting_requested"], json!(true));
+    assert_eq!(defaults["meeting_provider"], json!("google_meet"));
+    assert!(defaults.get("starts_at").is_none());
+    assert!(defaults.get("sessions").is_none());
+    assert!(defaults.get("meeting_join_url").is_none());
+    assert!(defaults.get("meeting_recording_url").is_none());
+    assert!(defaults["ticket_types"][0].get("event_ticket_type_id").is_none());
+    assert!(
+        defaults["ticket_types"][0]["price_windows"][0]
+            .get("event_ticket_price_window_id")
+            .is_none()
+    );
+    assert!(defaults["discount_codes"][0].get("event_discount_code_id").is_none());
 }
 
 #[tokio::test]
@@ -113,6 +159,10 @@ async fn test_add_page_success() {
     db.expect_list_event_kinds()
         .times(1)
         .returning(move || Ok(vec![kind.clone()]));
+    db.expect_get_group_event_defaults()
+        .times(1)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
+        .returning(move |_, _| Ok(None));
     db.expect_list_payment_currency_codes()
         .times(1)
         .returning(move || Ok(payment_currency_codes.clone()));
