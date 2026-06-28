@@ -3,23 +3,27 @@
 {% block jumbotron -%}
   <div class="relative overflow-hidden">
     <div class="absolute inset-x-0 top-0 h-72 bg-linear-to-b from-white to-transparent"></div>
-    <section class="relative container mx-auto max-w-7xl px-4 pt-10 pb-12 sm:px-6 lg:px-8 lg:pt-16 lg:pb-20">
-      <div class="max-w-4xl rounded-[2.25rem] border border-stone-200 bg-white/90 p-6 shadow-xl shadow-stone-200/50 backdrop-blur sm:p-8 lg:p-10">
-        <div class="mb-6 inline-flex items-center rounded-full border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">
-          Sponsor GOUP
+    <section class="relative container mx-auto max-w-7xl px-4 pt-10 pb-8 sm:px-6 lg:px-8 lg:pt-16 lg:pb-10">
+      <div class="relative overflow-hidden rounded-[2.25rem] border border-stone-200 bg-white/95 p-6 shadow-xl shadow-stone-200/60 backdrop-blur sm:p-8 lg:p-10">
+        <div class="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-linear-to-l from-stone-50 to-transparent">
         </div>
-        <h1 class="text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
-          Support the builder community
-        </h1>
-        <p class="mt-6 max-w-2xl text-lg/8 font-medium text-stone-600">
-          Partner with GOUP to support events, hackathons, community programs, and useful
-          opportunities for builders.
-        </p>
-        <p class="mt-4 max-w-2xl text-base/7 text-stone-600">
-          Sponsorship helps keep GOUP warm, practical, and accessible: more rooms for builders to meet,
-          more projects discovered, more jobs shared, and more community programs that turn introductions
-          into real momentum.
-        </p>
+        <div class="relative max-w-4xl">
+          <div class="mb-4 inline-flex items-center rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">
+            Sponsor GOUP
+          </div>
+          <h1 class="text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
+            Support the builder community
+          </h1>
+          <p class="mt-4 max-w-2xl text-base/7 font-medium text-stone-600">
+            Partner with GOUP to support events, hackathons, community programs, and useful
+            opportunities for builders.
+          </p>
+          <p class="mt-4 max-w-2xl text-sm/7 text-stone-600 sm:text-base/7">
+            Sponsorship helps keep GOUP warm, practical, and accessible: more rooms for builders to meet,
+            more projects discovered, more jobs shared, and more community programs that turn introductions
+            into real momentum.
+          </p>
+        </div>
       </div>
     </section>
   </div>
@@ -27,8 +31,8 @@
 
 {% block content -%}
   <div class="container mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-8 lg:pb-20">
-    <div class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-      <aside class="rounded-[2rem] border border-[#d8c7b2] bg-[#f5efe7] p-6 text-stone-950 shadow-sm sm:p-8">
+    <div class="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+      <aside class="rounded-[2rem] border border-[#d8c7b2] bg-[#fffaf5] p-6 text-stone-950 shadow-lg shadow-[#d8c7b2]/30 sm:p-8">
         <h2 class="text-2xl font-black tracking-tight">Why sponsor?</h2>
         <div class="mt-6 grid gap-4 text-sm/6 text-stone-700">
           <p>Reach a trusted network of founders, engineers, researchers, creators, and community leaders.</p>
@@ -37,20 +41,20 @@
             Help members find collaborators, talent, sponsors, and opportunities without turning the community into noise.
           </p>
         </div>
-        <div class="mt-8 rounded-3xl border border-[#d8c7b2] bg-white/60 p-5 text-sm/6 text-stone-700">
+        <div class="mt-8 rounded-3xl border border-[#d8c7b2] bg-white/75 p-5 text-sm/6 text-stone-700">
           <div class="font-bold text-stone-950">Members-first sponsorship</div>
           <p class="mt-2">
             We prioritize useful support: community calls, member spotlights, event support, project visibility,
             and jobs that help builders move forward.
           </p>
         </div>
-        <div class="mt-8 rounded-3xl border border-[#d8c7b2] bg-white/60 p-5 text-sm/6 text-stone-700">
+        <div class="mt-8 rounded-3xl border border-[#d8c7b2] bg-white/75 p-5 text-sm/6 text-stone-700">
           We’ll reply from <a href="mailto:{{ crate::templates::site::sponsor::SPONSOR_INQUIRY_RECIPIENT }}"
     class="font-bold text-stone-950 underline decoration-[#d8c7b2] underline-offset-4">{{ crate::templates::site::sponsor::SPONSOR_INQUIRY_RECIPIENT }}</a>.
         </div>
       </aside>
 
-      <section class="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+      <section class="rounded-[2rem] border border-stone-200 bg-white/95 p-6 shadow-lg shadow-stone-200/50 sm:p-8 lg:p-10">
         {% if submitted -%}
           <div class="rounded-3xl border border-stone-200 bg-stone-50 p-6">
             <h2 class="text-2xl font-black tracking-tight text-stone-950">Thanks for reaching out.</h2>
@@ -163,7 +167,7 @@
       </section>
     </div>
 
-    <section class="mt-10 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:p-8 lg:p-10">
+    <section class="mt-8 rounded-[2rem] border border-stone-200 bg-white/95 p-6 shadow-lg shadow-stone-200/50 sm:p-8 lg:p-10">
       <div class="max-w-3xl">
         <h2 class="text-2xl font-black tracking-tight text-stone-950">Memberships to suit your organization</h2>
         <p class="mt-3 text-sm/6 text-stone-600">

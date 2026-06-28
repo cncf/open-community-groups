@@ -284,6 +284,27 @@ fn test_groups_filters_new_list_cleans_empty_entries() {
 }
 
 #[test]
+fn test_groups_filters_new_list_ignores_empty_scalar_vec_filters() {
+    let raw_query = [
+        "alliance[0]=goup",
+        "group_category=",
+        "region=",
+        "limit=10",
+        "offset=0",
+    ]
+    .join("&");
+
+    let filters =
+        SearchGroupsFilters::new(&HeaderMap::new(), &raw_query).expect("filters to be created");
+
+    assert_eq!(filters.alliance, vec!["goup".to_string()]);
+    assert!(filters.group_category.is_empty());
+    assert!(filters.region.is_empty());
+    assert_eq!(filters.limit, Some(10));
+    assert_eq!(filters.offset, Some(0));
+}
+
+#[test]
 fn test_groups_filters_new_list_extracts_location_from_headers() {
     // Prepare headers and raw query
     let mut headers = HeaderMap::new();

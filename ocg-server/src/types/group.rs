@@ -130,6 +130,7 @@ pub struct GroupFull {
     /// Total number of group members.
     pub members_count: i64,
     /// Whether new members must be approved by group admins.
+    #[serde(default)]
     pub membership_approval_required: bool,
     /// Group name.
     pub name: String,

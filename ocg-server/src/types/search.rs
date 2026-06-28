@@ -1,5 +1,7 @@
 //! Shared search filter types and helpers used across the application.
 
+use std::borrow::Cow;
+
 use anyhow::Result;
 use axum::http::HeaderMap;
 use chrono::{Datelike, Months, NaiveDate, Utc};
@@ -112,7 +114,19 @@ impl SearchEventsFilters {
     /// Create a new `SearchEventsFilters` instance from the raw query string and headers.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: SearchEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
+        let normalized_query = strip_empty_scalar_vec_filters(
+            raw_query,
+            &[
+                "alliance",
+                "event_category",
+                "group",
+                "group_category",
+                "kind",
+                "region",
+            ],
+        );
+        let mut filters: SearchEventsFilters =
+            serde_qs_config().deserialize_str(&normalized_query)?;
         filters.validate()?;
 
         // Clean up entries that are empty strings
@@ -290,7 +304,10 @@ impl SearchGroupsFilters {
     /// provided.
     #[instrument(err)]
     pub(crate) fn new(headers: &HeaderMap, raw_query: &str) -> Result<Self, FilterError> {
-        let mut filters: SearchGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
+        let normalized_query =
+            strip_empty_scalar_vec_filters(raw_query, &["alliance", "group_category", "region"]);
+        let mut filters: SearchGroupsFilters =
+            serde_qs_config().deserialize_str(&normalized_query)?;
         filters.validate()?;
 
         // Clean up entries that are empty strings
@@ -395,6 +412,35 @@ fn default_offset() -> Option<usize> {
 }
 
 // Helpers.
+
+/// Removes empty scalar values for fields represented as vectors.
+///
+/// Search forms can submit an unselected multi-select as `field=`, while
+/// `serde_qs` expects vector fields to use bracket notation. Dropping only
+/// empty scalar values lets old/shared links keep working without changing
+/// non-empty scalar values into ambiguous one-item arrays.
+fn strip_empty_scalar_vec_filters<'a>(raw_query: &'a str, fields: &[&str]) -> Cow<'a, str> {
+    if raw_query.is_empty() {
+        return Cow::Borrowed(raw_query);
+    }
+
+    let mut changed = false;
+    let parts = raw_query
+        .split('&')
+        .filter(|part| {
+            let (key, value) = part.split_once('=').unwrap_or((*part, ""));
+            let should_strip = value.is_empty() && fields.contains(&key);
+            changed |= should_strip;
+            !should_strip
+        })
+        .collect::<Vec<_>>();
+
+    if changed {
+        Cow::Owned(parts.join("&"))
+    } else {
+        Cow::Borrowed(raw_query)
+    }
+}
 
 /// Extract geolocation coordinates from request headers.
 fn extract_location(headers: &HeaderMap) -> (Option<f64>, Option<f64>) {
