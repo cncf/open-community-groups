@@ -52,6 +52,14 @@ GOOGLE_MEET_CLIENT_ID="${OCG_GOOGLE_MEET_CLIENT_ID:-}"
 GOOGLE_MEET_CLIENT_SECRET="${OCG_GOOGLE_MEET_CLIENT_SECRET:-}"
 GOOGLE_MEET_REFRESH_TOKEN="${OCG_GOOGLE_MEET_REFRESH_TOKEN:-}"
 GOOGLE_MEET_MAX_PARTICIPANTS="${OCG_GOOGLE_MEET_MAX_PARTICIPANTS:-100}"
+YOUTUBE_PUBLISH_ENABLED="${OCG_YOUTUBE_PUBLISH_ENABLED:-false}"
+YOUTUBE_PUBLISH_CLIENT_ID="${OCG_YOUTUBE_PUBLISH_CLIENT_ID:-}"
+YOUTUBE_PUBLISH_CLIENT_SECRET="${OCG_YOUTUBE_PUBLISH_CLIENT_SECRET:-}"
+YOUTUBE_PUBLISH_DRIVE_FOLDER_ID="${OCG_YOUTUBE_PUBLISH_DRIVE_FOLDER_ID:-}"
+YOUTUBE_PUBLISH_REFRESH_TOKEN="${OCG_YOUTUBE_PUBLISH_REFRESH_TOKEN:-}"
+YOUTUBE_PUBLISH_VISIBILITY="${OCG_YOUTUBE_PUBLISH_VISIBILITY:-unlisted}"
+YOUTUBE_PUBLISH_DELAY_MINUTES="${OCG_YOUTUBE_PUBLISH_DELAY_MINUTES:-30}"
+YOUTUBE_PUBLISH_RETRY_DELAY_MINUTES="${OCG_YOUTUBE_PUBLISH_RETRY_DELAY_MINUTES:-15}"
 
 usage() {
     cat <<'EOF'
@@ -78,6 +86,22 @@ Common optional environment:
                                Google OAuth refresh token.
   OCG_GOOGLE_MEET_MAX_PARTICIPANTS
                                Google Meet participant limit. Default: 100
+  OCG_YOUTUBE_PUBLISH_ENABLED  Enable Google Meet recording upload to YouTube.
+                               Default: false
+  OCG_YOUTUBE_PUBLISH_CLIENT_ID
+                               Google OAuth client ID for Drive/YouTube APIs.
+  OCG_YOUTUBE_PUBLISH_CLIENT_SECRET
+                               Google OAuth client secret for Drive/YouTube APIs.
+  OCG_YOUTUBE_PUBLISH_REFRESH_TOKEN
+                               Google OAuth refresh token with Drive read and YouTube upload scopes.
+  OCG_YOUTUBE_PUBLISH_DRIVE_FOLDER_ID
+                               Optional Drive folder ID for Meet recordings.
+  OCG_YOUTUBE_PUBLISH_VISIBILITY
+                               YouTube visibility [private|unlisted|public]. Default: unlisted
+  OCG_YOUTUBE_PUBLISH_DELAY_MINUTES
+                               Minutes after meeting end before checking Drive. Default: 30
+  OCG_YOUTUBE_PUBLISH_RETRY_DELAY_MINUTES
+                               Minutes between recording discovery retries. Default: 15
   BOOTSTRAP_INSTALL_DEPS       Install missing EC2 dependencies. Default: true
   BOOTSTRAP_INSTALL_POSTGRES_SERVER
                                Also install local PostgreSQL/PostGIS packages when available.
@@ -359,6 +383,11 @@ if [[ "$GOOGLE_MEET_ENABLED" == "true" ]]; then
     [[ -n "$GOOGLE_MEET_CLIENT_SECRET" ]] || die "set OCG_GOOGLE_MEET_CLIENT_SECRET when OCG_GOOGLE_MEET_ENABLED=true"
     [[ -n "$GOOGLE_MEET_REFRESH_TOKEN" ]] || die "set OCG_GOOGLE_MEET_REFRESH_TOKEN when OCG_GOOGLE_MEET_ENABLED=true"
 fi
+if [[ "$YOUTUBE_PUBLISH_ENABLED" == "true" ]]; then
+    [[ -n "$YOUTUBE_PUBLISH_CLIENT_ID" ]] || die "set OCG_YOUTUBE_PUBLISH_CLIENT_ID when OCG_YOUTUBE_PUBLISH_ENABLED=true"
+    [[ -n "$YOUTUBE_PUBLISH_CLIENT_SECRET" ]] || die "set OCG_YOUTUBE_PUBLISH_CLIENT_SECRET when OCG_YOUTUBE_PUBLISH_ENABLED=true"
+    [[ -n "$YOUTUBE_PUBLISH_REFRESH_TOKEN" ]] || die "set OCG_YOUTUBE_PUBLISH_REFRESH_TOKEN when OCG_YOUTUBE_PUBLISH_ENABLED=true"
+fi
 
 write_file_once "$TERN_CONFIG" 600 <<EOF
 [database]
@@ -407,6 +436,17 @@ meetings:
     max_participants: $GOOGLE_MEET_MAX_PARTICIPANTS
     refresh_token: "$GOOGLE_MEET_REFRESH_TOKEN"
   zoom: null
+
+recording_publishing:
+  youtube:
+    client_id: "$YOUTUBE_PUBLISH_CLIENT_ID"
+    client_secret: "$YOUTUBE_PUBLISH_CLIENT_SECRET"
+    drive_folder_id: ${YOUTUBE_PUBLISH_DRIVE_FOLDER_ID:+"\"$YOUTUBE_PUBLISH_DRIVE_FOLDER_ID\""}
+    enabled: $YOUTUBE_PUBLISH_ENABLED
+    publish_delay_minutes: $YOUTUBE_PUBLISH_DELAY_MINUTES
+    retry_delay_minutes: $YOUTUBE_PUBLISH_RETRY_DELAY_MINUTES
+    refresh_token: "$YOUTUBE_PUBLISH_REFRESH_TOKEN"
+    visibility: "$YOUTUBE_PUBLISH_VISIBILITY"
 
 server:
   addr: $SERVER_ADDR

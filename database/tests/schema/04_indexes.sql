@@ -377,6 +377,7 @@ select indexes_are('meeting', array[
     'meeting_pkey',
     'meeting_session_id_idx',
     'meeting_sync_claim_idx',
+    'meeting_google_meet_recording_publish_pending_idx',
     'meeting_zoom_auto_end_pending_idx'
 ]);
 

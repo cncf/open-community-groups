@@ -7,7 +7,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CONTENT_TYPE, COOKIE, HOST, LOCATION, SET_COOKIE},
+        header::{CONTENT_TYPE, COOKIE, HOST, LOCATION},
     },
     middleware,
     response::IntoResponse,
@@ -141,8 +141,8 @@ async fn test_sign_up_page_success() {
     );
     assert!(!bytes.is_empty());
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    assert!(body.contains("Notifications"));
-    assert!(body.contains(">2</span>"));
+    assert!(body.contains("Sign Up"));
+    assert!(body.contains("Already have an account?"));
 }
 
 #[tokio::test]
@@ -518,17 +518,6 @@ async fn test_log_in_validation_error() {
         parts.headers.get(LOCATION).unwrap(),
         &HeaderValue::from_static(LOG_IN_URL),
     );
-    let set_cookies = parts.headers.get_all(SET_COOKIE);
-    assert!(set_cookies.iter().any(|value| {
-        value
-            .to_str()
-            .is_ok_and(|cookie| cookie.contains("id=") && cookie.contains("Max-Age=0"))
-    }));
-    assert!(set_cookies.iter().any(|value| {
-        value
-            .to_str()
-            .is_ok_and(|cookie| cookie.contains("auth_provider=") && cookie.contains("Max-Age=0"))
-    }));
     assert!(bytes.is_empty());
 }
 

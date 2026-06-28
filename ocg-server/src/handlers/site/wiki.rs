@@ -68,24 +68,8 @@ const AI_SOURCES: &[FeedSource] = &[
         url: "https://importai.substack.com/feed",
     },
     FeedSource {
-        label: "The Batch by DeepLearning.AI",
-        url: "https://www.deeplearning.ai/the-batch/feed/",
-    },
-    FeedSource {
         label: "OpenAI",
         url: "https://openai.com/news/rss.xml",
-    },
-    FeedSource {
-        label: "Anthropic News",
-        url: "https://www.anthropic.com/news/rss.xml",
-    },
-    FeedSource {
-        label: "InfoQ AI/ML",
-        url: "https://feed.infoq.com/AI-ML-Data-Engineering",
-    },
-    FeedSource {
-        label: "LlamaIndex Blog",
-        url: "https://www.llamaindex.ai/blog/rss.xml",
     },
     FeedSource {
         label: "LangChain Blog",
@@ -136,10 +120,6 @@ const ENTREPRENEURSHIP_SOURCES: &[FeedSource] = &[
     FeedSource {
         label: "Sequoia Capital Blog",
         url: "https://www.sequoiacap.com/feed/",
-    },
-    FeedSource {
-        label: "Paul Graham Essays",
-        url: "https://paulgraham.com/index.xml",
     },
 ];
 

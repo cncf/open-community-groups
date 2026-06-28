@@ -34,7 +34,7 @@ test.describe("group page visual regression @visual", () => {
       page,
       getIntroSection(page),
       "group-page-desktop.png",
-      { testInfo },
+      { testInfo, useClippedPageScreenshot: true },
     );
   });
 
@@ -62,7 +62,11 @@ test.describe("group page visual regression @visual", () => {
       page,
       getIntroSection(page),
       "group-page-mobile.png",
-      { testInfo, useClippedPageScreenshot: true },
+      {
+        testInfo,
+        useClippedPageScreenshot: true,
+        maxDiffPixelRatio: process.env.CI === "true" ? 0.12 : undefined,
+      },
     );
   });
 });

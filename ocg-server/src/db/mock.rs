@@ -1065,6 +1065,11 @@ mock! {
             provider_meeting_id: &str,
             recording_url: &str,
         ) -> Result<()>;
+        async fn claim_google_meet_recording_for_publish(
+            &self,
+            publish_delay: std::time::Duration,
+            retry_delay: std::time::Duration,
+        ) -> Result<Option<crate::db::meetings::GoogleMeetRecordingPublishCandidate>>;
         async fn assign_zoom_host_user(
             &self,
             meeting: &crate::services::meetings::Meeting,
@@ -1087,13 +1092,28 @@ mock! {
             &self,
             timeout: std::time::Duration,
         ) -> Result<usize>;
+        async fn mark_stale_google_meet_recording_publish_claims_unknown(
+            &self,
+            timeout: std::time::Duration,
+        ) -> Result<usize>;
         async fn mark_stale_meeting_syncs_unknown(
             &self,
             timeout: std::time::Duration,
         ) -> Result<usize>;
+        async fn mark_google_meet_recording_published(
+            &self,
+            candidate: &crate::db::meetings::GoogleMeetRecordingPublishCandidate,
+            drive_file_id: &str,
+            youtube_url: &str,
+        ) -> Result<()>;
         async fn release_meeting_auto_end_check_claim(
             &self,
             candidate: &crate::db::meetings::MeetingAutoEndCandidate,
+        ) -> Result<()>;
+        async fn release_google_meet_recording_publish_claim(
+            &self,
+            candidate: &crate::db::meetings::GoogleMeetRecordingPublishCandidate,
+            error: &str,
         ) -> Result<()>;
         async fn release_meeting_sync_claim(
             &self,

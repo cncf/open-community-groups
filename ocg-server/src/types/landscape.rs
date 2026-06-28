@@ -39,6 +39,9 @@ pub(crate) struct LandscapeFilters {
     /// Filter by category.
     #[garde(length(max = MAX_LEN_M))]
     pub category: Option<String>,
+    /// Sort option for the GitHub leaderboard.
+    #[garde(length(max = MAX_LEN_M))]
+    pub github_sort: Option<String>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(max = MAX_PAGINATION_LIMIT))]
@@ -58,6 +61,7 @@ impl Default for LandscapeFilters {
             alliance: None,
             kind: None,
             category: None,
+            github_sort: None,
             limit: Some(20),
             offset: Some(0),
         }

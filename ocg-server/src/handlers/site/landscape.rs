@@ -1,6 +1,6 @@
 //! HTTP handlers for the public landscape page.
 
-use std::time::Duration;
+use std::{cmp::Reverse, time::Duration};
 
 use askama::Template;
 use axum::{
@@ -8,6 +8,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use cached::cached;
+use chrono::{DateTime, Utc};
 use garde::Validate;
 use reqwest::Url;
 use serde::Deserialize;
@@ -21,7 +22,9 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        site::landscape::{self, GitHubProjectLeaderboardEntry, GitHubRepositoryMetrics},
+        site::landscape::{
+            self, GitHubLeaderboard, GitHubProjectLeaderboardEntry, GitHubRepositoryMetrics,
+        },
     },
     types::{landscape::LandscapeFilters, pagination::NavigationLinks},
 };
@@ -29,6 +32,10 @@ use crate::{
 const LANDSCAPE_URL: &str = "/landscape";
 const GITHUB_PROJECT_KIND: &str = "github_project";
 const GITHUB_LEADERBOARD_LIMIT: usize = 25;
+const GITHUB_LEADERBOARD_DISPLAY_LIMIT: usize = 10;
+const GITHUB_SORT_STARS: &str = "stars";
+const GITHUB_SORT_FORKS: &str = "forks";
+const GITHUB_SORT_UPDATED: &str = "updated";
 
 /// Render the public landscape listing page.
 #[instrument(skip_all, err)]
@@ -47,9 +54,9 @@ pub(crate) async fn page(
     let navigation_links =
         NavigationLinks::from_filters(&filters, output.total, LANDSCAPE_URL, LANDSCAPE_URL)?;
     let github_leaderboard = if should_show_github_leaderboard(&filters) {
-        load_github_leaderboard(&github_output.entries).await
+        load_github_leaderboard(&github_output.entries, github_leaderboard_sort(&filters)).await
     } else {
-        Vec::new()
+        GitHubLeaderboard::default()
     };
 
     let template = landscape::Page {
@@ -93,10 +100,21 @@ fn should_show_github_leaderboard(filters: &LandscapeFilters) -> bool {
     filters.kind.as_deref().is_none_or(|kind| kind == GITHUB_PROJECT_KIND)
 }
 
+fn github_leaderboard_sort(filters: &LandscapeFilters) -> &'static str {
+    match filters.github_sort.as_deref() {
+        Some(GITHUB_SORT_FORKS) => GITHUB_SORT_FORKS,
+        Some(GITHUB_SORT_UPDATED) => GITHUB_SORT_UPDATED,
+        _ => GITHUB_SORT_STARS,
+    }
+}
+
 async fn load_github_leaderboard(
     entries: &[crate::types::landscape::LandscapeEntry],
-) -> Vec<GitHubProjectLeaderboardEntry> {
+    sort: &'static str,
+) -> GitHubLeaderboard {
     let mut leaderboard = Vec::new();
+    let mut attempted_count = 0;
+    let mut unavailable_count = 0;
 
     for entry in entries {
         let Some(github_url) = entry.github_url.as_deref() else {
@@ -105,28 +123,62 @@ async fn load_github_leaderboard(
         let Some((owner, repo)) = parse_github_repository_url(github_url) else {
             continue;
         };
+        attempted_count += 1;
         let Some(metrics) = fetch_github_repository_metrics(owner.clone(), repo.clone()).await
         else {
+            unavailable_count += 1;
             continue;
         };
 
         leaderboard.push(GitHubProjectLeaderboardEntry {
             entry: entry.clone(),
             repository: format!("{owner}/{repo}"),
-            score: metrics.stargazers_count,
+            score: leaderboard_score(&metrics, sort),
             metrics,
         });
     }
 
-    leaderboard.sort_by_key(|project| {
-        (
-            std::cmp::Reverse(project.score),
-            std::cmp::Reverse(project.metrics.forks_count),
-            project.entry.name.to_lowercase(),
-        )
-    });
-    leaderboard.truncate(10);
-    leaderboard
+    sort_github_leaderboard(&mut leaderboard, sort);
+    leaderboard.truncate(GITHUB_LEADERBOARD_DISPLAY_LIMIT);
+    GitHubLeaderboard {
+        entries: leaderboard,
+        attempted_count,
+        unavailable_count,
+        sort: sort.to_string(),
+    }
+}
+
+fn leaderboard_score(metrics: &GitHubRepositoryMetrics, sort: &str) -> i64 {
+    match sort {
+        GITHUB_SORT_FORKS => metrics.forks_count,
+        _ => metrics.stargazers_count,
+    }
+}
+
+fn sort_github_leaderboard(leaderboard: &mut [GitHubProjectLeaderboardEntry], sort: &str) {
+    match sort {
+        GITHUB_SORT_FORKS => leaderboard.sort_by_key(|project| {
+            (
+                Reverse(project.metrics.forks_count),
+                Reverse(project.metrics.stargazers_count),
+                project.entry.name.to_lowercase(),
+            )
+        }),
+        GITHUB_SORT_UPDATED => leaderboard.sort_by_key(|project| {
+            (
+                Reverse(project.metrics.updated_at),
+                Reverse(project.metrics.stargazers_count),
+                project.entry.name.to_lowercase(),
+            )
+        }),
+        _ => leaderboard.sort_by_key(|project| {
+            (
+                Reverse(project.metrics.stargazers_count),
+                Reverse(project.metrics.forks_count),
+                project.entry.name.to_lowercase(),
+            )
+        }),
+    }
 }
 
 fn parse_github_repository_url(url: &str) -> Option<(String, String)> {
@@ -181,6 +233,8 @@ struct GitHubRepositoryResponse {
     open_issues_count: i64,
     watchers_count: i64,
     subscribers_count: Option<i64>,
+    updated_at: Option<DateTime<Utc>>,
+    pushed_at: Option<DateTime<Utc>>,
 }
 
 impl From<GitHubRepositoryResponse> for GitHubRepositoryMetrics {
@@ -190,6 +244,8 @@ impl From<GitHubRepositoryResponse> for GitHubRepositoryMetrics {
             forks_count: value.forks_count,
             open_issues_count: value.open_issues_count,
             watchers_count: value.subscribers_count.unwrap_or(value.watchers_count),
+            updated_at: value.updated_at,
+            pushed_at: value.pushed_at,
         }
     }
 }
@@ -215,6 +271,31 @@ mod tests {
         assert_eq!(
             parse_github_repository_url("https://gitlab.com/owner/repo"),
             None
+        );
+    }
+
+    #[test]
+    fn normalizes_github_leaderboard_sort() {
+        assert_eq!(
+            github_leaderboard_sort(&LandscapeFilters {
+                github_sort: Some(GITHUB_SORT_FORKS.to_string()),
+                ..Default::default()
+            }),
+            GITHUB_SORT_FORKS
+        );
+        assert_eq!(
+            github_leaderboard_sort(&LandscapeFilters {
+                github_sort: Some(GITHUB_SORT_UPDATED.to_string()),
+                ..Default::default()
+            }),
+            GITHUB_SORT_UPDATED
+        );
+        assert_eq!(
+            github_leaderboard_sort(&LandscapeFilters {
+                github_sort: Some("unknown".to_string()),
+                ..Default::default()
+            }),
+            GITHUB_SORT_STARS
         );
     }
 }

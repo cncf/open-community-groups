@@ -28,6 +28,13 @@ pub(crate) trait DBMeetings {
         recording_url: &str,
     ) -> Result<()>;
 
+    /// Claims a completed Google Meet meeting for recording publishing.
+    async fn claim_google_meet_recording_for_publish(
+        &self,
+        publish_delay: Duration,
+        retry_delay: Duration,
+    ) -> Result<Option<GoogleMeetRecordingPublishCandidate>>;
+
     /// Reserves an available Zoom host user for a claimed meeting time window.
     async fn assign_zoom_host_user(
         &self,
@@ -50,13 +57,34 @@ pub(crate) trait DBMeetings {
     /// Marks stale auto-end check claims with an unknown outcome.
     async fn mark_stale_meeting_auto_end_checks_unknown(&self, timeout: Duration) -> Result<usize>;
 
+    /// Marks stale Google Meet recording publish claims with an unknown outcome.
+    async fn mark_stale_google_meet_recording_publish_claims_unknown(
+        &self,
+        timeout: Duration,
+    ) -> Result<usize>;
+
     /// Marks stale meeting sync claims with an unknown outcome.
     async fn mark_stale_meeting_syncs_unknown(&self, timeout: Duration) -> Result<usize>;
+
+    /// Completes a Google Meet recording publish claim.
+    async fn mark_google_meet_recording_published(
+        &self,
+        candidate: &GoogleMeetRecordingPublishCandidate,
+        drive_file_id: &str,
+        youtube_url: &str,
+    ) -> Result<()>;
 
     /// Releases a retryable auto-end check claim.
     async fn release_meeting_auto_end_check_claim(
         &self,
         candidate: &MeetingAutoEndCandidate,
+    ) -> Result<()>;
+
+    /// Releases a retryable Google Meet recording publish claim.
+    async fn release_google_meet_recording_publish_claim(
+        &self,
+        candidate: &GoogleMeetRecordingPublishCandidate,
+        error: &str,
     ) -> Result<()>;
 
     /// Releases a retryable sync claim.
@@ -112,6 +140,22 @@ where
         self.execute(
             "select append_meeting_recording_url($1, $2, $3)",
             &[&provider.as_ref(), &provider_meeting_id, &recording_url],
+        )
+        .await
+    }
+
+    #[instrument(skip(self), err)]
+    async fn claim_google_meet_recording_for_publish(
+        &self,
+        publish_delay: Duration,
+        retry_delay: Duration,
+    ) -> Result<Option<GoogleMeetRecordingPublishCandidate>> {
+        let publish_delay_seconds = duration_seconds(publish_delay)?;
+        let retry_delay_seconds = duration_seconds(retry_delay)?;
+
+        self.fetch_json_opt(
+            "select claim_google_meet_recording_for_publish($1::bigint, $2::bigint)",
+            &[&publish_delay_seconds, &retry_delay_seconds],
         )
         .await
     }
@@ -177,8 +221,7 @@ where
 
     #[instrument(skip(self), err)]
     async fn mark_stale_meeting_auto_end_checks_unknown(&self, timeout: Duration) -> Result<usize> {
-        let timeout_seconds = i64::try_from(timeout.as_secs())
-            .map_err(|_| anyhow::anyhow!("processing timeout cannot exceed i64::MAX seconds"))?;
+        let timeout_seconds = duration_seconds(timeout)?;
 
         let count = self
             .fetch_scalar_one::<i64>(
@@ -192,9 +235,26 @@ where
     }
 
     #[instrument(skip(self), err)]
+    async fn mark_stale_google_meet_recording_publish_claims_unknown(
+        &self,
+        timeout: Duration,
+    ) -> Result<usize> {
+        let timeout_seconds = duration_seconds(timeout)?;
+
+        let count = self
+            .fetch_scalar_one::<i64>(
+                "select mark_stale_google_meet_recording_publish_claims_unknown($1::bigint)::bigint;",
+                &[&timeout_seconds],
+            )
+            .await?;
+
+        usize::try_from(count)
+            .map_err(|_| anyhow::anyhow!("stale recording publish claim count cannot be negative"))
+    }
+
+    #[instrument(skip(self), err)]
     async fn mark_stale_meeting_syncs_unknown(&self, timeout: Duration) -> Result<usize> {
-        let timeout_seconds = i64::try_from(timeout.as_secs())
-            .map_err(|_| anyhow::anyhow!("processing timeout cannot exceed i64::MAX seconds"))?;
+        let timeout_seconds = duration_seconds(timeout)?;
 
         let count = self
             .fetch_scalar_one::<i64>(
@@ -208,6 +268,25 @@ where
     }
 
     #[instrument(skip(self, candidate), err)]
+    async fn mark_google_meet_recording_published(
+        &self,
+        candidate: &GoogleMeetRecordingPublishCandidate,
+        drive_file_id: &str,
+        youtube_url: &str,
+    ) -> Result<()> {
+        self.execute(
+            "select mark_google_meet_recording_published($1::uuid, $2::timestamptz, $3::text, $4::text)",
+            &[
+                &candidate.meeting_id,
+                &candidate.recording_publish_claimed_at,
+                &drive_file_id,
+                &youtube_url,
+            ],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, candidate), err)]
     async fn release_meeting_auto_end_check_claim(
         &self,
         candidate: &MeetingAutoEndCandidate,
@@ -215,6 +294,23 @@ where
         self.execute(
             "select release_meeting_auto_end_check_claim($1::timestamptz, $2::uuid)",
             &[&candidate.auto_end_check_claimed_at, &candidate.meeting_id],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, candidate), err)]
+    async fn release_google_meet_recording_publish_claim(
+        &self,
+        candidate: &GoogleMeetRecordingPublishCandidate,
+        error: &str,
+    ) -> Result<()> {
+        self.execute(
+            "select release_google_meet_recording_publish_claim($1::uuid, $2::timestamptz, $3::text)",
+            &[
+                &candidate.meeting_id,
+                &candidate.recording_publish_claimed_at,
+                &error,
+            ],
         )
         .await
     }
@@ -294,4 +390,24 @@ pub(crate) struct MeetingAutoEndCandidate {
     #[serde(alias = "meeting_provider_id")]
     pub provider: MeetingProvider,
     pub provider_meeting_id: String,
+}
+
+/// Candidate Google Meet recording to publish to `YouTube`.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
+pub(crate) struct GoogleMeetRecordingPublishCandidate {
+    pub ends_at: DateTime<Utc>,
+    pub event_id: Option<Uuid>,
+    pub meeting_id: Uuid,
+    pub provider_meeting_id: String,
+    pub recording_publish_claimed_at: DateTime<Utc>,
+    pub session_id: Option<Uuid>,
+    pub starts_at: DateTime<Utc>,
+    pub timezone: Option<String>,
+    pub topic: String,
+}
+
+/// Convert a duration into seconds accepted by SQL functions.
+fn duration_seconds(duration: Duration) -> Result<i64> {
+    i64::try_from(duration.as_secs())
+        .map_err(|_| anyhow::anyhow!("processing timeout cannot exceed i64::MAX seconds"))
 }

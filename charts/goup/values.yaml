@@ -94,6 +94,18 @@ meetings:
     maxSimultaneousMeetingsPerHost: 1
     webhookSecretToken: ""
 
+# Recording publishing configuration
+recordingPublishing:
+  youtube:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+    driveFolderId: null
+    publishDelayMinutes: 30
+    retryDelayMinutes: 15
+    refreshToken: ""
+    visibility: unlisted
+
 # Payments provider configuration (a single provider can be enabled at a time)
 payments:
   enabled: false

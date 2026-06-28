@@ -11,3 +11,6 @@ pub(crate) mod notifications;
 
 /// Payments service module.
 pub(crate) mod payments;
+
+/// Recording publishing service module.
+pub(crate) mod recording_publishing;

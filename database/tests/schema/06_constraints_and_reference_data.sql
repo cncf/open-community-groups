@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(59);
+select plan(62);
 
 -- ============================================================================
 -- VARIABLES
@@ -264,6 +264,9 @@ select results_eq(
 
 -- Test: meeting table expected constraints exist
 select has_check('meeting', 'meeting_recording_urls_not_empty_chk');
+select has_check('meeting', 'meeting_recording_publish_drive_file_id_check');
+select has_check('meeting', 'meeting_recording_publish_error_check');
+select has_check('meeting', 'meeting_recording_publish_url_check');
 
 -- Test: meeting providers should match expected values
 select results_eq(

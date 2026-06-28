@@ -71,7 +71,7 @@ impl GoogleCalendarClient {
             .get_token()
             .await
             .map_err(|e| GoogleCalendarClientError::Token(e.to_string()))?;
-        let url = self.calendar_events_url("conferenceDataVersion=1");
+        let url = self.calendar_events_url("conferenceDataVersion=1&sendUpdates=all");
         let request = req.clone().with_meet_conference();
         let response = self
             .http_client
@@ -163,7 +163,7 @@ impl GoogleCalendarClient {
             .get_token()
             .await
             .map_err(|e| GoogleCalendarClientError::Token(e.to_string()))?;
-        let url = self.calendar_event_url(event_id, "conferenceDataVersion=1");
+        let url = self.calendar_event_url(event_id, "conferenceDataVersion=1&sendUpdates=all");
         let response = self
             .http_client
             .patch(&url)
@@ -265,6 +265,7 @@ struct CachedToken {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CalendarEventRequest {
+    pub attendees: Option<Vec<CalendarEventAttendee>>,
     pub conference_data: Option<ConferenceData>,
     pub description: Option<String>,
     pub end: EventDateTime,
@@ -315,6 +316,7 @@ impl TryFrom<&Meeting> for CalendarEventRequest {
         let timezone = m.timezone.clone();
 
         Ok(Self {
+            attendees: attendee_emails(m.hosts.as_deref()),
             conference_data: None,
             description: m.hosts.as_ref().and_then(|hosts| {
                 (!hosts.is_empty()).then(|| format!("Additional host emails: {}", hosts.join(", ")))
@@ -330,6 +332,13 @@ impl TryFrom<&Meeting> for CalendarEventRequest {
             summary: m.topic.clone().unwrap_or_else(|| "GOUP meeting".to_string()),
         })
     }
+}
+
+/// Calendar attendee shape expected by Google Calendar API.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CalendarEventAttendee {
+    pub email: String,
 }
 
 /// Date-time shape expected by Google Calendar API.
@@ -553,6 +562,22 @@ fn duration_minutes(d: std::time::Duration) -> Result<i64, GoogleCalendarClientE
     Ok(minutes)
 }
 
+/// Convert meeting host emails into Google Calendar attendees.
+fn attendee_emails(hosts: Option<&[String]>) -> Option<Vec<CalendarEventAttendee>> {
+    let attendees: Vec<_> = hosts
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|email| {
+            let email = email.trim();
+            (!email.is_empty()).then(|| CalendarEventAttendee {
+                email: email.to_string(),
+            })
+        })
+        .collect();
+
+    (!attendees.is_empty()).then_some(attendees)
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
@@ -568,6 +593,10 @@ mod tests {
     fn create_event_request_can_include_meet_conference_data() {
         let request = CalendarEventRequest::try_from(&Meeting {
             duration: Some(Duration::from_mins(30)),
+            hosts: Some(vec![
+                "host@example.test".to_string(),
+                " speaker@example.test ".to_string(),
+            ]),
             starts_at: Some(Utc::now()),
             topic: Some("Demo".to_string()),
             timezone: Some("America/New_York".to_string()),
@@ -578,6 +607,11 @@ mod tests {
         let value = serde_json::to_value(request).unwrap();
 
         assert_eq!(value["summary"], json!("Demo"));
+        assert_eq!(value["attendees"][0]["email"], json!("host@example.test"));
+        assert_eq!(
+            value["attendees"][1]["email"],
+            json!("speaker@example.test")
+        );
         assert_eq!(
             value["conferenceData"]["createRequest"]["conferenceSolutionKey"]["type"],
             json!("hangoutsMeet")

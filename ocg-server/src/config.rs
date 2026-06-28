@@ -41,6 +41,8 @@ pub(crate) struct Config {
     pub meetings: Option<MeetingsConfig>,
     /// Payments configuration.
     pub payments: Option<PaymentsConfig>,
+    /// Recording publishing configuration.
+    pub recording_publishing: Option<RecordingPublishingConfig>,
 }
 
 impl Config {
@@ -88,6 +90,10 @@ impl Config {
 
         if let Some(payments_cfg) = &self.payments {
             payments_cfg.validate()?;
+        }
+
+        if let Some(recording_publishing_cfg) = &self.recording_publishing {
+            recording_publishing_cfg.validate()?;
         }
 
         Ok(())
@@ -255,6 +261,111 @@ impl MeetingsZoomConfig {
             if !seen.insert(normalized) {
                 bail!("meetings.zoom.host_pool_users contains duplicate email '{email}'");
             }
+        }
+
+        Ok(())
+    }
+}
+
+/// Recording publishing configuration.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
+pub(crate) struct RecordingPublishingConfig {
+    /// `YouTube` publishing configuration.
+    pub youtube: Option<RecordingPublishingYouTubeConfig>,
+}
+
+impl RecordingPublishingConfig {
+    /// Validate recording publishing configuration.
+    fn validate(&self) -> Result<()> {
+        if let Some(youtube_cfg) = &self.youtube {
+            youtube_cfg.validate()?;
+        }
+
+        Ok(())
+    }
+}
+
+/// `YouTube` video visibility.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum YouTubeVideoVisibility {
+    /// Video is visible only to the channel owner.
+    Private,
+    /// Video is visible only to people with the link.
+    #[default]
+    Unlisted,
+    /// Video is visible publicly on the channel.
+    Public,
+}
+
+impl std::fmt::Display for YouTubeVideoVisibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Private => write!(f, "private"),
+            Self::Unlisted => write!(f, "unlisted"),
+            Self::Public => write!(f, "public"),
+        }
+    }
+}
+
+/// `YouTube` recording publishing configuration.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct RecordingPublishingYouTubeConfig {
+    /// OAuth client identifier.
+    pub client_id: String,
+    /// OAuth client secret.
+    pub client_secret: String,
+    /// Optional Google Drive folder ID to limit recording searches.
+    pub drive_folder_id: Option<String>,
+    /// Whether `YouTube` auto-publishing is enabled.
+    pub enabled: bool,
+    /// Minutes after meeting end before checking for a recording.
+    pub publish_delay_minutes: i64,
+    /// Minutes to wait before checking again when no recording is found.
+    pub retry_delay_minutes: i64,
+    /// OAuth refresh token with Drive read and `YouTube` upload scopes.
+    pub refresh_token: String,
+    /// Visibility for uploaded videos.
+    pub visibility: YouTubeVideoVisibility,
+}
+
+impl RecordingPublishingYouTubeConfig {
+    /// Validate `YouTube` publishing configuration.
+    fn validate(&self) -> Result<()> {
+        if !self.enabled {
+            return Ok(());
+        }
+
+        if self.client_id.trim().is_empty() {
+            bail!(
+                "recording_publishing.youtube.client_id cannot be empty when youtube publishing is enabled"
+            );
+        }
+
+        if self.client_secret.trim().is_empty() {
+            bail!(
+                "recording_publishing.youtube.client_secret cannot be empty when youtube publishing is enabled"
+            );
+        }
+
+        if self.refresh_token.trim().is_empty() {
+            bail!(
+                "recording_publishing.youtube.refresh_token cannot be empty when youtube publishing is enabled"
+            );
+        }
+
+        if let Some(drive_folder_id) = &self.drive_folder_id
+            && drive_folder_id.trim().is_empty()
+        {
+            bail!("recording_publishing.youtube.drive_folder_id cannot be empty when provided");
+        }
+
+        if self.publish_delay_minutes < 0 {
+            bail!("recording_publishing.youtube.publish_delay_minutes must be >= 0");
+        }
+
+        if self.retry_delay_minutes < 1 {
+            bail!("recording_publishing.youtube.retry_delay_minutes must be >= 1");
         }
 
         Ok(())
@@ -443,4 +554,41 @@ pub(crate) struct OidcProviderConfig {
     pub redirect_uri: String,
     /// Scopes requested from the provider.
     pub scopes: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RecordingPublishingYouTubeConfig, YouTubeVideoVisibility};
+
+    #[test]
+    fn youtube_publishing_validation_skips_disabled_config() {
+        let cfg = RecordingPublishingYouTubeConfig {
+            client_id: String::new(),
+            client_secret: String::new(),
+            drive_folder_id: None,
+            enabled: false,
+            publish_delay_minutes: 30,
+            refresh_token: String::new(),
+            retry_delay_minutes: 15,
+            visibility: YouTubeVideoVisibility::Unlisted,
+        };
+
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn youtube_publishing_validation_requires_credentials_when_enabled() {
+        let cfg = RecordingPublishingYouTubeConfig {
+            client_id: String::new(),
+            client_secret: "secret".to_string(),
+            drive_folder_id: None,
+            enabled: true,
+            publish_delay_minutes: 30,
+            refresh_token: "refresh".to_string(),
+            retry_delay_minutes: 15,
+            visibility: YouTubeVideoVisibility::Unlisted,
+        };
+
+        assert!(cfg.validate().is_err());
+    }
 }

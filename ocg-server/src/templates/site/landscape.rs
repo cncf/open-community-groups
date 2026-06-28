@@ -27,13 +27,26 @@ pub(crate) struct Page {
     /// Search filters.
     pub filters: LandscapeFilters,
     /// GitHub projects ranked by live repository metrics.
-    pub github_leaderboard: Vec<GitHubProjectLeaderboardEntry>,
+    pub github_leaderboard: GitHubLeaderboard,
     /// Matching landscape entries.
     pub entries: Vec<LandscapeEntry>,
     /// Total matching entries.
     pub total: usize,
     /// Pagination links.
     pub navigation_links: NavigationLinks,
+}
+
+/// GitHub leaderboard display data.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct GitHubLeaderboard {
+    /// Ranked GitHub project entries.
+    pub entries: Vec<GitHubProjectLeaderboardEntry>,
+    /// Number of landscape entries considered for the leaderboard.
+    pub attempted_count: usize,
+    /// Number of repositories skipped because GitHub metrics were unavailable.
+    pub unavailable_count: usize,
+    /// Active leaderboard sort option.
+    pub sort: String,
 }
 
 /// GitHub project with live repository metrics for leaderboard display.
@@ -60,4 +73,10 @@ pub(crate) struct GitHubRepositoryMetrics {
     pub open_issues_count: i64,
     /// GitHub watcher count.
     pub watchers_count: i64,
+    /// GitHub repository update time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// GitHub repository push time.
+    #[serde(default, with = "chrono::serde::ts_seconds_option")]
+    pub pushed_at: Option<chrono::DateTime<chrono::Utc>>,
 }
