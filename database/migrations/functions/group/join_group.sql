@@ -1,4 +1,6 @@
 -- Join a group as a member.
+drop function if exists join_group(uuid, uuid, uuid);
+
 create or replace function join_group(
     p_alliance_id uuid,
     p_group_id uuid,
