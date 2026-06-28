@@ -26,6 +26,9 @@
 {% if let Some(slack_url) = &group.slack_url -%}
   {{ social::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -}}
 {% endif -%}
+{% if let Some(substack_url) = &group.substack_url -%}
+  {{ social::social_link(url = substack_url, icon_name = "link", platform_name = "Substack") -}}
+{% endif -%}
 {% if let Some(wechat_url) = &group.wechat_url -%}
   {{ social::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -}}
 {% endif -%}

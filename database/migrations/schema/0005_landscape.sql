@@ -4,7 +4,7 @@ create table landscape_entry (
     added_by_user_id uuid not null references "user" (user_id) on delete cascade,
     name text not null,
     slug text not null,
-    kind text not null check (kind in ('startup', 'github_project', 'partner_community', 'podcast_lead')),
+    kind text not null check (kind in ('startup', 'github_project', 'partner_community', 'podcast_lead', 'investor')),
     summary text not null,
     description text,
     website_url text,

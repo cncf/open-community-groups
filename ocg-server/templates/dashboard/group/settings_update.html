@@ -269,6 +269,9 @@
 {% let slack_value -%}
 {% if let Some(slack_url) = &group.slack_url %}value="{{ slack_url }}"{% endif %}
 {%- endlet %}
+{% let substack_value -%}
+{% if let Some(substack_url) = &group.substack_url %}value="{{ substack_url }}"{% endif %}
+{%- endlet %}
 {% let twitter_value -%}
 {% if let Some(twitter_url) = &group.twitter_url %}value="{{ twitter_url }}"{% endif %}
 {%- endlet %}
@@ -314,6 +317,10 @@
 {# Slack URL -#}
 {{ form_fields::social_url_field(name = "slack_url", label = "Slack", icon = "icon-slack", placeholder = "https://workspace.slack.com", value_attr = slack_value) -}}
 {# End Slack URL -#}
+
+{# Substack URL -#}
+{{ form_fields::social_url_field(name = "substack_url", label = "Substack", icon = "icon-link", placeholder = "https://example.substack.com", value_attr = substack_value) -}}
+{# End Substack URL -#}
 
 {# Twitter URL -#}
 {{ form_fields::social_url_field(name = "twitter_url", label = "X (formerly Twitter)", icon = "icon-twitter", placeholder = "https://x.com/username", value_attr = twitter_value) -}}

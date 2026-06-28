@@ -16,11 +16,12 @@ use crate::{
     },
 };
 
-const LANDSCAPE_KINDS: [&str; 4] = [
+const LANDSCAPE_KINDS: [&str; 5] = [
     "startup",
     "github_project",
     "partner_community",
     "podcast_lead",
+    "investor",
 ];
 
 /// Public landscape search filters.
@@ -218,6 +219,7 @@ mod tests {
         assert!(valid_landscape_kind(&"github_project", &()).is_ok());
         assert!(valid_landscape_kind(&"partner_community", &()).is_ok());
         assert!(valid_landscape_kind(&"podcast_lead", &()).is_ok());
+        assert!(valid_landscape_kind(&"investor", &()).is_ok());
         assert!(valid_landscape_kind(&"unknown", &()).is_err());
     }
 }

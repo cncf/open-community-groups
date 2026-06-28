@@ -2,7 +2,7 @@
 {% import "macros/form_fields.html" as form_fields -%}
 {% import "macros/pagination.html" as pagination -%}
 
-{{ dashboard::page_title(title = "Landscape", description = "Manage startups, GitHub projects, partner communities, and podcast leads shown on the public landscape.") -}}
+{{ dashboard::page_title(title = "Landscape", description = "Manage startups, GitHub projects, partner communities, investors, and podcast leads shown on the public landscape.") -}}
 
 {% if can_manage_landscape -%}
   <section class="mt-8 overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
@@ -14,7 +14,7 @@
           </div>
           <h2 class="mt-3 text-xl font-black tracking-tight text-stone-950">Add landscape entry</h2>
           <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
-            Add startups, open-source projects, partner communities, podcast leads, and tools that should appear in the public GOUP
+            Add startups, open-source projects, partner communities, investors, podcast leads, and tools that should appear in the public GOUP
             ecosystem map. Keep the summary clear so visitors understand what it does quickly.
           </p>
         </div>
@@ -33,7 +33,7 @@
           <input id="new-landscape-name"
                  name="name"
                  class="input-primary"
-                 placeholder="Project, startup, community, or podcast name"
+                 placeholder="Project, startup, community, investor, or podcast name"
                  required />
         </div>
         <div class="space-y-2 lg:col-span-3">
@@ -42,6 +42,7 @@
             <option value="startup">Startup</option>
             <option value="github_project">GitHub project</option>
             <option value="partner_community">Partner community</option>
+            <option value="investor">Investor</option>
             <option value="podcast_lead">Podcast lead</option>
           </select>
         </div>
@@ -128,7 +129,7 @@
 {% if entries.is_empty() -%}
   <div class="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
     <h2 class="text-lg font-semibold text-stone-900">No landscape entries yet</h2>
-    <p class="mt-2 text-sm text-stone-600">Add startups, GitHub projects, partner communities, or podcast leads using the form above.</p>
+    <p class="mt-2 text-sm text-stone-600">Add startups, GitHub projects, partner communities, investors, or podcast leads using the form above.</p>
   </div>
 {% else -%}
   <div class="grid gap-5">
@@ -180,6 +181,7 @@
                         {% if entry.kind == "github_project" %}selected{% endif %}>GitHub project</option>
                 <option value="partner_community"
                         {% if entry.kind == "partner_community" %}selected{% endif %}>Partner community</option>
+                <option value="investor" {% if entry.kind == "investor" %}selected{% endif %}>Investor</option>
                 <option value="podcast_lead"
                         {% if entry.kind == "podcast_lead" %}selected{% endif %}>Podcast lead</option>
               </select>

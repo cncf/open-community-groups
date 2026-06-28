@@ -92,6 +92,7 @@ begin
         slack_url = nullif(p_group->>'slack_url', ''),
         slug_pretty = nullif(btrim(p_group->>'slug_pretty'), ''),
         state = nullif(p_group->>'state', ''),
+        substack_url = nullif(p_group->>'substack_url', ''),
         tags = jsonb_text_array(p_group->'tags'),
         twitter_url = nullif(p_group->>'twitter_url', ''),
         website_url = nullif(p_group->>'website_url', ''),

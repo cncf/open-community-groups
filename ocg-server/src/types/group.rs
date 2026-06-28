@@ -188,6 +188,8 @@ pub struct GroupFull {
     pub slug_pretty: Option<String>,
     /// State/province where the group is based.
     pub state: Option<String>,
+    /// Substack publication URL.
+    pub substack_url: Option<String>,
     /// Tags associated with the group.
     pub tags: Option<Vec<String>>,
     /// Twitter profile URL.

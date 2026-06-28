@@ -58,6 +58,7 @@ returns json as $$
         'slack_url', g.slack_url,
         'slug_pretty', g.slug_pretty,
         'state', g.state,
+        'substack_url', g.substack_url,
         'tags', g.tags,
         'twitter_url', g.twitter_url,
         'wechat_url', g.wechat_url,

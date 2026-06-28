@@ -176,6 +176,9 @@ pub(crate) struct Group {
     /// State/province where the group is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub state: Option<String>,
+    /// Substack publication URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub substack_url: Option<String>,
     /// Tags associated with the group.
     #[garde(custom(trimmed_non_empty_tag_vec))]
     pub tags: Option<Vec<String>>,

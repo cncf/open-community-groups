@@ -9,7 +9,7 @@
         Ecosystem landscape
       </h1>
       <p class="max-w-2xl text-base/7 font-medium text-stone-600">
-        Browse alliance startups, GitHub projects, partner communities, podcast leads, tools, and community-built products.
+        Browse alliance startups, GitHub projects, partner communities, investors, podcast leads, tools, and community-built products.
       </p>
     </div>
   </section>
@@ -103,7 +103,7 @@
              type="search"
              value="{{ filters.query.as_deref().unwrap_or("") }}"
              class="input"
-             placeholder="Search startups, GitHub projects, communities, podcasts, categories, or tags" />
+             placeholder="Search startups, GitHub projects, communities, investors, podcasts, categories, or tags" />
 
       <label class="sr-only" for="landscape-kind">Kind</label>
       <select id="landscape-kind" name="kind" class="input">
@@ -114,6 +114,8 @@
                 {% if filters.kind.as_deref() == Some("github_project") %}selected{% endif %}>GitHub projects</option>
         <option value="partner_community"
                 {% if filters.kind.as_deref() == Some("partner_community") %}selected{% endif %}>Partner communities</option>
+        <option value="investor"
+                {% if filters.kind.as_deref() == Some("investor") %}selected{% endif %}>Investors</option>
         <option value="podcast_lead"
                 {% if filters.kind.as_deref() == Some("podcast_lead") %}selected{% endif %}>Podcast leads</option>
       </select>

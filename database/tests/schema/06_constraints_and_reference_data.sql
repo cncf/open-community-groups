@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(62);
+select plan(64);
 
 -- ============================================================================
 -- VARIABLES
@@ -176,6 +176,7 @@ select has_check('group', 'group_check');
 select has_check('group', 'group_google_photos_url_check');
 select has_check('group', 'group_og_image_url_check');
 select has_check('group', 'group_slug_pretty_chk');
+select has_check('group', 'group_substack_url_check');
 
 -- Test: site table expected constraints exist
 select has_check('site', 'site_og_image_url_check');
