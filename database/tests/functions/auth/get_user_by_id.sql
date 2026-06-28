@@ -57,7 +57,9 @@ insert into "user" (
     github_url,
     password,
     provider,
-    username
+    substack_url,
+    username,
+    youtube_url
 ) values (
     :'userBothTeamsID',
     'Both Teams User',
@@ -68,7 +70,9 @@ insert into "user" (
     null,
     null,
     null,
-    'bothuser'
+    null,
+    'bothuser',
+    null
 ), (
     :'userAllianceOnlyID',
     'Alliance Only User',
@@ -79,7 +83,9 @@ insert into "user" (
     null,
     null,
     null,
-    'allianceonlyuser'
+    null,
+    'allianceonlyuser',
+    null
 ), (
     :'userGroupOnlyID',
     'Group Only User',
@@ -90,7 +96,9 @@ insert into "user" (
     null,
     null,
     null,
-    'grouponlyuser'
+    null,
+    'grouponlyuser',
+    null
 ), (
     :'userNoTeamsID',
     'No Groups User',
@@ -101,7 +109,9 @@ insert into "user" (
     null,
     null,
     null,
-    'nogroupsuser'
+    null,
+    'nogroupsuser',
+    null
 ), (
     :'userWithTeamsID',
     'Test User',
@@ -112,7 +122,9 @@ insert into "user" (
     'https://github.com/testuser',
     'hashed_password_here',
     jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
-    'testuser'
+    'https://testuser.substack.com',
+    'testuser',
+    'https://youtube.com/@testuser'
 );
 
 -- Group
@@ -172,8 +184,10 @@ select is(
         'optional_notifications_enabled', true,
         'platform_admin', false,
         'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
+        'substack_url', 'https://testuser.substack.com',
         'user_id', :'userWithTeamsID'::uuid,
-        'username', 'testuser'
+        'username', 'testuser',
+        'youtube_url', 'https://youtube.com/@testuser'
     ),
     'Should return user without password when include_password is false'
 );
@@ -197,8 +211,10 @@ select is(
         'password', 'hashed_password_here',
         'platform_admin', false,
         'provider', jsonb_build_object('github', jsonb_build_object('username', 'testuser-gh')),
+        'substack_url', 'https://testuser.substack.com',
         'user_id', :'userWithTeamsID'::uuid,
-        'username', 'testuser'
+        'username', 'testuser',
+        'youtube_url', 'https://youtube.com/@testuser'
     ),
     'Should return user with password when include_password is true'
 );

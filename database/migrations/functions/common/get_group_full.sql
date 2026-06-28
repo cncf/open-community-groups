@@ -82,9 +82,11 @@ returns json as $$
                 'name', u.name,
                 'photo_url', u.photo_url,
                 'provider', u.provider,
+                'substack_url', u.substack_url,
                 'title', u.title,
                 'twitter_url', u.twitter_url,
-                'website_url', u.website_url
+                'website_url', u.website_url,
+                'youtube_url', u.youtube_url
             )) order by gt."order" nulls last, u.name), '[]')
             from group_team gt
             join "user" u using (user_id)

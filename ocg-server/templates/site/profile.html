@@ -158,6 +158,12 @@
             {% if let Some(github_url) = &profile.github_url -%}
               {{ social_link(url = github_url, icon = "github", label = "GitHub") }}
             {% endif -%}
+            {% if let Some(substack_url) = &profile.substack_url -%}
+              {{ social_link(url = substack_url, icon = "link", label = "Substack") }}
+            {% endif -%}
+            {% if let Some(youtube_url) = &profile.youtube_url -%}
+              {{ social_link(url = youtube_url, icon = "youtube", label = "YouTube") }}
+            {% endif -%}
             {% if let Some(bluesky_url) = &profile.bluesky_url -%}
               {{ social_link(url = bluesky_url, icon = "bluesky", label = "Bluesky") }}
             {% endif -%}

@@ -19,9 +19,11 @@ returns json as $$
         'linkedin_connected', coalesce(u.provider ? 'linkedin', false),
         'name', u.name,
         'photo_url', u.photo_url,
+        'substack_url', u.substack_url,
         'title', u.title,
         'twitter_url', u.twitter_url,
-        'website_url', u.website_url
+        'website_url', u.website_url,
+        'youtube_url', u.youtube_url
     ) order by gjr.created_at asc, lower(u.name) asc, lower(u.username) asc), '[]'::json)
     from group_join_request gjr
     join "user" u using (user_id)

@@ -124,9 +124,11 @@ returns json as $$
                     'name', u.name,
                     'photo_url', u.photo_url,
                     'provider', u.provider,
+                    'substack_url', u.substack_url,
                     'title', u.title,
                     'twitter_url', u.twitter_url,
-                    'website_url', u.website_url
+                    'website_url', u.website_url,
+                    'youtube_url', u.youtube_url
                 )) order by u.name), '[]')
                 from event_host eh
                 join "user" u using (user_id)
@@ -169,9 +171,11 @@ returns json as $$
                     'name', u.name,
                     'photo_url', u.photo_url,
                     'provider', u.provider,
+                    'substack_url', u.substack_url,
                     'title', u.title,
                     'twitter_url', u.twitter_url,
-                    'website_url', u.website_url
+                    'website_url', u.website_url,
+                    'youtube_url', u.youtube_url
                 )) order by eo."order" nulls last, u.name nulls last, u.username, u.user_id), '[]')
                 from event_organizer eo
                 join "user" u using (user_id)
@@ -236,9 +240,11 @@ returns json as $$
                                         'name', u.name,
                                         'photo_url', u.photo_url,
                                         'provider', u.provider,
+                                        'substack_url', u.substack_url,
                                         'title', u.title,
                                         'twitter_url', u.twitter_url,
-                                        'website_url', u.website_url
+                                        'website_url', u.website_url,
+                                        'youtube_url', u.youtube_url
                                     )) order by ss.featured desc, u.name)
                                     from session_speaker ss
                                     join "user" u using (user_id)
@@ -259,9 +265,11 @@ returns json as $$
                                         'name', u.name,
                                         'photo_url', u.photo_url,
                                         'provider', u.provider,
+                                        'substack_url', u.substack_url,
                                         'title', u.title,
                                         'twitter_url', u.twitter_url,
-                                        'website_url', u.website_url
+                                        'website_url', u.website_url,
+                                        'youtube_url', u.youtube_url
                                     )) order by
                                         case when u.user_id = sp.user_id then 0 else 1 end,
                                         u.name
@@ -305,9 +313,11 @@ returns json as $$
                     'name', u.name,
                     'photo_url', u.photo_url,
                     'provider', u.provider,
+                    'substack_url', u.substack_url,
                     'title', u.title,
                     'twitter_url', u.twitter_url,
-                    'website_url', u.website_url
+                    'website_url', u.website_url,
+                    'youtube_url', u.youtube_url
                 )) order by es.featured desc, u.name), '[]')
                 from event_speaker es
                 join "user" u using (user_id)

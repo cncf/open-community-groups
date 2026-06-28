@@ -122,4 +122,8 @@ async fn test_page_success() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("Chapter rankings"));
+    assert!(body.contains("Know your members"));
+    assert!(body.contains("See community activity"));
 }

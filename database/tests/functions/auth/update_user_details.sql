@@ -35,11 +35,13 @@ insert into "user" (
     interests,
     linkedin_url,
     photo_url,
+    substack_url,
     timezone,
     title,
     twitter_url,
     username,
-    website_url
+    website_url,
+    youtube_url
 ) values
     (
         :'user2ID',
@@ -57,11 +59,13 @@ insert into "user" (
         array['reading', 'gaming'],
         'https://linkedin.com/in/original',
         'https://example.com/original.jpg',
+        'https://original.substack.com',
         'America/Los_Angeles',
         'Original Title',
         'https://twitter.com/original',
         'testuser2',
-        'https://example.com/original'
+        'https://example.com/original',
+        'https://youtube.com/@original'
     ),
     (
         :'user3ID',
@@ -79,11 +83,13 @@ insert into "user" (
         array['cooking', 'travel'],
         'https://linkedin.com/in/third',
         'https://example.com/third.jpg',
+        'https://third.substack.com',
         'America/New_York',
         'Third Title',
         'https://twitter.com/third',
         'testuser3',
-        'https://example.com/third'
+        'https://example.com/third',
+        'https://youtube.com/@third'
     ),
     (
         :'user4ID',
@@ -101,11 +107,13 @@ insert into "user" (
         array['cycling', 'music'],
         'https://linkedin.com/in/fourth',
         'https://example.com/fourth.jpg',
+        'https://fourth.substack.com',
         'America/Chicago',
         'Fourth Title',
         'https://twitter.com/fourth',
         'testuser4',
-        'https://example.com/fourth'
+        'https://example.com/fourth',
+        'https://youtube.com/@fourth'
     ),
     (
         :'userID',
@@ -126,7 +134,9 @@ insert into "user" (
         null,
         null,
         null,
+        null,
         'testuser',
+        null,
         null
     );
 
@@ -156,10 +166,12 @@ select lives_ok(
             "mentorship_price": "$150/hour",
             "optional_notifications_enabled": false,
             "photo_url": "https://example.com/photo.jpg",
+            "substack_url": "https://updateduser.substack.com",
             "timezone": "America/Los_Angeles",
             "title": "Software Engineer",
             "twitter_url": "https://twitter.com/updateduser",
-            "website_url": "https://example.com/updateduser"
+            "website_url": "https://example.com/updateduser",
+            "youtube_url": "https://youtube.com/@updateduser"
         }$$
     ),
     'Should execute update with all provided user fields'
@@ -194,10 +206,12 @@ select is(
         "mentorship_note": "I mentor founders, operators, and engineering leaders.",
         "mentorship_price": "$150/hour",
         "photo_url": "https://example.com/photo.jpg",
+        "substack_url": "https://updateduser.substack.com",
         "timezone": "America/Los_Angeles",
         "title": "Software Engineer",
         "twitter_url": "https://twitter.com/updateduser",
-        "website_url": "https://example.com/updateduser"
+        "website_url": "https://example.com/updateduser",
+        "youtube_url": "https://youtube.com/@updateduser"
     }'::jsonb,
     'Should persist all provided user fields'
 );

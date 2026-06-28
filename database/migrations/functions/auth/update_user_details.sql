@@ -26,10 +26,12 @@ begin
             optional_notifications_enabled
         ),
         photo_url = nullif(p_user->>'photo_url', ''),
+        substack_url = nullif(p_user->>'substack_url', ''),
         timezone = nullif(p_user->>'timezone', ''),
         title = nullif(p_user->>'title', ''),
         twitter_url = nullif(p_user->>'twitter_url', ''),
-        website_url = nullif(p_user->>'website_url', '')
+        website_url = nullif(p_user->>'website_url', ''),
+        youtube_url = nullif(p_user->>'youtube_url', '')
     where user_id = p_actor_user_id;
 
     -- Track the profile update

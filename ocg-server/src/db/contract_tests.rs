@@ -272,6 +272,11 @@ async fn db_contracts_get_alliance_stats_deserializes() -> Result<()> {
     assert_eq!(stats.page_views.events.total_views, 2);
     assert_eq!(stats.page_views.groups.total_views, 3);
     assert_eq!(stats.page_views.total_views, 5);
+    assert_eq!(
+        stats.reports.events.hosted_total + stats.reports.events.upcoming_total,
+        2
+    );
+    assert_eq!(stats.reports.members.leaders_total, 1);
 
     Ok(())
 }
@@ -560,6 +565,11 @@ async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
     assert_eq!(stats.page_views.events.total_views, 2);
     assert_eq!(stats.page_views.group.total_views, 3);
     assert_eq!(stats.page_views.total_views, 5);
+    assert_eq!(
+        stats.reports.events.hosted_total + stats.reports.events.upcoming_total,
+        2
+    );
+    assert_eq!(stats.reports.members.leaders_total, 1);
 
     Ok(())
 }

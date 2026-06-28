@@ -131,4 +131,8 @@ async fn test_page_success() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains("Membership growth"));
+    assert!(body.contains("Chapter leader growth"));
+    assert!(body.contains("Hosted and upcoming"));
 }

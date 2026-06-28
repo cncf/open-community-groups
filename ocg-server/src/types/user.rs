@@ -31,12 +31,16 @@ pub(crate) struct User {
     pub photo_url: Option<String>,
     /// External provider metadata.
     pub provider: Option<UserProvider>,
+    /// Substack publication URL.
+    pub substack_url: Option<String>,
     /// User's job title.
     pub title: Option<String>,
     /// Twitter profile URL.
     pub twitter_url: Option<String>,
     /// Personal website URL.
     pub website_url: Option<String>,
+    /// YouTube channel URL.
+    pub youtube_url: Option<String>,
 }
 
 /// Public profile data safe to show on shareable profile cards.
@@ -74,12 +78,16 @@ pub(crate) struct PublicUserProfile {
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
+    /// Substack publication URL.
+    pub substack_url: Option<String>,
     /// User's job title.
     pub title: Option<String>,
     /// Twitter profile URL.
     pub twitter_url: Option<String>,
     /// Personal website URL.
     pub website_url: Option<String>,
+    /// YouTube channel URL.
+    pub youtube_url: Option<String>,
 }
 
 /// Summary user information.

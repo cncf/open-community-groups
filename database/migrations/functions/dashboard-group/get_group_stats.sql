@@ -33,8 +33,16 @@ filtered_group as (
     where g.active = true
         and g.deleted = false
 ),
+event_categories as (
+    select
+        ec.event_category_id,
+        ec.name
+    from event_category ec
+    join params p on ec.alliance_id = p.alliance_id
+),
 members as (
     select
+        gm.user_id,
         gm.created_at,
         timezone('UTC', date_trunc('month', gm.created_at at time zone 'UTC')) as created_month
     from group_member gm
@@ -43,7 +51,11 @@ members as (
 events as (
     select
         e.event_id,
+        e.event_category_id,
+        e.event_kind_id as kind,
         e.starts_at,
+        e.venue_city,
+        e.venue_country_name,
         timezone('UTC', date_trunc('month', e.starts_at at time zone 'UTC')) as starts_month
     from event e
     join filtered_group fg on fg.group_id = e.group_id
@@ -67,11 +79,21 @@ events_with_start as (
 ),
 attendees as (
     select
+        ea.user_id,
         ea.created_at,
         timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month
     from event_attendee ea
     join events e on e.event_id = ea.event_id
     where ea.status = 'confirmed'
+),
+leaders as (
+    select
+        gt.user_id,
+        gt.created_at,
+        timezone('UTC', date_trunc('month', gt.created_at at time zone 'UTC')) as created_month
+    from group_team gt
+    join filtered_group fg on fg.group_id = gt.group_id
+    where gt.accepted = true
 ),
 event_views_data as (
     select
@@ -228,6 +250,14 @@ page_view_monthly_counts as (
     from group_views_data gv
     join params p on gv.day >= p.period_start
     group by to_char(gv.viewed_month, 'YYYY-MM')
+),
+leader_monthly_counts as (
+    select
+        to_char(l.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from leaders l
+    join params p on l.created_at >= p.period_start
+    group by to_char(l.created_month, 'YYYY-MM')
 )
 select json_strip_nulls(json_build_object(
     'members', json_build_object(
@@ -268,6 +298,83 @@ select json_strip_nulls(json_build_object(
             from domain_monthly_counts counts
             where domain = 'attendees'
         ))
+    ),
+    'reports', json_build_object(
+        'members', json_build_object(
+            'recent_growth', (
+                select count(*)::int
+                from members
+                where created_at >= current_timestamp - interval '90 days'
+            ),
+            'previous_growth', (
+                select count(*)::int
+                from members
+                where created_at >= current_timestamp - interval '180 days'
+                  and created_at < current_timestamp - interval '90 days'
+            ),
+            'leaders_total', (select count(*)::int from leaders),
+            'leaders_recent_growth', (
+                select count(*)::int
+                from leaders
+                where created_at >= current_timestamp - interval '90 days'
+            ),
+            'leaders_per_month', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from leader_monthly_counts counts
+            ))
+        ),
+        'events', json_build_object(
+            'hosted_total', (
+                select count(*)::int
+                from events
+                where starts_at < current_timestamp
+            ),
+            'upcoming_total', (
+                select count(*)::int
+                from events
+                where starts_at >= current_timestamp
+            ),
+            'by_city', coalesce((
+                select json_agg(json_build_array(city, count) order by count desc, city)
+                from (
+                    select nullif(btrim(venue_city), '') as city, count(*)::int as count
+                    from events
+                    where nullif(btrim(venue_city), '') is not null
+                    group by nullif(btrim(venue_city), '')
+                    order by count desc, city
+                    limit 10
+                ) city_counts
+            ), '[]'::json),
+            'by_country', coalesce((
+                select json_agg(json_build_array(country, count) order by count desc, country)
+                from (
+                    select nullif(btrim(venue_country_name), '') as country, count(*)::int as count
+                    from events
+                    where nullif(btrim(venue_country_name), '') is not null
+                    group by nullif(btrim(venue_country_name), '')
+                    order by count desc, country
+                    limit 10
+                ) country_counts
+            ), '[]'::json),
+            'by_kind', coalesce((
+                select json_agg(json_build_array(kind, count) order by count desc, kind)
+                from (
+                    select kind, count(*)::int as count
+                    from events
+                    group by kind
+                    order by count desc, kind
+                ) kind_counts
+            ), '[]'::json),
+            'by_category', coalesce((
+                select json_agg(json_build_array(ec.name, stats.count) order by stats.count desc, ec.name)
+                from (
+                    select event_category_id, count(*)::int as count
+                    from events
+                    group by event_category_id
+                ) stats
+                join event_categories ec on ec.event_category_id = stats.event_category_id
+            ), '[]'::json)
+        )
     ),
     'page_views', json_build_object(
         'total_views', (select total_views from page_view_total_counts where scope = 'total'),

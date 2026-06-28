@@ -35,10 +35,12 @@ returns json as $$
         'password', case when p_include_password then password else null end,
         'photo_url', photo_url,
         'provider', provider,
+        'substack_url', substack_url,
         'timezone', timezone,
         'title', title,
         'twitter_url', twitter_url,
         'website_url', website_url,
+        'youtube_url', youtube_url,
 
         -- Include computed membership flags
         'belongs_to_any_group_team', exists (

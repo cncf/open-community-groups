@@ -395,9 +395,11 @@ where
                 'mentorship_price', mentorship_price,
                 'name', name,
                 'photo_url', photo_url,
+                'substack_url', substack_url,
                 'title', title,
                 'twitter_url', twitter_url,
-                'website_url', website_url
+                'website_url', website_url,
+                'youtube_url', youtube_url
             )
             from "user"
             where lower(username) = lower($1::text)

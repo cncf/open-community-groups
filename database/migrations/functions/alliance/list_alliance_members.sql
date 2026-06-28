@@ -39,9 +39,11 @@ returns json as $$
                 u.mentorship_price,
                 u.name,
                 u.photo_url,
+                u.substack_url,
                 u.title,
                 u.twitter_url,
                 u.website_url,
+                u.youtube_url,
                 coalesce(u.provider ? 'linkedin', false) as linkedin_connected
             from member_groups mg
             join "user" u using (user_id)
@@ -65,9 +67,11 @@ returns json as $$
                       u.mentorship_note,
                       u.mentorship_price,
                       u.name,
+                      u.substack_url,
                       u.title,
                       u.twitter_url,
                       u.website_url,
+                      u.youtube_url,
                       array_to_string(mg.group_names, ' '),
                       case when u.mentorship_individuals then 'individual mentorship individuals mentor' end,
                       case when u.mentorship_businesses then 'business mentorship businesses mentor' end,
@@ -95,9 +99,11 @@ returns json as $$
                 fm.mentorship_price,
                 fm.name,
                 fm.photo_url,
+                fm.substack_url,
                 fm.title,
                 fm.twitter_url,
                 fm.website_url,
+                fm.youtube_url,
                 fm.linkedin_connected
             from filtered_members fm
             order by (fm.name is not null) desc, lower(fm.name) asc, lower(fm.username) asc, fm.user_id asc

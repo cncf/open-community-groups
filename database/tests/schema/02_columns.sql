@@ -908,10 +908,12 @@ select columns_are('user', array[
     'photo_url',
     'provider',
     'registration_status',
+    'substack_url',
     'timezone',
     'title',
     'twitter_url',
-    'website_url'
+    'website_url',
+    'youtube_url'
 ]);
 
 -- ============================================================================

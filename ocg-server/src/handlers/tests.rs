@@ -37,8 +37,9 @@ use crate::{
         dashboard::{
             alliance::{
                 analytics::{
-                    AllianceDashboardStats, AlliancePageViewsStats, AttendeesStats, EventsStats,
-                    GroupsStats, MembersStats, PageViewsStats as AlliancePageViewsEntry,
+                    AllianceDashboardStats, AlliancePageViewsStats, AllianceReports,
+                    AttendeesStats, EventsStats, GroupsStats, MembersStats,
+                    PageViewsStats as AlliancePageViewsEntry,
                 },
                 groups::Group,
                 settings::AllianceUpdate,
@@ -48,7 +49,7 @@ use crate::{
             group::{
                 analytics::{
                     GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats,
-                    GroupPageViewsStats, PageViewsStats as GroupPageViewsEntry,
+                    GroupPageViewsStats, GroupReports, PageViewsStats as GroupPageViewsEntry,
                 },
                 attendees::Attendee,
                 events::{CfsSubmissionStatus, Event as GroupEventForm, GroupEvents},
@@ -503,6 +504,7 @@ pub(crate) fn sample_alliance_stats() -> AllianceDashboardStats {
             },
             total_views: 25,
         },
+        reports: AllianceReports::default(),
     }
 }
 
@@ -861,9 +863,11 @@ pub(crate) fn sample_group_member() -> GroupMember {
         mentorship_price: None,
         name: Some("Group Member".to_string()),
         photo_url: Some("https://example.test/photo.png".to_string()),
+        substack_url: Some("https://member.substack.com".to_string()),
         title: Some("Engineer".to_string()),
         twitter_url: Some("https://x.com/member".to_string()),
         website_url: Some("https://member.example".to_string()),
+        youtube_url: Some("https://youtube.com/@member".to_string()),
     }
 }
 
@@ -931,6 +935,7 @@ pub(crate) fn sample_group_stats() -> GroupDashboardStats {
             },
             total_views: 11,
         },
+        reports: GroupReports::default(),
     }
 }
 

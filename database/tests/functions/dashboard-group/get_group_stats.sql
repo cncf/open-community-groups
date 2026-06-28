@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -202,7 +202,7 @@ insert into event_views (day, event_id, total) values
 
 -- Should return complete accurate JSON for seeded group
 select is(
-    get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb,
+    get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb - 'reports',
     (
         with
         -- Define the months used in test data relative to current_timestamp at UTC
@@ -299,7 +299,7 @@ select is(
 
 -- Should return empty stats for unknown group
 select is(
-    get_group_stats(:'allianceID'::uuid, :'nonExistentGroupID'::uuid)::jsonb,
+    get_group_stats(:'allianceID'::uuid, :'nonExistentGroupID'::uuid)::jsonb - 'reports',
     $$
     {
         "members": {
@@ -338,6 +338,23 @@ select is(
     }
     $$,
     'Should return empty stats for unknown group'
+);
+
+-- Should include hosted and upcoming event reporting totals
+select is(
+    (
+        ((get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb->'reports'->'events'->>'hosted_total')::int) +
+        ((get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb->'reports'->'events'->>'upcoming_total')::int)
+    ),
+    1,
+    'Should include hosted and upcoming event totals in group reports'
+);
+
+-- Should include event kind reporting
+select is(
+    get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb->'reports'->'events'->'by_kind',
+    '[["in-person", 1]]'::jsonb,
+    'Should include event kind counts in group reports'
 );
 
 -- ============================================================================

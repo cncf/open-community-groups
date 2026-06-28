@@ -145,6 +145,24 @@
               <div class="svg-icon size-4 icon-github bg-stone-700"></div>
             </a>
           {% endif -%}
+          {% if let Some(substack_url) = &member.substack_url -%}
+            <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+               href="{{ substack_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               title="Substack">
+              <div class="svg-icon size-4 icon-link bg-stone-700"></div>
+            </a>
+          {% endif -%}
+          {% if let Some(youtube_url) = &member.youtube_url -%}
+            <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
+               href="{{ youtube_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               title="YouTube">
+              <div class="svg-icon size-4 icon-youtube bg-stone-700"></div>
+            </a>
+          {% endif -%}
           {% if let Some(website_url) = &member.website_url -%}
             <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-stone-100 hover:ring-stone-300"
                href="{{ website_url }}"

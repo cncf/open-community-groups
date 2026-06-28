@@ -237,6 +237,8 @@
       {% let twitter_value -%}value="{%- if let Some(twitter_url) = &user.twitter_url -%}{{ twitter_url }}{%- endif -%}"{%- endlet %}
       {% let facebook_value -%}value="{%- if let Some(facebook_url) = &user.facebook_url -%}{{ facebook_url }}{%- endif -%}"{%- endlet %}
       {% let github_value -%}value="{%- if let Some(github_url) = &user.github_url -%}{{ github_url }}{%- endif -%}"{%- endlet %}
+      {% let substack_value -%}value="{%- if let Some(substack_url) = &user.substack_url -%}{{ substack_url }}{%- endif -%}"{%- endlet %}
+      {% let youtube_value -%}value="{%- if let Some(youtube_url) = &user.youtube_url -%}{{ youtube_url }}{%- endif -%}"{%- endlet %}
 
       {# Website URL -#}
       {{ form_fields::social_url_field(name = "website_url", label = "Website", icon = "icon-link", placeholder = "https://example.com", value_attr = website_value) -}}
@@ -261,6 +263,14 @@
       {# GitHub URL -#}
       {{ form_fields::social_url_field(name = "github_url", label = "GitHub", icon = "icon-github", placeholder = "https://github.com/username", value_attr = github_value) -}}
       {# End GitHub URL -#}
+
+      {# Substack URL -#}
+      {{ form_fields::social_url_field(name = "substack_url", label = "Substack", icon = "icon-link", placeholder = "https://example.substack.com", value_attr = substack_value) -}}
+      {# End Substack URL -#}
+
+      {# YouTube URL -#}
+      {{ form_fields::social_url_field(name = "youtube_url", label = "YouTube", icon = "icon-youtube", placeholder = "https://youtube.com/@username", value_attr = youtube_value) -}}
+      {# End YouTube URL -#}
     </div>
   </div>
   {# End social links section -#}

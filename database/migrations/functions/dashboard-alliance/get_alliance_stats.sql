@@ -46,6 +46,8 @@ regions as (
 filtered_groups as (
     select
         g.group_id,
+        g.name,
+        g.slug,
         g.group_category_id,
         g.region_id,
         g.created_at,
@@ -59,6 +61,7 @@ filtered_groups as (
 members as (
     select
         gm.group_id,
+        gm.user_id,
         gm.created_at,
         fg.group_category_id,
         fg.region_id,
@@ -71,7 +74,10 @@ events as (
         e.event_id,
         e.event_category_id,
         e.group_id,
+        e.event_kind_id as kind,
         e.starts_at,
+        e.venue_city,
+        e.venue_country_name,
         fg.group_category_id,
         fg.region_id,
         timezone('UTC', date_trunc('month', e.starts_at at time zone 'UTC')) as starts_month
@@ -102,6 +108,7 @@ events_with_start as (
 attendees as (
     select
         ea.event_id,
+        ea.user_id,
         ea.created_at,
         e.event_category_id,
         e.group_category_id,
@@ -110,6 +117,16 @@ attendees as (
     from event_attendee ea
     join events e on e.event_id = ea.event_id
     where ea.status = 'confirmed'
+),
+leaders as (
+    select
+        gt.group_id,
+        gt.user_id,
+        gt.created_at,
+        timezone('UTC', date_trunc('month', gt.created_at at time zone 'UTC')) as created_month
+    from group_team gt
+    join filtered_groups fg on fg.group_id = gt.group_id
+    where gt.accepted = true
 ),
 event_views_data as (
     select
@@ -578,6 +595,47 @@ page_view_monthly_counts as (
     from group_views_data gv
     join params p on gv.day >= p.period_start
     group by to_char(gv.viewed_month, 'YYYY-MM')
+),
+chapter_reports as (
+    select
+        fg.group_id,
+        fg.name,
+        fg.slug,
+        coalesce(gc.name, 'Uncategorized') as category,
+        coalesce(r.name, 'Unassigned') as region,
+        count(distinct m.user_id)::int as members_total,
+        count(distinct m.user_id) filter (
+            where m.created_at >= current_timestamp - interval '90 days'
+        )::int as members_recent,
+        count(distinct m.user_id) filter (
+            where m.created_at >= current_timestamp - interval '180 days'
+              and m.created_at < current_timestamp - interval '90 days'
+        )::int as members_previous,
+        count(distinct e.event_id)::int as events_total,
+        count(distinct e.event_id) filter (
+            where e.starts_at >= current_timestamp
+        )::int as upcoming_events,
+        count(distinct e.event_id) filter (
+            where e.starts_at < current_timestamp
+        )::int as hosted_events,
+        count(distinct (a.event_id, a.user_id))::int as attendees_total,
+        count(distinct l.user_id)::int as leaders_total
+    from filtered_groups fg
+    left join group_categories gc on gc.group_category_id = fg.group_category_id
+    left join regions r on r.region_id = fg.region_id
+    left join members m on m.group_id = fg.group_id
+    left join events e on e.group_id = fg.group_id
+    left join attendees a on a.event_id = e.event_id
+    left join leaders l on l.group_id = fg.group_id
+    group by fg.group_id, fg.name, fg.slug, gc.name, r.name
+),
+leader_monthly_counts as (
+    select
+        to_char(l.created_month, 'YYYY-MM') as label,
+        count(*)::int as count
+    from leaders l
+    join params p on l.created_at >= p.period_start
+    group by to_char(l.created_month, 'YYYY-MM')
 )
 select json_strip_nulls(json_build_object(
     -- ========================================================================
@@ -873,6 +931,170 @@ select json_strip_nulls(json_build_object(
             where domain = 'attendees'
             and dimension = 'group_region'
         ), '{}'::json)
+    ),
+    -- ========================================================================
+    -- REPORTING STATISTICS
+    -- ========================================================================
+    'reports', json_build_object(
+        'chapters', json_build_object(
+            'rankings', coalesce((
+                select json_agg(row_to_json(ranked))
+                from (
+                    select
+                        name,
+                        slug,
+                        category,
+                        region,
+                        members_total,
+                        members_recent,
+                        members_previous,
+                        events_total,
+                        hosted_events,
+                        upcoming_events,
+                        attendees_total,
+                        leaders_total
+                    from chapter_reports
+                    order by members_total desc, members_recent desc, name
+                    limit 10
+                ) ranked
+            ), '[]'::json),
+            'rapid_growth', coalesce((
+                select json_agg(row_to_json(ranked))
+                from (
+                    select
+                        name,
+                        slug,
+                        region,
+                        members_total,
+                        members_recent,
+                        greatest(members_recent - members_previous, 0) as growth_delta
+                    from chapter_reports
+                    where members_recent > 0
+                    order by growth_delta desc, members_recent desc, name
+                    limit 5
+                ) ranked
+            ), '[]'::json),
+            'needs_revitalization', coalesce((
+                select json_agg(row_to_json(ranked))
+                from (
+                    select
+                        name,
+                        slug,
+                        region,
+                        members_total,
+                        members_recent,
+                        upcoming_events,
+                        hosted_events
+                    from chapter_reports
+                    where members_total > 0
+                    order by members_recent asc, upcoming_events asc, hosted_events asc, name
+                    limit 5
+                ) ranked
+            ), '[]'::json),
+            'growth_by_region', coalesce((
+                select json_agg(json_build_array(region, members_recent) order by members_recent desc, region)
+                from (
+                    select
+                        region,
+                        sum(members_recent)::int as members_recent
+                    from chapter_reports
+                    group by region
+                ) regional_growth
+            ), '[]'::json)
+        ),
+        'members', json_build_object(
+            'recent_growth', (
+                select count(*)::int
+                from members
+                where created_at >= current_timestamp - interval '90 days'
+            ),
+            'previous_growth', (
+                select count(*)::int
+                from members
+                where created_at >= current_timestamp - interval '180 days'
+                  and created_at < current_timestamp - interval '90 days'
+            ),
+            'by_region', coalesce((
+                select json_agg(json_build_array(r.name, stats.count) order by stats.count desc, r.name)
+                from (
+                    select region_id, count(*)::int as count
+                    from members
+                    group by region_id
+                ) stats
+                join regions r on r.region_id = stats.region_id
+            ), '[]'::json),
+            'leaders_total', (select count(*)::int from leaders),
+            'leaders_recent_growth', (
+                select count(*)::int
+                from leaders
+                where created_at >= current_timestamp - interval '90 days'
+            ),
+            'leaders_per_month', stats_label_count_series((
+                select jsonb_agg(to_jsonb(counts))
+                from leader_monthly_counts counts
+            ))
+        ),
+        'events', json_build_object(
+            'hosted_total', (
+                select count(*)::int
+                from events
+                where starts_at < current_timestamp
+            ),
+            'upcoming_total', (
+                select count(*)::int
+                from events
+                where starts_at >= current_timestamp
+            ),
+            'by_region', coalesce((
+                select json_agg(json_build_array(r.name, stats.count) order by stats.count desc, r.name)
+                from (
+                    select region_id, count(*)::int as count
+                    from events
+                    group by region_id
+                ) stats
+                join regions r on r.region_id = stats.region_id
+            ), '[]'::json),
+            'by_city', coalesce((
+                select json_agg(json_build_array(city, count) order by count desc, city)
+                from (
+                    select nullif(btrim(venue_city), '') as city, count(*)::int as count
+                    from events
+                    where nullif(btrim(venue_city), '') is not null
+                    group by nullif(btrim(venue_city), '')
+                    order by count desc, city
+                    limit 10
+                ) city_counts
+            ), '[]'::json),
+            'by_country', coalesce((
+                select json_agg(json_build_array(country, count) order by count desc, country)
+                from (
+                    select nullif(btrim(venue_country_name), '') as country, count(*)::int as count
+                    from events
+                    where nullif(btrim(venue_country_name), '') is not null
+                    group by nullif(btrim(venue_country_name), '')
+                    order by count desc, country
+                    limit 10
+                ) country_counts
+            ), '[]'::json),
+            'by_kind', coalesce((
+                select json_agg(json_build_array(kind, count) order by count desc, kind)
+                from (
+                    select kind, count(*)::int as count
+                    from events
+                    group by kind
+                    order by count desc, kind
+                ) kind_counts
+            ), '[]'::json),
+            'by_category', coalesce((
+                select json_agg(json_build_array(ec.name, stats.count) order by stats.count desc, ec.name)
+                from (
+                    select event_category_id, count(*)::int as count
+                    from events
+                    group by event_category_id
+                ) stats
+                join event_categories ec on ec.event_category_id = stats.event_category_id
+            ), '[]'::json)
+        )
     ),
     -- ========================================================================
     -- PAGE VIEWS STATISTICS

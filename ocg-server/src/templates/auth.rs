@@ -185,6 +185,9 @@ pub(crate) struct UserDetails {
     /// User's photo URL.
     #[garde(custom(image_url_opt))]
     pub photo_url: Option<String>,
+    /// User's Substack URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub substack_url: Option<String>,
     /// User's timezone.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_TIMEZONE))]
     pub timezone: Option<String>,
@@ -197,6 +200,9 @@ pub(crate) struct UserDetails {
     /// User's website URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
+    /// User's YouTube URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub youtube_url: Option<String>,
 }
 
 impl From<crate::auth::User> for UserDetails {
@@ -223,10 +229,12 @@ impl From<crate::auth::User> for UserDetails {
             mentorship_note: user.mentorship_note,
             mentorship_price: user.mentorship_price,
             photo_url: user.photo_url,
+            substack_url: user.substack_url,
             timezone: user.timezone,
             title: user.title,
             twitter_url: user.twitter_url,
             website_url: user.website_url,
+            youtube_url: user.youtube_url,
         }
     }
 }

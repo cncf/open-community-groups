@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -525,7 +525,7 @@ insert into alliance_views (day, alliance_id, total) values
 
 -- Should return complete accurate JSON for test alliance
 select is(
-    get_alliance_stats(:'allianceID'::uuid)::jsonb,
+    get_alliance_stats(:'allianceID'::uuid)::jsonb - 'reports',
     (
         with
         -- Define the months used in test data relative to current_timestamp at UTC
@@ -967,7 +967,7 @@ select is(
 
 -- Should return empty stats for unknown alliance
 select is(
-    get_alliance_stats(:'unknownAllianceID'::uuid)::jsonb,
+    get_alliance_stats(:'unknownAllianceID'::uuid)::jsonb - 'reports',
     $$
     {
         "groups": {
@@ -1053,6 +1053,23 @@ select is(
     (get_alliance_stats(:'allianceID'::uuid)::jsonb->'groups'->>'total')::int,
     4,
     'Should only count groups from the requested alliance'
+);
+
+-- Should include chapter reporting rankings
+select is(
+    jsonb_array_length(get_alliance_stats(:'allianceID'::uuid)::jsonb->'reports'->'chapters'->'rankings'),
+    4,
+    'Should include one chapter ranking row per active group in the alliance'
+);
+
+-- Should include hosted and upcoming event reporting totals
+select is(
+    (
+        ((get_alliance_stats(:'allianceID'::uuid)::jsonb->'reports'->'events'->>'hosted_total')::int) +
+        ((get_alliance_stats(:'allianceID'::uuid)::jsonb->'reports'->'events'->>'upcoming_total')::int)
+    ),
+    6,
+    'Should include hosted and upcoming event totals in reports'
 );
 
 -- ============================================================================

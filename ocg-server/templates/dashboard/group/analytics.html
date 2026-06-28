@@ -39,6 +39,109 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
 </div>
 {# End summary stat cards #}
 
+{# Reporting overview #}
+<div class="mt-10 space-y-6">
+  <div class="grid gap-4 lg:grid-cols-3">
+    <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Members</div>
+      <h3 class="mt-2 text-lg font-black text-stone-950">Membership growth</h3>
+      <p class="mt-2 text-sm/6 text-stone-600">
+        Track recent chapter membership growth and compare it against the previous 90 days.
+      </p>
+      <div class="mt-5 grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-stone-50 p-3">
+          <div class="text-xs font-semibold text-stone-500">Latest 90 days</div>
+          <div class="mt-1 text-2xl font-black">{{ stats.reports.members.recent_growth|num_fmt }}</div>
+        </div>
+        <div class="rounded-xl bg-stone-50 p-3">
+          <div class="text-xs font-semibold text-stone-500">Prior 90 days</div>
+          <div class="mt-1 text-2xl font-black">{{ stats.reports.members.previous_growth|num_fmt }}</div>
+        </div>
+      </div>
+    </section>
+    <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Leaders</div>
+      <h3 class="mt-2 text-lg font-black text-stone-950">Chapter leader growth</h3>
+      <p class="mt-2 text-sm/6 text-stone-600">See how the accepted team of chapter leaders is growing.</p>
+      <div class="mt-5 grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-stone-50 p-3">
+          <div class="text-xs font-semibold text-stone-500">Total leaders</div>
+          <div class="mt-1 text-2xl font-black">{{ stats.reports.members.leaders_total|num_fmt }}</div>
+        </div>
+        <div class="rounded-xl bg-stone-50 p-3">
+          <div class="text-xs font-semibold text-stone-500">90-day growth</div>
+          <div class="mt-1 text-2xl font-black">{{ stats.reports.members.leaders_recent_growth|num_fmt }}</div>
+        </div>
+      </div>
+    </section>
+    <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Events</div>
+      <h3 class="mt-2 text-lg font-black text-stone-950">Hosted and upcoming</h3>
+      <p class="mt-2 text-sm/6 text-stone-600">
+        See how many events this chapter has hosted and how many are upcoming.
+      </p>
+      <div class="mt-5 grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-stone-50 p-3">
+          <div class="text-xs font-semibold text-stone-500">Hosted</div>
+          <div class="mt-1 text-2xl font-black">{{ stats.reports.events.hosted_total|num_fmt }}</div>
+        </div>
+        <div class="rounded-xl bg-stone-50 p-3">
+          <div class="text-xs font-semibold text-stone-500">Upcoming</div>
+          <div class="mt-1 text-2xl font-black">{{ stats.reports.events.upcoming_total|num_fmt }}</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+    <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div class="text-sm font-bold text-stone-500">Events by city</div>
+      <div class="mt-4 space-y-2">
+        {% for (label, count) in stats.reports.events.by_city -%}
+          <div class="flex items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2">
+            <span class="truncate text-sm font-semibold text-stone-700">{{ label }}</span>
+            <span class="text-sm font-black text-stone-950">{{ count|num_fmt }}</span>
+          </div>
+        {% endfor -%}
+      </div>
+    </section>
+    <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div class="text-sm font-bold text-stone-500">Events by country</div>
+      <div class="mt-4 space-y-2">
+        {% for (label, count) in stats.reports.events.by_country -%}
+          <div class="flex items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2">
+            <span class="truncate text-sm font-semibold text-stone-700">{{ label }}</span>
+            <span class="text-sm font-black text-stone-950">{{ count|num_fmt }}</span>
+          </div>
+        {% endfor -%}
+      </div>
+    </section>
+    <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div class="text-sm font-bold text-stone-500">Events by kind</div>
+      <div class="mt-4 space-y-2">
+        {% for (label, count) in stats.reports.events.by_kind -%}
+          <div class="flex items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2">
+            <span class="truncate text-sm font-semibold text-stone-700">{{ label }}</span>
+            <span class="text-sm font-black text-stone-950">{{ count|num_fmt }}</span>
+          </div>
+        {% endfor -%}
+      </div>
+    </section>
+    <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+      <div class="text-sm font-bold text-stone-500">Events by category</div>
+      <div class="mt-4 space-y-2">
+        {% for (label, count) in stats.reports.events.by_category -%}
+          <div class="flex items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-2">
+            <span class="truncate text-sm font-semibold text-stone-700">{{ label }}</span>
+            <span class="text-sm font-black text-stone-950">{{ count|num_fmt }}</span>
+          </div>
+        {% endfor -%}
+      </div>
+    </section>
+  </div>
+</div>
+{# End reporting overview #}
+
 {# Charts sections #}
 <div class="space-y-12 mt-10">
   <div>
