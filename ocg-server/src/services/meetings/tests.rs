@@ -797,6 +797,38 @@ async fn test_worker_sync_meeting_provider_not_configured_records_error() {
     assert!(synced);
 }
 
+#[tokio::test]
+async fn test_worker_sync_meeting_delete_provider_not_configured_cleans_up_locally() {
+    // Setup identifiers and data structures
+    let meeting_id = Uuid::new_v4();
+    let meeting = Meeting {
+        delete: Some(true),
+        meeting_id: Some(meeting_id),
+        provider: MeetingProvider::Zoom,
+        provider_meeting_id: Some("old-zoom-meeting".to_string()),
+        ..Default::default()
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_claim_meeting_out_of_sync()
+        .times(1)
+        .returning(move || Ok(Some(meeting.clone())));
+    db.expect_delete_meeting()
+        .times(1)
+        .withf(move |m| m.meeting_id == Some(meeting_id))
+        .returning(|_| Ok(()));
+    db.expect_set_meeting_error().never();
+    let db: DynDB = Arc::new(db);
+
+    // Setup worker with no providers configured
+    let mut worker = sample_sync_worker_no_providers(db);
+    let synced = worker.sync_meeting().await.unwrap();
+
+    // Check result matches expectations
+    assert!(synced);
+}
+
 // Helpers.
 
 /// Create a sample auto-end worker with mock dependencies.

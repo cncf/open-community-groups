@@ -420,13 +420,15 @@ impl MeetingsSyncWorker {
         let provider = self.providers.get(&meeting.provider);
 
         // Determine action and sync with provider
-        let result = match provider {
-            Some(provider) => match meeting.sync_action() {
-                SyncAction::Create => self.create_meeting(&meeting, provider).await,
-                SyncAction::Delete => self.delete_meeting(&meeting, provider).await,
-                SyncAction::Update => self.update_meeting(&meeting, provider).await,
-            },
-            None => Err(SyncError::ProviderNotConfigured(meeting.provider)),
+        let action = meeting.sync_action();
+        let result = match (provider, action) {
+            (Some(provider), SyncAction::Create) => self.create_meeting(&meeting, provider).await,
+            (Some(provider), SyncAction::Delete) => self.delete_meeting(&meeting, provider).await,
+            (Some(provider), SyncAction::Update) => self.update_meeting(&meeting, provider).await,
+            (None, SyncAction::Delete) => self.delete_meeting_locally(&meeting).await,
+            (None, SyncAction::Create | SyncAction::Update) => {
+                Err(SyncError::ProviderNotConfigured(meeting.provider))
+            }
         };
 
         // Handle errors based on type
@@ -500,6 +502,12 @@ impl MeetingsSyncWorker {
         self.db.delete_meeting(meeting).await.map_err(SyncError::Other)?;
 
         Ok(())
+    }
+
+    /// Complete local cleanup for a meeting whose original provider is no longer configured.
+    #[instrument(skip(self, meeting), err)]
+    async fn delete_meeting_locally(&self, meeting: &Meeting) -> Result<(), SyncError> {
+        self.db.delete_meeting(meeting).await.map_err(SyncError::Other)
     }
 
     /// Update a meeting on the provider and mark as synced in database.
