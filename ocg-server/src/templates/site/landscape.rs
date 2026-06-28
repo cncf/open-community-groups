@@ -28,6 +28,8 @@ pub(crate) struct Page {
     pub filters: LandscapeFilters,
     /// GitHub projects ranked by live repository metrics.
     pub github_leaderboard: GitHubLeaderboard,
+    /// Landscape entries shown in the top logo strip.
+    pub logo_entries: Vec<LandscapeEntry>,
     /// Matching landscape entries.
     pub entries: Vec<LandscapeEntry>,
     /// Total matching entries.

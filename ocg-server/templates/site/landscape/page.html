@@ -3,7 +3,7 @@
 
 {% block jumbotron -%}
   <section class="container mx-auto max-w-7xl px-4 pt-10 pb-8 sm:px-6 lg:px-8 lg:pt-16">
-    <div class="relative max-w-4xl rounded-[2.25rem] border border-stone-200 bg-white/90 p-6 shadow-xl shadow-stone-200/50 backdrop-blur sm:p-8 lg:p-10">
+    <div class="relative w-full rounded-[2.25rem] border border-stone-200 bg-white/90 p-6 shadow-xl shadow-stone-200/50 backdrop-blur sm:p-8 lg:p-10">
       <p class="mb-4 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">Landscape</p>
       <h1 class="mb-4 text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
         Ecosystem landscape
@@ -17,6 +17,76 @@
 
 {% block content -%}
   <div class="container mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-16">
+    {% if !logo_entries.is_empty() -%}
+      <section class="mb-8 rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm sm:p-5">
+        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.2em] text-stone-500">Landscape logos</p>
+            <h2 class="mt-1 text-2xl font-black tracking-tight text-stone-950">Explore the ecosystem</h2>
+          </div>
+          <p class="text-sm font-medium text-stone-500">{{ logo_entries.len() }} shown</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+          {% for entry in logo_entries -%}
+            {% if let Some(website_url) = &entry.website_url -%}
+              <a class="group flex h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3 text-center transition hover:-translate-y-0.5 hover:border-stone-950 hover:bg-white hover:shadow-md"
+                 href="{{ website_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="{{ entry.name }}"
+                 hx-boost="false">
+                <div class="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-inset ring-stone-200">
+                  {% if let Some(logo_url) = &entry.logo_url -%}
+                    <img src="{{ logo_url }}"
+                         alt="{{ entry.name }} logo"
+                         class="h-full w-full object-contain p-2"
+                         loading="lazy" />
+                  {% else -%}
+                    <div class="svg-icon size-7 icon-buildings bg-stone-700"></div>
+                  {% endif -%}
+                </div>
+                <span class="line-clamp-2 text-xs font-bold text-stone-700 group-hover:text-stone-950">{{ entry.name }}</span>
+              </a>
+            {% else if let Some(github_url) = &entry.github_url -%}
+              <a class="group flex h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3 text-center transition hover:-translate-y-0.5 hover:border-stone-950 hover:bg-white hover:shadow-md"
+                 href="{{ github_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 title="{{ entry.name }}"
+                 hx-boost="false">
+                <div class="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-inset ring-stone-200">
+                  {% if let Some(logo_url) = &entry.logo_url -%}
+                    <img src="{{ logo_url }}"
+                         alt="{{ entry.name }} logo"
+                         class="h-full w-full object-contain p-2"
+                         loading="lazy" />
+                  {% else -%}
+                    <div class="svg-icon size-7 icon-buildings bg-stone-700"></div>
+                  {% endif -%}
+                </div>
+                <span class="line-clamp-2 text-xs font-bold text-stone-700 group-hover:text-stone-950">{{ entry.name }}</span>
+              </a>
+            {% else -%}
+              <div class="flex h-28 flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-3 text-center"
+                   title="{{ entry.name }}">
+                <div class="flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-inset ring-stone-200">
+                  {% if let Some(logo_url) = &entry.logo_url -%}
+                    <img src="{{ logo_url }}"
+                         alt="{{ entry.name }} logo"
+                         class="h-full w-full object-contain p-2"
+                         loading="lazy" />
+                  {% else -%}
+                    <div class="svg-icon size-7 icon-buildings bg-stone-700"></div>
+                  {% endif -%}
+                </div>
+                <span class="line-clamp-2 text-xs font-bold text-stone-700">{{ entry.name }}</span>
+              </div>
+            {% endif -%}
+          {% endfor -%}
+        </div>
+      </section>
+    {% endif -%}
+
     <form method="get"
           action="/landscape"
           hx-get="/landscape"

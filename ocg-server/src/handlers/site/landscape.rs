@@ -27,6 +27,7 @@ use crate::{
         },
     },
     types::{landscape::LandscapeFilters, pagination::NavigationLinks},
+    validation::MAX_PAGINATION_LIMIT,
 };
 
 const LANDSCAPE_URL: &str = "/landscape";
@@ -46,8 +47,10 @@ pub(crate) async fn page(
 ) -> Result<impl IntoResponse, HandlerError> {
     let filters = parse_filters(raw_query.as_deref().unwrap_or_default())?;
     let github_filters = github_leaderboard_filters(&filters);
-    let (output, github_output, site_settings) = tokio::try_join!(
+    let logo_filters = logo_strip_filters(&filters);
+    let (output, logo_output, github_output, site_settings) = tokio::try_join!(
         db.search_landscape_entries(&filters),
+        db.search_landscape_entries(&logo_filters),
         db.search_landscape_entries(&github_filters),
         db.get_site_settings()
     )?;
@@ -66,6 +69,7 @@ pub(crate) async fn page(
         user: User::from_session(auth_session).await?,
         filters,
         github_leaderboard,
+        logo_entries: logo_output.entries,
         entries: output.entries,
         total: output.total,
         navigation_links,
@@ -91,6 +95,14 @@ fn github_leaderboard_filters(filters: &LandscapeFilters) -> LandscapeFilters {
     LandscapeFilters {
         kind: Some(GITHUB_PROJECT_KIND.to_string()),
         limit: Some(GITHUB_LEADERBOARD_LIMIT),
+        offset: Some(0),
+        ..filters.clone()
+    }
+}
+
+fn logo_strip_filters(filters: &LandscapeFilters) -> LandscapeFilters {
+    LandscapeFilters {
+        limit: Some(MAX_PAGINATION_LIMIT),
         offset: Some(0),
         ..filters.clone()
     }
