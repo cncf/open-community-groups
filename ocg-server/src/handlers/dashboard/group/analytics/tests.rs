@@ -135,4 +135,8 @@ async fn test_page_success() {
     assert!(body.contains("Membership growth"));
     assert!(body.contains("Chapter leader growth"));
     assert!(body.contains("Hosted and upcoming"));
+    assert!(body.contains("See gamification in action"));
+    assert!(body.contains("Climb the leaderboard"));
+    assert!(body.contains("Group Leader"));
+    assert!(body.contains("Earn points & badges"));
 }

@@ -570,6 +570,8 @@ async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
         2
     );
     assert_eq!(stats.reports.members.leaders_total, 1);
+    assert!(stats.gamification.total_points >= 10);
+    assert!(!stats.gamification.rules.is_empty());
 
     Ok(())
 }

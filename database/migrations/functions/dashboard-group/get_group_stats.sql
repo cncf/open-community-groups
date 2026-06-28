@@ -80,6 +80,7 @@ events_with_start as (
 attendees as (
     select
         ea.user_id,
+        ea.checked_in,
         ea.created_at,
         timezone('UTC', date_trunc('month', ea.created_at at time zone 'UTC')) as created_month
     from event_attendee ea
@@ -94,6 +95,151 @@ leaders as (
     from group_team gt
     join filtered_group fg on fg.group_id = gt.group_id
     where gt.accepted = true
+),
+member_profiles as (
+    select
+        u.user_id,
+        u.username,
+        u.name,
+        u.photo_url,
+        m.created_at as joined_at
+    from members m
+    join "user" u using (user_id)
+),
+event_roles as (
+    select eh.user_id, eh.created_at
+    from event_host eh
+    join events e using (event_id)
+
+    union all
+
+    select eo.user_id, e.created_at
+    from event_organizer eo
+    join event e using (event_id)
+    join filtered_group fg on fg.group_id = e.group_id
+    where e.published = true
+        and e.canceled = false
+        and e.deleted = false
+        and e.test_event = false
+
+    union all
+
+    select es.user_id, es.created_at
+    from event_speaker es
+    join events e using (event_id)
+),
+mentorship_received as (
+    select
+        mr.mentor_user_id as user_id,
+        mr.created_at
+    from mentorship_request mr
+    join members m on m.user_id = mr.mentor_user_id
+),
+member_contributions as (
+    select
+        mp.user_id,
+        mp.username,
+        mp.name,
+        mp.photo_url,
+        1 as joined_count,
+        coalesce(attendance.confirmed_count, 0)::int as attendance_count,
+        coalesce(attendance.checked_in_count, 0)::int as checked_in_count,
+        coalesce(roles.role_count, 0)::int as event_role_count,
+        case when l.user_id is null then 0 else 1 end as leader_count,
+        coalesce(mentorship.mentorship_count, 0)::int as mentorship_count,
+        greatest(
+            mp.joined_at,
+            coalesce(attendance.latest_at, mp.joined_at),
+            coalesce(roles.latest_at, mp.joined_at),
+            coalesce(l.created_at, mp.joined_at),
+            coalesce(mentorship.latest_at, mp.joined_at)
+        ) as latest_activity_at,
+        (
+            10
+            + coalesce(attendance.confirmed_count, 0) * 15
+            + coalesce(attendance.checked_in_count, 0) * 25
+            + coalesce(roles.role_count, 0) * 40
+            + case when l.user_id is null then 0 else 50 end
+            + coalesce(mentorship.mentorship_count, 0) * 20
+        )::int as points
+    from member_profiles mp
+    left join (
+        select
+            user_id,
+            count(*)::int as confirmed_count,
+            count(*) filter (where checked_in)::int as checked_in_count,
+            max(created_at) as latest_at
+        from attendees
+        group by user_id
+    ) attendance using (user_id)
+    left join (
+        select
+            user_id,
+            count(*)::int as role_count,
+            max(created_at) as latest_at
+        from event_roles
+        group by user_id
+    ) roles using (user_id)
+    left join leaders l using (user_id)
+    left join (
+        select
+            user_id,
+            count(*)::int as mentorship_count,
+            max(created_at) as latest_at
+        from mentorship_received
+        group by user_id
+    ) mentorship using (user_id)
+),
+gamification_leaderboard as (
+    select
+        row_number() over (order by points desc, latest_activity_at desc, lower(coalesce(name, username)), user_id) as rank,
+        user_id,
+        username,
+        name,
+        photo_url,
+        points,
+        (
+            attendance_count
+            + checked_in_count
+            + event_role_count
+            + leader_count
+            + mentorship_count
+        )::int as recent_activity_count,
+        json_build_object(
+            'joined', joined_count,
+            'attended_events', attendance_count,
+            'checked_in_events', checked_in_count,
+            'event_roles', event_role_count,
+            'leader_roles', leader_count,
+            'mentorship_requests', mentorship_count,
+            'chats', 0,
+            'posts', 0,
+            'polls', 0
+        ) as contributions,
+        array_remove(array[
+            case when joined_count > 0 then 'Getting Started' end,
+            case when attendance_count >= 3 then 'Event Regular' end,
+            case when checked_in_count >= 1 then 'Checked In' end,
+            case when leader_count >= 1 then 'Community Leader' end,
+            case when event_role_count >= 1 then 'Event Builder' end,
+            case when row_number() over (order by points desc, latest_activity_at desc, lower(coalesce(name, username)), user_id) <= 3 then 'Top Contributor' end
+        ], null) as badges
+    from member_contributions
+),
+gamification_rules as (
+    select *
+    from (
+        values
+            ('join_group', 'Join the group', 10, true),
+            ('attend_event', 'Attend or RSVP to an event', 15, true),
+            ('check_in_event', 'Check in at an event', 25, true),
+            ('event_role', 'Host, organize, or speak at an event', 40, true),
+            ('leader_role', 'Serve as an accepted group lead', 50, true),
+            ('mentorship_request', 'Receive a mentorship request', 20, true),
+            ('chat', 'Helpful chats', 5, false),
+            ('post', 'Helpful posts', 10, false),
+            ('poll', 'Poll participation', 5, false)
+    ) as rules(source, label, points, active)
 ),
 event_views_data as (
     select
@@ -375,6 +521,43 @@ select json_strip_nulls(json_build_object(
                 join event_categories ec on ec.event_category_id = stats.event_category_id
             ), '[]'::json)
         )
+    ),
+    'gamification', json_build_object(
+        'total_points', coalesce((select sum(points)::int from member_contributions), 0),
+        'active_contributors', coalesce((select count(*)::int from member_contributions where points > 0), 0),
+        'badges_awarded', coalesce((
+            select sum(cardinality(badges))::int
+            from gamification_leaderboard
+        ), 0),
+        'leaderboard', coalesce((
+            select json_agg(json_build_object(
+                'rank', rank,
+                'user_id', user_id,
+                'username', username,
+                'name', name,
+                'photo_url', photo_url,
+                'points', points,
+                'recent_activity_count', recent_activity_count,
+                'contributions', contributions,
+                'badges', badges
+            ) order by rank)
+            from (
+                select *
+                from gamification_leaderboard
+                order by rank
+                limit 10
+            ) ranked
+        ), '[]'::json),
+        'rules', coalesce((
+            select json_agg(json_build_object(
+                'source', source,
+                'label', label,
+                'points', points,
+                'active', active
+            ) order by active desc, points desc, label)
+            from gamification_rules
+        ), '[]'::json),
+        'future_sources', json_build_array('chats', 'posts', 'polls')
     ),
     'page_views', json_build_object(
         'total_views', (select total_views from page_view_total_counts where scope = 'total'),

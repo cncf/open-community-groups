@@ -39,6 +39,137 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
 </div>
 {# End summary stat cards #}
 
+{# Gamification section #}
+<div class="mt-10 overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
+  <div class="border-b border-stone-200 bg-stone-50/80 p-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[0.2em] text-stone-500">Gamification</p>
+        <h2 class="mt-2 text-2xl font-black tracking-tight text-stone-950">See gamification in action</h2>
+        <p class="mt-2 max-w-3xl text-sm/6 text-stone-600">
+          Watch how member activity turns into visible recognition with points, streaks, and badges.
+        </p>
+      </div>
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-stone-200">
+          <div class="text-2xl font-black text-stone-950">{{ stats.gamification.total_points|num_fmt }}</div>
+          <div class="mt-1 text-[0.68rem] font-bold uppercase tracking-wide text-stone-500">Points</div>
+        </div>
+        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-stone-200">
+          <div class="text-2xl font-black text-stone-950">{{ stats.gamification.active_contributors|num_fmt }}</div>
+          <div class="mt-1 text-[0.68rem] font-bold uppercase tracking-wide text-stone-500">Contributors</div>
+        </div>
+        <div class="rounded-2xl bg-white px-4 py-3 ring-1 ring-stone-200">
+          <div class="text-2xl font-black text-stone-950">{{ stats.gamification.badges_awarded|num_fmt }}</div>
+          <div class="mt-1 text-[0.68rem] font-bold uppercase tracking-wide text-stone-500">Badges</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 p-6 xl:grid-cols-[1.25fr_0.75fr]">
+    <div class="space-y-6">
+      <div class="grid gap-4 md:grid-cols-3">
+        <section class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+          <h3 class="text-base font-black text-stone-950">More repeat visitors</h3>
+          <p class="mt-2 text-sm/6 text-stone-600">Users come back to climb the ranks.</p>
+        </section>
+        <section class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+          <h3 class="text-base font-black text-stone-950">More high-quality contributions</h3>
+          <p class="mt-2 text-sm/6 text-stone-600">Leaderboards encourage helpful posts.</p>
+        </section>
+        <section class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+          <h3 class="text-base font-black text-stone-950">More recognition, less churn</h3>
+          <p class="mt-2 text-sm/6 text-stone-600">Let every member know they matter.</p>
+        </section>
+      </div>
+
+      <section>
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-black text-stone-950">Climb the leaderboard</h3>
+            <p class="mt-1 text-sm/6 text-stone-600">Highlight top contributors every day.</p>
+          </div>
+        </div>
+        <div class="mt-4 overflow-hidden rounded-2xl border border-stone-200">
+          {% if stats.gamification.leaderboard.is_empty() -%}
+            <div class="bg-stone-50 px-5 py-8 text-center text-sm text-stone-500">
+              Member recognition will appear once this group has activity.
+            </div>
+          {% else -%}
+            <div class="divide-y divide-stone-200 bg-white">
+              {% for entry in stats.gamification.leaderboard -%}
+                <article class="grid gap-4 p-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+                  <div class="flex items-center gap-3">
+                    <div class="flex size-10 items-center justify-center rounded-full bg-stone-950 text-sm font-black text-white">
+                      #{{ entry.rank }}
+                    </div>
+                    <logo-image
+                    {% if let Some(photo_url) = &entry.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                    size="size-12" placeholder="{{ crate::templates::helpers::user_initials(entry.name.as_deref() , entry.username.as_str()) }}">
+                    </logo-image>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="truncate text-sm font-black text-stone-950">
+                      {{ entry.name.as_deref().unwrap_or(&entry.username) }}
+                    </div>
+                    <div class="mt-0.5 truncate text-xs font-medium text-stone-500">@{{ entry.username }}</div>
+                    {% if !entry.badges.is_empty() -%}
+                      <div class="mt-2 flex flex-wrap gap-1.5">
+                        {% for badge in entry.badges -%}
+                          <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700 ring-1 ring-inset ring-primary-100">{{ badge }}</span>
+                        {% endfor -%}
+                      </div>
+                    {% endif -%}
+                  </div>
+                  <div class="text-start md:text-end">
+                    <div class="text-2xl font-black text-stone-950">{{ entry.points|num_fmt }}</div>
+                    <div class="text-xs font-bold uppercase tracking-wide text-stone-500">points</div>
+                    <div class="mt-2 text-xs text-stone-500">{{ entry.recent_activity_count|num_fmt }} contribution signals</div>
+                  </div>
+                </article>
+              {% endfor -%}
+            </div>
+          {% endif -%}
+        </div>
+      </section>
+    </div>
+
+    <aside class="space-y-6">
+      <section class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+        <h3 class="text-lg font-black text-stone-950">Earn points & badges</h3>
+        <p class="mt-2 text-sm/6 text-stone-600">For events, chats, posts, polls & more.</p>
+        <div class="mt-4 space-y-2">
+          {% for rule in stats.gamification.rules -%}
+            <div class="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 ring-1 ring-stone-200">
+              <div class="min-w-0">
+                <div class="truncate text-sm font-semibold text-stone-800">{{ rule.label }}</div>
+                {% if !rule.active -%}
+                  <div class="mt-0.5 text-xs font-medium text-stone-400">Coming soon</div>
+                {% endif -%}
+              </div>
+              <span class="shrink-0 rounded-full bg-stone-950 px-2.5 py-1 text-xs font-black text-white">
+                +{{ rule.points }}
+              </span>
+            </div>
+          {% endfor -%}
+        </div>
+      </section>
+
+      <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+        <h3 class="text-lg font-black text-stone-950">Track progress with clarity</h3>
+        <p class="mt-2 text-sm/6 text-stone-600">Clear dashboards track user activity.</p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          {% for source in stats.gamification.future_sources -%}
+            <span class="rounded-full bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-stone-500 ring-1 ring-inset ring-stone-200">{{ source }}</span>
+          {% endfor -%}
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>
+{# End gamification section #}
+
 {# Reporting overview #}
 <div class="mt-10 space-y-6">
   <div class="grid gap-4 lg:grid-cols-3">

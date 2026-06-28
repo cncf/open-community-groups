@@ -48,7 +48,9 @@ use crate::{
             audit::{AuditLogRecord, AuditLogsOutput},
             group::{
                 analytics::{
-                    GroupAttendeesStats, GroupDashboardStats, GroupEventsStats, GroupMembersStats,
+                    GroupAttendeesStats, GroupDashboardStats, GroupEventsStats,
+                    GroupGamificationContributions, GroupGamificationLeaderboardEntry,
+                    GroupGamificationRule, GroupGamificationStats, GroupMembersStats,
                     GroupPageViewsStats, GroupReports, PageViewsStats as GroupPageViewsEntry,
                 },
                 attendees::Attendee,
@@ -911,6 +913,55 @@ pub(crate) fn sample_group_stats() -> GroupDashboardStats {
             per_month: vec![("2024-01".to_string(), 2)],
             running_total: vec![(1, 2)],
             total: 2,
+        },
+        gamification: GroupGamificationStats {
+            total_points: 120,
+            active_contributors: 1,
+            badges_awarded: 3,
+            leaderboard: vec![GroupGamificationLeaderboardEntry {
+                rank: 1,
+                user_id: Uuid::new_v4().to_string(),
+                username: "leader".to_string(),
+                name: Some("Group Leader".to_string()),
+                photo_url: Some("https://example.test/avatar.png".to_string()),
+                points: 120,
+                recent_activity_count: 4,
+                contributions: GroupGamificationContributions {
+                    joined: 1,
+                    attended_events: 1,
+                    checked_in_events: 0,
+                    event_roles: 1,
+                    leader_roles: 1,
+                    mentorship_requests: 0,
+                    chats: 0,
+                    posts: 0,
+                    polls: 0,
+                },
+                badges: vec![
+                    "Getting Started".to_string(),
+                    "Community Leader".to_string(),
+                    "Top Contributor".to_string(),
+                ],
+            }],
+            rules: vec![
+                GroupGamificationRule {
+                    source: "join_group".to_string(),
+                    label: "Join the group".to_string(),
+                    points: 10,
+                    active: true,
+                },
+                GroupGamificationRule {
+                    source: "post".to_string(),
+                    label: "Helpful posts".to_string(),
+                    points: 10,
+                    active: false,
+                },
+            ],
+            future_sources: vec![
+                "chats".to_string(),
+                "posts".to_string(),
+                "polls".to_string(),
+            ],
         },
         page_views: GroupPageViewsStats {
             events: GroupPageViewsEntry {

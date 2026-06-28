@@ -25,6 +25,9 @@ pub(crate) struct GroupDashboardStats {
     pub events: GroupEventsStats,
     /// Members statistics.
     pub members: GroupMembersStats,
+    /// Gamification and recognition stats.
+    #[serde(default)]
+    pub gamification: GroupGamificationStats,
     /// Page views statistics.
     pub page_views: GroupPageViewsStats,
     /// Reporting summaries.
@@ -63,6 +66,87 @@ pub(crate) struct GroupMembersStats {
     pub running_total: Vec<(i64, i64)>,
     /// Total members.
     pub total: i64,
+}
+
+/// Gamification stats for member recognition.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct GroupGamificationStats {
+    /// Total points earned by group members.
+    pub total_points: i64,
+    /// Members with any contribution points.
+    pub active_contributors: i64,
+    /// Total badges awarded across leaderboard members.
+    pub badges_awarded: i64,
+    /// Ranked top contributors.
+    #[serde(default)]
+    pub leaderboard: Vec<GroupGamificationLeaderboardEntry>,
+    /// Point rules shown to admins and leads.
+    #[serde(default)]
+    pub rules: Vec<GroupGamificationRule>,
+    /// Future contribution sources that are not active yet.
+    #[serde(default)]
+    pub future_sources: Vec<String>,
+}
+
+/// One member in the gamification leaderboard.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct GroupGamificationLeaderboardEntry {
+    /// Rank within this group.
+    pub rank: i64,
+    /// User identifier.
+    pub user_id: String,
+    /// Username.
+    pub username: String,
+    /// Full name.
+    pub name: Option<String>,
+    /// Avatar URL.
+    pub photo_url: Option<String>,
+    /// Total points.
+    pub points: i64,
+    /// Count of recent contribution signals.
+    pub recent_activity_count: i64,
+    /// Contribution source counts.
+    #[serde(default)]
+    pub contributions: GroupGamificationContributions,
+    /// Badges earned by this member.
+    #[serde(default)]
+    pub badges: Vec<String>,
+}
+
+/// Contribution counts used to compute member points.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct GroupGamificationContributions {
+    /// Group join contribution.
+    pub joined: i64,
+    /// Confirmed event attendances.
+    pub attended_events: i64,
+    /// Checked-in event attendances.
+    pub checked_in_events: i64,
+    /// Host, organizer, or speaker roles.
+    pub event_roles: i64,
+    /// Accepted group lead roles.
+    pub leader_roles: i64,
+    /// Mentorship requests received.
+    pub mentorship_requests: i64,
+    /// Future chat contributions.
+    pub chats: i64,
+    /// Future post contributions.
+    pub posts: i64,
+    /// Future poll contributions.
+    pub polls: i64,
+}
+
+/// A visible point rule for member contributions.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct GroupGamificationRule {
+    /// Stable source key.
+    pub source: String,
+    /// Display label.
+    pub label: String,
+    /// Points awarded for the source.
+    pub points: i64,
+    /// Whether the source is active today.
+    pub active: bool,
 }
 
 /// Group-scoped reporting summaries.

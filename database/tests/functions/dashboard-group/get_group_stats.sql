@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -202,7 +202,7 @@ insert into event_views (day, event_id, total) values
 
 -- Should return complete accurate JSON for seeded group
 select is(
-    get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb - 'reports',
+    get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb - 'reports' - 'gamification',
     (
         with
         -- Define the months used in test data relative to current_timestamp at UTC
@@ -299,7 +299,7 @@ select is(
 
 -- Should return empty stats for unknown group
 select is(
-    get_group_stats(:'allianceID'::uuid, :'nonExistentGroupID'::uuid)::jsonb - 'reports',
+    get_group_stats(:'allianceID'::uuid, :'nonExistentGroupID'::uuid)::jsonb - 'reports' - 'gamification',
     $$
     {
         "members": {
@@ -355,6 +355,20 @@ select is(
     get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb->'reports'->'events'->'by_kind',
     '[["in-person", 1]]'::jsonb,
     'Should include event kind counts in group reports'
+);
+
+-- Should compute gamification points from existing group activity
+select is(
+    (get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb->'gamification'->>'total_points')::int,
+    50,
+    'Should compute gamification points from member and attendee activity'
+);
+
+-- Should include future gamification sources without awarding fake activity
+select is(
+    get_group_stats(:'allianceID'::uuid, :'group1ID'::uuid)::jsonb->'gamification'->'future_sources',
+    '["chats", "posts", "polls"]'::jsonb,
+    'Should include future gamification sources'
 );
 
 -- ============================================================================
