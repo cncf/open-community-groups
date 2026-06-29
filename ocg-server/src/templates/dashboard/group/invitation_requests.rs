@@ -33,6 +33,8 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the invitation request list with the current filters.
     pub refresh_url: String,
+    /// Invitation request status filter.
+    pub status: InvitationRequestsStatusFilter,
     /// Total number of invitation requests for the selected event.
     pub total: usize,
 
@@ -42,8 +44,6 @@ pub(crate) struct ListPage {
     pub offset: Option<usize>,
     /// Sort option used to order invitation requests.
     pub sort: Option<InvitationRequestsSort>,
-    /// Invitation request status filter.
-    pub status: Option<EventInvitationRequestStatus>,
     /// User title presence filter.
     pub title: Option<PresenceFilter>,
     /// Text search query used to filter invitation requests.
@@ -66,23 +66,6 @@ pub struct InvitationRequest {
     /// Review completion time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub reviewed_at: Option<DateTime<Utc>>,
-}
-
-/// Supported invitation request sort options.
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
-)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub(crate) enum InvitationRequestsSort {
-    /// Sort by request creation time ascending.
-    CreatedAtAsc,
-    /// Sort by request creation time descending.
-    CreatedAtDesc,
-    /// Sort by requester display name ascending.
-    NameAsc,
-    /// Sort by requester display name descending.
-    NameDesc,
 }
 
 /// Filter parameters for invitation request searches.
@@ -119,6 +102,11 @@ pub(crate) struct InvitationRequestsFilters {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct InvitationRequestsListPageFilters {
+    /// Invitation request status filter.
+    #[serde(default)]
+    #[garde(skip)]
+    pub status: InvitationRequestsStatusFilter,
+
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
@@ -130,9 +118,6 @@ pub(crate) struct InvitationRequestsListPageFilters {
     /// Sort option used to order invitation requests.
     #[garde(skip)]
     pub sort: Option<InvitationRequestsSort>,
-    /// Invitation request status filter.
-    #[garde(skip)]
-    pub status: Option<EventInvitationRequestStatus>,
     /// User title presence filter.
     #[garde(skip)]
     pub title: Option<PresenceFilter>,
@@ -150,4 +135,63 @@ pub(crate) struct InvitationRequestsOutput {
     pub invitation_requests: Vec<InvitationRequest>,
     /// Total number of invitation requests for the selected event.
     pub total: usize,
+}
+
+/// Supported invitation request sort options.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum InvitationRequestsSort {
+    /// Sort by request creation time ascending.
+    CreatedAtAsc,
+    /// Sort by request creation time descending.
+    CreatedAtDesc,
+    /// Sort by requester display name ascending.
+    NameAsc,
+    /// Sort by requester display name descending.
+    NameDesc,
+}
+
+/// Supported invitation request status filters.
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum InvitationRequestsStatusFilter {
+    /// Filter accepted invitation requests.
+    Accepted,
+    /// Include invitation requests with any status.
+    All,
+    /// Filter pending invitation requests.
+    #[default]
+    Pending,
+    /// Filter rejected invitation requests.
+    Rejected,
+}
+
+impl From<InvitationRequestsStatusFilter> for Option<EventInvitationRequestStatus> {
+    fn from(status: InvitationRequestsStatusFilter) -> Self {
+        match status {
+            InvitationRequestsStatusFilter::Accepted => {
+                Some(EventInvitationRequestStatus::Accepted)
+            }
+            InvitationRequestsStatusFilter::All => None,
+            InvitationRequestsStatusFilter::Pending => Some(EventInvitationRequestStatus::Pending),
+            InvitationRequestsStatusFilter::Rejected => {
+                Some(EventInvitationRequestStatus::Rejected)
+            }
+        }
+    }
 }
