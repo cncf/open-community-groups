@@ -2,7 +2,7 @@
 
 use askama::Template;
 use axum::{
-    extract::State,
+    extract::{Query, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
@@ -19,6 +19,9 @@ use crate::{
         self, CoffeeMeetSubscriptionForm, CoffeeMeetUnsubscribeForm,
     },
 };
+
+#[cfg(test)]
+mod tests;
 
 /// Returns `CoffeeMeet` subscriptions for the current user.
 #[instrument(skip_all, err)]
@@ -52,7 +55,7 @@ pub(crate) async fn subscribe(
 pub(crate) async fn unsubscribe(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    ValidatedForm(input): ValidatedForm<CoffeeMeetUnsubscribeForm>,
+    Query(input): Query<CoffeeMeetUnsubscribeForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     db.unsubscribe_coffee_meet(user.user_id, input.group_id).await?;
 
