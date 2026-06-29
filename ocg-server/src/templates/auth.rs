@@ -185,7 +185,7 @@ pub(crate) struct UserDetails {
     /// User's photo URL.
     #[garde(custom(image_url_opt))]
     pub photo_url: Option<String>,
-    /// User's Substack URL.
+    /// User's `Substack` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub substack_url: Option<String>,
     /// User's timezone.
@@ -200,7 +200,7 @@ pub(crate) struct UserDetails {
     /// User's website URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
-    /// User's YouTube URL.
+    /// User's `YouTube` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub youtube_url: Option<String>,
 }

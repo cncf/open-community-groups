@@ -11,6 +11,7 @@ use crate::{
     templates::dashboard::{
         audit::{AuditLogFilters, AuditLogsOutput},
         user::{
+            coffee_meet::{CoffeeMeetSubscription, CoffeeMeetSubscriptionForm},
             events::{UserEventsFilters, UserEventsOutput},
             invitations::{AllianceTeamInvitation, EventInvitation, GroupTeamInvitation},
             mentorship::{ListPage as MentorshipRequestsOutput, MentorshipRequest},
@@ -115,6 +116,12 @@ pub(crate) trait DBDashboardUser {
         user_id: Uuid,
     ) -> Result<Vec<GroupTeamInvitation>>;
 
+    /// Lists `CoffeeMeet` subscriptions available to a user.
+    async fn list_user_coffee_meet_subscriptions(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<CoffeeMeetSubscription>>;
+
     /// Lists mentorship requests received by the user.
     async fn list_user_mentorship_requests(
         &self,
@@ -174,6 +181,16 @@ pub(crate) trait DBDashboardUser {
         event_id: Uuid,
         registration_answers: &QuestionnaireAnswers,
     ) -> Result<bool>;
+
+    /// Subscribes or updates a `CoffeeMeet` cadence.
+    async fn upsert_coffee_meet_subscription(
+        &self,
+        actor_user_id: Uuid,
+        subscription: &CoffeeMeetSubscriptionForm,
+    ) -> Result<()>;
+
+    /// Unsubscribes from `CoffeeMeet` for a group.
+    async fn unsubscribe_coffee_meet(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()>;
 
     /// Updates a session proposal for the user.
     async fn update_session_proposal(
@@ -397,6 +414,19 @@ where
         .await
     }
 
+    /// [`DBDashboardUser::list_user_coffee_meet_subscriptions`]
+    #[instrument(skip(self), err)]
+    async fn list_user_coffee_meet_subscriptions(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<CoffeeMeetSubscription>> {
+        self.fetch_json_one(
+            "select list_user_coffee_meet_subscriptions($1::uuid)",
+            &[&user_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardUser::list_user_mentorship_requests`]
     #[instrument(skip(self), err)]
     async fn list_user_mentorship_requests(
@@ -565,6 +595,34 @@ where
                 &event_id,
                 &Json(registration_answers),
             ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::upsert_coffee_meet_subscription`]
+    #[instrument(skip(self, subscription), err)]
+    async fn upsert_coffee_meet_subscription(
+        &self,
+        actor_user_id: Uuid,
+        subscription: &CoffeeMeetSubscriptionForm,
+    ) -> Result<()> {
+        self.execute(
+            "select upsert_coffee_meet_subscription($1::uuid, $2::uuid, $3::text)",
+            &[
+                &actor_user_id,
+                &subscription.group_id,
+                &subscription.frequency,
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::unsubscribe_coffee_meet`]
+    #[instrument(skip(self), err)]
+    async fn unsubscribe_coffee_meet(&self, actor_user_id: Uuid, group_id: Uuid) -> Result<()> {
+        self.execute(
+            "select unsubscribe_coffee_meet($1::uuid, $2::uuid)",
+            &[&actor_user_id, &group_id],
         )
         .await
     }

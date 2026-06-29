@@ -255,6 +255,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route("/", get(dashboard::group::home::page))
         .route("/analytics", get(dashboard::group::analytics::page))
         .route(
+            "/coffee-meet",
+            get(dashboard::group::coffee_meet::list_page),
+        )
+        .route(
             "/check-in/{event_id}/qr-code",
             get(dashboard::group::attendees::generate_check_in_qr_code),
         )
@@ -481,6 +485,12 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
     // Setup router
     Router::new()
         .route("/", get(dashboard::user::home::page))
+        .route(
+            "/coffee-meet",
+            get(dashboard::user::coffee_meet::list_page)
+                .put(dashboard::user::coffee_meet::subscribe)
+                .delete(dashboard::user::coffee_meet::unsubscribe),
+        )
         .route("/events", get(dashboard::user::events::list_page))
         .route(
             "/events/{alliance_name}/{event_id}/attendance",

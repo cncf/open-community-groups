@@ -26,6 +26,7 @@
     <div class="leading-10 grid gap-y-0.5">
       {{ dashboard::menu_title(text = "User", extra_styles = "py-1.5") -}}
       {{ dashboard::menu_item(name = "My Events", icon = "events", is_active = content.is_events() , href = "/dashboard/user?tab=events") -}}
+      {{ dashboard::menu_item(name = "CoffeeMeet", icon = "members", is_active = content.is_coffee_meet() , href = "/dashboard/user?tab=coffee-meet") -}}
       {{ dashboard::menu_item(name = "Profile", icon = "user-small", is_active = content.is_account() , href = "/dashboard/user?tab=account") -}}
       {{ dashboard::menu_item(name = "Mentorship", icon = "user-plus", is_active = content.is_mentorship() , href = "/dashboard/user?tab=mentorship") -}}
       {{ dashboard::menu_item(name = "Invitations", icon = "pending-invitation", is_active = content.is_invitations() , href = "/dashboard/user?tab=invitations", items_count = pending_invitation_count) -}}
@@ -51,7 +52,7 @@
 {% block dashboard_main -%}
   <div id="dashboard-content"
        {% if !content.is_account() -%}
-         hx-get="/dashboard/user/{%- if content.is_events() -%}events{%- elif content.is_invitations() -%}invitations{%- elif content.is_logs() -%}logs{%- elif content.is_mentorship() -%}mentorship{%- elif content.is_session_proposals() -%}session-proposals{%- else -%}submissions{%- endif -%}"
+         hx-get="/dashboard/user/{%- if content.is_events() -%}events{%- elif content.is_coffee_meet() -%}coffee-meet{%- elif content.is_invitations() -%}invitations{%- elif content.is_logs() -%}logs{%- elif content.is_mentorship() -%}mentorship{%- elif content.is_session_proposals() -%}session-proposals{%- else -%}submissions{%- endif -%}"
        {% endif -%}
        hx-trigger="refresh-user-dashboard-content"
        hx-swap="innerHTML show:window:top"

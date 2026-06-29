@@ -7,8 +7,11 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT, types::permissions::GroupPermission,
+    db::mock::MockDB,
+    handlers::tests::*,
+    services::notifications::MockNotificationsManager,
+    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, group::coffee_meet::CoffeeMeetSubscriber},
+    types::permissions::GroupPermission,
 };
 
 #[tokio::test]
@@ -77,6 +80,95 @@ async fn test_page_analytics_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_coffee_meet_tab_success() {
+    // Setup identifiers and data structures
+    let alliance_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(alliance_id),
+        Some(group_id),
+    );
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
+    let subscribers = vec![CoffeeMeetSubscriber {
+        user_id,
+        username: "subscriber".to_string(),
+        name: Some("Coffee Subscriber".to_string()),
+        photo_url: None,
+        frequency: "monthly".to_string(),
+        next_suggestion_at: chrono::Utc::now(),
+        last_suggestion_at: None,
+        suggestions_total: 0,
+    }];
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == alliance_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(groups.clone()));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == alliance_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::MembersWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_group_coffee_meet_subscribers()
+        .times(1)
+        .withf(move |gid| *gid == group_id)
+        .returning(move |_| Ok(subscribers.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group?tab=coffee-meet")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("CoffeeMeet"));
+    assert!(body.contains("Coffee Subscriber"));
 }
 
 #[tokio::test]

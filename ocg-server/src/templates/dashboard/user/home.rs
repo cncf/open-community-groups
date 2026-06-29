@@ -10,7 +10,7 @@ use crate::{
         auth::{self, User},
         dashboard::{
             audit,
-            user::{events, invitations, mentorship, session_proposals, submissions},
+            user::{coffee_meet, events, invitations, mentorship, session_proposals, submissions},
         },
         filters,
         helpers::user_initials,
@@ -45,6 +45,8 @@ pub(crate) enum Content {
     Account(Box<auth::UpdateUserPage>),
     /// User upcoming events page.
     Events(events::ListPage),
+    /// `CoffeeMeet` subscriptions page.
+    CoffeeMeet(coffee_meet::ListPage),
     /// Invitations page.
     Invitations(invitations::ListPage),
     /// Audit logs page.
@@ -66,6 +68,11 @@ impl Content {
     /// Check if the content is the events page.
     fn is_events(&self) -> bool {
         matches!(self, Content::Events(_))
+    }
+
+    /// Check if the content is the `CoffeeMeet` page.
+    fn is_coffee_meet(&self) -> bool {
+        matches!(self, Content::CoffeeMeet(_))
     }
 
     /// Check if the content is the invitations page.
@@ -98,6 +105,7 @@ impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Content::Account(template) => write!(f, "{}", template.render()?),
+            Content::CoffeeMeet(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Invitations(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
@@ -120,6 +128,8 @@ pub(crate) enum Tab {
     Account,
     /// Events tab.
     Events,
+    /// `CoffeeMeet` tab.
+    CoffeeMeet,
     /// Invitations tab.
     Invitations,
     /// Audit logs tab.

@@ -1,0 +1,58 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  CoffeeMeet suggestion for {{ group_name }}
+{% endblock subject -%}
+
+{% block preheader -%}
+  Meet {{ suggested_name }} from your group this {{ frequency }} cycle.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="group mb-15" style="margin-bottom: 15px">CoffeeMeet</p>
+  <p class="default big mb-15" style="margin-bottom: 15px">
+    Your suggested 1:1 for <strong>{{ group_name }}</strong> is
+    <strong>{{ suggested_name }}</strong>.
+  </p>
+  <p class="default mb-30" style="margin-bottom: 30px">
+    CoffeeMeet introduces you to a different person in your group based on
+    your selected cadence. Reach out, grab coffee, and get to know someone new.
+  </p>
+
+  <div class="default mb-30"
+       style="margin-bottom: 30px;
+              padding: 16px;
+              border: 1px solid #e7e5e4;
+              border-radius: 16px;
+              background: #fafaf9">
+    <p class="default" style="margin-bottom: 8px">
+      <strong>{{ suggested_name }}</strong>
+      <span style="color: #78716c">@{{ suggested_username }}</span>
+    </p>
+    {% if suggested_title.is_some() || suggested_company.is_some() -%}
+      <p class="default" style="margin-bottom: 8px; color: #57534e">
+        {% if let Some(title) = &suggested_title -%}{{ title }}{% endif -%}
+        {% if suggested_title.is_some() && suggested_company.is_some() -%}
+          at
+        {% endif -%}
+        {% if let Some(company) = &suggested_company -%}{{ company }}{% endif -%}
+      </p>
+    {% endif -%}
+    {% if let Some(bio) = &suggested_bio -%}
+      <p class="default preline" style="color: #57534e">{{ bio }}</p>
+    {% endif -%}
+  </div>
+
+  {{ email::button(link = suggested_profile_url, text = "View profile", color = theme.primary_color) }}
+
+  <p class="default mt-30" style="margin-top: 30px">
+    You can manage your CoffeeMeet cadence or unsubscribe from your dashboard.
+  </p>
+  {{ email::button(link = dashboard_link, text = "Manage CoffeeMeet", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this optional email because you subscribed to CoffeeMeet for
+  {{ group_name }}. Manage your subscription from your user dashboard.
+{% endblock footer -%}

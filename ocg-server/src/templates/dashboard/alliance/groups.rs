@@ -125,6 +125,9 @@ pub(crate) struct Group {
     /// Full country name.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub country_name: Option<String>,
+    /// `Discord` invite or server URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub discord_url: Option<String>,
     /// Additional links as key-value pairs.
     #[garde(custom(url_map_values))]
     pub extra_links: Option<BTreeMap<String, String>>,
@@ -180,7 +183,7 @@ pub(crate) struct Group {
     /// State/province where the group is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub state: Option<String>,
-    /// Substack publication URL.
+    /// `Substack` publication URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub substack_url: Option<String>,
     /// Tags associated with the group.
@@ -192,6 +195,9 @@ pub(crate) struct Group {
     /// Group website URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub website_url: Option<String>,
+    /// `WhatsApp` community or chat URL.
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub whatsapp_url: Option<String>,
     /// `WeChat` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub wechat_url: Option<String>,

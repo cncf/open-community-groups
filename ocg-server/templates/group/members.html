@@ -130,8 +130,12 @@
                      href="/profiles/{{ member.username }}"
                      hx-boost="true"
                      hx-target="body">Profile</a>
+                  <a class="btn-primary-anchor btn-mini"
+                     href="/profiles/{{ member.username }}#coffee"
+                     hx-boost="true"
+                     hx-target="body">Request coffee</a>
                   {% if member.mentorship_individuals || member.mentorship_businesses -%}
-                    <a class="btn-primary-anchor btn-mini"
+                    <a class="btn-secondary-anchor btn-mini"
                        href="/profiles/{{ member.username }}#mentorship"
                        hx-boost="true"
                        hx-target="body">Request mentorship</a>

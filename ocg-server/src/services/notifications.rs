@@ -28,12 +28,13 @@ use crate::{
     config::EmailConfig,
     db::DynDB,
     templates::notifications::{
-        AllianceTeamInvitation, CfsSubmissionUpdated, EmailVerification, EventAttendanceCanceled,
-        EventCanceled, EventCustom, EventInvitation, EventPublished, EventRefundApproved,
-        EventRefundRejected, EventRefundRequested, EventReminder, EventRescheduled,
-        EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined, EventWaitlistLeft,
-        EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
-        SessionProposalCoSpeakerInvitation, SiteOnboarding, SpeakerSeriesWelcome, SpeakerWelcome,
+        AllianceTeamInvitation, CfsSubmissionUpdated, CoffeeMeetSuggestion, EmailVerification,
+        EventAttendanceCanceled, EventCanceled, EventCustom, EventInvitation, EventPublished,
+        EventRefundApproved, EventRefundRejected, EventRefundRequested, EventReminder,
+        EventRescheduled, EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined,
+        EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation,
+        GroupWelcome, SessionProposalCoSpeakerInvitation, SiteOnboarding, SpeakerSeriesWelcome,
+        SpeakerWelcome,
     },
 };
 
@@ -212,7 +213,11 @@ impl EnqueueWorker {
     /// Enqueue due notifications and return the number enqueued.
     #[instrument(skip(self), err)]
     async fn enqueue_due_notifications(&self) -> Result<usize> {
-        self.db.enqueue_due_event_reminders(&self.base_url).await
+        let event_reminders = self.db.enqueue_due_event_reminders(&self.base_url).await?;
+        let coffee_meet_suggestions =
+            self.db.enqueue_due_coffee_meet_suggestions(&self.base_url).await?;
+
+        Ok(event_reminders + coffee_meet_suggestions)
     }
 }
 
@@ -354,6 +359,12 @@ impl DeliveryWorker {
             NotificationKind::CfsSubmissionUpdated => {
                 let template: CfsSubmissionUpdated = serde_json::from_value(template_data)?;
                 let subject = format!("Submission update: {}", template.event.name);
+                let body = template.render()?;
+                (subject, body)
+            }
+            NotificationKind::CoffeeMeetSuggestion => {
+                let template: CoffeeMeetSuggestion = serde_json::from_value(template_data)?;
+                let subject = format!("CoffeeMeet suggestion for {}", template.group_name);
                 let body = template.render()?;
                 (subject, body)
             }
@@ -708,6 +719,8 @@ pub(crate) struct Notification {
 pub(crate) enum NotificationKind {
     /// Notification for a CFS submission update.
     CfsSubmissionUpdated,
+    /// Notification for a `CoffeeMeet` member suggestion.
+    CoffeeMeetSuggestion,
     /// Notification for a alliance team invitation.
     AllianceTeamInvitation,
     /// Notification for email verification.

@@ -48,6 +48,7 @@ begin
                 country_name,
                 description,
                 description_short,
+                discord_url,
                 extra_links,
                 facebook_url,
                 flickr_url,
@@ -67,6 +68,7 @@ begin
                 tags,
                 twitter_url,
                 website_url,
+                whatsapp_url,
                 wechat_url,
                 youtube_url
             ) values (
@@ -83,6 +85,7 @@ begin
                 nullif(p_group->>'country_name', ''),
                 nullif(p_group->>'description', ''),
                 nullif(p_group->>'description_short', ''),
+                nullif(p_group->>'discord_url', ''),
                 p_group->'extra_links',
                 nullif(p_group->>'facebook_url', ''),
                 nullif(p_group->>'flickr_url', ''),
@@ -102,6 +105,7 @@ begin
                 jsonb_text_array(p_group->'tags'),
                 nullif(p_group->>'twitter_url', ''),
                 nullif(p_group->>'website_url', ''),
+                nullif(p_group->>'whatsapp_url', ''),
                 nullif(p_group->>'wechat_url', ''),
                 nullif(p_group->>'youtube_url', '')
             )

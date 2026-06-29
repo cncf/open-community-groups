@@ -69,6 +69,7 @@ begin
         country_name = nullif(p_group->>'country_name', ''),
         description = nullif(p_group->>'description', ''),
         description_short = nullif(p_group->>'description_short', ''),
+        discord_url = nullif(p_group->>'discord_url', ''),
         event_defaults = case
             when p_group ? 'event_defaults' then nullif(p_group->'event_defaults', 'null'::jsonb)
             else event_defaults
@@ -97,6 +98,7 @@ begin
         tags = jsonb_text_array(p_group->'tags'),
         twitter_url = nullif(p_group->>'twitter_url', ''),
         website_url = nullif(p_group->>'website_url', ''),
+        whatsapp_url = nullif(p_group->>'whatsapp_url', ''),
         wechat_url = nullif(p_group->>'wechat_url', ''),
         youtube_url = nullif(p_group->>'youtube_url', '')
     where group_id = p_group_id

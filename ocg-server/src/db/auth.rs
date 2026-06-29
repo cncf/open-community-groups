@@ -11,7 +11,10 @@ use crate::{
     auth::{User, UserSummary},
     db::PgExecutor,
     handlers::api::auth::{ApiScope, ApiToken, ApiUser},
-    templates::site::profile::{MentorshipRequestInput, MentorshipRequestRecord},
+    templates::site::profile::{
+        CoffeeMeetRequestInput, CoffeeMeetRequestRecord, MentorshipRequestInput,
+        MentorshipRequestRecord,
+    },
     templates::{auth::UserDetails, notifications::EmailVerification},
     types::permissions::{AlliancePermission, GroupPermission},
     types::user::{PublicUserProfile, UserProvider},
@@ -54,6 +57,14 @@ pub(crate) trait DBAuth {
         mentor_username: &str,
         input: &MentorshipRequestInput,
     ) -> Result<MentorshipRequestRecord>;
+
+    /// Records a direct `CoffeeMeet` request.
+    async fn add_coffee_meet_request(
+        &self,
+        requester_user_id: Uuid,
+        recipient_username: &str,
+        input: &CoffeeMeetRequestInput,
+    ) -> Result<CoffeeMeetRequestRecord>;
 
     /// Deletes a session from the database.
     async fn delete_session(&self, session_id: &session::Id) -> Result<()>;
@@ -266,6 +277,20 @@ where
         self.fetch_json_one(
             "select add_mentorship_request($1::uuid, $2::text, $3::jsonb)",
             &[&requester_user_id, &mentor_username, &Json(input)],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, input), err)]
+    async fn add_coffee_meet_request(
+        &self,
+        requester_user_id: Uuid,
+        recipient_username: &str,
+        input: &CoffeeMeetRequestInput,
+    ) -> Result<CoffeeMeetRequestRecord> {
+        self.fetch_json_one(
+            "select add_coffee_meet_request($1::uuid, $2::text, $3::jsonb)",
+            &[&requester_user_id, &recipient_username, &Json(input)],
         )
         .await
     }

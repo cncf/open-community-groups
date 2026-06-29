@@ -25,6 +25,9 @@ pub(crate) trait DBNotifications {
     /// Enqueues due event reminders and returns the number of notifications created.
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize>;
 
+    /// Enqueues due `CoffeeMeet` suggestions and returns the number created.
+    async fn enqueue_due_coffee_meet_suggestions(&self, base_url: &str) -> Result<usize>;
+
     /// Enqueues a notification to be delivered.
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()>;
 
@@ -119,6 +122,24 @@ where
             .get::<_, i32>(0);
         let count = usize::try_from(count)
             .map_err(|_| anyhow!("enqueued reminders count cannot be negative"))?;
+
+        Ok(count)
+    }
+
+    #[instrument(skip(self), err)]
+    async fn enqueue_due_coffee_meet_suggestions(&self, base_url: &str) -> Result<usize> {
+        let db = self.client().await?;
+        let count = db
+            .query_one(
+                "
+                select enqueue_due_coffee_meet_suggestions($1::text)::int;
+                ",
+                &[&base_url],
+            )
+            .await?
+            .get::<_, i32>(0);
+        let count = usize::try_from(count)
+            .map_err(|_| anyhow!("enqueued CoffeeMeet suggestion count cannot be negative"))?;
 
         Ok(count)
     }

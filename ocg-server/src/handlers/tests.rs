@@ -824,8 +824,10 @@ pub(crate) fn sample_group_full(alliance_id: Uuid, group_id: Uuid) -> GroupFull 
         city: Some("Test City".to_string()),
         country_code: Some("US".to_string()),
         country_name: Some("United States".to_string()),
+        discord_url: Some("https://discord.gg/test".to_string()),
         region: Some(sample_group_region()),
         state: Some("MA".to_string()),
+        whatsapp_url: Some("https://chat.whatsapp.com/test".to_string()),
         ..Default::default()
     }
 }

@@ -17,6 +17,7 @@ use crate::{
         group::{
             analytics::GroupDashboardStats,
             attendees::{AttendeesOutput, SearchEventAttendeesFilters},
+            coffee_meet::CoffeeMeetSubscriber,
             events::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
@@ -313,6 +314,12 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         filters: &GroupMembersFilters,
     ) -> Result<GroupMembersOutput>;
+
+    /// Lists active `CoffeeMeet` subscribers for a group.
+    async fn list_group_coffee_meet_subscribers(
+        &self,
+        group_id: Uuid,
+    ) -> Result<Vec<CoffeeMeetSubscriber>>;
 
     /// Lists pending group join requests.
     async fn list_group_join_requests(&self, group_id: Uuid) -> Result<Vec<GroupJoinRequest>>;
@@ -1207,6 +1214,19 @@ where
         self.fetch_json_one(
             "select list_group_members($1::uuid, $2::jsonb)",
             &[&group_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_group_coffee_meet_subscribers`]
+    #[instrument(skip(self), err)]
+    async fn list_group_coffee_meet_subscribers(
+        &self,
+        group_id: Uuid,
+    ) -> Result<Vec<CoffeeMeetSubscriber>> {
+        self.fetch_json_one(
+            "select list_group_coffee_meet_subscribers($1::uuid)",
+            &[&group_id],
         )
         .await
     }

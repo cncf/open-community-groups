@@ -1,0 +1,63 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{{ dashboard::page_title(title = "CoffeeMeet", description = "See which members are subscribed to recurring 1:1 CoffeeMeet suggestions.") -}}
+
+<div class="mt-8 grid gap-4 lg:grid-cols-3">
+  <section class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
+    <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Subscribers</div>
+    <div class="mt-3 text-4xl font-black tracking-tight text-stone-950">{{ subscribers.len() }}</div>
+    <p class="mt-2 text-sm/6 text-stone-600">Active group members opted into CoffeeMeet.</p>
+  </section>
+  <section class="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5 lg:col-span-2">
+    <div class="text-sm font-black text-stone-950">CoffeeMeet for group leads</div>
+    <p class="mt-2 text-sm/6 text-stone-600">
+      CoffeeMeet helps members discover a different person in this group on a weekly, bi-weekly, or monthly cadence. Suggestions are generated from current group members.
+    </p>
+  </section>
+</div>
+
+{% if subscribers.is_empty() -%}
+  <div class="mt-8 rounded-[2rem] border border-dashed border-stone-300 bg-white px-6 py-12 text-center shadow-sm">
+    <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-stone-100">
+      <div class="svg-icon size-5 icon-user-plus bg-stone-700"></div>
+    </div>
+    <h2 class="mt-4 text-xl font-black tracking-tight text-stone-950">No CoffeeMeet subscribers yet</h2>
+    <p class="mx-auto mt-2 max-w-xl text-sm/6 text-stone-600">
+      Members can subscribe from their user dashboard to receive recurring 1:1 suggestions.
+    </p>
+  </div>
+{% else -%}
+  <div class="mt-8 overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm">
+    <div class="divide-y divide-stone-200">
+      {% for subscriber in subscribers -%}
+        <article class="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div class="flex min-w-0 items-start gap-4">
+            <logo-image
+            {% if let Some(photo_url) = &subscriber.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+            size="size-12" placeholder="{{ self::user_initials(subscriber.name.as_deref() , subscriber.username.as_str()) }}">
+            </logo-image>
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 class="truncate text-base font-black text-stone-950">{{ subscriber.display_name() }}</h2>
+                <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">{{ subscriber.frequency_label() }}</span>
+              </div>
+              <div class="mt-1 text-sm text-stone-500">@{{ subscriber.username }}</div>
+              <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600">
+                <span>Next suggestion: {{ subscriber.next_suggestion_at.format("%b %d, %Y") }}</span>
+                {% if let Some(last_suggestion_at) = subscriber.last_suggestion_at -%}
+                  <span>Last sent: {{ last_suggestion_at.format("%b %d, %Y") }}</span>
+                {% else -%}
+                  <span>No suggestions sent yet</span>
+                {% endif -%}
+              </div>
+            </div>
+          </div>
+          <div class="rounded-2xl bg-stone-50 px-4 py-3 text-start ring-1 ring-stone-200 lg:text-end">
+            <div class="text-2xl font-black text-stone-950">{{ subscriber.suggestions_total }}</div>
+            <div class="text-xs font-bold uppercase tracking-wide text-stone-500">suggestions</div>
+          </div>
+        </article>
+      {% endfor -%}
+    </div>
+  </div>
+{% endif -%}

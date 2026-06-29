@@ -198,7 +198,7 @@ pub(crate) struct AllianceMember {
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
-    /// Substack publication URL.
+    /// `Substack` publication URL.
     pub substack_url: Option<String>,
     /// Title held by the user.
     pub title: Option<String>,
@@ -206,7 +206,7 @@ pub(crate) struct AllianceMember {
     pub twitter_url: Option<String>,
     /// Website URL.
     pub website_url: Option<String>,
-    /// YouTube channel URL.
+    /// `YouTube` channel URL.
     pub youtube_url: Option<String>,
 }
 

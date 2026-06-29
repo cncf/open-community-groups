@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(74);
+select plan(77);
 
 -- ============================================================================
 -- TESTS
@@ -90,6 +90,39 @@ select columns_are('cfs_submission_rating', array[
 select columns_are('cfs_submission_status', array[
     'cfs_submission_status_id',
     'display_name'
+]);
+
+-- Test: coffee_meet_request columns should match expected
+select columns_are('coffee_meet_request', array[
+    'coffee_meet_request_id',
+    'created_at',
+    'message',
+    'recipient_user_id',
+    'requester_user_id'
+]);
+
+-- Test: coffee_meet_subscription columns should match expected
+select columns_are('coffee_meet_subscription', array[
+    'group_id',
+    'user_id',
+    'active',
+    'created_at',
+    'frequency',
+    'last_suggestion_at',
+    'next_suggestion_at',
+    'updated_at'
+]);
+
+-- Test: coffee_meet_suggestion columns should match expected
+select columns_are('coffee_meet_suggestion', array[
+    'coffee_meet_suggestion_id',
+    'created_at',
+    'frequency',
+    'group_id',
+    'notification_enqueued_at',
+    'subscriber_user_id',
+    'suggested_for',
+    'suggested_user_id'
 ]);
 
 -- Test: alliance columns should match expected
@@ -543,6 +576,7 @@ select columns_are('group', array[
     'deleted_at',
     'description',
     'description_short',
+    'discord_url',
     'event_defaults',
     'extra_links',
     'facebook_url',
@@ -567,6 +601,7 @@ select columns_are('group', array[
     'tags',
     'twitter_url',
     'website_url',
+    'whatsapp_url',
     'wechat_url',
     'youtube_url'
 ]);

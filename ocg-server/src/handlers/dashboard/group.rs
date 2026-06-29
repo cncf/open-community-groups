@@ -23,6 +23,7 @@ mod tests;
 
 pub(crate) mod analytics;
 pub(crate) mod attendees;
+pub(crate) mod coffee_meet;
 pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod invitation_requests;

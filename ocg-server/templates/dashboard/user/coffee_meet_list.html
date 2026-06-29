@@ -1,0 +1,115 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{{ dashboard::page_title(title = "CoffeeMeet", description = "Subscribe to recurring 1:1 member suggestions from your groups.") -}}
+
+<div class="mt-8 grid gap-4 lg:grid-cols-3">
+  <section class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
+    <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">1:1 matching</div>
+    <h2 class="mt-3 text-xl font-black text-stone-950">Meet someone in your group</h2>
+    <p class="mt-2 text-sm/6 text-stone-600">
+      Pick weekly, bi-weekly, or monthly suggestions. CoffeeMeet emails you a different group member when your cadence is due.
+    </p>
+  </section>
+  <section class="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5 lg:col-span-2">
+    <div class="text-sm font-black text-stone-950">How it works</div>
+    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+      <div class="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+        <div class="text-sm font-bold text-stone-950">Subscribe</div>
+        <p class="mt-1 text-xs/5 text-stone-600">Choose a group and cadence.</p>
+      </div>
+      <div class="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+        <div class="text-sm font-bold text-stone-950">Get a suggestion</div>
+        <p class="mt-1 text-xs/5 text-stone-600">Receive a profile by email.</p>
+      </div>
+      <div class="rounded-2xl bg-white p-4 ring-1 ring-stone-200">
+        <div class="text-sm font-bold text-stone-950">Reach out</div>
+        <p class="mt-1 text-xs/5 text-stone-600">Start a 1:1 coffee chat.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+{% if subscriptions.is_empty() -%}
+  <div class="mt-8 rounded-[2rem] border border-dashed border-stone-300 bg-white px-6 py-12 text-center shadow-sm">
+    <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-stone-100">
+      <div class="svg-icon size-5 icon-members bg-stone-700"></div>
+    </div>
+    <h2 class="mt-4 text-xl font-black tracking-tight text-stone-950">Join a group to use CoffeeMeet</h2>
+    <p class="mx-auto mt-2 max-w-xl text-sm/6 text-stone-600">
+      CoffeeMeet subscriptions appear here once you are a member of at least one group.
+    </p>
+  </div>
+{% else -%}
+  <div class="mt-8 grid gap-4">
+    {% for subscription in subscriptions -%}
+      <article class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="truncate text-lg font-black text-stone-950">{{ subscription.group_name }}</h2>
+              <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">{{ subscription.alliance_display_name }}</span>
+              {% if subscription.active -%}
+                <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700 ring-1 ring-inset ring-primary-100">Subscribed</span>
+              {% else -%}
+                <span class="rounded-full bg-stone-50 px-2.5 py-1 text-xs font-bold text-stone-500 ring-1 ring-inset ring-stone-200">Not subscribed</span>
+              {% endif -%}
+            </div>
+            <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600">
+              <a href="{{ subscription.group_url() }}"
+                 class="font-semibold text-primary-700 hover:text-primary-800"
+                 hx-boost="true"
+                 hx-target="body">View group</a>
+              {% if let Some(next_suggestion_at) = subscription.next_suggestion_at -%}
+                <span>Next suggestion: {{ next_suggestion_at.format("%b %d, %Y") }}</span>
+              {% endif -%}
+              {% if let Some(last_suggested_username) = &subscription.last_suggested_username -%}
+                <span>Last suggestion: @{{ last_suggested_username }}</span>
+              {% endif -%}
+            </div>
+          </div>
+
+          <div class="grid gap-3 sm:grid-cols-[1fr_auto] xl:min-w-[28rem]">
+            <form hx-put="/dashboard/user/coffee-meet"
+                  hx-swap="none"
+                  hx-indicator="#dashboard-spinner"
+                  class="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <input type="hidden" name="group_id" value="{{ subscription.group_id }}" />
+              <label class="sr-only" for="frequency-{{ subscription.group_id }}">Frequency</label>
+              <select id="frequency-{{ subscription.group_id }}"
+                      name="frequency"
+                      class="form-select">
+                <option value="weekly"
+                        {% if subscription.frequency_or_default() == "weekly" -%}
+                          selected
+                        {% endif -%}>Weekly</option>
+                <option value="biweekly"
+                        {% if subscription.frequency_or_default() == "biweekly" -%}
+                          selected
+                        {% endif -%}>Bi-weekly</option>
+                <option value="monthly"
+                        {% if subscription.frequency_or_default() == "monthly" -%}
+                          selected
+                        {% endif -%}>Monthly</option>
+              </select>
+              <button type="submit" class="btn-primary whitespace-nowrap">
+                {% if subscription.active -%}
+                  Update
+                {% else -%}
+                  Subscribe
+                {% endif -%}
+              </button>
+            </form>
+            {% if subscription.active -%}
+              <form hx-delete="/dashboard/user/coffee-meet"
+                    hx-swap="none"
+                    hx-indicator="#dashboard-spinner">
+                <input type="hidden" name="group_id" value="{{ subscription.group_id }}" />
+                <button type="submit" class="btn-secondary whitespace-nowrap">Unsubscribe</button>
+              </form>
+            {% endif -%}
+          </div>
+        </div>
+      </article>
+    {% endfor -%}
+  </div>
+{% endif -%}

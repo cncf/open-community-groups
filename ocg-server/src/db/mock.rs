@@ -52,6 +52,12 @@ mock! {
             mentor_username: &str,
             input: &crate::templates::site::profile::MentorshipRequestInput,
         ) -> Result<crate::templates::site::profile::MentorshipRequestRecord>;
+        async fn add_coffee_meet_request(
+            &self,
+            requester_user_id: Uuid,
+            recipient_username: &str,
+            input: &crate::templates::site::profile::CoffeeMeetRequestInput,
+        ) -> Result<crate::templates::site::profile::CoffeeMeetRequestRecord>;
         async fn delete_session(
             &self,
             session_id: &axum_login::tower_sessions::session::Id,
@@ -564,6 +570,10 @@ mock! {
             group_id: Uuid,
             filters: &crate::templates::dashboard::group::members::GroupMembersFilters,
         ) -> Result<crate::templates::dashboard::group::members::GroupMembersOutput>;
+        async fn list_group_coffee_meet_subscribers(
+            &self,
+            group_id: Uuid,
+        ) -> Result<Vec<crate::templates::dashboard::group::coffee_meet::CoffeeMeetSubscriber>>;
         async fn list_group_join_requests(
             &self,
             group_id: Uuid,
@@ -813,6 +823,10 @@ mock! {
         ) -> Result<Vec<
             crate::templates::dashboard::user::invitations::GroupTeamInvitation,
         >>;
+        async fn list_user_coffee_meet_subscriptions(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<crate::templates::dashboard::user::coffee_meet::CoffeeMeetSubscription>>;
         async fn list_user_mentorship_requests(
             &self,
             user_id: Uuid,
@@ -845,6 +859,16 @@ mock! {
             event_id: Uuid,
             registration_answers: &crate::types::questionnaire::QuestionnaireAnswers,
         ) -> Result<bool>;
+        async fn upsert_coffee_meet_subscription(
+            &self,
+            actor_user_id: Uuid,
+            subscription: &crate::templates::dashboard::user::coffee_meet::CoffeeMeetSubscriptionForm,
+        ) -> Result<()>;
+        async fn unsubscribe_coffee_meet(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<()>;
         async fn update_session_proposal(
             &self,
             actor_user_id: Uuid,
@@ -1171,6 +1195,10 @@ mock! {
     #[async_trait]
     impl crate::db::notifications::DBNotifications for DB {
         async fn enqueue_due_event_reminders(
+            &self,
+            base_url: &str,
+        ) -> Result<usize>;
+        async fn enqueue_due_coffee_meet_suggestions(
             &self,
             base_url: &str,
         ) -> Result<usize>;

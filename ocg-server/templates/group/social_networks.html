@@ -26,8 +26,14 @@
 {% if let Some(slack_url) = &group.slack_url -%}
   {{ social::social_link(url = slack_url, icon_name = "slack", platform_name = "Slack") -}}
 {% endif -%}
+{% if let Some(discord_url) = &group.discord_url -%}
+  {{ social::social_link(url = discord_url, icon_name = "discord", platform_name = "Discord") -}}
+{% endif -%}
 {% if let Some(substack_url) = &group.substack_url -%}
   {{ social::social_link(url = substack_url, icon_name = "link", platform_name = "Substack") -}}
+{% endif -%}
+{% if let Some(whatsapp_url) = &group.whatsapp_url -%}
+  {{ social::social_link(url = whatsapp_url, icon_name = "whatsapp", platform_name = "WhatsApp") -}}
 {% endif -%}
 {% if let Some(wechat_url) = &group.wechat_url -%}
   {{ social::social_link(url = wechat_url, icon_name = "wechat", platform_name = "WeChat") -}}

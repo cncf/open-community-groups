@@ -60,6 +60,10 @@ async fn test_enqueue_worker_enqueue_due_notifications() {
         .times(1)
         .withf(|base_url| base_url == "https://example.test")
         .returning(|_| Ok(2));
+    db.expect_enqueue_due_coffee_meet_suggestions()
+        .times(1)
+        .withf(|base_url| base_url == "https://example.test")
+        .returning(|_| Ok(1));
     let db: DynDB = Arc::new(db);
 
     // Setup worker and enqueue due notifications
@@ -71,7 +75,7 @@ async fn test_enqueue_worker_enqueue_due_notifications() {
     let enqueued = worker.enqueue_due_notifications().await.unwrap();
 
     // Check result matches expectations
-    assert_eq!(enqueued, 2);
+    assert_eq!(enqueued, 3);
 }
 
 #[tokio::test]
@@ -140,6 +144,10 @@ async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_success() {
             cancellation_token_for_mock.cancel();
             Ok(1)
         });
+    db.expect_enqueue_due_coffee_meet_suggestions()
+        .times(1)
+        .withf(|base_url| base_url == "https://example.test")
+        .returning(|_| Ok(0));
     let db: DynDB = Arc::new(db);
 
     // Setup worker and execute loop

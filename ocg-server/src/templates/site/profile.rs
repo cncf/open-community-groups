@@ -30,6 +30,8 @@ pub(crate) struct Page {
     pub profile: PublicUserProfile,
     /// Whether a mentorship request was just submitted.
     pub mentorship_request_sent: bool,
+    /// Whether a coffee request was just submitted.
+    pub coffee_request_sent: bool,
     /// Global site settings.
     pub site_settings: SiteSettings,
     /// Authenticated user information.
@@ -79,6 +81,53 @@ impl Page {
             .as_deref()
             .or(self.site_settings.og_image_url.as_deref())
             .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+}
+
+/// `CoffeeMeet` request form input.
+#[derive(Debug, Clone, Deserialize, Serialize, Validate)]
+pub(crate) struct CoffeeMeetRequestInput {
+    /// Request details.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub message: String,
+}
+
+/// Stored `CoffeeMeet` request metadata returned from the database.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct CoffeeMeetRequestRecord {
+    /// Request identifier.
+    pub coffee_meet_request_id: Uuid,
+    /// Recipient user identifier.
+    pub recipient_user_id: Uuid,
+    /// Recipient email address.
+    pub recipient_email: String,
+    /// Recipient username.
+    pub recipient_username: String,
+    /// Recipient display name.
+    pub recipient_name: Option<String>,
+    /// Requester user identifier.
+    pub requester_user_id: Uuid,
+    /// Requester email address.
+    pub requester_email: String,
+    /// Requester username.
+    pub requester_username: String,
+    /// Requester display name.
+    pub requester_name: Option<String>,
+    /// Request details.
+    pub message: String,
+    /// Total requests received by this member.
+    pub request_count: i32,
+}
+
+impl CoffeeMeetRequestRecord {
+    /// Recipient display label.
+    pub(crate) fn recipient_label(&self) -> &str {
+        self.recipient_name.as_deref().unwrap_or(&self.recipient_username)
+    }
+
+    /// Requester display label.
+    pub(crate) fn requester_label(&self) -> &str {
+        self.requester_name.as_deref().unwrap_or(&self.requester_username)
     }
 }
 

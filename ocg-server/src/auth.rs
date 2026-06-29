@@ -620,7 +620,7 @@ pub(crate) struct User {
     pub photo_url: Option<String>,
     /// External provider metadata.
     pub provider: Option<UserProvider>,
-    /// User's Substack URL.
+    /// User's `Substack` URL.
     pub substack_url: Option<String>,
     /// User's timezone.
     pub timezone: Option<String>,
@@ -630,7 +630,7 @@ pub(crate) struct User {
     pub twitter_url: Option<String>,
     /// User's website URL.
     pub website_url: Option<String>,
-    /// User's YouTube URL.
+    /// User's `YouTube` URL.
     pub youtube_url: Option<String>,
 }
 

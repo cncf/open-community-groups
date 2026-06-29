@@ -5,6 +5,7 @@
 {{ template "auth/resolve_unique_username.sql" }} -- Dependency for signup and pre-registration activation
 {{ template "auth/activate_pre_registered_user_email_password.sql" }}
 {{ template "auth/activate_pre_registered_user_external_provider.sql" }}
+{{ template "auth/add_coffee_meet_request.sql" }}
 {{ template "auth/add_mentorship_request.sql" }}
 {{ template "auth/get_user_by_email.sql" }}
 {{ template "auth/get_user_by_email_for_external_auth.sql" }}
@@ -157,6 +158,7 @@
 {{ template "dashboard-group/list_event_series_event_ids.sql" }}
 {{ template "dashboard-group/list_event_series_publishable_event_ids.sql" }}
 {{ template "dashboard-group/list_event_waitlist_ids.sql" }}
+{{ template "dashboard-group/list_group_coffee_meet_subscribers.sql" }}
 {{ template "dashboard-group/list_group_audit_logs.sql" }}
 {{ template "dashboard-group/list_group_join_requests.sql" }}
 {{ template "dashboard-group/list_group_events.sql" }}
@@ -195,6 +197,7 @@
 {{ template "dashboard-user/count_user_pending_invitations.sql" }}
 {{ template "dashboard-user/delete_session_proposal.sql" }}
 {{ template "dashboard-user/list_session_proposal_levels.sql" }}
+{{ template "dashboard-user/list_user_coffee_meet_subscriptions.sql" }}
 {{ template "dashboard-user/list_user_audit_logs.sql" }}
 {{ template "dashboard-user/list_user_cfs_submissions.sql" }}
 {{ template "dashboard-user/list_user_alliance_team_invitations.sql" }}
@@ -209,6 +212,8 @@
 {{ template "dashboard-user/reject_session_proposal_co_speaker_invitation.sql" }}
 {{ template "dashboard-user/resubmit_cfs_submission.sql" }}
 {{ template "dashboard-user/submit_event_registration_answers.sql" }}
+{{ template "dashboard-user/unsubscribe_coffee_meet.sql" }}
+{{ template "dashboard-user/upsert_coffee_meet_subscription.sql" }}
 {{ template "dashboard-user/update_session_proposal.sql" }}
 {{ template "dashboard-user/withdraw_cfs_submission.sql" }}
 
@@ -257,6 +262,7 @@
 {{ template "meetings/update_meeting.sql" }}
 
 {{ template "notifications/claim_pending_notification.sql" }}
+{{ template "notifications/enqueue_due_coffee_meet_suggestions.sql" }}
 {{ template "notifications/enqueue_due_event_reminders.sql" }}
 {{ template "notifications/enqueue_notification.sql" }} -- Dependency for tracked custom and auth notification helpers
 {{ template "notifications/mark_stale_processing_notifications_unknown.sql" }}

@@ -24,6 +24,36 @@ pub(crate) struct CfsSubmissionUpdated {
     pub action_required_message: Option<String>,
 }
 
+/// Template for a `CoffeeMeet` member suggestion.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/coffee_meet_suggestion.html")]
+pub(crate) struct CoffeeMeetSuggestion {
+    /// Group name where the match was made.
+    pub group_name: String,
+    /// Subscription frequency.
+    pub frequency: String,
+    /// Suggested member display name.
+    pub suggested_name: String,
+    /// Suggested member username.
+    pub suggested_username: String,
+    /// Suggested member profile image.
+    pub suggested_photo_url: Option<String>,
+    /// Suggested member title.
+    pub suggested_title: Option<String>,
+    /// Suggested member company.
+    pub suggested_company: Option<String>,
+    /// Suggested member bio.
+    pub suggested_bio: Option<String>,
+    /// Link to suggested member profile.
+    pub suggested_profile_url: String,
+    /// Link to group page.
+    pub group_url: String,
+    /// Link to manage `CoffeeMeet` subscriptions.
+    pub dashboard_link: String,
+    /// Theme configuration for the alliance.
+    pub theme: Theme,
+}
+
 /// Template for alliance team invitation notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/alliance_team_invitation.html")]

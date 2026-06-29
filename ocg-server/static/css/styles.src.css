@@ -704,6 +704,7 @@ input:placeholder-shown {
 .icon-copy { --icon-url: url('/static/images/icons/copy.svg'); }
 .icon-csv { --icon-url: url('/static/images/icons/csv.svg'); }
 .icon-date { --icon-url: url('/static/images/icons/date.svg'); }
+.icon-discord { --icon-url: url('/static/images/icons/discord.svg'); }
 .icon-drag { --icon-url: url('/static/images/icons/drag.svg'); }
 .icon-email { --icon-url: url('/static/images/icons/email.svg'); }
 .icon-event { --icon-url: url('/static/images/icons/event.svg'); }

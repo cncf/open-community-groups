@@ -226,6 +226,9 @@
   {% let flickr_value -%}
   {% if let Some(flickr_url) = &group.flickr_url %}value="{{ flickr_url }}"{% endif %}
 {%- endlet %}
+{% let discord_value -%}
+{% if let Some(discord_url) = &group.discord_url %}value="{{ discord_url }}"{% endif %}
+{%- endlet %}
 {% let google_photos_value -%}
 {% if let Some(google_photos_url) = &group.google_photos_url %}value="{{ google_photos_url }}"{% endif %}
 {%- endlet %}
@@ -246,6 +249,9 @@
 {%- endlet %}
 {% let twitter_value -%}
 {% if let Some(twitter_url) = &group.twitter_url %}value="{{ twitter_url }}"{% endif %}
+{%- endlet %}
+{% let whatsapp_value -%}
+{% if let Some(whatsapp_url) = &group.whatsapp_url %}value="{{ whatsapp_url }}"{% endif %}
 {%- endlet %}
 {% let wechat_value -%}
 {% if let Some(wechat_url) = &group.wechat_url %}value="{{ wechat_url }}"{% endif %}
@@ -269,6 +275,10 @@
 {# Flickr URL -#}
 {{ form_fields::social_url_field(name = "flickr_url", label = "Flickr", icon = "icon-flickr", placeholder = "https://flickr.com/photos/account", value_attr = flickr_value) -}}
 {# End Flickr URL -#}
+
+{# Discord URL -#}
+{{ form_fields::social_url_field(name = "discord_url", label = "Discord", icon = "icon-discord", placeholder = "https://discord.gg/invite", value_attr = discord_value) -}}
+{# End Discord URL -#}
 
 {# Google Photos URL -#}
 {{ form_fields::social_url_field(name = "google_photos_url", label = "Google Photos", icon = "icon-link", placeholder = "https://photos.app.goo.gl/album", value_attr = google_photos_value) -}}
@@ -297,6 +307,10 @@
 {# Twitter URL -#}
 {{ form_fields::social_url_field(name = "twitter_url", label = "X (formerly Twitter)", icon = "icon-twitter", placeholder = "https://x.com/username", value_attr = twitter_value) -}}
 {# End Twitter URL -#}
+
+{# WhatsApp URL -#}
+{{ form_fields::social_url_field(name = "whatsapp_url", label = "WhatsApp", icon = "icon-whatsapp", placeholder = "https://chat.whatsapp.com/invite", value_attr = whatsapp_value) -}}
+{# End WhatsApp URL -#}
 
 {# WeChat URL -#}
 {{ form_fields::social_url_field(name = "wechat_url", label = "WeChat", icon = "icon-wechat", placeholder = "https://wechat.com/account", value_attr = wechat_value) -}}

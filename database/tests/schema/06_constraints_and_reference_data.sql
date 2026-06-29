@@ -316,6 +316,7 @@ select results_eq(
     $$ values
         ('alliance-team-invitation', false),
         ('cfs-submission-updated', false),
+        ('coffee-meet-suggestion', true),
         ('email-verification', false),
         ('event-attendance-canceled', false),
         ('event-canceled', false),

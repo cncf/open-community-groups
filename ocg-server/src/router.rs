@@ -228,6 +228,10 @@ pub(crate) async fn setup(
             "/profiles/{username}/mentorship-requests",
             post(site::profile::request_mentorship),
         )
+        .route(
+            "/profiles/{username}/coffee-requests",
+            post(site::profile::request_coffee),
+        )
         // Protected dashboard routes
         .route(
             "/dashboard/account/update/details",

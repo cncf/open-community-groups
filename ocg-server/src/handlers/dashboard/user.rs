@@ -1,5 +1,6 @@
 //! HTTP handlers for the user dashboard.
 
+pub(crate) mod coffee_meet;
 pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod invitations;

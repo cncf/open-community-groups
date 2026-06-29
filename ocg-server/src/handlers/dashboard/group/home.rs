@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{events, logs, members, sponsors, spotlights, store, team};
+use super::{coffee_meet, events, logs, members, sponsors, spotlights, store, team};
 
 use crate::{
     auth::AuthSession,
@@ -81,6 +81,11 @@ pub(crate) async fn page(
             )
             .await?;
             Content::Events(Box::new(template))
+        }
+        Tab::CoffeeMeet => {
+            let template =
+                coffee_meet::prepare_list_page(&db, alliance_id, group_id, user.user_id).await?;
+            Content::CoffeeMeet(template)
         }
         Tab::Members => {
             let (_, template) = members::prepare_list_page(

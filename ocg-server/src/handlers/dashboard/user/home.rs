@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{events, invitations, logs, mentorship, session_proposals, submissions};
+use super::{coffee_meet, events, invitations, logs, mentorship, session_proposals, submissions};
 
 use crate::{
     auth::AuthSession,
@@ -66,6 +66,7 @@ pub(crate) async fn page(
             let (_, template) = events::prepare_list_page(&db, user_id, raw_query).await?;
             Content::Events(template)
         }
+        Tab::CoffeeMeet => Content::CoffeeMeet(coffee_meet::prepare_list_page(&db, user_id).await?),
         Tab::Invitations => {
             Content::Invitations(invitations::prepare_list_page(&db, user_id).await?)
         }
