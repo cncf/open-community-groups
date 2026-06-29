@@ -9,8 +9,8 @@ returns json as $$
         'alliance_display_name', a.display_name,
         'frequency', cms.frequency,
         'active', coalesce(cms.active, false),
-        'next_suggestion_at', cms.next_suggestion_at,
-        'last_suggestion_at', cms.last_suggestion_at,
+        'next_suggestion_at', extract(epoch from cms.next_suggestion_at)::bigint,
+        'last_suggestion_at', extract(epoch from cms.last_suggestion_at)::bigint,
         'last_suggested_name', suggested.name,
         'last_suggested_username', suggested.username
     ) order by lower(a.display_name), lower(g.name)), '[]'::json)

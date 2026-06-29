@@ -7,8 +7,8 @@ returns json as $$
         'name', u.name,
         'photo_url', u.photo_url,
         'frequency', cms.frequency,
-        'next_suggestion_at', cms.next_suggestion_at,
-        'last_suggestion_at', cms.last_suggestion_at,
+        'next_suggestion_at', extract(epoch from cms.next_suggestion_at)::bigint,
+        'last_suggestion_at', extract(epoch from cms.last_suggestion_at)::bigint,
         'suggestions_total', coalesce(suggestion_counts.total, 0)
     ) order by cms.next_suggestion_at asc, lower(coalesce(u.name, u.username))), '[]'::json)
     from coffee_meet_subscription cms
