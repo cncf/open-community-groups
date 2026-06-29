@@ -49,6 +49,19 @@ mod tests;
 /// Key used to store the authentication provider in the session.
 pub(crate) const AUTH_PROVIDER_KEY: &str = "auth_provider";
 
+/// Session value for password authentication.
+pub(crate) const AUTH_PROVIDER_EMAIL: &str = "email";
+
+/// Friendly message for LF SSO email ownership conflicts.
+const LF_SSO_EMAIL_CONFLICT_MESSAGE: &str = concat!(
+    "Your LF SSO account matches an existing OCG account, but its email address is already used ",
+    "by another account. Please contact the site administrators."
+);
+
+/// Friendly message for LF SSO identity ownership conflicts.
+const LF_SSO_IDENTITY_CONFLICT_MESSAGE: &str =
+    "This LF SSO account is already linked to another OCG account.";
+
 /// URL for the log in page.
 pub(crate) const LOG_IN_URL: &str = "/log-in";
 
@@ -215,6 +228,9 @@ pub(crate) async fn log_in(
 
     // Select the first community and group as selected in the session
     select_first_community_and_group(&db, &session, &user.user_id).await?;
+
+    // Track auth provider in the session
+    track_auth_provider(&session, AUTH_PROVIDER_EMAIL).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -535,7 +551,7 @@ where
     let log_in_url = get_log_in_url(next_url.as_deref());
 
     // Authenticate user
-    let user = match auth.authenticate_oauth2(code, provider).await {
+    let user = match auth.authenticate_oauth2(code, provider.clone()).await {
         Ok(Some(user)) => user,
         Ok(None) => {
             on_error(OAUTH2_AUTHORIZATION_FAILED.to_string());
@@ -552,6 +568,9 @@ where
 
     // Select the first community and group as selected in the session
     select_first_community_and_group(db, &session, &user.user_id).await?;
+
+    // Track auth provider in the session
+    track_auth_provider(&session, provider.as_ref()).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -605,7 +624,7 @@ where
             return Ok(Redirect::to(&log_in_url));
         }
         Err(err) => {
-            on_error(format!("{OIDC_AUTHORIZATION_FAILED}: {err}"));
+            on_error(oidc_authorization_error_message(&err));
             return Ok(Redirect::to(&log_in_url));
         }
     };
@@ -617,7 +636,7 @@ where
     select_first_community_and_group(db, &session, &user.user_id).await?;
 
     // Track auth provider in the session
-    session.insert(AUTH_PROVIDER_KEY, provider).await?;
+    track_auth_provider(&session, provider.as_ref()).await?;
 
     let next_url = next_url.as_deref().unwrap_or("/");
     Ok(Redirect::to(next_url))
@@ -1043,6 +1062,19 @@ pub(crate) async fn log_out_for_stale_dashboard_context(
     Ok(redirect_to_log_in_for_request(headers))
 }
 
+/// Formats OIDC authorization errors for user-facing flash messages.
+fn oidc_authorization_error_message(err: &str) -> String {
+    if err.contains(auth::EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR) {
+        return LF_SSO_EMAIL_CONFLICT_MESSAGE.to_string();
+    }
+
+    if err.contains(auth::EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR) {
+        return LF_SSO_IDENTITY_CONFLICT_MESSAGE.to_string();
+    }
+
+    format!("OpenID Connect authorization failed: {err}")
+}
+
 /// Builds the log-in redirect response expected by the request type.
 fn redirect_to_log_in_for_request(headers: &HeaderMap) -> Response {
     // HTMX follows redirects from response headers when swapping fragments
@@ -1195,5 +1227,11 @@ pub(crate) async fn sync_selected_community_and_group(
         session.remove::<Uuid>(SELECTED_GROUP_ID_KEY).await?;
     }
 
+    Ok(())
+}
+
+/// Stores the authentication provider used for the current login.
+async fn track_auth_provider(session: &Session, provider: &str) -> Result<(), HandlerError> {
+    session.insert(AUTH_PROVIDER_KEY, provider).await?;
     Ok(())
 }

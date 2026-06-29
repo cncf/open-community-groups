@@ -712,6 +712,27 @@ async fn db_contracts_get_user_by_id_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_get_user_by_linuxfoundation_identity_for_external_auth_deserializes()
+-> Result<()> {
+    let db = contract_tests_db()?;
+    let user = db
+        .get_user_by_linuxfoundation_identity_for_external_auth(
+            "https://issuer.example.com",
+            "auth0|contract-external-lookup",
+        )
+        .await?
+        .expect("contract LF provider user should exist");
+
+    assert_eq!(user.email, "external-lookup.contract@example.com");
+    assert_eq!(user.name, "");
+    assert_eq!(user.user_id, external_lookup_id());
+    assert_eq!(user.username, "contract-external-lookup");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_get_user_by_username_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let user = db
@@ -1523,6 +1544,49 @@ async fn db_contracts_update_event_deserializes() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let user_summary = UserSummary {
+        email: "external-update-new.contract@example.com".to_string(),
+        name: "Contract External Update".to_string(),
+        username: "contract-external-update".to_string(),
+
+        has_password: None,
+        password: None,
+        provider: Some(UserProvider::from_linuxfoundation_identity(
+            "https://issuer.example.com".to_string(),
+            "auth0|contract-external-update".to_string(),
+            "contract-external-update".to_string(),
+        )),
+    };
+    let user = db
+        .update_user_external_auth(&external_update_id(), &user_summary)
+        .await?;
+
+    assert_eq!(user.email, "external-update-new.contract@example.com");
+    assert!(user.email_verified);
+    assert_eq!(user.name, "Contract External Update");
+    assert_eq!(user.user_id, external_update_id());
+    assert_eq!(
+        user.provider,
+        Some(UserProvider {
+            github: Some(crate::types::user::GitHubUserProvider {
+                username: "contract-external-update".to_string(),
+            }),
+            linuxfoundation: Some(crate::types::user::LinuxFoundationUserProvider {
+                username: "contract-external-update".to_string(),
+
+                issuer: Some("https://issuer.example.com".to_string()),
+                subject: Some("auth0|contract-external-update".to_string()),
+            }),
+        })
+    );
+
+    Ok(())
+}
+
 // Helpers.
 
 const ACTIVATION_ID: &str = "00000000-0000-0000-0000-00000000c045";
@@ -1536,6 +1600,8 @@ const CO_SPEAKER_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c2";
 const COMMUNITY_ID: &str = "00000000-0000-0000-0000-00000000c001";
 const EVENT_CATEGORY_ID: &str = "00000000-0000-0000-0000-00000000c013";
 const EVENT_ID: &str = "00000000-0000-0000-0000-00000000c031";
+const EXTERNAL_LOOKUP_ID: &str = "00000000-0000-0000-0000-00000000c046";
+const EXTERNAL_UPDATE_ID: &str = "00000000-0000-0000-0000-00000000c047";
 const FREE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e4";
 const FREE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f3";
 const GROUP_ID: &str = "00000000-0000-0000-0000-00000000c021";
@@ -1628,6 +1694,14 @@ fn event_category_id() -> Uuid {
 
 fn event_id() -> Uuid {
     parse_uuid(EVENT_ID)
+}
+
+fn external_lookup_id() -> Uuid {
+    parse_uuid(EXTERNAL_LOOKUP_ID)
+}
+
+fn external_update_id() -> Uuid {
+    parse_uuid(EXTERNAL_UPDATE_ID)
 }
 
 fn free_buyer_id() -> Uuid {

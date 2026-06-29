@@ -32,6 +32,14 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+/// Error raised when an external-auth email is already owned by another user.
+pub(crate) const EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR: &str =
+    "external auth email belongs to another user";
+
+/// Error raised when an external-auth identity is already owned by another user.
+pub(crate) const EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR: &str =
+    "external auth identity belongs to another user";
+
 /// Type alias for the authentication layer used in the router.
 pub(crate) type AuthLayer = AuthManagerLayer<AuthnBackend, SessionStore>;
 
@@ -239,11 +247,26 @@ impl AuthnBackend {
 
     /// Get an existing external-auth user or sign them up.
     async fn get_or_sign_up_external_user(&self, user_summary: &UserSummary) -> Result<User> {
+        // Extract immutable LF identity before email-based fallbacks
+        let incoming_linuxfoundation_identity = linuxfoundation_identity(user_summary);
+
+        // Try to reconcile returning LF users by OIDC identity, even if their email changed
+        if let Some((issuer, subject)) = incoming_linuxfoundation_identity
+            && let Some(user) = self
+                .db
+                .get_user_by_linuxfoundation_identity_for_external_auth(issuer, subject)
+                .await?
+        {
+            return self.db.update_user_external_auth(&user.user_id, user_summary).await;
+        }
+
+        // Fall back to email for existing verified users and invitation placeholders
         if let Some(mut user) = self
             .db
             .get_user_by_email_for_external_auth(&user_summary.email)
             .await?
         {
+            // Promote a pre-registered placeholder with the verified external identity
             if user.registration_status == "pre-registered" {
                 return self
                     .db
@@ -251,6 +274,16 @@ impl AuthnBackend {
                     .await;
             }
 
+            // Do not relink an email-matched user that already has a different LF identity
+            if let Some((incoming_issuer, incoming_subject)) = incoming_linuxfoundation_identity
+                && let Some((existing_issuer, existing_subject)) =
+                    user.provider.as_ref().and_then(linuxfoundation_provider_identity)
+                && (existing_issuer != incoming_issuer || existing_subject != incoming_subject)
+            {
+                bail!(EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR);
+            }
+
+            // Persist new provider metadata for the email-matched user when needed
             if let Some(provider) = user_summary.provider.clone() {
                 let mut merged_provider = user.provider.clone().unwrap_or_default();
                 merged_provider.merge(provider.clone());
@@ -263,6 +296,7 @@ impl AuthnBackend {
             }
             Ok(user)
         } else {
+            // Create a verified account when no user or placeholder matches
             let (user, _) = self.db.sign_up_user(user_summary, true, None).await?;
             Ok(user)
         }
@@ -349,6 +383,8 @@ impl axum_login::AuthnBackend for AuthnBackend {
     }
 }
 
+// Other types.
+
 /// Type alias for an authentication session using our backend.
 pub(crate) type AuthSession = axum_login::AuthSession<AuthnBackend>;
 
@@ -403,6 +439,26 @@ pub enum Credentials {
     Oidc(OidcCredentials),
     /// Username and password credentials.
     Password(PasswordCredentials),
+}
+
+/// GitHub user profile information.
+#[derive(Debug, Deserialize)]
+struct GitHubProfile {
+    /// GitHub username.
+    login: String,
+    /// GitHub display name.
+    name: String,
+}
+
+/// GitHub user email information.
+#[derive(Debug, Deserialize)]
+struct GitHubUserEmail {
+    /// Email address.
+    email: String,
+    /// Whether this is the primary email.
+    primary: bool,
+    /// Whether this email is verified.
+    verified: bool,
 }
 
 /// Credentials for `OAuth2` authentication.
@@ -600,14 +656,18 @@ impl UserSummary {
         }
 
         let email = claims.email().ok_or_else(|| anyhow!("email missing"))?.to_string();
+        let issuer = claims.issuer().as_str().to_string();
         let name = get_localized_claim(claims.name()).ok_or_else(|| anyhow!("name missing"))?;
+        let subject = claims.subject().as_str().to_string();
         let username =
             get_localized_claim(claims.nickname()).ok_or_else(|| anyhow!("nickname missing"))?;
 
         Ok(Self {
             email,
             name: name.to_string(),
-            provider: Some(UserProvider::from_linuxfoundation_username(
+            provider: Some(UserProvider::from_linuxfoundation_identity(
+                issuer,
+                subject,
                 username.to_string(),
             )),
             username: username.to_string(),
@@ -641,6 +701,13 @@ impl std::fmt::Debug for UserSummary {
     }
 }
 
+// Helpers.
+
+/// Default persisted registration status for regular users.
+fn default_registration_status() -> String {
+    "registered".to_string()
+}
+
 /// Get the first value from a localized claim, if present.
 fn get_localized_claim<T>(claim: Option<&LocalizedClaim<T>>) -> Option<T>
 where
@@ -655,27 +722,18 @@ where
     })
 }
 
-/// GitHub user profile information.
-#[derive(Debug, Deserialize)]
-struct GitHubProfile {
-    /// GitHub username.
-    login: String,
-    /// GitHub display name.
-    name: String,
+/// Gets a Linux Foundation OIDC identity from a user summary.
+fn linuxfoundation_identity(user_summary: &UserSummary) -> Option<(&str, &str)> {
+    user_summary
+        .provider
+        .as_ref()
+        .and_then(linuxfoundation_provider_identity)
 }
 
-/// GitHub user email information.
-#[derive(Debug, Deserialize)]
-struct GitHubUserEmail {
-    /// Email address.
-    email: String,
-    /// Whether this is the primary email.
-    primary: bool,
-    /// Whether this email is verified.
-    verified: bool,
-}
-
-/// Default persisted registration status for regular users.
-fn default_registration_status() -> String {
-    "registered".to_string()
+/// Gets a Linux Foundation OIDC identity from external provider metadata.
+fn linuxfoundation_provider_identity(provider: &UserProvider) -> Option<(&str, &str)> {
+    let provider = provider.linuxfoundation.as_ref()?;
+    let issuer = provider.issuer.as_deref()?;
+    let subject = provider.subject.as_deref()?;
+    Some((issuer, subject))
 }

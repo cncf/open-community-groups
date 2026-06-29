@@ -358,7 +358,10 @@ async fn test_log_in_success() {
         .returning(|_| Ok(()));
     db.expect_create_session()
         .times(1)
-        .withf(move |record| session_record_contains_selected_group(record, group_id))
+        .withf(move |record| {
+            session_record_contains_auth_provider(record, AUTH_PROVIDER_EMAIL)
+                && session_record_contains_selected_group(record, group_id)
+        })
         .returning(|_| Ok(()));
     db.expect_list_user_groups()
         .times(1)
@@ -838,6 +841,7 @@ async fn test_oauth2_callback_success() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
@@ -846,6 +850,10 @@ async fn test_oauth2_callback_success() {
         &HeaderValue::from_static("/dashboard"),
     );
     assert!(callback_auth.login_called);
+    assert_eq!(
+        auth_provider.as_deref(),
+        Some(OAuth2Provider::GitHub.as_ref())
+    );
     assert_eq!(selected_community_id, Some(community_id));
     assert_eq!(selected_group_id, Some(group_id));
 }
@@ -1165,7 +1173,7 @@ async fn test_oidc_callback_authorization_error() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
-    let auth_provider: Option<OidcProvider> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
@@ -1181,6 +1189,124 @@ async fn test_oidc_callback_authorization_error() {
     assert_eq!(auth_provider, None);
     assert_eq!(selected_community_id, None);
     assert_eq!(selected_group_id, None);
+}
+
+#[tokio::test]
+async fn test_oidc_callback_uses_friendly_external_auth_email_conflict_message() {
+    // Setup in-memory session
+    let store = Arc::new(MemoryStore::default());
+    let session = Session::new(None, store, None);
+    session
+        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
+        .await
+        .unwrap();
+    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_list_user_groups().times(0);
+
+    // Setup callback auth mock
+    let mut callback_auth = MockCallbackAuth {
+        login_called: false,
+        login_result: Some(Ok(())),
+        oidc_result: Some(Err(format!(
+            "db error: {}",
+            crate::auth::EXTERNAL_AUTH_EMAIL_CONFLICT_ERROR
+        ))),
+        oauth2_result: None,
+    };
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let captured_error_message = error_message.clone();
+    let redirect = oidc_callback_with_auth(
+        &mut callback_auth,
+        session,
+        &db,
+        OidcProvider::LinuxFoundation,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        move |message| {
+            let mut guard = captured_error_message.lock().unwrap();
+            *guard = Some(message);
+        },
+    )
+    .await
+    .unwrap();
+
+    // Check callback result and side effects
+    let response = redirect.into_response();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION).unwrap(),
+        &HeaderValue::from_static(LOG_IN_URL),
+    );
+    assert_eq!(
+        *error_message.lock().unwrap(),
+        Some(LF_SSO_EMAIL_CONFLICT_MESSAGE.to_string()),
+    );
+    assert!(!callback_auth.login_called);
+}
+
+#[tokio::test]
+async fn test_oidc_callback_uses_friendly_external_auth_identity_conflict_message() {
+    // Setup in-memory session
+    let store = Arc::new(MemoryStore::default());
+    let session = Session::new(None, store, None);
+    session
+        .insert(OAUTH2_CSRF_STATE_KEY, "state-in-session")
+        .await
+        .unwrap();
+    session.insert(OIDC_NONCE_KEY, "nonce-in-session").await.unwrap();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_list_user_groups().times(0);
+
+    // Setup callback auth mock
+    let mut callback_auth = MockCallbackAuth {
+        login_called: false,
+        login_result: Some(Ok(())),
+        oidc_result: Some(Err(format!(
+            "db error: {}",
+            crate::auth::EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR
+        ))),
+        oauth2_result: None,
+    };
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let error_message = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let captured_error_message = error_message.clone();
+    let redirect = oidc_callback_with_auth(
+        &mut callback_auth,
+        session,
+        &db,
+        OidcProvider::LinuxFoundation,
+        "test-code".to_string(),
+        oauth2::CsrfToken::new("state-in-session".to_string()),
+        move |message| {
+            let mut guard = captured_error_message.lock().unwrap();
+            *guard = Some(message);
+        },
+    )
+    .await
+    .unwrap();
+
+    // Check callback result and side effects
+    let response = redirect.into_response();
+    assert_eq!(response.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        response.headers().get(LOCATION).unwrap(),
+        &HeaderValue::from_static(LOG_IN_URL),
+    );
+    assert_eq!(
+        *error_message.lock().unwrap(),
+        Some(LF_SSO_IDENTITY_CONFLICT_MESSAGE.to_string()),
+    );
+    assert!(!callback_auth.login_called);
 }
 
 #[tokio::test]
@@ -1238,7 +1364,7 @@ async fn test_oidc_callback_success() {
 
     // Check callback result and side effects
     let response = redirect.into_response();
-    let auth_provider: Option<OidcProvider> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
+    let auth_provider: Option<String> = session.get(AUTH_PROVIDER_KEY).await.unwrap();
     let selected_community_id: Option<Uuid> = session.get(SELECTED_COMMUNITY_ID_KEY).await.unwrap();
     let selected_group_id: Option<Uuid> = session.get(SELECTED_GROUP_ID_KEY).await.unwrap();
     assert_eq!(response.status(), StatusCode::SEE_OTHER);
@@ -1247,7 +1373,10 @@ async fn test_oidc_callback_success() {
         &HeaderValue::from_static("/dashboard"),
     );
     assert!(callback_auth.login_called);
-    assert_eq!(auth_provider, Some(OidcProvider::LinuxFoundation));
+    assert_eq!(
+        auth_provider.as_deref(),
+        Some(OidcProvider::LinuxFoundation.as_ref())
+    );
     assert_eq!(selected_community_id, Some(community_id));
     assert_eq!(selected_group_id, Some(group_id));
 }
@@ -4880,4 +5009,8 @@ impl CallbackAuth for MockCallbackAuth {
             .take()
             .expect("callback login result should be configured in tests")
     }
+}
+
+fn session_record_contains_auth_provider(record: &session::Record, provider: &str) -> bool {
+    record.data.get(AUTH_PROVIDER_KEY).and_then(|value| value.as_str()) == Some(provider)
 }

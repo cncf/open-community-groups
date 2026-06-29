@@ -303,6 +303,12 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
     let incoming_provider = sample_linuxfoundation_user_provider();
     let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
 
+    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
+        .times(1)
+        .withf(|issuer, subject| {
+            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
+        })
+        .returning(|_, _| Ok(None));
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
@@ -329,9 +335,139 @@ async fn get_or_sign_up_external_user_merges_provider_into_existing_user() {
             }),
             linuxfoundation: Some(LinuxFoundationUserProvider {
                 username: "test-user-lf".to_string(),
+
+                issuer: Some("https://issuer.example.com".to_string()),
+                subject: Some("auth0|test-user".to_string()),
             }),
         })
     );
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_rejects_linuxfoundation_identity_relink() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let mut existing_provider = sample_user_provider();
+    existing_provider.linuxfoundation = Some(LinuxFoundationUserProvider {
+        username: "other-lf-user".to_string(),
+
+        issuer: Some("https://issuer.example.com".to_string()),
+        subject: Some("auth0|other-user".to_string()),
+    });
+    let existing_user = User {
+        provider: Some(existing_provider),
+        ..sample_user()
+    };
+    let user_summary = sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
+
+    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
+        .times(1)
+        .withf(|issuer, subject| {
+            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
+        })
+        .returning(|_, _| Ok(None));
+    db.expect_get_user_by_email_for_external_auth()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(Some(existing_user.clone())));
+    db.expect_update_user_provider().times(0);
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let error = backend.get_or_sign_up_external_user(&user_summary).await.unwrap_err();
+
+    // Check result
+    assert!(error.to_string().contains(EXTERNAL_AUTH_IDENTITY_CONFLICT_ERROR));
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_ignores_linuxfoundation_username_mismatch_without_identity() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let existing_user = User {
+        provider: Some(sample_linuxfoundation_username_only_user_provider(
+            "other-lf-user",
+        )),
+        ..sample_user()
+    };
+    let existing_user_id = existing_user.user_id;
+    let incoming_provider = sample_linuxfoundation_user_provider();
+    let user_summary = sample_external_user_summary(Some(incoming_provider.clone()));
+
+    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
+        .times(1)
+        .withf(|issuer, subject| {
+            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
+        })
+        .returning(|_, _| Ok(None));
+    db.expect_get_user_by_email_for_external_auth()
+        .times(1)
+        .withf(|email| email == "user@example.com")
+        .returning(move |_| Ok(Some(existing_user.clone())));
+    db.expect_update_user_provider()
+        .times(1)
+        .withf(move |user_id, provider| {
+            *user_id == existing_user_id && provider == &incoming_provider
+        })
+        .returning(|_, _| Ok(()));
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(user.provider, Some(sample_linuxfoundation_user_provider()));
+}
+
+#[tokio::test]
+async fn get_or_sign_up_external_user_reconciles_linuxfoundation_identity_before_email() {
+    // Setup database mock
+    let mut db = MockDB::new();
+    let existing_user = User {
+        provider: Some(sample_linuxfoundation_user_provider()),
+        ..sample_user()
+    };
+    let existing_user_id = existing_user.user_id;
+    let mut updated_user = existing_user.clone();
+    updated_user.email = "new@example.com".to_string();
+    updated_user.name = "New Test User".to_string();
+    let mut user_summary =
+        sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
+    user_summary.email = "new@example.com".to_string();
+    user_summary.name = "New Test User".to_string();
+
+    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
+        .times(1)
+        .withf(|issuer, subject| {
+            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
+        })
+        .returning(move |_, _| Ok(Some(existing_user.clone())));
+    db.expect_update_user_external_auth()
+        .times(1)
+        .withf(move |user_id, summary| {
+            *user_id == existing_user_id
+                && summary.email == "new@example.com"
+                && summary.name == "New Test User"
+                && summary.provider == Some(sample_linuxfoundation_user_provider())
+        })
+        .returning(move |_, _| Ok(updated_user.clone()));
+    db.expect_get_user_by_email_for_external_auth().times(0);
+    db.expect_update_user_provider().times(0);
+    db.expect_sign_up_user().times(0);
+    let db: DynDB = Arc::new(db);
+
+    // Execute helper
+    let backend = authn_backend(db).await;
+    let user = backend.get_or_sign_up_external_user(&user_summary).await.unwrap();
+
+    // Check result
+    assert_eq!(user.email, "new@example.com");
+    assert_eq!(user.name, "New Test User");
+    assert_eq!(user.user_id, existing_user_id);
 }
 
 #[tokio::test]
@@ -431,6 +567,12 @@ async fn get_or_sign_up_external_user_activates_pre_registered_user() {
     let activated_user = sample_user();
     let user_summary = sample_external_user_summary(Some(sample_linuxfoundation_user_provider()));
 
+    db.expect_get_user_by_linuxfoundation_identity_for_external_auth()
+        .times(1)
+        .withf(|issuer, subject| {
+            issuer == "https://issuer.example.com" && subject == "auth0|test-user"
+        })
+        .returning(|_, _| Ok(None));
     db.expect_get_user_by_email_for_external_auth()
         .times(1)
         .withf(|email| email == "user@example.com")
@@ -657,6 +799,9 @@ fn user_summary_from_oidc_id_token_claims_extracts_verified_user() {
             github: None,
             linuxfoundation: Some(LinuxFoundationUserProvider {
                 username: "test-user".to_string(),
+
+                issuer: Some("https://issuer.example.com".to_string()),
+                subject: Some("subject".to_string()),
             }),
         })
     );
@@ -872,6 +1017,21 @@ fn sample_linuxfoundation_user_provider() -> UserProvider {
         github: None,
         linuxfoundation: Some(LinuxFoundationUserProvider {
             username: "test-user-lf".to_string(),
+
+            issuer: Some("https://issuer.example.com".to_string()),
+            subject: Some("auth0|test-user".to_string()),
+        }),
+    }
+}
+
+fn sample_linuxfoundation_username_only_user_provider(username: &str) -> UserProvider {
+    UserProvider {
+        github: None,
+        linuxfoundation: Some(LinuxFoundationUserProvider {
+            username: username.to_string(),
+
+            issuer: None,
+            subject: None,
         }),
     }
 }

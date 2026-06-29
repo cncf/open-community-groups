@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(278);
+select plan(281);
 
 -- ============================================================================
 -- VARIABLES
@@ -161,6 +161,7 @@ select has_function('get_group_sponsor', array['uuid', 'uuid']::name[]);
 select has_function('get_group_stats', array['uuid', 'uuid']::name[]);
 select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
 select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
+select has_function('get_public_user_provider', array['jsonb']::name[]);
 select has_function('get_session_meeting_sync_state_hash', array['uuid']::name[]);
 select has_function('get_site_home_stats', '{}'::name[]);
 select has_function('get_site_recently_added_groups', '{}'::name[]);
@@ -171,6 +172,10 @@ select has_function('get_user_by_email', array['text']::name[]);
 select has_function('get_user_by_email_for_external_auth', array['text']::name[]);
 select has_function('get_user_by_id', array['uuid', 'boolean']::name[]);
 select has_function('get_user_by_id_verified', array['uuid']::name[]);
+select has_function(
+    'get_user_by_linuxfoundation_identity_for_external_auth',
+    array['text', 'text']::name[]
+);
 select has_function('get_user_by_username', array['text']::name[]);
 select has_function('i_array_to_string', array['text[]', 'text']::name[]);
 select has_function('insert_audit_log', array['text', 'uuid', 'text', 'uuid', 'uuid', 'uuid', 'uuid', 'jsonb']::name[]);
@@ -307,6 +312,7 @@ select has_function('update_notification', array['uuid', 'text']::name[]);
 select has_function('update_region', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_session_proposal', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('update_user_details', array['uuid', 'jsonb']::name[]);
+select has_function('update_user_external_auth', array['uuid', 'jsonb']::name[]);
 select has_function('update_user_password', array['uuid', 'text']::name[]);
 select has_function('update_user_provider', array['uuid', 'jsonb']::name[]);
 select has_function('upsert_pending_registration_answers', array['uuid', 'uuid', 'jsonb', 'jsonb']::name[]);

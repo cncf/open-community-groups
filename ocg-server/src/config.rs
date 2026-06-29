@@ -19,6 +19,7 @@ use figment::{
 };
 use garde::rules::email::parse_email;
 use serde::{Deserialize, Serialize};
+use strum::AsRefStr;
 use tracing::instrument;
 
 use crate::types::payments::{PaymentMode, PaymentProvider};
@@ -338,10 +339,11 @@ pub(crate) struct LoginOptions {
 pub(crate) type OAuth2Config = HashMap<OAuth2Provider, OAuth2ProviderConfig>;
 
 /// Supported `OAuth2` providers.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(AsRefStr, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum OAuth2Provider {
     /// GitHub as an `OAuth2` provider.
+    #[strum(serialize = "github")]
     GitHub,
 }
 
@@ -366,10 +368,11 @@ pub(crate) struct OAuth2ProviderConfig {
 pub(crate) type OidcConfig = HashMap<OidcProvider, OidcProviderConfig>;
 
 /// Supported OIDC providers.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(AsRefStr, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub(crate) enum OidcProvider {
     /// Linux Foundation as an OIDC provider.
+    #[strum(serialize = "linuxfoundation")]
     LinuxFoundation,
 }
 

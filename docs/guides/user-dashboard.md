@@ -112,9 +112,10 @@ Invitation statuses:
 When someone invites you to a team, you receive an in-app and email invitation with a direct path
 to accept or decline.
 
-When someone invites you to an event by email, sign in with LF SSO using the LF account whose
-primary email matches the invited address. If the email on your LF account is different, OCG
-cannot connect the invitation to your login and you will not be able to accept it.
+When someone invites you to an event by email, sign in with LF SSO. If you do not already have an
+OCG account, use the LF account whose primary email matches the invited address. Existing LF-linked
+OCG accounts can still be recognized by LF SSO identity after an LF email change. If you cannot
+accept an invitation, ask the site administrators to reconcile the account records.
 
 Typical post-accept behavior:
 

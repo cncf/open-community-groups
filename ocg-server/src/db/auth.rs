@@ -47,6 +47,13 @@ pub(crate) trait DBAuth {
     /// Retrieves a user by their unique ID.
     async fn get_user_by_id(&self, user_id: &Uuid) -> Result<Option<User>>;
 
+    /// Retrieves a verified registered user by Linux Foundation OIDC identity for external auth.
+    async fn get_user_by_linuxfoundation_identity_for_external_auth(
+        &self,
+        issuer: &str,
+        subject: &str,
+    ) -> Result<Option<User>>;
+
     /// Retrieves a user by their username.
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>>;
 
@@ -73,6 +80,13 @@ pub(crate) trait DBAuth {
 
     /// Updates user details in the database.
     async fn update_user_details(&self, actor_user_id: &Uuid, user: &UserDetails) -> Result<()>;
+
+    /// Updates verified external-auth identity details for a registered user.
+    async fn update_user_external_auth(
+        &self,
+        user_id: &Uuid,
+        user_summary: &UserSummary,
+    ) -> Result<User>;
 
     /// Updates a user's password in the database.
     async fn update_user_password(&self, actor_user_id: &Uuid, new_password: &str) -> Result<()>;
@@ -220,6 +234,19 @@ where
             .await
     }
 
+    #[instrument(skip(self, issuer, subject), err)]
+    async fn get_user_by_linuxfoundation_identity_for_external_auth(
+        &self,
+        issuer: &str,
+        subject: &str,
+    ) -> Result<Option<User>> {
+        self.fetch_json_opt(
+            "select get_user_by_linuxfoundation_identity_for_external_auth($1::text, $2::text);",
+            &[&issuer, &subject],
+        )
+        .await
+    }
+
     #[instrument(skip(self, username), err)]
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>> {
         self.fetch_json_opt("select get_user_by_username($1::text);", &[&username])
@@ -320,6 +347,19 @@ where
         self.execute(
             "select update_user_details($1::uuid, $2::jsonb);",
             &[actor_user_id, &Json(user)],
+        )
+        .await
+    }
+
+    #[instrument(skip(self, user_summary), err)]
+    async fn update_user_external_auth(
+        &self,
+        user_id: &Uuid,
+        user_summary: &UserSummary,
+    ) -> Result<User> {
+        self.fetch_json_one(
+            "select update_user_external_auth($1::uuid, $2::jsonb);",
+            &[user_id, &Json(user_summary)],
         )
         .await
     }
