@@ -187,16 +187,18 @@ export class SpeakersSelector extends LitWrapper {
       <div class="w-full">
         <div class="flex items-center justify-between gap-4 flex-wrap w-full">
           <label class="form-label m-0">${this.label}</label>
-          ${this.showAddButton
-            ? html`<button
-                type="button"
-                class="btn-secondary"
-                @click=${this._openSpeakerModal}
-                ?disabled=${this.disabled}
-              >
-                Add speaker
-              </button>`
-            : ""}
+          ${
+            this.showAddButton
+              ? html`<button
+                  type="button"
+                  class="btn-secondary"
+                  @click=${this._openSpeakerModal}
+                  ?disabled=${this.disabled}
+                >
+                  Add speaker
+                </button>`
+              : ""
+          }
         </div>
 
         ${this.helpText ? html`<p class="text-sm text-stone-500 mt-1">${this.helpText}</p>` : ""}

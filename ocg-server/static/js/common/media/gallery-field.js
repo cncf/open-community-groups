@@ -414,10 +414,9 @@ export class GalleryField extends LitWrapper {
         </div>
 
         <div
-          class="absolute inset-0 flex items-center justify-center bg-white/50 transition-opacity duration-150 ${this
-            ._isUploading
-            ? "opacity-100"
-            : "opacity-0 pointer-events-none"}"
+          class="absolute inset-0 flex items-center justify-center bg-white/50 transition-opacity duration-150 ${
+            this._isUploading ? "opacity-100" : "opacity-0 pointer-events-none"
+          }"
         >
           <svg-spinner size="size-10" label="Uploading..."></svg-spinner>
         </div>
@@ -486,11 +485,13 @@ export class GalleryField extends LitWrapper {
           @change=${this._handleFileChange}
         />
 
-        ${this.fieldName
-          ? this.images.map(
-              (imageUrl) => html`<input type="hidden" name="${this.fieldName}[]" value=${imageUrl} />`,
-            )
-          : ""}
+        ${
+          this.fieldName
+            ? this.images.map(
+                (imageUrl) => html`<input type="hidden" name="${this.fieldName}[]" value=${imageUrl} />`,
+              )
+            : ""
+        }
       </div>
     `;
   }

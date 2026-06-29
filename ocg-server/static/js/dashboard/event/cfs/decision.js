@@ -33,9 +33,9 @@ const renderStatusBoxes = ({ onStatusCheckChange, statusId: selectedStatusId, st
               ?disabled=${isDisabled}
             />
             <div
-              class="rounded-lg border p-3 transition bg-white ${isSelected
-                ? `${color.border} ${color.ring}`
-                : "border-stone-200"}"
+              class="rounded-lg border p-3 transition bg-white ${
+                isSelected ? `${color.border} ${color.ring}` : "border-stone-200"
+              }"
             >
               <div class="flex items-center gap-2">
                 <span
@@ -79,14 +79,16 @@ export const renderCfsDecisionPanel = (state) => html`
     <div>
       <label class="form-label">Decision</label>
       <div class="mt-3">${renderStatusBoxes(state)}</div>
-      ${isLinkedToSession(state.submission)
-        ? html`
-            <p class="form-legend mt-2">
-              This submission is linked to a session. Unlink it from the session before choosing a
-              non-approved status.
-            </p>
-          `
-        : ""}
+      ${
+        isLinkedToSession(state.submission)
+          ? html`
+              <p class="form-legend mt-2">
+                This submission is linked to a session. Unlink it from the session before choosing a
+                non-approved status.
+              </p>
+            `
+          : ""
+      }
     </div>
 
     <div>

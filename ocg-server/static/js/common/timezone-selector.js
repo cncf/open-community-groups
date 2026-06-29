@@ -131,9 +131,9 @@ export class TimezoneSelector extends LitWrapper {
         <button
           id="timezone-selector-button"
           type="button"
-          class="select select-primary relative text-left pe-9 w-full ${isDisabled
-            ? "cursor-not-allowed bg-stone-100 text-stone-500"
-            : "cursor-pointer"}"
+          class="select select-primary relative text-left pe-9 w-full ${
+            isDisabled ? "cursor-not-allowed bg-stone-100 text-stone-500" : "cursor-pointer"
+          }"
           ?disabled=${isDisabled}
           aria-haspopup="listbox"
           aria-expanded=${this._combobox.isOpen ? "true" : "false"}
@@ -148,10 +148,9 @@ export class TimezoneSelector extends LitWrapper {
         </button>
 
         <div
-          class="absolute top-full mt-1 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
-            ._combobox.isOpen
-            ? ""
-            : "hidden"}"
+          class="absolute top-full mt-1 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${
+            this._combobox.isOpen ? "" : "hidden"
+          }"
         >
           <div class="p-3 border-b border-stone-200">
             <div class="relative">
@@ -173,14 +172,15 @@ export class TimezoneSelector extends LitWrapper {
             </div>
           </div>
 
-          ${this._filteredTimezones.length > 0
-            ? html`
-                <ul
-                  id="timezone-selector-list"
-                  class="max-h-48 overflow-y-auto text-stone-700"
-                  role="listbox"
-                >
-                  ${repeat(
+          ${
+            this._filteredTimezones.length > 0
+              ? html`
+                  <ul
+                    id="timezone-selector-list"
+                    class="max-h-48 overflow-y-auto text-stone-700"
+                    role="listbox"
+                  >
+                    ${repeat(
                     this._filteredTimezones,
                     (tz) => tz,
                     (timezone, index) => {
@@ -216,9 +216,10 @@ export class TimezoneSelector extends LitWrapper {
                       `;
                     },
                   )}
-                </ul>
-              `
-            : html`<div class="px-4 py-3 text-sm text-stone-500">No timezones found.</div>`}
+                  </ul>
+                `
+              : html`<div class="px-4 py-3 text-sm text-stone-500">No timezones found.</div>`
+          }
         </div>
       </div>
     `;

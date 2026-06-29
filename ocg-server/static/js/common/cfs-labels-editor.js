@@ -362,8 +362,9 @@ export class CfsLabelsEditor extends LitWrapper {
                       type="button"
                       data-color-popover-row-id="${row._row_id}"
                       class="inline-flex size-[38px] items-center justify-center rounded-full border transition hover:ring-1 hover:ring-stone-200"
-                      style="--label-color:${row.color ||
-                      "transparent"};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
+                      style="--label-color:${
+                        row.color || "transparent"
+                      };border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
                       title="Pick label color"
                       aria-label="Pick label color. Selected color is ${row.color}"
                       aria-expanded=${isColorPopoverOpen}
@@ -376,17 +377,18 @@ export class CfsLabelsEditor extends LitWrapper {
                         style="background-color:${row.color || "transparent"};"
                       ></span>
                     </button>
-                    ${isColorPopoverOpen && hasPaletteColors
-                      ? html`
-                          <div
-                            id="cfs-label-color-popover-${row._row_id}"
-                            data-color-popover-row-id="${row._row_id}"
-                            class="absolute top-full right-0 z-50 mt-2 w-[220px] rounded-xl border border-stone-200 bg-white p-2 shadow-lg"
-                            role="listbox"
-                            aria-label="Label colors"
-                          >
-                            <div class="grid grid-cols-5 gap-2 place-items-center">
-                              ${repeat(
+                    ${
+                      isColorPopoverOpen && hasPaletteColors
+                        ? html`
+                            <div
+                              id="cfs-label-color-popover-${row._row_id}"
+                              data-color-popover-row-id="${row._row_id}"
+                              class="absolute top-full right-0 z-50 mt-2 w-[220px] rounded-xl border border-stone-200 bg-white p-2 shadow-lg"
+                              role="listbox"
+                              aria-label="Label colors"
+                            >
+                              <div class="grid grid-cols-5 gap-2 place-items-center">
+                                ${repeat(
                                 paletteColors,
                                 (color) => color,
                                 (color) => {
@@ -394,9 +396,11 @@ export class CfsLabelsEditor extends LitWrapper {
                                   return html`
                                     <button
                                       type="button"
-                                      class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${selected
-                                        ? "ring-2 ring-stone-300"
-                                        : "hover:ring-1 hover:ring-stone-200"}"
+                                      class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${
+                                        selected
+                                          ? "ring-2 ring-stone-300"
+                                          : "hover:ring-1 hover:ring-stone-200"
+                                      }"
                                       style="--label-color:${color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
                                       title="${color}"
                                       role="option"
@@ -405,24 +409,27 @@ export class CfsLabelsEditor extends LitWrapper {
                                       ?disabled=${this.disabled}
                                       @click=${() => this._setRowColor(row._row_id, color)}
                                     >
-                                      ${selected
-                                        ? html`<div class="svg-icon size-3 icon-check bg-black"></div>`
-                                        : ""}
+                                      ${
+                                        selected
+                                          ? html`<div class="svg-icon size-3 icon-check bg-black"></div>`
+                                          : ""
+                                      }
                                     </button>
                                   `;
                                 },
                               )}
+                              </div>
                             </div>
-                          </div>
-                        `
-                      : ""}
+                          `
+                        : ""
+                    }
                   </div>
 
                   <button
                     type="button"
-                    class="inline-flex size-[38px] shrink-0 items-center justify-center rounded-full border border-stone-200 ${isDeleteDisabled
-                      ? ""
-                      : "hover:bg-stone-100"}"
+                    class="inline-flex size-[38px] shrink-0 items-center justify-center rounded-full border border-stone-200 ${
+                      isDeleteDisabled ? "" : "hover:bg-stone-100"
+                    }"
                     title="Remove label"
                     aria-label="Remove label"
                     ?disabled=${isDeleteDisabled}
@@ -432,34 +439,40 @@ export class CfsLabelsEditor extends LitWrapper {
                   </button>
                 </div>
 
-                ${trimmedName
-                  ? html`
-                      <input type="hidden" name="${this.fieldName}[${index}][color]" .value=${row.color} />
-                      ${row.event_cfs_label_id
-                        ? html`
-                            <input
-                              type="hidden"
-                              name="${this.fieldName}[${index}][event_cfs_label_id]"
-                              .value=${row.event_cfs_label_id}
-                            />
-                          `
-                        : ""}
-                      <input type="hidden" name="${this.fieldName}[${index}][name]" .value=${trimmedName} />
-                    `
-                  : ""}
+                ${
+                  trimmedName
+                    ? html`
+                        <input type="hidden" name="${this.fieldName}[${index}][color]" .value=${row.color} />
+                        ${
+                        row.event_cfs_label_id
+                          ? html`
+                              <input
+                                type="hidden"
+                                name="${this.fieldName}[${index}][event_cfs_label_id]"
+                                .value=${row.event_cfs_label_id}
+                              />
+                            `
+                          : ""
+                      }
+                        <input type="hidden" name="${this.fieldName}[${index}][name]" .value=${trimmedName} />
+                      `
+                    : ""
+                }
               </div>
             `;
           },
         )}
-        ${hasCustomLegend || helperLegend
-          ? html`
-              <div class="w-full">
-                <p class="form-legend" data-custom-legend=${hasCustomLegend ? "true" : "false"}>
-                  ${hasCustomLegend ? renderTrustedHtml(this._legendHtml) : helperLegend}
-                </p>
-              </div>
-            `
-          : ""}
+        ${
+          hasCustomLegend || helperLegend
+            ? html`
+                <div class="w-full">
+                  <p class="form-legend" data-custom-legend=${hasCustomLegend ? "true" : "false"}>
+                    ${hasCustomLegend ? renderTrustedHtml(this._legendHtml) : helperLegend}
+                  </p>
+                </div>
+              `
+            : ""
+        }
 
         <div class="w-full md:w-1/2">
           <button
@@ -472,9 +485,11 @@ export class CfsLabelsEditor extends LitWrapper {
           </button>
         </div>
 
-        ${maxReached
-          ? html`<p class="form-legend w-full">Maximum number of labels reached (${this.maxItems}).</p>`
-          : ""}
+        ${
+          maxReached
+            ? html`<p class="form-legend w-full">Maximum number of labels reached (${this.maxItems}).</p>`
+            : ""
+        }
       </div>
     `;
   }

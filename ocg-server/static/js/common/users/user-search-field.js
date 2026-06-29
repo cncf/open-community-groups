@@ -355,11 +355,12 @@ export class UserSearchField extends LitWrapper {
           id=${this.inputId}
           data-user-search-input
           type="text"
-          class="input-primary peer ps-9 ${this.inputClass || ""} ${this.disabled
-            ? "bg-stone-100 cursor-not-allowed"
-            : ""}"
-          placeholder=${this.placeholderText ||
-          (this.label ? `Search ${this.label} by username` : "Search by username")}
+          class="input-primary peer ps-9 ${this.inputClass || ""} ${
+            this.disabled ? "bg-stone-100 cursor-not-allowed" : ""
+          }"
+          placeholder=${
+            this.placeholderText || (this.label ? `Search ${this.label} by username` : "Search by username")
+          }
           .value=${this._searchQuery}
           @input=${this._handleSearchInput}
           autocomplete="off"
@@ -384,45 +385,48 @@ export class UserSearchField extends LitWrapper {
         ${this.legend ? html`<p class="form-legend mt-2">${this.legend}</p>` : ""}
 
         <!-- Dropdown results -->
-        ${this._searchQuery !== ""
-          ? html`
-              <div
-                class="absolute left-0 right-0 top-10 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 z-10 ${this
-                  ._isSearching || this._searchResults.length === 0
-                  ? ""
-                  : "max-h-80 overflow-y-auto"}"
-              >
-                ${this._isSearching
-                  ? html`
-                      <div class="p-4 text-center">
-                        <div class="inline-flex items-center gap-2 text-stone-600">
-                          <div
-                            class="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full"
-                          ></div>
-                          Searching...
-                        </div>
-                      </div>
-                    `
-                  : this._searchResults.length === 0 && hasEmailAction
-                    ? this._renderEmailAction()
-                    : this._searchResults.length === 0
-                      ? html`
-                          <div class="p-4 text-center text-stone-500">
-                            <p class="text-sm">
-                              No ${this.label || "users"} found for "${this._searchQuery}"
-                            </p>
+        ${
+          this._searchQuery !== ""
+            ? html`
+                <div
+                  class="absolute left-0 right-0 top-10 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 z-10 ${
+                  this._isSearching || this._searchResults.length === 0 ? "" : "max-h-80 overflow-y-auto"
+                }"
+                >
+                  ${
+                  this._isSearching
+                    ? html`
+                        <div class="p-4 text-center">
+                          <div class="inline-flex items-center gap-2 text-stone-600">
+                            <div
+                              class="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600 rounded-full"
+                            ></div>
+                            Searching...
                           </div>
-                        `
-                      : html`<div class="py-1">
-                          ${repeat(
+                        </div>
+                      `
+                    : this._searchResults.length === 0 && hasEmailAction
+                      ? this._renderEmailAction()
+                      : this._searchResults.length === 0
+                        ? html`
+                            <div class="p-4 text-center text-stone-500">
+                              <p class="text-sm">
+                                No ${this.label || "users"} found for "${this._searchQuery}"
+                              </p>
+                            </div>
+                          `
+                        : html`<div class="py-1">
+                            ${repeat(
                             this._searchResults,
                             (u) => u.username,
                             (u) => this._renderResult(u),
                           )}
-                        </div>`}
-              </div>
-            `
-          : ""}
+                          </div>`
+                }
+                </div>
+              `
+            : ""
+        }
       </div>
     `;
   }

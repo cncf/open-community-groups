@@ -231,13 +231,15 @@ export class MultipleInputs extends LitWrapper {
       </div>
       <!-- Hidden inputs for form submission -->
       <div class="hidden">
-        ${this.fieldName
-          ? this.items.map((item) =>
-              item.value.trim() !== ""
-                ? html` <input type="hidden" name="${this.fieldName}[]" value=${item.value} /> `
-                : "",
-            )
-          : ""}
+        ${
+          this.fieldName
+            ? this.items.map((item) =>
+                item.value.trim() !== ""
+                  ? html` <input type="hidden" name="${this.fieldName}[]" value=${item.value} /> `
+                  : "",
+              )
+            : ""
+        }
       </div>
     `;
   }

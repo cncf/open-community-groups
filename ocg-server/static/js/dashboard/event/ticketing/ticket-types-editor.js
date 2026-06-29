@@ -519,25 +519,27 @@ class TicketTypesEditor extends TicketingEditorBase {
           </td>
           <td class="px-3 xl:px-5 py-4 whitespace-nowrap text-stone-900">${row.seats_total || "—"}</td>
           <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
-            ${row.active
-              ? html`<span
-                  class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
-                >
-                  Active
-                </span>`
-              : html`<span
-                  class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
-                >
-                  Inactive
-                </span>`}
+            ${
+              row.active
+                ? html`<span
+                    class="custom-badge shrink-0 border-green-800 bg-green-100 px-2.5 py-0.5 text-green-800"
+                  >
+                    Active
+                  </span>`
+                : html`<span
+                    class="custom-badge shrink-0 border-stone-500 bg-stone-100 px-2.5 py-0.5 text-stone-700"
+                  >
+                    Inactive
+                  </span>`
+            }
           </td>
           <td class="px-3 xl:px-5 py-4">
             <div class="flex items-center justify-start gap-1 xl:justify-end">
               <button
                 type="button"
-                class="rounded-full p-2 transition-colors ${this.disabled
-                  ? "opacity-60 cursor-not-allowed"
-                  : "hover:bg-stone-100"}"
+                class="rounded-full p-2 transition-colors ${
+                  this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"
+                }"
                 data-ticketing-action="edit-ticket"
                 data-row-id=${String(row._row_id)}
                 title="Edit"
@@ -548,9 +550,9 @@ class TicketTypesEditor extends TicketingEditorBase {
               </button>
               <button
                 type="button"
-                class="rounded-full p-2 transition-colors ${this.disabled
-                  ? "opacity-60 cursor-not-allowed"
-                  : "hover:bg-stone-100"}"
+                class="rounded-full p-2 transition-colors ${
+                  this.disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-stone-100"
+                }"
                 data-ticketing-action="delete-ticket"
                 data-row-id=${String(row._row_id)}
                 title="Delete"
@@ -592,10 +594,9 @@ class TicketTypesEditor extends TicketingEditorBase {
               </div>
               <button
                 type="button"
-                class="inline-flex size-9 items-center justify-center rounded-full border border-stone-200 ${this
-                  .disabled || isOnlyWindow
-                  ? ""
-                  : "hover:bg-stone-100"}"
+                class="inline-flex size-9 items-center justify-center rounded-full border border-stone-200 ${
+                  this.disabled || isOnlyWindow ? "" : "hover:bg-stone-100"
+                }"
                 title="Remove price window"
                 aria-label="Remove price window"
                 data-ticketing-action="remove-price-window"
@@ -721,9 +722,9 @@ class TicketTypesEditor extends TicketingEditorBase {
 
       <div
         data-ticketing-role="ticket-modal"
-        class="fixed inset-0 z-[1000] ${this._isModalOpen
-          ? "flex"
-          : "hidden"} items-center justify-center overflow-y-auto overflow-x-hidden"
+        class="fixed inset-0 z-[1000] ${
+          this._isModalOpen ? "flex" : "hidden"
+        } items-center justify-center overflow-y-auto overflow-x-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="ticket-type-modal-title"

@@ -499,22 +499,26 @@ export class SessionProposalModal extends LitWrapper {
     const level = proposal?.session_proposal_level_name;
     const duration = proposal?.duration_minutes;
     return html`
-      ${level
-        ? html`
-            <div>
-              <div class="proposal-section-title">Level</div>
-              <div class="mt-1 text-sm text-stone-700">${level}</div>
-            </div>
-          `
-        : ""}
-      ${duration
-        ? html`
-            <div>
-              <div class="proposal-section-title">Duration</div>
-              <div class="mt-1 text-sm text-stone-700">${duration} min</div>
-            </div>
-          `
-        : ""}
+      ${
+        level
+          ? html`
+              <div>
+                <div class="proposal-section-title">Level</div>
+                <div class="mt-1 text-sm text-stone-700">${level}</div>
+              </div>
+            `
+          : ""
+      }
+      ${
+        duration
+          ? html`
+              <div>
+                <div class="proposal-section-title">Duration</div>
+                <div class="mt-1 text-sm text-stone-700">${duration} min</div>
+              </div>
+            `
+          : ""
+      }
     `;
   }
 
@@ -548,30 +552,36 @@ export class SessionProposalModal extends LitWrapper {
               <div
                 class="mt-2 text-stone-700 text-sm/6 markdown whitespace-pre-line [&_p]:whitespace-pre-line [&_li]:whitespace-pre-line"
               >
-                ${proposal?.description_html
-                  ? renderTrustedHtml(proposal.description_html)
-                  : proposal?.description || ""}
+                ${
+                  proposal?.description_html
+                    ? renderTrustedHtml(proposal.description_html)
+                    : proposal?.description || ""
+                }
               </div>
             </div>
           </div>
           <div class="w-full md:w-72 shrink-0 space-y-4 md:border-l md:border-stone-100 md:pl-6">
             ${this._renderProposalMeta(proposal)}
-            ${speaker
-              ? html`
-                  <div>
-                    <div class="proposal-section-title">Speaker</div>
-                    <div class="mt-2">${this._renderPersonRow(speaker)}</div>
-                  </div>
-                `
-              : ""}
-            ${coSpeaker
-              ? html`
-                  <div>
-                    <div class="proposal-section-title">Co-speaker</div>
-                    <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
-                  </div>
-                `
-              : ""}
+            ${
+              speaker
+                ? html`
+                    <div>
+                      <div class="proposal-section-title">Speaker</div>
+                      <div class="mt-2">${this._renderPersonRow(speaker)}</div>
+                    </div>
+                  `
+                : ""
+            }
+            ${
+              coSpeaker
+                ? html`
+                    <div>
+                      <div class="proposal-section-title">Co-speaker</div>
+                      <div class="mt-2">${this._renderPersonRow(coSpeaker)}</div>
+                    </div>
+                  `
+                : ""
+            }
           </div>
         </div>
         <div class="flex items-center justify-end gap-3 pt-3 mt-4 border-t border-stone-100">
@@ -605,37 +615,43 @@ export class SessionProposalModal extends LitWrapper {
           hx-disabled-elt="#session-proposal-submit, #session-proposal-cancel"
         >
           <div class="space-y-5">
-            ${isCoSpeakerLocked
-              ? html`
-                  <div
-                    role="status"
-                    class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-                  >
-                    This proposal has already been submitted. Co-speaker changes are disabled.
-                  </div>
-                `
-              : ""}
-            ${showDeclinedCoSpeakerWarning
-              ? html`
-                  <div
-                    role="alert"
-                    class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
-                  >
-                    <span class="font-semibold">The invited co-speaker declined this proposal.</span> To
-                    submit it to any event, you'll need to remove the co-speaker.
-                  </div>
-                `
-              : ""}
-            ${showPendingCoSpeakerWarning
-              ? html`
-                  <div
-                    role="status"
-                    class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-                  >
-                    This proposal is awaiting co-speaker invitation response.
-                  </div>
-                `
-              : ""}
+            ${
+              isCoSpeakerLocked
+                ? html`
+                    <div
+                      role="status"
+                      class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                    >
+                      This proposal has already been submitted. Co-speaker changes are disabled.
+                    </div>
+                  `
+                : ""
+            }
+            ${
+              showDeclinedCoSpeakerWarning
+                ? html`
+                    <div
+                      role="alert"
+                      class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                    >
+                      <span class="font-semibold">The invited co-speaker declined this proposal.</span> To
+                      submit it to any event, you'll need to remove the co-speaker.
+                    </div>
+                  `
+                : ""
+            }
+            ${
+              showPendingCoSpeakerWarning
+                ? html`
+                    <div
+                      role="status"
+                      class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                    >
+                      This proposal is awaiting co-speaker invitation response.
+                    </div>
+                  `
+                : ""
+            }
             <div>
               <label for="session-proposal-title" class="form-label">
                 Title <span class="asterisk">*</span>

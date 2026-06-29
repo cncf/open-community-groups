@@ -39,22 +39,26 @@ const renderCfsProposalMeta = (proposal) => {
   const level = proposal?.session_proposal_level_name;
   const duration = proposal?.duration_minutes;
   return html`
-    ${level
-      ? html`
-          <div>
-            <div class="proposal-section-title">Level</div>
-            <div class="mt-1 text-sm text-stone-700">${level}</div>
-          </div>
-        `
-      : ""}
-    ${duration
-      ? html`
-          <div>
-            <div class="proposal-section-title">Duration</div>
-            <div class="mt-1 text-sm text-stone-700">${duration} min</div>
-          </div>
-        `
-      : ""}
+    ${
+      level
+        ? html`
+            <div>
+              <div class="proposal-section-title">Level</div>
+              <div class="mt-1 text-sm text-stone-700">${level}</div>
+            </div>
+          `
+        : ""
+    }
+    ${
+      duration
+        ? html`
+            <div>
+              <div class="proposal-section-title">Duration</div>
+              <div class="mt-1 text-sm text-stone-700">${duration} min</div>
+            </div>
+          `
+        : ""
+    }
   `;
 };
 
@@ -114,9 +118,11 @@ export const renderCfsDetailsPanel = (state) => {
           <div>
             <div class="proposal-section-title">Description</div>
             <div class="mt-2 max-h-[200px] overflow-y-auto text-stone-700 text-sm/6 markdown">
-              ${proposal?.description_html
-                ? renderTrustedHtml(proposal.description_html)
-                : proposal?.description || ""}
+              ${
+                proposal?.description_html
+                  ? renderTrustedHtml(proposal.description_html)
+                  : proposal?.description || ""
+              }
             </div>
           </div>
         </div>
@@ -131,20 +137,24 @@ export const renderCfsDetailsPanel = (state) => {
             </div>
           </div>
 
-          ${coSpeaker
-            ? html`
-                <div>
-                  <div class="proposal-section-title">Co-speaker</div>
-                  <div class="mt-2">${renderCfsPersonRow(coSpeaker)}</div>
-                </div>
-              `
-            : ""}
+          ${
+            coSpeaker
+              ? html`
+                  <div>
+                    <div class="proposal-section-title">Co-speaker</div>
+                    <div class="mt-2">${renderCfsPersonRow(coSpeaker)}</div>
+                  </div>
+                `
+              : ""
+          }
         </div>
       </div>
 
-      ${state.labels.length > 0
-        ? html` <div class="border-t border-stone-200 pt-5">${renderCfsDetailsLabels(state)}</div> `
-        : ""}
+      ${
+        state.labels.length > 0
+          ? html` <div class="border-t border-stone-200 pt-5">${renderCfsDetailsLabels(state)}</div> `
+          : ""
+      }
     </section>
   `;
 };
