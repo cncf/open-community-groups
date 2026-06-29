@@ -15,13 +15,12 @@ describe("dashboard group attendees list template", () => {
     // Load the attendees list template before checking profile trigger markup.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the attendee identity area opens the shared user profile modal.
-    expect(template).to.include('<button type="button"');
-    expect(template).to.include("data-user-profile-modal");
-    expect(template).to.include("data-user-profile='{{ attendee.user|json }}'");
+    // Verify the attendee identity area uses the shared profile trigger macro.
     expect(template).to.include(
-      'aria-label="View profile for {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"',
+      "dashboard::user_profile_modal_trigger(attendee.user, self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str()))",
     );
+    expect(template).to.include('attendee.status == "invitation-pending"');
+    expect(template).to.include("attendee.email");
   });
 
   it("renders cancel attendance as a confirmed delete action for eligible attendees", async () => {

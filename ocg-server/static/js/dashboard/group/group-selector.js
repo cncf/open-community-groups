@@ -187,40 +187,40 @@ export class GroupSelector extends LitWrapper {
                         role="listbox"
                       >
                         ${repeat(
-                        this._filteredGroups,
-                        (group) => group.group_id,
-                        (group, index) => {
-                          const isSelected = this._isSelected(group);
-                          const isActive = this._combobox.activeIndex === index;
-                          const isDisabled = isSelected || this._isSubmitting;
+                          this._filteredGroups,
+                          (group) => group.group_id,
+                          (group, index) => {
+                            const isSelected = this._isSelected(group);
+                            const isActive = this._combobox.activeIndex === index;
+                            const isDisabled = isSelected || this._isSubmitting;
 
-                          let statusClass = "";
-                          if (isDisabled) {
-                            statusClass =
-                              "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
-                          } else if (isActive) {
-                            statusClass = "cursor-pointer text-stone-900 bg-stone-50";
-                          } else {
-                            statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
-                          }
+                            let statusClass = "";
+                            if (isDisabled) {
+                              statusClass =
+                                "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
+                            } else if (isActive) {
+                              statusClass = "cursor-pointer text-stone-900 bg-stone-50";
+                            } else {
+                              statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
+                            }
 
-                          return html`
-                            <li role="presentation" data-index=${index}>
-                              <button
-                                id="group-option-${group.group_id}"
-                                type="button"
-                                class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
-                                role="option"
-                                ?disabled=${isDisabled}
-                                @click=${(event) => this._handleGroupClick(event, group)}
-                                @mouseover=${() => this._combobox.setActiveIndex(index)}
-                              >
-                                <div class="text-xs/4 line-clamp-2">${group.name}</div>
-                              </button>
-                            </li>
-                          `;
-                        },
-                      )}
+                            return html`
+                              <li role="presentation" data-index=${index}>
+                                <button
+                                  id="group-option-${group.group_id}"
+                                  type="button"
+                                  class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                                  role="option"
+                                  ?disabled=${isDisabled}
+                                  @click=${(event) => this._handleGroupClick(event, group)}
+                                  @mouseover=${() => this._combobox.setActiveIndex(index)}
+                                >
+                                  <div class="text-xs/4 line-clamp-2">${group.name}</div>
+                                </button>
+                              </li>
+                            `;
+                          },
+                        )}
                       </ul>
                     `
                   : html`<div class="px-4 py-3 text-sm text-stone-500">No groups found.</div>`

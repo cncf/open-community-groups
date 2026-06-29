@@ -15,13 +15,11 @@ describe("dashboard group waitlist list template", () => {
     // Load the waitlist list template before checking profile trigger markup.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the waitlist identity area opens the shared user profile modal.
-    expect(template).to.include('<button type="button"');
-    expect(template).to.include("data-user-profile-modal");
-    expect(template).to.include("data-user-profile='{{ entry.user|json }}'");
+    // Verify the waitlist identity area uses the shared profile trigger macro.
     expect(template).to.include(
-      'aria-label="View profile for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"',
+      "dashboard::user_profile_modal_trigger(entry.user, self::user_initials(entry.user.name.as_deref() , entry.user.username.as_str()))",
     );
+    expect(template).to.include("entry.user.name.as_deref() |assigned_or(entry.user.username)");
   });
 
   it("uses the shared search convention for table filtering", async () => {

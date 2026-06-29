@@ -250,14 +250,14 @@ export class CollapsibleFilter extends LitWrapper {
                   class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
                 >
                   ${
-                  this.isCollapsed
-                    ? html`<div
-                        class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-down"
-                      ></div>`
-                    : html`<div
-                        class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-up"
-                      ></div>`
-                }
+                    this.isCollapsed
+                      ? html`<div
+                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-down"
+                        ></div>`
+                      : html`<div
+                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-up"
+                        ></div>`
+                  }
                 </button>`
               : ""
           }

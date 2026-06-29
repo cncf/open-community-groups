@@ -300,10 +300,10 @@ export class UserInfoModal extends LitWrapper {
                   ? html`
                       <div class="text-stone-700 text-base leading-relaxed">
                         ${
-                        this._userData.bioIsHtml
-                          ? html`<div class="markdown">${renderTrustedHtml(bio)}</div>`
-                          : html`<div>${bio}</div>`
-                      }
+                          this._userData.bioIsHtml
+                            ? html`<div class="markdown">${renderTrustedHtml(bio)}</div>`
+                            : html`<div>${bio}</div>`
+                        }
                       </div>
                     `
                   : ""

@@ -130,8 +130,8 @@ export class LogoImage extends LitWrapper {
                   @load=${this._handleImageLoad}
                   @error=${this._handleImageError}
                   class="${
-                  showImage ? "" : "opacity-0 pointer-events-none"
-                } absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} bg-stone-200"
+                    showImage ? "" : "opacity-0 pointer-events-none"
+                  } absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} bg-stone-200"
                   loading="lazy"
                 />
               `

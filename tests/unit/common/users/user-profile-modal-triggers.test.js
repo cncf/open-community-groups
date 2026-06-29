@@ -19,7 +19,7 @@ describe("user profile modal triggers", () => {
       photo_url: "https://example.com/ada.png",
       github_url: "https://github.com/ada",
       website_url: "https://example.com/ada",
-      provider: { github: { username: "ada-gh" } },
+      provider: { linuxfoundation: { username: "ada-lf" } },
     });
     document.body.innerHTML = `
       <button
@@ -57,7 +57,7 @@ describe("user profile modal triggers", () => {
       facebookUrl: undefined,
       githubUrl: "https://github.com/ada",
       linkedinUrl: undefined,
-      provider: { github: { username: "ada-gh" } },
+      provider: { linuxfoundation: { username: "ada-lf" } },
       twitterUrl: undefined,
       websiteUrl: "https://example.com/ada",
     });
@@ -80,5 +80,38 @@ describe("user profile modal triggers", () => {
 
     // Invalid JSON does not open the modal.
     expect(opened).to.deep.equal([]);
+  });
+
+  it("does not dispatch duplicate modal events from initialized fragments", () => {
+    // Render an HTMX-style fragment with a profile trigger.
+    document.body.innerHTML = `
+      <div id="fragment">
+        <button
+          type="button"
+          data-user-profile-modal
+          data-user-profile='{"name":"Grace Hopper","username":"grace"}'
+        >
+          Grace Hopper
+        </button>
+      </div>
+    `;
+    const fragment = document.querySelector("#fragment");
+    const opened = [];
+    document.addEventListener("open-user-modal", (event) => {
+      opened.push(event.detail.name);
+    });
+
+    // Initialize the fragment as an HTMX-loaded root and click its trigger.
+    fragment.dispatchEvent(
+      new CustomEvent("htmx:load", {
+        detail: {},
+        bubbles: true,
+      }),
+    );
+    fragment.querySelector("[data-user-profile-modal]")?.click();
+
+    // The fragment listener handles the click once before the document listener.
+    expect(document.querySelectorAll("user-info-modal").length).to.equal(1);
+    expect(opened).to.deep.equal(["Grace Hopper"]);
   });
 });

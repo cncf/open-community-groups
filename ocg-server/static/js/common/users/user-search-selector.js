@@ -162,10 +162,10 @@ export class UserSearchSelector extends LitWrapper {
             ? html`
                 <div class="flex flex-wrap gap-2">
                   ${repeat(
-                  this.selectedUsers,
-                  (user) => user.username,
-                  (user) => this._renderSelectedUser(user),
-                )}
+                    this.selectedUsers,
+                    (user) => user.username,
+                    (user) => this._renderSelectedUser(user),
+                  )}
                 </div>
               `
             : ""

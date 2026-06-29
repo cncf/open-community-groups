@@ -946,16 +946,16 @@ export class OnlineEventDetails extends LitWrapper {
                 `
               : html`
                   ${
-                  isMeetingSynced
-                    ? html`
-                        <div class="svg-icon size-4 bg-emerald-500 icon-check"></div>
-                        <span class="text-sm font-medium text-emerald-700">Meeting synced</span>
-                      `
-                    : html`
-                        <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
-                        <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
-                      `
-                }
+                    isMeetingSynced
+                      ? html`
+                          <div class="svg-icon size-4 bg-emerald-500 icon-check"></div>
+                          <span class="text-sm font-medium text-emerald-700">Meeting synced</span>
+                        `
+                      : html`
+                          <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
+                          <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
+                        `
+                  }
                 `
           }
         </div>
@@ -1052,44 +1052,44 @@ export class OnlineEventDetails extends LitWrapper {
                     >Original provider recordings</label
                   >
                   ${this._rawRecordingUrls.map((rawRecordingUrl, index) => {
-                  const fieldId = `${this._getFieldName("meeting_recording_raw_urls")}_${index}`;
-                  return html`
-                    <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center ${inputWidthClass}">
-                      <div class="min-w-0 flex-1">
-                        <input
-                          type="url"
-                          id="${fieldId}"
-                          class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
-                          aria-label="Original provider recording ${index + 1}"
-                          .value="${rawRecordingUrl}"
-                          readonly
-                        />
+                    const fieldId = `${this._getFieldName("meeting_recording_raw_urls")}_${index}`;
+                    return html`
+                      <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center ${inputWidthClass}">
+                        <div class="min-w-0 flex-1">
+                          <input
+                            type="url"
+                            id="${fieldId}"
+                            class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                            aria-label="Original provider recording ${index + 1}"
+                            .value="${rawRecordingUrl}"
+                            readonly
+                          />
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
+                            title="Copy recording URL"
+                            aria-label="Copy recording URL ${index + 1}"
+                            data-raw-recording-copy
+                            @click="${() => this._handleRawRecordingCopy(rawRecordingUrl)}"
+                          >
+                            <div class="svg-icon size-4 icon-copy bg-stone-600"></div>
+                          </button>
+                          <button
+                            type="button"
+                            class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
+                            title="Open recording URL"
+                            aria-label="Open recording URL ${index + 1}"
+                            data-raw-recording-open
+                            @click="${() => this._handleRawRecordingOpen(rawRecordingUrl)}"
+                          >
+                            <div class="svg-icon size-3 icon-external-link bg-stone-600"></div>
+                          </button>
+                        </div>
                       </div>
-                      <div class="flex shrink-0 items-center gap-2">
-                        <button
-                          type="button"
-                          class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
-                          title="Copy recording URL"
-                          aria-label="Copy recording URL ${index + 1}"
-                          data-raw-recording-copy
-                          @click="${() => this._handleRawRecordingCopy(rawRecordingUrl)}"
-                        >
-                          <div class="svg-icon size-4 icon-copy bg-stone-600"></div>
-                        </button>
-                        <button
-                          type="button"
-                          class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
-                          title="Open recording URL"
-                          aria-label="Open recording URL ${index + 1}"
-                          data-raw-recording-open
-                          @click="${() => this._handleRawRecordingOpen(rawRecordingUrl)}"
-                        >
-                          <div class="svg-icon size-3 icon-external-link bg-stone-600"></div>
-                        </button>
-                      </div>
-                    </div>
-                  `;
-                })}
+                    `;
+                  })}
                   <p class="form-legend whitespace-pre-line">${MEETING_RECORDING_RAW_URLS_LEGEND}</p>
                 </div>
               `
@@ -1199,12 +1199,12 @@ export class OnlineEventDetails extends LitWrapper {
                     <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
                     <select
                       class="input-primary ${
-                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
-                    }"
+                        this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                      }"
                       @change="${(event) => {
-                      this._providerId = event.target.value || DEFAULT_MEETING_PROVIDER;
-                      this._checkMeetingCapacity();
-                    }}"
+                        this._providerId = event.target.value || DEFAULT_MEETING_PROVIDER;
+                        this._checkMeetingCapacity();
+                      }}"
                       ?disabled=${this.disabled}
                     >
                       <option value="zoom" .selected="${this._providerId === DEFAULT_MEETING_PROVIDER}">
@@ -1227,30 +1227,30 @@ export class OnlineEventDetails extends LitWrapper {
                     </multiple-inputs>
                   </div>
                   ${
-                  !this._isSession()
-                    ? html`
-                        <div class="space-y-4">
-                          <div class="space-y-2">
-                            <label class="inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                class="sr-only peer"
-                                .checked="${this._recordingRequested}"
-                                @change="${this._handleRecordingRequestedChange}"
-                                ?disabled=${this.disabled}
-                              />
-                              <span
-                                class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-                              ></span>
-                              <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
-                            </label>
-                            <p class="form-legend">Enable automatic recording for this meeting.</p>
+                    !this._isSession()
+                      ? html`
+                          <div class="space-y-4">
+                            <div class="space-y-2">
+                              <label class="inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  class="sr-only peer"
+                                  .checked="${this._recordingRequested}"
+                                  @change="${this._handleRecordingRequestedChange}"
+                                  ?disabled=${this.disabled}
+                                />
+                                <span
+                                  class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                                ></span>
+                                <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
+                              </label>
+                              <p class="form-legend">Enable automatic recording for this meeting.</p>
+                            </div>
+                            ${this._renderRecordingVisibilityControl()}
                           </div>
-                          ${this._renderRecordingVisibilityControl()}
-                        </div>
-                      `
-                    : ""
-                }
+                        `
+                      : ""
+                  }
                 </div>
               `
             : ""

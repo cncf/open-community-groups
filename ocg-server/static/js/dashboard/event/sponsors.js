@@ -380,49 +380,49 @@ export class SponsorsSection extends LitWrapper {
           this.selectedSponsors && this.selectedSponsors.length > 0
             ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full">
                 ${this.selectedSponsors.map(
-                (s, i) =>
-                  html`<div
-                      class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
-                    >
-                      <div
-                        class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+                  (s, i) =>
+                    html`<div
+                        class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
                       >
-                        <img
-                          src=${s.logo_url}
-                          alt="${s.name} logo"
-                          class="size-13 md:size-16 object-contain"
-                          loading="lazy"
-                        />
-                        <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
-                          <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+                        <div
+                          class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+                        >
+                          <img
+                            src=${s.logo_url}
+                            alt="${s.name} logo"
+                            class="size-13 md:size-16 object-contain"
+                            loading="lazy"
+                          />
+                          <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+                            <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+                          </div>
                         </div>
+                        <div class="leading-tight min-w-0 flex-1">
+                          <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
+                            ${s.name}
+                          </div>
+                          <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">
+                            ${s.level || ""}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          class="p-1 rounded-full hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          aria-label="Remove ${s.name}"
+                          title="Remove"
+                          @click=${() => this._onRemove(s.group_sponsor_id)}
+                          ?disabled=${this.disabled}
+                        >
+                          <div class="svg-icon size-4 icon-close bg-stone-600"></div>
+                        </button>
                       </div>
-                      <div class="leading-tight min-w-0 flex-1">
-                        <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
-                          ${s.name}
-                        </div>
-                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">
-                          ${s.level || ""}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        class="p-1 rounded-full hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                        aria-label="Remove ${s.name}"
-                        title="Remove"
-                        @click=${() => this._onRemove(s.group_sponsor_id)}
-                        ?disabled=${this.disabled}
-                      >
-                        <div class="svg-icon size-4 icon-close bg-stone-600"></div>
-                      </button>
-                    </div>
-                    <input
-                      type="hidden"
-                      name="sponsors[${i}][group_sponsor_id]"
-                      value=${s.group_sponsor_id}
-                    />
-                    <input type="hidden" name="sponsors[${i}][level]" value=${s.level || ""} />`,
-              )}
+                      <input
+                        type="hidden"
+                        name="sponsors[${i}][group_sponsor_id]"
+                        value=${s.group_sponsor_id}
+                      />
+                      <input type="hidden" name="sponsors[${i}][level]" value=${s.level || ""} />`,
+                )}
               </div>`
             : ""
         }

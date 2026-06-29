@@ -15,13 +15,11 @@ describe("dashboard group invitation requests list template", () => {
     // Load the invitation requests list template before checking profile trigger markup.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the requester identity area opens the shared user profile modal.
-    expect(template).to.include('<button type="button"');
-    expect(template).to.include("data-user-profile-modal");
-    expect(template).to.include("data-user-profile='{{ request.user|json }}'");
+    // Verify the requester identity area uses the shared profile trigger macro.
     expect(template).to.include(
-      'aria-label="View profile for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"',
+      "dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str()))",
     );
+    expect(template).to.include("request.user.name.as_deref() |assigned_or(request.user.username)");
   });
 
   it("uses the shared search convention for table filtering", async () => {

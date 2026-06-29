@@ -296,37 +296,24 @@
 
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
-              <button type="button"
-                      class="group flex w-full min-w-0 items-center space-x-5 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-                      data-user-profile-modal
-                      data-user-profile='{{ attendee.user|json }}'
-                      aria-label="View profile for {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}">
-                <logo-image class="shrink-0"
-                {% if let Some(photo_url) = &attendee.user.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                size="size-10" placeholder="{{ self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str()) }}">
-                </logo-image>
-                <div class="min-w-0">
-                  <div class="flex items-center space-x-3 mb-1 min-w-0">
-                    <div class="font-medium text-stone-900 truncate min-w-0 group-hover:text-primary-600">
-                      {% if (attendee.status == "invitation-pending" || attendee.status == "registration-questions-pending") && attendee.user.name.is_none() -%}
-                        {{ attendee.email }}
-                      {% else -%}
-                        {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}
-                      {% endif -%}
-                    </div>
-                    {% if attendee.status == "invitation-pending" -%}
-                      {{ badges::invitation_badge(label = "Invitation sent") -}}
-                    {% else if attendee.status == "confirmed" && attendee.manually_invited -%}
-                      {{ badges::invitation_badge(label = "Invited", tone = "success") -}}
-                    {% else if attendee.status == "invitation-rejected" -%}
-                      {{ badges::invitation_badge(label = "Invitation rejected", tone = "danger") -}}
-                    {% endif -%}
-                  </div>
-                  {% if attendee.user.name.is_some() -%}
-                    <div class="text-xs text-stone-600 truncate">{{ attendee.user.username }}</div>
+              {% call dashboard::user_profile_modal_trigger(attendee.user, self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str())) -%}
+              <div class="flex items-center space-x-3 mb-1 min-w-0">
+                <div class="font-medium text-stone-900 truncate min-w-0 group-hover:text-primary-600">
+                  {% if (attendee.status == "invitation-pending" || attendee.status == "registration-questions-pending") && attendee.user.name.is_none() -%}
+                    {{ attendee.email }}
+                  {% else -%}
+                    {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}
                   {% endif -%}
                 </div>
-              </button>
+                {% if attendee.status == "invitation-pending" -%}
+                  {{ badges::invitation_badge(label = "Invitation sent") -}}
+                {% else if attendee.status == "confirmed" && attendee.manually_invited -%}
+                  {{ badges::invitation_badge(label = "Invited", tone = "success") -}}
+                {% else if attendee.status == "invitation-rejected" -%}
+                  {{ badges::invitation_badge(label = "Invitation rejected", tone = "danger") -}}
+                {% endif -%}
+              </div>
+              {% endcall -%}
             </td>
             {# End attendee -#}
 

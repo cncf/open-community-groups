@@ -5,7 +5,7 @@
  * @param {boolean} options.bioIsHtml Whether the bio should render as trusted HTML.
  * @returns {Object} User modal event detail.
  */
-export const buildUserModalEventDetail = (user, { bioIsHtml = false } = {}) => ({
+const buildUserModalEventDetail = (user, { bioIsHtml = false } = {}) => ({
   name: user?.name,
   username: user?.username,
   imageUrl: user?.photo_url,

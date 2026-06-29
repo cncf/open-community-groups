@@ -74,17 +74,17 @@ export const renderLocationSearchDropdown = (state) => html`
             : html`
                 <div class="py-1">
                   ${repeat(
-                  state.searchResults,
-                  (result) => result.place_id,
-                  (result, index) =>
-                    renderLocationSearchResult({
-                      index,
-                      isHighlighted: index === state.highlightedIndex,
-                      onHighlight: state.onHighlight,
-                      onSelect: state.onSelect,
-                      result,
-                    }),
-                )}
+                    state.searchResults,
+                    (result) => result.place_id,
+                    (result, index) =>
+                      renderLocationSearchResult({
+                        index,
+                        isHighlighted: index === state.highlightedIndex,
+                        onHighlight: state.onHighlight,
+                        onSelect: state.onSelect,
+                        result,
+                      }),
+                  )}
                 </div>
               `
     }

@@ -204,42 +204,42 @@ export class CommunitySelector extends LitWrapper {
                     role="listbox"
                   >
                     ${repeat(
-                    this._filteredCommunities,
-                    (community) => community.community_id,
-                    (community, index) => {
-                      const isSelected = this._isSelected(community);
-                      const isActive = this._combobox.activeIndex === index;
-                      const isDisabled = isSelected || this._isSubmitting;
+                      this._filteredCommunities,
+                      (community) => community.community_id,
+                      (community, index) => {
+                        const isSelected = this._isSelected(community);
+                        const isActive = this._combobox.activeIndex === index;
+                        const isDisabled = isSelected || this._isSubmitting;
 
-                      let statusClass = "";
-                      if (isDisabled) {
-                        statusClass =
-                          "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
-                      } else if (isActive) {
-                        statusClass = "cursor-pointer text-stone-900 bg-stone-50";
-                      } else {
-                        statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
-                      }
+                        let statusClass = "";
+                        if (isDisabled) {
+                          statusClass =
+                            "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
+                        } else if (isActive) {
+                          statusClass = "cursor-pointer text-stone-900 bg-stone-50";
+                        } else {
+                          statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
+                        }
 
-                      return html`
-                        <li role="presentation" data-index=${index}>
-                          <button
-                            id="community-option-${community.community_id}"
-                            type="button"
-                            class="community-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
-                            role="option"
-                            ?disabled=${isDisabled}
-                            @click=${(event) => this._handleCommunityClick(event, community)}
-                            @mouseover=${() => this._combobox.setActiveIndex(index)}
-                          >
-                            <div class="text-xs/4 line-clamp-2">
-                              ${community.display_name || community.name}
-                            </div>
-                          </button>
-                        </li>
-                      `;
-                    },
-                  )}
+                        return html`
+                          <li role="presentation" data-index=${index}>
+                            <button
+                              id="community-option-${community.community_id}"
+                              type="button"
+                              class="community-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                              role="option"
+                              ?disabled=${isDisabled}
+                              @click=${(event) => this._handleCommunityClick(event, community)}
+                              @mouseover=${() => this._combobox.setActiveIndex(index)}
+                            >
+                              <div class="text-xs/4 line-clamp-2">
+                                ${community.display_name || community.name}
+                              </div>
+                            </button>
+                          </li>
+                        `;
+                      },
+                    )}
                   </ul>
                 `
               : html`<div class="px-4 py-3 text-sm text-stone-500">No communities found.</div>`

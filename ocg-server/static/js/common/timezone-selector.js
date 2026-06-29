@@ -181,41 +181,41 @@ export class TimezoneSelector extends LitWrapper {
                     role="listbox"
                   >
                     ${repeat(
-                    this._filteredTimezones,
-                    (tz) => tz,
-                    (timezone, index) => {
-                      const isSelected = this._isSelected(timezone);
-                      const isActive = this._combobox.activeIndex === index;
-                      const isItemDisabled = isSelected || this.disabled;
+                      this._filteredTimezones,
+                      (tz) => tz,
+                      (timezone, index) => {
+                        const isSelected = this._isSelected(timezone);
+                        const isActive = this._combobox.activeIndex === index;
+                        const isItemDisabled = isSelected || this.disabled;
 
-                      let statusClass = "";
-                      if (isItemDisabled) {
-                        statusClass =
-                          "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
-                      } else if (isActive) {
-                        statusClass = "cursor-pointer text-stone-900 bg-stone-50";
-                      } else {
-                        statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
-                      }
+                        let statusClass = "";
+                        if (isItemDisabled) {
+                          statusClass =
+                            "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
+                        } else if (isActive) {
+                          statusClass = "cursor-pointer text-stone-900 bg-stone-50";
+                        } else {
+                          statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
+                        }
 
-                      return html`
-                        <li role="presentation" data-index=${index}>
-                          <button
-                            id="timezone-option-${index}"
-                            type="button"
-                            class="w-full px-4 py-2 whitespace-normal min-h-10 flex items-center text-left focus:outline-none text-sm ${statusClass}"
-                            role="option"
-                            aria-selected=${isSelected ? "true" : "false"}
-                            ?disabled=${isItemDisabled}
-                            @click=${(event) => this._handleTimezoneClick(event, timezone)}
-                            @mouseover=${() => this._combobox.setActiveIndex(index)}
-                          >
-                            ${timezone}
-                          </button>
-                        </li>
-                      `;
-                    },
-                  )}
+                        return html`
+                          <li role="presentation" data-index=${index}>
+                            <button
+                              id="timezone-option-${index}"
+                              type="button"
+                              class="w-full px-4 py-2 whitespace-normal min-h-10 flex items-center text-left focus:outline-none text-sm ${statusClass}"
+                              role="option"
+                              aria-selected=${isSelected ? "true" : "false"}
+                              ?disabled=${isItemDisabled}
+                              @click=${(event) => this._handleTimezoneClick(event, timezone)}
+                              @mouseover=${() => this._combobox.setActiveIndex(index)}
+                            >
+                              ${timezone}
+                            </button>
+                          </li>
+                        `;
+                      },
+                    )}
                   </ul>
                 `
               : html`<div class="px-4 py-3 text-sm text-stone-500">No timezones found.</div>`

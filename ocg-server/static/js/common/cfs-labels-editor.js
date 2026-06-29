@@ -389,35 +389,35 @@ export class CfsLabelsEditor extends LitWrapper {
                             >
                               <div class="grid grid-cols-5 gap-2 place-items-center">
                                 ${repeat(
-                                paletteColors,
-                                (color) => color,
-                                (color) => {
-                                  const selected = row.color === color;
-                                  return html`
-                                    <button
-                                      type="button"
-                                      class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${
-                                        selected
-                                          ? "ring-2 ring-stone-300"
-                                          : "hover:ring-1 hover:ring-stone-200"
-                                      }"
-                                      style="--label-color:${color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
-                                      title="${color}"
-                                      role="option"
-                                      aria-selected=${selected}
-                                      aria-label="Select color ${color}"
-                                      ?disabled=${this.disabled}
-                                      @click=${() => this._setRowColor(row._row_id, color)}
-                                    >
-                                      ${
-                                        selected
-                                          ? html`<div class="svg-icon size-3 icon-check bg-black"></div>`
-                                          : ""
-                                      }
-                                    </button>
-                                  `;
-                                },
-                              )}
+                                  paletteColors,
+                                  (color) => color,
+                                  (color) => {
+                                    const selected = row.color === color;
+                                    return html`
+                                      <button
+                                        type="button"
+                                        class="inline-flex h-8 w-8 items-center justify-center rounded-full border transition ${
+                                          selected
+                                            ? "ring-2 ring-stone-300"
+                                            : "hover:ring-1 hover:ring-stone-200"
+                                        }"
+                                        style="--label-color:${color};border-color:var(--label-color);background-color:color-mix(in srgb, var(--label-color) 30%, transparent);"
+                                        title="${color}"
+                                        role="option"
+                                        aria-selected=${selected}
+                                        aria-label="Select color ${color}"
+                                        ?disabled=${this.disabled}
+                                        @click=${() => this._setRowColor(row._row_id, color)}
+                                      >
+                                        ${
+                                          selected
+                                            ? html`<div class="svg-icon size-3 icon-check bg-black"></div>`
+                                            : ""
+                                        }
+                                      </button>
+                                    `;
+                                  },
+                                )}
                               </div>
                             </div>
                           `
@@ -444,16 +444,16 @@ export class CfsLabelsEditor extends LitWrapper {
                     ? html`
                         <input type="hidden" name="${this.fieldName}[${index}][color]" .value=${row.color} />
                         ${
-                        row.event_cfs_label_id
-                          ? html`
-                              <input
-                                type="hidden"
-                                name="${this.fieldName}[${index}][event_cfs_label_id]"
-                                .value=${row.event_cfs_label_id}
-                              />
-                            `
-                          : ""
-                      }
+                          row.event_cfs_label_id
+                            ? html`
+                                <input
+                                  type="hidden"
+                                  name="${this.fieldName}[${index}][event_cfs_label_id]"
+                                  .value=${row.event_cfs_label_id}
+                                />
+                              `
+                            : ""
+                        }
                         <input type="hidden" name="${this.fieldName}[${index}][name]" .value=${trimmedName} />
                       `
                     : ""
