@@ -1379,8 +1379,25 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     assert_eq!(output.all_attendees_email_recipient_total, 1);
     assert_eq!(output.total, 2);
     assert_eq!(output.attendees.len(), 2);
-    assert_eq!(output.attendees[0].user_id, attendee_id());
-    assert_eq!(output.attendees[0].username, "contract-attendee");
+    assert_eq!(output.attendees[0].user.user_id, attendee_id());
+    assert_eq!(output.attendees[0].user.username, "contract-attendee");
+    assert_eq!(
+        output.attendees[0].user.bio.as_deref(),
+        Some("Attends contract test events")
+    );
+    assert_eq!(
+        output.attendees[0].user.github_url.as_deref(),
+        Some("https://github.com/contract-attendee")
+    );
+    assert_eq!(
+        output.attendees[0]
+            .user
+            .provider
+            .as_ref()
+            .and_then(|provider| provider.github.as_ref())
+            .map(|github| github.username.as_str()),
+        Some("contract-attendee")
+    );
     assert!(output.attendees[0].can_receive_attendee_email);
     assert!(output.attendees[0].checked_in);
     assert!(output.attendees[0].registration_answers.is_some());
@@ -1389,9 +1406,8 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
         "pre-registered.contract@example.com"
     );
     assert!(output.attendees[1].manually_invited);
-    assert_eq!(output.attendees[1].name, None);
     assert_eq!(output.attendees[1].status, "invitation-pending");
-    assert_eq!(output.attendees[1].user_id, pre_registered_id());
+    assert_eq!(output.attendees[1].user.user_id, pre_registered_id());
 
     Ok(())
 }
@@ -1415,7 +1431,15 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
         output.invitation_requests[0].invitation_request_status,
         EventInvitationRequestStatus::Pending
     );
-    assert_eq!(output.invitation_requests[0].user_id, waitlist_id());
+    assert_eq!(output.invitation_requests[0].user.user_id, waitlist_id());
+    assert_eq!(
+        output.invitation_requests[0].user.username,
+        "contract-waitlist"
+    );
+    assert_eq!(
+        output.invitation_requests[0].user.bio.as_deref(),
+        Some("Waits for contract test events")
+    );
 
     Ok(())
 }
@@ -1435,8 +1459,12 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
 
     assert_eq!(output.total, 1);
     assert_eq!(output.waitlist.len(), 1);
-    assert_eq!(output.waitlist[0].user_id, waitlist_id());
-    assert_eq!(output.waitlist[0].username, "contract-waitlist");
+    assert_eq!(output.waitlist[0].user.user_id, waitlist_id());
+    assert_eq!(output.waitlist[0].user.username, "contract-waitlist");
+    assert_eq!(
+        output.waitlist[0].user.website_url.as_deref(),
+        Some("https://example.com/waitlist")
+    );
     assert_eq!(output.waitlist[0].waitlist_position, 1);
 
     Ok(())

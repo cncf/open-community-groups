@@ -45,11 +45,19 @@ returns json as $$
                 ep.discount_code,
                 ep.event_purchase_id,
                 ep.ticket_title,
+                u.bio,
+                u.bluesky_url,
                 u.name,
+                u.facebook_url,
+                u.github_url,
+                u.linkedin_url,
                 u.photo_url,
+                get_public_user_provider(u.provider) as provider,
                 err.status as refund_request_status,
+                u.twitter_url,
                 u.tsdoc,
                 u.title,
+                u.website_url,
 
                 (
                     ea.status in ('confirmed', 'registration-questions-pending')
@@ -122,20 +130,31 @@ returns json as $$
                 manually_invited,
                 registration_answers,
                 status,
-                user_id,
-                username,
+                json_strip_nulls(json_build_object(
+                    'user_id', user_id,
+                    'username', username,
+
+                    'bio', bio,
+                    'bluesky_url', bluesky_url,
+                    'company', company,
+                    'facebook_url', facebook_url,
+                    'github_url', github_url,
+                    'linkedin_url', linkedin_url,
+                    'name', name,
+                    'photo_url', photo_url,
+                    'provider', provider,
+                    'title', title,
+                    'twitter_url', twitter_url,
+                    'website_url', website_url
+                )) as "user",
 
                 amount_minor,
                 checked_in_at,
-                company,
                 currency_code,
                 discount_code,
                 event_purchase_id,
-                name,
-                photo_url,
                 refund_request_status,
                 ticket_title,
-                title,
 
                 can_receive_attendee_email
             from filtered_attendees

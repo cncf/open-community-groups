@@ -35,12 +35,20 @@ returns json as $$
                 u.user_id,
                 u.username,
 
+                u.bio,
+                u.bluesky_url,
                 u.company,
+                u.facebook_url,
+                u.github_url,
+                u.linkedin_url,
                 u.name,
                 u.photo_url,
+                get_public_user_provider(u.provider) as provider,
                 extract(epoch from eir.reviewed_at)::bigint as reviewed_at,
+                u.twitter_url,
                 u.tsdoc,
-                u.title
+                u.title,
+                u.website_url
             from event_invitation_request eir
             join event e on e.event_id = eir.event_id
             join "user" u on u.user_id = eir.user_id
@@ -65,14 +73,25 @@ returns json as $$
             select
                 created_at,
                 invitation_request_status,
-                user_id,
-                username,
+                json_strip_nulls(json_build_object(
+                    'user_id', user_id,
+                    'username', username,
 
-                company,
-                name,
-                photo_url,
-                reviewed_at,
-                title
+                    'bio', bio,
+                    'bluesky_url', bluesky_url,
+                    'company', company,
+                    'facebook_url', facebook_url,
+                    'github_url', github_url,
+                    'linkedin_url', linkedin_url,
+                    'name', name,
+                    'photo_url', photo_url,
+                    'provider', provider,
+                    'title', title,
+                    'twitter_url', twitter_url,
+                    'website_url', website_url
+                )) as "user",
+
+                reviewed_at
             from filtered_invitation_requests
             order by
                 case invitation_request_status

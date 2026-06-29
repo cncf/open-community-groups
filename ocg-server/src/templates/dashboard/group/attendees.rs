@@ -14,6 +14,7 @@ use crate::{
         pagination::{self, Pagination, ToRawQuery},
         payments::{EventRefundRequestStatus, format_amount_minor},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
+        user::User,
     },
     validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
@@ -68,36 +69,26 @@ pub struct Attendee {
     pub manually_invited: bool,
     /// Event attendee status.
     pub status: String,
-    /// User id.
-    pub user_id: Uuid,
-    /// Username.
-    pub username: String,
+    /// Public profile payload for the attendee.
+    pub user: User,
 
     /// Purchase amount in minor units.
     pub amount_minor: Option<i64>,
     /// Timestamp when the attendee checked in.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub checked_in_at: Option<DateTime<Utc>>,
-    /// Company the user represents.
-    pub company: Option<String>,
     /// Currency used for the purchase.
     pub currency_code: Option<String>,
     /// Discount code applied to the purchase.
     pub discount_code: Option<String>,
     /// Purchase identifier.
     pub event_purchase_id: Option<Uuid>,
-    /// Full name.
-    pub name: Option<String>,
-    /// URL to user's avatar.
-    pub photo_url: Option<String>,
     /// Refund request status for the attendee purchase.
     pub refund_request_status: Option<EventRefundRequestStatus>,
     /// Registration answers submitted by the attendee, when configured.
     pub registration_answers: Option<QuestionnaireAnswers>,
     /// Ticket title for the attendee purchase.
     pub ticket_title: Option<String>,
-    /// Title held by the user.
-    pub title: Option<String>,
 }
 
 /// Filter parameters for attendee list page URLs.

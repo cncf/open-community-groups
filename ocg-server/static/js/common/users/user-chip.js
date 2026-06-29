@@ -2,6 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
+import { dispatchUserModalOpenEvent } from "/static/js/common/users/user-modal-event.js";
 import "/static/js/common/media/logo-image.js";
 
 /**
@@ -50,28 +51,7 @@ export class UserChip extends LitWrapper {
 
     event.preventDefault();
 
-    this.dispatchEvent(
-      new CustomEvent("open-user-modal", {
-        detail: {
-          name: this.user.name,
-          username: this.user.username,
-          imageUrl: this.user.photo_url,
-          jobTitle: this.user.title,
-          company: this.user.company,
-          bio: this.user.bio,
-          bioIsHtml: this.bioIsHtml,
-          blueskyUrl: this.user.bluesky_url,
-          facebookUrl: this.user.facebook_url,
-          githubUrl: this.user.github_url,
-          linkedinUrl: this.user.linkedin_url,
-          provider: this.user.provider,
-          twitterUrl: this.user.twitter_url,
-          websiteUrl: this.user.website_url,
-        },
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    dispatchUserModalOpenEvent(this, this.user, { bioIsHtml: this.bioIsHtml });
   }
 
   _handleKeydown(event) {
@@ -104,11 +84,15 @@ export class UserChip extends LitWrapper {
     if (this.small) {
       return html`
         <div
-          class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 ${this.featured
-            ? "bg-amber-50/50 border border-amber-200 text-amber-800"
-            : "bg-stone-100 text-stone-700"} ${isClickable
-            ? `cursor-pointer ${this.featured ? "hover:border-amber-400 hover:bg-amber-100/70" : "hover:bg-stone-200"} transition-colors`
-            : ""}"
+          class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 ${
+            this.featured
+              ? "bg-amber-50/50 border border-amber-200 text-amber-800"
+              : "bg-stone-100 text-stone-700"
+          } ${
+            isClickable
+              ? `cursor-pointer ${this.featured ? "hover:border-amber-400 hover:bg-amber-100/70" : "hover:bg-stone-200"} transition-colors`
+              : ""
+          }"
           @click=${isClickable ? this._handleClick : null}
           role=${isClickable ? "button" : ""}
           tabindex=${isClickable ? "0" : "-1"}
@@ -131,9 +115,11 @@ export class UserChip extends LitWrapper {
 
     return html`
       <div
-        class="relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full ${isClickable
-          ? `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-300"} hover:shadow-sm transition-all`
-          : ""}"
+        class="relative flex items-center gap-4 rounded-lg border ${cardSize} ${borderState} w-full ${
+          isClickable
+            ? `cursor-pointer ${this.featured ? "hover:border-amber-500" : "hover:border-primary-300"} hover:shadow-sm transition-all`
+            : ""
+        }"
         @click=${isClickable ? this._handleClick : null}
         role=${isClickable ? "button" : ""}
         tabindex=${isClickable ? "0" : "-1"}

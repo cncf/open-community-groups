@@ -605,20 +605,20 @@ async fn test_download_csv_success() {
         Some(group_id),
     );
     let mut attendee = sample_attendee();
-    attendee.name = Some("Doe, Jane".to_string());
-    attendee.company = Some("Example \"Cloud\"".to_string());
+    attendee.user.name = Some("Doe, Jane".to_string());
+    attendee.user.company = Some("Example \"Cloud\"".to_string());
     attendee.manually_invited = true;
-    attendee.title = Some("Principal\nEngineer".to_string());
+    attendee.user.title = Some("Principal\nEngineer".to_string());
     let mut attendee_without_name = sample_attendee();
-    attendee_without_name.name = None;
-    attendee_without_name.username = "anonymous-attendee".to_string();
-    attendee_without_name.company = None;
-    attendee_without_name.title = None;
+    attendee_without_name.user.name = None;
+    attendee_without_name.user.username = "anonymous-attendee".to_string();
+    attendee_without_name.user.company = None;
+    attendee_without_name.user.title = None;
     let mut pending_invitation = sample_attendee();
-    pending_invitation.name = Some("Pending Invite".to_string());
+    pending_invitation.user.name = Some("Pending Invite".to_string());
     pending_invitation.status = "invitation-pending".to_string();
     let mut rejected_invitation = sample_attendee();
-    rejected_invitation.name = Some("Rejected Invite".to_string());
+    rejected_invitation.user.name = Some("Rejected Invite".to_string());
     rejected_invitation.status = "invitation-rejected".to_string();
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
@@ -737,10 +737,10 @@ async fn test_download_csv_with_answers_success() {
         ],
     });
     let mut attendee_without_answers = sample_attendee();
-    attendee_without_answers.name = Some("No Answers".to_string());
+    attendee_without_answers.user.name = Some("No Answers".to_string());
     attendee_without_answers.registration_answers = None;
     let mut pending_invitation = sample_attendee();
-    pending_invitation.name = Some("Pending Invite".to_string());
+    pending_invitation.user.name = Some("Pending Invite".to_string());
     pending_invitation.status = "invitation-pending".to_string();
     let event = sample_event_summary(event_id, group_id);
     let registration_questions = vec![
@@ -1455,7 +1455,7 @@ async fn test_list_page_success() {
     pending_questions_attendee.checked_in = false;
     pending_questions_attendee.manually_invited = false;
     pending_questions_attendee.status = "registration-questions-pending".to_string();
-    pending_questions_attendee.user_id = pending_questions_attendee_id;
+    pending_questions_attendee.user.user_id = pending_questions_attendee_id;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
@@ -1726,8 +1726,8 @@ async fn test_list_page_with_search_query() {
     );
     let mut attendee = sample_attendee();
     attendee.email = "ana@example.test".to_string();
-    attendee.name = Some("Ana Lopez".to_string());
-    attendee.company = Some("Example Co".to_string());
+    attendee.user.name = Some("Ana Lopez".to_string());
+    attendee.user.company = Some("Example Co".to_string());
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 1,

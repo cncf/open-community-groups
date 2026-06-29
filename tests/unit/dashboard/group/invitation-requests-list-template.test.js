@@ -11,6 +11,19 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group invitation requests list template", () => {
+  it("renders requester identity cells as profile modal triggers", async () => {
+    // Load the invitation requests list template before checking profile trigger markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the requester identity area opens the shared user profile modal.
+    expect(template).to.include('<button type="button"');
+    expect(template).to.include("data-user-profile-modal");
+    expect(template).to.include("data-user-profile='{{ request.user|json }}'");
+    expect(template).to.include(
+      'aria-label="View profile for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"',
+    );
+  });
+
   it("uses the shared search convention for table filtering", async () => {
     // Load the invitation requests list template before checking search markup.
     const template = normalizeWhitespace(await loadTemplate());

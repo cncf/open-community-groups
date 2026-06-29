@@ -32,7 +32,10 @@
   <script type="module" src="/static/js/dashboard/team-role-form.js"></script>
   <script type="module" src="/static/js/common/online-event-details.js"></script>
   <script type="module" src="/static/js/common/users/speakers-selector.js"></script>
+  <script type="module"
+          src="/static/js/common/users/user-profile-modal-triggers.js"></script>
   <script type="module" src="/static/js/common/users/user-search-selector.js"></script>
+  <script type="module" src="/static/js/common/modals/user-info-modal.js"></script>
   <script type="module" src="/static/js/common/timezone-selector.js"></script>
 {% endblock scripts -%}
 
@@ -135,4 +138,6 @@
     {{ feedback::alerts(messages) -}}
   {% endif -%}
   {# End messages -#}
+
+  <user-info-modal></user-info-modal>
 {% endblock dashboard_main -%}

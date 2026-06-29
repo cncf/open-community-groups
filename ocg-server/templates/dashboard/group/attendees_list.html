@@ -283,31 +283,35 @@
               {% if can_manage_events && !event.canceled && attendee.can_receive_attendee_email -%}
                 <input type="checkbox"
                        class="checkbox-primary"
-                       aria-label="Select {{ attendee.name|assigned_or(attendee.username) }} for email"
+                       aria-label="Select {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }} for email"
                        data-attendee-email-selection-checkbox
                        data-recipient-email="{{ attendee.email }}"
-                       data-recipient-id="{{ attendee.user_id }}"
-                       data-recipient-name="{{ attendee.name|assigned_or(attendee.username) }}"
-                       data-recipient-username="{{ attendee.username }}"
-                       value="{{ attendee.user_id }}">
+                       data-recipient-id="{{ attendee.user.user_id }}"
+                       data-recipient-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
+                       data-recipient-username="{{ attendee.user.username }}"
+                       value="{{ attendee.user.user_id }}">
               {% endif -%}
             </td>
             {# End email selection -#}
 
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
-              <div class="flex items-center space-x-5">
-                <logo-image
-                {% if let Some(photo_url) = &attendee.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str()) }}">
+              <button type="button"
+                      class="group flex w-full min-w-0 items-center space-x-5 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                      data-user-profile-modal
+                      data-user-profile='{{ attendee.user|json }}'
+                      aria-label="View profile for {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}">
+                <logo-image class="shrink-0"
+                {% if let Some(photo_url) = &attendee.user.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                size="size-10" placeholder="{{ self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str()) }}">
                 </logo-image>
                 <div class="min-w-0">
                   <div class="flex items-center space-x-3 mb-1 min-w-0">
-                    <div class="font-medium text-stone-900 truncate min-w-0">
-                      {% if (attendee.status == "invitation-pending" || attendee.status == "registration-questions-pending") && attendee.name.is_none() -%}
+                    <div class="font-medium text-stone-900 truncate min-w-0 group-hover:text-primary-600">
+                      {% if (attendee.status == "invitation-pending" || attendee.status == "registration-questions-pending") && attendee.user.name.is_none() -%}
                         {{ attendee.email }}
                       {% else -%}
-                        {{ attendee.name|assigned_or(attendee.username) }}
+                        {{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}
                       {% endif -%}
                     </div>
                     {% if attendee.status == "invitation-pending" -%}
@@ -318,19 +322,19 @@
                       {{ badges::invitation_badge(label = "Invitation rejected", tone = "danger") -}}
                     {% endif -%}
                   </div>
-                  {% if attendee.name.is_some() -%}
-                    <div class="text-xs text-stone-600 truncate">{{ attendee.username }}</div>
+                  {% if attendee.user.name.is_some() -%}
+                    <div class="text-xs text-stone-600 truncate">{{ attendee.user.username }}</div>
                   {% endif -%}
                 </div>
-              </div>
+              </button>
             </td>
             {# End attendee -#}
 
             {# Position -#}
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0">
               <div class="flex flex-col space-y-1">
-                <div class="font-medium text-stone-900 truncate">{{ attendee.company|assigned_or("-") }}</div>
-                {% if let Some(title) = &attendee.title -%}
+                <div class="font-medium text-stone-900 truncate">{{ attendee.user.company.as_deref() |assigned_or("-") }}</div>
+                {% if let Some(title) = &attendee.user.title -%}
                   <div class="text-xs text-stone-600 truncate">{{ title }}</div>
                 {% endif -%}
               </div>
@@ -398,7 +402,7 @@
                                    {% else %}
                                      Check in attendee
                                    {% endif %}"
-                       data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/check-in"
+                       data-url="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/check-in"
                        {% if attendee.checked_in %}checked{% endif %}
                        {% if attendee.status != "confirmed" || attendee.checked_in || !can_manage_events || event.canceled %}
                          disabled
@@ -433,14 +437,14 @@
                           <li>
                             <button type="button"
                                     data-attendee-answers-open
-                                    data-attendee-answers-source="attendee-answers-{{ attendee.user_id }}"
-                                    data-attendee-name="{{ attendee.name|assigned_or(attendee.username) }}"
+                                    data-attendee-answers-source="attendee-answers-{{ attendee.user.user_id }}"
+                                    data-attendee-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
                                     role="menuitem"
                                     class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                               <div class="svg-icon size-4 icon-list-check shrink-0 bg-stone-500"></div>
                               <span>View answers</span>
                             </button>
-                            <div id="attendee-answers-{{ attendee.user_id }}" hidden>
+                            <div id="attendee-answers-{{ attendee.user.user_id }}" hidden>
                               <ol class="space-y-3">
                                 {% for question in registration_questions -%}
                                   <li class="rounded-md border border-stone-200 bg-white p-4">
@@ -482,8 +486,8 @@
                           && (attendee.status == "invitation-pending"
                           || (attendee.status == "registration-questions-pending" && attendee.manually_invited)) -%}
                           <li>
-                            <button id="cancel-invitation-{{ attendee.user_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"
+                            <button id="cancel-invitation-{{ attendee.user.user_id }}"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/invitation/cancel"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
                                     hx-disabled-elt="this"
@@ -507,9 +511,9 @@
                                     data-event-id="{{ event.event_id }}"
                                     data-notification-scope="selected"
                                     data-recipient-email="{{ attendee.email }}"
-                                    data-recipient-id="{{ attendee.user_id }}"
-                                    data-recipient-name="{{ attendee.name|assigned_or(attendee.username) }}"
-                                    data-recipient-username="{{ attendee.username }}"
+                                    data-recipient-id="{{ attendee.user.user_id }}"
+                                    data-recipient-name="{{ attendee.user.name.as_deref() |assigned_or(attendee.user.username) }}"
+                                    data-recipient-username="{{ attendee.user.username }}"
                                     role="menuitem"
                                     class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                               <div class="svg-icon size-4 icon-email shrink-0 bg-stone-500"></div>
@@ -519,9 +523,9 @@
                         {% endif -%}
                         {% if can_manage_events && attendee.status == "confirmed" -%}
                           <li>
-                            <button id="cancel-attendance-{{ attendee.user_id }}"
+                            <button id="cancel-attendance-{{ attendee.user.user_id }}"
                                     {% if !self::is_paid_attendee(attendee.amount_minor) && !event.canceled && !event.is_past() -%}
-                                      hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel this attendance?" data-confirm-text="Yes" data-success-message="Attendance canceled." data-error-message="Something went wrong canceling this attendance. Please try again later."
+                                      hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance" hx-indicator="#dashboard-spinner" hx-trigger="confirmed" hx-disabled-elt="this" data-confirm-action data-confirm-message="Are you sure you want to cancel this attendance?" data-confirm-text="Yes" data-success-message="Attendance canceled." data-error-message="Something went wrong canceling this attendance. Please try again later."
                                     {% else if self::is_paid_attendee(attendee.amount_minor) -%}
                                       disabled title="Paid attendee attendance cannot be canceled from attendee actions."
                                     {% else if event.canceled -%}
@@ -540,8 +544,8 @@
                         {% if can_manage_events
                           && attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Pending) -%}
                           <li>
-                            <button id="approve-refund-{{ attendee.user_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
+                            <button id="approve-refund-{{ attendee.user.user_id }}"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/refund/approve"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     role="menuitem"
@@ -552,8 +556,8 @@
                             </button>
                           </li>
                           <li>
-                            <button id="reject-refund-{{ attendee.user_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/reject"
+                            <button id="reject-refund-{{ attendee.user.user_id }}"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/refund/reject"
                                     hx-indicator="#dashboard-spinner"
                                     hx-trigger="confirmed"
                                     hx-disabled-elt="this"
@@ -571,8 +575,8 @@
                         {% else if can_manage_events
                           && attendee.refund_request_status == Some(crate::types::payments::EventRefundRequestStatus::Approving) -%}
                           <li>
-                            <button id="retry-refund-{{ attendee.user_id }}"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/refund/approve"
+                            <button id="retry-refund-{{ attendee.user.user_id }}"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/refund/approve"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     role="menuitem"

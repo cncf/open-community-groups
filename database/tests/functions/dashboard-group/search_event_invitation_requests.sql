@@ -60,37 +60,54 @@ values
 
 -- Users
 insert into "user" (
-    user_id,
     auth_hash,
+    bio,
     email,
+    github_url,
+    provider,
+    user_id,
     username,
+    website_url,
+
     company,
     name,
     photo_url,
     title
 ) values (
-    :'user1ID',
     gen_random_bytes(32),
+    'Reviews invitation requests',
     'alice@example.com',
+    'https://github.com/alice',
+    '{"github": {"username": "alice-gh", "private": "secret"}, "linuxfoundation": {"username": "alice-lf", "subject": "secret"}}'::jsonb,
+    :'user1ID',
     'alice',
+    'https://example.com/alice',
     'Cloud Corp',
     'Alice',
     'https://example.com/alice.png',
     'Principal Engineer'
 ), (
-    :'user2ID',
     gen_random_bytes(32),
+    null,
     'bob@example.com',
+    null,
+    null,
+    :'user2ID',
     'bob',
+    null,
     null,
     null,
     'https://example.com/bob.png',
     null
 ), (
-    :'user3ID',
     gen_random_bytes(32),
+    null,
     'carol@example.com',
+    null,
+    null,
+    :'user3ID',
     'carol',
+    null,
     null,
     'Carol',
     null,
@@ -190,9 +207,9 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
-            {"created_at": 1704153600, "invitation_request_status": "pending", "user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "company": null, "name": null, "photo_url": "https://example.com/bob.png", "reviewed_at": null, "title": null},
-            {"created_at": 1704067200, "invitation_request_status": "accepted", "user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/alice.png", "reviewed_at": 1704070800, "title": "Principal Engineer"},
-            {"created_at": 1704240000, "invitation_request_status": "rejected", "user_id": "3a2f0000-0000-0000-0000-000000000011", "username": "carol", "company": null, "name": "Carol", "photo_url": null, "reviewed_at": 1704243600, "title": "Designer"}
+            {"created_at": 1704153600, "invitation_request_status": "pending", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000010", "username": "bob", "photo_url": "https://example.com/bob.png"}, "reviewed_at": null},
+            {"created_at": 1704067200, "invitation_request_status": "accepted", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800},
+            {"created_at": 1704240000, "invitation_request_status": "rejected", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000011", "username": "carol", "name": "Carol", "title": "Designer"}, "reviewed_at": 1704243600}
         ]'::jsonb,
         'total', 3
     ),
@@ -207,7 +224,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
-            {"created_at": 1704067200, "invitation_request_status": "accepted", "user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/alice.png", "reviewed_at": 1704070800, "title": "Principal Engineer"}
+            {"created_at": 1704067200, "invitation_request_status": "accepted", "user": {"user_id": "3a2f0000-0000-0000-0000-000000000009", "username": "alice", "bio": "Reviews invitation requests", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "reviewed_at": 1704070800}
         ]'::jsonb,
         'total', 3
     ),
@@ -268,7 +285,7 @@ select ok(
             )::jsonb as data
         )
         select (data->>'total')::int = 1
-        and data#>>'{invitation_requests,0,user_id}' = :'user1ID'
+        and data#>>'{invitation_requests,0,user,user_id}' = :'user1ID'
         from result
     ),
     'Should filter invitation requests by identity search query'
@@ -289,7 +306,7 @@ select ok(
             )::jsonb as data
         )
         select (data->>'total')::int = 1
-        and data#>>'{invitation_requests,0,user_id}' = :'user1ID'
+        and data#>>'{invitation_requests,0,user,user_id}' = :'user1ID'
         from result
     ),
     'Should filter invitation requests by company search query'
@@ -310,7 +327,7 @@ select ok(
             )::jsonb as data
         )
         select (data->>'total')::int = 1
-        and data#>>'{invitation_requests,0,user_id}' = :'user3ID'
+        and data#>>'{invitation_requests,0,user,user_id}' = :'user3ID'
         from result
     ),
     'Should filter invitation requests by title search query'
