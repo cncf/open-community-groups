@@ -7,6 +7,7 @@ import {
   navigateToEvent,
   navigateToPath,
 } from "../../../utils.js";
+import { expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 test.describe("group dashboard waitlist tab", () => {
   test("organizer can open the waitlist tab for an event with waitlist disabled", async ({
@@ -317,6 +318,17 @@ test.describe("group dashboard waitlist tab", () => {
       await expect(waitlistRow).toBeVisible();
       await expect(waitlistRow).toContainText("e2e-member-2");
       await expect(waitlistRow).toContainText("1");
+      await expectUserProfileModalFromRow(
+        organizerGroupPage,
+        waitlistRow,
+        "View profile for E2E Member Two",
+        "E2E Member Two",
+        [
+          "Member Experience Engineer at Platform Ops Lab",
+          "Member Two profile for dashboard modal coverage.",
+          "openprofile.dev",
+        ],
+      );
 
       // Target the search controls used to submit waitlist filters.
       const searchInput = waitlistContent.getByRole("textbox", {

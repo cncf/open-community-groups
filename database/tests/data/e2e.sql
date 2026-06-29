@@ -1036,6 +1036,26 @@ insert into "user" (
     'f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a2'
 );
 
+update "user"
+set
+    bio = 'Member Two profile for dashboard modal coverage.',
+    company = 'Platform Ops Lab',
+    github_url = 'https://github.com/e2e-member-2',
+    provider = '{"linuxfoundation": {"username": "e2e-member-2-lf", "issuer": "private-member-issuer", "subject": "private-member-subject"}}'::jsonb,
+    title = 'Member Experience Engineer',
+    website_url = 'https://example.com/e2e-member-2'
+where user_id = '77777777-7777-7777-7777-777777777706';
+
+update "user"
+set
+    bio = 'Pending One profile for invitation request modal coverage.',
+    company = 'Approval Queue',
+    github_url = 'https://github.com/e2e-pending-1',
+    provider = '{"linuxfoundation": {"username": "e2e-pending-1-lf", "issuer": "private-pending-issuer", "subject": "private-pending-subject"}}'::jsonb,
+    title = 'Community Applicant',
+    website_url = 'https://example.com/e2e-pending-1'
+where user_id = '77777777-7777-7777-7777-777777777707';
+
 -- ============================================================================
 -- COMMUNITY TEAM
 -- Accepted roles and pending invitations for community dashboards
