@@ -21,6 +21,7 @@ returns json as $$
         'bio', bio,
         'bluesky_url', bluesky_url,
         'city', city,
+        'coffee_meet_enabled', coffee_meet_enabled,
         'company', company,
         'country', country,
         'facebook_url', facebook_url,

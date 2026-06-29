@@ -925,6 +925,7 @@ select columns_are('user', array[
     'bio',
     'bluesky_url',
     'city',
+    'coffee_meet_enabled',
     'company',
     'country',
     'facebook_url',

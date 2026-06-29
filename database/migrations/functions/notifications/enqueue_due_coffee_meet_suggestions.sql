@@ -43,6 +43,7 @@ begin
         where cms.active = true
           and cms.next_suggestion_at <= current_timestamp
           and subscriber.email_verified = true
+          and subscriber.coffee_meet_enabled = true
           and g.active = true
           and g.deleted = false
           and a.active = true
@@ -78,6 +79,7 @@ begin
             where gm.group_id = v_due.group_id
               and gm.user_id <> v_due.user_id
               and u.email_verified = true
+              and u.coffee_meet_enabled = true
             group by u.user_id
         ) candidate
         order by candidate.last_suggested_at asc nulls first, random()

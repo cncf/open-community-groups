@@ -19,7 +19,8 @@ begin
         user_id,
         email,
         username,
-        name
+        name,
+        coffee_meet_enabled
     into v_recipient
     from "user"
     where lower(username) = lower(p_recipient_username)
@@ -32,6 +33,10 @@ begin
 
     if v_recipient.user_id = p_requester_user_id then
         raise exception 'you cannot request coffee from yourself';
+    end if;
+
+    if not v_recipient.coffee_meet_enabled then
+        raise exception 'member does not accept coffee requests';
     end if;
 
     select user_id, email, username, name

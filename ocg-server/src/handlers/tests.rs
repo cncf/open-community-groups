@@ -334,6 +334,7 @@ pub(crate) fn sample_auth_user(user_id: Uuid, auth_hash: &str) -> AuthUser {
         username: "test-user".to_string(),
 
         belongs_to_any_group_team: Some(true),
+        coffee_meet_enabled: true,
         has_password: Some(true),
         ..Default::default()
     }
@@ -854,6 +855,7 @@ pub(crate) fn sample_group_member() -> GroupMember {
         bio: Some("Builds alliance tooling.".to_string()),
         bluesky_url: Some("https://bsky.app/profile/member.example".to_string()),
         city: Some("Baku".to_string()),
+        coffee_meet_enabled: true,
         company: Some("Example".to_string()),
         country: Some("Azerbaijan".to_string()),
         facebook_url: Some("https://facebook.com/member".to_string()),

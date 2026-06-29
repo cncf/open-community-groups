@@ -590,6 +590,9 @@ pub(crate) struct User {
     pub bluesky_url: Option<String>,
     /// User's city.
     pub city: Option<String>,
+    /// Whether this user accepts direct `CoffeeMeet` requests.
+    #[serde(default = "default_true")]
+    pub coffee_meet_enabled: bool,
     /// User's company.
     pub company: Option<String>,
     /// User's country.
@@ -632,6 +635,10 @@ pub(crate) struct User {
     pub website_url: Option<String>,
     /// User's `YouTube` URL.
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl axum_login::AuthUser for User {

@@ -155,6 +155,7 @@ impl MembersPage {
 }
 
 /// Alliance member summary information.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct AllianceMember {
     /// User identifier.
@@ -172,6 +173,9 @@ pub(crate) struct AllianceMember {
     pub bluesky_url: Option<String>,
     /// City where the user is based.
     pub city: Option<String>,
+    /// Whether this member accepts direct `CoffeeMeet` requests.
+    #[serde(default = "default_true")]
+    pub coffee_meet_enabled: bool,
     /// Country where the user is based.
     pub country: Option<String>,
     /// Facebook profile URL.
@@ -208,6 +212,10 @@ pub(crate) struct AllianceMember {
     pub website_url: Option<String>,
     /// `YouTube` channel URL.
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Filter parameters for alliance member directory pagination.

@@ -17,6 +17,9 @@ pub(crate) struct User {
     pub bio: Option<String>,
     /// Bluesky profile URL.
     pub bluesky_url: Option<String>,
+    /// Whether this member accepts direct `CoffeeMeet` requests.
+    #[serde(default = "default_true")]
+    pub coffee_meet_enabled: bool,
     /// Company the user works for.
     pub company: Option<String>,
     /// Facebook profile URL.
@@ -56,6 +59,9 @@ pub(crate) struct PublicUserProfile {
     pub bio: Option<String>,
     /// Bluesky profile URL.
     pub bluesky_url: Option<String>,
+    /// Whether this member accepts direct `CoffeeMeet` requests.
+    #[serde(default = "default_true")]
+    pub coffee_meet_enabled: bool,
     /// Company the user works for.
     pub company: Option<String>,
     /// Facebook profile URL.
@@ -88,6 +94,10 @@ pub(crate) struct PublicUserProfile {
     pub website_url: Option<String>,
     /// `YouTube` channel URL.
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Summary user information.

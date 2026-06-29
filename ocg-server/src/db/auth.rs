@@ -410,6 +410,7 @@ where
                 'username', username,
                 'bio', bio,
                 'bluesky_url', bluesky_url,
+                'coffee_meet_enabled', coffee_meet_enabled,
                 'company', company,
                 'facebook_url', facebook_url,
                 'github_url', github_url,

@@ -182,6 +182,25 @@
   </div>
   {# End Mentorship services section -#}
 
+  {# CoffeeMeet section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "CoffeeMeet", description = "Choose whether you participate in CoffeeMeet requests and member suggestions.") -}}
+    <div class="mt-10 max-w-5xl">
+      <label class="inline-flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-medium text-stone-700">
+        <input type="checkbox"
+               name="coffee_meet_enabled"
+               value="true"
+               {% if user.coffee_meet_enabled %}checked{% endif %}
+               class="rounded border-stone-300 text-primary-600 focus:ring-primary-500">
+        Enable CoffeeMeet
+      </label>
+      <p class="form-legend">
+        When enabled, members can request coffee from your public profile and you can be included in recurring CoffeeMeet suggestions. Your group subscriptions are managed from the CoffeeMeet dashboard tab.
+      </p>
+    </div>
+  </div>
+  {# End CoffeeMeet section -#}
+
   {# Location section -#}
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Location", description = "Optional location information.") -}}

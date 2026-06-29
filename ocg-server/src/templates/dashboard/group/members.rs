@@ -43,6 +43,7 @@ pub(crate) struct ListPage {
 // Types.
 
 /// Group member summary information.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupMember {
     /// Membership creation time.
@@ -63,6 +64,9 @@ pub struct GroupMember {
     pub bluesky_url: Option<String>,
     /// City where the user is based.
     pub city: Option<String>,
+    /// Whether this member accepts direct `CoffeeMeet` requests.
+    #[serde(default = "default_true")]
+    pub coffee_meet_enabled: bool,
     /// Country where the user is based.
     pub country: Option<String>,
     /// Facebook profile URL.
@@ -99,6 +103,10 @@ pub struct GroupMember {
     pub website_url: Option<String>,
     /// `YouTube` channel URL.
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Pending group join request summary information.

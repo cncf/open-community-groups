@@ -146,6 +146,10 @@ pub(crate) struct UserDetails {
     /// User's city.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,
+    /// Whether the user accepts direct `CoffeeMeet` requests.
+    #[serde(default = "default_true")]
+    #[garde(skip)]
+    pub coffee_meet_enabled: bool,
     /// User's company.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub company: Option<String>,
@@ -205,6 +209,10 @@ pub(crate) struct UserDetails {
     pub youtube_url: Option<String>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 impl From<crate::auth::User> for UserDetails {
     fn from(user: crate::auth::User) -> Self {
         Self {
@@ -213,6 +221,7 @@ impl From<crate::auth::User> for UserDetails {
             bio: user.bio,
             bluesky_url: user.bluesky_url,
             city: user.city,
+            coffee_meet_enabled: user.coffee_meet_enabled,
             company: user.company,
             country: user.country,
             facebook_url: user.facebook_url,

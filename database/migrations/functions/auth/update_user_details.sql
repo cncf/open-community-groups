@@ -11,6 +11,7 @@ begin
         bio = nullif(p_user->>'bio', ''),
         bluesky_url = nullif(p_user->>'bluesky_url', ''),
         city = nullif(p_user->>'city', ''),
+        coffee_meet_enabled = coalesce((p_user->>'coffee_meet_enabled')::boolean, false),
         company = nullif(p_user->>'company', ''),
         country = nullif(p_user->>'country', ''),
         facebook_url = nullif(p_user->>'facebook_url', ''),
