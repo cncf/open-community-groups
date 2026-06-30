@@ -137,6 +137,7 @@ describe("dashboard group attendees", () => {
           More
         </button>
         <div id="attendee-actions-menu" data-attendee-actions-dropdown class="hidden">
+          <button type="button">Show check-in QR code</button>
           <a href="/dashboard/group/events/event-42/attendees.csv" download>Download CSV</a>
         </div>
       </div>
@@ -155,6 +156,14 @@ describe("dashboard group attendees", () => {
 
     // Click the dropdown.
     dropdown.querySelector("a")?.click();
+    expect(dropdown.classList.contains("hidden")).to.equal(true);
+
+    // Click the next control.
+    button.click();
+    expect(dropdown.classList.contains("hidden")).to.equal(false);
+
+    // Click a dropdown button.
+    dropdown.querySelector("button")?.click();
     expect(dropdown.classList.contains("hidden")).to.equal(true);
 
     // Click the next control.
@@ -286,9 +295,7 @@ describe("dashboard group attendees", () => {
     document.getElementById("open-attendee-notification-modal")?.click();
 
     // Verify updates the attendee notification endpoint before opening the modal.
-    expect(form.getAttribute("hx-post")).to.equal(
-      "/dashboard/group/notifications/event-42",
-    );
+    expect(form.getAttribute("hx-post")).to.equal("/dashboard/group/notifications/event-42");
     expect(modal.classList.contains("hidden")).to.equal(false);
   });
 
@@ -320,16 +327,12 @@ describe("dashboard group attendees", () => {
     document.getElementById("open-attendee-notification-modal")?.click();
 
     // Verify opens the attendee notification modal after the dashboard body.
-    expect(
-      document
-        .getElementById("attendee-notification-form")
-        ?.getAttribute("hx-post"),
-    ).to.equal("/dashboard/group/notifications/event-99");
-    expect(
-      document
-        .getElementById("attendee-notification-modal")
-        ?.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(document.getElementById("attendee-notification-form")?.getAttribute("hx-post")).to.equal(
+      "/dashboard/group/notifications/event-99",
+    );
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      false,
+    );
   });
 
   it("opens attendee notification with a row recipient preselected", async () => {
@@ -355,19 +358,16 @@ describe("dashboard group attendees", () => {
     await waitForMicrotask();
 
     // Verify the row recipient is selected and submitted as a hidden field.
-    expect(
-      document
-        .getElementById("attendee-notification-modal")
-        ?.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      false,
+    );
     expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("selected");
     expect(document.getElementById("attendee-notification-recipient-summary")?.textContent).to.equal(
       "This email will be sent to 1 selected attendee.",
     );
     expect(
-      document.querySelector(
-        '#attendee-notification-selected-fields input[name="recipient_user_ids[0]"]',
-      )?.value,
+      document.querySelector('#attendee-notification-selected-fields input[name="recipient_user_ids[0]"]')
+        ?.value,
     ).to.equal("user-1");
     expect(document.getElementById("submit-attendee-notification")?.disabled).to.equal(false);
     expect(fetchMock.calls).to.have.length(0);
@@ -443,24 +443,21 @@ describe("dashboard group attendees", () => {
     document.querySelector("[data-attendee-email-selection-send]")?.click();
 
     // Verify selected attendees are submitted as hidden fields.
-    expect(
-      document
-        .getElementById("attendee-notification-modal")
-        ?.classList.contains("hidden"),
-    ).to.equal(false);
-    expect(
-      document
-        .getElementById("attendee-notification-form")
-        ?.getAttribute("hx-post"),
-    ).to.equal("/dashboard/group/notifications/event-44");
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      false,
+    );
+    expect(document.getElementById("attendee-notification-form")?.getAttribute("hx-post")).to.equal(
+      "/dashboard/group/notifications/event-44",
+    );
     expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("selected");
     expect(document.getElementById("attendee-notification-recipient-summary")?.textContent).to.equal(
       "This email will be sent to 2 selected attendees.",
     );
-    expect([...document.querySelectorAll("#attendee-notification-selected-fields input")].map((input) => input.value)).to.deep.equal([
-      "user-1",
-      "user-2",
-    ]);
+    expect(
+      [...document.querySelectorAll("#attendee-notification-selected-fields input")].map(
+        (input) => input.value,
+      ),
+    ).to.deep.equal(["user-1", "user-2"]);
   });
 
   it("keeps selected attendees across table refreshes for the same event", () => {
@@ -509,7 +506,9 @@ describe("dashboard group attendees", () => {
     dispatchHtmxLoad(attendeesRoot);
 
     const refreshedCheckboxes = document.querySelectorAll("[data-attendee-email-selection-checkbox]");
-    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(false);
+    expect(
+      document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden"),
+    ).to.equal(false);
     expect(refreshedCheckboxes[0].checked).to.equal(true);
     expect(refreshedCheckboxes[1].checked).to.equal(false);
     expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("1");
@@ -550,7 +549,9 @@ describe("dashboard group attendees", () => {
     });
     dispatchHtmxLoad(attendeesRoot);
 
-    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden"),
+    ).to.equal(true);
     expect(document.querySelector("[data-attendee-email-selection-checkbox]")?.checked).to.equal(false);
     expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("0");
     expect(document.querySelector("[data-attendee-email-selection-label]")?.textContent).to.equal(
@@ -580,7 +581,9 @@ describe("dashboard group attendees", () => {
     checkbox.dispatchEvent(new Event("change", { bubbles: true }));
 
     document.querySelector("[data-attendee-email-selection-clear]")?.click();
-    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(false);
+    expect(
+      document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden"),
+    ).to.equal(false);
     expect(checkbox.checked).to.equal(false);
     expect(document.querySelector("[data-attendee-email-selection-count]")?.textContent).to.equal("0");
     expect(document.querySelector("[data-attendee-email-selection-send]")?.disabled).to.equal(true);
@@ -589,7 +592,9 @@ describe("dashboard group attendees", () => {
     checkbox.dispatchEvent(new Event("change", { bubbles: true }));
     document.querySelector("[data-attendee-email-selection-cancel]")?.click();
 
-    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
+    expect(
+      document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden"),
+    ).to.equal(true);
     expect(checkbox.checked).to.equal(false);
     expect(document.getElementById("attendee-email-actions-button")?.disabled).to.equal(false);
     expect(document.activeElement).to.equal(document.getElementById("attendee-email-actions-button"));
@@ -624,8 +629,12 @@ describe("dashboard group attendees", () => {
       text: "Email sent successfully to selected attendees!",
       icon: "success",
     });
-    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(true);
-    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(true);
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      true,
+    );
+    expect(
+      document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden"),
+    ).to.equal(true);
     expect(checkbox.checked).to.equal(false);
     expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("all");
     expect(document.querySelectorAll("#attendee-notification-selected-fields input")).to.have.length(0);
@@ -660,8 +669,12 @@ describe("dashboard group attendees", () => {
       text: "Nope",
       icon: "error",
     });
-    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(false);
-    expect(document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden")).to.equal(false);
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      false,
+    );
+    expect(
+      document.querySelector("[data-attendee-email-selection-bar]")?.classList.contains("hidden"),
+    ).to.equal(false);
     expect(checkbox.checked).to.equal(true);
     document.querySelector("[data-attendee-email-selection-cancel]")?.click();
   });
@@ -683,11 +696,9 @@ describe("dashboard group attendees", () => {
     initializeAttendeesUi();
     document.querySelector("[data-attendee-notification-open]")?.click();
 
-    expect(
-      document
-        .getElementById("attendee-notification-modal")
-        ?.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(document.getElementById("attendee-notification-modal")?.classList.contains("hidden")).to.equal(
+      false,
+    );
     expect(document.getElementById("attendee-notification-recipient-scope")?.value).to.equal("all");
     expect(document.getElementById("attendee-notification-recipient-summary")?.textContent).to.equal(
       "This email will be sent to 3 eligible attendees.",
@@ -792,15 +803,9 @@ describe("dashboard group attendees", () => {
 
     // Verify opens the refund review modal with attendee payment details.
     expect(modal.classList.contains("hidden")).to.equal(false);
-    expect(
-      document.getElementById("attendee-refund-name")?.textContent,
-    ).to.equal("Ana Lopez");
-    expect(
-      document.getElementById("attendee-refund-ticket")?.textContent,
-    ).to.equal("General");
-    expect(
-      document.getElementById("attendee-refund-amount")?.textContent,
-    ).to.equal("EUR 30.00");
+    expect(document.getElementById("attendee-refund-name")?.textContent).to.equal("Ana Lopez");
+    expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal("General");
+    expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 30.00");
     expect(approveButton.classList.contains("hidden")).to.equal(false);
     expect(approveButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-1/attendees/user-1/refund/approve",
@@ -809,10 +814,7 @@ describe("dashboard group attendees", () => {
     expect(rejectButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-1/attendees/user-1/refund/reject",
     );
-    expect(processCalls).to.deep.equal([
-      "attendee-refund-approve",
-      "attendee-refund-reject",
-    ]);
+    expect(processCalls).to.deep.equal(["attendee-refund-approve", "attendee-refund-reject"]);
 
     // Verify opens the refund review modal with attendee payment.
     window.htmx = originalHtmx;
@@ -1037,15 +1039,9 @@ describe("dashboard group attendees", () => {
 
     // Verify opens refund review for newly swapped attendee content after HTMX load.
     expect(modal.classList.contains("hidden")).to.equal(false);
-    expect(
-      document.getElementById("attendee-refund-name")?.textContent,
-    ).to.equal("Swapped Attendee");
-    expect(
-      document.getElementById("attendee-refund-ticket")?.textContent,
-    ).to.equal("Swapped Ticket");
-    expect(
-      document.getElementById("attendee-refund-amount")?.textContent,
-    ).to.equal("EUR 25.00");
+    expect(document.getElementById("attendee-refund-name")?.textContent).to.equal("Swapped Attendee");
+    expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal("Swapped Ticket");
+    expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 25.00");
     expect(approveButton.getAttribute("hx-put")).to.equal(
       "/dashboard/group/events/event-2/attendees/user-2/refund/approve",
     );
@@ -1374,10 +1370,7 @@ describe("dashboard group attendees", () => {
     document.querySelector("[data-refund-review-trigger]")?.click();
 
     // Reinitializing the same root does not duplicate refund modal handling.
-    expect(processCalls).to.deep.equal([
-      "attendee-refund-approve",
-      "attendee-refund-reject",
-    ]);
+    expect(processCalls).to.deep.equal(["attendee-refund-approve", "attendee-refund-reject"]);
 
     // Repeated refund clicks still produce one modal action.
     window.htmx = originalHtmx;

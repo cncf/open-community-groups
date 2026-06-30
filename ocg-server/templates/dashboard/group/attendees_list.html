@@ -60,58 +60,6 @@
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
   <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
-    <button id="open-event-qr-code-modal"
-            type="button"
-            class="btn-primary-outline w-full lg:w-auto whitespace-nowrap
-                   {% if event.canceled -%}
-                     opacity-50 cursor-not-allowed
-                   {% endif -%}"
-            aria-label="Show check-in QR code"
-            {% if event.canceled -%}
-              disabled title="Canceled events cannot use check-in."
-            {% endif -%}
-            data-event-id="{{ event.event_id }}"
-            data-event-name="{{ event.name }}"
-            data-group-name="{{ event.group_name }}"
-            data-event-slug="{{ event.slug }}"
-            data-check-in-url="/{{ event.community_name }}/check-in/{{ event.event_id }}"
-            data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
-            {% if let Some(start_time) = &event.starts_at -%}
-              data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
-            {% endif -%}>
-      <span class="hidden xl:inline">Show check-in QR code</span>
-      <span class="xl:hidden">Check-in QR</span>
-    </button>
-    <span class="inline-flex w-full lg:w-auto
-                 {% if !can_manage_events || event.canceled || event.is_past() || event.is_ticketed() -%}
-                   cursor-not-allowed
-                 {% endif -%}"
-          {% if !can_manage_events -%}
-            title="Your role cannot invite attendees."
-          {% else if event.canceled -%}
-            title="Canceled events cannot invite attendees."
-          {% else if event.is_past() -%}
-            title="Past events cannot invite attendees."
-          {% else if event.is_ticketed() -%}
-            title="Manual invitations are not available for ticketed events."
-          {% endif -%}>
-      <button id="open-attendee-invitation-modal"
-              type="button"
-              class="btn-primary-outline w-full lg:w-auto
-                     {% if !can_manage_events || event.canceled || event.is_past() || event.is_ticketed() -%}
-                       opacity-50 cursor-not-allowed pointer-events-none
-                     {% endif -%}"
-              {% if !can_manage_events -%}
-                disabled title="Your role cannot invite attendees."
-              {% else if event.canceled -%}
-                disabled title="Canceled events cannot invite attendees."
-              {% else if event.is_past() -%}
-                disabled title="Past events cannot invite attendees."
-              {% else if event.is_ticketed() -%}
-                disabled title="Manual invitations are not available for ticketed events."
-              {% endif -%}
-              data-event-id="{{ event.event_id }}">Invite</button>
-    </span>
     <div class="group relative w-full lg:w-auto">
       <button id="attendee-email-actions-button"
               type="button"
@@ -170,6 +118,48 @@
            data-attendee-actions-dropdown
            class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[22rem] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
+          <li>
+            <button id="open-event-qr-code-modal"
+                    type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Show check-in QR code"
+                    {% if event.canceled -%}
+                      disabled title="Canceled events cannot use check-in."
+                    {% endif -%}
+                    data-event-id="{{ event.event_id }}"
+                    data-event-name="{{ event.name }}"
+                    data-group-name="{{ event.group_name }}"
+                    data-event-slug="{{ event.slug }}"
+                    data-check-in-url="/{{ event.community_name }}/check-in/{{ event.event_id }}"
+                    data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
+                    {% if let Some(start_time) = &event.starts_at -%}
+                      data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
+                    {% endif -%}>
+              <div class="svg-icon size-4 icon-qr-code shrink-0 bg-stone-500"></div>
+              <span>Show check-in QR code</span>
+            </button>
+          </li>
+          <li>
+            <button id="open-attendee-invitation-modal"
+                    type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                    {% if !can_manage_events -%}
+                      disabled title="Your role cannot invite attendees."
+                    {% else if event.canceled -%}
+                      disabled title="Canceled events cannot invite attendees."
+                    {% else if event.is_past() -%}
+                      disabled title="Past events cannot invite attendees."
+                    {% else if event.is_ticketed() -%}
+                      disabled title="Manual invitations are not available for ticketed events."
+                    {% endif -%}
+                    data-event-id="{{ event.event_id }}">
+              <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-500"></div>
+              <span>Invite attendee</span>
+            </button>
+          </li>
+          <li role="presentation" class="my-2 border-t border-stone-100"></li>
           <li>
             <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
                download

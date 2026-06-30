@@ -430,9 +430,9 @@ This tab supports delivery-day execution:
 
 - Review attendee list and RSVP timing.
 - Run manual check-in.
-- Generate check-in QR code for on-site flow.
+- Open the attendee actions menu to generate a check-in QR code for on-site flow.
 - Cancel confirmed free attendance for future active events.
-- Invite attendees to free RSVP events.
+- Open the attendee actions menu to invite attendees to free RSVP events.
 - Send all-attendee or selected-attendee operational emails.
 - Download the attendee list or attendee answers as CSV.
 
@@ -444,18 +444,19 @@ when the attendee does not have a paid ticket. OCG removes the attendance, notif
 and can promote the next waitlisted user when a seat opens. Paid attendees stay on the refund
 workflow instead.
 
-`Invite` is available for free RSVP events when you have event write access. You can select a
-registered platform user or enter an email address. For new invitees, use their LF account primary
-email because LF SSO activates the email invitation by that address. For existing users, select the
-registered platform user when possible; LF-linked accounts can keep logging in after an LF email
-change because OCG reconciles them by LF SSO identity. Pending invitations show in the attendee table
-and can be canceled from the row actions menu. Rejected invitations remain visible and cannot be sent
-again for the same event and user.
+The attendee actions menu contains event-level attendee actions and exports. `Show check-in QR code`
+opens a QR code for the public check-in flow. `Invite attendee` is available for free RSVP events
+when you have event write access. You can select a registered platform user or enter an email
+address. For new invitees, use their LF account primary email because LF SSO activates the email
+invitation by that address. For existing users, select the registered platform user when possible;
+LF-linked accounts can keep logging in after an LF email change because OCG reconciles them by LF SSO
+identity. Pending invitations show in the attendee table and can be canceled from the row actions
+menu. Rejected invitations remain visible and cannot be sent again for the same event and user.
 
-The attendee actions menu has two CSV exports: `Attendees list CSV` exports attendee name,
-company, title, and whether the confirmed attendee was manually invited; `Attendees + answers CSV`
-adds one column per registration question. Row actions also include `View answers` when an attendee
-has submitted registration answers.
+The same attendee actions menu includes two CSV exports: `Attendees list CSV` exports attendee name,
+company, title, and whether the confirmed attendee was manually invited; `Attendees list CSV
+(including answers)` adds one column per registration question. Row actions also include
+`View answers` when an attendee has submitted registration answers.
 
 The attendees table can be searched by attendee identity and visible profile details, including
 company and title. `Send email` in this tab sends operational updates to attendees who receive

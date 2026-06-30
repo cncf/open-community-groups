@@ -10,6 +10,16 @@ const loadTemplate = async () => {
 
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
+const sliceTemplateSection = (template, startToken, endToken) => {
+  const start = template.indexOf(startToken);
+  const end = template.indexOf(endToken, start);
+
+  expect(start).to.be.greaterThan(-1);
+  expect(end).to.be.greaterThan(start);
+
+  return template.slice(start, end);
+};
+
 describe("dashboard group attendees list template", () => {
   it("renders attendee identity cells as profile modal triggers", async () => {
     // Load the attendees list template before checking profile trigger markup.
@@ -92,6 +102,26 @@ describe("dashboard group attendees list template", () => {
     expect(template).not.to.include(
       "No confirmed attendees with verified email addresses and email notifications enabled.",
     );
+  });
+
+  it("groups attendee QR, invite, and CSV downloads in the actions menu", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+    const actionsMenu = sliceTemplateSection(
+      template,
+      'id="attendee-actions-menu"',
+      "{# End header actions -#}",
+    );
+
+    expect(actionsMenu).to.include('id="open-event-qr-code-modal"');
+    expect(actionsMenu).to.include("icon-qr-code");
+    expect(actionsMenu).to.include("Show check-in QR code");
+    expect(actionsMenu).to.include('id="open-attendee-invitation-modal"');
+    expect(actionsMenu).to.include("Invite attendee");
+    expect(actionsMenu).to.include("border-t border-stone-100");
+    expect(actionsMenu).to.include("Attendees list CSV");
+    expect(actionsMenu).to.include("Attendees list CSV (including answers)");
+    expect(actionsMenu).not.to.include("> Actions <");
+    expect(actionsMenu).not.to.include("> Exports <");
   });
 
   it("uses the shared attendee search convention for table filtering", async () => {

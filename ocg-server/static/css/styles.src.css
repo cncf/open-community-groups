@@ -721,6 +721,7 @@ input:placeholder-shown {
 .icon-presentation { --icon-url: url('/static/images/icons/presentation.svg'); }
 .icon-proposal { --icon-url: url('/static/images/icons/proposal.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
+.icon-qr-code { --icon-url: url('/static/images/icons/qr_code.svg'); }
 .icon-question { --icon-url: url('/static/images/icons/question.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }
