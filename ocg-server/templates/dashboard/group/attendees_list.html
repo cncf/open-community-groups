@@ -27,6 +27,25 @@
           hx-swap="innerHTML"
           hx-indicator="#dashboard-spinner">
       <label for="search_attendees" class="sr-only">Search attendees</label>
+      {% if let Some(checked_in) = checked_in -%}
+        <input type="hidden" name="checked_in" value="{{ checked_in }}">
+      {% endif -%}
+      {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+        {% for ticket_type_id in ticket_type_ids -%}
+          <input type="hidden"
+                 name="event_ticket_type_ids[]"
+                 value="{{ ticket_type_id }}">
+        {% endfor -%}
+      {% endif -%}
+      {% if let Some(limit) = limit -%}
+        <input type="hidden" name="limit" value="{{ limit }}">
+      {% endif -%}
+      {% if let Some(sort) = sort -%}
+        <input type="hidden" name="sort" value="{{ sort }}">
+      {% endif -%}
+      {% if let Some(title) = title -%}
+        <input type="hidden" name="title" value="{{ title }}">
+      {% endif -%}
       <input id="search_attendees"
              name="ts_query"
              type="text"
@@ -44,6 +63,7 @@
                 hx-target="#attendees-content"
                 hx-swap="innerHTML"
                 hx-indicator="#dashboard-spinner"
+                hx-include="#attendees-search-form input[type='hidden']"
                 class="cursor-pointer mt-0.5"
                 aria-label="Clear attendee search">
           <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
@@ -53,6 +73,156 @@
   </div>
 </div>
 {# End filters -#}
+
+{% if checked_in.is_some() || event_ticket_type_ids.is_some() || sort.is_some() || title.is_some() -%}
+  {# Active filters -#}
+  <div class="mb-5 flex flex-wrap items-center gap-2">
+    <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+    {% if let Some(checked_in) = checked_in -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+            hx-target="#attendees-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+          {% for ticket_type_id in ticket_type_ids -%}
+            <input type="hidden"
+                   name="event_ticket_type_ids[]"
+                   value="{{ ticket_type_id }}">
+          {% endfor -%}
+        {% endif -%}
+        {% if let Some(limit) = limit -%}
+          <input type="hidden" name="limit" value="{{ limit }}">
+        {% endif -%}
+        {% if let Some(sort) = sort -%}
+          <input type="hidden" name="sort" value="{{ sort }}">
+        {% endif -%}
+        {% if let Some(title) = title -%}
+          <input type="hidden" name="title" value="{{ title }}">
+        {% endif -%}
+        {% if let Some(ts_query) = &ts_query -%}
+          <input type="hidden" name="ts_query" value="{{ ts_query }}">
+        {% endif -%}
+        {% if checked_in -%}
+          {% call dashboard::active_table_filter_badge("Checked in") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
+          {% endcall -%}
+        {% else -%}
+          {% call dashboard::active_table_filter_badge("Not checked in") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
+          {% endcall -%}
+        {% endif -%}
+      </form>
+    {% endif -%}
+    {% if let Some(title) = title -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+            hx-target="#attendees-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {% if let Some(checked_in) = checked_in -%}
+          <input type="hidden" name="checked_in" value="{{ checked_in }}">
+        {% endif -%}
+        {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+          {% for ticket_type_id in ticket_type_ids -%}
+            <input type="hidden"
+                   name="event_ticket_type_ids[]"
+                   value="{{ ticket_type_id }}">
+          {% endfor -%}
+        {% endif -%}
+        {% if let Some(limit) = limit -%}
+          <input type="hidden" name="limit" value="{{ limit }}">
+        {% endif -%}
+        {% if let Some(sort) = sort -%}
+          <input type="hidden" name="sort" value="{{ sort }}">
+        {% endif -%}
+        {% if let Some(ts_query) = &ts_query -%}
+          <input type="hidden" name="ts_query" value="{{ ts_query }}">
+        {% endif -%}
+        {% if *title == crate::templates::dashboard::group::PresenceFilter::Present -%}
+          {% call dashboard::active_table_filter_badge("Title present") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+          {% endcall -%}
+        {% else -%}
+          {% call dashboard::active_table_filter_badge("Title missing") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+          {% endcall -%}
+        {% endif -%}
+      </form>
+    {% endif -%}
+    {% if let Some(sort) = sort -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+            hx-target="#attendees-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {% if let Some(checked_in) = checked_in -%}
+          <input type="hidden" name="checked_in" value="{{ checked_in }}">
+        {% endif -%}
+        {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+          {% for ticket_type_id in ticket_type_ids -%}
+            <input type="hidden"
+                   name="event_ticket_type_ids[]"
+                   value="{{ ticket_type_id }}">
+          {% endfor -%}
+        {% endif -%}
+        {% if let Some(limit) = limit -%}
+          <input type="hidden" name="limit" value="{{ limit }}">
+        {% endif -%}
+        {% if let Some(title) = title -%}
+          <input type="hidden" name="title" value="{{ title }}">
+        {% endif -%}
+        {% if let Some(ts_query) = &ts_query -%}
+          <input type="hidden" name="ts_query" value="{{ ts_query }}">
+        {% endif -%}
+        {% if *sort == crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc -%}
+          {% call dashboard::active_table_filter_badge("Sort: Name Z-A") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
+          {% endcall -%}
+        {% else if *sort == crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc -%}
+          {% call dashboard::active_table_filter_badge("Sort: Oldest RSVP") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
+          {% endcall -%}
+        {% else if *sort == crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc -%}
+          {% call dashboard::active_table_filter_badge("Sort: Newest RSVP") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
+          {% endcall -%}
+        {% else -%}
+          {% call dashboard::active_table_filter_badge("Sort: Name A-Z") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
+          {% endcall -%}
+        {% endif -%}
+      </form>
+    {% endif -%}
+    {% if event_ticket_type_ids.is_some() -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+            hx-target="#attendees-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {% if let Some(checked_in) = checked_in -%}
+          <input type="hidden" name="checked_in" value="{{ checked_in }}">
+        {% endif -%}
+        {% if let Some(limit) = limit -%}
+          <input type="hidden" name="limit" value="{{ limit }}">
+        {% endif -%}
+        {% if let Some(sort) = sort -%}
+          <input type="hidden" name="sort" value="{{ sort }}">
+        {% endif -%}
+        {% if let Some(title) = title -%}
+          <input type="hidden" name="title" value="{{ title }}">
+        {% endif -%}
+        {% if let Some(ts_query) = &ts_query -%}
+          <input type="hidden" name="ts_query" value="{{ ts_query }}">
+        {% endif -%}
+        {% call dashboard::active_table_filter_badge("Ticket type") -%}
+        {{ dashboard::active_table_filter_remove_button(label = "Remove ticket type filter") -}}
+        {% endcall -%}
+      </form>
+    {% endif -%}
+  </div>
+  {# End active filters -#}
+{% endif -%}
 
 {# Header actions -#}
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
@@ -226,11 +396,297 @@
             data-attendee-email-selection-column>
           <span class="sr-only">Select for email</span>
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Attendee</th>
-        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Position</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">RSVP Date</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48">Ticket type</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-30">Checked In</th>
+        <th scope="col" class="px-3 xl:px-5 py-3">
+          <div class="flex items-center gap-1">
+            <form class="inline-flex"
+                  hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                  hx-target="#attendees-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">
+              {% if let Some(checked_in) = checked_in -%}
+                <input type="hidden" name="checked_in" value="{{ checked_in }}">
+              {% endif -%}
+              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+                {% for ticket_type_id in ticket_type_ids -%}
+                  <input type="hidden"
+                         name="event_ticket_type_ids[]"
+                         value="{{ ticket_type_id }}">
+                {% endfor -%}
+              {% endif -%}
+              {% if let Some(limit) = limit -%}
+                <input type="hidden" name="limit" value="{{ limit }}">
+              {% endif -%}
+              {% if let Some(title) = title -%}
+                <input type="hidden" name="title" value="{{ title }}">
+              {% endif -%}
+              {% if let Some(ts_query) = &ts_query -%}
+                <input type="hidden" name="ts_query" value="{{ ts_query }}">
+              {% endif -%}
+              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc) -%}
+                {{ dashboard::table_sort_button(label = "Attendee", sort_value = "name-desc", is_ascending = true, is_descending = false) -}}
+              {% else -%}
+                {{ dashboard::table_sort_button(label = "Attendee", sort_value = "name-asc", is_ascending = false, is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc) ) -}}
+              {% endif -%}
+            </form>
+            {% call dashboard::table_filter_menu(id = "attendees-name-filter", label = "Attendee", is_active = false, extra_classes = "2xl:hidden") -%}
+            <div class="2xl:hidden py-2">
+              {{ dashboard::table_filter_section_title(text = "Title") -}}
+              <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                    hx-target="#attendees-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {% if let Some(checked_in) = checked_in -%}
+                  <input type="hidden" name="checked_in" value="{{ checked_in }}">
+                {% endif -%}
+                {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+                  {% for ticket_type_id in ticket_type_ids -%}
+                    <input type="hidden"
+                           name="event_ticket_type_ids[]"
+                           value="{{ ticket_type_id }}">
+                  {% endfor -%}
+                {% endif -%}
+                {% if let Some(limit) = limit -%}
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                {% endif -%}
+                {% if let Some(sort) = sort -%}
+                  <input type="hidden" name="sort" value="{{ sort }}">
+                {% endif -%}
+                {% if let Some(ts_query) = &ts_query -%}
+                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
+                {% endif -%}
+                <button type="submit"
+                        name="title"
+                        value="present"
+                        class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                               {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Present) -%}
+                                 bg-primary-50 text-primary-700
+                               {% endif -%}">
+                  <span>Has title</span>
+                  {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Present) -%}
+                    <div class="svg-icon size-3 icon-check bg-primary-500"></div>
+                  {% endif -%}
+                </button>
+                <button type="submit"
+                        name="title"
+                        value="missing"
+                        class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                               {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) -%}
+                                 bg-primary-50 text-primary-700
+                               {% endif -%}">
+                  <span>Missing title</span>
+                  {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) -%}
+                    <div class="svg-icon size-3 icon-check bg-primary-500"></div>
+                  {% endif -%}
+                </button>
+              </form>
+            </div>
+            {% endcall -%}
+            <span class="hidden 2xl:inline whitespace-nowrap">Attendee</span>
+          </div>
+        </th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">
+          {% call dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position", is_active = title.is_some()) -%}
+          <div class="py-2">
+            {{ dashboard::table_filter_section_title(text = "Title") -}}
+            <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                  hx-target="#attendees-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">
+              {% if let Some(checked_in) = checked_in -%}
+                <input type="hidden" name="checked_in" value="{{ checked_in }}">
+              {% endif -%}
+              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+                {% for ticket_type_id in ticket_type_ids -%}
+                  <input type="hidden"
+                         name="event_ticket_type_ids[]"
+                         value="{{ ticket_type_id }}">
+                {% endfor -%}
+              {% endif -%}
+              {% if let Some(limit) = limit -%}
+                <input type="hidden" name="limit" value="{{ limit }}">
+              {% endif -%}
+              {% if let Some(sort) = sort -%}
+                <input type="hidden" name="sort" value="{{ sort }}">
+              {% endif -%}
+              {% if let Some(ts_query) = &ts_query -%}
+                <input type="hidden" name="ts_query" value="{{ ts_query }}">
+              {% endif -%}
+              <button type="submit"
+                      name="title"
+                      value="present"
+                      class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                             {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Present) -%}
+                               bg-primary-50 text-primary-700
+                             {% endif -%}">
+                <span>Has title</span>
+                {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Present) -%}
+                  <div class="svg-icon size-3 icon-check bg-primary-500"></div>
+                {% endif -%}
+              </button>
+              <button type="submit"
+                      name="title"
+                      value="missing"
+                      class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                             {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) -%}
+                               bg-primary-50 text-primary-700
+                             {% endif -%}">
+                <span>Missing title</span>
+                {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) -%}
+                  <div class="svg-icon size-3 icon-check bg-primary-500"></div>
+                {% endif -%}
+              </button>
+            </form>
+          </div>
+          {% endcall -%}
+        </th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3 w-40">
+          <div class="flex items-center gap-1">
+            <form class="inline-flex"
+                  hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                  hx-target="#attendees-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">
+              {% if let Some(checked_in) = checked_in -%}
+                <input type="hidden" name="checked_in" value="{{ checked_in }}">
+              {% endif -%}
+              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+                {% for ticket_type_id in ticket_type_ids -%}
+                  <input type="hidden"
+                         name="event_ticket_type_ids[]"
+                         value="{{ ticket_type_id }}">
+                {% endfor -%}
+              {% endif -%}
+              {% if let Some(limit) = limit -%}
+                <input type="hidden" name="limit" value="{{ limit }}">
+              {% endif -%}
+              {% if let Some(title) = title -%}
+                <input type="hidden" name="title" value="{{ title }}">
+              {% endif -%}
+              {% if let Some(ts_query) = &ts_query -%}
+                <input type="hidden" name="ts_query" value="{{ ts_query }}">
+              {% endif -%}
+              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) -%}
+                {{ dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-desc", is_ascending = true, is_descending = false) -}}
+              {% else -%}
+                {{ dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-asc", is_ascending = false, is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc) ) -}}
+              {% endif -%}
+            </form>
+            <span class="whitespace-nowrap">RSVP Date</span>
+          </div>
+        </th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48">
+          {% if let Some(ticket_types) = &event.ticket_types -%}
+            {% if !ticket_types.is_empty() -%}
+              {% call dashboard::table_filter_menu(id = "attendees-ticket-filter", label = "Ticket type", is_active = event_ticket_type_ids.is_some()) -%}
+              <form class="max-h-80 overflow-y-auto py-2"
+                    hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                    hx-trigger="change"
+                    hx-target="#attendees-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {% if let Some(checked_in) = checked_in -%}
+                  <input type="hidden" name="checked_in" value="{{ checked_in }}">
+                {% endif -%}
+                {% if let Some(limit) = limit -%}
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                {% endif -%}
+                {% if let Some(sort) = sort -%}
+                  <input type="hidden" name="sort" value="{{ sort }}">
+                {% endif -%}
+                {% if let Some(title) = title -%}
+                  <input type="hidden" name="title" value="{{ title }}">
+                {% endif -%}
+                {% if let Some(ts_query) = &ts_query -%}
+                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
+                {% endif -%}
+                {{ dashboard::table_filter_section_title(text = "Filter") -}}
+                {% for ticket_type in ticket_types -%}
+                  <label class="flex cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900"
+                         title="{{ ticket_type.title }}">
+                    <input type="checkbox"
+                           class="checkbox-primary"
+                           name="event_ticket_type_ids[]"
+                           value="{{ ticket_type.event_ticket_type_id }}"
+                           {% if event_ticket_type_ids.is_some() && event_ticket_type_ids.as_ref().unwrap().contains(&ticket_type.event_ticket_type_id) -%}
+                             checked
+                           {% endif -%}>
+                    <span class="min-w-0 flex-1 truncate">{{ ticket_type.title }}</span>
+                  </label>
+                {% endfor -%}
+              </form>
+              {% endcall -%}
+            {% else -%}
+              <span class="whitespace-nowrap">Ticket type</span>
+            {% endif -%}
+          {% else -%}
+            <span class="whitespace-nowrap">Ticket type</span>
+          {% endif -%}
+        </th>
+        <th scope="col" class="px-3 xl:px-5 py-3 w-30">
+          {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right") -%}
+          <div class="py-2">
+            {{ dashboard::table_filter_section_title(text = "Filter") -}}
+            <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                  hx-target="#attendees-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">
+              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+                {% for ticket_type_id in ticket_type_ids -%}
+                  <input type="hidden"
+                         name="event_ticket_type_ids[]"
+                         value="{{ ticket_type_id }}">
+                {% endfor -%}
+              {% endif -%}
+              {% if let Some(limit) = limit -%}
+                <input type="hidden" name="limit" value="{{ limit }}">
+              {% endif -%}
+              {% if let Some(sort) = sort -%}
+                <input type="hidden" name="sort" value="{{ sort }}">
+              {% endif -%}
+              {% if let Some(title) = title -%}
+                <input type="hidden" name="title" value="{{ title }}">
+              {% endif -%}
+              {% if let Some(ts_query) = &ts_query -%}
+                <input type="hidden" name="ts_query" value="{{ ts_query }}">
+              {% endif -%}
+              <button type="submit"
+                      class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                             {% if checked_in.is_none() -%}
+                               bg-primary-50 text-primary-700
+                             {% endif -%}">
+                <span>All attendees</span>
+                {% if checked_in.is_none() -%}
+                  <div class="svg-icon size-3 icon-check bg-primary-500"></div>
+                {% endif -%}
+              </button>
+              <button type="submit"
+                      name="checked_in"
+                      value="true"
+                      class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                             {% if checked_in == Some(true) -%}
+                               bg-primary-50 text-primary-700
+                             {% endif -%}">
+                <span>Checked in</span>
+                {% if checked_in == Some(true) -%}
+                  <div class="svg-icon size-3 icon-check bg-primary-500"></div>
+                {% endif -%}
+              </button>
+              <button type="submit"
+                      name="checked_in"
+                      value="false"
+                      class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                             {% if checked_in == Some(false) -%}
+                               bg-primary-50 text-primary-700
+                             {% endif -%}">
+                <span>Not checked in</span>
+                {% if checked_in == Some(false) -%}
+                  <div class="svg-icon size-3 icon-check bg-primary-500"></div>
+                {% endif -%}
+              </button>
+            </form>
+          </div>
+          {% endcall -%}
+        </th>
         <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
@@ -249,7 +705,7 @@
             {% endif -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
-              colspan="5">
+              colspan="4">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
@@ -318,10 +774,10 @@
                 {% endif -%}
               </div>
             </td>
-            {# End Position -#}
+            {# End position -#}
 
             {# RSVP Date -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {% if attendee.status == "confirmed" -%}
                 <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
               {% else if attendee.status == "invitation-pending" -%}
@@ -339,9 +795,12 @@
               {% else if attendee.status != "confirmed" -%}
                 <div class="text-stone-500">-</div>
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
-                <div class="mx-auto flex max-w-[260px] flex-col gap-2">
-                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <div class="font-semibold text-stone-900">{{ attendee.ticket_title|assigned_or("Paid RSVP") }}</div>
+                <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-2">
+                  <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <div class="max-w-full truncate font-semibold text-stone-900"
+                         title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}">
+                      {{ attendee.ticket_title|assigned_or("Paid RSVP") }}
+                    </div>
                     {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
                       <div class="text-sm font-medium text-stone-600">({{ amount_label }})</div>
                     {% endif -%}
