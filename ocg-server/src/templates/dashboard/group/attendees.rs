@@ -8,7 +8,7 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{dashboard, helpers::user_initials},
+    templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
@@ -16,7 +16,7 @@ use crate::{
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
         user::User,
     },
-    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
+    validation::{MAX_ITEMS, MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -43,10 +43,18 @@ pub(crate) struct ListPage {
     /// Total number of attendees for the selected event.
     pub total: usize,
 
+    /// Checked-in status filter.
+    pub checked_in: Option<bool>,
+    /// Event ticket type identifiers used to filter attendees.
+    pub event_ticket_type_ids: Option<Vec<Uuid>>,
     /// Number of results per page.
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Sort option used to order attendees.
+    pub sort: Option<AttendeesSort>,
+    /// User title presence filter.
+    pub title: Option<PresenceFilter>,
     /// Text search query used to filter attendees.
     pub ts_query: Option<String>,
 }
@@ -91,18 +99,47 @@ pub struct Attendee {
     pub ticket_title: Option<String>,
 }
 
+/// Supported attendee sort options.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum AttendeesSort {
+    /// Sort by RSVP creation time ascending.
+    CreatedAtAsc,
+    /// Sort by RSVP creation time descending.
+    CreatedAtDesc,
+    /// Sort by attendee display name ascending.
+    NameAsc,
+    /// Sort by attendee display name descending.
+    NameDesc,
+}
+
 /// Filter parameters for attendee list page URLs.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct AttendeesListPageFilters {
+    /// Checked-in status filter.
+    #[garde(skip)]
+    pub checked_in: Option<bool>,
+    /// Event ticket type identifiers used to filter attendees.
+    #[garde(length(max = MAX_ITEMS))]
+    pub event_ticket_type_ids: Option<Vec<Uuid>>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order attendees.
+    #[garde(skip)]
+    pub sort: Option<AttendeesSort>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Text search query.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
@@ -129,14 +166,26 @@ pub(crate) struct SearchEventAttendeesFilters {
     #[garde(skip)]
     pub event_id: Uuid,
 
+    /// Checked-in status filter.
+    #[garde(skip)]
+    pub checked_in: Option<bool>,
+    /// Event ticket type identifiers used to filter attendees.
+    #[garde(length(max = MAX_ITEMS))]
+    pub event_ticket_type_ids: Option<Vec<Uuid>>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order attendees.
+    #[garde(skip)]
+    pub sort: Option<AttendeesSort>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Search query for attendee name, username, email, company, or title.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,

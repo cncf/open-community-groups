@@ -8,6 +8,25 @@ returns json as $$
                 (p_filters->>'event_id')::uuid as event_id,
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value,
+                case
+                    when lower(p_filters->>'sort') in (
+                        'created-at-asc',
+                        'created-at-desc',
+                        'name-asc',
+                        'name-desc'
+                    ) then lower(p_filters->>'sort')
+                    else 'created-at-desc'
+                end as sort_value,
+                case
+                    when p_filters->>'status' in ('accepted', 'pending', 'rejected')
+                        then p_filters->>'status'
+                    else null
+                end as status_value,
+                case
+                    when lower(p_filters->>'title') in ('missing', 'present')
+                        then lower(p_filters->>'title')
+                    else null
+                end as title_value,
                 nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
         ),
         -- Prepare text search with prefix matching
@@ -67,6 +86,15 @@ returns json as $$
                     where search_filter.ts_query @@ base_invitation_requests.tsdoc
                 )
             )
+            and (
+                (select status_value from filters) is null
+                or invitation_request_status = (select status_value from filters)
+            )
+            and (
+                (select title_value from filters) is null
+                or ((select title_value from filters) = 'present' and title is not null)
+                or ((select title_value from filters) = 'missing' and title is null)
+            )
         ),
         -- Apply pagination and project public invitation request fields
         invitation_requests as (
@@ -93,13 +121,20 @@ returns json as $$
 
                 reviewed_at
             from filtered_invitation_requests
+            cross join filters f
             order by
-                case invitation_request_status
-                    when 'pending' then 0
-                    when 'accepted' then 1
-                    else 2
-                end asc,
-                created_at_sort asc,
+                case when f.sort_value = 'name-asc'
+                    then coalesce(lower(name), lower(username))
+                end asc nulls last,
+                case when f.sort_value = 'name-desc'
+                    then coalesce(lower(name), lower(username))
+                end desc nulls last,
+                case when f.sort_value = 'created-at-asc'
+                    then created_at_sort
+                end asc nulls last,
+                case when f.sort_value = 'created-at-desc'
+                    then created_at_sort
+                end desc nulls last,
                 user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)

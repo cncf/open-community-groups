@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -142,7 +142,7 @@ values
 -- TESTS
 -- ============================================================================
 
--- Should return waitlist entries with expected fields and FIFO order
+-- Should return waitlist entries with expected fields and FIFO order by default
 select is(
     search_event_waitlist(
         :'groupID'::uuid,
@@ -155,7 +155,7 @@ select is(
         ]'::jsonb,
         'total', 2
     ),
-    'Should return waitlist entries with expected fields and FIFO order'
+    'Should return waitlist entries with expected fields and FIFO order by default'
 );
 
 -- Should return paginated waitlist entries when limit and offset are provided
@@ -276,6 +276,58 @@ select ok(
         from result
     ),
     'Should filter waitlist entries by title search query'
+);
+
+-- Should sort waitlist entries by name ascending
+select is(
+    search_event_waitlist(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'event_id', :'event1ID'::uuid,
+            'limit', 50,
+            'offset', 0,
+            'sort', 'name-asc'
+        )
+    )::jsonb#>>'{waitlist,0,user,username}',
+    'alice',
+    'Should sort waitlist entries by name ascending'
+);
+
+-- Should sort waitlist entries by joined date descending
+select is(
+    search_event_waitlist(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'event_id', :'event1ID'::uuid,
+            'limit', 50,
+            'offset', 0,
+            'sort', 'created-at-desc'
+        )
+    )::jsonb#>>'{waitlist,0,user,username}',
+    'bob',
+    'Should sort waitlist entries by joined date descending'
+);
+
+-- Should filter waitlist entries by title presence
+select ok(
+    (
+        with result as (
+            select search_event_waitlist(
+                :'groupID'::uuid,
+                jsonb_build_object(
+                    'event_id', :'event1ID'::uuid,
+                    'limit', 50,
+                    'offset', 0,
+                    'title', 'present'
+                )
+            )::jsonb as data
+        )
+        select (data->>'total')::int = 1
+        and data#>>'{waitlist,0,user,user_id}' = :'user1ID'
+        and data#>>'{waitlist,0,waitlist_position}' = '1'
+        from result
+    ),
+    'Should filter waitlist entries by title presence'
 );
 
 -- Should keep real waitlist position when search filters earlier entries

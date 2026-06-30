@@ -8,6 +8,20 @@ returns json as $$
                 (p_filters->>'event_id')::uuid as event_id,
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value,
+                case
+                    when lower(p_filters->>'sort') in (
+                        'created-at-asc',
+                        'created-at-desc',
+                        'name-asc',
+                        'name-desc'
+                    ) then lower(p_filters->>'sort')
+                    else 'created-at-asc'
+                end as sort_value,
+                case
+                    when lower(p_filters->>'title') in ('missing', 'present')
+                        then lower(p_filters->>'title')
+                    else null
+                end as title_value,
                 nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
         ),
         -- Prepare text search with prefix matching
@@ -66,6 +80,11 @@ returns json as $$
                     where search_filter.ts_query @@ base_waitlist.tsdoc
                 )
             )
+            and (
+                (select title_value from filters) is null
+                or ((select title_value from filters) = 'present' and title is not null)
+                or ((select title_value from filters) = 'missing' and title is null)
+            )
         ),
         -- Apply pagination and project public waitlist fields
         waitlist as (
@@ -90,7 +109,21 @@ returns json as $$
                 )) as "user",
                 waitlist_position
             from filtered_waitlist
-            order by created_at_sort asc, user_id asc
+            cross join filters f
+            order by
+                case when f.sort_value = 'name-asc'
+                    then coalesce(lower(name), lower(username))
+                end asc nulls last,
+                case when f.sort_value = 'name-desc'
+                    then coalesce(lower(name), lower(username))
+                end desc nulls last,
+                case when f.sort_value = 'created-at-asc'
+                    then created_at_sort
+                end asc nulls last,
+                case when f.sort_value = 'created-at-desc'
+                    then created_at_sort
+                end desc nulls last,
+                user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),

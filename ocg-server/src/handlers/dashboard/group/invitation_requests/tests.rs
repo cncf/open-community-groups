@@ -15,9 +15,13 @@ use crate::{
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
     templates::dashboard::{
-        DASHBOARD_PAGINATION_LIMIT, group::invitation_requests::InvitationRequestsOutput,
+        DASHBOARD_PAGINATION_LIMIT,
+        group::{
+            PresenceFilter,
+            invitation_requests::{InvitationRequestsOutput, InvitationRequestsSort},
+        },
     },
-    types::permissions::GroupPermission,
+    types::{event::EventInvitationRequestStatus, permissions::GroupPermission},
 };
 
 #[tokio::test]
@@ -77,6 +81,7 @@ async fn test_list_page_db_error() {
                 && filters.event_id == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
+                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Pending)
         })
         .returning(|_, _| Err(anyhow!("db error")));
 
@@ -163,6 +168,7 @@ async fn test_list_page_success() {
                 && filters.event_id == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
+                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Pending)
         })
         .returning(move |_, _| Ok(output.clone()));
 
@@ -188,6 +194,122 @@ async fn test_list_page_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_rejects_zero_pagination_limit() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/invitation-requests?limit=0"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_rejects_pagination_limit_above_maximum() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/invitation-requests?limit=101"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(!bytes.is_empty());
 }
 
@@ -252,6 +374,7 @@ async fn test_list_page_with_pagination_params() {
                 && filters.event_id == event_id
                 && filters.limit == Some(5)
                 && filters.offset == Some(10)
+                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Pending)
         })
         .returning(move |_, _| Ok(output.clone()));
 
@@ -341,6 +464,9 @@ async fn test_list_page_with_search_query() {
                 && filters.event_id == event_id
                 && filters.limit == Some(1)
                 && filters.offset == Some(0)
+                && filters.sort == Some(InvitationRequestsSort::NameDesc)
+                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Accepted)
+                && filters.title == Some(PresenceFilter::Missing)
                 && filters.ts_query.as_deref() == Some("req")
         })
         .returning(move |_, _| Ok(output.clone()));
@@ -352,7 +478,12 @@ async fn test_list_page_with_search_query() {
     let request = Request::builder()
         .method("GET")
         .uri(format!(
-            "/dashboard/group/events/{event_id}/invitation-requests?limit=1&ts_query=req"
+            concat!(
+                "/dashboard/group/events/{event_id}/invitation-requests?",
+                "limit=1&sort=name-desc&status=accepted&",
+                "title=missing&ts_query=req"
+            ),
+            event_id = event_id,
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())

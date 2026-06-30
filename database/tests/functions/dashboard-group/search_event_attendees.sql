@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -749,6 +749,81 @@ select ok(
         from result
     ),
     'Should filter attendees by title search query'
+);
+
+-- Should sort attendees by RSVP date descending
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'event_id', :'event1ID'::uuid,
+            'limit', 50,
+            'offset', 0,
+            'sort', 'created-at-desc'
+        )
+    )::jsonb#>>'{attendees,0,user,username}',
+    'questions-pending',
+    'Should sort attendees by created_at descending'
+);
+
+-- Should filter attendees with a user title
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'event_id', :'event1ID'::uuid,
+            'limit', 50,
+            'offset', 0,
+            'title', 'present'
+        )
+    )::jsonb->>'total',
+    '1',
+    'Should filter attendees with a title'
+);
+
+-- Should filter attendees without a user title
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'event_id', :'event1ID'::uuid,
+            'limit', 50,
+            'offset', 0,
+            'title', 'missing'
+        )
+    )::jsonb->>'total',
+    '4',
+    'Should filter attendees without a title'
+);
+
+-- Should filter attendees by checked_in status
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'checked_in', true,
+            'event_id', :'event1ID'::uuid,
+            'limit', 50,
+            'offset', 0
+        )
+    )::jsonb->>'total',
+    '1',
+    'Should filter attendees by checked_in status'
+);
+
+-- Should filter attendees by event ticket type identifiers
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        jsonb_build_object(
+            'event_id', :'event1ID'::uuid,
+            'event_ticket_type_ids', jsonb_build_array(:'eventTicketType1ID'::uuid),
+            'limit', 50,
+            'offset', 0
+        )
+    )::jsonb->>'total',
+    '1',
+    'Should filter attendees by event ticket type identifiers'
 );
 
 -- Should exclude active pending checkout holds from email recipient eligibility

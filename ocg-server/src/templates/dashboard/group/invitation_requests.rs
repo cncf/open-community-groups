@@ -8,7 +8,7 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{dashboard, helpers::user_initials},
+    templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
         event::{EventInvitationRequestStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
@@ -40,6 +40,12 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Sort option used to order invitation requests.
+    pub sort: Option<InvitationRequestsSort>,
+    /// Invitation request status filter.
+    pub status: Option<EventInvitationRequestStatus>,
+    /// User title presence filter.
+    pub title: Option<PresenceFilter>,
     /// Text search query used to filter invitation requests.
     pub ts_query: Option<String>,
 }
@@ -62,6 +68,23 @@ pub struct InvitationRequest {
     pub reviewed_at: Option<DateTime<Utc>>,
 }
 
+/// Supported invitation request sort options.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum InvitationRequestsSort {
+    /// Sort by request creation time ascending.
+    CreatedAtAsc,
+    /// Sort by request creation time descending.
+    CreatedAtDesc,
+    /// Sort by requester display name ascending.
+    NameAsc,
+    /// Sort by requester display name descending.
+    NameDesc,
+}
+
 /// Filter parameters for invitation request searches.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -72,12 +95,21 @@ pub(crate) struct InvitationRequestsFilters {
 
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order invitation requests.
+    #[garde(skip)]
+    pub sort: Option<InvitationRequestsSort>,
+    /// Invitation request status filter.
+    #[garde(skip)]
+    pub status: Option<EventInvitationRequestStatus>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Search query for requester name, username, email, company, or title.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
@@ -89,12 +121,21 @@ pub(crate) struct InvitationRequestsFilters {
 pub(crate) struct InvitationRequestsListPageFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order invitation requests.
+    #[garde(skip)]
+    pub sort: Option<InvitationRequestsSort>,
+    /// Invitation request status filter.
+    #[garde(skip)]
+    pub status: Option<EventInvitationRequestStatus>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Text search query.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
