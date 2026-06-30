@@ -24,16 +24,7 @@
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
         <label for="search_invitation_requests" class="sr-only">Search invitation requests</label>
-        {% if let Some(limit) = limit -%}
-          <input type="hidden" name="limit" value="{{ limit }}">
-        {% endif -%}
-        {% if let Some(sort) = sort -%}
-          <input type="hidden" name="sort" value="{{ sort }}">
-        {% endif -%}
-        <input type="hidden" name="status" value="{{ status }}">
-        {% if let Some(title) = title -%}
-          <input type="hidden" name="title" value="{{ title }}">
-        {% endif -%}
+        {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_ts_query = false) -}}
         <input id="search_invitation_requests"
                name="ts_query"
                type="text"
@@ -74,18 +65,7 @@
               hx-target="#invitation-requests-content"
               hx-swap="innerHTML"
               hx-indicator="#dashboard-spinner">
-          {% if let Some(limit) = limit -%}
-            <input type="hidden" name="limit" value="{{ limit }}">
-          {% endif -%}
-          {% if let Some(sort) = sort -%}
-            <input type="hidden" name="sort" value="{{ sort }}">
-          {% endif -%}
-          {% if let Some(title) = title -%}
-            <input type="hidden" name="title" value="{{ title }}">
-          {% endif -%}
-          {% if let Some(ts_query) = &ts_query -%}
-            <input type="hidden" name="ts_query" value="{{ ts_query }}">
-          {% endif -%}
+          {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
           <input type="hidden" name="status" value="all">
           {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted -%}
             {% call dashboard::active_table_filter_badge("Status: Accepted") -%}
@@ -102,23 +82,14 @@
           {% endif -%}
         </form>
       {% endif -%}
-      {% if let Some(title) = title -%}
+      {% if let Some(active_title) = title -%}
         <form class="inline-flex"
               hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
               hx-target="#invitation-requests-content"
               hx-swap="innerHTML"
               hx-indicator="#dashboard-spinner">
-          {% if let Some(limit) = limit -%}
-            <input type="hidden" name="limit" value="{{ limit }}">
-          {% endif -%}
-          {% if let Some(sort) = sort -%}
-            <input type="hidden" name="sort" value="{{ sort }}">
-          {% endif -%}
-          <input type="hidden" name="status" value="{{ status }}">
-          {% if let Some(ts_query) = &ts_query -%}
-            <input type="hidden" name="ts_query" value="{{ ts_query }}">
-          {% endif -%}
-          {% if *title == crate::templates::dashboard::group::PresenceFilter::Present -%}
+          {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
+          {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
             {% call dashboard::active_table_filter_badge("Title present") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
             {% endcall -%}
@@ -129,31 +100,22 @@
           {% endif -%}
         </form>
       {% endif -%}
-      {% if let Some(sort) = sort -%}
+      {% if let Some(active_sort) = sort -%}
         <form class="inline-flex"
               hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
               hx-target="#invitation-requests-content"
               hx-swap="innerHTML"
               hx-indicator="#dashboard-spinner">
-          {% if let Some(limit) = limit -%}
-            <input type="hidden" name="limit" value="{{ limit }}">
-          {% endif -%}
-          <input type="hidden" name="status" value="{{ status }}">
-          {% if let Some(title) = title -%}
-            <input type="hidden" name="title" value="{{ title }}">
-          {% endif -%}
-          {% if let Some(ts_query) = &ts_query -%}
-            <input type="hidden" name="ts_query" value="{{ ts_query }}">
-          {% endif -%}
-          {% if *sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc -%}
+          {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
+          {% if *active_sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc -%}
             {% call dashboard::active_table_filter_badge("Sort: Name Z-A") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
             {% endcall -%}
-          {% else if *sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc -%}
+          {% else if *active_sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc -%}
             {% call dashboard::active_table_filter_badge("Sort: Oldest request") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
             {% endcall -%}
-          {% else if *sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc -%}
+          {% else if *active_sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc -%}
             {% call dashboard::active_table_filter_badge("Sort: Newest request") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
             {% endcall -%}
@@ -192,16 +154,7 @@
                     hx-target="#invitation-requests-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
-                {% if let Some(limit) = limit -%}
-                  <input type="hidden" name="limit" value="{{ limit }}">
-                {% endif -%}
-                <input type="hidden" name="status" value="{{ status }}">
-                {% if let Some(title) = title -%}
-                  <input type="hidden" name="title" value="{{ title }}">
-                {% endif -%}
-                {% if let Some(ts_query) = &ts_query -%}
-                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
-                {% endif -%}
+                {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
                 {% if sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc) -%}
                   {{ dashboard::table_sort_button(label = "Requester", sort_value = "name-desc", is_ascending = true, is_descending = false) -}}
                 {% else -%}
@@ -215,16 +168,7 @@
                       hx-target="#invitation-requests-content"
                       hx-swap="innerHTML"
                       hx-indicator="#dashboard-spinner">
-                  {% if let Some(limit) = limit -%}
-                    <input type="hidden" name="limit" value="{{ limit }}">
-                  {% endif -%}
-                  {% if let Some(sort) = sort -%}
-                    <input type="hidden" name="sort" value="{{ sort }}">
-                  {% endif -%}
-                  <input type="hidden" name="status" value="{{ status }}">
-                  {% if let Some(ts_query) = &ts_query -%}
-                    <input type="hidden" name="ts_query" value="{{ ts_query }}">
-                  {% endif -%}
+                  {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
                   <button type="submit"
                           name="title"
                           value="present"
@@ -262,16 +206,7 @@
                     hx-target="#invitation-requests-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
-                {% if let Some(limit) = limit -%}
-                  <input type="hidden" name="limit" value="{{ limit }}">
-                {% endif -%}
-                <input type="hidden" name="status" value="{{ status }}">
-                {% if let Some(title) = title -%}
-                  <input type="hidden" name="title" value="{{ title }}">
-                {% endif -%}
-                {% if let Some(ts_query) = &ts_query -%}
-                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
-                {% endif -%}
+                {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
                 {% if sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc) -%}
                   {{ dashboard::table_sort_button(label = "Requested", sort_value = "created-at-desc", is_ascending = true, is_descending = false) -}}
                 {% else -%}
@@ -289,18 +224,7 @@
                     hx-target="#invitation-requests-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
-                {% if let Some(limit) = limit -%}
-                  <input type="hidden" name="limit" value="{{ limit }}">
-                {% endif -%}
-                {% if let Some(sort) = sort -%}
-                  <input type="hidden" name="sort" value="{{ sort }}">
-                {% endif -%}
-                {% if let Some(title) = title -%}
-                  <input type="hidden" name="title" value="{{ title }}">
-                {% endif -%}
-                {% if let Some(ts_query) = &ts_query -%}
-                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
-                {% endif -%}
+                {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
                 <button type="submit"
                         name="status"
                         value="all"
@@ -520,3 +444,42 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#invitation-requests-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Invitation request table state fields for filter, sort, and search forms. #}
+{% macro invitation_requests_table_state_inputs(
+  limit,
+  sort,
+  title,
+  status,
+  ts_query,
+  include_limit = true,
+  include_sort = true,
+  include_title = true,
+  include_status = true,
+  include_ts_query = true
+  ) -%}
+  {% if include_limit -%}
+    {% if let Some(limit) = limit -%}
+      <input type="hidden" name="limit" value="{{ limit }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_sort -%}
+    {% if let Some(sort) = sort -%}
+      <input type="hidden" name="sort" value="{{ sort }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_title -%}
+    {% if let Some(title) = title -%}
+      <input type="hidden" name="title" value="{{ title }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_status -%}
+    <input type="hidden" name="status" value="{{ status }}">
+  {% endif -%}
+  {% if include_ts_query -%}
+    {% if let Some(ts_query) = &ts_query -%}
+      <input type="hidden" name="ts_query" value="{{ ts_query }}">
+    {% endif -%}
+  {% endif -%}
+{% endmacro invitation_requests_table_state_inputs -%}
+{# End invitation request table state fields. #}

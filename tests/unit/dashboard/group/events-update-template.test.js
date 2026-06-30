@@ -51,4 +51,21 @@ describe("dashboard group event update template", () => {
       'hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content"',
     );
   });
+
+  it("keeps review tabs and bottom actions in the main grid column", async () => {
+    // Load the event update template before checking grid placement classes.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert root-level content after the form wrapper stays in the form column.
+    expect(template).to.include(
+      'data-content="attendees" class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0"',
+    );
+    expect(template).to.include(
+      'data-content="invitation-requests" class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0"',
+    );
+    expect(template).to.include('data-content="waitlist" class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0"');
+    expect(template).to.include(
+      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 lg:col-start-2 lg:px-0"',
+    );
+  });
 });

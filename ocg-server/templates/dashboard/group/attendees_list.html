@@ -27,25 +27,7 @@
           hx-swap="innerHTML"
           hx-indicator="#dashboard-spinner">
       <label for="search_attendees" class="sr-only">Search attendees</label>
-      {% if let Some(checked_in) = checked_in -%}
-        <input type="hidden" name="checked_in" value="{{ checked_in }}">
-      {% endif -%}
-      {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-        {% for ticket_type_id in ticket_type_ids -%}
-          <input type="hidden"
-                 name="event_ticket_type_ids[]"
-                 value="{{ ticket_type_id }}">
-        {% endfor -%}
-      {% endif -%}
-      {% if let Some(limit) = limit -%}
-        <input type="hidden" name="limit" value="{{ limit }}">
-      {% endif -%}
-      {% if let Some(sort) = sort -%}
-        <input type="hidden" name="sort" value="{{ sort }}">
-      {% endif -%}
-      {% if let Some(title) = title -%}
-        <input type="hidden" name="title" value="{{ title }}">
-      {% endif -%}
+      {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ts_query = false) -}}
       <input id="search_attendees"
              name="ts_query"
              type="text"
@@ -78,32 +60,14 @@
   {# Active filters -#}
   <div class="mb-5 flex flex-wrap items-center gap-2">
     <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
-    {% if let Some(checked_in) = checked_in -%}
+    {% if let Some(active_checked_in) = checked_in -%}
       <form class="inline-flex"
             hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
             hx-target="#attendees-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-          {% for ticket_type_id in ticket_type_ids -%}
-            <input type="hidden"
-                   name="event_ticket_type_ids[]"
-                   value="{{ ticket_type_id }}">
-          {% endfor -%}
-        {% endif -%}
-        {% if let Some(limit) = limit -%}
-          <input type="hidden" name="limit" value="{{ limit }}">
-        {% endif -%}
-        {% if let Some(sort) = sort -%}
-          <input type="hidden" name="sort" value="{{ sort }}">
-        {% endif -%}
-        {% if let Some(title) = title -%}
-          <input type="hidden" name="title" value="{{ title }}">
-        {% endif -%}
-        {% if let Some(ts_query) = &ts_query -%}
-          <input type="hidden" name="ts_query" value="{{ ts_query }}">
-        {% endif -%}
-        {% if checked_in -%}
+        {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
+        {% if active_checked_in -%}
           {% call dashboard::active_table_filter_badge("Checked in") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
           {% endcall -%}
@@ -114,32 +78,14 @@
         {% endif -%}
       </form>
     {% endif -%}
-    {% if let Some(title) = title -%}
+    {% if let Some(active_title) = title -%}
       <form class="inline-flex"
             hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
             hx-target="#attendees-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {% if let Some(checked_in) = checked_in -%}
-          <input type="hidden" name="checked_in" value="{{ checked_in }}">
-        {% endif -%}
-        {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-          {% for ticket_type_id in ticket_type_ids -%}
-            <input type="hidden"
-                   name="event_ticket_type_ids[]"
-                   value="{{ ticket_type_id }}">
-          {% endfor -%}
-        {% endif -%}
-        {% if let Some(limit) = limit -%}
-          <input type="hidden" name="limit" value="{{ limit }}">
-        {% endif -%}
-        {% if let Some(sort) = sort -%}
-          <input type="hidden" name="sort" value="{{ sort }}">
-        {% endif -%}
-        {% if let Some(ts_query) = &ts_query -%}
-          <input type="hidden" name="ts_query" value="{{ ts_query }}">
-        {% endif -%}
-        {% if *title == crate::templates::dashboard::group::PresenceFilter::Present -%}
+        {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
+        {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
           {% call dashboard::active_table_filter_badge("Title present") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
           {% endcall -%}
@@ -150,40 +96,22 @@
         {% endif -%}
       </form>
     {% endif -%}
-    {% if let Some(sort) = sort -%}
+    {% if let Some(active_sort) = sort -%}
       <form class="inline-flex"
             hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
             hx-target="#attendees-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {% if let Some(checked_in) = checked_in -%}
-          <input type="hidden" name="checked_in" value="{{ checked_in }}">
-        {% endif -%}
-        {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-          {% for ticket_type_id in ticket_type_ids -%}
-            <input type="hidden"
-                   name="event_ticket_type_ids[]"
-                   value="{{ ticket_type_id }}">
-          {% endfor -%}
-        {% endif -%}
-        {% if let Some(limit) = limit -%}
-          <input type="hidden" name="limit" value="{{ limit }}">
-        {% endif -%}
-        {% if let Some(title) = title -%}
-          <input type="hidden" name="title" value="{{ title }}">
-        {% endif -%}
-        {% if let Some(ts_query) = &ts_query -%}
-          <input type="hidden" name="ts_query" value="{{ ts_query }}">
-        {% endif -%}
-        {% if *sort == crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc -%}
+        {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_sort = false) -}}
+        {% if *active_sort == crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc -%}
           {% call dashboard::active_table_filter_badge("Sort: Name Z-A") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
           {% endcall -%}
-        {% else if *sort == crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc -%}
+        {% else if *active_sort == crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc -%}
           {% call dashboard::active_table_filter_badge("Sort: Oldest RSVP") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
           {% endcall -%}
-        {% else if *sort == crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc -%}
+        {% else if *active_sort == crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc -%}
           {% call dashboard::active_table_filter_badge("Sort: Newest RSVP") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
           {% endcall -%}
@@ -200,21 +128,7 @@
             hx-target="#attendees-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {% if let Some(checked_in) = checked_in -%}
-          <input type="hidden" name="checked_in" value="{{ checked_in }}">
-        {% endif -%}
-        {% if let Some(limit) = limit -%}
-          <input type="hidden" name="limit" value="{{ limit }}">
-        {% endif -%}
-        {% if let Some(sort) = sort -%}
-          <input type="hidden" name="sort" value="{{ sort }}">
-        {% endif -%}
-        {% if let Some(title) = title -%}
-          <input type="hidden" name="title" value="{{ title }}">
-        {% endif -%}
-        {% if let Some(ts_query) = &ts_query -%}
-          <input type="hidden" name="ts_query" value="{{ ts_query }}">
-        {% endif -%}
+        {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
         {% call dashboard::active_table_filter_badge("Ticket type") -%}
         {{ dashboard::active_table_filter_remove_button(label = "Remove ticket type filter") -}}
         {% endcall -%}
@@ -403,25 +317,7 @@
                   hx-target="#attendees-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {% if let Some(checked_in) = checked_in -%}
-                <input type="hidden" name="checked_in" value="{{ checked_in }}">
-              {% endif -%}
-              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-                {% for ticket_type_id in ticket_type_ids -%}
-                  <input type="hidden"
-                         name="event_ticket_type_ids[]"
-                         value="{{ ticket_type_id }}">
-                {% endfor -%}
-              {% endif -%}
-              {% if let Some(limit) = limit -%}
-                <input type="hidden" name="limit" value="{{ limit }}">
-              {% endif -%}
-              {% if let Some(title) = title -%}
-                <input type="hidden" name="title" value="{{ title }}">
-              {% endif -%}
-              {% if let Some(ts_query) = &ts_query -%}
-                <input type="hidden" name="ts_query" value="{{ ts_query }}">
-              {% endif -%}
+              {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_sort = false) -}}
               {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc) -%}
                 {{ dashboard::table_sort_button(label = "Attendee", sort_value = "name-desc", is_ascending = true, is_descending = false) -}}
               {% else -%}
@@ -435,25 +331,7 @@
                     hx-target="#attendees-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
-                {% if let Some(checked_in) = checked_in -%}
-                  <input type="hidden" name="checked_in" value="{{ checked_in }}">
-                {% endif -%}
-                {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-                  {% for ticket_type_id in ticket_type_ids -%}
-                    <input type="hidden"
-                           name="event_ticket_type_ids[]"
-                           value="{{ ticket_type_id }}">
-                  {% endfor -%}
-                {% endif -%}
-                {% if let Some(limit) = limit -%}
-                  <input type="hidden" name="limit" value="{{ limit }}">
-                {% endif -%}
-                {% if let Some(sort) = sort -%}
-                  <input type="hidden" name="sort" value="{{ sort }}">
-                {% endif -%}
-                {% if let Some(ts_query) = &ts_query -%}
-                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
-                {% endif -%}
+                {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
                 <button type="submit"
                         name="title"
                         value="present"
@@ -492,25 +370,7 @@
                   hx-target="#attendees-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {% if let Some(checked_in) = checked_in -%}
-                <input type="hidden" name="checked_in" value="{{ checked_in }}">
-              {% endif -%}
-              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-                {% for ticket_type_id in ticket_type_ids -%}
-                  <input type="hidden"
-                         name="event_ticket_type_ids[]"
-                         value="{{ ticket_type_id }}">
-                {% endfor -%}
-              {% endif -%}
-              {% if let Some(limit) = limit -%}
-                <input type="hidden" name="limit" value="{{ limit }}">
-              {% endif -%}
-              {% if let Some(sort) = sort -%}
-                <input type="hidden" name="sort" value="{{ sort }}">
-              {% endif -%}
-              {% if let Some(ts_query) = &ts_query -%}
-                <input type="hidden" name="ts_query" value="{{ ts_query }}">
-              {% endif -%}
+              {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
               <button type="submit"
                       name="title"
                       value="present"
@@ -546,25 +406,7 @@
                   hx-target="#attendees-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {% if let Some(checked_in) = checked_in -%}
-                <input type="hidden" name="checked_in" value="{{ checked_in }}">
-              {% endif -%}
-              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-                {% for ticket_type_id in ticket_type_ids -%}
-                  <input type="hidden"
-                         name="event_ticket_type_ids[]"
-                         value="{{ ticket_type_id }}">
-                {% endfor -%}
-              {% endif -%}
-              {% if let Some(limit) = limit -%}
-                <input type="hidden" name="limit" value="{{ limit }}">
-              {% endif -%}
-              {% if let Some(title) = title -%}
-                <input type="hidden" name="title" value="{{ title }}">
-              {% endif -%}
-              {% if let Some(ts_query) = &ts_query -%}
-                <input type="hidden" name="ts_query" value="{{ ts_query }}">
-              {% endif -%}
+              {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_sort = false) -}}
               {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) -%}
                 {{ dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-desc", is_ascending = true, is_descending = false) -}}
               {% else -%}
@@ -584,21 +426,7 @@
                     hx-target="#attendees-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
-                {% if let Some(checked_in) = checked_in -%}
-                  <input type="hidden" name="checked_in" value="{{ checked_in }}">
-                {% endif -%}
-                {% if let Some(limit) = limit -%}
-                  <input type="hidden" name="limit" value="{{ limit }}">
-                {% endif -%}
-                {% if let Some(sort) = sort -%}
-                  <input type="hidden" name="sort" value="{{ sort }}">
-                {% endif -%}
-                {% if let Some(title) = title -%}
-                  <input type="hidden" name="title" value="{{ title }}">
-                {% endif -%}
-                {% if let Some(ts_query) = &ts_query -%}
-                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
-                {% endif -%}
+                {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
                 {{ dashboard::table_filter_section_title(text = "Filter") -}}
                 {% for ticket_type in ticket_types -%}
                   <label class="flex cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900"
@@ -630,25 +458,7 @@
                   hx-target="#attendees-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
-                {% for ticket_type_id in ticket_type_ids -%}
-                  <input type="hidden"
-                         name="event_ticket_type_ids[]"
-                         value="{{ ticket_type_id }}">
-                {% endfor -%}
-              {% endif -%}
-              {% if let Some(limit) = limit -%}
-                <input type="hidden" name="limit" value="{{ limit }}">
-              {% endif -%}
-              {% if let Some(sort) = sort -%}
-                <input type="hidden" name="sort" value="{{ sort }}">
-              {% endif -%}
-              {% if let Some(title) = title -%}
-                <input type="hidden" name="title" value="{{ title }}">
-              {% endif -%}
-              {% if let Some(ts_query) = &ts_query -%}
-                <input type="hidden" name="ts_query" value="{{ ts_query }}">
-              {% endif -%}
+              {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
               <button type="submit"
                       class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
                              {% if checked_in.is_none() -%}
@@ -1348,3 +1158,55 @@
   </div>
 </div>
 {# End QR code modal -#}
+
+{# Attendee table state fields for filter, sort, and search forms. #}
+{% macro attendee_table_state_inputs(
+  checked_in,
+  event_ticket_type_ids,
+  limit,
+  sort,
+  title,
+  ts_query,
+  include_checked_in = true,
+  include_ticket_type_ids = true,
+  include_limit = true,
+  include_sort = true,
+  include_title = true,
+  include_ts_query = true
+  ) -%}
+  {% if include_checked_in -%}
+    {% if let Some(checked_in) = checked_in -%}
+      <input type="hidden" name="checked_in" value="{{ checked_in }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_ticket_type_ids -%}
+    {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+      {% for ticket_type_id in ticket_type_ids -%}
+        <input type="hidden"
+               name="event_ticket_type_ids[]"
+               value="{{ ticket_type_id }}">
+      {% endfor -%}
+    {% endif -%}
+  {% endif -%}
+  {% if include_limit -%}
+    {% if let Some(limit) = limit -%}
+      <input type="hidden" name="limit" value="{{ limit }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_sort -%}
+    {% if let Some(sort) = sort -%}
+      <input type="hidden" name="sort" value="{{ sort }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_title -%}
+    {% if let Some(title) = title -%}
+      <input type="hidden" name="title" value="{{ title }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_ts_query -%}
+    {% if let Some(ts_query) = &ts_query -%}
+      <input type="hidden" name="ts_query" value="{{ ts_query }}">
+    {% endif -%}
+  {% endif -%}
+{% endmacro attendee_table_state_inputs -%}
+{# End attendee table state fields. #}

@@ -89,6 +89,24 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     });
   };
 
+  const clickSectionButton = (sectionButton) => {
+    if (!(sectionButton instanceof HTMLElement)) {
+      return;
+    }
+
+    skipSectionClickActivation = true;
+    try {
+      sectionButton.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    } finally {
+      skipSectionClickActivation = false;
+    }
+  };
+
   const displayActiveSection = (sectionName) => {
     const tabButtons = getTabButtons();
     const contentSections = Array.from(root.querySelectorAll("[data-content]"));
@@ -132,13 +150,7 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
           return;
         }
 
-        skipSectionClickActivation = true;
-        try {
-          nextTabButton.click();
-        } finally {
-          skipSectionClickActivation = false;
-        }
-
+        clickSectionButton(nextTabButton);
         displayActiveSection(nextSectionName);
         scrollToTop();
         return;
@@ -162,7 +174,13 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
         return;
       }
 
-      displayActiveSection(select.value || "");
+      const selectedSectionName = select.value || "";
+      const selectedTabButton = getTabButtons().find(
+        (button) => button.getAttribute("data-section") === selectedSectionName,
+      );
+
+      clickSectionButton(selectedTabButton);
+      displayActiveSection(selectedSectionName);
     });
   }
 

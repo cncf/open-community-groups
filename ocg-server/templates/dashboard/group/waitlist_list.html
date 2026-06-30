@@ -25,15 +25,7 @@
           hx-swap="innerHTML"
           hx-indicator="#dashboard-spinner">
       <label for="search_waitlist" class="sr-only">Search waitlist</label>
-      {% if let Some(limit) = limit -%}
-        <input type="hidden" name="limit" value="{{ limit }}">
-      {% endif -%}
-      {% if let Some(sort) = sort -%}
-        <input type="hidden" name="sort" value="{{ sort }}">
-      {% endif -%}
-      {% if let Some(title) = title -%}
-        <input type="hidden" name="title" value="{{ title }}">
-      {% endif -%}
+      {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_ts_query = false) -}}
       <input id="search_waitlist"
              name="ts_query"
              type="text"
@@ -66,22 +58,14 @@
   {# Active filters -#}
   <div class="mb-5 flex flex-wrap items-center gap-2">
     <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
-    {% if let Some(title) = title -%}
+    {% if let Some(active_title) = title -%}
       <form class="inline-flex"
             hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
             hx-target="#waitlist-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {% if let Some(limit) = limit -%}
-          <input type="hidden" name="limit" value="{{ limit }}">
-        {% endif -%}
-        {% if let Some(sort) = sort -%}
-          <input type="hidden" name="sort" value="{{ sort }}">
-        {% endif -%}
-        {% if let Some(ts_query) = &ts_query -%}
-          <input type="hidden" name="ts_query" value="{{ ts_query }}">
-        {% endif -%}
-        {% if *title == crate::templates::dashboard::group::PresenceFilter::Present -%}
+        {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_title = false) -}}
+        {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
           {% call dashboard::active_table_filter_badge("Title present") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
           {% endcall -%}
@@ -92,30 +76,22 @@
         {% endif -%}
       </form>
     {% endif -%}
-    {% if let Some(sort) = sort -%}
+    {% if let Some(active_sort) = sort -%}
       <form class="inline-flex"
             hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
             hx-target="#waitlist-content"
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
-        {% if let Some(limit) = limit -%}
-          <input type="hidden" name="limit" value="{{ limit }}">
-        {% endif -%}
-        {% if let Some(title) = title -%}
-          <input type="hidden" name="title" value="{{ title }}">
-        {% endif -%}
-        {% if let Some(ts_query) = &ts_query -%}
-          <input type="hidden" name="ts_query" value="{{ ts_query }}">
-        {% endif -%}
-        {% if *sort == crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc -%}
+        {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
+        {% if *active_sort == crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc -%}
           {% call dashboard::active_table_filter_badge("Sort: Name Z-A") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
           {% endcall -%}
-        {% else if *sort == crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc -%}
+        {% else if *active_sort == crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc -%}
           {% call dashboard::active_table_filter_badge("Sort: Oldest joined") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
           {% endcall -%}
-        {% else if *sort == crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc -%}
+        {% else if *active_sort == crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc -%}
           {% call dashboard::active_table_filter_badge("Sort: Newest joined") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
           {% endcall -%}
@@ -154,15 +130,7 @@
                   hx-target="#waitlist-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {% if let Some(limit) = limit -%}
-                <input type="hidden" name="limit" value="{{ limit }}">
-              {% endif -%}
-              {% if let Some(title) = title -%}
-                <input type="hidden" name="title" value="{{ title }}">
-              {% endif -%}
-              {% if let Some(ts_query) = &ts_query -%}
-                <input type="hidden" name="ts_query" value="{{ ts_query }}">
-              {% endif -%}
+              {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
               {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc) -%}
                 {{ dashboard::table_sort_button(label = "Entry", sort_value = "name-desc", is_ascending = true, is_descending = false) -}}
               {% else -%}
@@ -176,15 +144,7 @@
                     hx-target="#waitlist-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
-                {% if let Some(limit) = limit -%}
-                  <input type="hidden" name="limit" value="{{ limit }}">
-                {% endif -%}
-                {% if let Some(sort) = sort -%}
-                  <input type="hidden" name="sort" value="{{ sort }}">
-                {% endif -%}
-                {% if let Some(ts_query) = &ts_query -%}
-                  <input type="hidden" name="ts_query" value="{{ ts_query }}">
-                {% endif -%}
+                {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_title = false) -}}
                 <button type="submit"
                         name="title"
                         value="present"
@@ -222,15 +182,7 @@
                   hx-target="#waitlist-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
-              {% if let Some(limit) = limit -%}
-                <input type="hidden" name="limit" value="{{ limit }}">
-              {% endif -%}
-              {% if let Some(title) = title -%}
-                <input type="hidden" name="title" value="{{ title }}">
-              {% endif -%}
-              {% if let Some(ts_query) = &ts_query -%}
-                <input type="hidden" name="ts_query" value="{{ ts_query }}">
-              {% endif -%}
+              {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
               {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc) -%}
                 {{ dashboard::table_sort_button(label = "Joined", sort_value = "created-at-desc", is_ascending = true, is_descending = false) -}}
               {% else -%}
@@ -359,3 +311,37 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#waitlist-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Waitlist table state fields for filter, sort, and search forms. #}
+{% macro waitlist_table_state_inputs(
+  limit,
+  sort,
+  title,
+  ts_query,
+  include_limit = true,
+  include_sort = true,
+  include_title = true,
+  include_ts_query = true
+  ) -%}
+  {% if include_limit -%}
+    {% if let Some(limit) = limit -%}
+      <input type="hidden" name="limit" value="{{ limit }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_sort -%}
+    {% if let Some(sort) = sort -%}
+      <input type="hidden" name="sort" value="{{ sort }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_title -%}
+    {% if let Some(title) = title -%}
+      <input type="hidden" name="title" value="{{ title }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_ts_query -%}
+    {% if let Some(ts_query) = &ts_query -%}
+      <input type="hidden" name="ts_query" value="{{ ts_query }}">
+    {% endif -%}
+  {% endif -%}
+{% endmacro waitlist_table_state_inputs -%}
+{# End waitlist table state fields. #}
