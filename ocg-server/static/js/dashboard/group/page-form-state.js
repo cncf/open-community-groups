@@ -64,6 +64,8 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
 
   const getTabButtons = () => Array.from(root.querySelectorAll("[data-section]"));
 
+  const getSectionSelects = () => Array.from(root.querySelectorAll("[data-section-select]"));
+
   const getNextButtons = () => Array.from(root.querySelectorAll("[data-section-next]"));
 
   const updateNextButtons = (sectionName) => {
@@ -100,6 +102,10 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     contentSections.forEach((section) => {
       const isActive = section.getAttribute("data-content") === sectionName;
       setElementHidden(section, !isActive);
+    });
+
+    getSectionSelects().forEach((select) => {
+      select.value = sectionName;
     });
 
     updateNextButtons(sectionName);
@@ -149,12 +155,23 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
 
       displayActiveSection(button.getAttribute("data-section") || "");
     });
+
+    root.addEventListener("change", (event) => {
+      const select = closestElementWithinRoot(event.target, "[data-section-select]", root);
+      if (!select) {
+        return;
+      }
+
+      displayActiveSection(select.value || "");
+    });
   }
 
   const activeSectionName =
     getTabButtons()
       .find((button) => button.getAttribute("data-active") === "true")
-      ?.getAttribute("data-section") || "";
+      ?.getAttribute("data-section") ||
+    getSectionSelects().find((select) => select.value)?.value ||
+    "";
   updateNextButtons(activeSectionName);
 
   return { displayActiveSection };

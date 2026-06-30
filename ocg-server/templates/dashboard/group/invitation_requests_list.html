@@ -9,6 +9,8 @@
      hx-trigger="refresh-event-invitation-requests from:body"
      hx-target="#invitation-requests-content"
      hx-swap="innerHTML">
+  {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
+
   {# Filters -#}
   <div class="my-5">
     <div class="relative w-[36rem] max-w-full">

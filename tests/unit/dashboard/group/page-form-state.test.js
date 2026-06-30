@@ -98,6 +98,47 @@ describe("page form state helpers", () => {
     ).to.equal(false);
   });
 
+  it("syncs section selects with active sections", () => {
+    // Render compact select navigation beside the desktop tab buttons.
+    document.body.innerHTML = `
+      <div id="page-root">
+        <select data-section-select>
+          <option value="details" selected>Details</option>
+          <option value="sessions">Sessions</option>
+        </select>
+        <button data-section="details" data-active="true" class="active">Details</button>
+        <button data-section="sessions" data-active="false">Sessions</button>
+        <section data-content="details">Details content</section>
+        <section data-content="sessions" class="hidden">Sessions content</section>
+      </div>
+    `;
+
+    // Initialize navigation against the page root.
+    const pageRoot = document.getElementById("page-root");
+    const sectionSelect = pageRoot.querySelector("[data-section-select]");
+    const { displayActiveSection } = initializeSectionTabs({ root: pageRoot });
+
+    // Change the compact navigation to the sessions section.
+    sectionSelect.value = "sessions";
+    sectionSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // The matching tab state and content panel follow the select.
+    expect(
+      pageRoot
+        .querySelector('[data-section="sessions"]')
+        .getAttribute("data-active"),
+    ).to.equal("true");
+    expect(
+      pageRoot
+        .querySelector('[data-content="sessions"]')
+        .classList.contains("hidden"),
+    ).to.equal(false);
+
+    // Programmatic tab changes keep the compact select in sync too.
+    displayActiveSection("details");
+    expect(sectionSelect.value).to.equal("details");
+  });
+
   it("advances to the next section from bottom navigation", () => {
     // Render three ordered sections with bottom navigation.
     document.body.innerHTML = `

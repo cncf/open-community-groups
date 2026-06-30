@@ -8,7 +8,7 @@
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
 <div id="event-update-page"
-     class="space-y-12"
+     class="grid min-w-0 gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
      data-event-page="update"
      hx-history="false"
      data-event-public-url="{{ event_public_url }}"
@@ -26,85 +26,14 @@
      data-group-logo-url="{{ event.group.logo_url }}"
      data-group-banner-url="{%- if let Some(banner_url) = &event.group.banner_url -%}{{ banner_url }}{%- endif -%}"
      data-group-banner-mobile-url="{%- if let Some(banner_mobile_url) = &event.group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}">
-  <div class="mb-10 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch gap-x-8">
-    <div class="min-w-0 overflow-x-auto overflow-y-hidden">
-      <ul class="inline-flex min-w-max flex-nowrap gap-1 border-b border-stone-900/10 text-center font-medium lg:gap-2">
-        {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
-        {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
-        {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Hosts & Speakers") -}}
-        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Payments") -}}
-        {% endif -%}
-        {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
-        {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
-        {% let submissions_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/submissions" hx-trigger="click once" hx-target="#submissions-content" hx-swap="innerHTML" hx-indicator="#submissions-loading"{%- endlet %}
-        {{ event_form::tab_button(section = "submissions", icon = "submission", label = "Submissions", extra_attrs = submissions_attrs) -}}
-        {% let attendees_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content" hx-swap="innerHTML" hx-indicator="#attendees-loading"{%- endlet %}
-        {{ event_form::tab_button(section = "attendees", icon = "attendees", label = "Attendees", extra_attrs = attendees_attrs) -}}
-        {% if event.attendee_approval_required -%}
-          {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content" hx-swap="innerHTML" hx-indicator="#invitation-requests-loading"{%- endlet %}
-          {{ event_form::tab_button(section = "invitation-requests", icon = "request-invitation", label = "Requests", extra_attrs = invitation_requests_attrs) -}}
-        {% endif -%}
-        {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
-        {{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
-      </ul>
-    </div>
-    <div class="flex min-w-28 flex-col items-stretch justify-center gap-2">
-      <button id="event-preview-button"
-              type="button"
-              aria-label="Preview"
-              class="group btn-primary-outline btn-mini inline-flex h-7 min-w-28 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-              {% if !can_manage_events -%}
-                disabled title="Your role cannot preview events."
-              {% else -%}
-                title="Preview"
-              {% endif -%}>
-        <svg class="size-4 shrink-0"
-             aria-hidden="true"
-             stroke="currentColor"
-             fill="currentColor"
-             stroke-width="0"
-             viewBox="0 0 16 16"
-             xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
-          </path>
-        </svg>
-        <span>Preview</span>
-      </button>
-      {% if event_public_url_enabled -%}
-        <a id="event-public-page-link"
-           href="{{ event_public_url }}"
-           target="_blank"
-           rel="noopener noreferrer"
-           aria-label="Public page"
-           title="Public page"
-           class="group btn-primary-outline-anchor btn-mini inline-flex h-7 min-w-28 items-center justify-center gap-2 whitespace-nowrap">
-          <div class="svg-icon size-3 icon-eye shrink-0"></div>
-          <span>Public page</span>
-        </a>
-      {% else -%}
-        <button id="event-public-page-link"
-                type="button"
-                disabled
-                aria-label="Public page"
-                title="Event must be published."
-                class="group btn-primary-outline btn-mini inline-flex h-7 min-w-28 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50">
-          <div class="svg-icon size-3 icon-eye shrink-0"></div>
-          <span>Public page</span>
-        </button>
-      {% endif -%}
-    </div>
-  </div>
-
   {% if !can_manage_events -%}
-    {{ dashboard::permission_warning(message = "Your role cannot update events.", extra_classes = "") -}}
+    {{ dashboard::permission_warning(message = "Your role cannot update events.", extra_classes = "col-span-full") -}}
   {% endif -%}
   {% if event.canceled -%}
-    {{ dashboard::permission_warning(message = "This event is canceled. Event details are read-only, but attendee and refund review tools remain available.", extra_classes = "") -}}
+    {{ dashboard::permission_warning(message = "This event is canceled. Event details are read-only, but attendee and refund review tools remain available.", extra_classes = "col-span-full") -}}
   {% endif -%}
 
-  <div id="pending-changes-alert" class="hidden">
+  <div id="pending-changes-alert" class="col-span-full hidden">
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
       <div class="flex min-w-0 flex-1 items-start gap-3">
         <div class="svg-icon size-5 bg-primary-700 icon-clock mt-0.5 shrink-0"></div>
@@ -134,13 +63,104 @@
     </div>
   </div>
 
-  <div class="inert-form" {% if event_read_only -%} inert {% endif -%}>
-    <div class="space-y-12">
+  <aside class="min-w-0 border-b border-stone-900/10 py-12 lg:self-stretch lg:border-b-0 lg:border-r lg:py-0 lg:pr-8">
+    <div class="sticky top-6">
+      <select data-section-select
+              aria-label="Event form section"
+              class="select-primary lg:hidden">
+        {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
+        {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
+        {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
+        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
+        {% if payments_ready -%}
+          {{ event_form::tab_option(section = "payments", label = "Payments") -}}
+        {% endif -%}
+        {{ event_form::tab_option(section = "questions", label = "Questions") -}}
+        {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
+        {{ event_form::tab_option(section = "submissions", label = "Submissions") -}}
+        {{ event_form::tab_option(section = "attendees", label = "Attendees") -}}
+        {% if event.attendee_approval_required -%}
+          {{ event_form::tab_option(section = "invitation-requests", label = "Requests") -}}
+        {% endif -%}
+        {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}}
+      </select>
+      <ul class="hidden flex-col gap-1 font-medium lg:flex">
+        {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
+        {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
+        {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
+        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
+        {% if payments_ready -%}
+          {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Payments") -}}
+        {% endif -%}
+        {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
+        {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
+        {% let submissions_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/submissions" hx-trigger="click once" hx-target="#submissions-content" hx-swap="innerHTML" hx-indicator="#submissions-loading"{%- endlet %}
+        {{ event_form::tab_button(section = "submissions", icon = "submission", label = "Submissions", extra_attrs = submissions_attrs) -}}
+        {% let attendees_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content" hx-swap="innerHTML" hx-indicator="#attendees-loading"{%- endlet %}
+        {{ event_form::tab_button(section = "attendees", icon = "attendees", label = "Attendees", extra_attrs = attendees_attrs) -}}
+        {% if event.attendee_approval_required -%}
+          {% let invitation_requests_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content" hx-swap="innerHTML" hx-indicator="#invitation-requests-loading"{%- endlet %}
+          {{ event_form::tab_button(section = "invitation-requests", icon = "request-invitation", label = "Requests", extra_attrs = invitation_requests_attrs) -}}
+        {% endif -%}
+        {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
+        {{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
+      </ul>
+      <div class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col">
+        <button id="event-preview-button"
+                type="button"
+                aria-label="Preview"
+                class="group btn-primary-outline btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                {% if !can_manage_events -%}
+                  disabled title="Your role cannot preview events."
+                {% else -%}
+                  title="Preview"
+                {% endif -%}>
+          <svg class="size-4 shrink-0"
+               aria-hidden="true"
+               stroke="currentColor"
+               fill="currentColor"
+               stroke-width="0"
+               viewBox="0 0 16 16"
+               xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
+            </path>
+          </svg>
+          <span>Preview</span>
+        </button>
+        {% if event_public_url_enabled -%}
+          <a id="event-public-page-link"
+             href="{{ event_public_url }}"
+             target="_blank"
+             rel="noopener noreferrer"
+             aria-label="Public page"
+             title="Public page"
+             class="group btn-primary-outline-anchor btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap">
+            <div class="svg-icon size-3 icon-eye shrink-0"></div>
+            <span>Public page</span>
+          </a>
+        {% else -%}
+          <button id="event-public-page-link"
+                  type="button"
+                  disabled
+                  aria-label="Public page"
+                  title="Event must be published."
+                  class="group btn-primary-outline btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50">
+            <div class="svg-icon size-3 icon-eye shrink-0"></div>
+            <span>Public page</span>
+          </button>
+        {% endif -%}
+      </div>
+    </div>
+  </aside>
+
+  <div class="min-w-0 px-4 lg:px-0">
+    <div class="inert-form" {% if event_read_only -%} inert {% endif -%}>
+      <div class="space-y-12">
       {# Event Details Tab -#}
       <div data-content="details">
         <form id="details-form">
           <div class="pb-12">
-            <p class="mt-1 text-sm/6 text-stone-500">Please update as many details about this event as possible.</p>
+            {{ dashboard::form_title(title = "Event details", description = "Please update as many details about this event as possible.") -}}
 
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
               {# Event name -#}
@@ -476,7 +496,7 @@
       <div data-content="cfs" class="hidden">
         <form id="cfs-form">
           <div class="pb-12">
-            <p class="mt-1 text-sm/6 text-stone-500">Collect session proposals ahead of the event.</p>
+            {{ dashboard::form_title(title = "Call for Speakers", description = "Collect session proposals ahead of the event.") -}}
 
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
               {# Enable CFS toggle -#}
@@ -581,7 +601,7 @@
           <div class="space-y-12">
             {# Date and Time section -#}
             <div>
-              <p class="mt-1 text-sm/6 text-stone-500">When will this event take place?</p>
+              {{ dashboard::form_title(title = "Date & Venue", description = "When will this event take place?") -}}
               {% if event.is_past() -%}
                 <p class="mt-2 text-xs text-stone-500">
                   Past events can be edited, but dates cannot be moved into the future.
@@ -860,6 +880,7 @@
     {# Submissions Tab -#}
     <div data-content="submissions" class="hidden">
       <div id="submissions-content">
+        {{ dashboard::page_title(title = "Submissions", docs_href = "/docs#/guides/event-operations?id=submissions", description = "Review and manage call for speakers submissions.") -}}
         {# Loading placeholder -#}
         <div id="submissions-loading"
              class="flex items-center justify-center py-12">
@@ -877,6 +898,7 @@
     <div data-content="sessions" class="hidden">
       <form id="sessions-form">
         <div class="pb-12">
+          {{ dashboard::form_title(title = "Sessions") -}}
           <div class="mt-10">
             <sessions-section sessions="{{ event.sessions|json }}" session-kinds="{{ session_kinds|json }}" approved-submissions="{{ approved_submissions|json }}" timezone="{{ event.timezone }}" meeting-max-participants="{{ meetings_max_participants|json }}" description-max-length="{{ crate::validation::MAX_LEN_DESCRIPTION }}" session-name-max-length="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" location-max-length="{{ crate::validation::MAX_LEN_S }}" event-starts-at="{{ event.starts_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}" event-ends-at="{{ event.ends_at|display_some_datetime_tz(DATE_FORMAT, event.timezone.clone() ) }}"
             {% if event.is_past() %}event-past{% endif %}
@@ -902,9 +924,7 @@
         <form id="payments-form">
           <div class="space-y-12">
             <div>
-              <p class="mt-1 text-sm/6 text-stone-500">
-                Configure event currency, ticket tiers, and optional discount codes.
-              </p>
+              {{ dashboard::form_title(title = "Payments", description = "Configure event currency, ticket tiers, and optional discount codes.") -}}
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
                 <div class="col-span-full lg:col-span-3">
@@ -1026,6 +1046,7 @@
 {# Attendees Tab -#}
 <div data-content="attendees" class="hidden">
   <div id="attendees-content">
+    {{ dashboard::form_title(title = "Attendees", description = "Review registrations and manage attendee check-in.") -}}
     {# Loading placeholder -#}
     <div id="attendees-loading" class="flex items-center justify-center py-12">
       <div class="flex flex-col items-center space-y-4">
@@ -1041,6 +1062,7 @@
   {# Invitation Requests Tab -#}
   <div data-content="invitation-requests" class="hidden">
     <div id="invitation-requests-content">
+      {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
       <div id="invitation-requests-loading"
            class="flex items-center justify-center py-12">
         <div class="flex flex-col items-center space-y-4">
@@ -1056,6 +1078,7 @@
 {# Waitlist Tab -#}
 <div data-content="waitlist" class="hidden">
   <div id="waitlist-content">
+    {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
     <div id="waitlist-loading" class="flex items-center justify-center py-12">
       <div class="flex flex-col items-center space-y-4">
         {{ ui::spinner(size = "size-10") -}}
@@ -1078,6 +1101,7 @@
           class="btn-primary-outline w-24">Cancel</button>
 </div>
 {# End form buttons -#}
+</div>
 </div>
 
 <div id="event-preview-modal-root"></div>
