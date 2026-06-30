@@ -12,6 +12,7 @@ use crate::{
     types::{
         event::{EventInvitationRequestStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
+        user::User,
     },
     validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
@@ -53,22 +54,12 @@ pub struct InvitationRequest {
     pub created_at: DateTime<Utc>,
     /// Invitation request status.
     pub invitation_request_status: EventInvitationRequestStatus,
-    /// User id.
-    pub user_id: Uuid,
-    /// Username.
-    pub username: String,
+    /// Public profile payload for the requester.
+    pub user: User,
 
-    /// Company the user represents.
-    pub company: Option<String>,
-    /// Full name.
-    pub name: Option<String>,
-    /// URL to user's avatar.
-    pub photo_url: Option<String>,
     /// Review completion time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub reviewed_at: Option<DateTime<Utc>>,
-    /// Title held by the user.
-    pub title: Option<String>,
 }
 
 /// Filter parameters for invitation request searches.

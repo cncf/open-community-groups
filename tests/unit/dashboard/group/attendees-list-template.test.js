@@ -11,15 +11,27 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group attendees list template", () => {
+  it("renders attendee identity cells as profile modal triggers", async () => {
+    // Load the attendees list template before checking profile trigger markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the attendee identity area uses the shared profile trigger macro.
+    expect(template).to.include(
+      "dashboard::user_profile_modal_trigger(attendee.user, self::user_initials(attendee.user.name.as_deref() , attendee.user.username.as_str()))",
+    );
+    expect(template).to.include('attendee.status == "invitation-pending"');
+    expect(template).to.include("attendee.email");
+  });
+
   it("renders cancel attendance as a confirmed delete action for eligible attendees", async () => {
     // Load the attendees list template before checking cancel attendance markup.
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify eligible attendees get a confirmed cancel action.
     expect(template).to.include('attendee.status == "confirmed"');
-    expect(template).to.include('id="cancel-attendance-{{ attendee.user_id }}"');
+    expect(template).to.include('id="cancel-attendance-{{ attendee.user.user_id }}"');
     expect(template).to.include(
-      'hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/attendance"',
+      'hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance"',
     );
     expect(template).to.include('hx-trigger="confirmed"');
     expect(template).to.include('hx-disabled-elt="this"');
@@ -50,14 +62,14 @@ describe("dashboard group attendees list template", () => {
 
     // Verify renders cancel invitation for manual question-pending invitations.
     expect(template).to.include(
-      'attendee.status == "registration-questions-pending") && attendee.name.is_none()',
+      'attendee.status == "registration-questions-pending") && attendee.user.name.is_none()',
     );
     expect(template).to.include(
       'attendee.status == "registration-questions-pending" && attendee.manually_invited',
     );
-    expect(template).to.include('id="cancel-invitation-{{ attendee.user_id }}"');
+    expect(template).to.include('id="cancel-invitation-{{ attendee.user.user_id }}"');
     expect(template).to.include(
-      'hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user_id }}/invitation/cancel"',
+      'hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/invitation/cancel"',
     );
   });
 
@@ -67,12 +79,16 @@ describe("dashboard group attendees list template", () => {
 
     // Verify the primary entrypoint uses all-attendee eligibility.
     expect(template).to.include('id="attendee-email-actions-button"');
-    expect(template).to.include('data-attendee-email-actions-dropdown');
+    expect(template).to.include("data-attendee-email-actions-dropdown");
     expect(template).to.include("all_attendees_email_recipient_total == 0");
-    expect(template).to.include('data-notification-recipient-total="{{ all_attendees_email_recipient_total }}"');
+    expect(template).to.include(
+      'data-notification-recipient-total="{{ all_attendees_email_recipient_total }}"',
+    );
     expect(template).to.include('data-notification-scope="all"');
     expect(template).to.include("All eligible attendees");
-    expect(template).to.include("No attendees with verified email addresses and email notifications enabled.");
+    expect(template).to.include(
+      "No attendees with verified email addresses and email notifications enabled.",
+    );
     expect(template).not.to.include(
       "No confirmed attendees with verified email addresses and email notifications enabled.",
     );
@@ -103,9 +119,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-bar");
     expect(template).to.include("data-attendee-email-selection-count");
     expect(template).to.include("<span data-attendee-email-selection-count>0</span>");
-    expect(template).to.include(
-      "<span data-attendee-email-selection-label>attendees selected</span>",
-    );
+    expect(template).to.include("<span data-attendee-email-selection-label>attendees selected</span>");
     expect(template).not.to.include(
       "Only attendees eligible for optional email notifications can be selected.",
     );

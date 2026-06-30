@@ -12,6 +12,7 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
+        user::User,
     },
     validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
@@ -51,21 +52,10 @@ pub struct WaitlistEntry {
     /// Waiting list creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
-    /// User id.
-    pub user_id: Uuid,
-    /// Username.
-    pub username: String,
+    /// Public profile payload for the waitlisted user.
+    pub user: User,
     /// Position in the full event waitlist.
     pub waitlist_position: usize,
-
-    /// Company the user represents.
-    pub company: Option<String>,
-    /// Full name.
-    pub name: Option<String>,
-    /// URL to user's avatar.
-    pub photo_url: Option<String>,
-    /// Title held by the user.
-    pub title: Option<String>,
 }
 
 /// Filter parameters for waitlist searches.

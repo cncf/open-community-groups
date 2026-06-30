@@ -58,28 +58,43 @@ values
 
 -- Users
 insert into "user" (
-    user_id,
     auth_hash,
+    bio,
     email,
+    github_url,
+    provider,
+    user_id,
     username,
+    website_url,
+
     company,
     name,
     photo_url,
     title
 ) values (
-    :'user1ID',
     gen_random_bytes(32),
+    'Waits for event capacity',
     'alice@example.com',
+    'https://github.com/alice',
+    '{"github": {"username": "alice-gh", "private": "secret"}, "linuxfoundation": {"username": "alice-lf", "subject": "secret"}}'::jsonb,
+    :'user1ID',
     'alice',
+    'https://example.com/alice',
+
     'Cloud Corp',
     'Alice',
     'https://example.com/alice.png',
     'Principal Engineer'
 ), (
-    :'user2ID',
     gen_random_bytes(32),
+    null,
     'bob@example.com',
+    null,
+    null,
+    :'user2ID',
     'bob',
+    null,
+
     null,
     null,
     'https://example.com/bob.png',
@@ -135,8 +150,8 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'waitlist', '[
-            {"created_at": 1704067200, "user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice", "waitlist_position": 1, "company": "Cloud Corp", "name": "Alice", "photo_url": "https://example.com/alice.png", "title": "Principal Engineer"},
-            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "waitlist_position": 2, "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
+            {"created_at": 1704067200, "user": {"user_id": "3a300000-0000-0000-0000-000000000008", "username": "alice", "bio": "Waits for event capacity", "company": "Cloud Corp", "github_url": "https://github.com/alice", "name": "Alice", "photo_url": "https://example.com/alice.png", "provider": {"github": {"username": "alice-gh"}, "linuxfoundation": {"username": "alice-lf"}}, "title": "Principal Engineer", "website_url": "https://example.com/alice"}, "waitlist_position": 1},
+            {"created_at": 1704153600, "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
         ]'::jsonb,
         'total', 2
     ),
@@ -151,7 +166,7 @@ select is(
     )::jsonb,
     jsonb_build_object(
         'waitlist', '[
-            {"created_at": 1704153600, "user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "waitlist_position": 2, "company": null, "name": null, "photo_url": "https://example.com/bob.png", "title": null}
+            {"created_at": 1704153600, "user": {"user_id": "3a300000-0000-0000-0000-000000000009", "username": "bob", "photo_url": "https://example.com/bob.png"}, "waitlist_position": 2}
         ]'::jsonb,
         'total', 2
     ),
@@ -212,7 +227,7 @@ select ok(
             )::jsonb as data
         )
         select (data->>'total')::int = 1
-        and data#>>'{waitlist,0,user_id}' = :'user1ID'
+        and data#>>'{waitlist,0,user,user_id}' = :'user1ID'
         and data#>>'{waitlist,0,waitlist_position}' = '1'
         from result
     ),
@@ -234,7 +249,7 @@ select ok(
             )::jsonb as data
         )
         select (data->>'total')::int = 1
-        and data#>>'{waitlist,0,user_id}' = :'user1ID'
+        and data#>>'{waitlist,0,user,user_id}' = :'user1ID'
         and data#>>'{waitlist,0,waitlist_position}' = '1'
         from result
     ),
@@ -256,7 +271,7 @@ select ok(
             )::jsonb as data
         )
         select (data->>'total')::int = 1
-        and data#>>'{waitlist,0,user_id}' = :'user1ID'
+        and data#>>'{waitlist,0,user,user_id}' = :'user1ID'
         and data#>>'{waitlist,0,waitlist_position}' = '1'
         from result
     ),
@@ -278,7 +293,7 @@ select ok(
             )::jsonb as data
         )
         select (data->>'total')::int = 1
-        and data#>>'{waitlist,0,user_id}' = :'user2ID'
+        and data#>>'{waitlist,0,user,user_id}' = :'user2ID'
         and data#>>'{waitlist,0,waitlist_position}' = '2'
         from result
     ),

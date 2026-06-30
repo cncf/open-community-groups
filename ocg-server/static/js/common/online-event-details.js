@@ -506,25 +506,29 @@ export class OnlineEventDetails extends LitWrapper {
           <div class="flex items-start gap-3">
             <span class="mt-1 inline-flex">
               <span class="${radioClasses}">
-                ${isSelected
-                  ? html`<span
-                      class="h-2.5 w-2.5 rounded-full ${isDisabled ? "bg-stone-400" : "bg-primary-500"}"
-                    ></span>`
-                  : ""}
+                ${
+                  isSelected
+                    ? html`<span
+                        class="h-2.5 w-2.5 rounded-full ${isDisabled ? "bg-stone-400" : "bg-primary-500"}"
+                      ></span>`
+                    : ""
+                }
               </span>
             </span>
             <div class="space-y-1">
               <div class="${titleClasses}">${option.title}</div>
               <p class="${descriptionClasses}">${option.description}</p>
               ${option.note ? html`<p class="${reasonClasses} mt-2">${option.note}</p>` : ""}
-              ${option.reasons && option.reasons.length > 0
-                ? html`
-                    <p class="${reasonClasses} mt-2">${option.reasonsIntro}</p>
-                    <ul class="list-disc list-inside ${reasonClasses} mt-1">
-                      ${option.reasons.map((r) => html`<li>${r}</li>`)}
-                    </ul>
-                  `
-                : ""}
+              ${
+                option.reasons && option.reasons.length > 0
+                  ? html`
+                      <p class="${reasonClasses} mt-2">${option.reasonsIntro}</p>
+                      <ul class="list-disc list-inside ${reasonClasses} mt-1">
+                        ${option.reasons.map((r) => html`<li>${r}</li>`)}
+                      </ul>
+                    `
+                  : ""
+              }
             </div>
           </div>
         </div>
@@ -835,15 +839,17 @@ export class OnlineEventDetails extends LitWrapper {
 
     return html`
       <input type="hidden" name="${this._getFieldName("meeting_join_url")}" value="${joinUrlValue}" />
-      ${this._supportsJoinInstructions()
-        ? html`
-            <input
-              type="hidden"
-              name="${this._getFieldName("meeting_join_instructions")}"
-              value="${joinInstructionsValue}"
-            />
-          `
-        : ""}
+      ${
+        this._supportsJoinInstructions()
+          ? html`
+              <input
+                type="hidden"
+                name="${this._getFieldName("meeting_join_instructions")}"
+                value="${joinInstructionsValue}"
+              />
+            `
+          : ""
+      }
       <input
         type="hidden"
         name="${this._getFieldName("meeting_recording_published")}"
@@ -932,65 +938,77 @@ export class OnlineEventDetails extends LitWrapper {
     return html`
       <div class="rounded-lg border border-stone-200 bg-white p-4 space-y-2 mt-4">
         <div class="flex items-center gap-3">
-          ${this.meetingError
-            ? html`
-                <div class="svg-icon size-4 bg-red-500 icon-ban"></div>
-                <span class="text-sm font-medium text-red-700">Meeting not synced</span>
-              `
-            : html`
-                ${isMeetingSynced
-                  ? html`
-                      <div class="svg-icon size-4 bg-emerald-500 icon-check"></div>
-                      <span class="text-sm font-medium text-emerald-700">Meeting synced</span>
-                    `
-                  : html`
-                      <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
-                      <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
-                    `}
-              `}
+          ${
+            this.meetingError
+              ? html`
+                  <div class="svg-icon size-4 bg-red-500 icon-ban"></div>
+                  <span class="text-sm font-medium text-red-700">Meeting not synced</span>
+                `
+              : html`
+                  ${
+                    isMeetingSynced
+                      ? html`
+                          <div class="svg-icon size-4 bg-emerald-500 icon-check"></div>
+                          <span class="text-sm font-medium text-emerald-700">Meeting synced</span>
+                        `
+                      : html`
+                          <div class="svg-icon size-4 bg-amber-500 icon-warning"></div>
+                          <span class="text-sm font-medium text-amber-700">Meeting not synced yet</span>
+                        `
+                  }
+                `
+          }
         </div>
-        ${showPendingMessage
-          ? html`
-              <p class="text-sm text-stone-700">
-                We've requested a meeting for this event. The meeting details (join link and password) will
-                appear here once synced, which usually takes a few minutes.
-              </p>
-            `
-          : ""}
-        ${this.meetingJoinUrl
-          ? html`
-              <div class="text-sm text-stone-700 wrap-break-word">
-                <span class="font-medium">Join link:</span>
-                <a
-                  href="${this.meetingJoinUrl}"
-                  class="text-primary-500 hover:text-primary-600 wrap-break-word"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >${this.meetingJoinUrl}</a
-                >
-              </div>
-            `
-          : ""}
-        ${this.meetingPassword
-          ? html`
-              <div class="text-sm text-stone-700">
-                <span class="font-medium">Password:</span>
-                <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800"
-                  >${this.meetingPassword}</code
-                >
-              </div>
-            `
-          : ""}
-        ${this.meetingError
-          ? html`
-              <div class="text-sm text-red-700 bg-red-50 border border-red-100 rounded p-3" role="alert">
-                <div class="flex items-start gap-2">
-                  <div class="svg-icon size-4 icon-error shrink-0 mt-0.5"></div>
-                  <span>${this.meetingError}</span>
+        ${
+          showPendingMessage
+            ? html`
+                <p class="text-sm text-stone-700">
+                  We've requested a meeting for this event. The meeting details (join link and password) will
+                  appear here once synced, which usually takes a few minutes.
+                </p>
+              `
+            : ""
+        }
+        ${
+          this.meetingJoinUrl
+            ? html`
+                <div class="text-sm text-stone-700 wrap-break-word">
+                  <span class="font-medium">Join link:</span>
+                  <a
+                    href="${this.meetingJoinUrl}"
+                    class="text-primary-500 hover:text-primary-600 wrap-break-word"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >${this.meetingJoinUrl}</a
+                  >
                 </div>
-              </div>
-            `
-          : ""}
+              `
+            : ""
+        }
+        ${
+          this.meetingPassword
+            ? html`
+                <div class="text-sm text-stone-700">
+                  <span class="font-medium">Password:</span>
+                  <code class="ml-2 px-2 py-0.5 bg-stone-100 rounded text-stone-800"
+                    >${this.meetingPassword}</code
+                  >
+                </div>
+              `
+            : ""
+        }
+        ${
+          this.meetingError
+            ? html`
+                <div class="text-sm text-red-700 bg-red-50 border border-red-100 rounded p-3" role="alert">
+                  <div class="flex items-start gap-2">
+                    <div class="svg-icon size-4 icon-error shrink-0 mt-0.5"></div>
+                    <span>${this.meetingError}</span>
+                  </div>
+                </div>
+              `
+            : ""
+        }
       </div>
     `;
   }
@@ -1026,55 +1044,57 @@ export class OnlineEventDetails extends LitWrapper {
   _renderRecordingControls(disabledClasses, inputWidthClass = "", showVisibilityControl = true) {
     return html`
       <div class="space-y-4">
-        ${this._rawRecordingUrls.length > 0
-          ? html`
-              <div class="space-y-2">
-                <label for="${this._getFieldName("meeting_recording_raw_urls")}_0" class="form-label"
-                  >Original provider recordings</label
-                >
-                ${this._rawRecordingUrls.map((rawRecordingUrl, index) => {
-                  const fieldId = `${this._getFieldName("meeting_recording_raw_urls")}_${index}`;
-                  return html`
-                    <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center ${inputWidthClass}">
-                      <div class="min-w-0 flex-1">
-                        <input
-                          type="url"
-                          id="${fieldId}"
-                          class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
-                          aria-label="Original provider recording ${index + 1}"
-                          .value="${rawRecordingUrl}"
-                          readonly
-                        />
+        ${
+          this._rawRecordingUrls.length > 0
+            ? html`
+                <div class="space-y-2">
+                  <label for="${this._getFieldName("meeting_recording_raw_urls")}_0" class="form-label"
+                    >Original provider recordings</label
+                  >
+                  ${this._rawRecordingUrls.map((rawRecordingUrl, index) => {
+                    const fieldId = `${this._getFieldName("meeting_recording_raw_urls")}_${index}`;
+                    return html`
+                      <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center ${inputWidthClass}">
+                        <div class="min-w-0 flex-1">
+                          <input
+                            type="url"
+                            id="${fieldId}"
+                            class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                            aria-label="Original provider recording ${index + 1}"
+                            .value="${rawRecordingUrl}"
+                            readonly
+                          />
+                        </div>
+                        <div class="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
+                            title="Copy recording URL"
+                            aria-label="Copy recording URL ${index + 1}"
+                            data-raw-recording-copy
+                            @click="${() => this._handleRawRecordingCopy(rawRecordingUrl)}"
+                          >
+                            <div class="svg-icon size-4 icon-copy bg-stone-600"></div>
+                          </button>
+                          <button
+                            type="button"
+                            class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
+                            title="Open recording URL"
+                            aria-label="Open recording URL ${index + 1}"
+                            data-raw-recording-open
+                            @click="${() => this._handleRawRecordingOpen(rawRecordingUrl)}"
+                          >
+                            <div class="svg-icon size-3 icon-external-link bg-stone-600"></div>
+                          </button>
+                        </div>
                       </div>
-                      <div class="flex shrink-0 items-center gap-2">
-                        <button
-                          type="button"
-                          class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
-                          title="Copy recording URL"
-                          aria-label="Copy recording URL ${index + 1}"
-                          data-raw-recording-copy
-                          @click="${() => this._handleRawRecordingCopy(rawRecordingUrl)}"
-                        >
-                          <div class="svg-icon size-4 icon-copy bg-stone-600"></div>
-                        </button>
-                        <button
-                          type="button"
-                          class="inline-flex size-8 shrink-0 items-center justify-center border border-stone-200 rounded-full cursor-pointer hover:bg-stone-100"
-                          title="Open recording URL"
-                          aria-label="Open recording URL ${index + 1}"
-                          data-raw-recording-open
-                          @click="${() => this._handleRawRecordingOpen(rawRecordingUrl)}"
-                        >
-                          <div class="svg-icon size-3 icon-external-link bg-stone-600"></div>
-                        </button>
-                      </div>
-                    </div>
-                  `;
-                })}
-                <p class="form-legend whitespace-pre-line">${MEETING_RECORDING_RAW_URLS_LEGEND}</p>
-              </div>
-            `
-          : ""}
+                    `;
+                  })}
+                  <p class="form-legend whitespace-pre-line">${MEETING_RECORDING_RAW_URLS_LEGEND}</p>
+                </div>
+              `
+            : ""
+        }
 
         <div class="space-y-2">
           <label for="${this._getFieldName("meeting_recording_url")}" class="form-label"
@@ -1122,28 +1142,30 @@ export class OnlineEventDetails extends LitWrapper {
         <p class="form-legend">Zoom, Teams, Meet, or any other video link.</p>
       </div>
 
-      ${this._supportsJoinInstructions()
-        ? html`
-            <div class="space-y-2">
-              <label for="${this._getFieldName("meeting_join_instructions")}" class="form-label"
-                >Join instructions (optional)</label
-              >
-              <div class="mt-2">
-                <textarea
-                  id="${this._getFieldName("meeting_join_instructions")}"
-                  class="input-primary ${disabledClasses}"
-                  rows="4"
-                  maxlength="500"
-                  placeholder="Add passcodes, waiting room details, or other attendee instructions."
-                  .value="${this._joinInstructions}"
-                  @input="${this._handleJoinInstructionsChange}"
-                  ?disabled=${this.disabled}
-                ></textarea>
+      ${
+        this._supportsJoinInstructions()
+          ? html`
+              <div class="space-y-2">
+                <label for="${this._getFieldName("meeting_join_instructions")}" class="form-label"
+                  >Join instructions (optional)</label
+                >
+                <div class="mt-2">
+                  <textarea
+                    id="${this._getFieldName("meeting_join_instructions")}"
+                    class="input-primary ${disabledClasses}"
+                    rows="4"
+                    maxlength="500"
+                    placeholder="Add passcodes, waiting room details, or other attendee instructions."
+                    .value="${this._joinInstructions}"
+                    @input="${this._handleJoinInstructionsChange}"
+                    ?disabled=${this.disabled}
+                  ></textarea>
+                </div>
+                <p class="form-legend">Shown with the meeting details on the public event page.</p>
               </div>
-              <p class="form-legend">Shown with the meeting details on the public event page.</p>
-            </div>
-          `
-        : ""}
+            `
+          : ""
+      }
       ${this._renderRecordingControls(disabledClasses)}
     `;
   }
@@ -1169,66 +1191,70 @@ export class OnlineEventDetails extends LitWrapper {
           </ul>
         </div>
 
-        ${this._createMeeting
-          ? html`
-              <div class="space-y-7">
-                <div class="space-y-2 lg:w-1/2">
-                  <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
-                  <select
-                    class="input-primary ${this.disabled
-                      ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                      : ""}"
-                    @change="${(event) => {
-                      this._providerId = event.target.value || DEFAULT_MEETING_PROVIDER;
-                      this._checkMeetingCapacity();
-                    }}"
-                    ?disabled=${this.disabled}
-                  >
-                    <option value="zoom" .selected="${this._providerId === DEFAULT_MEETING_PROVIDER}">
-                      Zoom
-                    </option>
-                  </select>
+        ${
+          this._createMeeting
+            ? html`
+                <div class="space-y-7">
+                  <div class="space-y-2 lg:w-1/2">
+                    <label class="form-label text-sm font-medium text-stone-900">Meeting provider</label>
+                    <select
+                      class="input-primary ${
+                        this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                      }"
+                      @change="${(event) => {
+                        this._providerId = event.target.value || DEFAULT_MEETING_PROVIDER;
+                        this._checkMeetingCapacity();
+                      }}"
+                      ?disabled=${this.disabled}
+                    >
+                      <option value="zoom" .selected="${this._providerId === DEFAULT_MEETING_PROVIDER}">
+                        Zoom
+                      </option>
+                    </select>
+                  </div>
+                  <div class="space-y-2 lg:w-1/2">
+                    <label class="form-label text-sm font-medium text-stone-900"> Meeting host emails </label>
+                    <multiple-inputs
+                      id="meeting-hosts-input"
+                      .items="${this._hosts}"
+                      field-name="${this._getFieldName("meeting_hosts")}"
+                      input-type="email"
+                      label="Host"
+                      placeholder="host@example.com"
+                      legend="${this._getMeetingHostsLegend()}"
+                      ?disabled=${this.disabled}
+                    >
+                    </multiple-inputs>
+                  </div>
+                  ${
+                    !this._isSession()
+                      ? html`
+                          <div class="space-y-4">
+                            <div class="space-y-2">
+                              <label class="inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  class="sr-only peer"
+                                  .checked="${this._recordingRequested}"
+                                  @change="${this._handleRecordingRequestedChange}"
+                                  ?disabled=${this.disabled}
+                                />
+                                <span
+                                  class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                                ></span>
+                                <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
+                              </label>
+                              <p class="form-legend">Enable automatic recording for this meeting.</p>
+                            </div>
+                            ${this._renderRecordingVisibilityControl()}
+                          </div>
+                        `
+                      : ""
+                  }
                 </div>
-                <div class="space-y-2 lg:w-1/2">
-                  <label class="form-label text-sm font-medium text-stone-900"> Meeting host emails </label>
-                  <multiple-inputs
-                    id="meeting-hosts-input"
-                    .items="${this._hosts}"
-                    field-name="${this._getFieldName("meeting_hosts")}"
-                    input-type="email"
-                    label="Host"
-                    placeholder="host@example.com"
-                    legend="${this._getMeetingHostsLegend()}"
-                    ?disabled=${this.disabled}
-                  >
-                  </multiple-inputs>
-                </div>
-                ${!this._isSession()
-                  ? html`
-                      <div class="space-y-4">
-                        <div class="space-y-2">
-                          <label class="inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              class="sr-only peer"
-                              .checked="${this._recordingRequested}"
-                              @change="${this._handleRecordingRequestedChange}"
-                              ?disabled=${this.disabled}
-                            />
-                            <span
-                              class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-                            ></span>
-                            <span class="ms-3 text-sm font-medium text-stone-900">Record meeting</span>
-                          </label>
-                          <p class="form-legend">Enable automatic recording for this meeting.</p>
-                        </div>
-                        ${this._renderRecordingVisibilityControl()}
-                      </div>
-                    `
-                  : ""}
-              </div>
-            `
-          : ""}
+              `
+            : ""
+        }
         ${this._renderRecordingControls(
           this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : "",
           "lg:w-1/2",
@@ -1283,13 +1309,15 @@ export class OnlineEventDetails extends LitWrapper {
           ${this._mode === "manual" ? this._renderManualFields() : this._renderAutomaticFields()}
         </div>
 
-        ${this._capacityWarning
-          ? html`
-              <div class="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm p-3">
-                ${this._capacityWarning}
-              </div>
-            `
-          : ""}
+        ${
+          this._capacityWarning
+            ? html`
+                <div class="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm p-3">
+                  ${this._capacityWarning}
+                </div>
+              `
+            : ""
+        }
         ${this._mode === "automatic" ? this._renderMeetingStatus() : ""}
       </div>
     `;

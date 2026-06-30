@@ -1,3 +1,4 @@
+{% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
@@ -100,26 +101,17 @@
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Requester -#}
               <td class="px-3 xl:px-5 py-4 max-w-0">
-                <div class="flex items-center space-x-5">
-                  <logo-image
-                  {% if let Some(photo_url) = &request.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                  size="size-10" placeholder="{{ self::user_initials(request.name.as_deref() , request.username.as_str()) }}">
-                  </logo-image>
-                  <div class="min-w-0">
-                    <div class="font-medium text-stone-900 truncate mb-1">{{ request.name|assigned_or(request.username) }}</div>
-                    {% if request.name.is_some() -%}
-                      <div class="text-xs text-stone-600 truncate">{{ request.username }}</div>
-                    {% endif -%}
-                  </div>
-                </div>
+                {% call dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str())) -%}
+                <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ request.user.name.as_deref() |assigned_or(request.user.username) }}</div>
+                {% endcall -%}
               </td>
               {# End requester -#}
 
               {# Position -#}
               <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0">
                 <div class="flex flex-col space-y-1">
-                  <div class="font-medium text-stone-900 truncate">{{ request.company|assigned_or("-") }}</div>
-                  {% if let Some(title) = &request.title -%}
+                  <div class="font-medium text-stone-900 truncate">{{ request.user.company.as_deref() |assigned_or("-") }}</div>
+                  {% if let Some(title) = &request.user.title -%}
                     <div class="text-xs text-stone-600 truncate">{{ title }}</div>
                   {% endif -%}
                 </div>
@@ -166,10 +158,10 @@
                   <div class="flex justify-end">
                     <div class="group relative">
                       <button type="button"
-                              data-event-id="invitation-request-{{ request.user_id }}"
-                              aria-label="Open actions menu for {{ request.name|assigned_or(request.username) }}"
+                              data-event-id="invitation-request-{{ request.user.user_id }}"
+                              aria-label="Open actions menu for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
                               aria-haspopup="menu"
-                              aria-controls="dropdown-actions-invitation-request-{{ request.user_id }}"
+                              aria-controls="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                               class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
                                      {% if !can_manage_events -%}
                                        opacity-50 cursor-not-allowed
@@ -181,14 +173,14 @@
                       </button>
 
                       {# Dropdown actions -#}
-                      <div id="dropdown-actions-invitation-request-{{ request.user_id }}"
+                      <div id="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                            data-event-actions-dropdown
                            class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                         <ul class="py-2 text-sm text-stone-700" role="menu">
                           <li>
                             <button type="button"
                                     class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation-request/accept"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/accept"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     data-invitation-request-action
@@ -201,10 +193,10 @@
                             </button>
                           </li>
                           <li>
-                            <button id="reject-invitation-request-{{ request.user_id }}"
+                            <button id="reject-invitation-request-{{ request.user.user_id }}"
                                     type="button"
                                     class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation-request/reject"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/reject"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     hx-trigger="confirmed"

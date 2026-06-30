@@ -77,9 +77,11 @@ class SessionCard extends LitWrapper {
             </div>
           `;
         })}
-        ${remainingCount > 0
-          ? html` <div class="text-xs font-semibold text-stone-700">+${remainingCount}</div> `
-          : ""}
+        ${
+          remainingCount > 0
+            ? html` <div class="text-xs font-semibold text-stone-700">+${remainingCount}</div> `
+            : ""
+        }
       </div>
     `;
   }
@@ -116,9 +118,9 @@ class SessionCard extends LitWrapper {
           <div class="flex items-center gap-1 shrink-0">
             <button
               type="button"
-              class="p-2 rounded-full hover:bg-stone-100 transition-colors ${this.disabled
-                ? "opacity-60 cursor-not-allowed"
-                : ""}"
+              class="p-2 rounded-full hover:bg-stone-100 transition-colors ${
+                this.disabled ? "opacity-60 cursor-not-allowed" : ""
+              }"
               title="Edit"
               @click=${this._onEdit}
               ?disabled=${this.disabled}
@@ -127,9 +129,9 @@ class SessionCard extends LitWrapper {
             </button>
             <button
               type="button"
-              class="p-2 rounded-full hover:bg-stone-100 transition-colors ${this.disabled
-                ? "opacity-60 cursor-not-allowed"
-                : ""}"
+              class="p-2 rounded-full hover:bg-stone-100 transition-colors ${
+                this.disabled ? "opacity-60 cursor-not-allowed" : ""
+              }"
               title="Delete"
               @click=${this._onDelete}
               ?disabled=${this.disabled}

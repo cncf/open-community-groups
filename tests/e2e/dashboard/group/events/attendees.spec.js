@@ -23,6 +23,7 @@ import {
   ATTENDEE_NOTIFICATION_BODY,
   ATTENDEE_NOTIFICATION_SUBJECT,
 } from "../helpers.js";
+import { expectUserProfileModalFromRow } from "./user-profile-modal-helpers.js";
 
 // Open the attendees tab for a specific event and return its content.
 const openAttendeesTab = async (page, eventName, eventId) => {
@@ -322,6 +323,17 @@ test.describe("group dashboard attendees tab", () => {
     await expect(
       attendeesContent.getByRole("button", { name: "Send email" }),
     ).toBeEnabled();
+    await expectUserProfileModalFromRow(
+      organizerGroupPage,
+      attendeeRow,
+      "View profile for E2E Member Two",
+      "E2E Member Two",
+      [
+        "Member Experience Engineer at Platform Ops Lab",
+        "Member Two profile for dashboard modal coverage.",
+        "openprofile.dev",
+      ],
+    );
 
     // Return to the public event page to restore attendance state.
     await navigateToEvent(
@@ -1089,10 +1101,22 @@ test.describe("group dashboard attendees tab", () => {
       ).toBeVisible();
       await expect(searchInput).toHaveValue("");
 
-      // Reject one invitation request.
       const pendingOneRow = requestsContent.locator("tr", {
         hasText: "E2E Pending One",
       });
+      await expectUserProfileModalFromRow(
+        organizerGroupPage,
+        pendingOneRow,
+        "View profile for E2E Pending One",
+        "E2E Pending One",
+        [
+          "Community Applicant at Approval Queue",
+          "Pending One profile for invitation request modal coverage.",
+          "openprofile.dev",
+        ],
+      );
+
+      // Reject one invitation request.
       await expect(pendingOneRow).toContainText("Pending");
       await pendingOneRow.getByLabel("Open actions menu").click();
       await pendingOneRow.getByRole("menuitem", { name: "Reject" }).click();

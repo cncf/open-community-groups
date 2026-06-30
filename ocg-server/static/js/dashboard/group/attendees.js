@@ -1,4 +1,6 @@
 import { initializeQrCodeModal } from "/static/js/dashboard/group/qr-code/modal.js";
+import "/static/js/common/modals/user-info-modal.js";
+import "/static/js/common/users/user-profile-modal-triggers.js";
 import "/static/js/common/users/user-search-field.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import {

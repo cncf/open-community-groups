@@ -45,46 +45,48 @@ export const renderLocationSearchDropdown = (state) => html`
       max-h-80 overflow-y-auto"
     role="listbox"
   >
-    ${state.isSearching
-      ? html`
-          <div class="p-4 text-center">
-            <div class="inline-flex items-center gap-2 text-stone-600">
-              <div
-                class="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600
-                  rounded-full"
-              ></div>
-              Searching...
-            </div>
-          </div>
-        `
-      : state.searchError
+    ${
+      state.isSearching
         ? html`
-            <div class="p-4 text-center text-stone-500">
-              <p class="text-sm font-medium text-stone-600">Unable to load locations</p>
-              <p class="text-sm">${state.searchError}</p>
+            <div class="p-4 text-center">
+              <div class="inline-flex items-center gap-2 text-stone-600">
+                <div
+                  class="animate-spin w-4 h-4 border-2 border-stone-300 border-t-stone-600
+                  rounded-full"
+                ></div>
+                Searching...
+              </div>
             </div>
           `
-        : state.searchResults.length === 0
+        : state.searchError
           ? html`
               <div class="p-4 text-center text-stone-500">
-                <p class="text-sm">No locations found for "${state.searchQuery}"</p>
+                <p class="text-sm font-medium text-stone-600">Unable to load locations</p>
+                <p class="text-sm">${state.searchError}</p>
               </div>
             `
-          : html`
-              <div class="py-1">
-                ${repeat(
-                  state.searchResults,
-                  (result) => result.place_id,
-                  (result, index) =>
-                    renderLocationSearchResult({
-                      index,
-                      isHighlighted: index === state.highlightedIndex,
-                      onHighlight: state.onHighlight,
-                      onSelect: state.onSelect,
-                      result,
-                    }),
-                )}
-              </div>
-            `}
+          : state.searchResults.length === 0
+            ? html`
+                <div class="p-4 text-center text-stone-500">
+                  <p class="text-sm">No locations found for "${state.searchQuery}"</p>
+                </div>
+              `
+            : html`
+                <div class="py-1">
+                  ${repeat(
+                    state.searchResults,
+                    (result) => result.place_id,
+                    (result, index) =>
+                      renderLocationSearchResult({
+                        index,
+                        isHighlighted: index === state.highlightedIndex,
+                        onHighlight: state.onHighlight,
+                        onSelect: state.onSelect,
+                        result,
+                      }),
+                  )}
+                </div>
+              `
+    }
   </div>
 `;

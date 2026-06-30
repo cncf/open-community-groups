@@ -11,6 +11,17 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group invitation requests list template", () => {
+  it("renders requester identity cells as profile modal triggers", async () => {
+    // Load the invitation requests list template before checking profile trigger markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the requester identity area uses the shared profile trigger macro.
+    expect(template).to.include(
+      "dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str()))",
+    );
+    expect(template).to.include("request.user.name.as_deref() |assigned_or(request.user.username)");
+  });
+
   it("uses the shared search convention for table filtering", async () => {
     // Load the invitation requests list template before checking search markup.
     const template = normalizeWhitespace(await loadTemplate());

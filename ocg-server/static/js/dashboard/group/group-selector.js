@@ -135,9 +135,9 @@ export class GroupSelector extends LitWrapper {
             <button
               id="group-selector-button"
               type="button"
-              class="select select-primary relative text-left pe-9 ${isDisabled
-                ? "opacity-60 cursor-not-allowed"
-                : "cursor-pointer"}"
+              class="select select-primary relative text-left pe-9 ${
+                isDisabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"
+              }"
               ?disabled=${isDisabled}
               aria-haspopup="listbox"
               aria-expanded=${this._combobox.isOpen ? "true" : "false"}
@@ -154,10 +154,9 @@ export class GroupSelector extends LitWrapper {
             </button>
 
             <div
-              class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${this
-                ._combobox.isOpen
-                ? ""
-                : "hidden"}"
+              class="absolute top-14 left-0 right-0 z-10 bg-white rounded-lg shadow-sm border border-stone-200 ${
+                this._combobox.isOpen ? "" : "hidden"
+              }"
             >
               <div class="p-3 border-b border-stone-200">
                 <div class="relative">
@@ -179,62 +178,66 @@ export class GroupSelector extends LitWrapper {
                 </div>
               </div>
 
-              ${this._filteredGroups.length > 0
-                ? html`
-                    <ul
-                      id="group-selector-list"
-                      class="max-h-48 overflow-y-auto text-stone-700"
-                      role="listbox"
-                    >
-                      ${repeat(
-                        this._filteredGroups,
-                        (group) => group.group_id,
-                        (group, index) => {
-                          const isSelected = this._isSelected(group);
-                          const isActive = this._combobox.activeIndex === index;
-                          const isDisabled = isSelected || this._isSubmitting;
+              ${
+                this._filteredGroups.length > 0
+                  ? html`
+                      <ul
+                        id="group-selector-list"
+                        class="max-h-48 overflow-y-auto text-stone-700"
+                        role="listbox"
+                      >
+                        ${repeat(
+                          this._filteredGroups,
+                          (group) => group.group_id,
+                          (group, index) => {
+                            const isSelected = this._isSelected(group);
+                            const isActive = this._combobox.activeIndex === index;
+                            const isDisabled = isSelected || this._isSubmitting;
 
-                          let statusClass = "";
-                          if (isDisabled) {
-                            statusClass =
-                              "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
-                          } else if (isActive) {
-                            statusClass = "cursor-pointer text-stone-900 bg-stone-50";
-                          } else {
-                            statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
-                          }
+                            let statusClass = "";
+                            if (isDisabled) {
+                              statusClass =
+                                "cursor-not-allowed bg-primary-50 text-primary-600 font-semibold opacity-100!";
+                            } else if (isActive) {
+                              statusClass = "cursor-pointer text-stone-900 bg-stone-50";
+                            } else {
+                              statusClass = "cursor-pointer text-stone-900 hover:bg-stone-50";
+                            }
 
-                          return html`
-                            <li role="presentation" data-index=${index}>
-                              <button
-                                id="group-option-${group.group_id}"
-                                type="button"
-                                class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
-                                role="option"
-                                ?disabled=${isDisabled}
-                                @click=${(event) => this._handleGroupClick(event, group)}
-                                @mouseover=${() => this._combobox.setActiveIndex(index)}
-                              >
-                                <div class="text-xs/4 line-clamp-2">${group.name}</div>
-                              </button>
-                            </li>
-                          `;
-                        },
-                      )}
-                    </ul>
-                  `
-                : html`<div class="px-4 py-3 text-sm text-stone-500">No groups found.</div>`}
+                            return html`
+                              <li role="presentation" data-index=${index}>
+                                <button
+                                  id="group-option-${group.group_id}"
+                                  type="button"
+                                  class="group-button w-full px-4 py-2 whitespace-normal min-h-10 flex flex-col justify-center text-left focus:outline-none ${statusClass}"
+                                  role="option"
+                                  ?disabled=${isDisabled}
+                                  @click=${(event) => this._handleGroupClick(event, group)}
+                                  @mouseover=${() => this._combobox.setActiveIndex(index)}
+                                >
+                                  <div class="text-xs/4 line-clamp-2">${group.name}</div>
+                                </button>
+                              </li>
+                            `;
+                          },
+                        )}
+                      </ul>
+                    `
+                  : html`<div class="px-4 py-3 text-sm text-stone-500">No groups found.</div>`
+              }
             </div>
           </div>
         </div>
       </div>
-      ${selectedGroup && !selectedGroup.active
-        ? html`<div
-            class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2"
-          >
-            This group has been deactivated. Please contact to a community admin.
-          </div>`
-        : ""} `;
+      ${
+        selectedGroup && !selectedGroup.active
+          ? html`<div
+              class="mt-2 text-xs text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2"
+            >
+              This group has been deactivated. Please contact to a community admin.
+            </div>`
+          : ""
+      } `;
   }
 }
 

@@ -188,6 +188,27 @@
 {% endmacro permission_warning -%}
 {# End permission warning #}
 
+{# User profile modal trigger #}
+{% macro user_profile_modal_trigger(user, placeholder) -%}
+  <button type="button"
+          class="group flex w-full min-w-0 items-center space-x-5 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          data-user-profile-modal
+          data-user-profile='{{ user|json }}'
+          aria-label="View profile for {{ user.name.as_deref() |assigned_or(user.username) }}">
+    <logo-image class="shrink-0"
+    {% if let Some(photo_url) = &user.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+    size="size-10" placeholder="{{ placeholder }}">
+    </logo-image>
+    <div class="min-w-0">
+      {{ caller() }}
+      {% if user.name.is_some() -%}
+        <div class="text-xs text-stone-600 truncate">{{ user.username }}</div>
+      {% endif -%}
+    </div>
+  </button>
+{% endmacro user_profile_modal_trigger -%}
+{# End user profile modal trigger #}
+
 {# Empty state #}
 {% macro empty_state(title, title_margin = "mb-6", wrapper_class = "") -%}
   <div class="flex flex-col items-center justify-center min-h-[125px] {{ wrapper_class }}">

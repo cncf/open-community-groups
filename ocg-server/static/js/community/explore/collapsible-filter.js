@@ -239,24 +239,28 @@ export class CollapsibleFilter extends LitWrapper {
       <div class="flex justify-between items-center">
         <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700">${this.title}</div>
         <div>
-          ${canCollapse
-            ? html`<button
-                type="button"
-                @click=${this._changeCollapseState}
-                aria-controls=${optionsId}
-                aria-expanded=${String(!this.isCollapsed)}
-                aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
-                class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
-              >
-                ${this.isCollapsed
-                  ? html`<div
-                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-down"
-                    ></div>`
-                  : html`<div
-                      class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-up"
-                    ></div>`}
-              </button>`
-            : ""}
+          ${
+            canCollapse
+              ? html`<button
+                  type="button"
+                  @click=${this._changeCollapseState}
+                  aria-controls=${optionsId}
+                  aria-expanded=${String(!this.isCollapsed)}
+                  aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
+                  class="group/btn collapse-btn border border-stone-200 hover:bg-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
+                >
+                  ${
+                    this.isCollapsed
+                      ? html`<div
+                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-down"
+                        ></div>`
+                      : html`<div
+                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-white icon-caret-up"
+                        ></div>`
+                  }
+                </button>`
+              : ""
+          }
         </div>
       </div>
       <ul
@@ -268,10 +272,11 @@ export class CollapsibleFilter extends LitWrapper {
             type="button"
             @click=${this._onSelectAny}
             aria-label=${`Any ${this.title}`}
-            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${this
-              .selected.length === 0
-              ? "border-primary-500 text-primary-500"
-              : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"}"
+            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${
+              this.selected.length === 0
+                ? "border-primary-500 text-primary-500"
+                : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
+            }"
           >
             <div class="text-[0.775rem] text-center text-nowrap">Any</div>
           </button>
@@ -282,11 +287,11 @@ export class CollapsibleFilter extends LitWrapper {
           (opt) =>
             html`<li>
               <label
-                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${this.selected.includes(
-                  opt.value,
-                )
-                  ? "border-primary-500 text-primary-500"
-                  : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"}"
+                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${
+                  this.selected.includes(opt.value)
+                    ? "border-primary-500 text-primary-500"
+                    : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
+                }"
               >
                 <input
                   type="checkbox"
@@ -301,20 +306,22 @@ export class CollapsibleFilter extends LitWrapper {
             </li>`,
         )}
       </ul>
-      ${canCollapse
-        ? html`<div class="mt-4 -mb-1.5">
-            <button
-              data-label="{{ label }}"
-              type="button"
-              @click=${this._changeCollapseState}
-              aria-controls=${optionsId}
-              aria-expanded=${String(!this.isCollapsed)}
-              class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium"
-            >
-              ${this.isCollapsed ? "+ Show more" : "- Show less"}
-            </button>
-          </div>`
-        : ""}
+      ${
+        canCollapse
+          ? html`<div class="mt-4 -mb-1.5">
+              <button
+                data-label="{{ label }}"
+                type="button"
+                @click=${this._changeCollapseState}
+                aria-controls=${optionsId}
+                aria-expanded=${String(!this.isCollapsed)}
+                class="text-xs/6 text-stone-500/75 hover:text-stone-700 focus:ring-0 focus:outline-none focus:ring-stone-300 font-medium"
+              >
+                ${this.isCollapsed ? "+ Show more" : "- Show less"}
+              </button>
+            </div>`
+          : ""
+      }
     </div>`;
   }
 }

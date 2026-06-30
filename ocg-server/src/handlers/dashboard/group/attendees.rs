@@ -692,9 +692,14 @@ fn build_attendees_csv(
         .filter(|attendee| attendee.status == ATTENDEE_STATUS_CONFIRMED)
     {
         let mut row = vec![
-            attendee.name.as_deref().unwrap_or(&attendee.username).to_string(),
-            attendee.company.clone().unwrap_or_default(),
-            attendee.title.clone().unwrap_or_default(),
+            attendee
+                .user
+                .name
+                .as_deref()
+                .unwrap_or(&attendee.user.username)
+                .to_string(),
+            attendee.user.company.clone().unwrap_or_default(),
+            attendee.user.title.clone().unwrap_or_default(),
             if attendee.manually_invited {
                 "Yes"
             } else {

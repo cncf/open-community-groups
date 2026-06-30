@@ -359,124 +359,132 @@ export class SponsorsSection extends LitWrapper {
 
           <div class="absolute z-10 start-0 end-0">
             <div
-              class="${this.disabled || !this.visibleDropdown
-                ? "hidden"
-                : ""} bg-white divide-y divide-stone-100 rounded-lg shadow w-full border border-stone-200 mt-1"
+              class="${
+                this.disabled || !this.visibleDropdown ? "hidden" : ""
+              } bg-white divide-y divide-stone-100 rounded-lg shadow w-full border border-stone-200 mt-1"
             >
-              ${this.visibleOptions && this.visibleOptions.length > 0
-                ? html`<ul class="py-1 text-stone-700 overflow-auto max-h-80">
-                    ${this.visibleOptions.map((opt, idx) => this._renderOption(opt, idx))}
-                  </ul>`
-                : html`<div class="px-8 py-4 text-sm/6 text-stone-600 font-semibold">No sponsors found</div>`}
+              ${
+                this.visibleOptions && this.visibleOptions.length > 0
+                  ? html`<ul class="py-1 text-stone-700 overflow-auto max-h-80">
+                      ${this.visibleOptions.map((opt, idx) => this._renderOption(opt, idx))}
+                    </ul>`
+                  : html`<div class="px-8 py-4 text-sm/6 text-stone-600 font-semibold">
+                      No sponsors found
+                    </div>`
+              }
             </div>
           </div>
         </div>
 
-        ${this.selectedSponsors && this.selectedSponsors.length > 0
-          ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full">
-              ${this.selectedSponsors.map(
-                (s, i) =>
-                  html`<div
-                      class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
-                    >
+        ${
+          this.selectedSponsors && this.selectedSponsors.length > 0
+            ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full">
+                ${this.selectedSponsors.map(
+                  (s, i) =>
+                    html`<div
+                        class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
+                      >
+                        <div
+                          class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+                        >
+                          <img
+                            src=${s.logo_url}
+                            alt="${s.name} logo"
+                            class="size-13 md:size-16 object-contain"
+                            loading="lazy"
+                          />
+                          <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
+                            <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
+                          </div>
+                        </div>
+                        <div class="leading-tight min-w-0 flex-1">
+                          <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
+                            ${s.name}
+                          </div>
+                          <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">
+                            ${s.level || ""}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          class="p-1 rounded-full hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                          aria-label="Remove ${s.name}"
+                          title="Remove"
+                          @click=${() => this._onRemove(s.group_sponsor_id)}
+                          ?disabled=${this.disabled}
+                        >
+                          <div class="svg-icon size-4 icon-close bg-stone-600"></div>
+                        </button>
+                      </div>
+                      <input
+                        type="hidden"
+                        name="sponsors[${i}][group_sponsor_id]"
+                        value=${s.group_sponsor_id}
+                      />
+                      <input type="hidden" name="sponsors[${i}][level]" value=${s.level || ""} />`,
+                )}
+              </div>`
+            : ""
+        }
+        ${
+          this.showLevelModal
+            ? html`
+                <div class="fixed inset-0 z-20 flex items-center justify-center">
+                  <div class="absolute inset-0 bg-black/30" @click=${() => this._closeLevelModal()}></div>
+                  <div
+                    class="relative bg-white rounded-lg shadow-xl border border-stone-200 w-[90%] max-w-md p-6"
+                  >
+                    <div class="text-lg font-semibold text-stone-900 mb-4">Add sponsor level</div>
+                    <div class="flex items-center gap-3 mb-4">
                       <div
-                        class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
+                        class="relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
                       >
                         <img
-                          src=${s.logo_url}
-                          alt="${s.name} logo"
-                          class="size-13 md:size-16 object-contain"
+                          src=${this.pendingSponsor?.logo_url || ""}
+                          alt="${this.pendingSponsor?.name || ""} logo"
+                          class="size-8 object-contain"
                           loading="lazy"
                         />
-                        <div class="fallback-icon hidden absolute inset-0 flex items-center justify-center">
-                          <div class="svg-icon size-5 bg-amber-500 icon-handshake"></div>
-                        </div>
                       </div>
-                      <div class="leading-tight min-w-0 flex-1">
-                        <div class="text-sm md:text-base font-semibold text-stone-900 truncate">
-                          ${s.name}
-                        </div>
-                        <div class="text-xs uppercase tracking-wide text-stone-600 truncate mt-1.5">
-                          ${s.level || ""}
-                        </div>
+                      <div class="text-sm font-medium text-stone-900 truncate">
+                        ${this.pendingSponsor?.name || ""}
                       </div>
+                    </div>
+                    <label class="form-label" for="sponsor-level-input"
+                      >Level <span class="asterisk">*</span></label
+                    >
+                    <input
+                      id="sponsor-level-input"
+                      type="text"
+                      class="input-primary mt-2 w-full"
+                      placeholder="Gold, Silver, Bronze, ..."
+                      .value=${this.pendingLevel}
+                      @input=${(event) => (this.pendingLevel = event.target.value || "")}
+                      ?disabled=${this.disabled}
+                    />
+                    <div class="mt-6 flex items-center justify-end gap-3">
                       <button
                         type="button"
-                        class="p-1 rounded-full hover:bg-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                        aria-label="Remove ${s.name}"
-                        title="Remove"
-                        @click=${() => this._onRemove(s.group_sponsor_id)}
+                        class="btn-primary-outline"
+                        @click=${() => this._closeLevelModal()}
                         ?disabled=${this.disabled}
                       >
-                        <div class="svg-icon size-4 icon-close bg-stone-600"></div>
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-primary"
+                        ?disabled=${this.disabled || !(this.pendingLevel || "").trim().length}
+                        @click=${() => this._confirmAddSponsorLevel()}
+                      >
+                        Add
                       </button>
                     </div>
-                    <input
-                      type="hidden"
-                      name="sponsors[${i}][group_sponsor_id]"
-                      value=${s.group_sponsor_id}
-                    />
-                    <input type="hidden" name="sponsors[${i}][level]" value=${s.level || ""} />`,
-              )}
-            </div>`
-          : ""}
-        ${this.showLevelModal
-          ? html`
-              <div class="fixed inset-0 z-20 flex items-center justify-center">
-                <div class="absolute inset-0 bg-black/30" @click=${() => this._closeLevelModal()}></div>
-                <div
-                  class="relative bg-white rounded-lg shadow-xl border border-stone-200 w-[90%] max-w-md p-6"
-                >
-                  <div class="text-lg font-semibold text-stone-900 mb-4">Add sponsor level</div>
-                  <div class="flex items-center gap-3 mb-4">
-                    <div
-                      class="relative flex items-center justify-center size-10 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"
-                    >
-                      <img
-                        src=${this.pendingSponsor?.logo_url || ""}
-                        alt="${this.pendingSponsor?.name || ""} logo"
-                        class="size-8 object-contain"
-                        loading="lazy"
-                      />
-                    </div>
-                    <div class="text-sm font-medium text-stone-900 truncate">
-                      ${this.pendingSponsor?.name || ""}
-                    </div>
-                  </div>
-                  <label class="form-label" for="sponsor-level-input"
-                    >Level <span class="asterisk">*</span></label
-                  >
-                  <input
-                    id="sponsor-level-input"
-                    type="text"
-                    class="input-primary mt-2 w-full"
-                    placeholder="Gold, Silver, Bronze, ..."
-                    .value=${this.pendingLevel}
-                    @input=${(event) => (this.pendingLevel = event.target.value || "")}
-                    ?disabled=${this.disabled}
-                  />
-                  <div class="mt-6 flex items-center justify-end gap-3">
-                    <button
-                      type="button"
-                      class="btn-primary-outline"
-                      @click=${() => this._closeLevelModal()}
-                      ?disabled=${this.disabled}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      class="btn-primary"
-                      ?disabled=${this.disabled || !(this.pendingLevel || "").trim().length}
-                      @click=${() => this._confirmAddSponsorLevel()}
-                    >
-                      Add
-                    </button>
                   </div>
                 </div>
-              </div>
-            `
-          : ""}
+              `
+            : ""
+        }
       </div>
     `;
   }

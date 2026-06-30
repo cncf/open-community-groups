@@ -289,68 +289,72 @@ class SessionItem extends LitWrapper {
           Start Time <span class="asterisk">*</span>
         </label>
         <div class="mt-2">
-          ${hasPrefilledDate
-            ? html`
-                <input
-                  id=${sessionStartsAtId}
-                  type="time"
-                  @input=${(event) => this._onTimeChange(event, "starts_at")}
-                  class="input-primary ${this.disabled
-                    ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                    : ""}"
-                  value=${startTime}
-                  ?required=${!this.isObjectEmpty}
-                  ?disabled=${this.disabled}
-                />
-              `
-            : html`
-                <input
-                  id=${sessionStartsAtId}
-                  type="datetime-local"
-                  @input=${(event) => this._onInputChange(event)}
-                  data-name="starts_at"
-                  name="sessions[${this.index}][starts_at]"
-                  class="input-primary ${this.disabled
-                    ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                    : ""}"
-                  value=${this.data.starts_at || ""}
-                  ?required=${!this.isObjectEmpty}
-                  ?disabled=${this.disabled}
-                />
-              `}
+          ${
+            hasPrefilledDate
+              ? html`
+                  <input
+                    id=${sessionStartsAtId}
+                    type="time"
+                    @input=${(event) => this._onTimeChange(event, "starts_at")}
+                    class="input-primary ${
+                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                    }"
+                    value=${startTime}
+                    ?required=${!this.isObjectEmpty}
+                    ?disabled=${this.disabled}
+                  />
+                `
+              : html`
+                  <input
+                    id=${sessionStartsAtId}
+                    type="datetime-local"
+                    @input=${(event) => this._onInputChange(event)}
+                    data-name="starts_at"
+                    name="sessions[${this.index}][starts_at]"
+                    class="input-primary ${
+                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                    }"
+                    value=${this.data.starts_at || ""}
+                    ?required=${!this.isObjectEmpty}
+                    ?disabled=${this.disabled}
+                  />
+                `
+          }
         </div>
       </div>
 
       <div class="col-span-2">
         <label for=${sessionEndsAtId} class="form-label"> End Time </label>
         <div class="mt-2">
-          ${hasPrefilledDate
-            ? html`
-                <input
-                  id=${sessionEndsAtId}
-                  type="time"
-                  @input=${(event) => this._onTimeChange(event, "ends_at")}
-                  class="input-primary ${this.disabled
-                    ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                    : ""}"
-                  value=${endTime}
-                  ?disabled=${this.disabled}
-                />
-              `
-            : html`
-                <input
-                  id=${sessionEndsAtId}
-                  type="datetime-local"
-                  @input=${(event) => this._onInputChange(event)}
-                  data-name="ends_at"
-                  name="sessions[${this.index}][ends_at]"
-                  class="input-primary ${this.disabled
-                    ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                    : ""}"
-                  value=${this.data.ends_at || ""}
-                  ?disabled=${this.disabled}
-                />
-              `}
+          ${
+            hasPrefilledDate
+              ? html`
+                  <input
+                    id=${sessionEndsAtId}
+                    type="time"
+                    @input=${(event) => this._onTimeChange(event, "ends_at")}
+                    class="input-primary ${
+                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                    }"
+                    value=${endTime}
+                    ?disabled=${this.disabled}
+                  />
+                `
+              : html`
+                  <input
+                    id=${sessionEndsAtId}
+                    type="datetime-local"
+                    @input=${(event) => this._onInputChange(event)}
+                    data-name="ends_at"
+                    name="sessions[${this.index}][ends_at]"
+                    class="input-primary ${
+                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                    }"
+                    value=${this.data.ends_at || ""}
+                    ?disabled=${this.disabled}
+                  />
+                `
+          }
         </div>
       </div>
 
@@ -376,311 +380,323 @@ class SessionItem extends LitWrapper {
         </div>
       </div>
 
-      ${this.approvedSubmissions?.length
-        ? html`
-            <fieldset class="col-span-full">
-              <legend class="form-label">Description and speakers</legend>
-              <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label class="block h-full">
-                  <input
-                    type="radio"
-                    name="sessions[${this.index}][input_mode]"
-                    value="cfs"
-                    class="sr-only"
-                    .checked=${this.inputMode === "cfs"}
-                    @change=${this._onModeChange}
-                    ?disabled=${this.disabled}
-                  />
-                  <div
-                    class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${this.inputMode ===
-                    "cfs"
-                      ? "border-primary-400 ring-2 ring-primary-200"
-                      : "border-stone-200"} ${this.disabled
-                      ? "opacity-60 cursor-not-allowed"
-                      : "hover:border-primary-300"}"
-                  >
-                    <div class="flex items-start gap-3">
-                      <span class="mt-1 inline-flex">
-                        <span
-                          class="relative flex h-5 w-5 items-center justify-center rounded-full border ${this
-                            .inputMode === "cfs"
-                            ? "border-primary-500"
-                            : "border-stone-300"}"
-                        >
-                          ${this.inputMode === "cfs"
-                            ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
-                            : ""}
-                        </span>
-                      </span>
-                      <div class="space-y-1">
-                        <div class="text-base font-semibold text-stone-900">
-                          From Call for Speakers submission
-                        </div>
-                        <p class="form-legend">Link an approved CFS submission to this session.</p>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-                <label class="block h-full">
-                  <input
-                    type="radio"
-                    name="sessions[${this.index}][input_mode]"
-                    value="manual"
-                    class="sr-only"
-                    .checked=${this.inputMode === "manual"}
-                    @change=${this._onModeChange}
-                    ?disabled=${this.disabled}
-                  />
-                  <div
-                    class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${this.inputMode ===
-                    "manual"
-                      ? "border-primary-400 ring-2 ring-primary-200"
-                      : "border-stone-200"} ${this.disabled
-                      ? "opacity-60 cursor-not-allowed"
-                      : "hover:border-primary-300"}"
-                  >
-                    <div class="flex items-start gap-3">
-                      <span class="mt-1 inline-flex">
-                        <span
-                          class="relative flex h-5 w-5 items-center justify-center rounded-full border ${this
-                            .inputMode === "manual"
-                            ? "border-primary-500"
-                            : "border-stone-300"}"
-                        >
-                          ${this.inputMode === "manual"
-                            ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
-                            : ""}
-                        </span>
-                      </span>
-                      <div class="space-y-1">
-                        <div class="text-base font-semibold text-stone-900">Manual</div>
-                        <p class="form-legend">Add description and speakers manually.</p>
-                      </div>
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </fieldset>
-          `
-        : ""}
-      ${this.inputMode === "cfs" && this.approvedSubmissions?.length
-        ? html`
-            <div class="col-span-full">
-              <label for=${sessionCfsSubmissionId} class="form-label"> Link to CFS submission </label>
-              <div class="mt-2">
-                <select
-                  @change=${(event) => this._onInputChange(event)}
-                  data-name="cfs_submission_id"
-                  id=${sessionCfsSubmissionId}
-                  name="sessions[${this.index}][cfs_submission_id]"
-                  class="input-primary ${this.disabled
-                    ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                    : ""}"
-                  ?disabled=${this.disabled}
-                >
-                  <option value="" ?selected=${!currentSubmissionId}>Select an approved submission</option>
-                  ${this.approvedSubmissions.map((submission) => {
-                    const submissionId = String(submission.cfs_submission_id);
-                    const isUsed = usedSubmissionIds.has(submissionId);
-                    const isCurrent = submissionId === currentSubmissionId;
-                    return html`<option
-                      value=${submissionId}
-                      ?selected=${isCurrent}
-                      ?disabled=${isUsed && !isCurrent}
+      ${
+        this.approvedSubmissions?.length
+          ? html`
+              <fieldset class="col-span-full">
+                <legend class="form-label">Description and speakers</legend>
+                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label class="block h-full">
+                    <input
+                      type="radio"
+                      name="sessions[${this.index}][input_mode]"
+                      value="cfs"
+                      class="sr-only"
+                      .checked=${this.inputMode === "cfs"}
+                      @change=${this._onModeChange}
+                      ?disabled=${this.disabled}
+                    />
+                    <div
+                      class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${
+                        this.inputMode === "cfs"
+                          ? "border-primary-400 ring-2 ring-primary-200"
+                          : "border-stone-200"
+                      } ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:border-primary-300"}"
                     >
-                      ${submission.title} · ${submission.speaker_name}
-                    </option>`;
-                  })}
-                </select>
-              </div>
-              <p class="form-legend">Only approved submissions for this event can be linked.</p>
-            </div>
-          `
-        : ""}
-      ${this.inputMode === "manual" || !this.approvedSubmissions?.length
-        ? html`
-            <div class="col-span-full">
-              <label for=${sessionDescriptionId} class="form-label"> Description </label>
-              <div class="mt-2">
-                <markdown-editor
-                  input-id=${sessionDescriptionId}
-                  name="sessions[${this.index}][description]"
-                  content=${this.data.description}
-                  .onChange=${(value) => this._onTextareaChange(value)}
-                  maxlength=${this.descriptionMaxLength}
-                  mini
-                  ?disabled=${this.disabled}
-                ></markdown-editor>
-              </div>
-            </div>
-
-            <div class="col-span-full">
-              <div class="flex items-center justify-between gap-4 flex-wrap">
-                <speakers-selector
-                  selected-speakers=${JSON.stringify(this.data.speakers || [])}
-                  dashboard-type="group"
-                  field-name-prefix=${`sessions[${this.index}][speakers]`}
-                  show-add-button
-                  label="Speakers"
-                  help-text="Add speakers or presenters for this session."
-                  class="w-full"
-                  @speakers-changed=${this._handleSpeakersChanged}
-                  ?disabled=${this.disabled}
-                ></speakers-selector>
-              </div>
-            </div>
-          `
-        : ""}
-      ${this.data.kind !== "in-person"
-        ? html`
-            <div class="col-span-full">
-              <div class="form-label">Session meeting details</div>
-              <div class="mt-2 mb-5">
-                ${this.meetingsEnabled
-                  ? html`
-                      <online-event-details
-                        kind=${this.data.kind || "virtual"}
-                        meeting-join-url=${this.data.meeting_join_url || ""}
-                        meeting-recording-published=${String(this.data.meeting_recording_published === true)}
-                        meeting-recording-url=${this.data.meeting_recording_url || ""}
-                        ?meeting-requested=${this.data.meeting_requested}
-                        ?meeting-in-sync=${this.data.meeting_in_sync}
-                        meeting-password=${this.data.meeting_password || ""}
-                        meeting-error=${this.data.meeting_error || ""}
-                        starts-at=${this.data.starts_at || ""}
-                        ends-at=${this.data.ends_at || ""}
-                        .meetingRecordingRawUrls=${this.data.meeting_recording_raw_urls || []}
-                        .meetingHosts=${this.data.meeting_hosts || {}}
-                        .meetingJoinInstructions=${this.data.meeting_join_instructions || ""}
-                        .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
-                        .eventPast=${this.eventPast}
-                        field-name-prefix="sessions[${this.index}]"
-                        ?disabled=${this.disabled}
-                      ></online-event-details>
-                    `
-                  : html`
-                      <div class="space-y-6">
-                        <div class="grid grid-cols-1 gap-6">
-                          <div class="space-y-2">
-                            <label for=${meetingJoinUrlId} class="form-label">Meeting URL</label>
-                            <div class="mt-2">
-                              <input
-                                type="url"
-                                id=${meetingJoinUrlId}
-                                name="sessions[${this.index}][meeting_join_url]"
-                                class="input-primary ${this.disabled
-                                  ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                                  : ""}"
-                                value=${this.data.meeting_join_url || ""}
-                                placeholder="https://meet.example.com/123456789"
-                                @input=${(event) => this._onInputChange(event)}
-                                data-name="meeting_join_url"
-                                ?disabled=${this.disabled}
-                              />
-                            </div>
-                            <p class="form-legend">Teams, Meet, or any other video link.</p>
+                      <div class="flex items-start gap-3">
+                        <span class="mt-1 inline-flex">
+                          <span
+                            class="relative flex h-5 w-5 items-center justify-center rounded-full border ${
+                              this.inputMode === "cfs" ? "border-primary-500" : "border-stone-300"
+                            }"
+                          >
+                            ${
+                              this.inputMode === "cfs"
+                                ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
+                                : ""
+                            }
+                          </span>
+                        </span>
+                        <div class="space-y-1">
+                          <div class="text-base font-semibold text-stone-900">
+                            From Call for Speakers submission
                           </div>
-                          <div class="space-y-2">
-                            <label for=${meetingJoinInstructionsId} class="form-label">
-                              Join instructions (optional)
-                            </label>
-                            <div class="mt-2">
-                              <textarea
-                                id=${meetingJoinInstructionsId}
-                                name="sessions[${this.index}][meeting_join_instructions]"
-                                rows="4"
-                                maxlength="500"
-                                class="input-primary ${this.disabled
-                                  ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                                  : ""}"
-                                placeholder="Add passcodes, waiting room details, or other attendee instructions."
-                                .value=${this.data.meeting_join_instructions || ""}
-                                @input=${(event) => this._onInputChange(event)}
-                                data-name="meeting_join_instructions"
-                                ?disabled=${this.disabled}
-                              ></textarea>
-                            </div>
-                            <p class="form-legend">
-                              Shown with the meeting details on the public event page.
-                            </p>
-                          </div>
-                          ${Array.isArray(this.data.meeting_recording_raw_urls) &&
-                          this.data.meeting_recording_raw_urls.length > 0
-                            ? html`
-                                <div class="space-y-2">
-                                  ${this.data.meeting_recording_raw_urls.map(
-                                    (rawRecordingUrl, rawRecordingIndex) => html`
-                                      <div class="space-y-2">
-                                        <label
-                                          for="meeting_recording_raw_urls_${this.index}_${rawRecordingIndex}"
-                                          class="form-label"
-                                          >Original provider recording ${rawRecordingIndex + 1}</label
-                                        >
-                                        <div class="mt-2">
-                                          <input
-                                            type="url"
-                                            id="meeting_recording_raw_urls_${this.index}_${rawRecordingIndex}"
-                                            class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
-                                            value=${rawRecordingUrl}
-                                            readonly
-                                          />
-                                        </div>
-                                      </div>
-                                    `,
-                                  )}
-                                  <p class="form-legend whitespace-pre-line">
-                                    ${MEETING_RECORDING_RAW_URLS_LEGEND}
-                                  </p>
-                                </div>
-                              `
-                            : ""}
-                          <div class="space-y-2">
-                            <label for=${meetingRecordingUrlId} class="form-label"
-                              >Final public recording URL (optional)</label
-                            >
-                            <div class="mt-2">
-                              <input
-                                type="url"
-                                id=${meetingRecordingUrlId}
-                                name="sessions[${this.index}][meeting_recording_url]"
-                                class="input-primary ${this.disabled
-                                  ? "bg-stone-100 text-stone-500 cursor-not-allowed"
-                                  : ""}"
-                                value=${this.data.meeting_recording_url || ""}
-                                placeholder="https://youtube.com/watch?v=..."
-                                @input=${(event) => this._onInputChange(event)}
-                                data-name="meeting_recording_url"
-                                ?disabled=${this.disabled}
-                              />
-                            </div>
-                            <p class="form-legend">${MEETING_RECORDING_URL_LEGEND}</p>
-                          </div>
-                          <div class="space-y-2">
-                            <label class="inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                class="sr-only peer"
-                                .checked=${this.data.meeting_recording_published === true}
-                                @change=${(event) => this._onInputChange(event)}
-                                data-name="meeting_recording_published"
-                                ?disabled=${this.disabled}
-                              />
-                              <span
-                                class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
-                              ></span>
-                              <span class="ms-3 text-sm font-medium text-stone-900">
-                                Publish recording publicly
-                              </span>
-                            </label>
-                            <p class="form-legend">${MEETING_RECORDING_VISIBILITY_LEGEND}</p>
-                          </div>
+                          <p class="form-legend">Link an approved CFS submission to this session.</p>
                         </div>
                       </div>
-                    `}
+                    </div>
+                  </label>
+                  <label class="block h-full">
+                    <input
+                      type="radio"
+                      name="sessions[${this.index}][input_mode]"
+                      value="manual"
+                      class="sr-only"
+                      .checked=${this.inputMode === "manual"}
+                      @change=${this._onModeChange}
+                      ?disabled=${this.disabled}
+                    />
+                    <div
+                      class="h-full rounded-xl border transition bg-white p-4 md:p-5 flex ${
+                        this.inputMode === "manual"
+                          ? "border-primary-400 ring-2 ring-primary-200"
+                          : "border-stone-200"
+                      } ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:border-primary-300"}"
+                    >
+                      <div class="flex items-start gap-3">
+                        <span class="mt-1 inline-flex">
+                          <span
+                            class="relative flex h-5 w-5 items-center justify-center rounded-full border ${
+                              this.inputMode === "manual" ? "border-primary-500" : "border-stone-300"
+                            }"
+                          >
+                            ${
+                              this.inputMode === "manual"
+                                ? html`<span class="h-2.5 w-2.5 rounded-full bg-primary-500"></span>`
+                                : ""
+                            }
+                          </span>
+                        </span>
+                        <div class="space-y-1">
+                          <div class="text-base font-semibold text-stone-900">Manual</div>
+                          <p class="form-legend">Add description and speakers manually.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </fieldset>
+            `
+          : ""
+      }
+      ${
+        this.inputMode === "cfs" && this.approvedSubmissions?.length
+          ? html`
+              <div class="col-span-full">
+                <label for=${sessionCfsSubmissionId} class="form-label"> Link to CFS submission </label>
+                <div class="mt-2">
+                  <select
+                    @change=${(event) => this._onInputChange(event)}
+                    data-name="cfs_submission_id"
+                    id=${sessionCfsSubmissionId}
+                    name="sessions[${this.index}][cfs_submission_id]"
+                    class="input-primary ${
+                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                    }"
+                    ?disabled=${this.disabled}
+                  >
+                    <option value="" ?selected=${!currentSubmissionId}>Select an approved submission</option>
+                    ${this.approvedSubmissions.map((submission) => {
+                      const submissionId = String(submission.cfs_submission_id);
+                      const isUsed = usedSubmissionIds.has(submissionId);
+                      const isCurrent = submissionId === currentSubmissionId;
+                      return html`<option
+                        value=${submissionId}
+                        ?selected=${isCurrent}
+                        ?disabled=${isUsed && !isCurrent}
+                      >
+                        ${submission.title} · ${submission.speaker_name}
+                      </option>`;
+                    })}
+                  </select>
+                </div>
+                <p class="form-legend">Only approved submissions for this event can be linked.</p>
               </div>
-            </div>
-          `
-        : ""}
+            `
+          : ""
+      }
+      ${
+        this.inputMode === "manual" || !this.approvedSubmissions?.length
+          ? html`
+              <div class="col-span-full">
+                <label for=${sessionDescriptionId} class="form-label"> Description </label>
+                <div class="mt-2">
+                  <markdown-editor
+                    input-id=${sessionDescriptionId}
+                    name="sessions[${this.index}][description]"
+                    content=${this.data.description}
+                    .onChange=${(value) => this._onTextareaChange(value)}
+                    maxlength=${this.descriptionMaxLength}
+                    mini
+                    ?disabled=${this.disabled}
+                  ></markdown-editor>
+                </div>
+              </div>
+
+              <div class="col-span-full">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                  <speakers-selector
+                    selected-speakers=${JSON.stringify(this.data.speakers || [])}
+                    dashboard-type="group"
+                    field-name-prefix=${`sessions[${this.index}][speakers]`}
+                    show-add-button
+                    label="Speakers"
+                    help-text="Add speakers or presenters for this session."
+                    class="w-full"
+                    @speakers-changed=${this._handleSpeakersChanged}
+                    ?disabled=${this.disabled}
+                  ></speakers-selector>
+                </div>
+              </div>
+            `
+          : ""
+      }
+      ${
+        this.data.kind !== "in-person"
+          ? html`
+              <div class="col-span-full">
+                <div class="form-label">Session meeting details</div>
+                <div class="mt-2 mb-5">
+                  ${
+                    this.meetingsEnabled
+                      ? html`
+                          <online-event-details
+                            kind=${this.data.kind || "virtual"}
+                            meeting-join-url=${this.data.meeting_join_url || ""}
+                            meeting-recording-published=${String(this.data.meeting_recording_published === true)}
+                            meeting-recording-url=${this.data.meeting_recording_url || ""}
+                            ?meeting-requested=${this.data.meeting_requested}
+                            ?meeting-in-sync=${this.data.meeting_in_sync}
+                            meeting-password=${this.data.meeting_password || ""}
+                            meeting-error=${this.data.meeting_error || ""}
+                            starts-at=${this.data.starts_at || ""}
+                            ends-at=${this.data.ends_at || ""}
+                            .meetingRecordingRawUrls=${this.data.meeting_recording_raw_urls || []}
+                            .meetingHosts=${this.data.meeting_hosts || {}}
+                            .meetingJoinInstructions=${this.data.meeting_join_instructions || ""}
+                            .meetingMaxParticipants=${this.meetingMaxParticipants || {}}
+                            .eventPast=${this.eventPast}
+                            field-name-prefix="sessions[${this.index}]"
+                            ?disabled=${this.disabled}
+                          ></online-event-details>
+                        `
+                      : html`
+                          <div class="space-y-6">
+                            <div class="grid grid-cols-1 gap-6">
+                              <div class="space-y-2">
+                                <label for=${meetingJoinUrlId} class="form-label">Meeting URL</label>
+                                <div class="mt-2">
+                                  <input
+                                    type="url"
+                                    id=${meetingJoinUrlId}
+                                    name="sessions[${this.index}][meeting_join_url]"
+                                    class="input-primary ${
+                                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                                    }"
+                                    value=${this.data.meeting_join_url || ""}
+                                    placeholder="https://meet.example.com/123456789"
+                                    @input=${(event) => this._onInputChange(event)}
+                                    data-name="meeting_join_url"
+                                    ?disabled=${this.disabled}
+                                  />
+                                </div>
+                                <p class="form-legend">Teams, Meet, or any other video link.</p>
+                              </div>
+                              <div class="space-y-2">
+                                <label for=${meetingJoinInstructionsId} class="form-label">
+                                  Join instructions (optional)
+                                </label>
+                                <div class="mt-2">
+                                  <textarea
+                                    id=${meetingJoinInstructionsId}
+                                    name="sessions[${this.index}][meeting_join_instructions]"
+                                    rows="4"
+                                    maxlength="500"
+                                    class="input-primary ${
+                                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                                    }"
+                                    placeholder="Add passcodes, waiting room details, or other attendee instructions."
+                                    .value=${this.data.meeting_join_instructions || ""}
+                                    @input=${(event) => this._onInputChange(event)}
+                                    data-name="meeting_join_instructions"
+                                    ?disabled=${this.disabled}
+                                  ></textarea>
+                                </div>
+                                <p class="form-legend">
+                                  Shown with the meeting details on the public event page.
+                                </p>
+                              </div>
+                              ${
+                                Array.isArray(this.data.meeting_recording_raw_urls) &&
+                                this.data.meeting_recording_raw_urls.length > 0
+                                  ? html`
+                                      <div class="space-y-2">
+                                        ${this.data.meeting_recording_raw_urls.map(
+                                          (rawRecordingUrl, rawRecordingIndex) => html`
+                                            <div class="space-y-2">
+                                              <label
+                                                for="meeting_recording_raw_urls_${this.index}_${rawRecordingIndex}"
+                                                class="form-label"
+                                                >Original provider recording ${rawRecordingIndex + 1}</label
+                                              >
+                                              <div class="mt-2">
+                                                <input
+                                                  type="url"
+                                                  id="meeting_recording_raw_urls_${this.index}_${rawRecordingIndex}"
+                                                  class="input-primary bg-stone-100 text-stone-600 cursor-not-allowed"
+                                                  value=${rawRecordingUrl}
+                                                  readonly
+                                                />
+                                              </div>
+                                            </div>
+                                          `,
+                                        )}
+                                        <p class="form-legend whitespace-pre-line">
+                                          ${MEETING_RECORDING_RAW_URLS_LEGEND}
+                                        </p>
+                                      </div>
+                                    `
+                                  : ""
+                              }
+                              <div class="space-y-2">
+                                <label for=${meetingRecordingUrlId} class="form-label"
+                                  >Final public recording URL (optional)</label
+                                >
+                                <div class="mt-2">
+                                  <input
+                                    type="url"
+                                    id=${meetingRecordingUrlId}
+                                    name="sessions[${this.index}][meeting_recording_url]"
+                                    class="input-primary ${
+                                      this.disabled ? "bg-stone-100 text-stone-500 cursor-not-allowed" : ""
+                                    }"
+                                    value=${this.data.meeting_recording_url || ""}
+                                    placeholder="https://youtube.com/watch?v=..."
+                                    @input=${(event) => this._onInputChange(event)}
+                                    data-name="meeting_recording_url"
+                                    ?disabled=${this.disabled}
+                                  />
+                                </div>
+                                <p class="form-legend">${MEETING_RECORDING_URL_LEGEND}</p>
+                              </div>
+                              <div class="space-y-2">
+                                <label class="inline-flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    class="sr-only peer"
+                                    .checked=${this.data.meeting_recording_published === true}
+                                    @change=${(event) => this._onInputChange(event)}
+                                    data-name="meeting_recording_published"
+                                    ?disabled=${this.disabled}
+                                  />
+                                  <span
+                                    class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"
+                                  ></span>
+                                  <span class="ms-3 text-sm font-medium text-stone-900">
+                                    Publish recording publicly
+                                  </span>
+                                </label>
+                                <p class="form-legend">${MEETING_RECORDING_VISIBILITY_LEGEND}</p>
+                              </div>
+                            </div>
+                          </div>
+                        `
+                  }
+                </div>
+              </div>
+            `
+          : ""
+      }
     </div>`;
   }
 }

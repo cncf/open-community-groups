@@ -111,29 +111,32 @@ export class LogoImage extends LitWrapper {
       <div class="relative shrink-0 ${this.size}">
         <!-- Initials placeholder (visible when no image, loading, or on error) -->
         <div
-          class="${showPlaceholder
-            ? "flex"
-            : "hidden"} absolute inset-0 items-center justify-center rounded-full bg-stone-200 ${borderClass} text-stone-700 font-semibold ${this
-            .fontSize}"
+          class="${
+            showPlaceholder ? "flex" : "hidden"
+          } absolute inset-0 items-center justify-center rounded-full bg-stone-200 ${borderClass} text-stone-700 font-semibold ${
+            this.fontSize
+          }"
         >
           ${this.placeholder}
         </div>
 
         <!-- Image (always rendered if URL exists, visibility controlled by load/error state) -->
-        ${this.imageUrl
-          ? html`
-              <img
-                src=${this.imageUrl}
-                alt="Image"
-                @load=${this._handleImageLoad}
-                @error=${this._handleImageError}
-                class="${showImage
-                  ? ""
-                  : "opacity-0 pointer-events-none"} absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} bg-stone-200"
-                loading="lazy"
-              />
-            `
-          : ""}
+        ${
+          this.imageUrl
+            ? html`
+                <img
+                  src=${this.imageUrl}
+                  alt="Image"
+                  @load=${this._handleImageLoad}
+                  @error=${this._handleImageError}
+                  class="${
+                    showImage ? "" : "opacity-0 pointer-events-none"
+                  } absolute inset-0 w-full h-full object-cover rounded-full ${borderClass} bg-stone-200"
+                  loading="lazy"
+                />
+              `
+            : ""
+        }
       </div>
     `;
   }

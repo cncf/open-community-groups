@@ -35,11 +35,19 @@ returns json as $$
                 u.username,
                 row_number() over (order by ew.created_at asc, ew.user_id asc)::int as waitlist_position,
 
+                u.bio,
+                u.bluesky_url,
                 u.company,
+                u.facebook_url,
+                u.github_url,
+                u.linkedin_url,
                 u.name,
                 u.photo_url,
+                get_public_user_provider(u.provider) as provider,
+                u.twitter_url,
                 u.tsdoc,
-                u.title
+                u.title,
+                u.website_url
             from event_waitlist ew
             join event e on e.event_id = ew.event_id
             join "user" u on u.user_id = ew.user_id
@@ -63,14 +71,24 @@ returns json as $$
         waitlist as (
             select
                 created_at,
-                user_id,
-                username,
-                waitlist_position,
+                json_strip_nulls(json_build_object(
+                    'user_id', user_id,
+                    'username', username,
 
-                company,
-                name,
-                photo_url,
-                title
+                    'bio', bio,
+                    'bluesky_url', bluesky_url,
+                    'company', company,
+                    'facebook_url', facebook_url,
+                    'github_url', github_url,
+                    'linkedin_url', linkedin_url,
+                    'name', name,
+                    'photo_url', photo_url,
+                    'provider', provider,
+                    'title', title,
+                    'twitter_url', twitter_url,
+                    'website_url', website_url
+                )) as "user",
+                waitlist_position
             from filtered_waitlist
             order by created_at_sort asc, user_id asc
             offset (select offset_value from filters)
