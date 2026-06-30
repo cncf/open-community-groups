@@ -139,6 +139,49 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("dashboard/placeholders/group_attendees_no_results.html");
   });
 
+  it("renders attendee table sorting and filter controls", async () => {
+    // Load the attendees list template before checking table controls.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify attendee filters preserve current table state.
+    expect(template).to.include('name="checked_in" value="{{ checked_in }}"');
+    expect(template).to.include('name="event_ticket_type_ids[]"');
+    expect(template).to.include('name="sort" value="{{ sort }}"');
+    expect(template).to.include('name="title" value="{{ title }}"');
+    expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Attendee", sort_value = "name-desc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Attendee", sort_value = "name-asc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-desc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-asc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_menu(id = "attendees-name-filter", label = "Attendee"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_menu(id = "attendees-ticket-filter", label = "Ticket type"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In"',
+    );
+    expect(template).to.include('name="title" value="present"');
+    expect(template).to.include('name="title" value="missing"');
+    expect(template).to.include('name="checked_in" value="true"');
+    expect(template).to.include('name="checked_in" value="false"');
+    expect(template).to.include("Sort: Name Z-A");
+    expect(template).to.include("Sort: Oldest RSVP");
+    expect(template).to.include("Ticket type");
+  });
+
   it("integrates selected attendee email sends with the attendees table", async () => {
     // Load the attendees list template before checking table selection markup.
     const template = normalizeWhitespace(await loadTemplate());

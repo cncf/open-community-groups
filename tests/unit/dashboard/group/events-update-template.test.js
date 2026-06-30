@@ -29,4 +29,26 @@ describe("dashboard group event update template", () => {
     // Assert the online and session details components receive past-event state.
     expect(template).to.include("{% if event.is_past() %}event-past{% endif %}");
   });
+
+  it("lazy-loads event review tabs from the desktop tab buttons", async () => {
+    // Load the event update template before checking lazy tab contracts.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert review tabs fetch their table content only when selected.
+    expect(template).to.include('aria-label="Event form section"');
+    expect(template).to.include('event_form::tab_option(section = "attendees", label = "Attendees")');
+    expect(template).to.include(
+      'event_form::tab_option(section = "invitation-requests", label = "Requests")',
+    );
+    expect(template).to.include('event_form::tab_option(section = "waitlist", label = "Waitlist")');
+    expect(template).to.include(
+      'hx-get="/dashboard/group/events/{{ event.event_id }}/attendees" hx-trigger="click once" hx-target="#attendees-content"',
+    );
+    expect(template).to.include(
+      'hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests" hx-trigger="click once" hx-target="#invitation-requests-content"',
+    );
+    expect(template).to.include(
+      'hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content"',
+    );
+  });
 });

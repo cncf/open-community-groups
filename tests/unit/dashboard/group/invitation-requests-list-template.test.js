@@ -41,6 +41,44 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include("dashboard/placeholders/group_invitation_requests_no_results.html");
   });
 
+  it("renders request table sorting, title, and status filter controls", async () => {
+    // Load the invitation requests template before checking table filters.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify request filters preserve current search, sort, and status state.
+    expect(template).to.include('name="sort" value="{{ sort }}"');
+    expect(template).to.include('name="title" value="{{ title }}"');
+    expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
+    expect(template).to.include('name="status" value="{{ status }}"');
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Requester", sort_value = "name-desc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Requester", sort_value = "name-asc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Requested", sort_value = "created-at-desc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Requested", sort_value = "created-at-asc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_menu(id = "invitation-requests-requester-filter"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_menu(id = "invitation-requests-status-filter"',
+    );
+    expect(template).to.include('name="title" value="present"');
+    expect(template).to.include('name="title" value="missing"');
+    expect(template).to.include('name="status" value="all"');
+    expect(template).to.include('name="status" value="accepted"');
+    expect(template).to.include('name="status" value="rejected"');
+    expect(template).to.include("Status: Pending");
+    expect(template).to.include("Status: Accepted");
+    expect(template).not.to.include("Status: All");
+    expect(template).to.include("Sort: Oldest request");
+  });
+
   it("preserves current filters for invitation request refreshes", async () => {
     // Load the invitation requests list template before checking refresh markup.
     const template = normalizeWhitespace(await loadTemplate());

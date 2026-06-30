@@ -552,6 +552,21 @@ insert into event (
     1,
     true,
     true
+), (
+    '55555555-5555-5555-5555-555555555526',
+    'Dashboard Waitlist Table Lab',
+    'alpha-dashboard-waitlist-lab',
+    'Future event dedicated to dashboard waitlist table coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '59 days',
+    now() + interval '59 days 2 hours',
+    1,
+    true,
+    true
 );
 
 -- Published test event for direct event-page badge coverage.
@@ -1466,6 +1481,9 @@ values (
     '55555555-5555-5555-5555-555555555521',
     '77777777-7777-7777-7777-777777777703'
 ), (
+    '55555555-5555-5555-5555-555555555526',
+    '77777777-7777-7777-7777-777777777703'
+), (
     '55555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777705'
 ), (
@@ -1480,6 +1498,12 @@ values (
 ), (
     '55555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777712'
+);
+
+insert into event_waitlist (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555526',
+    '77777777-7777-7777-7777-777777777706'
 );
 
 insert into event_attendee (event_id, user_id, manually_invited, status)

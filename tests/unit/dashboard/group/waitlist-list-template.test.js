@@ -41,6 +41,37 @@ describe("dashboard group waitlist list template", () => {
     expect(template).not.to.include("{{ refresh_offset + loop.index }}");
   });
 
+  it("renders waitlist table sorting and title filter controls", async () => {
+    // Load the waitlist list template before checking table filter markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify sort and filter controls preserve current waitlist parameters.
+    expect(template).to.include('name="sort" value="{{ sort }}"');
+    expect(template).to.include('name="title" value="{{ title }}"');
+    expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Entry", sort_value = "name-desc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Entry", sort_value = "name-asc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Joined", sort_value = "created-at-desc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_sort_button(label = "Joined", sort_value = "created-at-asc"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_menu(id = "waitlist-entry-filter", label = "Entry", is_active = title.is_some())',
+    );
+    expect(template).to.include('name="title" value="present"');
+    expect(template).to.include('name="title" value="missing"');
+    expect(template).to.include("Title present");
+    expect(template).to.include("Title missing");
+    expect(template).to.include("Sort: Name A-Z");
+    expect(template).to.include("Sort: Newest joined");
+  });
+
   it("preserves current filters for waitlist refreshes", async () => {
     // Load the waitlist list template before checking refresh markup.
     const template = normalizeWhitespace(await loadTemplate());
