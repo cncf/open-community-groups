@@ -170,16 +170,13 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('name="title" value="{{ title }}"');
     expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Attendee", sort_value = "name-desc"',
+      'dashboard::table_sort_control(label = "Attendee", ascending_value = "name-asc", descending_value = "name-desc"',
     );
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Attendee", sort_value = "name-asc"',
+      "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc)",
     );
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-desc"',
-    );
-    expect(template).to.include(
-      'dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-asc"',
+      'dashboard::table_sort_control(label = "RSVP Date", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
     );
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
@@ -194,9 +191,6 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include("flex items-center gap-2");
     expect(template).to.include(
-      'dashboard::table_filter_menu(id = "attendees-name-filter", label = "Attendee"',
-    );
-    expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
     );
     expect(template).to.include(
@@ -205,12 +199,27 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In"',
     );
-    expect(template).to.include('name="title" value="present"');
-    expect(template).to.include('name="title" value="missing"');
-    expect(template).to.include('name="checked_in" value="true"');
-    expect(template).to.include('name="checked_in" value="false"');
-    expect(template).to.include("Sort: Name Z-A");
-    expect(template).to.include("Sort: Oldest RSVP");
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true)',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Present", name = "title", value = "present"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "All attendees", name = "checked_in", value = "", is_active = checked_in.is_none() , is_clear_option = true)',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Checked in", name = "checked_in", value = "true"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Not checked in", name = "checked_in", value = "false"',
+    );
+    expect(template).to.include("Reset all");
+    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort:');
+    expect(template).to.not.include('id = "attendees-name-filter"');
     expect(template).to.include("Ticket type");
   });
 

@@ -114,32 +114,83 @@
 {% endmacro table_filter_menu -%}
 {# End table filter menu #}
 
-{# Table sort button #}
-{% macro table_sort_button(label, sort_value, is_ascending, is_descending) -%}
+{# Table filter option button #}
+{% macro table_filter_option_button(label, name, value, is_active, clear_value = "", is_clear_option = false) -%}
   <button type="submit"
-          name="sort"
-          value="{{ sort_value }}"
-          class="inline-flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
-          aria-label="Sort {{ label }}"
-          title="Sort {{ label }}">
-    <span class="sr-only">Sort {{ label }}</span>
-    <span class="flex flex-col items-center justify-center gap-1">
-      <span class="svg-icon h-2 w-3 icon-caret-up
+          {% if is_clear_option && clear_value.is_empty() -%}
+          {% else if is_active && clear_value.is_empty() -%}
+          {% else if is_active -%}
+            name="{{ name }}" value="{{ clear_value }}"
+          {% else -%}
+            name="{{ name }}" value="{{ value }}"
+          {% endif -%}
+          class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                 {% if is_active -%}
+                   bg-primary-50 text-primary-700
+                 {% endif -%}"
+          aria-pressed="{% if is_active -%}
+                          true{%- else -%}false{%- endif -%}">
+    <span class="flex size-4 shrink-0 items-center justify-center rounded-full border
+                 {% if is_active -%}
+                   border-primary-500
+                 {% else -%}
+                   border-stone-300
+                 {% endif -%}"
+          aria-hidden="true">
+      {% if is_active -%}
+        <span class="size-2 rounded-full bg-primary-500"></span>
+      {% endif -%}
+    </span>
+    <span>{{ label }}</span>
+  </button>
+{% endmacro table_filter_option_button -%}
+{# End table filter option button #}
+
+{# Table sort control #}
+{% macro table_sort_control(label, ascending_value, descending_value, is_ascending, is_descending) -%}
+  <div class="inline-flex h-7 w-7 flex-col overflow-hidden rounded-md border border-stone-200 bg-white">
+    <button type="submit"
+            name="sort"
+            value="{{ ascending_value }}"
+            class="inline-flex h-1/2 w-full items-center justify-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
+                   {% if is_ascending -%}
+                     bg-primary-50 text-primary-700
+                   {% endif -%}"
+            aria-label="Sort {{ label }} ascending"
+            aria-pressed="{% if is_ascending -%}
+                            true{%- else -%}false{%- endif -%}"
+            title="Sort {{ label }} ascending">
+      <span class="sr-only">Sort {{ label }} ascending</span>
+      <span class="svg-icon h-1.5 w-2.5 icon-caret-up
                    {% if is_ascending -%}
                      bg-primary-500
                    {% else -%}
                      bg-stone-300
                    {% endif -%}"></span>
-      <span class="svg-icon h-2 w-3 icon-caret-down
+    </button>
+    <span class="h-px w-full bg-stone-200" aria-hidden="true"></span>
+    <button type="submit"
+            name="sort"
+            value="{{ descending_value }}"
+            class="inline-flex h-1/2 w-full items-center justify-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
+                   {% if is_descending -%}
+                     bg-primary-50 text-primary-700
+                   {% endif -%}"
+            aria-label="Sort {{ label }} descending"
+            aria-pressed="{% if is_descending -%}
+                            true{%- else -%}false{%- endif -%}"
+            title="Sort {{ label }} descending">
+      <span class="sr-only">Sort {{ label }} descending</span>
+      <span class="svg-icon h-1.5 w-2.5 icon-caret-down
                    {% if is_descending -%}
                      bg-primary-500
                    {% else -%}
                      bg-stone-300
                    {% endif -%}"></span>
-    </span>
-  </button>
-{% endmacro table_sort_button -%}
-{# End table sort button #}
+    </button>
+  </div>
+{% endmacro table_sort_control -%}
+{# End table sort control #}
 
 {# Table filter section title #}
 {% macro table_filter_section_title(text) -%}

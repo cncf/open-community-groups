@@ -59,16 +59,13 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
     expect(template).to.include('name="status" value="{{ status }}"');
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Requester", sort_value = "name-desc"',
+      'dashboard::table_sort_control(label = "Requester", ascending_value = "name-asc", descending_value = "name-desc"',
     );
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Requester", sort_value = "name-asc"',
+      "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc)",
     );
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Requested", sort_value = "created-at-desc"',
-    );
-    expect(template).to.include(
-      'dashboard::table_sort_button(label = "Requested", sort_value = "created-at-asc"',
+      'dashboard::table_sort_control(label = "Requested", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
     );
     expect(template).to.include("flex items-center gap-2");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
@@ -80,20 +77,33 @@ describe("dashboard group invitation requests list template", () => {
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
     expect(template).to.include(
-      'dashboard::table_filter_menu(id = "invitation-requests-requester-filter"',
+      'dashboard::table_filter_menu(id = "invitation-requests-position-filter"',
     );
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "invitation-requests-status-filter"',
     );
-    expect(template).to.include('name="title" value="present"');
-    expect(template).to.include('name="title" value="missing"');
-    expect(template).to.include('name="status" value="all"');
-    expect(template).to.include('name="status" value="accepted"');
-    expect(template).to.include('name="status" value="rejected"');
-    expect(template).to.include("Status: Pending");
-    expect(template).to.include("Status: Accepted");
-    expect(template).not.to.include("Status: All");
-    expect(template).to.include("Sort: Oldest request");
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true)',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Present", name = "title", value = "present"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "All", name = "status", value = "all", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All, clear_value = "all")',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Accepted", name = "status", value = "accepted"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Rejected", name = "status", value = "rejected"',
+    );
+    expect(template).to.include("Reset all");
+    expect(template).to.not.include("invitation-requests-requester-filter");
+    expect(template).to.not.include('dashboard::active_table_filter_badge("Status:');
+    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort:');
   });
 
   it("preserves current filters for invitation request refreshes", async () => {

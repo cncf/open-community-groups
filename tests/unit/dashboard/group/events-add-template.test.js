@@ -1,7 +1,9 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/group/events_add.html");
+  const response = await fetch(
+    "/ocg-server/templates/dashboard/group/events_add.html",
+  );
 
   expect(response.ok).to.equal(true);
 
@@ -17,7 +19,7 @@ describe("dashboard group event add template", () => {
 
     // Assert the add event page can fill the group dashboard content area.
     expect(template).to.include(
-      'class="grid min-w-0 grow content-start gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
+      'class="grid h-full min-h-full min-w-0 grow grid-rows-[auto_auto_minmax(0,1fr)] gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
     );
     expect(template).to.include('data-event-page="add"');
     expect(template).to.include('class="col-span-full min-w-0 space-y-3"');
@@ -31,7 +33,9 @@ describe("dashboard group event add template", () => {
 
     // Assert copying is part of details and appears before the event name field.
     const detailsFormIndex = template.indexOf('<form id="details-form">');
-    const copySelectorIndex = template.indexOf('button-id="copy-event-selector"');
+    const copySelectorIndex = template.indexOf(
+      'button-id="copy-event-selector"',
+    );
     const eventNameIndex = template.indexOf('name="name"');
 
     expect(detailsFormIndex).to.be.greaterThan(-1);
@@ -51,12 +55,21 @@ describe("dashboard group event add template", () => {
     expect(template).to.include('class="col-span-full min-w-0"');
     expect(template).to.include('class="min-w-0 flex-1"');
     expect(template).to.include('class="mt-1 text-xs text-stone-500"');
-    expect(template).to.include('class="truncate text-xl font-semibold text-stone-900"');
+    expect(template).to.include(
+      'class="truncate text-xl font-semibold text-stone-900"',
+    );
     expect(template).to.not.include("overflow-hidden");
     expect(template).to.include('class="col-span-full min-w-0 xl:col-span-3"');
-    expect(template).to.include('class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"');
+    expect(template).to.include(
+      'class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"',
+    );
     expect(template).to.include('id="event-preview-button"');
-    expect(template).to.not.include('class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col"');
+    expect(template).to.include(
+      'class="group btn-primary-outline inline-flex items-center justify-center gap-2 whitespace-nowrap max-2xl:h-7 max-2xl:px-3 max-2xl:py-1 max-2xl:text-xs disabled:cursor-not-allowed disabled:opacity-50"',
+    );
+    expect(template).to.not.include(
+      'class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col"',
+    );
   });
 
   it("places the pending changes alert under the draft event header", async () => {
@@ -69,9 +82,13 @@ describe("dashboard group event add template", () => {
 
     expect(alertIndex).to.be.greaterThan(draftHeaderIndex);
     expect(template).to.not.include("icon-clock");
-    expect(template).to.include('id="pending-changes-alert" class="col-span-full hidden min-w-0"');
+    expect(template).to.include(
+      'id="pending-changes-alert" class="col-span-full hidden min-w-0"',
+    );
     expect(template).to.include('class="min-w-0 flex-1 break-words text-sm/6"');
-    expect(template).to.include('class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"');
+    expect(template).to.include(
+      'class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"',
+    );
   });
 
   it("keeps bottom actions in the main grid column", async () => {
@@ -90,12 +107,16 @@ describe("dashboard group event add template", () => {
 
     // Assert the form navigation scrolls with the active event content.
     expect(template).to.not.include('class="sticky top-6"');
-    expect(template).to.include('<label for="add-event-section-select" class="form-label mb-2 lg:hidden">Section</label>');
+    expect(template).to.not.include(
+      '<label for="add-event-section-select" class="form-label mb-2 lg:hidden">Section</label>',
+    );
     expect(template).to.include('id="add-event-section-select"');
     expect(template).to.include(
-      'class="min-w-0 pt-0 lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8"',
+      'class="min-w-0 pt-0 lg:row-span-full lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8"',
     );
     expect(template).to.not.include("lg:border-b-0");
-    expect(template).to.include('<div class="min-w-0"> <div class="space-y-12">');
+    expect(template).to.include(
+      '<div class="min-w-0"> <div class="space-y-12">',
+    );
   });
 });

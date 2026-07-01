@@ -53,11 +53,10 @@
   </div>
   {# End filters -#}
 
-  {% if sort.is_some()
-    || title.is_some()
+  {% if title.is_some()
     || status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
     {# Active filters -#}
-    <div class="mb-5 flex flex-wrap items-center gap-2">
+    <div class="mt-7 mb-5 flex flex-wrap items-center gap-2">
       <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
       {% if status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
         <form class="inline-flex"
@@ -68,15 +67,15 @@
           {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
           <input type="hidden" name="status" value="all">
           {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted -%}
-            {% call dashboard::active_table_filter_badge("Status: Accepted") -%}
+            {% call dashboard::active_table_filter_badge("Accepted") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
             {% endcall -%}
           {% else if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Pending -%}
-            {% call dashboard::active_table_filter_badge("Status: Pending") -%}
+            {% call dashboard::active_table_filter_badge("Pending") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
             {% endcall -%}
           {% else -%}
-            {% call dashboard::active_table_filter_badge("Status: Rejected") -%}
+            {% call dashboard::active_table_filter_badge("Rejected") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
             {% endcall -%}
           {% endif -%}
@@ -90,42 +89,25 @@
               hx-indicator="#dashboard-spinner">
           {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
           {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
-            {% call dashboard::active_table_filter_badge("Title present") -%}
+            {% call dashboard::active_table_filter_badge("Present") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
             {% endcall -%}
           {% else -%}
-            {% call dashboard::active_table_filter_badge("Title missing") -%}
+            {% call dashboard::active_table_filter_badge("Missing") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
             {% endcall -%}
           {% endif -%}
         </form>
       {% endif -%}
-      {% if let Some(active_sort) = sort -%}
-        <form class="inline-flex"
-              hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
-              hx-target="#invitation-requests-content"
-              hx-swap="innerHTML"
-              hx-indicator="#dashboard-spinner">
-          {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
-          {% if *active_sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc -%}
-            {% call dashboard::active_table_filter_badge("Sort: Name Z-A") -%}
-            {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
-            {% endcall -%}
-          {% else if *active_sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc -%}
-            {% call dashboard::active_table_filter_badge("Sort: Oldest request") -%}
-            {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
-            {% endcall -%}
-          {% else if *active_sort == crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc -%}
-            {% call dashboard::active_table_filter_badge("Sort: Newest request") -%}
-            {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
-            {% endcall -%}
-          {% else -%}
-            {% call dashboard::active_table_filter_badge("Sort: Name A-Z") -%}
-            {{ dashboard::active_table_filter_remove_button(label = "Remove sort option") -}}
-            {% endcall -%}
-          {% endif -%}
-        </form>
-      {% endif -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+            hx-target="#invitation-requests-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false, include_status = false) -}}
+        <input type="hidden" name="status" value="all">
+        <button type="submit" class="btn-primary-outline btn-mini h-7!">Reset all</button>
+      </form>
     </div>
     {# End active filters -#}
   {% endif -%}
@@ -155,50 +137,25 @@
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
                 {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
-                {% if sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc) -%}
-                  {{ dashboard::table_sort_button(label = "Requester", sort_value = "name-desc", is_ascending = true, is_descending = false) -}}
-                {% else -%}
-                  {{ dashboard::table_sort_button(label = "Requester", sort_value = "name-asc", is_ascending = false, is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc) ) -}}
-                {% endif -%}
+                {{ dashboard::table_sort_control(label = "Requester", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc)) -}}
               </form>
-              {% call dashboard::table_filter_menu(id = "invitation-requests-requester-filter", label = "Requester", is_active = title.is_some()) -%}
-              <div class="py-2">
-                {{ dashboard::table_filter_section_title(text = "Title") -}}
-                <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
-                      hx-target="#invitation-requests-content"
-                      hx-swap="innerHTML"
-                      hx-indicator="#dashboard-spinner">
-                  {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
-                  <button type="submit"
-                          name="title"
-                          value="present"
-                          class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
-                                 {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Present) -%}
-                                   bg-primary-50 text-primary-700
-                                 {% endif -%}">
-                    <span>Has title</span>
-                    {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Present) -%}
-                      <div class="svg-icon size-3 icon-check bg-primary-500"></div>
-                    {% endif -%}
-                  </button>
-                  <button type="submit"
-                          name="title"
-                          value="missing"
-                          class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
-                                 {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) -%}
-                                   bg-primary-50 text-primary-700
-                                 {% endif -%}">
-                    <span>Missing title</span>
-                    {% if title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) -%}
-                      <div class="svg-icon size-3 icon-check bg-primary-500"></div>
-                    {% endif -%}
-                  </button>
-                </form>
-              </div>
-              {% endcall -%}
             </div>
           </th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5">Position</th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5">
+            {% call dashboard::table_filter_menu(id = "invitation-requests-position-filter", label = "Position", is_active = title.is_some()) -%}
+            <div class="py-2">
+              <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+                    hx-target="#invitation-requests-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
+                {{ dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true) -}}
+                {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present) ) -}}
+                {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) ) -}}
+              </form>
+            </div>
+            {% endcall -%}
+          </th>
           <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
             <div class="flex items-center gap-2">
               <form class="inline-flex"
@@ -207,11 +164,7 @@
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
                 {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
-                {% if sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc) -%}
-                  {{ dashboard::table_sort_button(label = "Requested", sort_value = "created-at-desc", is_ascending = true, is_descending = false) -}}
-                {% else -%}
-                  {{ dashboard::table_sort_button(label = "Requested", sort_value = "created-at-asc", is_ascending = false, is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc) ) -}}
-                {% endif -%}
+                {{ dashboard::table_sort_control(label = "Requested", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc)) -}}
               </form>
               <span class="whitespace-nowrap">Requested</span>
             </div>
@@ -219,60 +172,15 @@
           <th scope="col" class="px-3 xl:px-5 py-1.5 w-48">
             {% call dashboard::table_filter_menu(id = "invitation-requests-status-filter", label = "Status", is_active = status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All) -%}
             <div class="py-2">
-              {{ dashboard::table_filter_section_title(text = "Filter") -}}
               <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
                     hx-target="#invitation-requests-content"
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
                 {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
-                <button type="submit"
-                        name="status"
-                        value="all"
-                        class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
-                               {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
-                                 bg-primary-50 text-primary-700
-                               {% endif -%}">
-                  <span>All</span>
-                  {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
-                    <div class="svg-icon size-3 icon-check bg-primary-500"></div>
-                  {% endif -%}
-                </button>
-                <button type="submit"
-                        name="status"
-                        value="pending"
-                        class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
-                               {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Pending -%}
-                                 bg-primary-50 text-primary-700
-                               {% endif -%}">
-                  <span>Pending</span>
-                  {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Pending -%}
-                    <div class="svg-icon size-3 icon-check bg-primary-500"></div>
-                  {% endif -%}
-                </button>
-                <button type="submit"
-                        name="status"
-                        value="accepted"
-                        class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
-                               {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted -%}
-                                 bg-primary-50 text-primary-700
-                               {% endif -%}">
-                  <span>Accepted</span>
-                  {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted -%}
-                    <div class="svg-icon size-3 icon-check bg-primary-500"></div>
-                  {% endif -%}
-                </button>
-                <button type="submit"
-                        name="status"
-                        value="rejected"
-                        class="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
-                               {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Rejected -%}
-                                 bg-primary-50 text-primary-700
-                               {% endif -%}">
-                  <span>Rejected</span>
-                  {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Rejected -%}
-                    <div class="svg-icon size-3 icon-check bg-primary-500"></div>
-                  {% endif -%}
-                </button>
+                {{ dashboard::table_filter_option_button(label = "All", name = "status", value = "all", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All, clear_value = "all") -}}
+                {{ dashboard::table_filter_option_button(label = "Pending", name = "status", value = "pending", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Pending, clear_value = "all") -}}
+                {{ dashboard::table_filter_option_button(label = "Accepted", name = "status", value = "accepted", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted, clear_value = "all") -}}
+                {{ dashboard::table_filter_option_button(label = "Rejected", name = "status", value = "rejected", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Rejected, clear_value = "all") -}}
               </form>
             </div>
             {% endcall -%}

@@ -24,6 +24,10 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include(
       "entry.user.name.as_deref() |assigned_or(entry.user.username)",
     );
+    expect(template).to.include(
+      "entry.user.company.as_deref() |assigned_or(\"-\")",
+    );
+    expect(template).to.include("{% if let Some(title) = &entry.user.title -%}");
   });
 
   it("uses the shared search convention for table filtering", async () => {
@@ -45,6 +49,9 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include('placeholder="Search waitlist"');
     expect(template).to.include('aria-label="Clear waitlist search"');
     expect(template).to.include(
+      'pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry", plural_label = "waitlist entries")',
+    );
+    expect(template).to.include(
       "dashboard/placeholders/group_waitlist_no_results.html",
     );
     expect(template).to.include("{{ entry.waitlist_position }}");
@@ -60,32 +67,40 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include('name="title" value="{{ title }}"');
     expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Entry", sort_value = "name-desc"',
+      'dashboard::table_sort_control(label = "Entry", ascending_value = "name-asc", descending_value = "name-desc"',
     );
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Entry", sort_value = "name-asc"',
+      "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc)",
     );
     expect(template).to.include(
-      'dashboard::table_sort_button(label = "Joined", sort_value = "created-at-desc"',
-    );
-    expect(template).to.include(
-      'dashboard::table_sort_button(label = "Joined", sort_value = "created-at-asc"',
+      'dashboard::table_sort_control(label = "Joined", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
     );
     expect(template).to.include("flex items-center gap-2");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5"',
+    );
     expect(template).to.include(
       'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
     );
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include(
-      'dashboard::table_filter_menu(id = "waitlist-entry-filter", label = "Entry", is_active = title.is_some())',
+      'dashboard::table_filter_menu(id = "waitlist-position-filter", label = "Position", is_active = title.is_some())',
     );
-    expect(template).to.include('name="title" value="present"');
-    expect(template).to.include('name="title" value="missing"');
-    expect(template).to.include("Title present");
-    expect(template).to.include("Title missing");
-    expect(template).to.include("Sort: Name A-Z");
-    expect(template).to.include("Sort: Newest joined");
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true)',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Present", name = "title", value = "present"',
+    );
+    expect(template).to.include(
+      'dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing"',
+    );
+    expect(template).to.include("Reset all");
+    expect(template).to.not.include("Title present");
+    expect(template).to.not.include("Title missing");
+    expect(template).to.not.include("waitlist-entry-filter");
+    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort:');
   });
 
   it("preserves current filters for waitlist refreshes", async () => {

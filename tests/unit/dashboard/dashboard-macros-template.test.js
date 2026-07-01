@@ -26,13 +26,21 @@ describe("dashboard macros template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify sort state is carried by the paired chevrons, not a selected pill.
-    expect(template).to.include("macro table_sort_button");
+    expect(template).to.include("macro table_sort_control");
+    expect(template).to.include("macro table_filter_option_button");
+    expect(template).to.include("is_clear_option = false");
+    expect(template).to.include("is_clear_option && clear_value.is_empty()");
     expect(template).to.include("icon-caret-up");
     expect(template).to.include("icon-caret-down");
     expect(template).to.include("bg-stone-300");
     expect(template).to.include(
-      'class="inline-flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"',
+      'class="inline-flex h-7 w-7 flex-col overflow-hidden rounded-md border border-stone-200 bg-white"',
     );
+    expect(template).to.include('class="h-px w-full bg-stone-200"');
+    expect(template).to.include("h-1/2 w-full");
+    expect(template).to.include('aria-label="Sort {{ label }} ascending"');
+    expect(template).to.include('aria-label="Sort {{ label }} descending"');
+    expect(template).to.include("aria-pressed=");
 
     // Verify table filters use the filled caret treatment.
     expect(template).to.include("icon-caret-down-filled");

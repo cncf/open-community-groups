@@ -117,15 +117,24 @@
 
 {%- endmacro navigation_links %}
 
-{% macro range_display(offset, count, total, label = "result") -%}
+{% macro range_display(offset, count, total, label = "result", plural_label = "") -%}
   {% if count > 0 -%}
     {% let start = offset + 1 -%}
     {% let end = offset + count -%}
-    {{ start }} - {{ end }} of <span class="font-semibold">{{ total }}</span> {{ label }}
-    {%- if count != 1 -%}
-      s
+    {{ start }} - {{ end }} of <span class="font-semibold">{{ total }}</span>
+    {% if count == 1 -%}
+      {{ label }}
+    {% else if plural_label != "" -%}
+      {{ plural_label }}
+    {% else -%}
+      {{ label }}s
     {%- endif -%}
   {% else -%}
-    0 {{ label }}s
+    0
+    {% if plural_label != "" -%}
+      {{ plural_label }}
+    {% else -%}
+      {{ label }}s
+    {%- endif -%}
   {% endif -%}
 {%- endmacro range_display %}
