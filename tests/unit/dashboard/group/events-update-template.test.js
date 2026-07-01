@@ -18,7 +18,7 @@ describe("dashboard group event update template", () => {
     // Assert the update event page can fill the group dashboard content area.
     expect(template).to.include('id="event-update-page"');
     expect(template).to.include(
-      'class="grid min-w-0 grow gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
+      'class="grid min-w-0 grow content-start gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
     );
     expect(template).to.include('data-event-page="update"');
   });
@@ -40,6 +40,29 @@ describe("dashboard group event update template", () => {
 
     // Assert the online and session details components receive past-event state.
     expect(template).to.include("{% if event.is_past() %}event-past{% endif %}");
+  });
+
+  it("shows an event reminder above update tabs and content", async () => {
+    // Load the event update template before checking the event reminder.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the reminder spans the form layout without sticking to the viewport.
+    expect(template).to.include('class="col-span-full pb-4"');
+    expect(template).to.not.include('style="top: 6.25rem"');
+    expect(template).to.include("Editing event");
+    expect(template).to.include(
+      '<div class="mt-1 truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
+    );
+    expect(template).to.include("{% if let Some(starts_at) = &event.starts_at -%}");
+    expect(template).to.include(
+      '{{ starts_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p") }}',
+    );
+    expect(template).to.include("{% if let Some(ends_at) = &event.ends_at -%}");
+    expect(template).to.include('<span class="text-stone-400">-</span>');
+    expect(template).to.include('{{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}');
+    expect(template).to.include(
+      'Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}',
+    );
   });
 
   it("lazy-loads event review tabs from the desktop tab buttons", async () => {

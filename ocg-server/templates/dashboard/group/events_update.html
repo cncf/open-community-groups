@@ -8,7 +8,7 @@
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
 <div id="event-update-page"
-     class="grid min-w-0 grow gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
+     class="grid min-w-0 grow content-start gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
      data-event-page="update"
      hx-history="false"
      data-event-public-url="{{ event_public_url }}"
@@ -60,6 +60,28 @@
                 disabled title="Your role cannot update events."
               {% endif -%}
               hx-exclude="input[type='checkbox'][name^='toggle_']">Save</button>
+    </div>
+  </div>
+
+  <div class="col-span-full pb-4">
+    <div class="border-b border-stone-200 pb-4">
+      <div class="text-xs font-semibold uppercase text-stone-500">Editing event</div>
+      <div class="mt-1 truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>
+      {% if let Some(starts_at) = &event.starts_at -%}
+        <div class="mt-1 text-sm text-stone-500">
+          {{ starts_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p") }}
+          {% if let Some(ends_at) = &event.ends_at -%}
+            <span class="text-stone-400">-</span>
+            {{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}
+          {% else -%}
+            {{ starts_at.with_timezone(event.timezone).format("%Z") }}
+          {% endif -%}
+        </div>
+      {% else if let Some(ends_at) = &event.ends_at -%}
+        <div class="mt-1 text-sm text-stone-500">
+          Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}
+        </div>
+      {% endif -%}
     </div>
   </div>
 
