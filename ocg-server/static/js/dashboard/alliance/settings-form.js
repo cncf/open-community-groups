@@ -2,6 +2,8 @@ import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "
 import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 
 const SETTINGS_FORM_ID = "settings-form";
+const COFFEE_MEET_TOGGLE_ID = "toggle_coffee_meet_enabled";
+const COFFEE_MEET_INPUT_ID = "coffee_meet_enabled";
 const GROUP_TEAM_RESTRICTION_TOGGLE_ID = "toggle_group_team_management_restricted";
 const GROUP_TEAM_RESTRICTION_INPUT_ID = "group_team_management_restricted";
 const SETTINGS_BOUND_KEY = "allianceSettingsBound";
@@ -19,10 +21,18 @@ export const initializeAllianceSettings = (root = document) => {
 
   const groupTeamRestrictionToggle = getElementById(root, GROUP_TEAM_RESTRICTION_TOGGLE_ID);
   const groupTeamRestrictionInput = getElementById(root, GROUP_TEAM_RESTRICTION_INPUT_ID);
+  const coffeeMeetToggle = getElementById(root, COFFEE_MEET_TOGGLE_ID);
+  const coffeeMeetInput = getElementById(root, COFFEE_MEET_INPUT_ID);
 
   bindBooleanToggle({
     toggle: groupTeamRestrictionToggle,
     hiddenInput: groupTeamRestrictionInput,
+    syncOnInit: true,
+  });
+
+  bindBooleanToggle({
+    toggle: coffeeMeetToggle,
+    hiddenInput: coffeeMeetInput,
     syncOnInit: true,
   });
 };

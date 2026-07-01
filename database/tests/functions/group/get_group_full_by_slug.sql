@@ -272,6 +272,7 @@ select is(
         "bluesky_url": "https://bsky.app/profile/k8snyc",
         "twitter_url": "https://twitter.com/k8snyc",
         "website_url": "https://k8s-nyc.example.com",
+        "coffee_meet_enabled": true,
         "country_code": "US",
         "country_name": "United States",
         "facebook_url": "https://facebook.com/k8snyc",

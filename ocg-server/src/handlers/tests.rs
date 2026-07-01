@@ -358,6 +358,7 @@ pub(crate) fn sample_alliance_full(alliance_id: Uuid) -> AllianceFull {
         alliance_id,
         alliance_site_layout_id: "default".to_string(),
         created_at: 0,
+        coffee_meet_enabled: true,
         description: "Test alliance".to_string(),
         display_name: "Test".to_string(),
         group_team_management_restricted: false,
@@ -516,6 +517,7 @@ pub(crate) fn sample_alliance_update() -> AllianceUpdate {
     AllianceUpdate {
         banner_mobile_url: "https://example.test/banner_mobile.png".to_string(),
         banner_url: "https://example.test/banner.png".to_string(),
+        coffee_meet_enabled: true,
         description: "Updated description".to_string(),
         display_name: "Test".to_string(),
         group_team_management_restricted: false,
@@ -801,6 +803,7 @@ pub(crate) fn sample_group_events(event_id: Uuid, group_id: Uuid) -> GroupEvents
 pub(crate) fn sample_group_form(category_id: Uuid) -> Group {
     Group {
         category_id,
+        coffee_meet_enabled: true,
         description: "Group description".to_string(),
         name: "Test Group".to_string(),
         ..Default::default()
@@ -1047,6 +1050,7 @@ pub(crate) fn sample_group_summary(group_id: Uuid) -> GroupSummary {
 pub(crate) fn sample_group_update() -> GroupUpdate {
     GroupUpdate {
         category_id: Uuid::new_v4(),
+        coffee_meet_enabled: true,
         description: "Updated description".to_string(),
         name: "Updated Group".to_string(),
 

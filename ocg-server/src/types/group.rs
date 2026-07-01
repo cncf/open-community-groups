@@ -149,6 +149,9 @@ pub struct GroupFull {
     pub bluesky_url: Option<String>,
     /// City where the group is based.
     pub city: Option<String>,
+    /// Whether `CoffeeMeet` is enabled for this group.
+    #[serde(default = "default_true")]
+    pub coffee_meet_enabled: bool,
     /// ISO country code of the group.
     pub country_code: Option<String>,
     /// Full country name of the group.
@@ -207,6 +210,10 @@ pub struct GroupFull {
     pub whatsapp_url: Option<String>,
     /// `YouTube` channel URL.
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl GroupFull {

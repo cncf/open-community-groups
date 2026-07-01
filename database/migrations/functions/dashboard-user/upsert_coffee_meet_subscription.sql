@@ -20,9 +20,11 @@ begin
           and gm.group_id = p_group_id
           and g.active = true
           and g.deleted = false
+          and g.coffee_meet_enabled = true
           and a.active = true
+          and a.coffee_meet_enabled = true
     ) then
-        raise exception 'user is not an active member of this group'
+        raise exception 'CoffeeMeet is not available for this group'
             using errcode = 'insufficient_privilege';
     end if;
 

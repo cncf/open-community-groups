@@ -23,6 +23,9 @@ pub struct AllianceFull {
     pub alliance_site_layout_id: String,
     /// Creation timestamp in milliseconds since epoch.
     pub created_at: i64,
+    /// Whether group `CoffeeMeet` features are enabled across this alliance.
+    #[serde(default = "default_true")]
+    pub coffee_meet_enabled: bool,
     /// Brief description of the alliance's purpose or focus.
     pub description: String,
     /// Human-readable name shown in the UI (e.g., "Goup").
@@ -68,6 +71,10 @@ pub struct AllianceFull {
     pub wechat_url: Option<String>,
     /// Link to the alliance's `YouTube` channel.
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Alliance team role enumeration.

@@ -15,6 +15,8 @@ returns json as $$
     join group_member gm
         on gm.group_id = cms.group_id
         and gm.user_id = cms.user_id
+    join "group" g on g.group_id = cms.group_id
+    join alliance a using (alliance_id)
     join "user" u on u.user_id = cms.user_id
     left join lateral (
         select count(*)::int as total
@@ -23,5 +25,7 @@ returns json as $$
           and suggestion.subscriber_user_id = cms.user_id
     ) suggestion_counts on true
     where cms.group_id = p_group_id
+      and a.coffee_meet_enabled = true
+      and g.coffee_meet_enabled = true
       and cms.active = true;
 $$ language sql stable;

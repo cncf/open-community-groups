@@ -119,6 +119,10 @@ pub(crate) struct Group {
     /// City where the group is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,
+    /// Whether `CoffeeMeet` is enabled for this group.
+    #[serde(default)]
+    #[garde(skip)]
+    pub coffee_meet_enabled: bool,
     /// ISO country code.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_COUNTRY_CODE))]
     pub country_code: Option<String>,

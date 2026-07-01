@@ -206,8 +206,8 @@ insert into event (
     'in-person',
     '44444444-4444-4444-4444-444444444441',
     true,
-    now() + interval '10 days',
-    now() + interval '10 days 2 hours',
+    date_trunc('day', now()) + interval '10 days 9 hours',
+    date_trunc('day', now()) + interval '10 days 11 hours',
     'Tech Conference Center',
     '123 Main Street',
     'New York',
@@ -2124,8 +2124,8 @@ values (
     '55555555-5555-5555-5555-555555555501',
     'Opening Keynote',
     'in-person',
-    now() + interval '10 days',
-    now() + interval '10 days 1 hour',
+    date_trunc('day', now()) + interval '10 days 9 hours',
+    date_trunc('day', now()) + interval '10 days 10 hours',
     'Welcome and introduction to the event.',
     null
 ), (
@@ -2133,8 +2133,8 @@ values (
     '55555555-5555-5555-5555-555555555501',
     'Technical Workshop',
     'in-person',
-    now() + interval '10 days 1 hour',
-    now() + interval '10 days 2 hours',
+    date_trunc('day', now()) + interval '10 days 10 hours',
+    date_trunc('day', now()) + interval '10 days 11 hours',
     'Hands-on technical session.',
     null
 ), (

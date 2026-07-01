@@ -30,6 +30,7 @@ returns json as $$
         'banner_url', g.banner_url,
         'bluesky_url', g.bluesky_url,
         'city', g.city,
+        'coffee_meet_enabled', g.coffee_meet_enabled,
         'country_code', g.country_code,
         'country_name', g.country_name,
         'description', g.description,

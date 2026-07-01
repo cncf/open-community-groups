@@ -10,6 +10,7 @@ returns json as $$
         'alliance_id', alliance_id,
         'alliance_site_layout_id', alliance_site_layout_id,
         'created_at', floor(extract(epoch from created_at)*1000),
+        'coffee_meet_enabled', coffee_meet_enabled,
         'description', description,
         'display_name', display_name,
         'group_team_management_restricted', group_team_management_restricted,

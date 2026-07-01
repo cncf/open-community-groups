@@ -190,6 +190,26 @@
             </label>
           </div>
           {# End membership approval -#}
+
+          {# CoffeeMeet availability -#}
+          <div class="col-span-full rounded-xl border border-stone-200 bg-stone-50 p-4">
+            <label for="coffee_meet_enabled"
+                   class="flex cursor-pointer items-start gap-3">
+              <input id="coffee_meet_enabled"
+                     name="coffee_meet_enabled"
+                     type="checkbox"
+                     value="true"
+                     class="mt-1 size-4 rounded border-stone-300 text-primary-600 focus:ring-primary-500"
+                     {% if group.coffee_meet_enabled %}
+                       checked
+                     {% endif %}>
+              <span>
+                <span class="block text-sm font-semibold text-stone-900">Enable CoffeeMeet</span>
+                <span class="mt-1 block text-sm text-stone-600">When enabled, members can subscribe to recurring 1:1 suggestions for this group.</span>
+              </span>
+            </label>
+          </div>
+          {# End CoffeeMeet availability -#}
         </div>
       </div>
 

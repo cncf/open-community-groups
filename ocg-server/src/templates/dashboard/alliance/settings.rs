@@ -39,6 +39,10 @@ pub(crate) struct AllianceUpdate {
     /// URL to the alliance banner image.
     #[garde(custom(image_url))]
     pub banner_url: String,
+    /// Whether group `CoffeeMeet` features are enabled across this alliance.
+    #[serde(default = "default_true")]
+    #[garde(skip)]
+    pub coffee_meet_enabled: bool,
     /// Brief description of the alliance's purpose or focus.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_DESCRIPTION))]
     pub description: String,
@@ -103,4 +107,8 @@ pub(crate) struct AllianceUpdate {
     /// Link to the alliance's `YouTube` channel.
     #[garde(url, length(max = MAX_LEN_L))]
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }

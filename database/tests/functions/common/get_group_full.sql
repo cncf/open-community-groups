@@ -314,6 +314,7 @@ select is(
         "slug": "abc1234",
         "banner_url": "https://example.com/group-banner.png",
         "city": "New York",
+        "coffee_meet_enabled": true,
         "country_code": "US",
         "country_name": "United States",
         "description": "A technology group focused on Kubernetes and cloud native technologies",

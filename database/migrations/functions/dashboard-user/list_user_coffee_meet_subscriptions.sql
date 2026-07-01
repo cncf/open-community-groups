@@ -33,6 +33,8 @@ returns json as $$
     ) suggested on true
     where gm.user_id = p_user_id
       and a.active = true
+      and a.coffee_meet_enabled = true
       and g.active = true
+      and g.coffee_meet_enabled = true
       and g.deleted = false;
 $$ language sql stable;

@@ -93,6 +93,7 @@ select is(
         },
         "description": "A simple test group",
         "description_short": "Brief overview of the test group",
+        "coffee_meet_enabled": true,
         "logo_url": "https://example.com/logo.png",
         "membership_approval_required": false,
         "organizers": [],
@@ -211,6 +212,7 @@ select is(
         "city": "San Francisco",
         "country_code": "US",
         "country_name": "United States",
+        "coffee_meet_enabled": true,
         "state": "CA",
         "region": {
             "region_id": "%s",

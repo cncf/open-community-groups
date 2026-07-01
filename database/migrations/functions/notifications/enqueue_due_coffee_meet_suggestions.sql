@@ -45,8 +45,10 @@ begin
           and subscriber.email_verified = true
           and subscriber.coffee_meet_enabled = true
           and g.active = true
+          and g.coffee_meet_enabled = true
           and g.deleted = false
           and a.active = true
+          and a.coffee_meet_enabled = true
         order by cms.next_suggestion_at asc, cms.group_id, cms.user_id
         for update of cms skip locked
     loop
