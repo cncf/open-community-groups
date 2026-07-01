@@ -1,7 +1,9 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/group/waitlist_list.html");
+  const response = await fetch(
+    "/ocg-server/templates/dashboard/group/waitlist_list.html",
+  );
 
   expect(response.ok).to.equal(true);
 
@@ -19,7 +21,9 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include(
       "dashboard::user_profile_modal_trigger(entry.user, self::user_initials(entry.user.name.as_deref() , entry.user.username.as_str()))",
     );
-    expect(template).to.include("entry.user.name.as_deref() |assigned_or(entry.user.username)");
+    expect(template).to.include(
+      "entry.user.name.as_deref() |assigned_or(entry.user.username)",
+    );
   });
 
   it("uses the shared search convention for table filtering", async () => {
@@ -28,15 +32,21 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify waitlist search follows the existing dashboard HTMX pattern.
     expect(template).to.include('id="waitlist-search-form"');
-    expect(template).to.include('hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"');
+    expect(template).to.include(
+      'hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"',
+    );
     expect(template).to.include('hx-trigger="change, submit"');
     expect(template).to.include('hx-target="#waitlist-content"');
-    expect(template).to.include('<label for="search_waitlist" class="sr-only">Search waitlist</label>');
+    expect(template).to.include(
+      '<label for="search_waitlist" class="sr-only">Search waitlist</label>',
+    );
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('value="{{ ts_query|assigned_or("") }}"');
     expect(template).to.include('placeholder="Search waitlist"');
     expect(template).to.include('aria-label="Clear waitlist search"');
-    expect(template).to.include("dashboard/placeholders/group_waitlist_no_results.html");
+    expect(template).to.include(
+      "dashboard/placeholders/group_waitlist_no_results.html",
+    );
     expect(template).to.include("{{ entry.waitlist_position }}");
     expect(template).not.to.include("{{ refresh_offset + loop.index }}");
   });
@@ -61,6 +71,7 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include(
       'dashboard::table_sort_button(label = "Joined", sort_value = "created-at-asc"',
     );
+    expect(template).to.include("flex items-center gap-2");
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "waitlist-entry-filter", label = "Entry", is_active = title.is_some())',
     );
@@ -79,7 +90,9 @@ describe("dashboard group waitlist list template", () => {
     // Verify action-triggered refreshes reuse the handler-built filtered URL.
     expect(template).to.include('id="waitlist-refresh"');
     expect(template).to.include('hx-get="{{ refresh_url }}"');
-    expect(template).to.include('hx-trigger="refresh-event-waitlist from:body"');
+    expect(template).to.include(
+      'hx-trigger="refresh-event-waitlist from:body"',
+    );
     expect(template).not.to.include("refresh_limit");
   });
 
@@ -96,11 +109,19 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include(
       "Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
     );
-    expect(template).to.include('data-event-id="waitlist-{{ entry.user.user_id }}"');
-    expect(template).to.include('id="dropdown-actions-waitlist-{{ entry.user.user_id }}"');
+    expect(template).to.include(
+      'data-event-id="waitlist-{{ entry.user.user_id }}"',
+    );
+    expect(template).to.include(
+      'id="dropdown-actions-waitlist-{{ entry.user.user_id }}"',
+    );
     expect(template).to.include("data-event-actions-dropdown");
-    expect(template).to.include('hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"');
-    expect(template).to.include('name="user_id" value="{{ entry.user.user_id }}"');
+    expect(template).to.include(
+      'hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"',
+    );
+    expect(template).to.include(
+      'name="user_id" value="{{ entry.user.user_id }}"',
+    );
     expect(template).to.include("Invite user");
     expect(template).to.include('data-success-message="Invitation sent."');
     expect(template).to.include(
@@ -114,9 +135,13 @@ describe("dashboard group waitlist list template", () => {
 
     // Verify unsupported invite states keep the waitlist action unavailable.
     expect(template).to.include('title="Your role cannot invite attendees."');
-    expect(template).to.include('title="Canceled events cannot invite attendees."');
+    expect(template).to.include(
+      'title="Canceled events cannot invite attendees."',
+    );
     expect(template).to.include('title="Past events cannot invite attendees."');
-    expect(template).to.include('title="Manual invitations are not available for ticketed events."');
+    expect(template).to.include(
+      'title="Manual invitations are not available for ticketed events."',
+    );
     expect(template).to.include(
       "Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}",
     );

@@ -99,14 +99,12 @@
 {% macro table_filter_menu(id, label, is_active, extra_classes = "") -%}
   <details class="group relative inline-block text-left {{ extra_classes }}"
            data-table-filter-menu>
-    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden
-                    {% if is_active -%}
-                      bg-primary-50 text-primary-700 ring-1 ring-primary-200
-                    {% endif -%}"
+    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
              aria-label="{{ label }} filters"
              aria-controls="{{ id }}">
       <span class="whitespace-nowrap">{{ label }}</span>
-      <div class="svg-icon size-3 icon-caret-down bg-current transition-transform group-open:rotate-180"></div>
+      <div class="svg-icon size-3 icon-caret-down-filled bg-current transition-transform group-open:rotate-180">
+      </div>
     </summary>
     <div id="{{ id }}"
          class="dropdown absolute start-0 top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-white text-left text-sm font-normal normal-case text-stone-700 shadow">
@@ -121,25 +119,22 @@
   <button type="submit"
           name="sort"
           value="{{ sort_value }}"
-          class="inline-flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
-                 {% if is_ascending || is_descending -%}
-                   bg-primary-50 text-primary-700 ring-1 ring-primary-200
-                 {% endif -%}"
+          class="inline-flex size-7 items-center justify-center rounded-md transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
           aria-label="Sort {{ label }}"
           title="Sort {{ label }}">
     <span class="sr-only">Sort {{ label }}</span>
-    <span class="flex flex-col items-center justify-center gap-0.5">
-      <span class="svg-icon h-1.5 w-2.5 icon-caret-up
+    <span class="flex flex-col items-center justify-center gap-1">
+      <span class="svg-icon h-2 w-3 icon-caret-up
                    {% if is_ascending -%}
                      bg-primary-500
                    {% else -%}
-                     bg-stone-400
+                     bg-stone-300
                    {% endif -%}"></span>
-      <span class="svg-icon h-1.5 w-2.5 icon-caret-down
+      <span class="svg-icon h-2 w-3 icon-caret-down
                    {% if is_descending -%}
                      bg-primary-500
                    {% else -%}
-                     bg-stone-400
+                     bg-stone-300
                    {% endif -%}"></span>
     </span>
   </button>

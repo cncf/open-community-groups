@@ -1,7 +1,9 @@
 import { expect } from "@open-wc/testing";
 
 const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/group/attendees_list.html");
+  const response = await fetch(
+    "/ocg-server/templates/dashboard/group/attendees_list.html",
+  );
 
   expect(response.ok).to.equal(true);
 
@@ -39,14 +41,18 @@ describe("dashboard group attendees list template", () => {
 
     // Verify eligible attendees get a confirmed cancel action.
     expect(template).to.include('attendee.status == "confirmed"');
-    expect(template).to.include('id="cancel-attendance-{{ attendee.user.user_id }}"');
+    expect(template).to.include(
+      'id="cancel-attendance-{{ attendee.user.user_id }}"',
+    );
     expect(template).to.include(
       'hx-delete="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/attendance"',
     );
     expect(template).to.include('hx-trigger="confirmed"');
     expect(template).to.include('hx-disabled-elt="this"');
     expect(template).to.include("data-confirm-action");
-    expect(template).to.include('data-confirm-message="Are you sure you want to cancel this attendance?"');
+    expect(template).to.include(
+      'data-confirm-message="Are you sure you want to cancel this attendance?"',
+    );
     expect(template).to.include('data-success-message="Attendance canceled."');
     expect(template).to.include(
       'data-error-message="Something went wrong canceling this attendance. Please try again later."',
@@ -58,12 +64,20 @@ describe("dashboard group attendees list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify keeps cancel attendance disabled for unsupported attendee states.
-    expect(template).to.include("!self::is_paid_attendee(attendee.amount_minor)");
+    expect(template).to.include(
+      "!self::is_paid_attendee(attendee.amount_minor)",
+    );
     expect(template).to.include("!event.canceled");
     expect(template).to.include("!event.is_past()");
-    expect(template).to.include('title="Paid attendee attendance cannot be canceled from attendee actions."');
-    expect(template).to.include('title="Canceled event attendance cannot be canceled."');
-    expect(template).to.include('title="Past event attendance cannot be canceled."');
+    expect(template).to.include(
+      'title="Paid attendee attendance cannot be canceled from attendee actions."',
+    );
+    expect(template).to.include(
+      'title="Canceled event attendance cannot be canceled."',
+    );
+    expect(template).to.include(
+      'title="Past event attendance cannot be canceled."',
+    );
   });
 
   it("renders cancel invitation for manual question-pending invitations", async () => {
@@ -77,7 +91,9 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'attendee.status == "registration-questions-pending" && attendee.manually_invited',
     );
-    expect(template).to.include('id="cancel-invitation-{{ attendee.user.user_id }}"');
+    expect(template).to.include(
+      'id="cancel-invitation-{{ attendee.user.user_id }}"',
+    );
     expect(template).to.include(
       'hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/invitation/cancel"',
     );
@@ -132,11 +148,15 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('id="attendees-search-form"');
     expect(template).to.include('hx-trigger="change, submit"');
     expect(template).to.include('hx-target="#attendees-content"');
-    expect(template).to.include('<label for="search_attendees" class="sr-only">Search attendees</label>');
+    expect(template).to.include(
+      '<label for="search_attendees" class="sr-only">Search attendees</label>',
+    );
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('placeholder="Search attendees"');
     expect(template).to.include('aria-label="Clear attendee search"');
-    expect(template).to.include("dashboard/placeholders/group_attendees_no_results.html");
+    expect(template).to.include(
+      "dashboard/placeholders/group_attendees_no_results.html",
+    );
   });
 
   it("renders attendee table sorting and filter controls", async () => {
@@ -161,6 +181,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-asc"',
     );
+    expect(template).to.include("flex items-center gap-2");
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-name-filter", label = "Attendee"',
     );
@@ -191,8 +212,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-start");
     expect(template).to.include("data-attendee-email-selection-bar");
     expect(template).to.include("data-attendee-email-selection-count");
-    expect(template).to.include("<span data-attendee-email-selection-count>0</span>");
-    expect(template).to.include("<span data-attendee-email-selection-label>attendees selected</span>");
+    expect(template).to.include(
+      "<span data-attendee-email-selection-count>0</span>",
+    );
+    expect(template).to.include(
+      "<span data-attendee-email-selection-label>attendees selected</span>",
+    );
     expect(template).not.to.include(
       "Only attendees eligible for optional email notifications can be selected.",
     );
@@ -200,8 +225,12 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-attendee-email-selection-checkbox");
     expect(template).to.include('class="checkbox-primary"');
     expect(template).to.include("attendee.can_receive_attendee_email");
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle"');
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48"',
+    );
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle"',
+    );
     expect(template).to.include('class="btn-primary-outline btn-mini h-7!"');
     expect(template).to.include('class="btn-primary btn-mini h-7!"');
     expect(template).to.include("Continue");
@@ -220,7 +249,9 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('aria-describedby="attendee-answers-subtitle"');
     expect(template).to.include('id="attendee-answers-subtitle"');
     expect(template).to.include('<ol class="space-y-3">');
-    expect(template).to.include('<li class="rounded-md border border-stone-200 bg-white p-4">');
+    expect(template).to.include(
+      '<li class="rounded-md border border-stone-200 bg-white p-4">',
+    );
     expect(template).to.include("{{ loop.index }}");
     expect(template).to.include("No answer provided");
     expect(template).to.include("text-sm italic text-stone-500");
