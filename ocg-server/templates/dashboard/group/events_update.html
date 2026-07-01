@@ -85,7 +85,7 @@
     </div>
   </div>
 
-  <aside class="min-w-0 border-b border-stone-900/10 py-12 lg:self-stretch lg:border-b-0 lg:border-r lg:py-0 lg:pr-8">
+  <aside class="min-w-0 border-b border-stone-900/10 pb-12 pt-0 lg:self-stretch lg:border-b-0 lg:border-r lg:py-0 lg:pr-8">
     <select data-section-select
             aria-label="Event form section"
             class="select-primary lg:hidden">
@@ -184,7 +184,7 @@
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
                 {# Event name -#}
-                <div class="col-span-full xl:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label for="name" class="form-label">
                     Name <span class="asterisk">*</span>
                   </label>
@@ -207,10 +207,10 @@
                 </div>
                 {# End Event name -#}
 
-                <div class="hidden xl:flex col-span-3"></div>
+                <div class="hidden 2xl:flex col-span-3"></div>
 
                 {# Event kind -#}
-                <div class="col-span-full xl:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label for="kind_id" class="form-label">
                     Event Type <span class="asterisk">*</span>
                   </label>
@@ -228,7 +228,7 @@
                 {# End Event kind -#}
 
                 {# Event category -#}
-                <div class="col-span-full xl:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label for="category_id" class="form-label">
                     Category <span class="asterisk">*</span>
                   </label>
@@ -250,7 +250,7 @@
                 {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &event.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
 
                 {# Logo URL -#}
-                {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = "col-span-full lg:col-span-4", input_class = "w-full block") -}}
+                {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the group logo, then the community logo if needed.", value_attr = logo_value, field_class = "col-span-full 2xl:col-span-4", input_class = "w-full block") -}}
                 {# End Logo URL -#}
 
                 {# Banner URL -#}
@@ -302,7 +302,7 @@
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-6xl">
                 {# Capacity -#}
-                <div class="col-span-full lg:col-span-4">
+                <div class="col-span-full 2xl:col-span-4">
                   <label for="capacity" class="form-label">
                     Capacity
                     {%- if meetings_enabled %}
@@ -335,7 +335,7 @@
                 {# End Capacity -#}
 
                 {# Registration required -#}
-                <div class="col-span-full lg:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label class="inline-flex items-center cursor-pointer">
                     <input id="toggle_registration_required"
                            name="toggle_registration_required"
@@ -360,7 +360,7 @@
                 {# End Registration required -#}
 
                 {# Test event -#}
-                <div class="col-span-full lg:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label class="inline-flex items-center cursor-pointer">
                     <input id="toggle_test_event"
                            name="toggle_test_event"
@@ -383,7 +383,7 @@
                 {# End Test event -#}
 
                 {# Attendee approval required -#}
-                <div class="col-span-full lg:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label data-enrollment-toggle-label="attendee-approval"
                          class="inline-flex items-center cursor-pointer transition-opacity">
                     <input id="toggle_attendee_approval_required"
@@ -410,7 +410,7 @@
                 {# End Attendee approval required -#}
 
                 {# Waitlist enabled -#}
-                <div class="col-span-full lg:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label data-enrollment-toggle-label="waitlist"
                          class="inline-flex items-center cursor-pointer transition-opacity">
                     <input id="toggle_waitlist_enabled"
@@ -439,7 +439,7 @@
                 </div>
                 {# End Waitlist enabled -#}
 
-                <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 lg:grid-cols-2">
+                <div class="col-span-full grid grid-cols-1 gap-x-6 gap-y-8 2xl:grid-cols-2">
                   {# Meetup URL -#}
                   <div>
                     <label for="meetup_url" class="form-label">Meetup.com URL</label>
@@ -483,7 +483,7 @@
                 {# Tags -#}
                 {% let tags_items -%}items=" {%- if let Some(tags) = &event.tags -%}{{ tags|json }}{%- endif -%}"{%- endlet %}
                 {% let tag_legend -%}Optional tags to help categorize and find the event. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
-                {{ form_fields::tags_field(legend = tag_legend, items_attr = tags_items, field_class = "col-span-3", label_text = "Tags") -}}
+                {{ form_fields::tags_field(legend = tag_legend, items_attr = tags_items, field_class = "col-span-full 2xl:col-span-3", label_text = "Tags") -}}
                 {# End Tags -#}
               </div>
             </div>
@@ -520,7 +520,7 @@
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
                 {# Enable CFS toggle -#}
-                <div class="col-span-full lg:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label class="inline-flex items-center cursor-pointer">
                     <input id="toggle_cfs_enabled"
                            name="toggle_cfs_enabled"
@@ -542,10 +542,10 @@
                 </div>
                 {# End Enable CFS toggle -#}
 
-                <div class="hidden lg:flex col-span-3"></div>
+                <div class="hidden 2xl:flex col-span-3"></div>
 
                 {# Opens at -#}
-                <div class="col-span-full lg:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label for="cfs_starts_at" class="form-label">
                     Opens at
                     <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
@@ -562,7 +562,7 @@
                 {# End Opens at -#}
 
                 {# Closes at -#}
-                <div class="col-span-full lg:col-span-3">
+                <div class="col-span-full 2xl:col-span-3">
                   <label for="cfs_ends_at" class="form-label">
                     Closes at
                     <span class="asterisk">* <sup class="text-xs font-normal">(required when CFS is enabled)</sup></span>
@@ -630,7 +630,7 @@
 
                 <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
                   {# Timezone -#}
-                  <div class="col-span-full lg:col-span-3">
+                  <div class="col-span-full 2xl:col-span-3">
                     <label class="form-label">
                       Timezone <span class="asterisk">*</span>
                     </label>
@@ -641,10 +641,10 @@
                   </div>
                   {# End Timezone -#}
 
-                  <div class="hidden lg:flex col-span-3"></div>
+                  <div class="hidden 2xl:flex col-span-3"></div>
 
                   {# Start date/time -#}
-                  <div class="col-span-full lg:col-span-3">
+                  <div class="col-span-full 2xl:col-span-3">
                     <label for="starts_at" class="form-label">Start Date & Time</label>
                     <div class="mt-2">
                       <input type="datetime-local"
@@ -658,7 +658,7 @@
                   {# End Start date/time -#}
 
                   {# Finish date/time -#}
-                  <div class="col-span-full lg:col-span-3">
+                  <div class="col-span-full 2xl:col-span-3">
                     <label for="ends_at" class="form-label">End Date & Time</label>
                     <div class="mt-2">
                       <input type="datetime-local"
@@ -672,7 +672,7 @@
                   {# End finish date/time -#}
 
                   {# Registration window start -#}
-                  <div class="col-span-full lg:col-span-3">
+                  <div class="col-span-full 2xl:col-span-3">
                     <label for="registration_starts_at" class="form-label">Registration Opens</label>
                     <div class="mt-2">
                       <input type="datetime-local"
@@ -686,7 +686,7 @@
                   {# End registration window start -#}
 
                   {# Registration window end -#}
-                  <div class="col-span-full lg:col-span-3">
+                  <div class="col-span-full 2xl:col-span-3">
                     <label for="registration_ends_at" class="form-label">Registration Closes</label>
                     <div class="mt-2">
                       <input type="datetime-local"
@@ -947,7 +947,7 @@
                 {{ dashboard::form_title(title = "Payments", description = "Configure event currency, ticket tiers, and optional discount codes.") -}}
 
                 <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6">
-                  <div class="col-span-full lg:col-span-3">
+                  <div class="col-span-full 2xl:col-span-3">
                     <label for="payment_currency_code" class="form-label">
                       Event Currency
                       <span class="asterisk">* <sup class="text-xs font-normal">(required for ticketed events)</sup></span>

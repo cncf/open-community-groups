@@ -153,7 +153,7 @@ describe("event preview", () => {
     const fetchMock = mockFetch({
       impl: async () =>
         new Response(
-          `<div id="event-preview-modal">
+          `<div id="event-preview-modal" data-event-preview-modal>
             <div data-event-preview-social-links class="hidden md:flex">
               <div data-event-preview-social-links-list></div>
             </div>
@@ -208,6 +208,34 @@ describe("event preview", () => {
       // The returned modal is marked as open.
       expect(document.querySelector("#event-preview-modal")).to.equal(null);
       expect(document.body.dataset.modalOpenCount).to.equal("0");
+    } finally {
+      fetchMock.restore();
+    }
+  });
+
+  it("does not render a login page response inside the preview modal", async () => {
+    // Prepare page root for a preview response that returned the login page.
+    const pageRoot = mountPreviewPage();
+    const loginResponse = new Response(`<main><h1>Log In</h1></main>`, {
+      headers: { "Content-Type": "text/html" },
+      status: 200,
+    });
+    Object.defineProperty(loginResponse, "url", {
+      value: "http://localhost/log-in?next_url=%2Fdashboard%2Fgroup%3Ftab%3Devents",
+    });
+    const fetchMock = mockFetch({ response: loginResponse });
+
+    try {
+      // Initialize event preview behavior.
+      initializeEventPreview({ pageRoot });
+      pageRoot.querySelector("#event-preview-button").click();
+      await waitForMicrotask();
+      await waitForMicrotask();
+
+      // Verify the login page was not rendered inside the preview modal.
+      expect(fetchMock.calls).to.have.length(1);
+      expect(document.querySelector("#event-preview-modal")).to.equal(null);
+      expect(document.querySelector("#event-preview-modal-root").innerHTML).to.equal("");
     } finally {
       fetchMock.restore();
     }

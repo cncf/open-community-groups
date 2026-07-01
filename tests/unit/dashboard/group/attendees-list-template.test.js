@@ -181,6 +181,10 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include(
       'dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-asc"',
     );
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include(
+      'class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
+    );
     expect(template).to.include("flex items-center gap-2");
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-name-filter", label = "Attendee"',
