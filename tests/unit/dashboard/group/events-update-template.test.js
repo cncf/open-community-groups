@@ -11,6 +11,18 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group event update template", () => {
+  it("keeps the update event page at full dashboard content height", async () => {
+    // Load the event update template before checking page root classes.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the update event page can fill the group dashboard content area.
+    expect(template).to.include('id="event-update-page"');
+    expect(template).to.include(
+      'class="grid min-w-0 grow gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
+    );
+    expect(template).to.include('data-event-page="update"');
+  });
+
   it("keeps the existing read-only copy when registration answers lock question editing", async () => {
     // Load the event update template before checking locked question copy.
     const template = normalizeWhitespace(await loadTemplate());
@@ -67,5 +79,13 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 lg:col-start-2 lg:px-0"',
     );
+  });
+
+  it("keeps the event form navigation in the shared page scroll", async () => {
+    // Load the event update template before checking sidebar scroll behavior.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the form navigation scrolls with the active event content.
+    expect(template).to.not.include('class="sticky top-6"');
   });
 });

@@ -127,7 +127,8 @@
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"
-       class="p-4 sm:p-6 lg:p-12">
+       class="flex min-h-full flex-col p-4 sm:p-6 lg:p-12"
+       style="min-height: calc(100dvh - 7.5rem)">
     {# Content -#}
     {{ content|safe }}
     {# End Content -#}

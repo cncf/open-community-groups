@@ -3,7 +3,7 @@
 {% import "macros/form_fields.html" as form_fields -%}
 
 {# Events form -#}
-<div class="grid min-w-0 gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
+<div class="grid min-w-0 grow gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
      data-event-page="add"
      hx-history="false">
   <div class="col-span-full space-y-3 w-full">
@@ -52,54 +52,52 @@
   </div>
 
   <aside class="min-w-0 border-b border-stone-900/10 py-12 lg:self-stretch lg:border-b-0 lg:border-r lg:py-0 lg:pr-8">
-    <div class="sticky top-6">
-      <select data-section-select
-              aria-label="Event form section"
-              class="select-primary lg:hidden">
-        {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
-        {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
-        {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
-        {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_option(section = "payments", label = "Payments") -}}
-        {% endif -%}
-        {{ event_form::tab_option(section = "questions", label = "Questions") -}}
-        {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
-      </select>
-      <ul class="hidden flex-col gap-1 font-medium lg:flex">
-        {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
-        {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
-        {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
-        {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
-        {% if payments_ready -%}
-          {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Payments") -}}
-        {% endif -%}
-        {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
-        {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
-      </ul>
-      <div class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col">
-        <button id="event-preview-button"
-                type="button"
-                aria-label="Preview"
-                class="group btn-primary-outline btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-                {% if !can_manage_events -%}
-                  disabled title="Your role cannot preview events."
-                {% else -%}
-                  title="Preview"
-                {% endif -%}>
-          <svg class="size-4 shrink-0"
-               aria-hidden="true"
-               stroke="currentColor"
-               fill="currentColor"
-               stroke-width="0"
-               viewBox="0 0 16 16"
-               xmlns="http://www.w3.org/2000/svg">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
-            </path>
-          </svg>
-          <span>Preview</span>
-        </button>
-      </div>
+    <select data-section-select
+            aria-label="Event form section"
+            class="select-primary lg:hidden">
+      {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
+      {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
+      {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
+      {{ event_form::tab_option(section = "sessions", label = "Sessions") -}}
+      {% if payments_ready -%}
+        {{ event_form::tab_option(section = "payments", label = "Payments") -}}
+      {% endif -%}
+      {{ event_form::tab_option(section = "questions", label = "Questions") -}}
+      {{ event_form::tab_option(section = "cfs", label = "CFS") -}}
+    </select>
+    <ul class="hidden flex-col gap-1 font-medium lg:flex">
+      {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
+      {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
+      {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
+      {{ event_form::tab_button(section = "sessions", icon = "presentation", label = "Sessions") -}}
+      {% if payments_ready -%}
+        {{ event_form::tab_button(section = "payments", icon = "ticket", label = "Payments") -}}
+      {% endif -%}
+      {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
+      {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
+    </ul>
+    <div class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col">
+      <button id="event-preview-button"
+              type="button"
+              aria-label="Preview"
+              class="group btn-primary-outline btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+              {% if !can_manage_events -%}
+                disabled title="Your role cannot preview events."
+              {% else -%}
+                title="Preview"
+              {% endif -%}>
+        <svg class="size-4 shrink-0"
+             aria-hidden="true"
+             stroke="currentColor"
+             fill="currentColor"
+             stroke-width="0"
+             viewBox="0 0 16 16"
+             xmlns="http://www.w3.org/2000/svg">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
+          </path>
+        </svg>
+        <span>Preview</span>
+      </button>
     </div>
   </aside>
 

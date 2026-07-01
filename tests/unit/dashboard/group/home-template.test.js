@@ -11,6 +11,16 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group home template", () => {
+  it("keeps dashboard content at full minimum height", async () => {
+    // Load the group dashboard shell template before checking content layout.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify swapped dashboard content can fill the dashboard card.
+    expect(template).to.include('id="dashboard-content"');
+    expect(template).to.include('class="flex min-h-full flex-col p-4 sm:p-6 lg:p-12"');
+    expect(template).to.include('style="min-height: calc(100dvh - 7.5rem)"');
+  });
+
   it("loads the shared user profile modal wiring", async () => {
     // Load the group dashboard shell template before checking profile modal wiring.
     const template = normalizeWhitespace(await loadTemplate());
