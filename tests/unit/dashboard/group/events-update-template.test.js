@@ -18,7 +18,7 @@ describe("dashboard group event update template", () => {
     // Assert the update event page can fill the group dashboard content area.
     expect(template).to.include('id="event-update-page"');
     expect(template).to.include(
-      'class="grid min-w-0 grow content-start gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
+      'class="grid min-w-0 grow content-start gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
     );
     expect(template).to.include('data-event-page="update"');
   });
@@ -42,17 +42,20 @@ describe("dashboard group event update template", () => {
     expect(template).to.include("{% if event.is_past() %}event-past{% endif %}");
   });
 
-  it("shows an event reminder above update tabs and content", async () => {
+  it("shows an event title header above update tabs and content", async () => {
     // Load the event update template before checking the event reminder.
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the reminder spans the form layout without sticking to the viewport.
-    expect(template).to.include('class="col-span-full pb-4"');
+    expect(template).to.include('class="col-span-full min-w-0"');
     expect(template).to.not.include('style="top: 6.25rem"');
-    expect(template).to.include("Editing event");
+    expect(template).to.not.include("Editing event");
     expect(template).to.include(
-      '<div class="mt-1 truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
+      '<div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
     );
+    expect(template).to.include('class="min-w-0 flex-1"');
+    expect(template).to.not.include("overflow-hidden");
+    expect(template).to.include('class="col-span-full min-w-0 2xl:col-span-3"');
     expect(template).to.include("{% if let Some(starts_at) = &event.starts_at -%}");
     expect(template).to.include(
       '{{ starts_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p") }}',
@@ -60,9 +63,31 @@ describe("dashboard group event update template", () => {
     expect(template).to.include("{% if let Some(ends_at) = &event.ends_at -%}");
     expect(template).to.include('<span class="text-stone-400">-</span>');
     expect(template).to.include('{{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}');
+    expect(template).to.include('class="mt-1 text-xs text-stone-500"');
+    expect(template).to.include('class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"');
+    expect(template).to.include('id="event-preview-button"');
+    expect(template).to.include('id="event-public-page-link"');
     expect(template).to.include(
       'Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}',
     );
+    expect(template).to.include('<div class="mt-1 text-xs text-stone-500">Date not set yet</div>');
+  });
+
+  it("places the pending changes alert under the event title header", async () => {
+    // Load the event update template before checking pending alert placement.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the save alert follows the title reminder and uses compact actions.
+    const eventTitleIndex = template.indexOf(
+      '<div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
+    );
+    const alertIndex = template.indexOf('id="pending-changes-alert"');
+
+    expect(alertIndex).to.be.greaterThan(eventTitleIndex);
+    expect(template).to.not.include("icon-clock");
+    expect(template).to.include('id="pending-changes-alert" class="col-span-full hidden min-w-0"');
+    expect(template).to.include('class="min-w-0 flex-1 break-words text-sm/6"');
+    expect(template).to.include('btn-primary btn-mini h-7! w-24 text-nowrap ms-auto');
   });
 
   it("lazy-loads event review tabs from the desktop tab buttons", async () => {
@@ -71,6 +96,10 @@ describe("dashboard group event update template", () => {
 
     // Assert review tabs fetch their table content only when selected.
     expect(template).to.include('aria-label="Event form section"');
+    expect(template).to.include(
+      '<label for="update-event-section-select" class="form-label mb-2 lg:hidden">Section</label>',
+    );
+    expect(template).to.include('id="update-event-section-select"');
     expect(template).to.include('event_form::tab_option(section = "attendees", label = "Attendees")');
     expect(template).to.include(
       'event_form::tab_option(section = "invitation-requests", label = "Requests")',
@@ -110,5 +139,10 @@ describe("dashboard group event update template", () => {
 
     // Assert the form navigation scrolls with the active event content.
     expect(template).to.not.include('class="sticky top-6"');
+    expect(template).to.include(
+      'class="min-w-0 pt-0 lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8"',
+    );
+    expect(template).to.not.include("lg:border-b-0");
+    expect(template).to.include('<div class="min-w-0"> <div class="inert-form"');
   });
 });

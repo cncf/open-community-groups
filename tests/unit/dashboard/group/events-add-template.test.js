@@ -17,9 +17,61 @@ describe("dashboard group event add template", () => {
 
     // Assert the add event page can fill the group dashboard content area.
     expect(template).to.include(
-      'class="grid min-w-0 grow gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
+      'class="grid min-w-0 grow content-start gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
     );
     expect(template).to.include('data-event-page="add"');
+    expect(template).to.include('class="col-span-full min-w-0 space-y-3"');
+    expect(template).to.include('class="block min-w-0 max-w-full"');
+    expect(template).to.include('class="form-legend mt-3 break-words"');
+  });
+
+  it("places the copy event selector inside details before the event name", async () => {
+    // Load the event add template before checking copy selector placement.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert copying is part of details and appears before the event name field.
+    const detailsFormIndex = template.indexOf('<form id="details-form">');
+    const copySelectorIndex = template.indexOf('button-id="copy-event-selector"');
+    const eventNameIndex = template.indexOf('name="name"');
+
+    expect(detailsFormIndex).to.be.greaterThan(-1);
+    expect(copySelectorIndex).to.be.greaterThan(detailsFormIndex);
+    expect(eventNameIndex).to.be.greaterThan(copySelectorIndex);
+  });
+
+  it("shows a draft event title header above add tabs and content", async () => {
+    // Load the event add template before checking the draft event reminder.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the draft reminder starts with clear fallback copy.
+    expect(template).to.include('id="draft-event-title"');
+    expect(template).to.include("Untitled event");
+    expect(template).to.include('id="draft-event-date"');
+    expect(template).to.include("Date not set yet");
+    expect(template).to.include('class="col-span-full min-w-0"');
+    expect(template).to.include('class="min-w-0 flex-1"');
+    expect(template).to.include('class="mt-1 text-xs text-stone-500"');
+    expect(template).to.include('class="truncate text-xl font-semibold text-stone-900"');
+    expect(template).to.not.include("overflow-hidden");
+    expect(template).to.include('class="col-span-full min-w-0 xl:col-span-3"');
+    expect(template).to.include('class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4"');
+    expect(template).to.include('id="event-preview-button"');
+    expect(template).to.not.include('class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col"');
+  });
+
+  it("places the pending changes alert under the draft event header", async () => {
+    // Load the event add template before checking pending alert placement.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Assert the save alert follows the title reminder and uses compact actions.
+    const draftHeaderIndex = template.indexOf('id="draft-event-title"');
+    const alertIndex = template.indexOf('id="pending-changes-alert"');
+
+    expect(alertIndex).to.be.greaterThan(draftHeaderIndex);
+    expect(template).to.not.include("icon-clock");
+    expect(template).to.include('id="pending-changes-alert" class="col-span-full hidden min-w-0"');
+    expect(template).to.include('class="min-w-0 flex-1 break-words text-sm/6"');
+    expect(template).to.include('class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"');
   });
 
   it("keeps bottom actions in the main grid column", async () => {
@@ -38,5 +90,12 @@ describe("dashboard group event add template", () => {
 
     // Assert the form navigation scrolls with the active event content.
     expect(template).to.not.include('class="sticky top-6"');
+    expect(template).to.include('<label for="add-event-section-select" class="form-label mb-2 lg:hidden">Section</label>');
+    expect(template).to.include('id="add-event-section-select"');
+    expect(template).to.include(
+      'class="min-w-0 pt-0 lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8"',
+    );
+    expect(template).to.not.include("lg:border-b-0");
+    expect(template).to.include('<div class="min-w-0"> <div class="space-y-12">');
   });
 });

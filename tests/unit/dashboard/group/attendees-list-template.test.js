@@ -182,9 +182,16 @@ describe("dashboard group attendees list template", () => {
       'dashboard::table_sort_button(label = "RSVP Date", sort_value = "created-at-asc"',
     );
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
     expect(template).to.include(
       'class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
     );
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48"',
+    );
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include("flex items-center gap-2");
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-name-filter", label = "Attendee"',
@@ -230,7 +237,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('class="checkbox-primary"');
     expect(template).to.include("attendee.can_receive_attendee_email");
     expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48"',
+      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48"',
     );
     expect(template).to.include(
       'class="hidden xl:table-cell px-3 xl:px-5 py-4 align-middle"',

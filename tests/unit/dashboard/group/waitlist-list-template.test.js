@@ -72,6 +72,11 @@ describe("dashboard group waitlist list template", () => {
       'dashboard::table_sort_button(label = "Joined", sort_value = "created-at-asc"',
     );
     expect(template).to.include("flex items-center gap-2");
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
+    );
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "waitlist-entry-filter", label = "Entry", is_active = title.is_some())',
     );

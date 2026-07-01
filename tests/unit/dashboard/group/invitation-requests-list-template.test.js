@@ -71,6 +71,14 @@ describe("dashboard group invitation requests list template", () => {
       'dashboard::table_sort_button(label = "Requested", sort_value = "created-at-asc"',
     );
     expect(template).to.include("flex items-center gap-2");
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5"');
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
+    );
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-48"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-40"');
+    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "invitation-requests-requester-filter"',
     );

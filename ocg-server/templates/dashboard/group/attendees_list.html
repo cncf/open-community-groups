@@ -306,7 +306,7 @@
            role="rowgroup">
       <tr>
         <th scope="col"
-            class="hidden px-3 xl:px-5 py-3 w-12"
+            class="hidden px-3 xl:px-5 py-1.5 w-12"
             data-attendee-email-selection-column>
           <span class="sr-only">Select for email</span>
         </th>
@@ -362,7 +362,7 @@
             <span class="hidden 2xl:inline whitespace-nowrap">Attendee</span>
           </div>
         </th>
-        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
           {% call dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position", is_active = title.is_some()) -%}
           <div class="py-2">
             {{ dashboard::table_filter_section_title(text = "Title") -}}
@@ -416,7 +416,7 @@
             <span class="whitespace-nowrap">RSVP Date</span>
           </div>
         </th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48">
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48">
           {% if let Some(ticket_types) = &event.ticket_types -%}
             {% if !ticket_types.is_empty() -%}
               {% call dashboard::table_filter_menu(id = "attendees-ticket-filter", label = "Ticket type", is_active = event_ticket_type_ids.is_some()) -%}
@@ -450,7 +450,7 @@
             <span class="whitespace-nowrap">Ticket type</span>
           {% endif -%}
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-30">
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-30">
           {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right") -%}
           <div class="py-2">
             {{ dashboard::table_filter_section_title(text = "Filter") -}}
@@ -497,7 +497,7 @@
           </div>
           {% endcall -%}
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>

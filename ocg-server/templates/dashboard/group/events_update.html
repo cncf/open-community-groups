@@ -8,7 +8,7 @@
 {% let event_public_url = "/".to_owned() + &event.community.name + "/group/" + event.group.public_slug() + "/event/" + &event.slug -%}
 {% let event_public_url_enabled = event.published || event.canceled -%}
 <div id="event-update-page"
-     class="grid min-w-0 grow content-start gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
+     class="grid min-w-0 grow content-start gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
      data-event-page="update"
      hx-history="false"
      data-event-public-url="{{ event_public_url }}"
@@ -33,15 +33,82 @@
     {{ dashboard::permission_warning(message = "This event is canceled. Event details are read-only, but attendee and refund review tools remain available.", extra_classes = "col-span-full") -}}
   {% endif -%}
 
-  <div id="pending-changes-alert" class="col-span-full hidden">
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
-      <div class="flex min-w-0 flex-1 items-start gap-3">
-        <div class="svg-icon size-5 bg-primary-700 icon-clock mt-0.5 shrink-0"></div>
-        <p class="text-sm/6">You have pending changes. If you leave without saving, changes will be lost.</p>
+  <div class="col-span-full min-w-0">
+    <div class="flex flex-col gap-4 border-b border-stone-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>
+        {% if let Some(starts_at) = &event.starts_at -%}
+          <div class="mt-1 text-xs text-stone-500">
+            {{ starts_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p") }}
+            {% if let Some(ends_at) = &event.ends_at -%}
+              <span class="text-stone-400">-</span>
+              {{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}
+            {% else -%}
+              {{ starts_at.with_timezone(event.timezone).format("%Z") }}
+            {% endif -%}
+          </div>
+        {% else if let Some(ends_at) = &event.ends_at -%}
+          <div class="mt-1 text-xs text-stone-500">
+            Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}
+          </div>
+        {% else -%}
+          <div class="mt-1 text-xs text-stone-500">Date not set yet</div>
+        {% endif -%}
       </div>
+      <div class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4">
+        <button id="event-preview-button"
+                type="button"
+                aria-label="Preview"
+                class="group btn-primary-outline btn-mini inline-flex h-7 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                {% if !can_manage_events -%}
+                  disabled title="Your role cannot preview events."
+                {% else -%}
+                  title="Preview"
+                {% endif -%}>
+          <svg class="size-4 shrink-0"
+               aria-hidden="true"
+               stroke="currentColor"
+               fill="currentColor"
+               stroke-width="0"
+               viewBox="0 0 16 16"
+               xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
+            </path>
+          </svg>
+          <span>Preview</span>
+        </button>
+        {% if event_public_url_enabled -%}
+          <a id="event-public-page-link"
+             href="{{ event_public_url }}"
+             target="_blank"
+             rel="noopener noreferrer"
+             aria-label="Public page"
+             title="Public page"
+             class="group btn-primary-outline-anchor btn-mini inline-flex h-7 items-center justify-center gap-2 whitespace-nowrap">
+            <div class="svg-icon size-3 icon-eye shrink-0"></div>
+            <span>Public page</span>
+          </a>
+        {% else -%}
+          <button id="event-public-page-link"
+                  type="button"
+                  disabled
+                  aria-label="Public page"
+                  title="Event must be published."
+                  class="group btn-primary-outline btn-mini inline-flex h-7 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50">
+            <div class="svg-icon size-3 icon-eye shrink-0"></div>
+            <span>Public page</span>
+          </button>
+        {% endif -%}
+      </div>
+    </div>
+  </div>
+
+  <div id="pending-changes-alert" class="col-span-full hidden min-w-0">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
+      <p class="min-w-0 flex-1 break-words text-sm/6">You have pending changes. If you leave without saving, changes will be lost.</p>
       <button id="update-event-button"
               type="button"
-              class="btn-primary w-24 text-nowrap ms-auto
+              class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto
                      {% if event_read_only -%}
                        opacity-50 cursor-not-allowed
                      {% endif -%}"
@@ -63,30 +130,10 @@
     </div>
   </div>
 
-  <div class="col-span-full pb-4">
-    <div class="border-b border-stone-200 pb-4">
-      <div class="text-xs font-semibold uppercase text-stone-500">Editing event</div>
-      <div class="mt-1 truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>
-      {% if let Some(starts_at) = &event.starts_at -%}
-        <div class="mt-1 text-sm text-stone-500">
-          {{ starts_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p") }}
-          {% if let Some(ends_at) = &event.ends_at -%}
-            <span class="text-stone-400">-</span>
-            {{ ends_at.with_timezone(event.timezone).format("%-I:%M %p %Z") }}
-          {% else -%}
-            {{ starts_at.with_timezone(event.timezone).format("%Z") }}
-          {% endif -%}
-        </div>
-      {% else if let Some(ends_at) = &event.ends_at -%}
-        <div class="mt-1 text-sm text-stone-500">
-          Ends {{ ends_at.with_timezone(event.timezone).format("%B %-e, %Y %-I:%M %p %Z") }}
-        </div>
-      {% endif -%}
-    </div>
-  </div>
-
-  <aside class="min-w-0 border-b border-stone-900/10 pb-12 pt-0 lg:self-stretch lg:border-b-0 lg:border-r lg:py-0 lg:pr-8">
-    <select data-section-select
+  <aside class="min-w-0 pt-0 lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8">
+    <label for="update-event-section-select" class="form-label mb-2 lg:hidden">Section</label>
+    <select id="update-event-section-select"
+            data-section-select
             aria-label="Event form section"
             class="select-primary lg:hidden">
       {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
@@ -126,54 +173,9 @@
       {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
       {{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
     </ul>
-    <div class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col">
-      <button id="event-preview-button"
-              type="button"
-              aria-label="Preview"
-              class="group btn-primary-outline btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-              {% if !can_manage_events -%}
-                disabled title="Your role cannot preview events."
-              {% else -%}
-                title="Preview"
-              {% endif -%}>
-        <svg class="size-4 shrink-0"
-             aria-hidden="true"
-             stroke="currentColor"
-             fill="currentColor"
-             stroke-width="0"
-             viewBox="0 0 16 16"
-             xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
-          </path>
-        </svg>
-        <span>Preview</span>
-      </button>
-      {% if event_public_url_enabled -%}
-        <a id="event-public-page-link"
-           href="{{ event_public_url }}"
-           target="_blank"
-           rel="noopener noreferrer"
-           aria-label="Public page"
-           title="Public page"
-           class="group btn-primary-outline-anchor btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap">
-          <div class="svg-icon size-3 icon-eye shrink-0"></div>
-          <span>Public page</span>
-        </a>
-      {% else -%}
-        <button id="event-public-page-link"
-                type="button"
-                disabled
-                aria-label="Public page"
-                title="Event must be published."
-                class="group btn-primary-outline btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50">
-          <div class="svg-icon size-3 icon-eye shrink-0"></div>
-          <span>Public page</span>
-        </button>
-      {% endif -%}
-    </div>
   </aside>
 
-  <div class="min-w-0 px-4 lg:px-0">
+  <div class="min-w-0">
     <div class="inert-form" {% if event_read_only -%} inert {% endif -%}>
       <div class="space-y-12">
         {# Event Details Tab -#}
@@ -184,7 +186,7 @@
 
               <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
                 {# Event name -#}
-                <div class="col-span-full 2xl:col-span-3">
+                <div class="col-span-full min-w-0 2xl:col-span-3">
                   <label for="name" class="form-label">
                     Name <span class="asterisk">*</span>
                   </label>

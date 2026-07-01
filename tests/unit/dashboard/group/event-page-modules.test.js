@@ -27,6 +27,7 @@ const sharedEventFormsMarkup = () => `
   <form id="hosts-sponsors-form"></form>
   <form id="sessions-form"></form>
   <form id="cfs-form"></form>
+  <input id="name" />
   <input id="starts_at" />
   <input id="ends_at" />
   <input id="registration_starts_at" />
@@ -55,6 +56,8 @@ const mountAddPageShell = () => {
   document.body.innerHTML = `
     <div data-event-page="add">
       ${sharedEventFormsMarkup()}
+      <div id="draft-event-title">Untitled event</div>
+      <div id="draft-event-date">Date not set yet</div>
       <button id="add-event-button" type="button"></button>
       <button id="cancel-button" type="button"></button>
       <button data-section="details" data-active="true" class="active">Details</button>
@@ -146,6 +149,47 @@ describe("event page modules", () => {
     expect(document.getElementById("test_event").value).to.equal("true");
     expect(document.getElementById("event_reminder_enabled").value).to.equal(
       "true",
+    );
+  });
+
+  it("updates the add page draft event reminder from event fields", () => {
+    // Mount the add page shell.
+    mountAddPageShell();
+
+    // Initialize the add page behavior.
+    initializeEventAddPage();
+
+    // Verify initial fallback copy.
+    expect(document.getElementById("draft-event-title").textContent).to.equal(
+      "Untitled event",
+    );
+    expect(document.getElementById("draft-event-date").textContent).to.equal(
+      "Date not set yet",
+    );
+
+    // Update the event title and date fields.
+    document.getElementById("name").value = "Platform Meetup";
+    document
+      .getElementById("name")
+      .dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("starts_at").value = "2026-08-29T14:15";
+    document
+      .getElementById("starts_at")
+      .dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("ends_at").value = "2026-08-29T16:15";
+    document
+      .getElementById("ends_at")
+      .dispatchEvent(new Event("change", { bubbles: true }));
+
+    // Verify the draft reminder reflects the form values.
+    expect(document.getElementById("draft-event-title").textContent).to.equal(
+      "Platform Meetup",
+    );
+    expect(document.getElementById("draft-event-date").textContent).to.include(
+      "2026",
+    );
+    expect(document.getElementById("draft-event-date").textContent).to.include(
+      " - ",
     );
   });
 

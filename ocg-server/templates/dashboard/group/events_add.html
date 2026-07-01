@@ -3,43 +3,50 @@
 {% import "macros/form_fields.html" as form_fields -%}
 
 {# Events form -#}
-<div class="grid min-w-0 grow gap-y-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
+<div class="grid min-w-0 grow content-start gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"
      data-event-page="add"
      hx-history="false">
-  <div class="col-span-full space-y-3 w-full">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <label for="copy-event-selector" class="form-label m-0">
-        Choose an event to copy <span class="font-semibold">from</span> (optional)
-      </label>
-      <div data-copy-indicator
-           id="copy-event-feedback"
-           class="hidden items-center gap-2 text-sm text-primary-600"
-           aria-live="polite">
-        <svg-spinner size="size-4" label="Copying event">
-        </svg-spinner>
-        <span>Copying event...</span>
+  <div class="col-span-full min-w-0">
+    <div class="flex flex-col gap-4 border-b border-stone-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="min-w-0 flex-1">
+        <div id="draft-event-title"
+             class="truncate text-xl font-semibold text-stone-900">Untitled event</div>
+        <div id="draft-event-date" class="mt-1 text-xs text-stone-500">Date not set yet</div>
+      </div>
+      <div class="flex shrink-0 flex-row items-center justify-end gap-2 sm:ms-4">
+        <button id="event-preview-button"
+                type="button"
+                aria-label="Preview"
+                class="group btn-primary-outline btn-mini inline-flex h-7 items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                {% if !can_manage_events -%}
+                  disabled title="Your role cannot preview events."
+                {% else -%}
+                  title="Preview"
+                {% endif -%}>
+          <svg class="size-4 shrink-0"
+               aria-hidden="true"
+               stroke="currentColor"
+               fill="currentColor"
+               stroke-width="0"
+               viewBox="0 0 16 16"
+               xmlns="http://www.w3.org/2000/svg">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
+            </path>
+          </svg>
+          <span>Preview</span>
+        </button>
       </div>
     </div>
-    <event-selector button-id="copy-event-selector" group-id="{{ group_id }}"></event-selector>
-    <p class="form-legend mt-3">
-      Start and end dates are left blank, and sessions are not copied so you can set a
-      new schedule. Meeting links are not carried over. When copying from events imported from the previous community platform,
-      some fields like event's hosts and speakers won't be copied. Note that this only
-      applies to events that have not been created from Open Community Groups.
-    </p>
   </div>
 
-  <div id="pending-changes-alert" class="col-span-full hidden">
+  <div id="pending-changes-alert" class="col-span-full hidden min-w-0">
     <div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary-200 bg-primary-50 px-4 py-3 text-primary-900">
-      <div class="flex min-w-0 flex-1 items-start gap-3">
-        <div class="svg-icon size-5 bg-primary-700 icon-clock mt-0.5 shrink-0"></div>
-        <p class="text-sm/6">
-          You have pending changes for this new event. If you leave without saving, this event will not be created.
-        </p>
-      </div>
+      <p class="min-w-0 flex-1 break-words text-sm/6">
+        You have pending changes for this new event. If you leave without saving, this event will not be created.
+      </p>
       <button id="add-event-button"
               type="button"
-              class="btn-primary w-24 text-nowrap ms-auto"
+              class="btn-primary btn-mini h-7! w-24 text-nowrap ms-auto"
               hx-post="/dashboard/group/events/add"
               hx-ext="no-empty-vals-keep-zero"
               hx-include="#details-form, #questions-form, #cfs-form, #date-venue-form, #sessions-form, #hosts-sponsors-form
@@ -51,8 +58,10 @@
     </div>
   </div>
 
-  <aside class="min-w-0 border-b border-stone-900/10 py-12 lg:self-stretch lg:border-b-0 lg:border-r lg:py-0 lg:pr-8">
-    <select data-section-select
+  <aside class="min-w-0 pt-0 lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8">
+    <label for="add-event-section-select" class="form-label mb-2 lg:hidden">Section</label>
+    <select id="add-event-section-select"
+            data-section-select
             aria-label="Event form section"
             class="select-primary lg:hidden">
       {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
@@ -76,32 +85,9 @@
       {{ event_form::tab_button(section = "questions", icon = "list-check", label = "Questions") -}}
       {{ event_form::tab_button(section = "cfs", icon = "megaphone", label = "CFS") -}}
     </ul>
-    <div class="mt-8 flex flex-row items-stretch gap-2 lg:flex-col">
-      <button id="event-preview-button"
-              type="button"
-              aria-label="Preview"
-              class="group btn-primary-outline btn-mini inline-flex h-7 w-full items-center justify-center gap-2 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
-              {% if !can_manage_events -%}
-                disabled title="Your role cannot preview events."
-              {% else -%}
-                title="Preview"
-              {% endif -%}>
-        <svg class="size-4 shrink-0"
-             aria-hidden="true"
-             stroke="currentColor"
-             fill="currentColor"
-             stroke-width="0"
-             viewBox="0 0 16 16"
-             xmlns="http://www.w3.org/2000/svg">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M2 2h12l1 1v10l-1 1H2l-1-1V3l1-1zm0 11h12V3H2v10zm11-9H3v3h10V4zm-1 2H4V5h8v1zm-3 6h4V8H9v4zm1-3h2v2h-2V9zM7 8H3v1h4V8zm-4 3h4v1H3v-1z">
-          </path>
-        </svg>
-        <span>Preview</span>
-      </button>
-    </div>
   </aside>
 
-  <div class="min-w-0 px-4 lg:px-0">
+  <div class="min-w-0">
     <div class="space-y-12">
       {# Event Details Tab -#}
       <div data-content="details">
@@ -110,8 +96,31 @@
             {{ dashboard::form_title(title = "Event details", description = "Please add as many details about this event as possible.") -}}
 
             <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+              <div class="col-span-full min-w-0 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <label for="copy-event-selector" class="form-label m-0">
+                    Choose an event to copy <span class="font-semibold">from</span> (optional)
+                  </label>
+                  <div data-copy-indicator
+                       id="copy-event-feedback"
+                       class="hidden items-center gap-2 text-sm text-primary-600"
+                       aria-live="polite">
+                    <svg-spinner size="size-4" label="Copying event">
+                    </svg-spinner>
+                    <span>Copying event...</span>
+                  </div>
+                </div>
+                <event-selector class="block min-w-0 max-w-full" button-id="copy-event-selector" group-id="{{ group_id }}"></event-selector>
+                <p class="form-legend mt-3 break-words">
+                  Start and end dates are left blank, and sessions are not copied so you can set a
+                  new schedule. Meeting links are not carried over. When copying from events imported from the previous community platform,
+                  some fields like event's hosts and speakers won't be copied. Note that this only
+                  applies to events that have not been created from Open Community Groups.
+                </p>
+              </div>
+
               {# Event name -#}
-              <div class="col-span-full xl:col-span-3">
+              <div class="col-span-full min-w-0 xl:col-span-3">
                 <label for="name" class="form-label">
                   Name <span class="asterisk">*</span>
                 </label>

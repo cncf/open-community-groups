@@ -123,7 +123,7 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
-        <th scope="col" class="px-3 xl:px-5 py-3">
+        <th scope="col" class="px-3 xl:px-5 py-1.5">
           <div class="flex items-center gap-2">
             <form class="inline-flex"
                   hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
@@ -174,8 +174,8 @@
             {% endcall -%}
           </div>
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Queue</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">
+        <th scope="col" class="px-3 xl:px-5 py-1.5">Queue</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
           <div class="flex items-center gap-2">
             <form class="inline-flex"
                   hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
@@ -192,7 +192,7 @@
             <span class="whitespace-nowrap">Joined</span>
           </div>
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
