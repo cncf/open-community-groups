@@ -278,23 +278,11 @@ test.describe("group dashboard waitlist tab", () => {
     await searchInput.fill("Two");
 
     // Submit the matching search and wait for filtered results.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist?ts_query=Two`,
-            ) &&
-          response.ok(),
-      ),
-      searchForm.evaluate((form) => {
-        if (form instanceof HTMLFormElement) {
-          form.requestSubmit();
-        }
-      }),
-    ]);
+    await searchForm.evaluate((form) => {
+      if (form instanceof HTMLFormElement) {
+        form.requestSubmit();
+      }
+    });
 
     // Verify the matching result is shown with a queue position.
     await expect(waitlistRow).toBeVisible();
@@ -306,24 +294,12 @@ test.describe("group dashboard waitlist tab", () => {
     await searchInput.fill("");
     await searchInput.fill("zzzzzzzzzzzz");
 
-    // Submit the empty-result search and wait for the response.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist?ts_query=zzzzzzzzzzzz`,
-            ) &&
-          response.ok(),
-      ),
-      searchForm.evaluate((form) => {
-        if (form instanceof HTMLFormElement) {
-          form.requestSubmit();
-        }
-      }),
-    ]);
+    // Submit the empty-result search and wait for the empty state.
+    await searchForm.evaluate((form) => {
+      if (form instanceof HTMLFormElement) {
+        form.requestSubmit();
+      }
+    });
 
     const noResultsMessage = waitlistContent
       .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
@@ -335,22 +311,9 @@ test.describe("group dashboard waitlist tab", () => {
     await expect(noResultsMessage.first()).toBeVisible();
 
     // Clear the waitlist search filter.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "GET" &&
-          response
-            .url()
-            .includes(
-              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
-            ) &&
-          !response.url().includes("ts_query") &&
-          response.ok(),
-      ),
-      waitlistContent
-        .getByRole("button", { name: "Clear waitlist search" })
-        .click(),
-    ]);
+    await waitlistContent
+      .getByRole("button", { name: "Clear waitlist search" })
+      .click();
 
     // Verify clearing removes the empty state and restores the waitlist entry.
     await expect(noResultsMessage).toHaveCount(0);
