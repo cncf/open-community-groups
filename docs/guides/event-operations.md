@@ -336,9 +336,12 @@ Organizer behavior:
 
 - `Attendees` shows confirmed attendees who can be checked in, plus organizer-created event
   invitations while they are pending or rejected.
-- `Requests` appears for invitation-review events and shows accepted, pending, and rejected
-  invitation requests. Pending requests can be accepted or rejected from this tab.
-- `Waitlist` shows people in FIFO order based on when they joined.
+- `Requests` appears for invitation-review events. It opens on pending requests by default, with
+  filters for all, pending, accepted, and rejected requests. Pending requests can be accepted or
+  rejected from this tab.
+- `Waitlist` shows each person's FIFO queue position based on when they joined.
+- `Attendees`, `Requests`, and `Waitlist` keep search, filter, sort, and pagination state together
+  while you refine the table.
 - Canceling an event notifies attendees, speakers, and waitlisted users.
 - Accepting or rejecting an invitation request is written to the audit log.
 - Sending, canceling, accepting, or rejecting an organizer-created event invitation is written to
@@ -459,12 +462,18 @@ company, title, and whether the confirmed attendee was manually invited; `Attend
 `View answers` when an attendee has submitted registration answers.
 
 The attendees table can be searched by attendee identity and visible profile details, including
-company and title. `Send email` in this tab sends operational updates to attendees who receive
-optional notifications. Organizers can send to all eligible attendees, including confirmed
-attendees and attendees who still need to complete registration questions, or enter email selection
-mode to choose eligible attendees directly from the table. Eligible attendee rows also include
-`Send email` for starting with that attendee selected. The email form includes a required
-`Subject`, defaults it to `{group name}: {event name}`, and sends the message body as plain text.
+company and title. It can also be sorted by attendee name or RSVP date, and filtered by check-in
+status, title presence, or ticket type. The invitation requests table can be sorted by requester or
+request date, filtered by request status or title presence, and reset to `All` statuses when you need
+to audit accepted and rejected requests. The waitlist table can be sorted by entry name or joined
+date and filtered by title presence; the queue column still shows the FIFO promotion order.
+
+`Send email` in this tab sends operational updates to attendees who receive optional notifications.
+Organizers can send to all eligible attendees, including confirmed attendees and attendees who still
+need to complete registration questions, or enter email selection mode to choose eligible attendees
+directly from the table. Eligible attendee rows also include `Send email` for starting with that
+attendee selected. The email form includes a required `Subject`, defaults it to
+`{group name}: {event name}`, and sends the message body as plain text.
 
 ![Event attendees](../screenshots/dashboard-group-event-attendees.png)
 
