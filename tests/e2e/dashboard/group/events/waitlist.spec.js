@@ -255,7 +255,7 @@ test.describe("group dashboard waitlist tab", () => {
     ).toBeVisible();
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(1)).toHaveText(/[1-9]\d*/);
+    await expect(waitlistRow.locator("td").nth(2)).toHaveText(/[1-9]\d*/);
     await expectUserProfileModalFromRow(
       organizerGroupPage,
       waitlistRow,
@@ -287,7 +287,7 @@ test.describe("group dashboard waitlist tab", () => {
     // Verify the matching result is shown with a queue position.
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(1)).toHaveText(/[1-9]\d*/);
+    await expect(waitlistRow.locator("td").nth(2)).toHaveText(/[1-9]\d*/);
     await expect(searchInput).toHaveValue("Two");
 
     // Enter a query expected to return no waitlist entries.
@@ -334,15 +334,16 @@ test.describe("group dashboard waitlist tab", () => {
           response.url().includes("sort=name-asc") &&
           response.ok(),
       ),
-      waitlistContent.getByRole("button", { name: "Sort Entry" }).click(),
+      waitlistContent
+        .getByRole("button", { name: "Sort Entry ascending" })
+        .click(),
     ]);
 
-    // Verify the active sort badge is shown with the waitlist row.
-    await expect(waitlistContent.getByText("Sort: Name A-Z")).toBeVisible();
+    // Verify the sorted waitlist row remains visible.
     await expect(waitlistRow).toBeVisible();
 
     // Apply the title-present table filter while preserving the sort.
-    await waitlistContent.getByLabel("Entry filters").click();
+    await waitlistContent.getByLabel("Position filters").click();
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
@@ -357,13 +358,12 @@ test.describe("group dashboard waitlist tab", () => {
           response.ok(),
       ),
       waitlistContent
-        .locator('#waitlist-entry-filter button[name="title"][value="present"]')
+        .locator('#waitlist-position-filter button[name="title"][value="present"]')
         .click(),
     ]);
 
     // Verify active filter badges remain visible with the filtered row.
-    await expect(waitlistContent.getByText("Title present")).toBeVisible();
-    await expect(waitlistContent.getByText("Sort: Name A-Z")).toBeVisible();
+    await expect(waitlistContent.getByText("Present")).toBeVisible();
     await expect(waitlistRow).toBeVisible();
   });
 });

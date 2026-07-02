@@ -508,11 +508,19 @@ test.describe("group dashboard attendees tab", () => {
     await expect(attendeesContent.locator("tr", { hasText: "E2E Organizer One" })).toBeVisible();
     await expect(searchInput).toHaveValue("");
 
-    // Sort attendees by name and verify the active sort badge is rendered.
-    await attendeesContent.getByRole("button", { name: "Sort Attendee" }).click();
+    // Sort attendees by name.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
+          response.url().includes("sort=name-asc") &&
+          response.ok(),
+      ),
+      attendeesContent.getByRole("button", { name: "Sort Attendee ascending" }).click(),
+    ]);
 
     // Verify the sorted table keeps both seeded attendees visible.
-    await expect(attendeesContent.getByText("Sort: Name A-Z")).toBeVisible();
     await expect(attendeesContent.locator("tr", { hasText: "E2E Member One" })).toBeVisible();
     await expect(attendeesContent.locator("tr", { hasText: "E2E Organizer One" })).toBeVisible();
   });
@@ -846,22 +854,40 @@ test.describe("group dashboard attendees tab", () => {
       await expect(searchInput).toHaveValue("");
 
       // Sort requesters by name before applying a status filter.
-      await requestsContent.getByRole("button", { name: "Sort Requester" }).click();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes(`/dashboard/group/events/${eventId}/invitation-requests`) &&
+            response.url().includes("sort=name-asc") &&
+            response.ok(),
+        ),
+        requestsContent.getByRole("button", { name: "Sort Requester ascending" }).click(),
+      ]);
 
       // Verify the sorted request table keeps both pending requesters visible.
-      await expect(requestsContent.getByText("Sort: Name A-Z")).toBeVisible();
       await expect(requestsContent.locator("tr", { hasText: "E2E Pending One" })).toBeVisible();
       await expect(requestsContent.locator("tr", { hasText: "E2E Pending Two" })).toBeVisible();
 
       // Switch the table to all statuses while preserving the active sort.
       await requestsContent.getByLabel("Status filters").click();
-      await requestsContent
-        .locator('#invitation-requests-status-filter button[name="status"][value="all"]')
-        .click();
+      await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "GET" &&
+            response.url().includes(`/dashboard/group/events/${eventId}/invitation-requests`) &&
+            response.url().includes("sort=name-asc") &&
+            response.url().includes("status=all") &&
+            response.ok(),
+        ),
+        requestsContent
+          .locator("#invitation-requests-status-filter")
+          .getByRole("button", { name: "All", exact: true })
+          .click(),
+      ]);
 
       // Verify resetting status removes the previous badge while keeping sort.
-      await expect(requestsContent.getByText("Status: Pending")).toHaveCount(0);
-      await expect(requestsContent.getByText("Sort: Name A-Z")).toBeVisible();
+      await expect(requestsContent.getByText("Active filters")).toHaveCount(0);
 
       const pendingOneRow = requestsContent.locator("tr", {
         hasText: "E2E Pending One",
