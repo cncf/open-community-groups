@@ -336,9 +336,12 @@ Organizer behavior:
 
 - `Attendees` shows confirmed attendees who can be checked in, plus organizer-created event
   invitations while they are pending or rejected.
-- `Requests` appears for invitation-review events and shows accepted, pending, and rejected
-  invitation requests. Pending requests can be accepted or rejected from this tab.
-- `Waitlist` shows people in FIFO order based on when they joined.
+- `Requests` appears for invitation-review events. It opens on pending requests by default, with
+  filters for all, pending, accepted, and rejected requests. Pending requests can be accepted or
+  rejected from this tab.
+- `Waitlist` shows each person's FIFO queue position based on when they joined.
+- `Attendees`, `Requests`, and `Waitlist` keep search, filter, sort, and pagination state together
+  while you refine the table.
 - Canceling an event notifies attendees, speakers, and waitlisted users.
 - Accepting or rejecting an invitation request is written to the audit log.
 - Sending, canceling, accepting, or rejecting an organizer-created event invitation is written to
@@ -430,9 +433,9 @@ This tab supports delivery-day execution:
 
 - Review attendee list and RSVP timing.
 - Run manual check-in.
-- Generate check-in QR code for on-site flow.
+- Open the attendee actions menu to generate a check-in QR code for on-site flow.
 - Cancel confirmed free attendance for future active events.
-- Invite attendees to free RSVP events.
+- Open the attendee actions menu to invite attendees to free RSVP events.
 - Send all-attendee or selected-attendee operational emails.
 - Download the attendee list or attendee answers as CSV.
 
@@ -444,26 +447,33 @@ when the attendee does not have a paid ticket. OCG removes the attendance, notif
 and can promote the next waitlisted user when a seat opens. Paid attendees stay on the refund
 workflow instead.
 
-`Invite` is available for free RSVP events when you have event write access. You can select a
-registered platform user or enter an email address. For new invitees, use their LF account primary
-email because LF SSO activates the email invitation by that address. For existing users, select the
-registered platform user when possible; LF-linked accounts can keep logging in after an LF email
-change because OCG reconciles them by LF SSO identity. Pending invitations show in the attendee table
-and can be canceled from the row actions menu. Rejected invitations remain visible and cannot be sent
-again for the same event and user.
+The attendee actions menu contains event-level attendee actions and exports. `Show check-in QR code`
+opens a QR code for the public check-in flow. `Invite attendee` is available for free RSVP events
+when you have event write access. You can select a registered platform user or enter an email
+address. For new invitees, use their LF account primary email because LF SSO activates the email
+invitation by that address. For existing users, select the registered platform user when possible;
+LF-linked accounts can keep logging in after an LF email change because OCG reconciles them by LF SSO
+identity. Pending invitations show in the attendee table and can be canceled from the row actions
+menu. Rejected invitations remain visible and cannot be sent again for the same event and user.
 
-The attendee actions menu has two CSV exports: `Attendees list CSV` exports attendee name,
-company, title, and whether the confirmed attendee was manually invited; `Attendees + answers CSV`
-adds one column per registration question. Row actions also include `View answers` when an attendee
-has submitted registration answers.
+The same attendee actions menu includes two CSV exports: `Attendees list CSV` exports attendee name,
+company, title, and whether the confirmed attendee was manually invited; `Attendees list CSV
+(including answers)` adds one column per registration question. Row actions also include
+`View answers` when an attendee has submitted registration answers.
 
 The attendees table can be searched by attendee identity and visible profile details, including
-company and title. `Send email` in this tab sends operational updates to attendees who receive
-optional notifications. Organizers can send to all eligible attendees, including confirmed
-attendees and attendees who still need to complete registration questions, or enter email selection
-mode to choose eligible attendees directly from the table. Eligible attendee rows also include
-`Send email` for starting with that attendee selected. The email form includes a required
-`Subject`, defaults it to `{group name}: {event name}`, and sends the message body as plain text.
+company and title. It can also be sorted by attendee name or RSVP date, and filtered by check-in
+status, title presence, or ticket type. The invitation requests table can be sorted by requester or
+request date, filtered by request status or title presence, and reset to `All` statuses when you need
+to audit accepted and rejected requests. The waitlist table can be sorted by entry name or joined
+date and filtered by title presence; the queue column still shows the FIFO promotion order.
+
+`Send email` in this tab sends operational updates to attendees who receive optional notifications.
+Organizers can send to all eligible attendees, including confirmed attendees and attendees who still
+need to complete registration questions, or enter email selection mode to choose eligible attendees
+directly from the table. Eligible attendee rows also include `Send email` for starting with that
+attendee selected. The email form includes a required `Subject`, defaults it to
+`{group name}: {event name}`, and sends the message body as plain text.
 
 ![Event attendees](../screenshots/dashboard-group-event-attendees.png)
 

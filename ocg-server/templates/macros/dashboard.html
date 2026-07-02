@@ -95,6 +95,82 @@
 {% endmacro form_title -%}
 {# End form title #}
 
+{# Table filter menu #}
+{% macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0") -%}
+  <details class="group relative inline-block text-left {{ extra_classes }}"
+           data-table-filter-menu>
+    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
+             aria-label="{{ label }} filters"
+             aria-controls="{{ id }}">
+      <span class="whitespace-nowrap">{{ label }}</span>
+      <div class="svg-icon size-3 icon-caret-down-filled bg-current transition-transform group-open:rotate-180">
+      </div>
+    </summary>
+    <div id="{{ id }}"
+         class="dropdown absolute {{ dropdown_classes }} top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-white text-left text-sm font-normal normal-case text-stone-700 shadow">
+      {{ caller() }}
+    </div>
+  </details>
+{% endmacro table_filter_menu -%}
+{# End table filter menu #}
+
+{# Table filter option button #}
+{% macro table_filter_option_button(label, name, value, is_active, clear_value = "", is_clear_option = false) -%}
+  <button type="submit"
+          {% if is_clear_option && clear_value.is_empty() -%}
+          {% else if is_active && clear_value.is_empty() -%}
+          {% else if is_active -%}
+            name="{{ name }}" value="{{ clear_value }}"
+          {% else -%}
+            name="{{ name }}" value="{{ value }}"
+          {% endif -%}
+          class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                 {% if is_active -%}
+                   bg-primary-50 text-primary-700
+                 {% endif -%}"
+          aria-pressed="{% if is_active -%}
+                          true{%- else -%}false{%- endif -%}">
+    <span class="flex size-4 shrink-0 items-center justify-center rounded-full border
+                 {% if is_active -%}
+                   border-primary-500
+                 {% else -%}
+                   border-stone-300
+                 {% endif -%}"
+          aria-hidden="true">
+      {% if is_active -%}
+        <span class="size-2 rounded-full bg-primary-500"></span>
+      {% endif -%}
+    </span>
+    <span>{{ label }}</span>
+  </button>
+{% endmacro table_filter_option_button -%}
+{# End table filter option button #}
+
+{# Table filter section title #}
+{% macro table_filter_section_title(text) -%}
+  <div class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-stone-500">{{ text }}</div>
+{% endmacro table_filter_section_title -%}
+{# End table filter section title #}
+
+{# Active table filter badge #}
+{% macro active_table_filter_badge(label) -%}
+  <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700">
+    <span>{{ label }}</span>
+    {{ caller() }}
+  </span>
+{% endmacro active_table_filter_badge -%}
+{# End active table filter badge #}
+
+{# Active table filter remove button #}
+{% macro active_table_filter_remove_button(label) -%}
+  <button type="submit"
+          class="-me-1 inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-stone-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
+          aria-label="{{ label }}">
+    <div class="svg-icon size-3 icon-close bg-stone-500"></div>
+  </button>
+{% endmacro active_table_filter_remove_button -%}
+{# End active table filter remove button #}
+
 {# Page title #}
 {% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "") -%}
   <div>

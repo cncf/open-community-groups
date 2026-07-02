@@ -5,10 +5,37 @@ returns json as $$
         -- Parse filters for event scope and pagination
         filters as (
             select
+                (p_filters->>'checked_in')::boolean as checked_in_value,
                 (p_filters->>'event_id')::uuid as event_id,
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value,
+                case
+                    when lower(p_filters->>'sort') in (
+                        'created-at-asc',
+                        'created-at-desc',
+                        'name-asc',
+                        'name-desc'
+                    ) then lower(p_filters->>'sort')
+                    else 'name-asc'
+                end as sort_value,
+                case
+                    when lower(p_filters->>'title') in ('missing', 'present')
+                        then lower(p_filters->>'title')
+                    else null
+                end as title_value,
                 nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
+        ),
+        -- Parse selected ticket type filters
+        ticket_type_filter as (
+            select
+                count(*)::int as ticket_types_total,
+                coalesce(array_agg(event_ticket_type_id), '{}') as selected_event_ticket_type_ids
+            from (
+                select value::uuid as event_ticket_type_id
+                from jsonb_array_elements_text(
+                    coalesce(p_filters->'event_ticket_type_ids', '[]'::jsonb)
+                )
+            ) input_ticket_types
         ),
         -- Prepare text search with prefix matching
         search_filter as (
@@ -31,6 +58,7 @@ returns json as $$
             select
                 ea.checked_in,
                 extract(epoch from ea.created_at)::bigint as created_at,
+                ea.created_at as created_at_sort,
                 u.email,
                 ea.manually_invited,
                 ea.registration_answers,
@@ -44,6 +72,7 @@ returns json as $$
                 ep.currency_code,
                 ep.discount_code,
                 ep.event_purchase_id,
+                ep.event_ticket_type_id,
                 ep.ticket_title,
                 u.bio,
                 u.bluesky_url,
@@ -74,6 +103,7 @@ returns json as $$
                     amount_minor,
                     currency_code,
                     discount_code,
+                    event_ticket_type_id,
                     ticket_title
                 from event_purchase
                 where event_id = ea.event_id
@@ -120,6 +150,22 @@ returns json as $$
                     where search_filter.ts_query @@ base_attendees.tsdoc
                 )
             )
+            and (
+                (select checked_in_value from filters) is null
+                or checked_in = (select checked_in_value from filters)
+            )
+            and (
+                (select title_value from filters) is null
+                or ((select title_value from filters) = 'present' and title is not null)
+                or ((select title_value from filters) = 'missing' and title is null)
+            )
+            and (
+                (select ticket_types_total from ticket_type_filter) = 0
+                or event_ticket_type_id in (
+                    select unnest(selected_event_ticket_type_ids)
+                    from ticket_type_filter
+                )
+            )
         ),
         -- Apply pagination and project public attendee fields
         attendees as (
@@ -158,7 +204,21 @@ returns json as $$
 
                 can_receive_attendee_email
             from filtered_attendees
-            order by coalesce(lower(name), lower(username)) asc, user_id asc
+            cross join filters f
+            order by
+                case when f.sort_value = 'name-asc'
+                    then coalesce(lower(name), lower(username))
+                end asc nulls last,
+                case when f.sort_value = 'name-desc'
+                    then coalesce(lower(name), lower(username))
+                end desc nulls last,
+                case when f.sort_value = 'created-at-asc'
+                    then created_at_sort
+                end asc nulls last,
+                case when f.sort_value = 'created-at-desc'
+                    then created_at_sort
+                end desc nulls last,
+                user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),

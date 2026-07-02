@@ -75,10 +75,15 @@ pub(crate) async fn list_page(
     // Fetch event summary and attendees
     let page_filters: AttendeesListPageFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    page_filters.validate()?;
     let search_filters = SearchEventAttendeesFilters {
         event_id,
+        checked_in: page_filters.checked_in,
+        event_ticket_type_ids: page_filters.event_ticket_type_ids.clone(),
         limit: page_filters.limit,
         offset: page_filters.offset,
+        sort: page_filters.sort,
+        title: page_filters.title,
         ts_query: page_filters.ts_query.clone(),
     };
     let (can_manage_events, event, registration_questions, search_attendees_results) = tokio::try_join!(
@@ -114,8 +119,12 @@ pub(crate) async fn list_page(
         refresh_url,
         registration_questions,
         total: search_attendees_results.total,
+        checked_in: page_filters.checked_in,
+        event_ticket_type_ids: page_filters.event_ticket_type_ids,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        sort: page_filters.sort,
+        title: page_filters.title,
         ts_query: page_filters.ts_query,
     };
 
@@ -543,8 +552,12 @@ pub(crate) async fn download_csv(
     // Fetch event summary and all attendee rows
     let search_filters = SearchEventAttendeesFilters {
         event_id,
+        checked_in: None,
+        event_ticket_type_ids: None,
         limit: None,
         offset: None,
+        sort: None,
+        title: None,
         ts_query: None,
     };
     let (event, search_attendees_results) = tokio::try_join!(
@@ -579,8 +592,12 @@ pub(crate) async fn download_csv_with_answers(
     // Fetch event summary, registration questions, and all attendee rows
     let search_filters = SearchEventAttendeesFilters {
         event_id,
+        checked_in: None,
+        event_ticket_type_ids: None,
         limit: None,
         offset: None,
+        sort: None,
+        title: None,
         ts_query: None,
     };
     let (event, registration_questions, search_attendees_results) = tokio::try_join!(

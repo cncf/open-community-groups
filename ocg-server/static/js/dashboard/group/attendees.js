@@ -1069,8 +1069,12 @@ const initializeAttendeeActionsMenu = (root = document) => {
       return;
     }
 
-    const menuItem = closestElementWithinRoot(event.target, `${attendeeActionsDropdownSelector} a`, root);
-    if (menuItem instanceof HTMLAnchorElement) {
+    const menuItem = closestElementWithinRoot(
+      event.target,
+      `${attendeeActionsDropdownSelector} a, ${attendeeActionsDropdownSelector} button`,
+      root,
+    );
+    if (menuItem instanceof HTMLElement) {
       closeAttendeeActionsDropdown(root);
       return;
     }

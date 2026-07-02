@@ -12,9 +12,11 @@
      hx-swap="innerHTML"></div>
 {# End attendees refresh trigger -#}
 
+{{ dashboard::form_title(title = "Attendees", description = "Review registrations and manage attendee check-in.") -}}
+
 {# Filters -#}
-<div class="my-5">
-  <div class="relative w-[36rem] max-w-full">
+<div class="my-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <div class="relative w-full max-w-full sm:w-[36rem]">
     <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
       <div class="svg-icon size-4 icon-search bg-stone-300"></div>
     </div>
@@ -25,6 +27,7 @@
           hx-swap="innerHTML"
           hx-indicator="#dashboard-spinner">
       <label for="search_attendees" class="sr-only">Search attendees</label>
+      {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ts_query = false) -}}
       <input id="search_attendees"
              name="ts_query"
              type="text"
@@ -42,6 +45,7 @@
                 hx-target="#attendees-content"
                 hx-swap="innerHTML"
                 hx-indicator="#dashboard-spinner"
+                hx-include="#attendees-search-form input[type='hidden']"
                 class="cursor-pointer mt-0.5"
                 aria-label="Clear attendee search">
           <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
@@ -49,8 +53,105 @@
       </div>
     </form>
   </div>
+  <form class="flex shrink-0 items-center gap-3 self-end sm:ms-auto"
+        hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+        hx-trigger="change"
+        hx-target="#attendees-content"
+        hx-swap="innerHTML"
+        hx-indicator="#dashboard-spinner">
+    {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_sort = false) -}}
+    <label for="attendees-sort"
+           class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
+    <select id="attendees-sort"
+            name="sort"
+            class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+            {% if attendees.is_empty() -%}
+              disabled
+            {% endif -%}>
+      <option value="name-asc"
+              {% if sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc) -%}
+                selected
+              {% endif -%}>Attendee ↑</option>
+      <option value="name-desc"
+              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc) -%}
+                selected
+              {% endif -%}>Attendee ↓</option>
+      <option value="created-at-asc"
+              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) -%}
+                selected
+              {% endif -%}>RSVP Date ↑</option>
+      <option value="created-at-desc"
+              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc) -%}
+                selected
+              {% endif -%}>RSVP Date ↓</option>
+    </select>
+  </form>
 </div>
 {# End filters -#}
+
+{% if checked_in.is_some() || event_ticket_type_ids.is_some() || title.is_some() -%}
+  {# Active filters -#}
+  <div class="mt-7 mb-5 flex flex-wrap items-center gap-2">
+    <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+    {% if let Some(active_checked_in) = checked_in -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+            hx-target="#attendees-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
+        {% if active_checked_in -%}
+          {% call dashboard::active_table_filter_badge("Checked in") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
+          {% endcall -%}
+        {% else -%}
+          {% call dashboard::active_table_filter_badge("Not checked in") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
+          {% endcall -%}
+        {% endif -%}
+      </form>
+    {% endif -%}
+    {% if let Some(active_title) = title -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+            hx-target="#attendees-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
+        {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
+          {% call dashboard::active_table_filter_badge("Present") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+          {% endcall -%}
+        {% else -%}
+          {% call dashboard::active_table_filter_badge("Missing") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+          {% endcall -%}
+        {% endif -%}
+      </form>
+    {% endif -%}
+    {% if event_ticket_type_ids.is_some() -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+            hx-target="#attendees-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
+        {% call dashboard::active_table_filter_badge("Ticket type") -%}
+        {{ dashboard::active_table_filter_remove_button(label = "Remove ticket type filter") -}}
+        {% endcall -%}
+      </form>
+    {% endif -%}
+    <form class="inline-flex"
+          hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+          hx-target="#attendees-content"
+          hx-swap="innerHTML"
+          hx-indicator="#dashboard-spinner">
+      {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false, include_ticket_type_ids = false, include_title = false) -}}
+      <button type="submit" class="btn-primary-outline btn-mini h-7!">Reset all</button>
+    </form>
+  </div>
+  {# End active filters -#}
+{% endif -%}
 
 {# Header actions -#}
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
@@ -58,58 +159,6 @@
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
   <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
-    <button id="open-event-qr-code-modal"
-            type="button"
-            class="btn-primary-outline w-full lg:w-auto whitespace-nowrap
-                   {% if event.canceled -%}
-                     opacity-50 cursor-not-allowed
-                   {% endif -%}"
-            aria-label="Show check-in QR code"
-            {% if event.canceled -%}
-              disabled title="Canceled events cannot use check-in."
-            {% endif -%}
-            data-event-id="{{ event.event_id }}"
-            data-event-name="{{ event.name }}"
-            data-group-name="{{ event.group_name }}"
-            data-event-slug="{{ event.slug }}"
-            data-check-in-url="/{{ event.community_name }}/check-in/{{ event.event_id }}"
-            data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
-            {% if let Some(start_time) = &event.starts_at -%}
-              data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
-            {% endif -%}>
-      <span class="hidden xl:inline">Show check-in QR code</span>
-      <span class="xl:hidden">Check-in QR</span>
-    </button>
-    <span class="inline-flex w-full lg:w-auto
-                 {% if !can_manage_events || event.canceled || event.is_past() || event.is_ticketed() -%}
-                   cursor-not-allowed
-                 {% endif -%}"
-          {% if !can_manage_events -%}
-            title="Your role cannot invite attendees."
-          {% else if event.canceled -%}
-            title="Canceled events cannot invite attendees."
-          {% else if event.is_past() -%}
-            title="Past events cannot invite attendees."
-          {% else if event.is_ticketed() -%}
-            title="Manual invitations are not available for ticketed events."
-          {% endif -%}>
-      <button id="open-attendee-invitation-modal"
-              type="button"
-              class="btn-primary-outline w-full lg:w-auto
-                     {% if !can_manage_events || event.canceled || event.is_past() || event.is_ticketed() -%}
-                       opacity-50 cursor-not-allowed pointer-events-none
-                     {% endif -%}"
-              {% if !can_manage_events -%}
-                disabled title="Your role cannot invite attendees."
-              {% else if event.canceled -%}
-                disabled title="Canceled events cannot invite attendees."
-              {% else if event.is_past() -%}
-                disabled title="Past events cannot invite attendees."
-              {% else if event.is_ticketed() -%}
-                disabled title="Manual invitations are not available for ticketed events."
-              {% endif -%}
-              data-event-id="{{ event.event_id }}">Invite</button>
-    </span>
     <div class="group relative w-full lg:w-auto">
       <button id="attendee-email-actions-button"
               type="button"
@@ -168,6 +217,48 @@
            data-attendee-actions-dropdown
            class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[22rem] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
+          <li>
+            <button id="open-event-qr-code-modal"
+                    type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Show check-in QR code"
+                    {% if event.canceled -%}
+                      disabled title="Canceled events cannot use check-in."
+                    {% endif -%}
+                    data-event-id="{{ event.event_id }}"
+                    data-event-name="{{ event.name }}"
+                    data-group-name="{{ event.group_name }}"
+                    data-event-slug="{{ event.slug }}"
+                    data-check-in-url="/{{ event.community_name }}/check-in/{{ event.event_id }}"
+                    data-qr-code-url="/dashboard/group/check-in/{{ event.event_id }}/qr-code"
+                    {% if let Some(start_time) = &event.starts_at -%}
+                      data-event-start="{{ start_time.with_timezone(event.timezone).format("%b %e · %I:%M %p %Z") }}"
+                    {% endif -%}>
+              <div class="svg-icon size-4 icon-qr-code shrink-0 bg-stone-500"></div>
+              <span>Show check-in QR code</span>
+            </button>
+          </li>
+          <li>
+            <button id="open-attendee-invitation-modal"
+                    type="button"
+                    role="menuitem"
+                    class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50"
+                    {% if !can_manage_events -%}
+                      disabled title="Your role cannot invite attendees."
+                    {% else if event.canceled -%}
+                      disabled title="Canceled events cannot invite attendees."
+                    {% else if event.is_past() -%}
+                      disabled title="Past events cannot invite attendees."
+                    {% else if event.is_ticketed() -%}
+                      disabled title="Manual invitations are not available for ticketed events."
+                    {% endif -%}
+                    data-event-id="{{ event.event_id }}">
+              <div class="svg-icon size-4 icon-user-plus shrink-0 bg-stone-500"></div>
+              <span>Invite attendee</span>
+            </button>
+          </li>
+          <li role="presentation" class="my-2 border-t border-stone-100"></li>
           <li>
             <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
                download
@@ -230,16 +321,80 @@
            role="rowgroup">
       <tr>
         <th scope="col"
-            class="hidden px-3 xl:px-5 py-3 w-12"
+            class="hidden px-3 xl:px-5 py-1.5 w-12"
             data-attendee-email-selection-column>
           <span class="sr-only">Select for email</span>
         </th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Attendee</th>
-        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Position</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">RSVP Date</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-48">Ticket type</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-30">Checked In</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+        <th scope="col" class="px-3 xl:px-5 py-1.5">
+          <span class="whitespace-nowrap">Attendee</span>
+        </th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
+          {% call dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position", is_active = title.is_some()) -%}
+          <div class="py-2">
+            <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                  hx-target="#attendees-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">
+              {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
+              {{ dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true) -}}
+              {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present) ) -}}
+              {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) ) -}}
+            </form>
+          </div>
+          {% endcall -%}
+        </th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">
+          <span class="whitespace-nowrap">RSVP Date</span>
+        </th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-48">
+          {% if let Some(ticket_types) = &event.ticket_types -%}
+            {% if !ticket_types.is_empty() -%}
+              {% call dashboard::table_filter_menu(id = "attendees-ticket-filter", label = "Ticket type", is_active = event_ticket_type_ids.is_some()) -%}
+              <form class="max-h-80 overflow-y-auto py-2"
+                    hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                    hx-trigger="change"
+                    hx-target="#attendees-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
+                {% for ticket_type in ticket_types -%}
+                  <label class="flex cursor-pointer items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900"
+                         title="{{ ticket_type.title }}">
+                    <input type="checkbox"
+                           class="checkbox-primary"
+                           name="event_ticket_type_ids[]"
+                           value="{{ ticket_type.event_ticket_type_id }}"
+                           {% if event_ticket_type_ids.is_some() && event_ticket_type_ids.as_ref().unwrap().contains(&ticket_type.event_ticket_type_id) -%}
+                             checked
+                           {% endif -%}>
+                    <span class="min-w-0 flex-1 truncate">{{ ticket_type.title }}</span>
+                  </label>
+                {% endfor -%}
+              </form>
+              {% endcall -%}
+            {% else -%}
+              <span class="whitespace-nowrap">Ticket type</span>
+            {% endif -%}
+          {% else -%}
+            <span class="whitespace-nowrap">Ticket type</span>
+          {% endif -%}
+        </th>
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-30">
+          {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right", dropdown_classes = "end-0") -%}
+          <div class="py-2">
+            <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
+                  hx-target="#attendees-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">
+              {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
+              {{ dashboard::table_filter_option_button(label = "All attendees", name = "checked_in", value = "", is_active = checked_in.is_none() , is_clear_option = true) -}}
+              {{ dashboard::table_filter_option_button(label = "Checked in", name = "checked_in", value = "true", is_active = checked_in == Some(true) ) -}}
+              {{ dashboard::table_filter_option_button(label = "Not checked in", name = "checked_in", value = "false", is_active = checked_in == Some(false) ) -}}
+            </form>
+          </div>
+          {% endcall -%}
+        </th>
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -257,7 +412,7 @@
             {% endif -%}
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
-              colspan="5">
+              colspan="4">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
@@ -326,10 +481,10 @@
                 {% endif -%}
               </div>
             </td>
-            {# End Position -#}
+            {# End position -#}
 
             {# RSVP Date -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {% if attendee.status == "confirmed" -%}
                 <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
               {% else if attendee.status == "invitation-pending" -%}
@@ -347,9 +502,12 @@
               {% else if attendee.status != "confirmed" -%}
                 <div class="text-stone-500">-</div>
               {% else if attendee.ticket_title.is_some() || attendee.amount_minor.is_some() || attendee.event_purchase_id.is_some() -%}
-                <div class="mx-auto flex max-w-[260px] flex-col gap-2">
-                  <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <div class="font-semibold text-stone-900">{{ attendee.ticket_title|assigned_or("Paid RSVP") }}</div>
+                <div class="mx-auto flex max-w-[260px] min-w-0 flex-col gap-2">
+                  <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <div class="max-w-full truncate font-semibold text-stone-900"
+                         title="{{ attendee.ticket_title|assigned_or("Paid RSVP") }}">
+                      {{ attendee.ticket_title|assigned_or("Paid RSVP") }}
+                    </div>
                     {% if let Some(amount_label) = self::format_payment_amount(attendee.amount_minor, attendee.currency_code.as_deref()) -%}
                       <div class="text-sm font-medium text-stone-600">({{ amount_label }})</div>
                     {% endif -%}
@@ -897,3 +1055,55 @@
   </div>
 </div>
 {# End QR code modal -#}
+
+{# Attendee table state fields for filter, sort, and search forms. #}
+{% macro attendee_table_state_inputs(
+  checked_in,
+  event_ticket_type_ids,
+  limit,
+  sort,
+  title,
+  ts_query,
+  include_checked_in = true,
+  include_ticket_type_ids = true,
+  include_limit = true,
+  include_sort = true,
+  include_title = true,
+  include_ts_query = true
+  ) -%}
+  {% if include_checked_in -%}
+    {% if let Some(checked_in) = checked_in -%}
+      <input type="hidden" name="checked_in" value="{{ checked_in }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_ticket_type_ids -%}
+    {% if let Some(ticket_type_ids) = &event_ticket_type_ids -%}
+      {% for ticket_type_id in ticket_type_ids -%}
+        <input type="hidden"
+               name="event_ticket_type_ids[]"
+               value="{{ ticket_type_id }}">
+      {% endfor -%}
+    {% endif -%}
+  {% endif -%}
+  {% if include_limit -%}
+    {% if let Some(limit) = limit -%}
+      <input type="hidden" name="limit" value="{{ limit }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_sort -%}
+    {% if let Some(sort) = sort -%}
+      <input type="hidden" name="sort" value="{{ sort }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_title -%}
+    {% if let Some(title) = title -%}
+      <input type="hidden" name="title" value="{{ title }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_ts_query -%}
+    {% if let Some(ts_query) = &ts_query -%}
+      <input type="hidden" name="ts_query" value="{{ ts_query }}">
+    {% endif -%}
+  {% endif -%}
+{% endmacro attendee_table_state_inputs -%}
+{# End attendee table state fields. #}

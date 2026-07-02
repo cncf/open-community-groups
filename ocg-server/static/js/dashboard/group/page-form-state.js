@@ -64,6 +64,8 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
 
   const getTabButtons = () => Array.from(root.querySelectorAll("[data-section]"));
 
+  const getSectionSelects = () => Array.from(root.querySelectorAll("[data-section-select]"));
+
   const getNextButtons = () => Array.from(root.querySelectorAll("[data-section-next]"));
 
   const updateNextButtons = (sectionName) => {
@@ -87,6 +89,24 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     });
   };
 
+  const clickSectionButton = (sectionButton) => {
+    if (!(sectionButton instanceof HTMLElement)) {
+      return;
+    }
+
+    skipSectionClickActivation = true;
+    try {
+      sectionButton.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    } finally {
+      skipSectionClickActivation = false;
+    }
+  };
+
   const displayActiveSection = (sectionName) => {
     const tabButtons = getTabButtons();
     const contentSections = Array.from(root.querySelectorAll("[data-content]"));
@@ -100,6 +120,10 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
     contentSections.forEach((section) => {
       const isActive = section.getAttribute("data-content") === sectionName;
       setElementHidden(section, !isActive);
+    });
+
+    getSectionSelects().forEach((select) => {
+      select.value = sectionName;
     });
 
     updateNextButtons(sectionName);
@@ -126,13 +150,7 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
           return;
         }
 
-        skipSectionClickActivation = true;
-        try {
-          nextTabButton.click();
-        } finally {
-          skipSectionClickActivation = false;
-        }
-
+        clickSectionButton(nextTabButton);
         displayActiveSection(nextSectionName);
         scrollToTop();
         return;
@@ -149,12 +167,29 @@ export const initializeSectionTabs = ({ root = document, onSectionChange = () =>
 
       displayActiveSection(button.getAttribute("data-section") || "");
     });
+
+    root.addEventListener("change", (event) => {
+      const select = closestElementWithinRoot(event.target, "[data-section-select]", root);
+      if (!select) {
+        return;
+      }
+
+      const selectedSectionName = select.value || "";
+      const selectedTabButton = getTabButtons().find(
+        (button) => button.getAttribute("data-section") === selectedSectionName,
+      );
+
+      clickSectionButton(selectedTabButton);
+      displayActiveSection(selectedSectionName);
+    });
   }
 
   const activeSectionName =
     getTabButtons()
       .find((button) => button.getAttribute("data-active") === "true")
-      ?.getAttribute("data-section") || "";
+      ?.getAttribute("data-section") ||
+    getSectionSelects().find((select) => select.value)?.value ||
+    "";
   updateNextButtons(activeSectionName);
 
   return { displayActiveSection };

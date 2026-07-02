@@ -1370,8 +1370,12 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = SearchEventAttendeesFilters {
         event_id: event_id(),
+        checked_in: None,
+        event_ticket_type_ids: None,
         limit: Some(10),
         offset: Some(0),
+        sort: None,
+        title: None,
         ts_query: None,
     };
     let output = db.search_event_attendees(group_id(), &filters).await?;
@@ -1421,6 +1425,9 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
 
         limit: Some(10),
         offset: Some(0),
+        sort: None,
+        status: None,
+        title: None,
         ts_query: None,
     };
     let output = db.search_event_invitation_requests(group_id(), &filters).await?;
@@ -1453,6 +1460,8 @@ async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
 
         limit: Some(10),
         offset: Some(0),
+        sort: None,
+        title: None,
         ts_query: None,
     };
     let output = db.search_event_waitlist(group_id(), &filters).await?;

@@ -76,26 +76,88 @@ describe("page form state helpers", () => {
     pageRoot.querySelector('[data-section="date-venue"] span').click();
 
     // The dynamically-added tab becomes active and its panel is shown.
-    expect(
-      pageRoot
-        .querySelector('[data-section="details"]')
-        .getAttribute("data-active"),
-    ).to.equal("false");
-    expect(
-      pageRoot
-        .querySelector('[data-section="date-venue"]')
-        .getAttribute("data-active"),
-    ).to.equal("true");
-    expect(
-      pageRoot
-        .querySelector('[data-content="details"]')
-        .classList.contains("hidden"),
-    ).to.equal(true);
-    expect(
-      pageRoot
-        .querySelector('[data-content="date-venue"]')
-        .classList.contains("hidden"),
-    ).to.equal(false);
+    expect(pageRoot.querySelector('[data-section="details"]').getAttribute("data-active")).to.equal("false");
+    expect(pageRoot.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
+      "true",
+    );
+    expect(pageRoot.querySelector('[data-content="details"]').classList.contains("hidden")).to.equal(true);
+    expect(pageRoot.querySelector('[data-content="date-venue"]').classList.contains("hidden")).to.equal(
+      false,
+    );
+  });
+
+  it("syncs section selects with active sections", () => {
+    // Render compact select navigation beside the desktop tab buttons.
+    document.body.innerHTML = `
+      <div id="page-root">
+        <select data-section-select>
+          <option value="details" selected>Details</option>
+          <option value="sessions">Sessions</option>
+        </select>
+        <button data-section="details" data-active="true" class="active">Details</button>
+        <button data-section="sessions" data-active="false">Sessions</button>
+        <section data-content="details">Details content</section>
+        <section data-content="sessions" class="hidden">Sessions content</section>
+      </div>
+    `;
+
+    // Initialize navigation against the page root.
+    const pageRoot = document.getElementById("page-root");
+    const sectionSelect = pageRoot.querySelector("[data-section-select]");
+    const { displayActiveSection } = initializeSectionTabs({ root: pageRoot });
+
+    // Change the compact navigation to the sessions section.
+    sectionSelect.value = "sessions";
+    sectionSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // The matching tab state and content panel follow the select.
+    expect(pageRoot.querySelector('[data-section="sessions"]').getAttribute("data-active")).to.equal("true");
+    expect(pageRoot.querySelector('[data-content="sessions"]').classList.contains("hidden")).to.equal(false);
+
+    // Programmatic tab changes keep the compact select in sync too.
+    displayActiveSection("details");
+    expect(sectionSelect.value).to.equal("details");
+  });
+
+  it("clicks the matching section button when section selects change", () => {
+    // Render a lazy section whose desktop tab owns the load trigger.
+    document.body.innerHTML = `
+      <div id="page-root">
+        <select data-section-select>
+          <option value="details" selected>Details</option>
+          <option value="attendees">Attendees</option>
+        </select>
+        <button data-section="details" data-active="true" class="active">Details</button>
+        <button
+          data-section="attendees"
+          data-active="false"
+          hx-get="/dashboard/group/events/event-1/attendees"
+        >
+          Attendees
+        </button>
+        <section data-content="details">Details content</section>
+        <section data-content="attendees" class="hidden">Attendees content</section>
+      </div>
+    `;
+
+    // Track the click that HTMX listens for on lazy desktop tabs.
+    const pageRoot = document.getElementById("page-root");
+    const sectionSelect = pageRoot.querySelector("[data-section-select]");
+    const attendeesTab = pageRoot.querySelector('[data-section="attendees"]');
+    let tabClicks = 0;
+    attendeesTab.addEventListener("click", () => {
+      tabClicks += 1;
+    });
+
+    // Switch through the compact select.
+    initializeSectionTabs({ root: pageRoot });
+    sectionSelect.value = "attendees";
+    sectionSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // The compact select activates the same tab button path used on desktop.
+    expect(tabClicks).to.be.greaterThan(0);
+    expect(attendeesTab.getAttribute("data-active")).to.equal("true");
+    expect(pageRoot.querySelector('[data-content="attendees"]').classList.contains("hidden")).to.equal(false);
   });
 
   it("advances to the next section from bottom navigation", () => {
@@ -132,11 +194,9 @@ describe("page form state helpers", () => {
       nextButton.click();
 
       // Bottom navigation remains available while another section follows.
-      expect(
-        pageRoot
-          .querySelector('[data-section="date-venue"]')
-          .getAttribute("data-active"),
-      ).to.equal("true");
+      expect(pageRoot.querySelector('[data-section="date-venue"]').getAttribute("data-active")).to.equal(
+        "true",
+      );
       expect(dateSection.classList.contains("hidden")).to.equal(false);
       expect(nextButton.classList.contains("hidden")).to.equal(false);
       expect(nextButton.disabled).to.equal(false);
@@ -145,11 +205,7 @@ describe("page form state helpers", () => {
       nextButton.click();
 
       // The final section hides bottom navigation and records both scrolls.
-      expect(
-        pageRoot
-          .querySelector('[data-section="cfs"]')
-          .getAttribute("data-active"),
-      ).to.equal("true");
+      expect(pageRoot.querySelector('[data-section="cfs"]').getAttribute("data-active")).to.equal("true");
       expect(cfsSection.classList.contains("hidden")).to.equal(false);
       expect(nextButton.classList.contains("hidden")).to.equal(true);
       expect(nextButton.disabled).to.equal(true);
@@ -186,16 +242,8 @@ describe("page form state helpers", () => {
     pageRoot.querySelector("[data-section-next]").click();
 
     // The next visible tab in the DOM order becomes active.
-    expect(
-      pageRoot
-        .querySelector('[data-section="payments"]')
-        .getAttribute("data-active"),
-    ).to.equal("true");
-    expect(
-      pageRoot
-        .querySelector('[data-content="payments"]')
-        .classList.contains("hidden"),
-    ).to.equal(false);
+    expect(pageRoot.querySelector('[data-section="payments"]').getAttribute("data-active")).to.equal("true");
+    expect(pageRoot.querySelector('[data-content="payments"]').classList.contains("hidden")).to.equal(false);
   });
 
   it("hides bottom navigation when initialized on the final section", () => {
@@ -242,8 +290,7 @@ describe("page form state helpers", () => {
     });
     initializeSectionTabs({
       root: pageRoot,
-      onSectionChange: (sectionName) =>
-        visitedSections.push(`again:${sectionName}`),
+      onSectionChange: (sectionName) => visitedSections.push(`again:${sectionName}`),
     });
 
     // Click the sessions tab after duplicate initialization.
@@ -322,12 +369,7 @@ describe("page form state helpers", () => {
 
     // Missing optional form ids are skipped.
     expect(
-      collectExistingFormIds([
-        "details-form",
-        "payments-form",
-        "sessions-form",
-        "cfs-form",
-      ]),
+      collectExistingFormIds(["details-form", "payments-form", "sessions-form", "cfs-form"]),
     ).to.deep.equal(["details-form", "sessions-form"]);
   });
 });

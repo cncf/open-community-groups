@@ -249,8 +249,8 @@ Waitlist-aware event operations also include:
   when both are set. If only an open date is set, registration closes at event start; if both fields
   are blank, no registration window is applied. Active checkout holds may still complete payment and
   required registration questions after the public window closes, until the hold expires.
-- Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on
-  event enrollment settings.
+- Separate `Attendees`, `Requests`, and `Waitlist` tabs inside the event editor, depending on event
+  enrollment settings, with table search, sorting, and filters for day-of operations.
 - Automatic promotion from the waitlist when attendees leave, capacity increases, or capacity is
   removed, but only while registration is open.
 - Waitlist recipients included in event cancellation notifications.
@@ -259,7 +259,8 @@ Invitation-review event operations include:
 
 - A `Require Invitation Approval` toggle in event details.
 - Invitation review cannot be combined with waitlist or paid tickets.
-- Invitation requests appear in a separate `Requests` tab for organizer review.
+- Invitation requests appear in a separate `Requests` tab for organizer review. The tab defaults to
+  pending requests and can be filtered to all, accepted, or rejected requests.
 - Accepting a request creates a confirmed attendee if capacity allows.
 - Rejecting a request records the decision without creating an attendee.
 
