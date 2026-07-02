@@ -128,6 +128,12 @@ describe("dashboard group event update template", () => {
     );
     expect(template).to.include('id="update-event-section-select"');
     expect(template).to.include(
+      'class="select-primary w-full sm:w-sm xl:hidden"',
+    );
+    expect(template).to.include(
+      'class="hidden flex-col gap-1 font-medium xl:flex"',
+    );
+    expect(template).to.include(
       'event_form::tab_option(section = "attendees", label = "Attendees")',
     );
     expect(template).to.include(
@@ -153,16 +159,16 @@ describe("dashboard group event update template", () => {
 
     // Assert root-level content after the form wrapper stays in the form column.
     expect(template).to.include(
-      'data-content="attendees" class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0"',
+      'data-content="attendees" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
     expect(template).to.include(
-      'data-content="invitation-requests" class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0"',
+      'data-content="invitation-requests" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
     expect(template).to.include(
-      'data-content="waitlist" class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0"',
+      'data-content="waitlist" class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0"',
     );
     expect(template).to.include(
-      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 lg:col-start-2 lg:px-0"',
+      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0"',
     );
   });
 
@@ -173,7 +179,7 @@ describe("dashboard group event update template", () => {
     // Assert the form navigation scrolls with the active event content.
     expect(template).to.not.include('class="sticky top-6"');
     expect(template).to.include(
-      'class="min-w-0 pt-0 lg:row-span-full lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8"',
+      'class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8"',
     );
     expect(template).to.not.include("lg:border-b-0");
     expect(template).to.include(

@@ -130,12 +130,12 @@
     </div>
   </div>
 
-  <div class="col-span-full row-start-2 grid h-full min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8 lg:gap-y-0">
-    <aside class="min-w-0 pt-0 lg:row-span-full lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8">
+  <div class="col-span-full row-start-2 grid h-full min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[12rem_minmax(0,1fr)] xl:gap-x-8 xl:gap-y-0">
+    <aside class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8">
       <select id="update-event-section-select"
               data-section-select
               aria-label="Event form section"
-              class="select-primary lg:hidden">
+              class="select-primary w-full sm:w-sm xl:hidden">
         {{ event_form::tab_option(section = "details", label = "Details", active = true) -}}
         {{ event_form::tab_option(section = "date-venue", label = "Date & Venue") -}}
         {{ event_form::tab_option(section = "hosts-sponsors", label = "Contributors") -}}
@@ -152,7 +152,7 @@
         {% endif -%}
         {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}}
       </select>
-      <ul class="hidden flex-col gap-1 font-medium lg:flex">
+      <ul class="hidden flex-col gap-1 font-medium xl:flex">
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
         {{ event_form::tab_button(section = "date-venue", icon = "calendar", label = "Date & Venue") -}}
         {{ event_form::tab_button(section = "hosts-sponsors", icon = "user-plus", label = "Contributors") -}}
@@ -1067,7 +1067,7 @@
 
     {# Attendees Tab -#}
     <div data-content="attendees"
-         class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0">
+         class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
       <div id="attendees-content">
         {{ dashboard::form_title(title = "Attendees", description = "Review registrations and manage attendee check-in.") -}}
         {# Loading placeholder -#}
@@ -1084,7 +1084,7 @@
     {% if event.attendee_approval_required -%}
       {# Invitation Requests Tab -#}
       <div data-content="invitation-requests"
-           class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0">
+           class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
         <div id="invitation-requests-content">
           {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
           <div id="invitation-requests-loading"
@@ -1101,7 +1101,7 @@
 
     {# Waitlist Tab -#}
     <div data-content="waitlist"
-         class="hidden min-w-0 px-4 lg:col-start-2 lg:px-0">
+         class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
       <div id="waitlist-content">
         {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
         <div id="waitlist-loading" class="flex items-center justify-center py-12">
@@ -1115,7 +1115,7 @@
     {# End Waitlist Tab -#}
 
     {# Form buttons -#}
-    <div class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 lg:col-start-2 lg:px-0">
+    <div class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0">
       <button type="button" data-section-next class="btn-primary w-24">Next</button>
       <button id="cancel-button"
               type="button"

@@ -200,6 +200,9 @@ test.describe("group dashboard waitlist tab", () => {
     // Give the seeded waitlist dashboard filter flow room on slower runs.
     test.setTimeout(60_000);
 
+    // Use the wide table layout because the Position filter is 2xl-only.
+    await organizerGroupPage.setViewportSize({ width: 1600, height: 900 });
+
     // Return to the group events dashboard.
     await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
 
@@ -399,8 +402,15 @@ test.describe("group dashboard waitlist tab", () => {
         .click(),
     ]);
 
+    const activeFilters = waitlistContent
+      .getByText("Active filters", { exact: true })
+      .locator("xpath=..");
+
     // Verify active filter badges remain visible with the filtered row.
-    await expect(waitlistContent.getByText("Present")).toBeVisible();
+    await expect(activeFilters.getByText("Present", { exact: true })).toBeVisible();
+    await expect(
+      activeFilters.getByRole("button", { name: "Remove title filter" }),
+    ).toBeVisible();
     await expect(waitlistRow).toBeVisible();
   });
 });

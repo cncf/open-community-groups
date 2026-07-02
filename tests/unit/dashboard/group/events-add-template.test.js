@@ -100,7 +100,7 @@ describe("dashboard group event add template", () => {
 
     // Assert root-level actions after the form wrapper stay in the form column.
     expect(template).to.include(
-      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 lg:col-start-2 lg:px-0"',
+      'class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0"',
     );
   });
 
@@ -115,7 +115,13 @@ describe("dashboard group event add template", () => {
     );
     expect(template).to.include('id="add-event-section-select"');
     expect(template).to.include(
-      'class="min-w-0 pt-0 lg:row-span-full lg:self-stretch lg:border-r lg:border-stone-900/10 lg:py-0 lg:pr-8"',
+      'class="select-primary w-full sm:w-sm xl:hidden"',
+    );
+    expect(template).to.include(
+      'class="hidden flex-col gap-1 font-medium xl:flex"',
+    );
+    expect(template).to.include(
+      'class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8"',
     );
     expect(template).to.not.include("lg:border-b-0");
     expect(template).to.include(
