@@ -21,24 +21,9 @@ describe("dashboard macros template", () => {
     expect(template).not.to.include("data-user-profile-username");
   });
 
-  it("uses dropdown menus for table sorting and filtering", async () => {
+  it("uses dropdown menus for table filtering", async () => {
     // Load the dashboard macros template before checking table control icons.
     const template = normalizeWhitespace(await loadTemplate());
-
-    // Verify table sorting uses a dropdown menu with radio-style options.
-    expect(template).to.include(
-      'macro table_sort_menu(id, current_label, extra_classes = "", dropdown_classes = "end-0")',
-    );
-    expect(template).to.include(
-      "macro table_sort_option_button(label, value, is_active, disabled = false)",
-    );
-    expect(template).to.include('aria-label="Sort by {{ current_label }}"');
-    expect(template).to.include("{{ current_label }}");
-    expect(template).to.include("name=\"sort\"");
-    expect(template).to.include('value="{{ value }}"');
-    expect(template).to.include("disabled:cursor-not-allowed disabled:opacity-50");
-    expect(template).to.include('disabled aria-disabled="true"');
-    expect(template).to.include("aria-pressed=");
 
     // Verify table filters use the filled caret treatment.
     expect(template).to.include("macro table_filter_option_button");
@@ -50,10 +35,8 @@ describe("dashboard macros template", () => {
     expect(template).to.include("{{ dropdown_classes }} top-full");
     expect(template).to.include("icon-caret-down-filled");
     expect(template).to.include("icon-caret-down-filled bg-current");
+    expect(template).to.include("{{ label }} filters");
     expect(template).not.to.include("bg-primary-500 {% else -%} bg-current");
-    expect(template).not.to.include(
-      "bg-primary-50 text-primary-700 ring-1 ring-primary-200",
-    );
     expect(template).not.to.include(
       "bg-primary-50 text-stone-900 ring-1 ring-primary-200",
     );

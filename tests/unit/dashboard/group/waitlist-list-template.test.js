@@ -116,7 +116,7 @@ describe("dashboard group waitlist list template", () => {
     // Load the waitlist list template before checking responsive table markup.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the Position column hides until the widest table breakpoint.
+    // Verify the table columns and placeholders keep matching responsive spans.
     expect(template).to.include(
       'class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"',
     );
