@@ -121,6 +121,9 @@ describe("dashboard group event add template", () => {
       'class="hidden flex-col gap-1 font-medium xl:flex"',
     );
     expect(template).to.include(
+      'class="col-span-full row-start-2 grid h-full content-start min-h-0 min-w-0 gap-y-8 group-has-[#pending-changes-alert:not(.hidden)]/event-page:row-start-3 xl:grid-cols-[12rem_minmax(0,1fr)] xl:content-stretch xl:gap-x-8 xl:gap-y-0"',
+    );
+    expect(template).to.include(
       'class="min-w-0 pt-0 xl:row-span-full xl:self-stretch xl:border-r xl:border-stone-900/10 xl:py-0 xl:pr-8"',
     );
     expect(template).to.not.include("lg:border-b-0");
