@@ -13,8 +13,8 @@
 {{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
 
 {# Filters -#}
-<div class="my-5">
-  <div class="relative w-[36rem] max-w-full">
+<div class="my-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <div class="relative w-full max-w-full sm:w-[36rem]">
     <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
       <div class="svg-icon size-4 icon-search bg-stone-300"></div>
     </div>
@@ -51,6 +51,39 @@
       </div>
     </form>
   </div>
+  <form class="flex shrink-0 items-center gap-3 self-end sm:ms-auto"
+        hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+        hx-trigger="change"
+        hx-target="#waitlist-content"
+        hx-swap="innerHTML"
+        hx-indicator="#dashboard-spinner">
+    {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
+    <label for="waitlist-sort"
+           class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
+    <select id="waitlist-sort"
+            name="sort"
+            class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+            {% if waitlist.is_empty() -%}
+              disabled
+            {% endif -%}>
+      <option value="name-asc"
+              {% if sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc) -%}
+                selected
+              {% endif -%}>Entry ↑</option>
+      <option value="name-desc"
+              {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc) -%}
+                selected
+              {% endif -%}>Entry ↓</option>
+      <option value="created-at-asc"
+              {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc) -%}
+                selected
+              {% endif -%}>Joined ↑</option>
+      <option value="created-at-desc"
+              {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc) -%}
+                selected
+              {% endif -%}>Joined ↓</option>
+    </select>
+  </form>
 </div>
 {# End filters -#}
 
@@ -106,17 +139,7 @@
            role="rowgroup">
       <tr>
         <th scope="col" class="px-3 xl:px-5 py-1.5">
-          <div class="flex items-center gap-2">
-            <form class="inline-flex"
-                  hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
-                  hx-target="#waitlist-content"
-                  hx-swap="innerHTML"
-                  hx-indicator="#dashboard-spinner">
-              {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
-              {{ dashboard::table_sort_control(label = "Entry", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc), disabled = waitlist.is_empty()) -}}
-            </form>
-            <span class="whitespace-nowrap">Entry</span>
-          </div>
+          <span class="whitespace-nowrap">Entry</span>
         </th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
           {% call dashboard::table_filter_menu(id = "waitlist-position-filter", label = "Position", is_active = title.is_some()) -%}
@@ -135,17 +158,7 @@
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5">Queue</th>
         <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
-          <div class="flex items-center gap-2">
-            <form class="inline-flex"
-                  hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
-                  hx-target="#waitlist-content"
-                  hx-swap="innerHTML"
-                  hx-indicator="#dashboard-spinner">
-              {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
-              {{ dashboard::table_sort_control(label = "Joined", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc), disabled = waitlist.is_empty()) -}}
-            </form>
-            <span class="whitespace-nowrap">Joined</span>
-          </div>
+          <span class="whitespace-nowrap">Joined</span>
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>

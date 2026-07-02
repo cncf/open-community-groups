@@ -159,7 +159,7 @@ describe("dashboard group attendees list template", () => {
     );
   });
 
-  it("renders attendee table sorting and filter controls", async () => {
+  it("renders attendee sort select and table filter controls", async () => {
     // Load the attendees list template before checking table controls.
     const template = normalizeWhitespace(await loadTemplate());
 
@@ -169,21 +169,23 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('name="sort" value="{{ sort }}"');
     expect(template).to.include('name="title" value="{{ title }}"');
     expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
-    expect(template).to.include(
-      'dashboard::table_sort_control(label = "Attendee", ascending_value = "name-asc", descending_value = "name-desc"',
-    );
-    expect(template).to.include(
-      "is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc), disabled = attendees.is_empty())",
-    );
-    expect(template).to.include(
-      "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc)",
-    );
-    expect(template).to.include(
-      'dashboard::table_sort_control(label = "RSVP Date", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
-    );
-    expect(template).to.include(
-      "is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc), disabled = attendees.is_empty())",
-    );
+    expect(template).to.include('<label for="attendees-sort"');
+    expect(template).to.include('id="attendees-sort"');
+    expect(template).to.include('name="sort"');
+    expect(template).to.include('hx-trigger="change"');
+    expect(template).to.include("sm:w-[36rem]");
+    expect(template).to.include("self-end sm:ms-auto");
+    expect(template).to.include("Attendee ↑");
+    expect(template).to.include("Attendee ↓");
+    expect(template).to.include("RSVP Date ↑");
+    expect(template).to.include("RSVP Date ↓");
+    expect(template).to.include('<option value="name-asc"');
+    expect(template).to.include('<option value="name-desc"');
+    expect(template).to.include('<option value="created-at-asc"');
+    expect(template).to.include('<option value="created-at-desc"');
+    expect(template).to.not.include("dashboard::table_sort_menu");
+    expect(template).to.not.include("dashboard::table_sort_option_button");
+    expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
     expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"');
@@ -195,8 +197,8 @@ describe("dashboard group attendees list template", () => {
     );
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
-    expect(template).to.include("flex items-center gap-2");
     expect(template).to.include('<span class="whitespace-nowrap">Attendee</span>');
+    expect(template).to.include('<span class="whitespace-nowrap">RSVP Date</span>');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
     );

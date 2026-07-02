@@ -21,32 +21,29 @@ describe("dashboard macros template", () => {
     expect(template).not.to.include("data-user-profile-username");
   });
 
-  it("uses paired chevrons for table sorting and a filled filter caret", async () => {
+  it("uses dropdown menus for table sorting and filtering", async () => {
     // Load the dashboard macros template before checking table control icons.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify sort state is carried by the paired chevrons, not a selected pill.
+    // Verify table sorting uses a dropdown menu with radio-style options.
     expect(template).to.include(
-      "macro table_sort_control(label, ascending_value, descending_value, is_ascending, is_descending, disabled = false)",
+      'macro table_sort_menu(id, current_label, extra_classes = "", dropdown_classes = "end-0")',
     );
-    expect(template).to.include("macro table_filter_option_button");
-    expect(template).to.include("is_clear_option = false");
-    expect(template).to.include("is_clear_option && clear_value.is_empty()");
-    expect(template).to.include("icon-caret-up");
-    expect(template).to.include("icon-caret-down");
-    expect(template).to.include("bg-stone-300");
     expect(template).to.include(
-      'class="inline-flex h-7 w-7 flex-col overflow-hidden rounded-md border border-stone-200 bg-white"',
+      "macro table_sort_option_button(label, value, is_active, disabled = false)",
     );
-    expect(template).to.include('class="h-px w-full bg-stone-200"');
-    expect(template).to.include("h-1/2 w-full");
+    expect(template).to.include('aria-label="Sort by {{ current_label }}"');
+    expect(template).to.include("{{ current_label }}");
+    expect(template).to.include("name=\"sort\"");
+    expect(template).to.include('value="{{ value }}"');
     expect(template).to.include("disabled:cursor-not-allowed disabled:opacity-50");
     expect(template).to.include('disabled aria-disabled="true"');
-    expect(template).to.include('aria-label="Sort {{ label }} ascending"');
-    expect(template).to.include('aria-label="Sort {{ label }} descending"');
     expect(template).to.include("aria-pressed=");
 
     // Verify table filters use the filled caret treatment.
+    expect(template).to.include("macro table_filter_option_button");
+    expect(template).to.include("is_clear_option = false");
+    expect(template).to.include("is_clear_option && clear_value.is_empty()");
     expect(template).to.include(
       'macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0")',
     );

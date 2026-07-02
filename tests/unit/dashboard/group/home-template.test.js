@@ -17,8 +17,7 @@ describe("dashboard group home template", () => {
 
     // Verify swapped dashboard content can fill the dashboard card.
     expect(template).to.include('id="dashboard-content"');
-    expect(template).to.include('class="flex min-h-full flex-col p-4 sm:p-6 lg:p-12"');
-    expect(template).to.include('style="min-height: calc(100dvh - 7.5rem)"');
+    expect(template).to.include('class="flex min-h-full min-h-[calc(100dvh-7.5rem)] flex-col p-4 sm:p-6 lg:p-12"');
   });
 
   it("loads the shared user profile modal wiring", async () => {

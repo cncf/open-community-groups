@@ -58,7 +58,7 @@ describe("dashboard group waitlist list template", () => {
     expect(template).not.to.include("{{ refresh_offset + loop.index }}");
   });
 
-  it("renders waitlist table sorting and title filter controls", async () => {
+  it("renders waitlist sort select and title filter controls", async () => {
     // Load the waitlist list template before checking table filter markup.
     const template = normalizeWhitespace(await loadTemplate());
 
@@ -66,22 +66,23 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.include('name="sort" value="{{ sort }}"');
     expect(template).to.include('name="title" value="{{ title }}"');
     expect(template).to.include('name="ts_query" value="{{ ts_query }}"');
-    expect(template).to.include(
-      'dashboard::table_sort_control(label = "Entry", ascending_value = "name-asc", descending_value = "name-desc"',
-    );
-    expect(template).to.include(
-      "is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc), disabled = waitlist.is_empty())",
-    );
-    expect(template).to.include(
-      "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc)",
-    );
-    expect(template).to.include(
-      'dashboard::table_sort_control(label = "Joined", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
-    );
-    expect(template).to.include(
-      "is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc), disabled = waitlist.is_empty())",
-    );
-    expect(template).to.include("flex items-center gap-2");
+    expect(template).to.include('<label for="waitlist-sort"');
+    expect(template).to.include('id="waitlist-sort"');
+    expect(template).to.include('name="sort"');
+    expect(template).to.include('hx-trigger="change"');
+    expect(template).to.include("sm:w-[36rem]");
+    expect(template).to.include("self-end sm:ms-auto");
+    expect(template).to.include("Entry ↑");
+    expect(template).to.include("Entry ↓");
+    expect(template).to.include("Joined ↑");
+    expect(template).to.include("Joined ↓");
+    expect(template).to.include('<option value="name-asc"');
+    expect(template).to.include('<option value="name-desc"');
+    expect(template).to.include('<option value="created-at-asc"');
+    expect(template).to.include('<option value="created-at-desc"');
+    expect(template).to.not.include("dashboard::table_sort_menu");
+    expect(template).to.not.include("dashboard::table_sort_option_button");
+    expect(template).to.not.include("dashboard::table_sort_control");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include(
       'class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"',
@@ -90,6 +91,8 @@ describe("dashboard group waitlist list template", () => {
       'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
     );
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
+    expect(template).to.include('<span class="whitespace-nowrap">Entry</span>');
+    expect(template).to.include('<span class="whitespace-nowrap">Joined</span>');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "waitlist-position-filter", label = "Position", is_active = title.is_some())',
     );

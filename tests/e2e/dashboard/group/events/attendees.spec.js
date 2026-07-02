@@ -514,10 +514,10 @@ test.describe("group dashboard attendees tab", () => {
         (response) =>
           response.request().method() === "GET" &&
           response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
-          response.url().includes("sort=name-asc") &&
+          response.url().includes("sort=name-desc") &&
           response.ok(),
       ),
-      attendeesContent.getByRole("button", { name: "Sort Attendee ascending" }).click(),
+      attendeesContent.getByLabel("Sort by").selectOption("name-desc"),
     ]);
 
     // Verify the sorted table keeps both seeded attendees visible.
@@ -859,10 +859,10 @@ test.describe("group dashboard attendees tab", () => {
           (response) =>
             response.request().method() === "GET" &&
             response.url().includes(`/dashboard/group/events/${eventId}/invitation-requests`) &&
-            response.url().includes("sort=name-asc") &&
+            response.url().includes("sort=name-desc") &&
             response.ok(),
         ),
-        requestsContent.getByRole("button", { name: "Sort Requester ascending" }).click(),
+        requestsContent.getByLabel("Sort by").selectOption("name-desc"),
       ]);
 
       // Verify the sorted request table keeps both pending requesters visible.
@@ -876,7 +876,7 @@ test.describe("group dashboard attendees tab", () => {
           (response) =>
             response.request().method() === "GET" &&
             response.url().includes(`/dashboard/group/events/${eventId}/invitation-requests`) &&
-            response.url().includes("sort=name-asc") &&
+            response.url().includes("sort=name-desc") &&
             response.url().includes("status=all") &&
             response.ok(),
         ),

@@ -255,7 +255,7 @@ test.describe("group dashboard waitlist tab", () => {
     ).toBeVisible();
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(2)).toHaveText(/[1-9]\d*/);
+    await expect(waitlistRow.locator("td").nth(2)).toHaveText("1");
     await expectUserProfileModalFromRow(
       organizerGroupPage,
       waitlistRow,
@@ -278,16 +278,29 @@ test.describe("group dashboard waitlist tab", () => {
     await searchInput.fill("Two");
 
     // Submit the matching search and wait for filtered results.
-    await searchForm.evaluate((form) => {
-      if (form instanceof HTMLFormElement) {
-        form.requestSubmit();
-      }
-    });
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
+            ) &&
+          response.url().includes("ts_query=Two") &&
+          response.ok(),
+      ),
+      searchForm.evaluate((form) => {
+        if (form instanceof HTMLFormElement) {
+          form.requestSubmit();
+        }
+      }),
+    ]);
 
     // Verify the matching result is shown with a queue position.
     await expect(waitlistRow).toBeVisible();
     await expect(waitlistRow).toContainText("e2e-member-2");
-    await expect(waitlistRow.locator("td").nth(2)).toHaveText(/[1-9]\d*/);
+    await expect(waitlistRow.locator("td").nth(2)).toHaveText("1");
     await expect(searchInput).toHaveValue("Two");
 
     // Enter a query expected to return no waitlist entries.
@@ -295,11 +308,24 @@ test.describe("group dashboard waitlist tab", () => {
     await searchInput.fill("zzzzzzzzzzzz");
 
     // Submit the empty-result search and wait for the empty state.
-    await searchForm.evaluate((form) => {
-      if (form instanceof HTMLFormElement) {
-        form.requestSubmit();
-      }
-    });
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
+            ) &&
+          response.url().includes("ts_query=zzzzzzzzzzzz") &&
+          response.ok(),
+      ),
+      searchForm.evaluate((form) => {
+        if (form instanceof HTMLFormElement) {
+          form.requestSubmit();
+        }
+      }),
+    ]);
 
     const noResultsMessage = waitlistContent
       .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
@@ -311,9 +337,22 @@ test.describe("group dashboard waitlist tab", () => {
     await expect(noResultsMessage.first()).toBeVisible();
 
     // Clear the waitlist search filter.
-    await waitlistContent
-      .getByRole("button", { name: "Clear waitlist search" })
-      .click();
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response
+            .url()
+            .includes(
+              `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
+            ) &&
+          !response.url().includes("ts_query") &&
+          response.ok(),
+      ),
+      waitlistContent
+        .getByRole("button", { name: "Clear waitlist search" })
+        .click(),
+    ]);
 
     // Verify clearing removes the empty state and restores the waitlist entry.
     await expect(noResultsMessage).toHaveCount(0);
@@ -331,12 +370,10 @@ test.describe("group dashboard waitlist tab", () => {
             .includes(
               `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
             ) &&
-          response.url().includes("sort=name-asc") &&
+          response.url().includes("sort=name-desc") &&
           response.ok(),
       ),
-      waitlistContent
-        .getByRole("button", { name: "Sort Entry ascending" })
-        .click(),
+      waitlistContent.getByLabel("Sort by").selectOption("name-desc"),
     ]);
 
     // Verify the sorted waitlist row remains visible.
@@ -353,7 +390,7 @@ test.describe("group dashboard waitlist tab", () => {
             .includes(
               `/dashboard/group/events/${TEST_EVENT_IDS.alpha.dashboardWaitlist}/waitlist`,
             ) &&
-          response.url().includes("sort=name-asc") &&
+          response.url().includes("sort=name-desc") &&
           response.url().includes("title=present") &&
           response.ok(),
       ),
