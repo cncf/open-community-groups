@@ -10,7 +10,7 @@
              id="ts_query"
              name="ts_query"
              value="{{ value_ }}"
-             class="peer w-[100%] rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-18"
+             class="peer w-[100%] rounded-md border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-primary-500 focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-18"
              placeholder="{{ placeholder }}"
              autocomplete="off" />
       <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
@@ -19,11 +19,10 @@
           <div class="svg-icon h-5 w-5 bg-stone-400 hover:bg-stone-700 transition-colors icon-close"></div>
         </button>
       </div>
-      <div class="absolute right-[6px] top-[5px]">
+      <div class="absolute inset-y-0 right-[6px] flex items-center">
         <button id="search-btn"
-                class="btn-secondary group p-1.5 h-[30px] w-[30px] mt-[3px] mr-[3px]">
-          <div class="svg-icon h-4 w-4 mx-auto bg-primary-500 group-hover:bg-white transition-colors icon-magnifying-glass">
-          </div>
+                class="btn-tertiary group inline-flex h-[30px] w-[30px] items-center justify-center p-2">
+          <div class="svg-icon h-4 w-4 mx-auto icon-magnifying-glass"></div>
         </button>
       </div>
 

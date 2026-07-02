@@ -16,7 +16,7 @@
   {% let current_sort_by = filters.sort_by.clone().unwrap_or("name".to_string()) -%}
   <select id="sort_selector"
           name="sort_by"
-          class="block w-24 py-1 px-3 text-[0.775rem] leading-none h-[30px] text-stone-900 bg-white border border-stone-200 rounded-full focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
+          class="block w-24 py-1 px-3 text-[0.775rem] leading-none h-[30px] text-stone-900 bg-white border border-stone-200 rounded-md focus:outline-none focus:ring-0 focus:border-stone-200 hover:border-primary-500 focus:hover:border-primary-500 transition-colors">
     <option value="date" {% if current_sort_by == "date" %}selected{% endif %}>Date</option>
     {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
       <option value="distance"

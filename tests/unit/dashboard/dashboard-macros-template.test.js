@@ -43,6 +43,10 @@ describe("dashboard macros template", () => {
     expect(template).to.include("aria-pressed=");
 
     // Verify table filters use the filled caret treatment.
+    expect(template).to.include(
+      'macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0")',
+    );
+    expect(template).to.include("{{ dropdown_classes }} top-full");
     expect(template).to.include("icon-caret-down-filled");
     expect(template).to.include("icon-caret-down-filled bg-current");
     expect(template).not.to.include("bg-primary-500 {% else -%} bg-current");

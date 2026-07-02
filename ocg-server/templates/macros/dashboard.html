@@ -96,7 +96,7 @@
 {# End form title #}
 
 {# Table filter menu #}
-{% macro table_filter_menu(id, label, is_active, extra_classes = "") -%}
+{% macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0") -%}
   <details class="group relative inline-block text-left {{ extra_classes }}"
            data-table-filter-menu>
     <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
@@ -107,7 +107,7 @@
       </div>
     </summary>
     <div id="{{ id }}"
-         class="dropdown absolute start-0 top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-white text-left text-sm font-normal normal-case text-stone-700 shadow">
+         class="dropdown absolute {{ dropdown_classes }} top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-white text-left text-sm font-normal normal-case text-stone-700 shadow">
       {{ caller() }}
     </div>
   </details>

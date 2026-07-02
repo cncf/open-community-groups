@@ -272,7 +272,7 @@ export class CollapsibleFilter extends LitWrapper {
             type="button"
             @click=${this._onSelectAny}
             aria-label=${`Any ${this.title}`}
-            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${
+            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none ${
               this.selected.length === 0
                 ? "border-primary-500 text-primary-500"
                 : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
@@ -287,7 +287,7 @@ export class CollapsibleFilter extends LitWrapper {
           (opt) =>
             html`<li>
               <label
-                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${
+                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-md cursor-pointer select-none ${
                   this.selected.includes(opt.value)
                     ? "border-primary-500 text-primary-500"
                     : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
