@@ -20,9 +20,12 @@ describe("dashboard group event update template", () => {
     // Assert the update event page can fill the group dashboard content area.
     expect(template).to.include('id="event-update-page"');
     expect(template).to.include(
-      'class="grid h-full min-h-full min-w-0 grow grid-rows-[auto_auto_minmax(0,1fr)] gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
+      'class="group/event-page grid h-full min-h-full min-w-0 grow grid-rows-[auto_minmax(0,1fr)] gap-y-8 has-[#pending-changes-alert:not(.hidden)]:grid-rows-[auto_auto_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
     );
     expect(template).to.include('data-event-page="update"');
+    expect(template).to.include(
+      '<div id="event-preview-modal-root" class="contents"></div>',
+    );
   });
 
   it("keeps the existing read-only copy when registration answers lock question editing", async () => {

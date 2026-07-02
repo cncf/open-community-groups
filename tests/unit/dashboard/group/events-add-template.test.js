@@ -19,9 +19,12 @@ describe("dashboard group event add template", () => {
 
     // Assert the add event page can fill the group dashboard content area.
     expect(template).to.include(
-      'class="grid h-full min-h-full min-w-0 grow grid-rows-[auto_auto_minmax(0,1fr)] gap-y-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
+      'class="group/event-page grid h-full min-h-full min-w-0 grow grid-rows-[auto_minmax(0,1fr)] gap-y-8 has-[#pending-changes-alert:not(.hidden)]:grid-rows-[auto_auto_minmax(0,1fr)] lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-x-8"',
     );
     expect(template).to.include('data-event-page="add"');
+    expect(template).to.include(
+      '<div id="event-preview-modal-root" class="contents"></div>',
+    );
     expect(template).to.include('class="col-span-full min-w-0 space-y-3"');
     expect(template).to.include('class="block min-w-0 max-w-full"');
     expect(template).to.include('class="form-legend mt-3 break-words"');
