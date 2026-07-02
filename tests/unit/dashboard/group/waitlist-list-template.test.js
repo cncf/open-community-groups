@@ -70,15 +70,21 @@ describe("dashboard group waitlist list template", () => {
       'dashboard::table_sort_control(label = "Entry", ascending_value = "name-asc", descending_value = "name-desc"',
     );
     expect(template).to.include(
+      "is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc), disabled = waitlist.is_empty())",
+    );
+    expect(template).to.include(
       "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc)",
     );
     expect(template).to.include(
       'dashboard::table_sort_control(label = "Joined", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
     );
+    expect(template).to.include(
+      "is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc), disabled = waitlist.is_empty())",
+    );
     expect(template).to.include("flex items-center gap-2");
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-1.5"',
+      'class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5"',
     );
     expect(template).to.include(
       'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
@@ -101,6 +107,25 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.not.include("Title missing");
     expect(template).to.not.include("waitlist-entry-filter");
     expect(template).to.not.include('dashboard::active_table_filter_badge("Sort:');
+  });
+
+  it("keeps waitlist responsive columns aligned with empty placeholders", async () => {
+    // Load the waitlist list template before checking responsive table markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the Position column hides until the widest table breakpoint.
+    expect(template).to.include(
+      'class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0"',
+    );
+    expect(template).to.include(
+      '<td class="xl:hidden px-8 py-12 text-center" colspan="3">',
+    );
+    expect(template).to.include(
+      '<td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4">',
+    );
+    expect(template).to.include(
+      '<td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">',
+    );
   });
 
   it("preserves current filters for waitlist refreshes", async () => {

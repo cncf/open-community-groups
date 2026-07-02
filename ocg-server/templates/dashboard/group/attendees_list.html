@@ -300,9 +300,9 @@
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
               {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_sort = false) -}}
-              {{ dashboard::table_sort_control(label = "Attendee", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc)) -}}
+              {{ dashboard::table_sort_control(label = "Attendee", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc), disabled = attendees.is_empty()) -}}
             </form>
-            <span class="hidden 2xl:inline whitespace-nowrap">Attendee</span>
+            <span class="whitespace-nowrap">Attendee</span>
           </div>
         </th>
         <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
@@ -328,7 +328,7 @@
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
               {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_sort = false) -}}
-              {{ dashboard::table_sort_control(label = "RSVP Date", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc)) -}}
+              {{ dashboard::table_sort_control(label = "RSVP Date", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc), disabled = attendees.is_empty()) -}}
             </form>
             <span class="whitespace-nowrap">RSVP Date</span>
           </div>
@@ -367,7 +367,7 @@
           {% endif -%}
         </th>
         <th scope="col" class="px-3 xl:px-5 py-1.5 w-30">
-          {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right") -%}
+          {% call dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right", dropdown_classes = "end-0") -%}
           <div class="py-2">
             <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
                   hx-target="#attendees-content"

@@ -173,10 +173,16 @@ describe("dashboard group attendees list template", () => {
       'dashboard::table_sort_control(label = "Attendee", ascending_value = "name-asc", descending_value = "name-desc"',
     );
     expect(template).to.include(
+      "is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc), disabled = attendees.is_empty())",
+    );
+    expect(template).to.include(
       "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc)",
     );
     expect(template).to.include(
       'dashboard::table_sort_control(label = "RSVP Date", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
+    );
+    expect(template).to.include(
+      "is_descending = sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc), disabled = attendees.is_empty())",
     );
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
     expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5 w-12"');
@@ -190,6 +196,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-30"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-[72px]"');
     expect(template).to.include("flex items-center gap-2");
+    expect(template).to.include('<span class="whitespace-nowrap">Attendee</span>');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "attendees-position-filter", label = "Position"',
     );
@@ -197,7 +204,7 @@ describe("dashboard group attendees list template", () => {
       'dashboard::table_filter_menu(id = "attendees-ticket-filter", label = "Ticket type"',
     );
     expect(template).to.include(
-      'dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In"',
+      'dashboard::table_filter_menu(id = "attendees-check-in-filter", label = "Checked In", is_active = checked_in.is_some(), extra_classes = "float-right", dropdown_classes = "end-0")',
     );
     expect(template).to.include(
       'dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true)',

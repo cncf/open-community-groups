@@ -62,20 +62,35 @@ describe("dashboard group invitation requests list template", () => {
       'dashboard::table_sort_control(label = "Requester", ascending_value = "name-asc", descending_value = "name-desc"',
     );
     expect(template).to.include(
+      "is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc), disabled = invitation_requests.is_empty())",
+    );
+    expect(template).to.include(
       "is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc)",
     );
     expect(template).to.include(
       'dashboard::table_sort_control(label = "Requested", ascending_value = "created-at-asc", descending_value = "created-at-desc"',
     );
+    expect(template).to.include(
+      "is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc), disabled = invitation_requests.is_empty())",
+    );
     expect(template).to.include("flex items-center gap-2");
+    expect(template).to.include('<span class="whitespace-nowrap">Requester</span>');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5"');
-    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-1.5"');
+    expect(template).to.include('class="hidden px-3 xl:px-5 py-1.5"');
     expect(template).to.include(
       'class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40"',
     );
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-48"');
-    expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-40"');
+    expect(template).to.include('class="hidden px-3 xl:px-5 py-4 max-w-0"');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40"');
     expect(template).to.include('class="px-3 xl:px-5 py-1.5 w-24 text-right"');
+    expect(template).to.include('<span class="sr-only">Actions</span>');
+    expect(template).to.include('class="xl:hidden px-8 py-12 text-center" colspan="3"');
+    expect(template).to.include(
+      'class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center" colspan="4"',
+    );
+    expect(template).to.include('class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5"');
     expect(template).to.include(
       'dashboard::table_filter_menu(id = "invitation-requests-position-filter"',
     );

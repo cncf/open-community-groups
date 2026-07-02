@@ -113,12 +113,12 @@
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
               {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
-              {{ dashboard::table_sort_control(label = "Entry", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc)) -}}
+              {{ dashboard::table_sort_control(label = "Entry", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc), disabled = waitlist.is_empty()) -}}
             </form>
             <span class="whitespace-nowrap">Entry</span>
           </div>
         </th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5">
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
           {% call dashboard::table_filter_menu(id = "waitlist-position-filter", label = "Position", is_active = title.is_some()) -%}
           <div class="py-2">
             <form hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
@@ -142,7 +142,7 @@
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner">
               {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
-              {{ dashboard::table_sort_control(label = "Joined", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc)) -}}
+              {{ dashboard::table_sort_control(label = "Joined", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc), disabled = waitlist.is_empty()) -}}
             </form>
             <span class="whitespace-nowrap">Joined</span>
           </div>
@@ -166,7 +166,17 @@
               {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="5">
+          <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
+              colspan="4">
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
+            {% else if event.waitlist_enabled -%}
+              {% include "dashboard/placeholders/group_waitlist_table.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
+            {% endif -%}
+          </td>
+          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
             {% else if event.waitlist_enabled -%}
@@ -189,7 +199,7 @@
             </td>
             {# End entry -#}
             {# Position -#}
-            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0">
               <div class="flex flex-col space-y-1">
                 <div class="font-medium text-stone-900 truncate">{{ entry.user.company.as_deref() |assigned_or("-") }}</div>
                 {% if let Some(title) = &entry.user.title -%}

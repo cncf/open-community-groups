@@ -137,11 +137,12 @@
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
                 {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
-                {{ dashboard::table_sort_control(label = "Requester", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc)) -}}
+                {{ dashboard::table_sort_control(label = "Requester", ascending_value = "name-asc", descending_value = "name-desc", is_ascending = sort.is_none() || sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc), is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc), disabled = invitation_requests.is_empty()) -}}
               </form>
+              <span class="whitespace-nowrap">Requester</span>
             </div>
           </th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5">
+          <th scope="col" class="hidden px-3 xl:px-5 py-1.5">
             {% call dashboard::table_filter_menu(id = "invitation-requests-position-filter", label = "Position", is_active = title.is_some()) -%}
             <div class="py-2">
               <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
@@ -164,7 +165,7 @@
                     hx-swap="innerHTML"
                     hx-indicator="#dashboard-spinner">
                 {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
-                {{ dashboard::table_sort_control(label = "Requested", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc)) -}}
+                {{ dashboard::table_sort_control(label = "Requested", ascending_value = "created-at-asc", descending_value = "created-at-desc", is_ascending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc) , is_descending = sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc), disabled = invitation_requests.is_empty()) -}}
               </form>
               <span class="whitespace-nowrap">Requested</span>
             </div>
@@ -185,8 +186,10 @@
             </div>
             {% endcall -%}
           </th>
-          <th scope="col" class="px-3 xl:px-5 py-1.5 w-40">Reviewed</th>
-          <th scope="col" class="px-3 xl:px-5 py-1.5 w-24 text-right">Actions</th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">Reviewed</th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5 w-24 text-right">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       {# End table header -#}
@@ -194,14 +197,22 @@
         {% if invitation_requests.is_empty() -%}
           {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
-            <td class="xl:hidden px-8 py-12 text-center" colspan="4">
+            <td class="xl:hidden px-8 py-12 text-center" colspan="3">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
                 <span class="text-stone-500">No invitation requests found.</span>
               {% endif -%}
             </td>
-            <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="6">
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
+                colspan="4">
+              {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+                {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
+              {% else -%}
+                <span class="text-stone-500">No invitation requests found.</span>
+              {% endif -%}
+            </td>
+            <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
@@ -223,7 +234,7 @@
               {# End requester -#}
 
               {# Position -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0">
+              <td class="hidden px-3 xl:px-5 py-4 max-w-0">
                 <div class="flex flex-col space-y-1">
                   <div class="font-medium text-stone-900 truncate">{{ request.user.company.as_deref() |assigned_or("-") }}</div>
                   {% if let Some(title) = &request.user.title -%}
@@ -258,7 +269,7 @@
               {# End status -#}
 
               {# Reviewed -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
                 {% if let Some(reviewed_at) = &request.reviewed_at -%}
                   {{ reviewed_at.format("%b %d, %Y") }}
                 {% else -%}

@@ -147,19 +147,22 @@
 {# End table filter option button #}
 
 {# Table sort control #}
-{% macro table_sort_control(label, ascending_value, descending_value, is_ascending, is_descending) -%}
+{% macro table_sort_control(label, ascending_value, descending_value, is_ascending, is_descending, disabled = false) -%}
   <div class="inline-flex h-7 w-7 flex-col overflow-hidden rounded-md border border-stone-200 bg-white">
     <button type="submit"
             name="sort"
             value="{{ ascending_value }}"
-            class="inline-flex h-1/2 w-full items-center justify-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
+            class="inline-flex h-1/2 w-full items-center justify-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:opacity-50
                    {% if is_ascending -%}
                      bg-primary-50 text-primary-700
                    {% endif -%}"
             aria-label="Sort {{ label }} ascending"
             aria-pressed="{% if is_ascending -%}
                             true{%- else -%}false{%- endif -%}"
-            title="Sort {{ label }} ascending">
+            title="Sort {{ label }} ascending"
+            {% if disabled -%}
+              disabled aria-disabled="true"
+            {% endif -%}>
       <span class="sr-only">Sort {{ label }} ascending</span>
       <span class="svg-icon h-1.5 w-2.5 icon-caret-up
                    {% if is_ascending -%}
@@ -172,14 +175,17 @@
     <button type="submit"
             name="sort"
             value="{{ descending_value }}"
-            class="inline-flex h-1/2 w-full items-center justify-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500
+            class="inline-flex h-1/2 w-full items-center justify-center transition-colors hover:bg-stone-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:opacity-50
                    {% if is_descending -%}
                      bg-primary-50 text-primary-700
                    {% endif -%}"
             aria-label="Sort {{ label }} descending"
             aria-pressed="{% if is_descending -%}
                             true{%- else -%}false{%- endif -%}"
-            title="Sort {{ label }} descending">
+            title="Sort {{ label }} descending"
+            {% if disabled -%}
+              disabled aria-disabled="true"
+            {% endif -%}>
       <span class="sr-only">Sort {{ label }} descending</span>
       <span class="svg-icon h-1.5 w-2.5 icon-caret-down
                    {% if is_descending -%}
