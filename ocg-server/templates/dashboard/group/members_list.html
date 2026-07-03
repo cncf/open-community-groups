@@ -187,6 +187,15 @@
                      href="mailto:{{ member.email }}">{{ member.email }}</a>
                 </dd>
               </div>
+              {% if member.phone_visible() -%}
+                <div class="min-w-0">
+                  <dt class="text-[0.68rem] font-semibold uppercase tracking-wide text-stone-400">Phone</dt>
+                  <dd class="mt-1 truncate">
+                    <a class="font-medium text-primary-700 hover:text-primary-900"
+                       href="tel:{{ member.phone_country_code.as_deref().unwrap_or("") }}{{ member.phone_number.as_deref().unwrap_or("") }}">{{ member.phone_country_code.as_deref().unwrap_or("") }} {{ member.phone_number.as_deref().unwrap_or("") }}</a>
+                  </dd>
+                </div>
+              {% endif -%}
               {% if member.city.is_some() || member.country.is_some() -%}
                 <div class="min-w-0">
                   <dt class="text-[0.68rem] font-semibold uppercase tracking-wide text-stone-400">Location</dt>
@@ -286,6 +295,28 @@
                 <div class="svg-icon size-3.5 icon-linkedin bg-primary-600"></div>
                 LinkedIn connected
               </span>
+            {% endif -%}
+            {% if member.has_phone_number && !member.phone_visible() -%}
+              {% if member.phone_request_pending() -%}
+                <span class="inline-flex items-center rounded-full bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600 ring-1 ring-inset ring-stone-200">Phone requested</span>
+              {% else -%}
+                <button type="button"
+                        class="btn-tertiary px-3 py-1.5 text-xs"
+                        hx-post="/dashboard/group/members/{{ member.user_id }}/phone-requests"
+                        hx-target="#dashboard-content"
+                        hx-indicator="#dashboard-spinner">Request phone</button>
+              {% endif -%}
+            {% endif -%}
+            {% if !member.phone_requesters.is_empty() -%}
+              {% for requester in member.phone_requesters -%}
+                <button type="button"
+                        class="btn-tertiary px-3 py-1.5 text-xs"
+                        hx-post="/dashboard/group/members/phone-requests/{{ requester.user_id }}/approve"
+                        hx-target="#dashboard-content"
+                        hx-indicator="#dashboard-spinner">
+                  Share phone with {{ requester.name.as_deref().unwrap_or(requester.username.as_str()) }}
+                </button>
+              {% endfor -%}
             {% endif -%}
             {% if can_manage_members -%}
               {% if member.linkedin_connected -%}

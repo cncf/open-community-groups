@@ -223,6 +223,14 @@ pub(crate) async fn setup(
             "/{alliance}/group/{group_slug}/members",
             get(group::members_page),
         )
+        .route(
+            "/{alliance}/group/{group_slug}/members/{user_id}/phone-requests",
+            post(group::request_member_phone),
+        )
+        .route(
+            "/{alliance}/group/{group_slug}/members/phone-requests/{user_id}/approve",
+            post(group::approve_member_phone_request),
+        )
         .route("/jobs/{job_id}/apply", post(site::jobs::apply))
         .route(
             "/profiles/{username}/mentorship-requests",

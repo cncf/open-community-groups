@@ -129,6 +129,7 @@
 {{ template "dashboard-group/sync_event_hosts_speakers_sponsors.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/sync_event_sessions.sql" }} -- Dependency for add/update_event
 {{ template "dashboard-group/accept_event_invitation_request.sql" }}
+{{ template "dashboard-group/approve_group_member_phone_request.sql" }}
 {{ template "dashboard-group/add_event.sql" }}
 {{ template "dashboard-group/add_event_series.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
@@ -175,6 +176,7 @@
 {{ template "dashboard-group/publish_event_series_events.sql" }}
 {{ template "dashboard-group/reject_event_invitation_request.sql" }}
 {{ template "dashboard-group/resolve_event_custom_notification_recipient_ids.sql" }}
+{{ template "dashboard-group/request_group_member_phone.sql" }}
 {{ template "dashboard-group/search_event_attendees.sql" }}
 {{ template "dashboard-group/search_event_invitation_requests.sql" }}
 {{ template "dashboard-group/search_event_waitlist.sql" }}

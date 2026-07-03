@@ -27,6 +27,8 @@ begin
             optional_notifications_enabled
         ),
         photo_url = nullif(p_user->>'photo_url', ''),
+        phone_country_code = nullif(p_user->>'phone_country_code', ''),
+        phone_number = nullif(p_user->>'phone_number', ''),
         substack_url = nullif(p_user->>'substack_url', ''),
         timezone = nullif(p_user->>'timezone', ''),
         title = nullif(p_user->>'title', ''),

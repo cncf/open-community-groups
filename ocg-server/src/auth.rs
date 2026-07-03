@@ -621,6 +621,10 @@ pub(crate) struct User {
     pub password: Option<String>,
     /// User's photo URL.
     pub photo_url: Option<String>,
+    /// International calling code for the user's phone number.
+    pub phone_country_code: Option<String>,
+    /// User's phone number.
+    pub phone_number: Option<String>,
     /// External provider metadata.
     pub provider: Option<UserProvider>,
     /// User's `Substack` URL.

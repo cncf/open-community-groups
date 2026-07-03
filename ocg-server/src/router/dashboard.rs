@@ -397,8 +397,16 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             post(dashboard::group::members::reject_join_request),
         )
         .route(
+            "/members/phone-requests/{user_id}/approve",
+            post(dashboard::group::members::approve_phone_request),
+        )
+        .route(
             "/members/{user_id}/delete",
             delete(dashboard::group::members::delete),
+        )
+        .route(
+            "/members/{user_id}/phone-requests",
+            post(dashboard::group::members::request_phone),
         )
         .route(
             "/members/{user_id}/linkedin-blocklist",

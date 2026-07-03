@@ -35,6 +35,8 @@ returns json as $$
         'mentorship_price', mentorship_price,
         'password', case when p_include_password then password else null end,
         'photo_url', photo_url,
+        'phone_country_code', phone_country_code,
+        'phone_number', phone_number,
         'provider', provider,
         'substack_url', substack_url,
         'timezone', timezone,

@@ -92,6 +92,46 @@
         </div>
         {# End title -#}
 
+        {# Phone country code -#}
+        <div class="col-span-full lg:col-span-2">
+          <label for="phone_country_code" class="form-label">Phone country code</label>
+          <div class="mt-2">
+            <input type="text"
+                   name="phone_country_code"
+                   id="phone_country_code"
+                   maxlength="{{ crate::validation::MAX_LEN_PHONE_COUNTRY_CODE }}"
+                   value="{%- if let Some(phone_country_code) = &user.phone_country_code -%}{{ phone_country_code }}{%- endif -%}"
+                   class="input-primary"
+                   placeholder="+1"
+                   autocomplete="tel-country-code"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+        </div>
+        {# End phone country code -#}
+
+        {# Phone number -#}
+        <div class="col-span-full lg:col-span-4">
+          <label for="phone_number" class="form-label">Phone number</label>
+          <div class="mt-2">
+            <input type="tel"
+                   name="phone_number"
+                   id="phone_number"
+                   maxlength="{{ crate::validation::MAX_LEN_PHONE_NUMBER }}"
+                   value="{%- if let Some(phone_number) = &user.phone_number -%}{{ phone_number }}{%- endif -%}"
+                   class="input-primary"
+                   autocomplete="tel-national"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false">
+          </div>
+          <p class="form-legend">
+            Optional. Group admins can see this number. Other group members can request access, and you approve each request.
+          </p>
+        </div>
+        {# End phone number -#}
+
         {# Photo URL -#}
         <div class="col-span-full">
           <image-field label="Photo" name="photo_url" value="{%- if let Some(photo_url) = &user.photo_url -%}{{ photo_url }}{%- endif -%}" image-kind="logo" target="logo">

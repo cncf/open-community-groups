@@ -167,6 +167,39 @@ pub(crate) async fn approve_join_request(
     ))
 }
 
+/// Requests access to another group member's phone number.
+#[instrument(skip_all, err)]
+pub(crate) async fn request_phone(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.request_group_member_phone(user.user_id, group_id, user_id).await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
+}
+
+/// Approves a pending phone visibility request for the current member.
+#[instrument(skip_all, err)]
+pub(crate) async fn approve_phone_request(
+    CurrentUser(user): CurrentUser,
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(user_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.approve_group_member_phone_request(user.user_id, group_id, user_id)
+        .await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [("HX-Trigger", "refresh-group-dashboard-table")],
+    ))
+}
+
 /// Rejects a pending group join request.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_join_request(
@@ -226,16 +259,18 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(GroupMembersFilters, members::ListPage), HandlerError> {
     // Fetch group members
     let filters: GroupMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
-    let (can_manage_members, group, results) = tokio::try_join!(
+    let (can_manage_members, group) = tokio::try_join!(
         db.user_has_group_permission(
             &alliance_id,
             &group_id,
             &user_id,
             GroupPermission::MembersWrite
         ),
-        db.get_group_summary(alliance_id, group_id),
-        db.list_group_members(group_id, &filters)
+        db.get_group_summary(alliance_id, group_id)
     )?;
+    let results = db
+        .list_group_members(group_id, user_id, can_manage_members, &filters)
+        .await?;
     let join_requests = if can_manage_members {
         db.list_group_join_requests(group_id).await?
     } else {

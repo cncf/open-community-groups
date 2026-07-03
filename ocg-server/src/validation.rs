@@ -45,6 +45,12 @@ pub const MAX_LEN_BIO: usize = 1000;
 /// Maximum length for country codes.
 pub const MAX_LEN_COUNTRY_CODE: usize = 3;
 
+/// Maximum length for international phone calling codes.
+pub const MAX_LEN_PHONE_COUNTRY_CODE: usize = 8;
+
+/// Maximum length for phone numbers.
+pub const MAX_LEN_PHONE_NUMBER: usize = 32;
+
 /// Maximum length for date strings (YYYY-MM-DD).
 pub const MAX_LEN_DATE: usize = 10;
 

@@ -125,6 +125,14 @@
                   </div>
                 {% endif -%}
 
+                {% if member.phone_visible() -%}
+                  <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3 text-sm">
+                    <div class="text-[0.68rem] font-semibold uppercase tracking-wide text-stone-400">Phone</div>
+                    <a class="mt-1 inline-block font-medium text-primary-700 hover:text-primary-900"
+                       href="tel:{{ member.phone_country_code.as_deref().unwrap_or("") }}{{ member.phone_number.as_deref().unwrap_or("") }}">{{ member.phone_country_code.as_deref().unwrap_or("") }} {{ member.phone_number.as_deref().unwrap_or("") }}</a>
+                  </div>
+                {% endif -%}
+
                 <div class="mt-auto flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4">
                   <a class="btn-secondary-anchor btn-mini"
                      href="/profiles/{{ member.username }}"
@@ -141,6 +149,26 @@
                        href="/profiles/{{ member.username }}#mentorship"
                        hx-boost="true"
                        hx-target="body">Request mentorship</a>
+                  {% endif -%}
+                  {% if member.has_phone_number && !member.phone_visible() -%}
+                    {% if member.phone_request_pending() -%}
+                      <span class="inline-flex items-center rounded-full bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600 ring-1 ring-inset ring-stone-200">Phone requested</span>
+                    {% else -%}
+                      <button type="button"
+                              class="btn-secondary btn-mini"
+                              hx-post="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/members/{{ member.user_id }}/phone-requests"
+                              hx-target="body">Request phone</button>
+                    {% endif -%}
+                  {% endif -%}
+                  {% if !member.phone_requesters.is_empty() -%}
+                    {% for requester in member.phone_requesters -%}
+                      <button type="button"
+                              class="btn-secondary btn-mini"
+                              hx-post="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/members/phone-requests/{{ requester.user_id }}/approve"
+                              hx-target="body">
+                        Share phone with {{ requester.name.as_deref().unwrap_or(requester.username.as_str()) }}
+                      </button>
+                    {% endfor -%}
                   {% endif -%}
                   {% if let Some(linkedin_url) = &member.linkedin_url -%}
                     <a class="inline-flex size-9 items-center justify-center rounded-full bg-stone-50 ring-1 ring-inset ring-stone-200 transition hover:bg-primary-50 hover:ring-primary-200"

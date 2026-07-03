@@ -1,5 +1,10 @@
--- Returns paginated group members with join date and basic profile info.
-create or replace function list_group_members(p_group_id uuid, p_filters jsonb)
+-- Returns paginated group members with join date and profile/contact info visible to the viewer.
+create or replace function list_group_members(
+    p_group_id uuid,
+    p_viewer_user_id uuid,
+    p_can_manage_members boolean,
+    p_filters jsonb
+)
 returns json as $$
     with
         -- Parse pagination filters
@@ -32,15 +37,36 @@ returns json as $$
                 u.mentorship_price,
                 u.name,
                 u.photo_url,
+                u.phone_country_code,
+                u.phone_number,
                 u.substack_url,
                 u.title,
                 u.twitter_url,
                 u.website_url,
                 u.youtube_url,
-                coalesce(u.provider ? 'linkedin', false) as linkedin_connected
+                coalesce(u.provider ? 'linkedin', false) as linkedin_connected,
+                phone_request.status as phone_request_status,
+                coalesce(phone_requesters.requesters, '[]'::json) as phone_requesters
             from group_member gm
             join "user" u using (user_id)
             cross join filters f
+            left join group_member_phone_request phone_request
+                on phone_request.group_id = gm.group_id
+                and phone_request.requester_user_id = p_viewer_user_id
+                and phone_request.recipient_user_id = u.user_id
+            left join lateral (
+                select json_agg(json_build_object(
+                    'user_id', requester.user_id,
+                    'username', requester.username,
+                    'name', requester.name
+                ) order by request.created_at asc) as requesters
+                from group_member_phone_request request
+                join "user" requester on requester.user_id = request.requester_user_id
+                where request.group_id = gm.group_id
+                  and request.recipient_user_id = u.user_id
+                  and request.status = 'pending'
+                  and u.user_id = p_viewer_user_id
+            ) phone_requesters on true
             where gm.group_id = p_group_id
             and (
                 f.query is null
@@ -93,6 +119,26 @@ returns json as $$
                 fm.mentorship_price,
                 fm.name,
                 fm.photo_url,
+                case
+                    when fm.phone_number is not null and fm.phone_country_code is not null then true
+                    else false
+                end as has_phone_number,
+                case
+                    when p_can_manage_members
+                         or fm.user_id = p_viewer_user_id
+                         or fm.phone_request_status = 'approved'
+                    then fm.phone_country_code
+                    else null
+                end as phone_country_code,
+                case
+                    when p_can_manage_members
+                         or fm.user_id = p_viewer_user_id
+                         or fm.phone_request_status = 'approved'
+                    then fm.phone_number
+                    else null
+                end as phone_number,
+                fm.phone_request_status,
+                fm.phone_requesters,
                 fm.substack_url,
                 fm.title,
                 fm.twitter_url,

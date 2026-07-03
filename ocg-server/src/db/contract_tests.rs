@@ -966,7 +966,9 @@ async fn db_contracts_list_group_members_deserializes() -> Result<()> {
         offset: Some(0),
         query: None,
     };
-    let output = db.list_group_members(group_id(), &filters).await?;
+    let output = db
+        .list_group_members(group_id(), attendee_id(), false, &filters)
+        .await?;
 
     assert_eq!(output.total, 1);
     assert_eq!(output.members.len(), 1);

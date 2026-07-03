@@ -117,6 +117,14 @@ pub(crate) trait DBDashboardGroup {
         user_id: Uuid,
     ) -> Result<()>;
 
+    /// Approves a pending phone visibility request for the current member.
+    async fn approve_group_member_phone_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        requester_user_id: Uuid,
+    ) -> Result<()>;
+
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
     -> Result<()>;
@@ -312,6 +320,8 @@ pub(crate) trait DBDashboardGroup {
     async fn list_group_members(
         &self,
         group_id: Uuid,
+        viewer_user_id: Uuid,
+        can_manage_members: bool,
         filters: &GroupMembersFilters,
     ) -> Result<GroupMembersOutput>;
 
@@ -414,6 +424,14 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+    ) -> Result<()>;
+
+    /// Requests access to another group member's phone number.
+    async fn request_group_member_phone(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        recipient_user_id: Uuid,
     ) -> Result<()>;
 
     /// Resolves custom email recipient user ids for an event and recipient scope.
@@ -753,6 +771,21 @@ where
         self.execute(
             "select approve_group_join_request($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &group_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::approve_group_member_phone_request`]
+    #[instrument(skip(self), err)]
+    async fn approve_group_member_phone_request(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        requester_user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select approve_group_member_phone_request($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &requester_user_id],
         )
         .await
     }
@@ -1209,11 +1242,18 @@ where
     async fn list_group_members(
         &self,
         group_id: Uuid,
+        viewer_user_id: Uuid,
+        can_manage_members: bool,
         filters: &GroupMembersFilters,
     ) -> Result<GroupMembersOutput> {
         self.fetch_json_one(
-            "select list_group_members($1::uuid, $2::jsonb)",
-            &[&group_id, &Json(filters)],
+            "select list_group_members($1::uuid, $2::uuid, $3::boolean, $4::jsonb)",
+            &[
+                &group_id,
+                &viewer_user_id,
+                &can_manage_members,
+                &Json(filters),
+            ],
         )
         .await
     }
@@ -1522,6 +1562,21 @@ where
         self.fetch_scalar_one(
             "select resolve_event_custom_notification_recipient_ids($1::uuid, $2::uuid, $3::text, $4::uuid[])",
             &[&group_id, &event_id, &recipient_scope, &requested_user_ids],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::request_group_member_phone`]
+    #[instrument(skip(self), err)]
+    async fn request_group_member_phone(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        recipient_user_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select request_group_member_phone($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &group_id, &recipient_user_id],
         )
         .await
     }

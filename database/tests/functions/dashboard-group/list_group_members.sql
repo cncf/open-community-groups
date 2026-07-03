@@ -118,6 +118,8 @@ values
 select is(
     list_group_members(
         :'groupID'::uuid,
+        :'user1ID'::uuid,
+        false,
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(
@@ -129,7 +131,8 @@ select is(
                 "website_url": null, "facebook_url": null, "linkedin_url": null, "substack_url": null,
                 "youtube_url": null, "linkedin_connected": false, "coffee_meet_enabled": true,
                 "mentorship_businesses": false, "mentorship_individuals": false, "mentorship_note": null,
-                "mentorship_price": null},
+                "mentorship_price": null, "has_phone_number": false, "phone_country_code": null,
+                "phone_number": null, "phone_request_status": null, "phone_requesters": []},
             {"bio": null, "city": null, "name": "Alice", "email": "alice2@example.com", "title": null,
                 "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000008",
                 "username": "alice2", "interests": null, "photo_url": "https://example.com/u4.png",
@@ -137,7 +140,8 @@ select is(
                 "website_url": null, "facebook_url": null, "linkedin_url": null, "substack_url": null,
                 "youtube_url": null, "linkedin_connected": false, "coffee_meet_enabled": true,
                 "mentorship_businesses": false, "mentorship_individuals": false, "mentorship_note": null,
-                "mentorship_price": null},
+                "mentorship_price": null, "has_phone_number": false, "phone_country_code": null,
+                "phone_number": null, "phone_request_status": null, "phone_requesters": []},
             {"bio": null, "city": null, "name": "Bob", "email": "bobby@example.com", "title": null,
                 "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000009",
                 "username": "bobby", "interests": null, "photo_url": "https://example.com/u5.png",
@@ -145,7 +149,8 @@ select is(
                 "website_url": null, "facebook_url": null, "linkedin_url": null, "substack_url": null,
                 "youtube_url": null, "linkedin_connected": false, "coffee_meet_enabled": true,
                 "mentorship_businesses": false, "mentorship_individuals": false, "mentorship_note": null,
-                "mentorship_price": null},
+                "mentorship_price": null, "has_phone_number": false, "phone_country_code": null,
+                "phone_number": null, "phone_request_status": null, "phone_requesters": []},
             {"bio": null, "city": null, "name": null, "email": "aaron@example.com", "title": null,
                 "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000007",
                 "username": "aaron", "interests": null, "photo_url": "https://example.com/u3.png",
@@ -153,7 +158,8 @@ select is(
                 "website_url": null, "facebook_url": null, "linkedin_url": null, "substack_url": null,
                 "youtube_url": null, "linkedin_connected": false, "coffee_meet_enabled": true,
                 "mentorship_businesses": false, "mentorship_individuals": false, "mentorship_note": null,
-                "mentorship_price": null},
+                "mentorship_price": null, "has_phone_number": false, "phone_country_code": null,
+                "phone_number": null, "phone_request_status": null, "phone_requesters": []},
             {"bio": null, "city": null, "name": null, "email": "bob@example.com", "title": null,
                 "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000006",
                 "username": "bob", "interests": null, "photo_url": "https://example.com/u2.png",
@@ -161,7 +167,8 @@ select is(
                 "website_url": null, "facebook_url": null, "linkedin_url": null, "substack_url": null,
                 "youtube_url": null, "linkedin_connected": false, "coffee_meet_enabled": true,
                 "mentorship_businesses": false, "mentorship_individuals": false, "mentorship_note": null,
-                "mentorship_price": null}
+                "mentorship_price": null, "has_phone_number": false, "phone_country_code": null,
+                "phone_number": null, "phone_request_status": null, "phone_requesters": []}
         ]'::jsonb,
         'total', 5
     ),
@@ -172,6 +179,8 @@ select is(
 select is(
     list_group_members(
         :'groupID'::uuid,
+        :'user1ID'::uuid,
+        false,
         '{"limit": 2, "offset": 2}'::jsonb
     )::jsonb,
     jsonb_build_object(
@@ -183,7 +192,8 @@ select is(
                 "website_url": null, "facebook_url": null, "linkedin_url": null, "substack_url": null,
                 "youtube_url": null, "linkedin_connected": false, "coffee_meet_enabled": true,
                 "mentorship_businesses": false, "mentorship_individuals": false, "mentorship_note": null,
-                "mentorship_price": null},
+                "mentorship_price": null, "has_phone_number": false, "phone_country_code": null,
+                "phone_number": null, "phone_request_status": null, "phone_requesters": []},
             {"bio": null, "city": null, "name": null, "email": "aaron@example.com", "title": null,
                 "company": null, "country": null, "user_id": "3a210000-0000-0000-0000-000000000007",
                 "username": "aaron", "interests": null, "photo_url": "https://example.com/u3.png",
@@ -191,7 +201,8 @@ select is(
                 "website_url": null, "facebook_url": null, "linkedin_url": null, "substack_url": null,
                 "youtube_url": null, "linkedin_connected": false, "coffee_meet_enabled": true,
                 "mentorship_businesses": false, "mentorship_individuals": false, "mentorship_note": null,
-                "mentorship_price": null}
+                "mentorship_price": null, "has_phone_number": false, "phone_country_code": null,
+                "phone_number": null, "phone_request_status": null, "phone_requesters": []}
         ]'::jsonb,
         'total', 5
     ),
@@ -202,6 +213,8 @@ select is(
 select is(
     list_group_members(
         :'missingGroupID'::uuid,
+        :'user1ID'::uuid,
+        false,
         '{"limit": 50, "offset": 0}'::jsonb
     )::jsonb,
     jsonb_build_object(

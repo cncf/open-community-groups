@@ -93,6 +93,18 @@ pub struct GroupMember {
     pub name: Option<String>,
     /// URL to user's avatar.
     pub photo_url: Option<String>,
+    /// Whether this member has a phone number configured.
+    #[serde(default)]
+    pub has_phone_number: bool,
+    /// International calling code visible to the current viewer.
+    pub phone_country_code: Option<String>,
+    /// Phone number visible to the current viewer.
+    pub phone_number: Option<String>,
+    /// Current viewer's request status for this member's phone number.
+    pub phone_request_status: Option<String>,
+    /// Pending phone visibility requests awaiting this member's approval.
+    #[serde(default)]
+    pub phone_requesters: Vec<GroupMemberPhoneRequester>,
     /// `Substack` publication URL.
     pub substack_url: Option<String>,
     /// Title held by the user.
@@ -105,8 +117,31 @@ pub struct GroupMember {
     pub youtube_url: Option<String>,
 }
 
+impl GroupMember {
+    /// Returns true when the current viewer can see this member's phone number.
+    pub(crate) fn phone_visible(&self) -> bool {
+        self.phone_country_code.is_some() && self.phone_number.is_some()
+    }
+
+    /// Returns true when the current viewer already requested this phone number.
+    pub(crate) fn phone_request_pending(&self) -> bool {
+        self.phone_request_status.as_deref() == Some("pending")
+    }
+}
+
 fn default_true() -> bool {
     true
+}
+
+/// A member who requested access to another member's phone number.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupMemberPhoneRequester {
+    /// Requester user identifier.
+    pub user_id: Uuid,
+    /// Requester username.
+    pub username: String,
+    /// Requester display name.
+    pub name: Option<String>,
 }
 
 /// Pending group join request summary information.

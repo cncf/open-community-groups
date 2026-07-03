@@ -2031,6 +2031,8 @@ async fn test_update_user_details_success() {
                 && details.optional_notifications_enabled
                 && details.name == "Updated User"
                 && details.github_url.as_deref() == Some("https://github.com/updated-user")
+                && details.phone_country_code.as_deref() == Some("+1")
+                && details.phone_number.as_deref() == Some("5550100")
                 && details.substack_url.as_deref() == Some("https://updated.substack.com")
                 && details.youtube_url.as_deref() == Some("https://youtube.com/@updated")
         })
@@ -2052,7 +2054,7 @@ async fn test_update_user_details_success() {
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
         .body(Body::from(
-            "name=Updated+User&company=Example&github_url=https%3A%2F%2Fgithub.com%2Fupdated-user&substack_url=https%3A%2F%2Fupdated.substack.com&youtube_url=https%3A%2F%2Fyoutube.com%2F%40updated&optional_notifications_enabled=true",
+            "name=Updated+User&company=Example&github_url=https%3A%2F%2Fgithub.com%2Fupdated-user&phone_country_code=%2B1&phone_number=5550100&substack_url=https%3A%2F%2Fupdated.substack.com&youtube_url=https%3A%2F%2Fyoutube.com%2F%40updated&optional_notifications_enabled=true",
         ))
         .unwrap();
     let response = router.oneshot(request).await.unwrap();

@@ -384,12 +384,14 @@ async fn test_page_members_tab_success() {
         .returning(move |_| Ok(groups.clone()));
     db.expect_list_group_members()
         .times(1)
-        .withf(move |id, filters| {
+        .withf(move |id, viewer_id, can_manage_members, filters| {
             *id == group_id
+                && *viewer_id == user_id
+                && *can_manage_members
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _, _| Ok(output.clone()));
     db.expect_list_group_join_requests()
         .times(1)
         .withf(move |id| *id == group_id)

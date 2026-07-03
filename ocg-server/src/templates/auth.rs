@@ -15,8 +15,9 @@ use crate::{
     types::site::SiteSettings,
     validation::{
         MAX_LEN_BIO, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_DISPLAY_NAME, MAX_LEN_L, MAX_LEN_M,
-        MAX_LEN_S, MAX_LEN_TIMEZONE, MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty,
-        trimmed_non_empty_opt, trimmed_non_empty_tag_vec,
+        MAX_LEN_PHONE_COUNTRY_CODE, MAX_LEN_PHONE_NUMBER, MAX_LEN_S, MAX_LEN_TIMEZONE,
+        MIN_PASSWORD_LEN, image_url_opt, trimmed_non_empty, trimmed_non_empty_opt,
+        trimmed_non_empty_tag_vec,
     },
 };
 
@@ -189,6 +190,12 @@ pub(crate) struct UserDetails {
     /// User's photo URL.
     #[garde(custom(image_url_opt))]
     pub photo_url: Option<String>,
+    /// International calling code for the user's phone number.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_PHONE_COUNTRY_CODE))]
+    pub phone_country_code: Option<String>,
+    /// User's phone number.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_PHONE_NUMBER))]
+    pub phone_number: Option<String>,
     /// User's `Substack` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub substack_url: Option<String>,
@@ -238,6 +245,8 @@ impl From<crate::auth::User> for UserDetails {
             mentorship_note: user.mentorship_note,
             mentorship_price: user.mentorship_price,
             photo_url: user.photo_url,
+            phone_country_code: user.phone_country_code,
+            phone_number: user.phone_number,
             substack_url: user.substack_url,
             timezone: user.timezone,
             title: user.title,

@@ -420,6 +420,12 @@ mock! {
             group_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn approve_group_member_phone_request(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            requester_user_id: Uuid,
+        ) -> Result<()>;
         async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn cancel_event_attendee_attendance(
             &self,
@@ -568,6 +574,8 @@ mock! {
         async fn list_group_members(
             &self,
             group_id: Uuid,
+            viewer_user_id: Uuid,
+            can_manage_members: bool,
             filters: &crate::templates::dashboard::group::members::GroupMembersFilters,
         ) -> Result<crate::templates::dashboard::group::members::GroupMembersOutput>;
         async fn list_group_coffee_meet_subscribers(
@@ -643,6 +651,12 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
             user_id: Uuid,
+        ) -> Result<()>;
+        async fn request_group_member_phone(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            recipient_user_id: Uuid,
         ) -> Result<()>;
         async fn reject_group_join_request(
             &self,

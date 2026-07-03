@@ -109,7 +109,7 @@ pub(crate) async fn prepare_list_page(
             GroupPermission::MembersWrite,
         ),
         db.list_group_member_spotlights(group_id, true),
-        db.list_group_members(group_id, &member_filters),
+        db.list_group_members(group_id, user_id, false, &member_filters),
     )?;
 
     Ok(spotlights::ListPage {

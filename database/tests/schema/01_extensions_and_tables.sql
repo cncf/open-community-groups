@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(70);
+select plan(71);
 
 -- ============================================================================
 -- TESTS
@@ -54,6 +54,7 @@ select has_table('group');
 select has_table('group_category');
 select has_table('group_join_request');
 select has_table('group_member');
+select has_table('group_member_phone_request');
 select has_table('group_permission');
 select has_table('group_role');
 select has_table('group_role_group_permission');

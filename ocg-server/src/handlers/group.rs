@@ -183,7 +183,9 @@ pub(crate) async fn members_page(
 
     let filters: GroupMembersFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    let results = db.list_group_members(group.group_id, &filters).await?;
+    let results = db
+        .list_group_members(group.group_id, user.user_id, false, &filters)
+        .await?;
     let page_url = format!(
         "/{}/group/{}/members",
         group.alliance.name,
@@ -216,6 +218,54 @@ pub(crate) async fn members_page(
     };
 
     Ok(Html(template.render()?).into_response())
+}
+
+/// Requests access to another group member's phone number from the member directory.
+#[instrument(skip_all)]
+pub(crate) async fn request_member_phone(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    Path((alliance_name, group_slug, recipient_user_id)): Path<(String, String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let Some(alliance_id) = db.get_alliance_id_by_name(&alliance_name).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    let Some(group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+
+    if !db.is_group_member(alliance_id, group.group_id, user.user_id).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
+    db.request_group_member_phone(user.user_id, group.group_id, recipient_user_id)
+        .await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Refresh", "true")]).into_response())
+}
+
+/// Approves a pending phone visibility request for the current member.
+#[instrument(skip_all)]
+pub(crate) async fn approve_member_phone_request(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    Path((alliance_name, group_slug, requester_user_id)): Path<(String, String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let Some(alliance_id) = db.get_alliance_id_by_name(&alliance_name).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    let Some(group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+
+    if !db.is_group_member(alliance_id, group.group_id, user.user_id).await? {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
+    db.approve_group_member_phone_request(user.user_id, group.group_id, requester_user_id)
+        .await?;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Refresh", "true")]).into_response())
 }
 
 /// Handler that renders the public group store page.

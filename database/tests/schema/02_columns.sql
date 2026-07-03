@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(77);
+select plan(78);
 
 -- ============================================================================
 -- TESTS
@@ -636,6 +636,16 @@ select columns_are('group_member', array[
     'created_at'
 ]);
 
+select columns_are('group_member_phone_request', array[
+    'group_member_phone_request_id',
+    'group_id',
+    'requester_user_id',
+    'recipient_user_id',
+    'status',
+    'created_at',
+    'updated_at'
+]);
+
 -- Test: group_member_spotlight columns should match expected
 select columns_are('group_member_spotlight', array[
     'group_member_spotlight_id',
@@ -944,6 +954,8 @@ select columns_are('user', array[
     'password',
     'platform_admin',
     'photo_url',
+    'phone_country_code',
+    'phone_number',
     'provider',
     'registration_status',
     'substack_url',

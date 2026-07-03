@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(296);
+select plan(298);
 
 -- ============================================================================
 -- VARIABLES
@@ -102,6 +102,7 @@ select has_function('add_region', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('add_session_proposal', array['uuid', 'jsonb']::name[]);
 select has_function('append_meeting_recording_url', array['text', 'text', 'text']::name[]);
 select has_function('approve_event_refund_request', array['uuid', 'uuid', 'uuid', 'uuid', 'text', 'text']::name[]);
+select has_function('approve_group_member_phone_request', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('assign_zoom_host_user', array['uuid', 'uuid', 'timestamp with time zone', 'text[]', 'integer', 'timestamp with time zone', 'timestamp with time zone']::name[]);
 select has_function('attach_checkout_session_to_event_purchase', array['uuid', 'text', 'text', 'text']::name[]);
 select has_function('attend_event', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
@@ -218,7 +219,7 @@ select has_function('list_group_categories', array['uuid']::name[]);
 select has_function('list_group_coffee_meet_subscribers', array['uuid']::name[]);
 select has_function('list_group_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_join_requests', array['uuid']::name[]);
-select has_function('list_group_members', array['uuid', 'jsonb']::name[]);
+select has_function('list_group_members', array['uuid', 'uuid', 'boolean', 'jsonb']::name[]);
 select has_function('list_group_members_ids', array['uuid']::name[]);
 select has_function('list_group_roles', '{}'::name[]);
 select has_function('list_group_sponsors', array['uuid', 'jsonb', 'boolean']::name[]);
@@ -278,6 +279,7 @@ select has_function('release_meeting_auto_end_check_claim', array['timestamp wit
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
 select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
+select has_function('request_group_member_phone', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revert_event_refund_approval', array['uuid', 'uuid', 'uuid']::name[]);

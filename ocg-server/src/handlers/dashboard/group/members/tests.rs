@@ -71,12 +71,14 @@ async fn test_list_page_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_members()
         .times(1)
-        .withf(move |id, filters| {
+        .withf(move |id, viewer_id, can_manage_members, filters| {
             *id == group_id
+                && *viewer_id == user_id
+                && *can_manage_members
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _, _| Ok(output.clone()));
     db.expect_list_group_join_requests()
         .times(1)
         .withf(move |id| *id == group_id)
@@ -164,10 +166,14 @@ async fn test_list_page_with_pagination_params() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_members()
         .times(1)
-        .withf(move |id, filters| {
-            *id == group_id && filters.limit == Some(5) && filters.offset == Some(10)
+        .withf(move |id, viewer_id, can_manage_members, filters| {
+            *id == group_id
+                && *viewer_id == user_id
+                && *can_manage_members
+                && filters.limit == Some(5)
+                && filters.offset == Some(10)
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _, _| Ok(output.clone()));
     db.expect_list_group_join_requests()
         .times(1)
         .withf(move |id| *id == group_id)
@@ -247,12 +253,14 @@ async fn test_list_page_db_error() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_list_group_members()
         .times(1)
-        .withf(move |id, filters| {
+        .withf(move |id, viewer_id, can_manage_members, filters| {
             *id == group_id
+                && *viewer_id == user_id
+                && *can_manage_members
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
         })
-        .returning(move |_, _| Err(anyhow!("db error")));
+        .returning(move |_, _, _, _| Err(anyhow!("db error")));
     db.expect_get_group_summary()
         .times(1)
         .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
