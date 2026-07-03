@@ -6,6 +6,7 @@
 <form id="groups-form"
       hx-put="/dashboard/group/settings/update"
       hx-ext="no-empty-vals"
+      hx-exclude="input[type='checkbox'][name^='toggle_']"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner, #group-settings-update-spinner"
       hx-disabled-elt="button[type=submit], #cancel-button"
@@ -193,10 +194,14 @@
 
           {# CoffeeMeet availability -#}
           <div class="col-span-full rounded-xl border border-stone-200 bg-stone-50 p-4">
-            <label for="coffee_meet_enabled"
+            <label for="toggle_coffee_meet_enabled"
                    class="flex cursor-pointer items-start gap-3">
               <input id="coffee_meet_enabled"
                      name="coffee_meet_enabled"
+                     type="hidden"
+                     value="{{ group.coffee_meet_enabled }}">
+              <input id="toggle_coffee_meet_enabled"
+                     name="toggle_coffee_meet_enabled"
                      type="checkbox"
                      value="true"
                      class="mt-1 size-4 rounded border-stone-300 text-primary-600 focus:ring-primary-500"

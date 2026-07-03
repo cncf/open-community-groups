@@ -20,6 +20,18 @@ describe("dashboard alliance settings page", () => {
           type="hidden"
           value="stale"
         >
+        <input
+          id="toggle_coffee_meet_enabled"
+          name="toggle_coffee_meet_enabled"
+          type="checkbox"
+          ${checked ? "checked" : ""}
+        >
+        <input
+          id="coffee_meet_enabled"
+          name="coffee_meet_enabled"
+          type="hidden"
+          value="stale"
+        >
       </form>
     `;
   };
@@ -51,6 +63,27 @@ describe("dashboard alliance settings page", () => {
     toggle.dispatchEvent(new Event("change", { bubbles: true }));
 
     // Verify the hidden input changes once with the toggle state.
+    expect(hiddenInput.value).to.equal("false");
+  });
+
+  it("syncs the CoffeeMeet value on init and change", () => {
+    // Prepare the settings form with CoffeeMeet enabled.
+    renderSettingsForm({ checked: true });
+
+    // Initialize settings behavior.
+    initializeAllianceSettings();
+
+    const toggle = document.getElementById("toggle_coffee_meet_enabled");
+    const hiddenInput = document.getElementById("coffee_meet_enabled");
+
+    // Verify initialization mirrors the toggle state.
+    expect(hiddenInput.value).to.equal("true");
+
+    // Disable the toggle.
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // Verify the submitted hidden field carries the disabled value.
     expect(hiddenInput.value).to.equal("false");
   });
 
