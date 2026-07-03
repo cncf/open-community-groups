@@ -68,8 +68,11 @@ pub(crate) async fn page(
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Analytics => {
-            let stats = db.get_group_stats(alliance_id, group_id).await?;
-            Content::Analytics(Box::new(analytics::Page { stats }))
+            let (group, stats) = tokio::try_join!(
+                db.get_group_full(alliance_id, group_id),
+                db.get_group_stats(alliance_id, group_id)
+            )?;
+            Content::Analytics(Box::new(analytics::Page { group, stats }))
         }
         Tab::Events => {
             let (_, template) = events::prepare_list_page(

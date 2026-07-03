@@ -250,6 +250,15 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
     ) -> Result<GroupDashboardStats>;
 
+    /// Updates whether a group report is public.
+    async fn update_group_report_public_enabled(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        group_id: Uuid,
+        enabled: bool,
+    ) -> Result<()>;
+
     /// Creates an organizer-created event invitation.
     async fn invite_event_attendee(
         &self,
@@ -1812,6 +1821,22 @@ where
         self.execute(
             "select update_group_event_defaults($1::uuid, $2::uuid, $3::jsonb)",
             &[&actor_user_id, &group_id, &Json(&event_defaults)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_group_report_public_enabled`]
+    #[instrument(skip(self), err)]
+    async fn update_group_report_public_enabled(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        group_id: Uuid,
+        enabled: bool,
+    ) -> Result<()> {
+        self.execute(
+            "select update_group_report_public_enabled($1::uuid, $2::uuid, $3::uuid, $4::bool)",
+            &[&actor_user_id, &alliance_id, &group_id, &enabled],
         )
         .await
     }

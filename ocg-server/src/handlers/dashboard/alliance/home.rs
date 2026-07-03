@@ -65,7 +65,10 @@ pub(crate) async fn page(
     let content = match tab {
         Tab::Analytics => {
             let stats = db.get_alliance_stats(alliance_id).await?;
-            Content::Analytics(Box::new(analytics::Page { stats }))
+            Content::Analytics(Box::new(analytics::Page {
+                alliance: alliance.clone(),
+                stats,
+            }))
         }
         Tab::CreateAlliance => {
             if !auth_session.user.as_ref().is_some_and(|user| user.platform_admin) {

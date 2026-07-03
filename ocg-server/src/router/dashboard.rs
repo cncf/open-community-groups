@@ -145,6 +145,11 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
     // Alliance settings management endpoints
     let settings_management = Router::new()
         .route(
+            "/analytics/report/public",
+            put(dashboard::alliance::analytics::publish_report)
+                .delete(dashboard::alliance::analytics::unpublish_report),
+        )
+        .route(
             "/email-templates",
             put(dashboard::alliance::email_templates::update),
         )
@@ -427,6 +432,11 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
 
     // Group settings management endpoints
     let settings_management = Router::new()
+        .route(
+            "/analytics/report/public",
+            put(dashboard::group::analytics::publish_report)
+                .delete(dashboard::group::analytics::unpublish_report),
+        )
         .route("/settings/update", put(dashboard::group::settings::update))
         .route_layer(check_selected_group_permission(
             GroupPermission::SettingsWrite,

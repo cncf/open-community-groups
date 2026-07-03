@@ -70,6 +70,9 @@ pub struct AllianceFull {
     pub twitter_url: Option<String>,
     /// Link to the alliance's main website.
     pub website_url: Option<String>,
+    /// Whether the alliance report is visible on the public alliance page.
+    #[serde(default)]
+    pub report_public_enabled: bool,
     /// Link to the alliance's `WeChat` account or QR code.
     pub wechat_url: Option<String>,
     /// Link to the alliance's `YouTube` channel.

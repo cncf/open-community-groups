@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     templates::dashboard::group::{
-        members::GroupMember, spotlights::GroupMemberSpotlight, store::GroupStoreItem,
+        analytics::GroupDashboardStats, members::GroupMember, spotlights::GroupMemberSpotlight,
+        store::GroupStoreItem,
     },
     templates::{
         PageId,
@@ -93,6 +94,26 @@ pub(crate) struct MembersPage {
     pub site_settings: SiteSettings,
     /// Total number of members in the group.
     pub total: usize,
+    /// Authenticated user information.
+    pub user: User,
+}
+
+/// Public group report page.
+#[derive(Debug, Clone, Template)]
+#[template(path = "group/report.html")]
+pub(crate) struct ReportPage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Detailed information about the group.
+    pub group: GroupFull,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current URL path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Group dashboard statistics.
+    pub stats: GroupDashboardStats,
     /// Authenticated user information.
     pub user: User,
 }
@@ -210,6 +231,39 @@ impl MembersPage {
     }
 
     /// Returns the `OpenGraph` image URL for the group members page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.group
+            .og_image_url
+            .as_deref()
+            .or(self.group.alliance.og_image_url.as_deref())
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+}
+
+impl ReportPage {
+    /// Returns the canonical URL for the group report page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!(
+                "/{}/group/{}/reports",
+                self.group.alliance.name,
+                self.group.public_slug()
+            ),
+        )
+    }
+
+    /// Returns the preview title.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} report", self.group.name)
+    }
+
+    /// Returns the preview description.
+    pub(crate) fn preview_description(&self) -> String {
+        format!("Public growth and activity report for {}.", self.group.name)
+    }
+
+    /// Returns the `OpenGraph` image URL for the group report page.
     pub(crate) fn open_graph_image_url(&self) -> Option<String> {
         self.group
             .og_image_url

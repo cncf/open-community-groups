@@ -41,6 +41,10 @@ async fn test_page_db_error() {
             *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
+    db.expect_get_alliance_full()
+        .times(1)
+        .withf(move |cid| *cid == alliance_id)
+        .returning(move |_| Ok(sample_alliance_full(alliance_id)));
     db.expect_get_alliance_stats()
         .times(1)
         .withf(move |cid| *cid == alliance_id)
@@ -94,6 +98,10 @@ async fn test_page_success() {
             *cid == alliance_id && *uid == user_id && permission == AlliancePermission::Read
         })
         .returning(|_, _, _| Ok(true));
+    db.expect_get_alliance_full()
+        .times(1)
+        .withf(move |cid| *cid == alliance_id)
+        .returning(move |_| Ok(sample_alliance_full(alliance_id)));
     db.expect_get_alliance_stats()
         .times(1)
         .withf(move |cid| *cid == alliance_id)

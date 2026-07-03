@@ -1,6 +1,6 @@
 //! Templates and data types for the analytics page in the group dashboard.
 
-use crate::templates::filters;
+use crate::{templates::filters, types::group::GroupFull};
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/analytics.html")]
 pub(crate) struct Page {
+    /// Current group.
+    pub group: GroupFull,
     /// Statistics to render.
     pub stats: GroupDashboardStats,
 }

@@ -168,6 +168,14 @@ pub(crate) trait DBDashboardAlliance {
         alliance: &AllianceUpdate,
     ) -> Result<()>;
 
+    /// Updates whether a alliance report is public.
+    async fn update_alliance_report_public_enabled(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        enabled: bool,
+    ) -> Result<()>;
+
     /// Updates a alliance team member role.
     async fn update_alliance_team_member_role(
         &self,
@@ -503,6 +511,21 @@ where
         self.execute(
             "select update_alliance($1::uuid, $2::uuid, $3::jsonb)",
             &[&actor_user_id, &alliance_id, &Json(alliance)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardAlliance::update_alliance_report_public_enabled`]
+    #[instrument(skip(self), err)]
+    async fn update_alliance_report_public_enabled(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        enabled: bool,
+    ) -> Result<()> {
+        self.execute(
+            "select update_alliance_report_public_enabled($1::uuid, $2::uuid, $3::bool)",
+            &[&actor_user_id, &alliance_id, &enabled],
         )
         .await
     }

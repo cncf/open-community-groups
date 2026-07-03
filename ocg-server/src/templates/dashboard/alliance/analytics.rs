@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use crate::templates::filters;
+use crate::types::alliance::AllianceFull;
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
@@ -12,6 +13,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/alliance/analytics.html")]
 pub(crate) struct Page {
+    /// Current alliance.
+    pub alliance: AllianceFull,
     /// Statistics to render.
     pub stats: AllianceDashboardStats,
 }

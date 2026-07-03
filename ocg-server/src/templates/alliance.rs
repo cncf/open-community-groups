@@ -12,7 +12,8 @@ use crate::{
     templates::{
         PageId,
         auth::User,
-        dashboard, filters,
+        dashboard::{self, alliance::analytics::AllianceDashboardStats},
+        filters,
         helpers::{self, user_initials},
     },
     types::{
@@ -126,6 +127,26 @@ pub(crate) struct MembersPage {
     pub user: User,
 }
 
+/// Template for the public alliance report page.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "alliance/report.html")]
+pub(crate) struct ReportPage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Alliance information.
+    pub alliance: AllianceFull,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Alliance dashboard statistics.
+    pub stats: AllianceDashboardStats,
+    /// Authenticated user information.
+    pub user: User,
+}
+
 impl MembersPage {
     /// Returns the canonical public URL for the alliance members page.
     pub(crate) fn canonical_url(&self) -> String {
@@ -149,6 +170,34 @@ impl MembersPage {
     pub(crate) fn preview_description(&self) -> String {
         format!(
             "Browse member cards across {} groups.",
+            self.alliance.display_name
+        )
+    }
+}
+
+impl ReportPage {
+    /// Returns the canonical public URL for the alliance report page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(&self.base_url, &format!("/{}/reports", self.alliance.name))
+    }
+
+    /// Returns the Open Graph image URL for the alliance report page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.alliance
+            .og_image_url
+            .as_deref()
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+
+    /// Returns the preview title for the alliance report page.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} report", self.alliance.display_name)
+    }
+
+    /// Returns the preview description for the alliance report page.
+    pub(crate) fn preview_description(&self) -> String {
+        format!(
+            "Public growth and activity report for {}.",
             self.alliance.display_name
         )
     }

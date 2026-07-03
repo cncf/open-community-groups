@@ -335,6 +335,12 @@ mock! {
             alliance_id: Uuid,
             alliance: &crate::templates::dashboard::alliance::settings::AllianceUpdate,
         ) -> Result<()>;
+        async fn update_alliance_report_public_enabled(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            enabled: bool,
+        ) -> Result<()>;
         async fn update_alliance_team_member_role(
             &self,
             actor_user_id: Uuid,
@@ -515,6 +521,13 @@ mock! {
             alliance_id: Uuid,
             group_id: Uuid,
         ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
+        async fn update_group_report_public_enabled(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            group_id: Uuid,
+            enabled: bool,
+        ) -> Result<()>;
         async fn invite_event_attendee(
             &self,
             actor_user_id: Uuid,

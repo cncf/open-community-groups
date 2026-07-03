@@ -59,6 +59,7 @@ returns json as $$
                 'order', r.order
             )
         else null end,
+        'report_public_enabled', g.report_public_enabled,
         'slack_url', g.slack_url,
         'slug_pretty', g.slug_pretty,
         'state', g.state,

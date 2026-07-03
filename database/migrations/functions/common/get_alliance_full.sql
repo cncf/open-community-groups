@@ -31,6 +31,7 @@ returns json as $$
         'new_group_details', new_group_details,
         'og_image_url', og_image_url,
         'photos_urls', photos_urls,
+        'report_public_enabled', report_public_enabled,
         'slack_url', slack_url,
         'twitter_url', twitter_url,
         'website_url', website_url,

@@ -119,6 +119,44 @@ pub(crate) async fn brand_page(
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
+/// Handler that renders the public alliance report page.
+#[instrument(skip_all, err)]
+pub(crate) async fn report_page(
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path(alliance_name): Path<String>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let (mut alliance, stats) = tokio::try_join!(
+        db.get_alliance_full(alliance_id),
+        db.get_alliance_stats(alliance_id)
+    )?;
+    if !alliance.report_public_enabled {
+        return not_found::render(site_settings);
+    }
+
+    trim_public_gallery_images(&mut alliance.photos_urls);
+    let template = alliance::ReportPage {
+        base_url: server_cfg.base_url,
+        alliance,
+        page_id: PageId::Alliance,
+        path: uri.path().to_string(),
+        site_settings,
+        stats,
+        user: User::default(),
+    };
+
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
+}
+
 /// Handler that renders the logged-in alliance member directory.
 #[instrument(skip_all, err)]
 pub(crate) async fn members_page(

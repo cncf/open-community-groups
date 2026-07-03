@@ -46,6 +46,10 @@ async fn test_page_db_error() {
             *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_full()
+        .times(1)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
+        .returning(move |_, _| Ok(sample_group_full(alliance_id, group_id)));
     db.expect_get_group_stats()
         .times(1)
         .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
@@ -104,6 +108,10 @@ async fn test_page_success() {
             *cid == alliance_id && *gid == group_id && *uid == user_id
         })
         .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_full()
+        .times(1)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)
+        .returning(move |_, _| Ok(sample_group_full(alliance_id, group_id)));
     db.expect_get_group_stats()
         .times(1)
         .withf(move |cid, gid| *cid == alliance_id && *gid == group_id)

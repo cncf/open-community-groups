@@ -1,0 +1,158 @@
+{% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ self.preview_description() }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &alliance.display_name) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
+
+{% block scripts -%}
+  <script>
+    if (new URLSearchParams(window.location.search).get("print") === "1") {
+      window.addEventListener("load", () => window.print());
+    }
+  </script>
+{% endblock scripts -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 print:px-0">
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
+      <a href="/{{ alliance.name }}" class="btn-secondary-anchor">Back to alliance</a>
+      <button type="button" class="btn-primary" onclick="window.print()">Download PDF</button>
+    </div>
+
+    <article class="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-xl shadow-stone-200/50 sm:p-10 print:border-0 print:p-0 print:shadow-none">
+      <header class="border-b border-stone-200 pb-8">
+        <div class="flex items-center gap-4">
+          <img src="{{ alliance.logo_url }}"
+               alt="{{ alliance.display_name }} logo"
+               class="size-16 rounded-2xl object-contain ring-1 ring-stone-200" />
+          <div>
+            <p class="text-xs font-black uppercase tracking-[0.2em] text-stone-500">Alliance report</p>
+            <h1 class="mt-2 text-3xl font-black tracking-tight text-stone-950 sm:text-4xl">{{ alliance.display_name }}</h1>
+          </div>
+        </div>
+        <p class="mt-5 max-w-3xl text-sm/6 text-stone-600">
+          Public summary of alliance growth, chapter activity, member distribution, and event momentum.
+        </p>
+      </header>
+
+      <section class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-2xl bg-stone-50 p-5">
+          <div class="text-sm font-semibold text-stone-500">Groups</div>
+          <div class="mt-2 text-3xl font-black text-stone-950">{{ stats.groups.total|num_fmt }}</div>
+        </div>
+        <div class="rounded-2xl bg-stone-50 p-5">
+          <div class="text-sm font-semibold text-stone-500">Members</div>
+          <div class="mt-2 text-3xl font-black text-stone-950">{{ stats.members.total|num_fmt }}</div>
+        </div>
+        <div class="rounded-2xl bg-stone-50 p-5">
+          <div class="text-sm font-semibold text-stone-500">Events</div>
+          <div class="mt-2 text-3xl font-black text-stone-950">{{ stats.events.total|num_fmt }}</div>
+        </div>
+        <div class="rounded-2xl bg-stone-50 p-5">
+          <div class="text-sm font-semibold text-stone-500">Attendees</div>
+          <div class="mt-2 text-3xl font-black text-stone-950">{{ stats.attendees.total|num_fmt }}</div>
+        </div>
+      </section>
+
+      <section class="mt-8 grid gap-5 lg:grid-cols-3">
+        <div class="rounded-2xl border border-stone-200 p-5">
+          <p class="text-xs font-black uppercase tracking-[0.18em] text-stone-500">Members</p>
+          <h2 class="mt-2 text-xl font-black text-stone-950">90-day growth</h2>
+          <div class="mt-5 grid grid-cols-2 gap-3">
+            <div class="rounded-xl bg-stone-50 p-3">
+              <div class="text-xs font-semibold text-stone-500">Latest</div>
+              <div class="mt-1 text-2xl font-black">{{ stats.reports.members.recent_growth|num_fmt }}</div>
+            </div>
+            <div class="rounded-xl bg-stone-50 p-3">
+              <div class="text-xs font-semibold text-stone-500">Prior</div>
+              <div class="mt-1 text-2xl font-black">{{ stats.reports.members.previous_growth|num_fmt }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-stone-200 p-5">
+          <p class="text-xs font-black uppercase tracking-[0.18em] text-stone-500">Leaders</p>
+          <h2 class="mt-2 text-xl font-black text-stone-950">Chapter leaders</h2>
+          <div class="mt-5 grid grid-cols-2 gap-3">
+            <div class="rounded-xl bg-stone-50 p-3">
+              <div class="text-xs font-semibold text-stone-500">Total</div>
+              <div class="mt-1 text-2xl font-black">{{ stats.reports.members.leaders_total|num_fmt }}</div>
+            </div>
+            <div class="rounded-xl bg-stone-50 p-3">
+              <div class="text-xs font-semibold text-stone-500">90-day growth</div>
+              <div class="mt-1 text-2xl font-black">{{ stats.reports.members.leaders_recent_growth|num_fmt }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-stone-200 p-5">
+          <p class="text-xs font-black uppercase tracking-[0.18em] text-stone-500">Events</p>
+          <h2 class="mt-2 text-xl font-black text-stone-950">Hosted and upcoming</h2>
+          <div class="mt-5 grid grid-cols-2 gap-3">
+            <div class="rounded-xl bg-stone-50 p-3">
+              <div class="text-xs font-semibold text-stone-500">Hosted</div>
+              <div class="mt-1 text-2xl font-black">{{ stats.reports.events.hosted_total|num_fmt }}</div>
+            </div>
+            <div class="rounded-xl bg-stone-50 p-3">
+              <div class="text-xs font-semibold text-stone-500">Upcoming</div>
+              <div class="mt-1 text-2xl font-black">{{ stats.reports.events.upcoming_total|num_fmt }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-8 rounded-2xl border border-stone-200 p-5">
+        <h2 class="text-xl font-black text-stone-950">Top chapters</h2>
+        {% if stats.reports.chapters.rankings.len() > 0 -%}
+          <div class="mt-4 overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="text-left text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
+                <tr>
+                  <th class="py-2 pe-4">Chapter</th>
+                  <th class="py-2 pe-4">Region</th>
+                  <th class="py-2 pe-4 text-right">Members</th>
+                  <th class="py-2 pe-4 text-right">90d growth</th>
+                  <th class="py-2 text-right">Events</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-stone-100">
+                {% for chapter in stats.reports.chapters.rankings -%}
+                  <tr>
+                    <td class="py-3 pe-4 font-bold text-stone-900">{{ chapter.name }}</td>
+                    <td class="py-3 pe-4 text-stone-600">{{ chapter.region }}</td>
+                    <td class="py-3 pe-4 text-right font-semibold">{{ chapter.members_total|num_fmt }}</td>
+                    <td class="py-3 pe-4 text-right font-semibold">{{ chapter.members_recent|num_fmt }}</td>
+                    <td class="py-3 text-right font-semibold">{{ chapter.events_total|num_fmt }}</td>
+                  </tr>
+                {% endfor -%}
+              </tbody>
+            </table>
+          </div>
+        {% else -%}
+          <p class="mt-4 rounded-xl bg-stone-50 p-4 text-sm text-stone-500">Chapter reporting will appear once chapters have activity.</p>
+        {% endif -%}
+      </section>
+    </article>
+  </div>
+{% endblock content -%}

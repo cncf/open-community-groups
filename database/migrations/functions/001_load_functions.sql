@@ -103,6 +103,7 @@
 {{ template "dashboard-alliance/list_regions.sql" }}
 {{ template "dashboard-alliance/list_user_alliances.sql" }}
 {{ template "dashboard-alliance/update_alliance.sql" }}
+{{ template "dashboard-alliance/update_alliance_report_public_enabled.sql" }}
 {{ template "dashboard-alliance/update_alliance_team_member_role.sql" }}
 {{ template "dashboard-alliance/update_event_category.sql" }}
 {{ template "dashboard-alliance/update_group_category.sql" }}
@@ -186,6 +187,7 @@
 {{ template "dashboard-group/update_cfs_submission.sql" }}
 {{ template "dashboard-group/validate_update_event_dates.sql" }} -- Dependency for update_event
 {{ template "dashboard-group/update_group_event_defaults.sql" }}
+{{ template "dashboard-group/update_group_report_public_enabled.sql" }}
 {{ template "dashboard-group/update_group_sponsor.sql" }}
 {{ template "dashboard-group/update_group_sponsor_featured.sql" }}
 {{ template "dashboard-group/update_group_team_member_role.sql" }}

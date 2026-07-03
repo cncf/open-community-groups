@@ -333,10 +333,15 @@ pub(crate) async fn setup(
         // Alliance-prefixed public routes
         .route("/{alliance}/brand", get(alliance::brand_page))
         .route("/{alliance}/members", get(alliance::members_page))
+        .route("/{alliance}/reports", get(alliance::report_page))
         .route("/{alliance}", get(alliance::page))
         .route(
             "/{alliance}/group/{group_slug}/store",
             get(group::store_page),
+        )
+        .route(
+            "/{alliance}/group/{group_slug}/reports",
+            get(group::report_page),
         )
         .route("/{alliance}/group/{group_slug}", get(group::page))
         .route(

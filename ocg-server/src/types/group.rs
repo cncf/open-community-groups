@@ -194,6 +194,9 @@ pub struct GroupFull {
     pub photos_urls: Option<Vec<String>>,
     /// Geographic region this group belongs to.
     pub region: Option<GroupRegion>,
+    /// Whether the group report is visible on the public group page.
+    #[serde(default)]
+    pub report_public_enabled: bool,
     /// Slack workspace URL.
     pub slack_url: Option<String>,
     /// Admin-managed URL slug of the group.
