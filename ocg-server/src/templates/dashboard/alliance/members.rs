@@ -5,13 +5,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     templates::{alliance::AllianceMember, helpers::user_initials},
-    types::pagination,
+    types::{alliance::AllianceFull, pagination},
 };
 
 /// List members page template.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/alliance/members_list.html")]
 pub(crate) struct ListPage {
+    /// Alliance settings for member-card feature gates.
+    pub alliance: AllianceFull,
     /// Members across all groups in the alliance.
     pub members: Vec<AllianceMember>,
     /// Pagination navigation links.

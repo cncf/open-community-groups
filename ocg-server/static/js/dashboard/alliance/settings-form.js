@@ -4,6 +4,8 @@ import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js
 const SETTINGS_FORM_ID = "settings-form";
 const COFFEE_MEET_TOGGLE_ID = "toggle_coffee_meet_enabled";
 const COFFEE_MEET_INPUT_ID = "coffee_meet_enabled";
+const MENTORSHIP_TOGGLE_ID = "toggle_mentorship_enabled";
+const MENTORSHIP_INPUT_ID = "mentorship_enabled";
 const GROUP_TEAM_RESTRICTION_TOGGLE_ID = "toggle_group_team_management_restricted";
 const GROUP_TEAM_RESTRICTION_INPUT_ID = "group_team_management_restricted";
 const SETTINGS_BOUND_KEY = "allianceSettingsBound";
@@ -23,6 +25,8 @@ export const initializeAllianceSettings = (root = document) => {
   const groupTeamRestrictionInput = getElementById(root, GROUP_TEAM_RESTRICTION_INPUT_ID);
   const coffeeMeetToggle = getElementById(root, COFFEE_MEET_TOGGLE_ID);
   const coffeeMeetInput = getElementById(root, COFFEE_MEET_INPUT_ID);
+  const mentorshipToggle = getElementById(root, MENTORSHIP_TOGGLE_ID);
+  const mentorshipInput = getElementById(root, MENTORSHIP_INPUT_ID);
 
   bindBooleanToggle({
     toggle: groupTeamRestrictionToggle,
@@ -33,6 +37,12 @@ export const initializeAllianceSettings = (root = document) => {
   bindBooleanToggle({
     toggle: coffeeMeetToggle,
     hiddenInput: coffeeMeetInput,
+    syncOnInit: true,
+  });
+
+  bindBooleanToggle({
+    toggle: mentorshipToggle,
+    hiddenInput: mentorshipInput,
     syncOnInit: true,
   });
 };

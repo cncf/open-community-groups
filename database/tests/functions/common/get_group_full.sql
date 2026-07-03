@@ -329,6 +329,7 @@ select is(
         "linkedin_url": "https://linkedin.com/company/seattlek8s",
         "logo_url": "https://example.com/group-logo.png",
         "longitude": -74.006,
+        "mentorship_enabled": true,
         "og_image_url": "https://example.com/group-og.png",
         "payment_recipient": {
             "provider": "stripe",
@@ -351,8 +352,10 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "alliance_id": "0c0a0000-0000-0000-0000-000000000001",
+            "coffee_meet_enabled": true,
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
+            "mentorship_enabled": true,
             "name": "cloud-native-seattle",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",

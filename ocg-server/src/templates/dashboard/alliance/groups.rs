@@ -166,6 +166,10 @@ pub(crate) struct Group {
     #[serde(default)]
     #[garde(skip)]
     pub membership_approval_required: bool,
+    /// Whether mentorship requests are enabled for this group.
+    #[serde(default = "default_true")]
+    #[garde(skip)]
+    pub mentorship_enabled: bool,
     /// URL to the group's Open Graph image.
     #[garde(custom(image_url_opt))]
     pub og_image_url: Option<String>,
@@ -208,4 +212,8 @@ pub(crate) struct Group {
     /// `YouTube` channel URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub youtube_url: Option<String>,
+}
+
+fn default_true() -> bool {
+    true
 }

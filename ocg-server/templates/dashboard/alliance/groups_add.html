@@ -73,6 +73,8 @@
         </div>
         {# End Group region -#}
 
+        <input type="hidden" name="mentorship_enabled" value="true">
+
         {# Short Description -#}
         <div class="col-span-full">
           <label for="description_short" class="form-label">Short Description</label>
@@ -136,7 +138,7 @@
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
       {# Location search -#}
       <div class="col-span-full">
-        <location-search-field id="group-location-search" placeholder-text="Search for a city..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude">
+        <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude">
         </location-search-field>
       </div>
       {# End Location search -#}

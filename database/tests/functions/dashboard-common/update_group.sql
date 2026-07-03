@@ -327,8 +327,10 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "alliance_id": "%s",
+            "coffee_meet_enabled": true,
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
+            "mentorship_enabled": true,
             "name": "cloud-native-seattle"
         },
         "group_id": "%s",
@@ -347,6 +349,7 @@ select is(
         "logo_url": "https://example.com/updated-logo.png",
         "og_image_url": "https://example.com/updated-og.png",
         "membership_approval_required": false,
+        "mentorship_enabled": false,
         "organizers": [],
         "sponsors": []
     }
@@ -508,6 +511,7 @@ select is(
     (select get_group_full(:'allianceID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'membership_approval_required' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
         "coffee_meet_enabled": false,
+        "mentorship_enabled": false,
         "name": "Updated Group Empty Strings",
         "slug": "pqr4jkl",
         "logo_url": "https://example.com/logo.png"
@@ -559,6 +563,7 @@ select is(
     (select get_group_full(:'allianceID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'membership_approval_required' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
         "coffee_meet_enabled": false,
+        "mentorship_enabled": false,
         "name": "Updated Group Null Arrays",
         "slug": "mno3ghi",
         "description": "Updated description",

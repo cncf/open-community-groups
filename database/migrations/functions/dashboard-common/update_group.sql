@@ -85,6 +85,7 @@ begin
         location = jsonb_geography_point(p_group),
         logo_url = nullif(p_group->>'logo_url', ''),
         membership_approval_required = coalesce((p_group->>'membership_approval_required')::boolean, false),
+        mentorship_enabled = coalesce((p_group->>'mentorship_enabled')::boolean, false),
         og_image_url = nullif(p_group->>'og_image_url', ''),
         payment_recipient = case
             when p_group ? 'payment_recipient' then v_new_payment_recipient

@@ -21,6 +21,10 @@ begin
             group_team_management_restricted
         ),
         logo_url = coalesce(p_data->>'logo_url', logo_url),
+        mentorship_enabled = coalesce(
+            (p_data->>'mentorship_enabled')::boolean,
+            mentorship_enabled
+        ),
 
         ad_banner_link_url = nullif(p_data->>'ad_banner_link_url', ''),
         ad_banner_url = nullif(p_data->>'ad_banner_url', ''),

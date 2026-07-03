@@ -104,6 +104,7 @@ select is(
         "display_name": "Cloud Native Seattle Updated",
         "group_team_management_restricted": false,
         "logo_url": "https://updated.com/logo.png",
+        "mentorship_enabled": true,
         "name": "cloud-native-seattle"
     }'::jsonb,
     'Should persist required fields and clear omitted optional fields'
@@ -161,6 +162,7 @@ select lives_ok(
             "group_team_management_restricted": true,
             "instagram_url": "https://instagram.com/new",
             "linkedin_url": "https://linkedin.com/new",
+            "mentorship_enabled": false,
             "new_group_details": "New groups welcome!",
             "og_image_url": "https://new.com/og-image.png",
             "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
@@ -197,6 +199,7 @@ select is(
         "instagram_url": "https://instagram.com/new",
         "linkedin_url": "https://linkedin.com/new",
         "logo_url": "https://new.com/logo.png",
+        "mentorship_enabled": false,
         "name": "cloud-native-seattle",
         "new_group_details": "New groups welcome!",
         "og_image_url": "https://new.com/og-image.png",
@@ -255,6 +258,7 @@ select is(
         "group_team_management_restricted": true,
         "instagram_url": null,
         "linkedin_url": null,
+        "mentorship_enabled": false,
         "new_group_details": null,
         "og_image_url": null,
         "slack_url": null,

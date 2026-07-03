@@ -143,7 +143,7 @@ pub(crate) async fn page(
                 raw_query.as_deref().unwrap_or_default(),
             )
             .await?;
-            Content::Members(template)
+            Content::Members(Box::new(template))
         }
         Tab::Logs => {
             let (_, template) =

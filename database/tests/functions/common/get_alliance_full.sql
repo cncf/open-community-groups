@@ -121,6 +121,7 @@ select is(
         "instagram_url": "https://instagram.com/testalliance",
         "linkedin_url": "https://linkedin.com/company/testalliance",
         "logo_url": "https://example.com/logo.png",
+        "mentorship_enabled": true,
         "name": "cloud-native-seattle",
         "new_group_details": "To create a new group, please contact team members",
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
@@ -146,6 +147,7 @@ select is(
         "display_name": "Cloud Native Portland",
         "group_team_management_restricted": false,
         "logo_url": "https://portland.cloudnative.org/logo.png",
+        "mentorship_enabled": true,
         "name": "cloud-native-portland"
     }'::jsonb,
     'Should return correct data for alliance with only required fields'

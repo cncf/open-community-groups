@@ -96,6 +96,7 @@ select is(
         "coffee_meet_enabled": true,
         "logo_url": "https://example.com/logo.png",
         "membership_approval_required": false,
+        "mentorship_enabled": true,
         "organizers": [],
         "sponsors": []
     }',
@@ -213,6 +214,7 @@ select is(
         "country_code": "US",
         "country_name": "United States",
         "coffee_meet_enabled": true,
+        "mentorship_enabled": true,
         "state": "CA",
         "region": {
             "region_id": "%s",

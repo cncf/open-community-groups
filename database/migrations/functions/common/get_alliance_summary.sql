@@ -5,8 +5,10 @@ returns json as $$
         'banner_mobile_url', banner_mobile_url,
         'banner_url', banner_url,
         'alliance_id', alliance_id,
+        'coffee_meet_enabled', coffee_meet_enabled,
         'display_name', display_name,
         'logo_url', logo_url,
+        'mentorship_enabled', mentorship_enabled,
         'name', name,
 
         'ad_banner_link_url', ad_banner_link_url,

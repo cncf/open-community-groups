@@ -55,6 +55,10 @@ pub(crate) struct AllianceUpdate {
     /// URL to the logo image.
     #[garde(custom(image_url))]
     pub logo_url: String,
+    /// Whether mentorship requests are enabled across this alliance.
+    #[serde(default = "default_true")]
+    #[garde(skip)]
+    pub mentorship_enabled: bool,
 
     /// Target URL when users click on the advertisement banner.
     #[garde(url, length(max = MAX_LEN_L))]

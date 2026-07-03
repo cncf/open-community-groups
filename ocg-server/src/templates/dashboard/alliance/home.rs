@@ -62,7 +62,7 @@ pub(crate) enum Content {
     /// Landscape management page.
     Landscape(landscape::ListPage),
     /// Members page across all alliance groups.
-    Members(members::ListPage),
+    Members(Box<members::ListPage>),
     /// Audit logs page.
     Logs(audit::ListPage),
     /// Regions management page.

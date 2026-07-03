@@ -96,18 +96,22 @@
         <div class="col-span-full lg:col-span-2">
           <label for="phone_country_code" class="form-label">Phone country code</label>
           <div class="mt-2">
-            <input type="text"
-                   name="phone_country_code"
-                   id="phone_country_code"
-                   maxlength="{{ crate::validation::MAX_LEN_PHONE_COUNTRY_CODE }}"
-                   value="{%- if let Some(phone_country_code) = &user.phone_country_code -%}{{ phone_country_code }}{%- endif -%}"
-                   class="input-primary"
-                   placeholder="+1"
-                   autocomplete="tel-country-code"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false">
+            <select name="phone_country_code"
+                    id="phone_country_code"
+                    class="select-primary"
+                    autocomplete="tel-country-code"
+                    data-phone-country-code-select
+                    data-value="{%- if let Some(phone_country_code) = &user.phone_country_code -%}{{ phone_country_code }}{%- endif -%}">
+              <option value="{%- if let Some(phone_country_code) = &user.phone_country_code -%}{{ phone_country_code }}{%- endif -%}">
+                {%- if let Some(phone_country_code) = &user.phone_country_code -%}
+                  {{ phone_country_code }}
+                {%- else -%}
+                  Select country code
+                {%- endif -%}
+              </option>
+            </select>
           </div>
+          <p class="form-legend">Select the international calling code for your phone number.</p>
         </div>
         {# End phone country code -#}
 

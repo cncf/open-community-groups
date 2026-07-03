@@ -131,8 +131,10 @@ select is(
             'banner_mobile_url', 'https://example.com/alpha-banner_mobile.png',
             'banner_url', 'https://example.com/alpha-banner.png',
             'alliance_id', :'alliance1ID',
+            'coffee_meet_enabled', true,
             'display_name', 'Alpha Alliance',
             'logo_url', 'https://example.com/alpha-logo.png',
+            'mentorship_enabled', true,
             'name', 'alpha-alliance'
         )
     ),

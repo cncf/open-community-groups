@@ -112,6 +112,7 @@ impl GroupSummary {
 
 /// Full group information.
 #[skip_serializing_none]
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupFull {
     /// Whether the group is active.
@@ -132,6 +133,9 @@ pub struct GroupFull {
     /// Whether new members must be approved by group admins.
     #[serde(default)]
     pub membership_approval_required: bool,
+    /// Whether mentorship requests are enabled for this group.
+    #[serde(default = "default_true")]
+    pub mentorship_enabled: bool,
     /// Group name.
     pub name: String,
     /// List of group organizers.
@@ -217,6 +221,16 @@ fn default_true() -> bool {
 }
 
 impl GroupFull {
+    /// Returns true when `CoffeeMeet` is available for this group and alliance.
+    pub fn coffee_meet_available(&self) -> bool {
+        self.coffee_meet_enabled && self.alliance.coffee_meet_enabled
+    }
+
+    /// Returns true when mentorship requests are available for this group and alliance.
+    pub fn mentorship_available(&self) -> bool {
+        self.mentorship_enabled && self.alliance.mentorship_enabled
+    }
+
     /// Build a display-friendly location string from available location data.
     pub fn location(&self, max_len: usize) -> Option<String> {
         let parts = LocationParts::new()
@@ -327,4 +341,43 @@ pub struct GroupSponsor {
 
     /// Sponsor website URL.
     pub website_url: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::GroupFull;
+
+    #[test]
+    fn coffee_meet_available_requires_group_and_alliance_enabled() {
+        let mut group = GroupFull {
+            coffee_meet_enabled: true,
+            ..Default::default()
+        };
+        group.alliance.coffee_meet_enabled = true;
+        assert!(group.coffee_meet_available());
+
+        group.coffee_meet_enabled = false;
+        assert!(!group.coffee_meet_available());
+
+        group.coffee_meet_enabled = true;
+        group.alliance.coffee_meet_enabled = false;
+        assert!(!group.coffee_meet_available());
+    }
+
+    #[test]
+    fn mentorship_available_requires_group_and_alliance_enabled() {
+        let mut group = GroupFull {
+            mentorship_enabled: true,
+            ..Default::default()
+        };
+        group.alliance.mentorship_enabled = true;
+        assert!(group.mentorship_available());
+
+        group.mentorship_enabled = false;
+        assert!(!group.mentorship_available());
+
+        group.mentorship_enabled = true;
+        group.alliance.mentorship_enabled = false;
+        assert!(!group.mentorship_available());
+    }
 }

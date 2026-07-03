@@ -83,7 +83,7 @@
           </div>
         {% endif -%}
 
-        {% if member.mentorship_individuals || member.mentorship_businesses -%}
+        {% if alliance.mentorship_enabled && (member.mentorship_individuals || member.mentorship_businesses) -%}
           <div class="mt-4 rounded-2xl border border-primary-100 bg-primary-50/60 p-3">
             <div class="flex flex-wrap gap-2">
               {% if member.mentorship_individuals -%}
@@ -121,7 +121,7 @@
              href="/profiles/{{ member.username }}"
              hx-boost="true"
              hx-target="body">Profile</a>
-          {% if member.mentorship_individuals || member.mentorship_businesses -%}
+          {% if alliance.mentorship_enabled && (member.mentorship_individuals || member.mentorship_businesses) -%}
             <a class="btn-primary-anchor btn-mini"
                href="/profiles/{{ member.username }}#mentorship"
                hx-boost="true"

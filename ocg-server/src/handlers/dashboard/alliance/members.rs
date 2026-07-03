@@ -48,11 +48,15 @@ pub(crate) async fn prepare_list_page(
     let filters: AllianceMembersFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
 
-    let output = db.list_alliance_members(alliance_id, &filters).await?;
+    let (alliance, output) = tokio::try_join!(
+        db.get_alliance_full(alliance_id),
+        db.list_alliance_members(alliance_id, &filters)
+    )?;
     let navigation_links =
         NavigationLinks::from_filters(&filters, output.total, DASHBOARD_URL, PARTIAL_URL)?;
 
     let template = members::ListPage {
+        alliance,
         members: output.members,
         navigation_links,
         total: output.total,

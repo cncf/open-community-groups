@@ -138,6 +138,7 @@ select columns_are('alliance', array[
     'display_name',
     'group_team_management_restricted',
     'logo_url',
+    'mentorship_enabled',
     'name',
 
     'ad_banner_link_url',
@@ -592,6 +593,7 @@ select columns_are('group', array[
     'location',
     'logo_url',
     'membership_approval_required',
+    'mentorship_enabled',
     'og_image_url',
     'payment_recipient',
     'photos_urls',
