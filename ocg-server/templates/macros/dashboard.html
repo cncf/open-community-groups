@@ -271,9 +271,7 @@
           data-user-profile-modal
           data-user-profile='{{ user|json }}'
           aria-label="View profile for {{ user.name.as_deref() |assigned_or(user.username) }}">
-    <logo-image class="shrink-0"
-    {% if let Some(photo_url) = &user.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-    size="size-10" placeholder="{{ placeholder }}">
+    <logo-image class="shrink-0" {% if let Some(photo_url) = &user.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-10" placeholder="{{ placeholder }}">
     </logo-image>
     <div class="min-w-0">
       {{ caller() }}

@@ -49,11 +49,7 @@
         {# End missing fields warning -#}
 
         {# Breadcrumb -#}
-        <breadcrumb-nav class="[&>.container]:max-w-[90rem]"
-        {% if let Some(banner_url) = &event.banner_url -%} banner-url="{{ banner_url }}" {% endif -%}
-        items='[ {"label": "Home", "icon": "home"},
-        {% if let Some(community_display_name) = &event.community_display_name -%} {"label": {{ community_display_name|json }}, "icon": "community"}, {% endif -%}
-        {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
+        <breadcrumb-nav class="[&>.container]:max-w-[90rem]" {% if let Some(banner_url) = &event.banner_url -%} banner-url="{{ banner_url }}" {% endif -%} items='[ {"label": "Home", "icon": "home"}, {% if let Some(community_display_name) = &event.community_display_name -%} {"label": {{ community_display_name|json }}, "icon": "community"}, {% endif -%} {"label": {{ event.group_name() |json }}, "icon": "groups"}, {"label": {{ event.name_label() |json }}, "icon": "date", "current": true} ]'></breadcrumb-nav>
         {# End breadcrumb -#}
 
         {# Preview content -#}
@@ -325,9 +321,7 @@
                             <div class="mb-2 text-xs font-semibold text-stone-500">SPEAKERS</div>
                             <div class="flex flex-wrap gap-3">
                               {% for speaker in session.speakers -%}
-                                <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}"
-                                {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}
-                                small></user-chip>
+                                <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}" {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %} small></user-chip>
                               {% endfor -%}
                             </div>
                           </div>
@@ -350,9 +344,7 @@
                       </div>
                       <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {% for host in event.hosts -%}
-                          <user-chip user='{{ host|json }}' data-preview-name="{{ host.display_name() }}"
-                          {% if let Some(subtitle) = host.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}
-                          ></user-chip>
+                          <user-chip user='{{ host|json }}' data-preview-name="{{ host.display_name() }}" {% if let Some(subtitle) = host.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}></user-chip>
                         {% endfor -%}
                       </div>
                     </div>
@@ -369,9 +361,7 @@
                         {% for speaker in event.speakers -%}
                           {% if let Some(is_featured) = speaker.featured -%}
                             {% if is_featured -%}
-                              <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}"
-                              {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}
-                              featured></user-chip>
+                              <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}" {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %} featured></user-chip>
                             {% endif -%}
                           {% endif -%}
                         {% endfor -%}
@@ -386,14 +376,10 @@
                         {% for speaker in event.speakers -%}
                           {% if let Some(is_featured) = speaker.featured -%}
                             {% if !is_featured -%}
-                              <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}"
-                              {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}
-                              ></user-chip>
+                              <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}" {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}></user-chip>
                             {% endif -%}
                           {% else -%}
-                            <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}"
-                            {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}
-                            ></user-chip>
+                            <user-chip user='{{ speaker|json }}' data-preview-name="{{ speaker.display_name() }}" {% if let Some(subtitle) = speaker.subtitle() %}data-preview-subtitle="{{ subtitle }}"{% endif %}></user-chip>
                           {% endif -%}
                         {% endfor -%}
                       </div>

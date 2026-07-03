@@ -197,25 +197,25 @@
   {# End social links section -#}
 
   {% let tag_legend -%}Optional tags for the group. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
-  {{ form_fields::tags_gallery_links_section(title = "Additional Content", description = "Optional tags, photos, and custom links.", tag_legend = tag_legend, photo_legend = "Photos that will be displayed in the group gallery.", extra_links_legend = "Additional custom links displayed in the group page.") -}}
+{{ form_fields::tags_gallery_links_section(title = "Additional Content", description = "Optional tags, photos, and custom links.", tag_legend = tag_legend, photo_legend = "Photos that will be displayed in the group gallery.", extra_links_legend = "Additional custom links displayed in the group page.") -}}
 
-  <div class="mt-6 flex items-center justify-end gap-x-6">
-    {# Cancel button -#}
-    <button id="cancel-button"
-            type="button"
-            hx-get="/dashboard/community?tab=groups"
-            hx-target="body"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline">Cancel</button>
-    {# End cancel button -#}
+<div class="mt-6 flex items-center justify-end gap-x-6">
+  {# Cancel button -#}
+  <button id="cancel-button"
+          type="button"
+          hx-get="/dashboard/community?tab=groups"
+          hx-target="body"
+          hx-indicator="#dashboard-spinner"
+          class="btn-primary-outline">Cancel</button>
+  {# End cancel button -#}
 
-    {# Save button -#}
-    <button type="submit"  class="btn-primary relative">
-      {{ ui::btn_spinner(id = "community-groups-create-spinner", spinner_type = "2") -}}
-      Create Group
-    </button>
-    {# End save button -#}
-  </div>
+  {# Save button -#}
+  <button type="submit"  class="btn-primary relative">
+    {{ ui::btn_spinner(id = "community-groups-create-spinner", spinner_type = "2") -}}
+    Create Group
+  </button>
+  {# End save button -#}
+</div>
 </div>
 </form>
 

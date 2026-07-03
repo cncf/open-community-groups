@@ -25,15 +25,15 @@
              inert
            {% endif -%}>
         {% let sponsor_name_attr -%}value="{{ sponsor.name }}"{%- endlet %}
-        {% let sponsor_logo_attr -%}value="{{ sponsor.logo_url }}"{%- endlet %}
-        {% let sponsor_website_attr -%}
-        {% if let Some(website) = &sponsor.website_url -%}
-          value="{{ website }}"
-        {%- endif %}
-      {%- endlet %}
-      {{ sponsor_fields::details_fields(name_attr = sponsor_name_attr, logo_attr = sponsor_logo_attr, website_attr = sponsor_website_attr, featured_checked = sponsor.featured) -}}
-    </div>
-  </div>
+      {% let sponsor_logo_attr -%}value="{{ sponsor.logo_url }}"{%- endlet %}
+    {% let sponsor_website_attr -%}
+    {% if let Some(website) = &sponsor.website_url -%}
+      value="{{ website }}"
+    {%- endif %}
+  {%- endlet %}
+  {{ sponsor_fields::details_fields(name_attr = sponsor_name_attr, logo_attr = sponsor_logo_attr, website_attr = sponsor_website_attr, featured_checked = sponsor.featured) -}}
+</div>
+</div>
 </div>
 
 {{ dashboard::form_actions(cancel_href = "/dashboard/group?tab=sponsors", spinner_id = "group-sponsor-update-spinner", submit_label = "Update Sponsor", disabled = !can_manage_sponsors, disabled_title = "Your role cannot update sponsors.") -}}

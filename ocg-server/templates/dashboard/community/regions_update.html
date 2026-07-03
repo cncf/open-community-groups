@@ -25,16 +25,16 @@
              inert
            {% endif -%}>
         {% let name_value -%}value="{{ region.name }}"{%- endlet %}
-        {{ form_fields::entity_name_field(legend_prefix = "Region display name.", value_attr = name_value) -}}
-      </div>
+      {{ form_fields::entity_name_field(legend_prefix = "Region display name.", value_attr = name_value) -}}
     </div>
   </div>
+</div>
 
-  {{ dashboard::form_actions(cancel_href = "/dashboard/community?tab=regions",
-    spinner_id = "community-region-update-spinner",
-    submit_label = "Update Region",
-    disabled = !can_manage_taxonomy,
-    disabled_title = "Your role cannot update regions.") -}}
+{{ dashboard::form_actions(cancel_href = "/dashboard/community?tab=regions",
+spinner_id = "community-region-update-spinner",
+submit_label = "Update Region",
+disabled = !can_manage_taxonomy,
+disabled_title = "Your role cannot update regions.") -}}
 </form>
 
 {# End Update Region form -#}
