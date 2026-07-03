@@ -3,7 +3,8 @@
 {# Event Cfs Modal -#}
 {% if let Some(notice) = &notice -%}
   {# Notice -#}
-  <div class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
+  <div data-cfs-submission-notice
+       class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
     <div class="svg-icon size-4 mt-0.5 bg-emerald-700 icon-check"></div>
     <div class="text-sm">{{ notice }}</div>
   </div>
@@ -45,10 +46,12 @@
     {# End empty proposals prompt -#}
   {% else -%}
     {# CFS submission form -#}
+    {# Profile prompts apply after sign-in only. -#}
     <form id="cfs-submission-form"
           hx-post="/{{ event.community_name }}/event/{{ event.event_id }}/cfs-submissions"
           hx-target="#cfs-modal-root"
           hx-swap="innerHTML"
+          data-profile-complete="{{ !user.logged_in }}"
           hx-indicator="#cfs-submit-spinner"
           hx-disabled-elt="#cfs-submit-button">
       <div class="space-y-4">
