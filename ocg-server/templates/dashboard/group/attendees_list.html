@@ -101,11 +101,11 @@
             hx-indicator="#dashboard-spinner">
         {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_checked_in = false) -}}
         {% if active_checked_in -%}
-          {% call dashboard::active_table_filter_badge("Checked in") -%}
+          {% call dashboard::active_table_filter_badge("Checked In", "Yes") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
           {% endcall -%}
         {% else -%}
-          {% call dashboard::active_table_filter_badge("Not checked in") -%}
+          {% call dashboard::active_table_filter_badge("Checked In", "No") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove check-in filter") -}}
           {% endcall -%}
         {% endif -%}
@@ -119,11 +119,11 @@
             hx-indicator="#dashboard-spinner">
         {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_title = false) -}}
         {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
-          {% call dashboard::active_table_filter_badge("Present") -%}
+          {% call dashboard::active_table_filter_badge("Position", "Present") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
           {% endcall -%}
         {% else -%}
-          {% call dashboard::active_table_filter_badge("Missing") -%}
+          {% call dashboard::active_table_filter_badge("Position", "Missing") -%}
           {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
           {% endcall -%}
         {% endif -%}
@@ -136,7 +136,7 @@
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
         {{ attendee_table_state_inputs(checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_ticket_type_ids = false) -}}
-        {% call dashboard::active_table_filter_badge("Ticket type") -%}
+        {% call dashboard::active_table_filter_badge("Ticket type", "Selected") -%}
         {{ dashboard::active_table_filter_remove_button(label = "Remove ticket type filter") -}}
         {% endcall -%}
       </form>
@@ -158,7 +158,7 @@
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
-  <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
+  <div class="shrink-0 w-auto mt-1.5 mb-1.5 flex gap-3 flex-row">
     <div class="group relative w-full lg:w-auto">
       <button id="attendee-email-actions-button"
               type="button"

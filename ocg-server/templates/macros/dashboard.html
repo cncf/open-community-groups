@@ -153,9 +153,9 @@
 {# End table filter section title #}
 
 {# Active table filter badge #}
-{% macro active_table_filter_badge(label) -%}
+{% macro active_table_filter_badge(title, label) -%}
   <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700">
-    <span>{{ label }}</span>
+    <span><span class="font-semibold text-stone-900">{{ title }}:</span> {{ label }}</span>
     {{ caller() }}
   </span>
 {% endmacro active_table_filter_badge -%}

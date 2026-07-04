@@ -109,7 +109,13 @@ describe("dashboard group waitlist list template", () => {
     expect(template).to.not.include("Title present");
     expect(template).to.not.include("Title missing");
     expect(template).to.not.include("waitlist-entry-filter");
-    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort:');
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Present")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Missing")',
+    );
+    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort"');
   });
 
   it("keeps waitlist responsive columns aligned with empty placeholders", async () => {

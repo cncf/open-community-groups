@@ -227,7 +227,22 @@ describe("dashboard group attendees list template", () => {
       'dashboard::table_filter_option_button(label = "Not checked in", name = "checked_in", value = "false"',
     );
     expect(template).to.include("Reset all");
-    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort:');
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Checked In", "Yes")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Checked In", "No")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Present")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Missing")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Ticket type", "Selected")',
+    );
+    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort"');
     expect(template).to.not.include('id = "attendees-name-filter"');
     expect(template).to.include("Ticket type");
   });

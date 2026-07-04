@@ -41,4 +41,13 @@ describe("dashboard macros template", () => {
       "bg-primary-50 text-stone-900 ring-1 ring-primary-200",
     );
   });
+
+  it("renders active table filter badges with filter title and value", async () => {
+    // Load the dashboard macros template before checking active filter badges.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify active filter badges display the filter title beside the value.
+    expect(template).to.include("macro active_table_filter_badge(title, label)");
+    expect(template).to.include('{{ title }}:</span> {{ label }}');
+  });
 });
