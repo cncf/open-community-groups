@@ -3,6 +3,9 @@ import { getCommonAlertOptions } from "/static/js/common/alerts.js";
 export const PROFILE_COMPLETION_URL = "/dashboard/user?tab=account";
 
 const PROFILE_COMPLETE_SELECTOR = "[data-profile-complete]";
+const SIGNED_IN_USER_SELECTOR = "[data-logged-in='true']";
+
+const isSignedInFromPage = () => Boolean(document.querySelector(SIGNED_IN_USER_SELECTOR));
 
 /**
  * Reads the current profile-completion state from an event action.
@@ -11,7 +14,8 @@ const PROFILE_COMPLETE_SELECTOR = "[data-profile-complete]";
  */
 export const shouldPromptForProfileCompletion = (trigger) => {
   const config = trigger?.closest?.(PROFILE_COMPLETE_SELECTOR);
-  return config?.dataset?.profileComplete === "false";
+  const profileComplete = config?.dataset?.profileComplete?.trim();
+  return profileComplete === "false" || (profileComplete === "true" && isSignedInFromPage());
 };
 
 /**
@@ -40,8 +44,6 @@ export const showProfileCompletionAlert = ({
     confirmButtonText: "Complete profile",
     showCancelButton: true,
     cancelButtonText: "Continue anyway",
-    position: "center",
-    backdrop: true,
   }).then((result) => {
     if (result.isConfirmed) {
       navigateTo(PROFILE_COMPLETION_URL);
@@ -80,8 +82,6 @@ export const showProfileCompletionFeedbackAlert = ({
     confirmButtonText: "Complete profile",
     showCancelButton: true,
     cancelButtonText: "Maybe later",
-    position: "center",
-    backdrop: true,
   }).then((result) => {
     if (result.isConfirmed) {
       navigateTo(PROFILE_COMPLETION_URL);

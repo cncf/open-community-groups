@@ -6,7 +6,16 @@
   <div data-cfs-submission-notice
        class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
     <div class="svg-icon size-4 mt-0.5 bg-emerald-700 icon-check"></div>
-    <div class="text-sm">{{ notice }}</div>
+    <div class="text-sm">
+      <div>{{ notice }}</div>
+      {% if user.logged_in -%}
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <span>Want organizers to know more about you?</span>
+          <a href="/dashboard/user?tab=account"
+             class="font-semibold text-emerald-950 underline underline-offset-2 hover:text-primary-700">Complete your profile</a>
+        </div>
+      {% endif -%}
+    </div>
   </div>
   {# End notice -#}
 {% endif -%}
@@ -46,12 +55,10 @@
     {# End empty proposals prompt -#}
   {% else -%}
     {# CFS submission form -#}
-    {# Profile prompts apply after sign-in only. -#}
     <form id="cfs-submission-form"
           hx-post="/{{ event.community_name }}/event/{{ event.event_id }}/cfs-submissions"
           hx-target="#cfs-modal-root"
           hx-swap="innerHTML"
-          data-profile-complete="{{ !user.logged_in }}"
           hx-indicator="#cfs-submit-spinner"
           hx-disabled-elt="#cfs-submit-button">
       <div class="space-y-4">

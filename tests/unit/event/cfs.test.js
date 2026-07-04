@@ -129,7 +129,7 @@ describe("event cfs modal", () => {
     expect(document.getElementById("cfs-modal")?.classList.contains("hidden")).to.equal(false);
   });
 
-  it("prompts incomplete profiles after loading the proposal modal", async () => {
+  it("opens the proposal modal without a profile completion dialog", async () => {
     const swal = mockSwal();
     try {
       swal.setNextResult({ isConfirmed: false });
@@ -174,13 +174,9 @@ describe("event cfs modal", () => {
       dispatchHtmxAfterSwap(document.getElementById("cfs-modal-root"));
       await waitForMicrotask();
 
-      // Verify the prompt appears after the modal opens.
+      // Verify the modal opens without adding a competing profile dialog.
       expect(document.getElementById("cfs-modal")?.classList.contains("hidden")).to.equal(false);
-      expect(swal.calls.at(-1)).to.include({
-        title: "Make your profile yours",
-        confirmButtonText: "Complete profile",
-        cancelButtonText: "Continue anyway",
-      });
+      expect(swal.calls).to.have.length(0);
     } finally {
       swal.restore();
     }

@@ -1,27 +1,10 @@
 import { toggleModalVisibility } from "/static/js/common/common.js";
 import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
-import {
-  shouldPromptForProfileCompletion,
-  showProfileCompletionAlert,
-} from "/static/js/common/profile-completion-alert.js";
 
 const ROOT_ID = "cfs-modal-root";
 const MODAL_ID = "cfs-modal";
 const DATA_KEY = "cfsModalReady";
 const SELECT_DATA_KEY = "cfsSubmitReady";
-const PROFILE_COMPLETION_TRIGGER_KEY = "__ocgProfileCompletionTrigger";
-
-const isCfsProfileCompletionAction = (target) =>
-  target instanceof HTMLElement && target.id === "open-cfs-modal";
-
-const handleBeforeRequest = (event) => {
-  const target = event.target;
-  if (!isCfsProfileCompletionAction(target)) {
-    return;
-  }
-
-  document[PROFILE_COMPLETION_TRIGGER_KEY] = target;
-};
 
 const initializeSubmitControls = (modal) => {
   const select = getElementById(modal, "session_proposal_id");
@@ -78,16 +61,8 @@ const handleModalSwap = (event) => {
   if (isElementHidden(modal)) {
     toggleModalVisibility(MODAL_ID);
   }
-
-  const trigger = document[PROFILE_COMPLETION_TRIGGER_KEY];
-  delete document[PROFILE_COMPLETION_TRIGGER_KEY];
-
-  if (shouldPromptForProfileCompletion(trigger)) {
-    showProfileCompletionAlert({ trigger });
-  }
 };
 
 if (markDatasetReady(document.documentElement, "cfsModalSwapReady")) {
   document.addEventListener("htmx:afterSwap", handleModalSwap);
-  document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
 }

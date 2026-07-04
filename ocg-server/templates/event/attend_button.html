@@ -15,7 +15,11 @@
        data-registration-window-unavailable-title="{{ registration_window_title }}"
      {% endif %}
      data-ticket-purchase-available="{{ event.has_sellable_ticket_types() }}"
-     data-profile-complete="{{ !user.logged_in }}"
+     data-profile-complete="{% if user.logged_in %}
+                              false
+                            {% else %}
+                              true
+                            {% endif %}"
      data-availability-url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}/availability"
      data-attendee-approval-required="{{ event.attendee_approval_required }}"
      {% if let Some(starts_at) = &event.starts_at %}data-starts="{{ starts_at.to_rfc3339() }}"{% endif %}

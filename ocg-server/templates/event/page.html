@@ -379,12 +379,10 @@
           {% endif -%}
           <div class="pt-6">
             {% if event.cfs_is_open() -%}
-              {# Profile prompts apply after sign-in only. -#}
               <button id="open-cfs-modal"
                       hx-get="/{{ event.community.name }}/event/{{ event.event_id }}/cfs-modal"
                       hx-target="#cfs-modal-root"
                       hx-swap="innerHTML"
-                      data-profile-complete="{{ !user.logged_in }}"
                       class="btn-primary-outline h-10 md:h-[30px] px-4 flex items-center justify-center"
                       hx-disabled-elt="#open-cfs-modal">Submit session proposal</button>
             {% else -%}
