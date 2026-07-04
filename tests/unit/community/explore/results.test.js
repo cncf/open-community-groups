@@ -5,7 +5,7 @@ import {
   fetchData,
   updateResults,
   updateResultsFromSummary,
-} from "/static/js/community/explore/explore.js";
+} from "/static/js/community/explore/results.js";
 import { Map as ExploreMap } from "/static/js/community/explore/map.js";
 import {
   initializeExploreWidgets,

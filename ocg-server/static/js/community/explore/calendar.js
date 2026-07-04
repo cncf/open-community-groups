@@ -2,7 +2,7 @@ import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/stati
 import { getElementById, loadScriptOnce, setElementHidden } from "/static/js/common/dom.js";
 import { insertTrustedHtml } from "/static/js/common/trusted-html.js";
 import { parseJsonText } from "/static/js/common/utils.js";
-import { fetchData } from "/static/js/community/explore/explore.js";
+import { fetchData } from "/static/js/community/explore/results.js";
 import {
   getFirstAndLastDayOfMonth,
   hasActiveCalendarFilters,
