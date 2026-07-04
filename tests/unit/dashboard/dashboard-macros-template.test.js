@@ -37,9 +37,7 @@ describe("dashboard macros template", () => {
     expect(template).to.include("icon-caret-down-filled bg-current");
     expect(template).to.include("{{ label }} filters");
     expect(template).not.to.include("bg-primary-500 {% else -%} bg-current");
-    expect(template).not.to.include(
-      "bg-primary-50 text-stone-900 ring-1 ring-primary-200",
-    );
+    expect(template).not.to.include("bg-primary-50 text-stone-900 ring-1 ring-primary-200");
   });
 
   it("renders active table filter badges with filter title and value", async () => {
@@ -48,6 +46,7 @@ describe("dashboard macros template", () => {
 
     // Verify active filter badges display the filter title beside the value.
     expect(template).to.include("macro active_table_filter_badge(title, label)");
-    expect(template).to.include('{{ title }}:</span> {{ label }}');
+    expect(template).to.include('<span class="font-semibold text-stone-900">{{ title }}:</span>');
+    expect(template).to.include("<span>{{ label }}</span>");
   });
 });

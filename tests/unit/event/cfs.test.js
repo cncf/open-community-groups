@@ -186,7 +186,7 @@ describe("event cfs modal", () => {
     }
   });
 
-  it("prompts incomplete profiles after a successful proposal submission swap", async () => {
+  it("keeps successful proposal submissions on the inline confirmation", async () => {
     const swal = mockSwal();
     try {
       swal.setNextResult({ isConfirmed: false });
@@ -212,7 +212,7 @@ describe("event cfs modal", () => {
       form.dispatchEvent(event);
       await waitForMicrotask();
 
-      // Verify the request continues before the response swap.
+      // Verify the request continues without opening a profile prompt.
       expect(event.defaultPrevented).to.equal(false);
       expect(swal.calls).to.have.length(0);
 
@@ -223,12 +223,9 @@ describe("event cfs modal", () => {
       dispatchHtmxAfterSwap(document.getElementById("cfs-modal-root"));
       await waitForMicrotask();
 
-      // Verify the prompt appears after the successful response is rendered.
-      expect(swal.calls.at(-1)).to.include({
-        title: "Make your profile yours",
-        confirmButtonText: "Complete profile",
-        cancelButtonText: "Continue anyway",
-      });
+      // Verify the successful response stays visible without a second dialog.
+      expect(document.querySelector("[data-cfs-submission-notice]")?.textContent).to.include("Submitted");
+      expect(swal.calls).to.have.length(0);
     } finally {
       swal.restore();
     }

@@ -10,10 +10,9 @@ const MODAL_ID = "cfs-modal";
 const DATA_KEY = "cfsModalReady";
 const SELECT_DATA_KEY = "cfsSubmitReady";
 const PROFILE_COMPLETION_TRIGGER_KEY = "__ocgProfileCompletionTrigger";
-const PROFILE_COMPLETION_TRIGGER_KIND_KEY = "__ocgProfileCompletionTriggerKind";
 
 const isCfsProfileCompletionAction = (target) =>
-  target instanceof HTMLElement && (target.id === "open-cfs-modal" || target.id === "cfs-submission-form");
+  target instanceof HTMLElement && target.id === "open-cfs-modal";
 
 const handleBeforeRequest = (event) => {
   const target = event.target;
@@ -21,14 +20,7 @@ const handleBeforeRequest = (event) => {
     return;
   }
 
-  if (target.id === "open-cfs-modal") {
-    document[PROFILE_COMPLETION_TRIGGER_KEY] = target;
-    document[PROFILE_COMPLETION_TRIGGER_KIND_KEY] = "open";
-    return;
-  }
-
   document[PROFILE_COMPLETION_TRIGGER_KEY] = target;
-  document[PROFILE_COMPLETION_TRIGGER_KIND_KEY] = "submit";
 };
 
 const initializeSubmitControls = (modal) => {
@@ -88,13 +80,7 @@ const handleModalSwap = (event) => {
   }
 
   const trigger = document[PROFILE_COMPLETION_TRIGGER_KEY];
-  const triggerKind = document[PROFILE_COMPLETION_TRIGGER_KIND_KEY];
   delete document[PROFILE_COMPLETION_TRIGGER_KEY];
-  delete document[PROFILE_COMPLETION_TRIGGER_KIND_KEY];
-
-  if (triggerKind === "submit" && !event.target.querySelector("[data-cfs-submission-notice]")) {
-    return;
-  }
 
   if (shouldPromptForProfileCompletion(trigger)) {
     showProfileCompletionAlert({ trigger });
