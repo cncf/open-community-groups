@@ -1,26 +1,8 @@
 {% import "macros/ui.html" as ui -%}
 {% import "macros/badges.html" as badges -%}
 
-{# Ticket price badge -#}
-{% macro ticket_price_badge(event, panel = false) -%}
-  {% if !event.is_past() -%}
-    {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
-      {% if panel -%}
-        <div class="flex items-center justify-between gap-3 rounded-xl border border-green-800 bg-green-100/40 px-3.5 py-1.5 text-[13px]/5 text-green-800">
-          <span class="font-medium">Ticket price</span>
-          <span class="font-semibold">{{ ticket_price_badge }}</span>
-        </div>
-      {% else -%}
-        <span class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800">
-          {{ ticket_price_badge }}
-        </span>
-      {% endif -%}
-    {% endif -%}
-  {% endif -%}
-{% endmacro ticket_price_badge -%}
-{# End ticket price badge -#}
-
 {# Event footer -#}
+{# Used by explore and shared event cards for date and location metadata. -#}
 {% macro event_footer(event, left_width_classes = "w-[60px] min-w-[60px]", show_ticket_price = true) -%}
   <div class="flex items-center gap-3 md:gap-4">
     <div class="{{ left_width_classes }} shrink-0 text-center">
@@ -80,6 +62,7 @@
 {# End event footer -#}
 
 {# Group footer -#}
+{# Used by community and explore group cards for location metadata. -#}
 {% macro group_footer(group, location_max_len = 32, left_width_classes = "w-[60px] min-w-[60px]") -%}
   <div class="flex items-center gap-3 md:gap-4">
     <div class="{{ left_width_classes }} shrink-0 text-center">
@@ -107,3 +90,23 @@
   </div>
 {% endmacro group_footer -%}
 {# End group footer -#}
+
+{# Ticket price badge -#}
+{# Used by event cards and attendance panels to show paid ticket state. -#}
+{% macro ticket_price_badge(event, panel = false) -%}
+  {% if !event.is_past() -%}
+    {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+      {% if panel -%}
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-green-800 bg-green-100/40 px-3.5 py-1.5 text-[13px]/5 text-green-800">
+          <span class="font-medium">Ticket price</span>
+          <span class="font-semibold">{{ ticket_price_badge }}</span>
+        </div>
+      {% else -%}
+        <span class="custom-badge inline-flex items-center border-green-800 bg-green-100 font-semibold text-green-800">
+          {{ ticket_price_badge }}
+        </span>
+      {% endif -%}
+    {% endif -%}
+  {% endif -%}
+{% endmacro ticket_price_badge -%}
+{# End ticket price badge -#}

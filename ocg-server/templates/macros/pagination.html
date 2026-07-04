@@ -1,5 +1,7 @@
 {% import "macros/ui.html" as ui -%}
 
+{# Navigation links -#}
+{# Used by explore results and dashboard list pages for pagination controls. -#}
 {% macro navigation_links(links, hx_target, hx_swap = "", hx_indicator = "", spinner_id_prefix = "pagination") -%}
   {% let first_spinner_id = spinner_id_prefix.to_string() + "first-spinner" -%}
   {% let prev_spinner_id = spinner_id_prefix.to_string() + "prev-spinner" -%}
@@ -116,7 +118,10 @@
   {# End pagination -#}
 
 {%- endmacro navigation_links %}
+{# End navigation links -#}
 
+{# Range display -#}
+{# Used by dashboard list pages to show the visible result range. -#}
 {% macro range_display(offset, count, total, label = "result", plural_label = "") -%}
   {% if count > 0 -%}
     {% let start = offset + 1 -%}
@@ -138,3 +143,4 @@
     {%- endif -%}
   {% endif -%}
 {%- endmacro range_display %}
+{# End range display -#}

@@ -1,4 +1,19 @@
+{# Current page -#}
+{# Used by explore result sections to display result counts. -#}
+{% macro current_page(total, items_number, offset_value) -%}
+  {%- if items_number + 0 > 0 -%}
+    {%- if let Some(offset) = &offset_value -%}
+      {{ offset + 1 }} - {{ items_number + offset }}
+    {%- else -%}
+      1 - {{ items_number }}
+    {%- endif -%}
+    {{ "" }} of {{ total }} results
+  {%- endif -%}
+{%- endmacro current_page -%}
+{# End current page -#}
+
 {# Search bar -#}
+{# Used by explore event and group sections. -#}
 {% macro search_bar(placeholder, input_styles, container_styles, with_help, value = None) -%}
   {% let value_ = value.clone().unwrap_or("".to_string()) -%}
 
@@ -74,16 +89,3 @@
   </div>
 {% endmacro search_bar -%}
 {# End search bar -#}
-
-{# Current page -#}
-{% macro current_page(total, items_number, offset_value) -%}
-  {%- if items_number + 0 > 0 -%}
-    {%- if let Some(offset) = &offset_value -%}
-      {{ offset + 1 }} - {{ items_number + offset }}
-    {%- else -%}
-      1 - {{ items_number }}
-    {%- endif -%}
-    {{ "" }} of {{ total }} results
-  {%- endif -%}
-{%- endmacro current_page -%}
-{# End current page -#}

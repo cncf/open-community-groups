@@ -1,6 +1,7 @@
 {% import "macros/form_fields.html" as form_fields -%}
 
 {# Sponsor details fields -#}
+{# Used by dashboard sponsor add and update forms. -#}
 {% macro details_fields(name_attr = "", logo_attr = "", website_attr = "", featured_checked = true) -%}
   {{ form_fields::entity_name_field(legend_prefix = "Sponsor's name.", value_attr = name_attr) -}}
 

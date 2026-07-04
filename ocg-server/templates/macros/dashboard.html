@@ -1,26 +1,93 @@
 {% import "macros/ui.html" as ui -%}
 
-{# Menu title -#}
-{% macro menu_title(text, extra_styles = "") -%}
-  <div class="text-xs/6 text-stone-500 uppercase px-3 {{ extra_styles }}">{{ text }}</div>
-{% endmacro menu_title -%}
-{# End menu title -#}
+{# Active table filter badge #}
+{# Used by dashboard tables to summarize active waitlist and attendee filters. #}
+{% macro active_table_filter_badge(title, label) -%}
+  <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700">
+    <span class="font-semibold text-stone-900">{{ title }}:</span>
+    <span>{{ label }}</span>
+    {{ caller() }}
+  </span>
+{% endmacro active_table_filter_badge -%}
+{# End active table filter badge #}
 
-{# Selector loading button -#}
-{% macro selector_loading_button(extra_styles = "", spinner_size = "size-4") -%}
-  <button type="button"
-          class="select select-primary relative text-left pe-9 cursor-not-allowed {{ extra_styles }}"
-          disabled
-          aria-disabled="true">
-    <div class="flex items-center min-h-10 ps-1">{{ ui::spinner(size = spinner_size) -}}</div>
-    <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
-      <div class="svg-icon size-3 icon-caret-down bg-stone-400"></div>
-    </div>
+{# Active table filter remove button #}
+{# Used by dashboard table filter badges to clear a selected filter. #}
+{% macro active_table_filter_remove_button(label) -%}
+  <button type="submit"
+          class="-me-1 inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-stone-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
+          aria-label="{{ label }}">
+    <div class="svg-icon size-3 icon-close bg-stone-500"></div>
   </button>
-{% endmacro selector_loading_button -%}
-{# End selector loading button -#}
+{% endmacro active_table_filter_remove_button -%}
+{# End active table filter remove button #}
+
+{# Empty state #}
+{# Used by dashboard placeholder rows that include custom follow-up content. #}
+{% macro empty_state(title, title_margin = "mb-6", wrapper_class = "") -%}
+  <div class="flex flex-col items-center justify-center min-h-[125px] {{ wrapper_class }}">
+    <div class="text-xl lg:text-2xl {{ title_margin }}">{{ title }}</div>
+    {{ caller() }}
+  </div>
+{% endmacro empty_state -%}
+{# End empty state #}
+
+{# Compact empty state #}
+{# Used by dashboard placeholder rows that only need a short message. #}
+{% macro empty_state_compact(title, wrapper_class = "") -%}
+  <div class="flex flex-col items-center justify-center min-h-[125px] {{ wrapper_class }}">
+    <div class="text-lg lg:text-xl">{{ title }}</div>
+  </div>
+{% endmacro empty_state_compact -%}
+{# End compact empty state #}
+
+{# Form actions #}
+{# Used by dashboard add and update forms for cancel and submit actions. #}
+{% macro form_actions(cancel_href, spinner_id, submit_label, disabled = false, disabled_title = "") -%}
+  <div class="mt-6 flex items-center justify-end gap-x-6">
+    <button id="cancel-button"
+            type="button"
+            hx-get="{{ cancel_href }}"
+            hx-target="body"
+            hx-indicator="#dashboard-spinner"
+            class="btn-primary-outline">Cancel</button>
+
+    <button type="submit"
+            class="btn-primary relative
+                   {% if disabled -%}
+                     opacity-50 cursor-not-allowed
+                   {% endif -%}"
+            {% if disabled -%}
+              disabled title="{{ disabled_title }}"
+            {% endif -%}>
+      {{ ui::btn_spinner(id = spinner_id, spinner_type = "2") -}}
+      {{ submit_label }}
+    </button>
+  </div>
+{% endmacro form_actions -%}
+{# End form actions #}
+
+{# Form title #}
+{# Used by dashboard and profile forms for section titles and descriptions. #}
+{% macro form_title(title, description = "", button = "") -%}
+  <div>
+    <div class="text-xl lg:text-2xl font-medium text-stone-900">{{ title }}</div>
+    {% if !description.is_empty() -%}
+      <div class="mt-1 flex flex-wrap items-center gap-3">
+        <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
+        {% if !button.is_empty() -%}
+          {{ button | safe }}
+        {% endif -%}
+      </div>
+    {% elif !button.is_empty() -%}
+      <div class="mt-1">{{ button | safe }}</div>
+    {% endif -%}
+  </div>
+{% endmacro form_title -%}
+{# End form title #}
 
 {# Menu item -#}
+{# Used by dashboard side menus for user, community, and group navigation. -#}
 {% macro menu_item(name, icon, is_active, href, disabled = false, extra_styles = "", icon_size = "size-4", items_count = 0 ) -%}
   {% if is_active -%}
     <div class="relative bg-white border border-stone-200 px-3 rounded-lg {{ extra_styles }}">
@@ -77,102 +144,45 @@
 {% endmacro menu_item -%}
 {# End menu item -#}
 
-{# Form title #}
-{% macro form_title(title, description = "", button = "") -%}
-  <div>
-    <div class="text-xl lg:text-2xl font-medium text-stone-900">{{ title }}</div>
-    {% if !description.is_empty() -%}
-      <div class="mt-1 flex flex-wrap items-center gap-3">
-        <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
-        {% if !button.is_empty() -%}
-          {{ button | safe }}
-        {% endif -%}
+{# Menu title -#}
+{# Used by dashboard side menus to label navigation groups. -#}
+{% macro menu_title(text, extra_styles = "") -%}
+  <div class="text-xs/6 text-stone-500 uppercase px-3 {{ extra_styles }}">{{ text }}</div>
+{% endmacro menu_title -%}
+{# End menu title -#}
+
+{# Modal close button #}
+{# Used by dashboard modal headers as the shared close control. #}
+{% macro modal_close_button(id = "", attrs = "") -%}
+  <button {% if !id.is_empty() %}id="{{ id }}"{% endif %}
+          {{ attrs|safe }}
+          type="button"
+          class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+    <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+    <span class="sr-only">Close modal</span>
+  </button>
+{% endmacro modal_close_button -%}
+{# End modal close button #}
+
+{# Modal header #}
+{# Used by dashboard event, attendee, submission, and audit log modals. #}
+{% macro modal_header(title_id, title, close_id = "", close_attrs = "", subtitle = "", align_items = "items-center") -%}
+  <div class="flex {{ align_items }} justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+    {% if subtitle.is_empty() -%}
+      <h3 id="{{ title_id }}" class="text-xl font-semibold text-stone-900">{{ title }}</h3>
+    {% else -%}
+      <div>
+        <h3 id="{{ title_id }}" class="text-xl font-semibold text-stone-900">{{ title }}</h3>
+        {{ subtitle|safe }}
       </div>
-    {% elif !button.is_empty() -%}
-      <div class="mt-1">{{ button | safe }}</div>
     {% endif -%}
+    {{ modal_close_button(id = close_id, attrs = close_attrs) -}}
   </div>
-{% endmacro form_title -%}
-{# End form title #}
-
-{# Table filter menu #}
-{% macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0") -%}
-  <details class="group relative inline-block text-left {{ extra_classes }}"
-           data-table-filter-menu>
-    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
-             aria-label="{{ label }} filters"
-             aria-controls="{{ id }}">
-      <span class="whitespace-nowrap">{{ label }}</span>
-      <div class="svg-icon size-3 icon-caret-down-filled bg-current transition-transform group-open:rotate-180">
-      </div>
-    </summary>
-    <div id="{{ id }}"
-         class="dropdown absolute {{ dropdown_classes }} top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-white text-left text-sm font-normal normal-case text-stone-700 shadow">
-      {{ caller() }}
-    </div>
-  </details>
-{% endmacro table_filter_menu -%}
-{# End table filter menu #}
-
-{# Table filter option button #}
-{% macro table_filter_option_button(label, name, value, is_active, clear_value = "", is_clear_option = false) -%}
-  <button type="submit"
-          {% if is_clear_option && clear_value.is_empty() -%}
-          {% else if is_active && clear_value.is_empty() -%}
-          {% else if is_active -%}
-            name="{{ name }}" value="{{ clear_value }}"
-          {% else -%}
-            name="{{ name }}" value="{{ value }}"
-          {% endif -%}
-          class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
-                 {% if is_active -%}
-                   bg-primary-50 text-primary-700
-                 {% endif -%}"
-          aria-pressed="{% if is_active -%}
-                          true{%- else -%}false{%- endif -%}">
-    <span class="flex size-4 shrink-0 items-center justify-center rounded-full border
-                 {% if is_active -%}
-                   border-primary-500
-                 {% else -%}
-                   border-stone-300
-                 {% endif -%}"
-          aria-hidden="true">
-      {% if is_active -%}
-        <span class="size-2 rounded-full bg-primary-500"></span>
-      {% endif -%}
-    </span>
-    <span>{{ label }}</span>
-  </button>
-{% endmacro table_filter_option_button -%}
-{# End table filter option button #}
-
-{# Table filter section title #}
-{% macro table_filter_section_title(text) -%}
-  <div class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-stone-500">{{ text }}</div>
-{% endmacro table_filter_section_title -%}
-{# End table filter section title #}
-
-{# Active table filter badge #}
-{% macro active_table_filter_badge(title, label) -%}
-  <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs font-medium text-stone-700">
-    <span class="font-semibold text-stone-900">{{ title }}:</span>
-    <span>{{ label }}</span>
-    {{ caller() }}
-  </span>
-{% endmacro active_table_filter_badge -%}
-{# End active table filter badge #}
-
-{# Active table filter remove button #}
-{% macro active_table_filter_remove_button(label) -%}
-  <button type="submit"
-          class="-me-1 inline-flex size-5 items-center justify-center rounded-full transition-colors hover:bg-stone-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
-          aria-label="{{ label }}">
-    <div class="svg-icon size-3 icon-close bg-stone-500"></div>
-  </button>
-{% endmacro active_table_filter_remove_button -%}
-{# End active table filter remove button #}
+{% endmacro modal_header -%}
+{# End modal header #}
 
 {# Page title #}
+{# Used by dashboard pages for the primary title and documentation link. #}
 {% macro page_title(title, docs_href, description = "", button = "", docs_aria_label = "") -%}
   <div>
     <div class="flex items-center justify-between gap-3">
@@ -204,60 +214,8 @@
 {% endmacro page_title -%}
 {# End page title #}
 
-{# Form actions #}
-{% macro form_actions(cancel_href, spinner_id, submit_label, disabled = false, disabled_title = "") -%}
-  <div class="mt-6 flex items-center justify-end gap-x-6">
-    <button id="cancel-button"
-            type="button"
-            hx-get="{{ cancel_href }}"
-            hx-target="body"
-            hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline">Cancel</button>
-
-    <button type="submit"
-            class="btn-primary relative
-                   {% if disabled -%}
-                     opacity-50 cursor-not-allowed
-                   {% endif -%}"
-            {% if disabled -%}
-              disabled title="{{ disabled_title }}"
-            {% endif -%}>
-      {{ ui::btn_spinner(id = spinner_id, spinner_type = "2") -}}
-      {{ submit_label }}
-    </button>
-  </div>
-{% endmacro form_actions -%}
-{# End form actions #}
-
-{# Modal close button #}
-{% macro modal_close_button(id = "", attrs = "") -%}
-  <button {% if !id.is_empty() %}id="{{ id }}"{% endif %}
-          {{ attrs|safe }}
-          type="button"
-          class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
-    <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
-    <span class="sr-only">Close modal</span>
-  </button>
-{% endmacro modal_close_button -%}
-{# End modal close button #}
-
-{# Modal header #}
-{% macro modal_header(title_id, title, close_id = "", close_attrs = "", subtitle = "", align_items = "items-center") -%}
-  <div class="flex {{ align_items }} justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
-    {% if subtitle.is_empty() -%}
-      <h3 id="{{ title_id }}" class="text-xl font-semibold text-stone-900">{{ title }}</h3>
-    {% else -%}
-      <div>
-        <h3 id="{{ title_id }}" class="text-xl font-semibold text-stone-900">{{ title }}</h3>
-        {{ subtitle|safe }}
-      </div>
-    {% endif -%}
-    {{ modal_close_button(id = close_id, attrs = close_attrs) -}}
-  </div>
-{% endmacro modal_header -%}
-{# End modal header #}
-
 {# Permission warning #}
+{# Used by dashboard edit pages when permissions limit available actions. #}
 {% macro permission_warning(message, extra_classes = "mb-6") -%}
   <div class="{{ extra_classes }} rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     {{ message }}
@@ -265,7 +223,76 @@
 {% endmacro permission_warning -%}
 {# End permission warning #}
 
+{# Selector loading button -#}
+{# Used by dashboard shells while community or group selectors load. -#}
+{% macro selector_loading_button(extra_styles = "", spinner_size = "size-4") -%}
+  <button type="button"
+          class="select select-primary relative text-left pe-9 cursor-not-allowed {{ extra_styles }}"
+          disabled
+          aria-disabled="true">
+    <div class="flex items-center min-h-10 ps-1">{{ ui::spinner(size = spinner_size) -}}</div>
+    <div class="absolute inset-y-0 end-0 flex items-center pe-3 pointer-events-none">
+      <div class="svg-icon size-3 icon-caret-down bg-stone-400"></div>
+    </div>
+  </button>
+{% endmacro selector_loading_button -%}
+{# End selector loading button -#}
+
+{# Table filter menu #}
+{# Used by dashboard waitlist, attendees, and invitation request filters. #}
+{% macro table_filter_menu(id, label, is_active, extra_classes = "", dropdown_classes = "start-0") -%}
+  <details class="group relative inline-block text-left {{ extra_classes }}"
+           data-table-filter-menu>
+    <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold transition-colors hover:bg-white hover:text-stone-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 group-open:bg-white group-open:text-stone-900 [&::-webkit-details-marker]:hidden"
+             aria-label="{{ label }} filters"
+             aria-controls="{{ id }}">
+      <span class="whitespace-nowrap">{{ label }}</span>
+      <div class="svg-icon size-3 icon-caret-down-filled bg-current transition-transform group-open:rotate-180">
+      </div>
+    </summary>
+    <div id="{{ id }}"
+         class="dropdown absolute {{ dropdown_classes }} top-full z-20 mt-2 w-64 rounded-lg border border-stone-200 bg-white text-left text-sm font-normal normal-case text-stone-700 shadow">
+      {{ caller() }}
+    </div>
+  </details>
+{% endmacro table_filter_menu -%}
+{# End table filter menu #}
+
+{# Table filter option button #}
+{# Used inside dashboard table filter menus for selectable options. #}
+{% macro table_filter_option_button(label, name, value, is_active, clear_value = "", is_clear_option = false) -%}
+  <button type="submit"
+          {% if is_clear_option && clear_value.is_empty() -%}
+          {% else if is_active && clear_value.is_empty() -%}
+          {% else if is_active -%}
+            name="{{ name }}" value="{{ clear_value }}"
+          {% else -%}
+            name="{{ name }}" value="{{ value }}"
+          {% endif -%}
+          class="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-stone-100 hover:text-stone-900
+                 {% if is_active -%}
+                   bg-primary-50 text-primary-700
+                 {% endif -%}"
+          aria-pressed="{% if is_active -%}
+                          true{%- else -%}false{%- endif -%}">
+    <span class="flex size-4 shrink-0 items-center justify-center rounded-full border
+                 {% if is_active -%}
+                   border-primary-500
+                 {% else -%}
+                   border-stone-300
+                 {% endif -%}"
+          aria-hidden="true">
+      {% if is_active -%}
+        <span class="size-2 rounded-full bg-primary-500"></span>
+      {% endif -%}
+    </span>
+    <span>{{ label }}</span>
+  </button>
+{% endmacro table_filter_option_button -%}
+{# End table filter option button #}
+
 {# User profile modal trigger #}
+{# Used by dashboard attendee, waitlist, and invitation request rows. #}
 {% macro user_profile_modal_trigger(user, placeholder) -%}
   <button type="button"
           class="group flex w-full min-w-0 items-center space-x-5 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
@@ -283,20 +310,3 @@
   </button>
 {% endmacro user_profile_modal_trigger -%}
 {# End user profile modal trigger #}
-
-{# Empty state #}
-{% macro empty_state(title, title_margin = "mb-6", wrapper_class = "") -%}
-  <div class="flex flex-col items-center justify-center min-h-[125px] {{ wrapper_class }}">
-    <div class="text-xl lg:text-2xl {{ title_margin }}">{{ title }}</div>
-    {{ caller() }}
-  </div>
-{% endmacro empty_state -%}
-{# End empty state #}
-
-{# Compact empty state #}
-{% macro empty_state_compact(title, wrapper_class = "") -%}
-  <div class="flex flex-col items-center justify-center min-h-[125px] {{ wrapper_class }}">
-    <div class="text-lg lg:text-xl">{{ title }}</div>
-  </div>
-{% endmacro empty_state_compact -%}
-{# End compact empty state #}

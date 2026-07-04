@@ -1,4 +1,5 @@
 {# Analytics chart container #}
+{# Used by public stats and dashboard analytics pages. #}
 {% macro analytics_chart(chart_id, data, class = "h-80", min_points = 0, wrapper_class = "") -%}
   <div class="bg-white border border-stone-200 rounded-lg px-2 py-4 md:p-6 {{ wrapper_class }}">
     {% if data.len() > min_points + 0 -%}
@@ -14,6 +15,7 @@
 {# End analytics chart container #}
 
 {# Stat block -#}
+{# Used by public home and community stats sections. -#}
 {% macro stat_block(kind, title, value, extra_styles = None) -%}
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
   <div class="{{ extra_styles_ }}">

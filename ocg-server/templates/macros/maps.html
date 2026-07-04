@@ -1,5 +1,6 @@
 {# djlint:off #}
 {# Map with modal -#}
+{# Used by public event and group pages to show maps with modal expansion. -#}
 {% macro map_with_modal(base_id, lat, lng, overlay_text = "", small_overlay_text = "", modal_title = "") -%}
   <div id="{{ base_id }}-map"
        class="w-full h-full min-h-25 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
