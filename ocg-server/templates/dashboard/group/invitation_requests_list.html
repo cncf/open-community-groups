@@ -100,15 +100,15 @@
           {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
           <input type="hidden" name="status" value="all">
           {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted -%}
-            {% call dashboard::active_table_filter_badge("Accepted") -%}
+            {% call dashboard::active_table_filter_badge("Status", "Accepted") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
             {% endcall -%}
           {% else if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Pending -%}
-            {% call dashboard::active_table_filter_badge("Pending") -%}
+            {% call dashboard::active_table_filter_badge("Status", "Pending") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
             {% endcall -%}
           {% else -%}
-            {% call dashboard::active_table_filter_badge("Rejected") -%}
+            {% call dashboard::active_table_filter_badge("Status", "Rejected") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
             {% endcall -%}
           {% endif -%}
@@ -122,11 +122,11 @@
               hx-indicator="#dashboard-spinner">
           {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
           {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
-            {% call dashboard::active_table_filter_badge("Present") -%}
+            {% call dashboard::active_table_filter_badge("Position", "Present") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
             {% endcall -%}
           {% else -%}
-            {% call dashboard::active_table_filter_badge("Missing") -%}
+            {% call dashboard::active_table_filter_badge("Position", "Missing") -%}
             {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
             {% endcall -%}
           {% endif -%}

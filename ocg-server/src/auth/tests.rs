@@ -758,6 +758,63 @@ fn user_debug_does_not_expose_sensitive_fields() {
 }
 
 #[test]
+fn user_is_profile_complete_returns_false_when_bio_is_missing() {
+    // Setup user missing bio
+    let mut user = sample_user();
+    user.github_url = Some("https://github.com/test-user".to_string());
+    user.title = Some("Software Engineer".to_string());
+
+    // Check profile completion result
+    assert!(!user.is_profile_complete());
+}
+
+#[test]
+fn user_is_profile_complete_returns_false_when_social_link_is_missing() {
+    // Setup user missing profile links
+    let mut user = sample_user();
+    user.bio = Some("Builds community tools.".to_string());
+    user.title = Some("Software Engineer".to_string());
+
+    // Check profile completion result
+    assert!(!user.is_profile_complete());
+}
+
+#[test]
+fn user_is_profile_complete_returns_false_when_title_is_missing() {
+    // Setup user missing title
+    let mut user = sample_user();
+    user.bio = Some("Builds community tools.".to_string());
+    user.github_url = Some("https://github.com/test-user".to_string());
+
+    // Check profile completion result
+    assert!(!user.is_profile_complete());
+}
+
+#[test]
+fn user_is_profile_complete_returns_false_when_values_are_whitespace_only() {
+    // Setup user with whitespace-only profile fields
+    let mut user = sample_user();
+    user.bio = Some("   ".to_string());
+    user.github_url = Some("\n\t".to_string());
+    user.title = Some(" ".to_string());
+
+    // Check profile completion result
+    assert!(!user.is_profile_complete());
+}
+
+#[test]
+fn user_is_profile_complete_returns_true_when_required_fields_are_present() {
+    // Setup complete profile
+    let mut user = sample_user();
+    user.bio = Some("Builds community tools.".to_string());
+    user.github_url = Some("https://github.com/test-user".to_string());
+    user.title = Some("Software Engineer".to_string());
+
+    // Check profile completion result
+    assert!(user.is_profile_complete());
+}
+
+#[test]
 fn user_summary_debug_does_not_expose_password() {
     // Setup input summary
     let summary = UserSummary {

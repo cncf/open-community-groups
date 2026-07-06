@@ -3,29 +3,29 @@
   {% let active_value -%}
   {% if active -%}
     true{%- else -%}false{%- endif %}{%- endlet %}
-    <li class="w-full">
-      <div class="group relative">
-        <button type="button"
-                data-section="{{ section }}"
-                data-active="{{ active_value }}"
-                {{ extra_attrs|safe }}
-                class="{% if active -%}
-                         active
-                       {% endif %}
-                       inline-flex h-8 w-full cursor-pointer items-center justify-start rounded-md border border-transparent px-3 text-left transition-colors hover:border-stone-200 hover:bg-white data-[active=true]:border-stone-200 data-[active=true]:bg-stone-50">
-          <div class="svg-icon size-4 icon-{{ icon }} bg-stone-400 group-hover:bg-primary-500 group-has-[.active]:bg-primary-500 shrink-0">
-          </div>
-          <span class="ms-3 text-xs/8 font-normal text-stone-700 group-hover:text-stone-900 group-has-[.active]:text-stone-900">{{ label }}</span>
-        </button>
-        <div class="absolute bottom-0.5 -left-3 top-0.5 hidden w-1 rounded-lg bg-primary-500 group-has-[.active]:block">
-        </div>
+<li class="w-full">
+  <div class="group relative">
+    <button type="button"
+            data-section="{{ section }}"
+            data-active="{{ active_value }}"
+            {{ extra_attrs|safe }}
+            class="{% if active -%}
+                     active
+                   {% endif %}
+                   inline-flex h-8 w-full cursor-pointer items-center justify-start rounded-md border border-transparent px-3 text-left transition-colors hover:border-stone-200 hover:bg-white data-[active=true]:border-stone-200 data-[active=true]:bg-stone-50">
+      <div class="svg-icon size-4 icon-{{ icon }} bg-stone-400 group-hover:bg-primary-500 group-has-[.active]:bg-primary-500 shrink-0">
       </div>
-    </li>
-  {% endmacro tab_button -%}
-  {# End event form tab button -#}
+      <span class="ms-3 text-xs/8 font-normal text-stone-700 group-hover:text-stone-900 group-has-[.active]:text-stone-900">{{ label }}</span>
+    </button>
+    <div class="absolute bottom-0.5 -left-3 top-0.5 hidden w-1 rounded-lg bg-primary-500 group-has-[.active]:block">
+    </div>
+  </div>
+</li>
+{% endmacro tab_button -%}
+{# End event form tab button -#}
 
-  {# Event form tab option -#}
-  {% macro tab_option(section, label, active = false) -%}
-    <option value="{{ section }}" {% if active -%} selected {% endif -%}>{{ label }}</option>
-  {% endmacro tab_option -%}
-  {# End event form tab option -#}
+{# Event form tab option -#}
+{% macro tab_option(section, label, active = false) -%}
+  <option value="{{ section }}" {% if active -%} selected {% endif -%}>{{ label }}</option>
+{% endmacro tab_option -%}
+{# End event form tab option -#}

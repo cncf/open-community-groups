@@ -2,11 +2,30 @@ import { expect } from "@open-wc/testing";
 
 import { waitForMicrotask } from "/tests/unit/test-utils/async.js";
 import { resetDom } from "/tests/unit/test-utils/dom.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
+
+const loadCfsModalTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/event/cfs_modal.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
+const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("event cfs modal", () => {
   afterEach(() => {
     resetDom();
+  });
+
+  it("shows the profile CTA only for incomplete signed-in users", async () => {
+    const template = normalizeWhitespace(await loadCfsModalTemplate());
+
+    expect(template).to.include("{% if user.logged_in && !user.profile_complete -%}");
+    expect(template).to.include("Help organizers learn more about you and your work.");
+    expect(template).to.include("Complete your profile");
   });
 
   it("opens after the modal root is swapped and enables or disables submit as the selection changes", async () => {
@@ -125,8 +144,102 @@ describe("event cfs modal", () => {
     await waitForMicrotask();
 
     // Verify opens after the page body is swapped.
-    expect(
-      document.getElementById("cfs-modal")?.classList.contains("hidden"),
-    ).to.equal(false);
+    expect(document.getElementById("cfs-modal")?.classList.contains("hidden")).to.equal(false);
+  });
+
+  it("opens the proposal modal without a profile completion dialog", async () => {
+    const swal = mockSwal();
+    try {
+      swal.setNextResult({ isConfirmed: false });
+      document.body.innerHTML = `
+        <button
+          id="open-cfs-modal"
+          type="button"
+        >
+          Submit session proposal
+        </button>
+        <div id="cfs-modal-root"></div>
+        <div id="cfs-modal" class="hidden">
+          <button id="close-cfs-modal" type="button">Close</button>
+          <div id="overlay-cfs-modal"></div>
+          <button id="cancel-cfs-modal" type="button">Cancel</button>
+          <select id="session_proposal_id">
+            <option value="">Pick one</option>
+            <option value="12">Proposal</option>
+          </select>
+          <button id="cfs-submit-button" type="button">Submit</button>
+        </div>
+      `;
+
+      // Load the CFS module after setup.
+      await import(`/static/js/event/cfs.js?test=${Date.now()}-profile`);
+      const button = document.getElementById("open-cfs-modal");
+      const event = new CustomEvent("htmx:beforeRequest", {
+        bubbles: true,
+        cancelable: true,
+      });
+
+      // Dispatch the HTMX request event.
+      button.dispatchEvent(event);
+      await waitForMicrotask();
+
+      // Verify the request continues before the modal swap.
+      expect(event.defaultPrevented).to.equal(false);
+      expect(swal.calls).to.have.length(0);
+
+      // Dispatch the HTMX after-swap event.
+      dispatchHtmxAfterSwap(document.getElementById("cfs-modal-root"));
+      await waitForMicrotask();
+
+      // Verify the modal opens without adding a competing profile dialog.
+      expect(document.getElementById("cfs-modal")?.classList.contains("hidden")).to.equal(false);
+      expect(swal.calls).to.have.length(0);
+    } finally {
+      swal.restore();
+    }
+  });
+
+  it("keeps successful proposal submissions on the inline confirmation", async () => {
+    const swal = mockSwal();
+    try {
+      swal.setNextResult({ isConfirmed: false });
+      document.body.innerHTML = `
+        <div id="cfs-modal-root"></div>
+        <div id="cfs-modal">
+          <form
+            id="cfs-submission-form"
+          ></form>
+        </div>
+      `;
+
+      // Load the CFS module after setup.
+      await import(`/static/js/event/cfs.js?test=${Date.now()}-submit-profile`);
+      const form = document.getElementById("cfs-submission-form");
+      const event = new CustomEvent("htmx:beforeRequest", {
+        bubbles: true,
+        cancelable: true,
+      });
+
+      // Dispatch the HTMX request event.
+      form.dispatchEvent(event);
+      await waitForMicrotask();
+
+      // Verify the request continues without opening a profile prompt.
+      expect(event.defaultPrevented).to.equal(false);
+      expect(swal.calls).to.have.length(0);
+
+      // Swap a successful submission notice into the modal root.
+      document.getElementById("cfs-modal-root").innerHTML = `
+        <div data-cfs-submission-notice>Submitted</div>
+      `;
+      dispatchHtmxAfterSwap(document.getElementById("cfs-modal-root"));
+      await waitForMicrotask();
+
+      // Verify the successful response stays visible without a second dialog.
+      expect(document.querySelector("[data-cfs-submission-notice]")?.textContent).to.include("Submitted");
+      expect(swal.calls).to.have.length(0);
+    } finally {
+      swal.restore();
+    }
   });
 });

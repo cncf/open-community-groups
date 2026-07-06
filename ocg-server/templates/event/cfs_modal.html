@@ -3,9 +3,19 @@
 {# Event Cfs Modal -#}
 {% if let Some(notice) = &notice -%}
   {# Notice -#}
-  <div class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
+  <div data-cfs-submission-notice
+       class="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
     <div class="svg-icon size-4 mt-0.5 bg-emerald-700 icon-check"></div>
-    <div class="text-sm">{{ notice }}</div>
+    <div class="text-sm">
+      <div>{{ notice }}</div>
+      {% if user.logged_in && !user.profile_complete -%}
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <span>Help organizers learn more about you and your work.</span>
+          <a href="/dashboard/user?tab=account"
+             class="font-semibold text-emerald-950 underline underline-offset-2 hover:text-primary-700">Complete your profile</a>
+        </div>
+      {% endif -%}
+    </div>
   </div>
   {# End notice -#}
 {% endif -%}

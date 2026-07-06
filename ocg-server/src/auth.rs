@@ -553,6 +553,29 @@ pub(crate) struct User {
     pub website_url: Option<String>,
 }
 
+impl User {
+    /// Returns whether the user has completed their public profile.
+    pub(crate) fn is_profile_complete(&self) -> bool {
+        profile_field_is_filled(self.title.as_deref())
+            && profile_field_is_filled(self.bio.as_deref())
+            && self.has_any_profile_link()
+    }
+
+    /// Returns whether the user has at least one profile link.
+    fn has_any_profile_link(&self) -> bool {
+        [
+            self.bluesky_url.as_deref(),
+            self.facebook_url.as_deref(),
+            self.github_url.as_deref(),
+            self.linkedin_url.as_deref(),
+            self.twitter_url.as_deref(),
+            self.website_url.as_deref(),
+        ]
+        .into_iter()
+        .any(profile_field_is_filled)
+    }
+}
+
 impl axum_login::AuthUser for User {
     type Id = Uuid;
 
@@ -736,4 +759,9 @@ fn linuxfoundation_provider_identity(provider: &UserProvider) -> Option<(&str, &
     let issuer = provider.issuer.as_deref()?;
     let subject = provider.subject.as_deref()?;
     Some((issuer, subject))
+}
+
+/// Returns whether an optional profile field has non-whitespace content.
+fn profile_field_is_filled(value: Option<&str>) -> bool {
+    value.is_some_and(|value| !value.trim().is_empty())
 }

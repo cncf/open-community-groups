@@ -25,16 +25,16 @@
              inert
            {% endif -%}>
         {% let name_value -%}value="{{ category.name }}"{%- endlet %}
-        {{ form_fields::entity_name_field(legend_prefix = "Category display name.", value_attr = name_value) -}}
-      </div>
+      {{ form_fields::entity_name_field(legend_prefix = "Category display name.", value_attr = name_value) -}}
     </div>
   </div>
+</div>
 
-  {{ dashboard::form_actions(cancel_href = "/dashboard/community?tab=group-categories",
-    spinner_id = "community-group-category-update-spinner",
-    submit_label = "Update Group Category",
-    disabled = !can_manage_taxonomy,
-    disabled_title = "Your role cannot update group categories.") -}}
+{{ dashboard::form_actions(cancel_href = "/dashboard/community?tab=group-categories",
+spinner_id = "community-group-category-update-spinner",
+submit_label = "Update Group Category",
+disabled = !can_manage_taxonomy,
+disabled_title = "Your role cannot update group categories.") -}}
 </form>
 
 {# End Update Group Category form -#}

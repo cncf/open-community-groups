@@ -123,8 +123,22 @@ describe("dashboard group invitation requests list template", () => {
     );
     expect(template).to.include("Reset all");
     expect(template).to.not.include("invitation-requests-requester-filter");
-    expect(template).to.not.include('dashboard::active_table_filter_badge("Status:');
-    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort:');
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Status", "Accepted")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Status", "Pending")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Status", "Rejected")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Present")',
+    );
+    expect(template).to.include(
+      'dashboard::active_table_filter_badge("Position", "Missing")',
+    );
+    expect(template).to.not.include('dashboard::active_table_filter_badge("Sort"');
   });
 
   it("preserves current filters for invitation request refreshes", async () => {
