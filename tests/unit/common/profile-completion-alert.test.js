@@ -1,7 +1,9 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  initializeLoginProfileCompletionPrompt,
   PROFILE_COMPLETION_URL,
+  showLoginProfileCompletionAlert,
   showProfileCompletionAlert,
   showProfileCompletionFeedbackAlert,
   shouldPromptForProfileCompletion,
@@ -19,6 +21,7 @@ describe("profile completion alert", () => {
 
   afterEach(() => {
     swal.restore();
+    sessionStorage.clear();
     resetDom();
   });
 
@@ -101,11 +104,16 @@ describe("profile completion alert", () => {
     // Verify the alert content and profile navigation target.
     expect(shown).to.equal(true);
     expect(swal.calls).to.have.length(1);
-    expect(swal.calls[0].title).to.equal("Make your profile yours");
+    expect(swal.calls[0].title).to.equal("Complete your profile");
+    expect(swal.calls[0].text).to.equal(
+      "Add a few more details about you so organizers and community members can recognize you.",
+    );
     expect(swal.calls[0].confirmButtonText).to.equal("Complete profile");
     expect(swal.calls[0].cancelButtonText).to.equal("Continue anyway");
-    expect(swal.calls[0].position).to.equal("top-end");
-    expect(swal.calls[0].backdrop).to.equal(false);
+    expect(swal.calls[0].position).to.equal("center");
+    expect(swal.calls[0].backdrop).to.equal(true);
+    expect(swal.calls[0].allowOutsideClick).to.equal(false);
+    expect(swal.calls[0].allowEscapeKey).to.equal(false);
     expect(navigationCalls).to.deep.equal([PROFILE_COMPLETION_URL]);
   });
 
@@ -148,10 +156,83 @@ describe("profile completion alert", () => {
     expect(shown).to.equal(true);
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].title).to.equal("You have successfully registered for this event.");
+    expect(swal.calls[0].text).to.equal(
+      "Add a few more details about you so organizers and community members can recognize you.",
+    );
     expect(swal.calls[0].confirmButtonText).to.equal("Complete profile");
     expect(swal.calls[0].cancelButtonText).to.equal("Maybe later");
+    expect(swal.calls[0].position).to.equal("center");
+    expect(swal.calls[0].backdrop).to.equal(true);
+    expect(swal.calls[0].allowOutsideClick).to.equal(false);
+    expect(swal.calls[0].allowEscapeKey).to.equal(false);
+    expect(swal.calls[0].customClass.popup).to.include("ocg-profile-feedback-swal");
+    expect(navigationCalls).to.deep.equal([PROFILE_COMPLETION_URL]);
+  });
+
+  it("shows a top-right profile completion prompt after login", async () => {
+    // Render a signed-in header with an incomplete profile.
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" data-logged-in="true" data-profile-complete="false" type="button"></button>
+    `;
+    const navigationCalls = [];
+
+    // Show the login follow-up alert and resolve the mocked confirmation.
+    const shown = showLoginProfileCompletionAlert({
+      navigateTo: (url) => navigationCalls.push(url),
+    });
+    await waitForMicrotask();
+
+    // Verify the alert keeps the success-toast placement and only one CTA.
+    expect(shown).to.equal(true);
+    expect(swal.calls).to.have.length(1);
+    expect(swal.calls[0].title).to.equal("Complete your profile");
+    expect(swal.calls[0].text).to.equal(
+      "Add a few more details about you so organizers and community members can recognize you.",
+    );
+    expect(swal.calls[0].confirmButtonText).to.equal("Complete profile");
+    expect(swal.calls[0].showCancelButton).to.equal(false);
     expect(swal.calls[0].position).to.equal("top-end");
     expect(swal.calls[0].backdrop).to.equal(false);
+    expect(swal.calls[0].timer).to.equal(5000);
     expect(navigationCalls).to.deep.equal([PROFILE_COMPLETION_URL]);
+  });
+
+  it("shows the login prompt only after a login attempt", () => {
+    // Render the email login form and record a submit attempt.
+    document.body.innerHTML = `
+      <form action="/log-in?next_url=%2Fevents" method="post"></form>
+    `;
+    initializeLoginProfileCompletionPrompt();
+    document.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true }));
+
+    // Render the next signed-in page with an incomplete profile.
+    swal.setNextResult({ isConfirmed: false });
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" data-logged-in="true" data-profile-complete="false" type="button"></button>
+    `;
+    initializeLoginProfileCompletionPrompt();
+
+    // Verify the login-only prompt is shown once after the login attempt.
+    expect(swal.calls).to.have.length(1);
+    initializeLoginProfileCompletionPrompt();
+    expect(swal.calls).to.have.length(1);
+  });
+
+  it("does not show the login prompt after login when the profile is complete", () => {
+    // Render the OAuth login link and record a click attempt.
+    document.body.innerHTML = `
+      <a href="/log-in/oauth2/github?next_url=%2Fevents">GitHub</a>
+    `;
+    initializeLoginProfileCompletionPrompt();
+    document.querySelector("a").dispatchEvent(new Event("click", { bubbles: true }));
+
+    // Render the next signed-in page with a complete profile.
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" data-logged-in="true" data-profile-complete="true" type="button"></button>
+    `;
+    initializeLoginProfileCompletionPrompt();
+
+    // Verify the login-only prompt is consumed without showing an alert.
+    expect(swal.calls).to.have.length(0);
   });
 });

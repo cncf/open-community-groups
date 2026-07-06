@@ -21,8 +21,19 @@ import {
 
 const GENERAL_ADMISSION_TICKET_TYPE_ID = "56555555-5555-5555-5555-555555555521";
 
+// Dismiss the optional profile completion prompt shown after successful attendance.
+const dismissProfileCompletionPrompt = async (page) => {
+  const maybeLaterButton = page.getByRole("button", { name: "Maybe later" });
+  if (await maybeLaterButton.isVisible()) {
+    await maybeLaterButton.click();
+    await expect(page.locator(".swal2-popup")).toBeHidden();
+  }
+};
+
 // Cancel attendance when the current user is already registered.
 const cancelAttendance = async (page, eventId) => {
+  await dismissProfileCompletionPrompt(page);
+
   const leaveButton = getLeaveButton(page);
   await expect(leaveButton).toBeVisible();
 

@@ -113,6 +113,14 @@
     @apply min-w-28! m-0!;
   }
 
+  .ocg-profile-feedback-swal > .swal2-title {
+    @apply text-2xl! md:text-3xl! leading-snug!;
+  }
+
+  .ocg-profile-feedback-swal > .swal2-actions {
+    @apply mt-8!;
+  }
+
   .icon-text {
     @apply flex flex-row items-center leading-4;
   }
