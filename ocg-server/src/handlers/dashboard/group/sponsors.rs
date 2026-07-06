@@ -213,6 +213,7 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(GroupSponsorsFilters, sponsors::ListPage), HandlerError> {
     // Fetch sponsors
     let filters: GroupSponsorsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let (can_manage_sponsors, results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,

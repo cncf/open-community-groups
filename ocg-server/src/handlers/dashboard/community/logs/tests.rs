@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    types::permissions::CommunityPermission,
+    templates::dashboard::audit::AuditLogSort, types::permissions::CommunityPermission,
 };
 
 #[tokio::test]
@@ -70,6 +70,52 @@ async fn test_list_page_db_error() {
 }
 
 #[tokio::test]
+async fn test_list_page_rejects_unknown_sort() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+        })
+        .returning(|_, _, _| Ok(true));
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/community/logs?sort=resource-asc")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_list_page_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -106,7 +152,7 @@ async fn test_list_page_success() {
                 && filters.date_to == Some(NaiveDate::from_ymd_opt(2024, 1, 31).unwrap())
                 && filters.limit == Some(5)
                 && filters.offset == Some(10)
-                && filters.sort.as_deref() == Some("created-asc")
+                && filters.sort == Some(AuditLogSort::CreatedAsc)
         })
         .returning(move |_, _| Ok(output.clone()));
 

@@ -14,7 +14,7 @@ use crate::{
     db::{common::SearchGroupsOutput, mock::MockDB},
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
+    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, audit::AuditLogSort},
     types::permissions::CommunityPermission,
 };
 
@@ -208,7 +208,7 @@ async fn test_page_logs_tab_success() {
             *cid == community_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.sort.as_deref() == Some("created-desc")
+                && filters.sort == Some(AuditLogSort::CreatedDesc)
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_site_settings()

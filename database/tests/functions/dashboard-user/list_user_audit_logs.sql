@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -267,6 +267,16 @@ select is(
         4
     ),
     'Should return user audit logs in ascending order with pagination'
+);
+
+-- Should default unsupported sort values to created descending
+select is(
+    list_user_audit_logs(
+        :'actorID'::uuid,
+        '{"limit": 1, "offset": 0, "sort": "resource-asc"}'::jsonb
+    )::jsonb#>>'{logs,0,action}',
+    'user_details_updated',
+    'Should default unsupported user audit sort values to created descending'
 );
 
 -- ============================================================================

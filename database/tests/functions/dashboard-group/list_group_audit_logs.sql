@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -440,6 +440,16 @@ select is(
         0
     ),
     'Should treat actor filter metacharacters as literal text'
+);
+
+-- Should default unsupported sort values to created descending
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"limit": 1, "offset": 0, "sort": "resource-asc"}'::jsonb
+    )::jsonb#>>'{logs,0,action}',
+    'group_updated',
+    'Should default unsupported group audit sort values to created descending'
 );
 
 -- ============================================================================

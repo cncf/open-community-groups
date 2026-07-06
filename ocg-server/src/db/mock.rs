@@ -541,16 +541,19 @@ mock! {
         async fn search_event_attendees(
             &self,
             group_id: Uuid,
-            filters: &crate::templates::dashboard::group::attendees::SearchEventAttendeesFilters,
+            event_id: Uuid,
+            filters: &crate::templates::dashboard::group::attendees::AttendeesFilters,
         ) -> Result<crate::templates::dashboard::group::attendees::AttendeesOutput>;
         async fn search_event_invitation_requests(
             &self,
             group_id: Uuid,
+            event_id: Uuid,
             filters: &crate::templates::dashboard::group::invitation_requests::InvitationRequestsFilters,
         ) -> Result<crate::templates::dashboard::group::invitation_requests::InvitationRequestsOutput>;
         async fn search_event_waitlist(
             &self,
             group_id: Uuid,
+            event_id: Uuid,
             filters: &crate::templates::dashboard::group::waitlist::WaitlistFilters,
         ) -> Result<crate::templates::dashboard::group::waitlist::WaitlistOutput>;
         async fn unpublish_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)

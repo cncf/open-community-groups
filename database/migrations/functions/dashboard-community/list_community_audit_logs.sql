@@ -11,7 +11,11 @@ returns json as $$
                 nullif(p_filters->>'date_to', '')::date as date_to_value,
                 coalesce((p_filters->>'limit')::int, 50) as limit_value,
                 coalesce((p_filters->>'offset')::int, 0) as offset_value,
-                coalesce(nullif(p_filters->>'sort', ''), 'created-desc') as sort_value
+                case
+                    when lower(p_filters->>'sort') in ('created-asc', 'created-desc')
+                        then lower(p_filters->>'sort')
+                    else 'created-desc'
+                end as sort_value
         ),
         -- Filter rows before pagination
         filtered_logs as (

@@ -38,9 +38,7 @@ use crate::{
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
     templates::{
-        dashboard::group::attendees::{
-            self, Attendee, AttendeesListPageFilters, SearchEventAttendeesFilters,
-        },
+        dashboard::group::attendees::{self, Attendee, AttendeesFilters},
         notifications::EventCustom,
     },
     types::{
@@ -73,19 +71,9 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and attendees
-    let page_filters: AttendeesListPageFilters =
+    let filters: AttendeesFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    page_filters.validate()?;
-    let search_filters = SearchEventAttendeesFilters {
-        event_id,
-        checked_in: page_filters.checked_in,
-        event_ticket_type_ids: page_filters.event_ticket_type_ids.clone(),
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        sort: page_filters.sort,
-        title: page_filters.title,
-        ts_query: page_filters.ts_query.clone(),
-    };
+    filters.validate()?;
     let (can_manage_events, event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -95,19 +83,19 @@ pub(crate) async fn list_page(
         ),
         db.get_event_summary(community_id, group_id, event_id),
         db.get_event_registration_questions(community_id, event_id),
-        db.search_event_attendees(group_id, &search_filters)
+        db.search_event_attendees(group_id, event_id, &filters)
     )?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
-        &page_filters,
+        &filters,
         search_attendees_results.total,
         &format!("/dashboard/group/events/{event_id}/attendees"),
         &format!("/dashboard/group/events/{event_id}/attendees"),
     )?;
     let refresh_url = pagination::build_url(
         &format!("/dashboard/group/events/{event_id}/attendees"),
-        &page_filters,
+        &filters,
     )?;
     let template = attendees::ListPage {
         all_attendees_email_recipient_total: search_attendees_results
@@ -119,13 +107,13 @@ pub(crate) async fn list_page(
         refresh_url,
         registration_questions,
         total: search_attendees_results.total,
-        checked_in: page_filters.checked_in,
-        event_ticket_type_ids: page_filters.event_ticket_type_ids,
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        sort: page_filters.sort,
-        title: page_filters.title,
-        ts_query: page_filters.ts_query,
+        checked_in: filters.checked_in,
+        event_ticket_type_ids: filters.event_ticket_type_ids,
+        limit: filters.limit,
+        offset: filters.offset,
+        sort: filters.sort,
+        title: filters.title,
+        ts_query: filters.ts_query,
     };
 
     Ok(Html(template.render()?))
@@ -550,19 +538,10 @@ pub(crate) async fn download_csv(
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and all attendee rows
-    let search_filters = SearchEventAttendeesFilters {
-        event_id,
-        checked_in: None,
-        event_ticket_type_ids: None,
-        limit: None,
-        offset: None,
-        sort: None,
-        title: None,
-        ts_query: None,
-    };
+    let filters = AttendeesFilters::default();
     let (event, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
-        db.search_event_attendees(group_id, &search_filters)
+        db.search_event_attendees(group_id, event_id, &filters)
     )?;
 
     // Build CSV payload without registration question answers
@@ -590,20 +569,11 @@ pub(crate) async fn download_csv_with_answers(
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary, registration questions, and all attendee rows
-    let search_filters = SearchEventAttendeesFilters {
-        event_id,
-        checked_in: None,
-        event_ticket_type_ids: None,
-        limit: None,
-        offset: None,
-        sort: None,
-        title: None,
-        ts_query: None,
-    };
+    let filters = AttendeesFilters::default();
     let (event, registration_questions, search_attendees_results) = tokio::try_join!(
         db.get_event_summary(community_id, group_id, event_id),
         db.get_event_registration_questions(community_id, event_id),
-        db.search_event_attendees(group_id, &search_filters)
+        db.search_event_attendees(group_id, event_id, &filters)
     )?;
 
     // Build CSV payload that also includes registration question answers

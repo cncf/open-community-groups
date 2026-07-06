@@ -16,9 +16,7 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
     router::serde_qs_config,
-    templates::dashboard::group::invitation_requests::{
-        self, InvitationRequestsFilters, InvitationRequestsListPageFilters,
-    },
+    templates::dashboard::group::invitation_requests::{self, InvitationRequestsFilters},
     types::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
@@ -41,18 +39,9 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and invitation requests
-    let page_filters: InvitationRequestsListPageFilters =
+    let filters: InvitationRequestsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    page_filters.validate()?;
-    let search_filters = InvitationRequestsFilters {
-        event_id,
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        sort: page_filters.sort,
-        status: page_filters.status.into(),
-        title: page_filters.title,
-        ts_query: page_filters.ts_query.clone(),
-    };
+    filters.validate()?;
     let (can_manage_events, event, search_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -61,19 +50,19 @@ pub(crate) async fn list_page(
             GroupPermission::EventsWrite
         ),
         db.get_event_summary(community_id, group_id, event_id),
-        db.search_event_invitation_requests(group_id, &search_filters)
+        db.search_event_invitation_requests(group_id, event_id, &filters)
     )?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
-        &page_filters,
+        &filters,
         search_results.total,
         &format!("/dashboard/group/events/{event_id}/invitation-requests"),
         &format!("/dashboard/group/events/{event_id}/invitation-requests"),
     )?;
     let refresh_url = pagination::build_url(
         &format!("/dashboard/group/events/{event_id}/invitation-requests"),
-        &page_filters,
+        &filters,
     )?;
     let template = invitation_requests::ListPage {
         can_manage_events,
@@ -82,12 +71,12 @@ pub(crate) async fn list_page(
         navigation_links,
         refresh_url,
         total: search_results.total,
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        sort: page_filters.sort,
-        status: page_filters.status,
-        title: page_filters.title,
-        ts_query: page_filters.ts_query,
+        limit: filters.limit,
+        offset: filters.offset,
+        sort: filters.sort,
+        status: filters.status,
+        title: filters.title,
+        ts_query: filters.ts_query,
     };
 
     Ok(Html(template.render()?))

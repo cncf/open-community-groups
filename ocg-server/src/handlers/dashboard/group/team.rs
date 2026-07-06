@@ -222,6 +222,7 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(GroupTeamFilters, team::ListPage), HandlerError> {
     // Fetch group team members
     let filters: GroupTeamFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let (results, roles, can_manage_team) = tokio::try_join!(
         db.list_group_team_members(group_id, &filters),
         db.list_group_roles(),

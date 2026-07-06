@@ -271,9 +271,9 @@ select has_function('resolve_event_custom_notification_recipient_ids', array['uu
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);
 select has_function('revert_event_refund_approval', array['uuid', 'uuid', 'uuid']::name[]);
-select has_function('search_event_attendees', array['uuid', 'jsonb']::name[]);
-select has_function('search_event_invitation_requests', array['uuid', 'jsonb']::name[]);
-select has_function('search_event_waitlist', array['uuid', 'jsonb']::name[]);
+select has_function('search_event_attendees', array['uuid', 'uuid', 'jsonb']::name[]);
+select has_function('search_event_invitation_requests', array['uuid', 'uuid', 'jsonb']::name[]);
+select has_function('search_event_waitlist', array['uuid', 'uuid', 'jsonb']::name[]);
 select has_function('search_events', array['jsonb']::name[]);
 select has_function('search_groups', array['jsonb']::name[]);
 select has_function('search_user', array['text']::name[]);

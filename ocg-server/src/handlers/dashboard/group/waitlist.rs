@@ -16,7 +16,7 @@ use crate::{
         extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
     router::serde_qs_config,
-    templates::dashboard::group::waitlist::{self, WaitlistFilters, WaitlistListPageFilters},
+    templates::dashboard::group::waitlist::{self, WaitlistFilters},
     types::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
@@ -39,17 +39,9 @@ pub(crate) async fn list_page(
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Fetch event summary and waitlist
-    let page_filters: WaitlistListPageFilters =
+    let filters: WaitlistFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
-    page_filters.validate()?;
-    let search_filters = WaitlistFilters {
-        event_id,
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        sort: page_filters.sort,
-        title: page_filters.title,
-        ts_query: page_filters.ts_query.clone(),
-    };
+    filters.validate()?;
     let (can_manage_events, event, search_waitlist_results) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -58,19 +50,19 @@ pub(crate) async fn list_page(
             GroupPermission::EventsWrite
         ),
         db.get_event_summary(community_id, group_id, event_id),
-        db.search_event_waitlist(group_id, &search_filters)
+        db.search_event_waitlist(group_id, event_id, &filters)
     )?;
 
     // Prepare template
     let navigation_links = NavigationLinks::from_filters(
-        &page_filters,
+        &filters,
         search_waitlist_results.total,
         &format!("/dashboard/group/events/{event_id}/waitlist"),
         &format!("/dashboard/group/events/{event_id}/waitlist"),
     )?;
     let refresh_url = pagination::build_url(
         &format!("/dashboard/group/events/{event_id}/waitlist"),
-        &page_filters,
+        &filters,
     )?;
     let template = waitlist::ListPage {
         can_manage_events,
@@ -79,11 +71,11 @@ pub(crate) async fn list_page(
         refresh_url,
         total: search_waitlist_results.total,
         waitlist: search_waitlist_results.waitlist,
-        limit: page_filters.limit,
-        offset: page_filters.offset,
-        sort: page_filters.sort,
-        title: page_filters.title,
-        ts_query: page_filters.ts_query,
+        limit: filters.limit,
+        offset: filters.offset,
+        sort: filters.sort,
+        title: filters.title,
+        ts_query: filters.ts_query,
     };
 
     Ok(Html(template.render()?))

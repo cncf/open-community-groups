@@ -203,7 +203,8 @@ insert into event_invitation_request (
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 50, 'offset', 0)
+        :'event1ID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
@@ -220,7 +221,8 @@ select is(
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 1, 'offset', 1)
+        :'event1ID'::uuid,
+        jsonb_build_object('limit', 1, 'offset', 1)
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[
@@ -231,24 +233,26 @@ select is(
     'Should return paginated invitation requests when limit and offset are provided'
 );
 
--- Should return empty list when no event_id provided
+-- Should return empty list when event scope is null
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
+        null::uuid,
         '{"limit":50,"offset":0}'::jsonb
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[]'::jsonb,
         'total', 0
     ),
-    'Should return empty list when no event_id provided'
+    'Should return empty list when event scope is null'
 );
 
 -- Should return empty list for non-existing event
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'missingEventID'::uuid, 'limit', 50, 'offset', 0)
+        :'missingEventID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[]'::jsonb,
@@ -261,7 +265,8 @@ select is(
 select is(
     search_event_invitation_requests(
         :'group2ID'::uuid,
-        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 50, 'offset', 0)
+        :'event1ID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'invitation_requests', '[]'::jsonb,
@@ -276,8 +281,8 @@ select ok(
         with result as (
             select search_event_invitation_requests(
                 :'groupID'::uuid,
+                :'event1ID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'event1ID'::uuid,
                     'limit', 50,
                     'offset', 0,
                     'ts_query', 'ali'
@@ -297,8 +302,8 @@ select ok(
         with result as (
             select search_event_invitation_requests(
                 :'groupID'::uuid,
+                :'event1ID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'event1ID'::uuid,
                     'limit', 50,
                     'offset', 0,
                     'ts_query', 'cloud corp'
@@ -318,8 +323,8 @@ select ok(
         with result as (
             select search_event_invitation_requests(
                 :'groupID'::uuid,
+                :'event1ID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'event1ID'::uuid,
                     'limit', 50,
                     'offset', 0,
                     'ts_query', 'designer'
@@ -337,8 +342,8 @@ select ok(
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0,
             'sort', 'name-asc'
@@ -352,8 +357,8 @@ select is(
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0,
             'status', 'pending'
@@ -367,8 +372,8 @@ select is(
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0,
             'title', 'present'
@@ -382,8 +387,8 @@ select is(
 select is(
     search_event_invitation_requests(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0,
             'ts_query', 'missing person'

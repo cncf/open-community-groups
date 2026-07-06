@@ -7,6 +7,7 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
+use garde::Validate;
 use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
@@ -252,6 +253,7 @@ pub(crate) async fn prepare_list_page(
 
     // Fetch groups
     let filters: CommunityGroupsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let search_filters = SearchGroupsFilters {
         community: vec![community_name],
         include_inactive: Some(true),

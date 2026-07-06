@@ -7,8 +7,11 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT, types::permissions::GroupPermission,
+    db::mock::MockDB,
+    handlers::tests::*,
+    services::notifications::MockNotificationsManager,
+    templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, audit::AuditLogSort},
+    types::permissions::GroupPermission,
 };
 
 #[tokio::test]
@@ -209,7 +212,7 @@ async fn test_page_logs_tab_success() {
             *gid == group_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.sort.as_deref() == Some("created-desc")
+                && filters.sort == Some(AuditLogSort::CreatedDesc)
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_site_settings()

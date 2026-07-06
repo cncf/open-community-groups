@@ -76,13 +76,13 @@ async fn test_list_page_db_error() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_waitlist()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
         })
-        .returning(|_, _| Err(anyhow!("db error")));
+        .returning(|_, _, _| Err(anyhow!("db error")));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -160,13 +160,13 @@ async fn test_list_page_success() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_waitlist()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -364,13 +364,13 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_waitlist()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(5)
                 && filters.offset == Some(10)
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -453,16 +453,16 @@ async fn test_list_page_with_search_query() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_waitlist()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(1)
                 && filters.offset == Some(0)
                 && filters.sort == Some(WaitlistSort::NameAsc)
                 && filters.title == Some(PresenceFilter::Present)
                 && filters.ts_query.as_deref() == Some("wait")
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())

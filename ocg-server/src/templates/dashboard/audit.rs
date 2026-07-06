@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     templates::dashboard,
     types::pagination::{self, Pagination, ToRawQuery},
-    validation::{MAX_LEN_M, MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
+    validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
 
 // Pages templates.
@@ -80,7 +80,7 @@ impl ListPage {
             page_description: scope.page_description().to_string(),
             reset_url: scope.reset_url().to_string(),
             show_actor: scope.show_actor(),
-            sort_value: filters.sort.clone().unwrap_or_else(|| "created-desc".to_string()),
+            sort_value: filters.sort.unwrap_or(AuditLogSort::CreatedDesc).to_string(),
             total: output.total,
 
             actor_value: filters.actor.clone(),
@@ -508,7 +508,7 @@ pub(crate) struct AuditLogFilters {
     pub date_to: Option<NaiveDate>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
@@ -516,8 +516,8 @@ pub(crate) struct AuditLogFilters {
     pub offset: Option<usize>,
     /// Sort option used to order audit rows.
     #[serde(default = "default_sort")]
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
-    pub sort: Option<String>,
+    #[garde(skip)]
+    pub sort: Option<AuditLogSort>,
 }
 
 crate::impl_pagination_and_raw_query!(AuditLogFilters, limit, offset);
@@ -543,6 +543,17 @@ pub(crate) struct AuditLogRecord {
     pub actor_username: Option<String>,
     /// Display name for the resource.
     pub resource_name: Option<String>,
+}
+
+/// Supported audit log sort options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum AuditLogSort {
+    /// Sort by creation time ascending.
+    CreatedAsc,
+    /// Sort by creation time descending.
+    CreatedDesc,
 }
 
 /// Paginated audit log response data.
@@ -637,8 +648,8 @@ fn action_label(action: &str) -> &'static str {
 
 /// Default sort option for audit lists.
 #[allow(clippy::unnecessary_wraps)]
-fn default_sort() -> Option<String> {
-    Some("created-desc".to_string())
+fn default_sort() -> Option<AuditLogSort> {
+    Some(AuditLogSort::CreatedDesc)
 }
 
 /// Converts a raw audit detail key into a user-facing label.

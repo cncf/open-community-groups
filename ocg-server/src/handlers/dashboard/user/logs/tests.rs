@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
+    templates::dashboard::audit::AuditLogSort,
 };
 
 #[tokio::test]
@@ -89,7 +90,7 @@ async fn test_list_page_success() {
                 && filters.date_to == Some(NaiveDate::from_ymd_opt(2024, 1, 31).unwrap())
                 && filters.limit == Some(5)
                 && filters.offset == Some(10)
-                && filters.sort.as_deref() == Some("created-asc")
+                && filters.sort == Some(AuditLogSort::CreatedAsc)
         })
         .returning(move |_, _| Ok(output.clone()));
 

@@ -7,6 +7,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
+use garde::Validate;
 use serde_json::to_value;
 use tracing::{instrument, warn};
 use uuid::Uuid;
@@ -270,6 +271,7 @@ pub(crate) async fn prepare_list_page(
     // Fetch pending invitations, session proposal levels, and session proposals
     let filters: session_proposals::SessionProposalsFilters =
         serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let (pending_co_speaker_invitations, session_proposal_levels, session_proposals_output) = tokio::try_join!(
         db.list_user_pending_session_proposal_co_speaker_invitations(user_id),
         db.list_session_proposal_levels(),

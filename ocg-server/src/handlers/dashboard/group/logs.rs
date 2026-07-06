@@ -7,6 +7,7 @@ use axum::{
     http::HeaderName,
     response::{Html, IntoResponse},
 };
+use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -55,6 +56,7 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(AuditLogFilters, ListPage), HandlerError> {
     // Fetch audit log rows
     let filters: AuditLogFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let results = db.list_group_audit_logs(group_id, &filters).await?;
 
     // Prepare template

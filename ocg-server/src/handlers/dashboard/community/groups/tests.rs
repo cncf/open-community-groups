@@ -98,6 +98,80 @@ async fn test_list_page_success() {
 }
 
 #[tokio::test]
+async fn test_list_page_allows_empty_search_query() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record =
+        sample_session_record(session_id, user_id, &auth_hash, Some(community_id), None);
+    let groups_output = SearchGroupsOutput {
+        groups: vec![sample_group_summary(group_id)],
+        ..Default::default()
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id && *uid == user_id && permission == CommunityPermission::Read
+        })
+        .returning(|_, _, _| Ok(true));
+    db.expect_user_has_community_permission()
+        .times(1)
+        .withf(move |cid, uid, permission| {
+            *cid == community_id
+                && *uid == user_id
+                && permission == CommunityPermission::GroupsWrite
+        })
+        .returning(|_, _, _| Ok(true));
+    db.expect_get_community_name_by_id()
+        .times(1)
+        .withf(move |id| *id == community_id)
+        .returning(|_| Ok(Some("test".to_string())));
+    db.expect_search_groups()
+        .times(1)
+        .withf(move |filters| {
+            filters.community == vec!["test".to_string()]
+                && filters.include_inactive == Some(true)
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.sort_by.as_deref() == Some("name")
+                && filters.ts_query.is_none()
+        })
+        .returning(move |_| Ok(groups_output.clone()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/community/groups?ts_query=")
+        .header(HOST, "example.test")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
 async fn test_list_page_db_error() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

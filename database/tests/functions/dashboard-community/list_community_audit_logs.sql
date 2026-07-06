@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -358,6 +358,16 @@ select is(
         0
     ),
     'Should treat actor filter metacharacters as literal text'
+);
+
+-- Should default unsupported sort values to created descending
+select is(
+    list_community_audit_logs(
+        :'community1ID'::uuid,
+        '{"limit": 1, "offset": 0, "sort": "resource-asc"}'::jsonb
+    )::jsonb#>>'{logs,0,action}',
+    'region_deleted',
+    'Should default unsupported community audit sort values to created descending'
 );
 
 -- ============================================================================
