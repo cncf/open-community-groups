@@ -5,9 +5,26 @@ import { resetDom } from "/tests/unit/test-utils/dom.js";
 import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { dispatchHtmxAfterSwap } from "/tests/unit/test-utils/htmx.js";
 
+const loadCfsModalTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/event/cfs_modal.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
+const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
+
 describe("event cfs modal", () => {
   afterEach(() => {
     resetDom();
+  });
+
+  it("shows the profile CTA only for incomplete signed-in users", async () => {
+    const template = normalizeWhitespace(await loadCfsModalTemplate());
+
+    expect(template).to.include("{% if user.logged_in && !user.profile_complete -%}");
+    expect(template).to.include("Complete your profile");
   });
 
   it("opens after the modal root is swapped and enables or disables submit as the selection changes", async () => {

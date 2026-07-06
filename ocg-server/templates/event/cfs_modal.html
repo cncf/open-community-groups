@@ -8,7 +8,7 @@
     <div class="svg-icon size-4 mt-0.5 bg-emerald-700 icon-check"></div>
     <div class="text-sm">
       <div>{{ notice }}</div>
-      {% if user.logged_in -%}
+      {% if user.logged_in && !user.profile_complete -%}
         <div class="mt-2 flex flex-wrap items-center gap-2">
           <span>Want organizers to know more about you?</span>
           <a href="/dashboard/user?tab=account"
