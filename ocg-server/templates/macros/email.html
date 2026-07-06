@@ -1,47 +1,5 @@
-{% macro meeting_details(event, date_title = "Date & time:", show_meeting_details = true) -%}
-  {% if let Some(starts_at) = &event.starts_at -%}
-    {{ date_title }}
-    {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
-    <br />
-  {% endif -%}
-  {% if let Some(location) = &event.location(90) -%}
-    Location: {{ location }}
-    <br />
-  {% endif -%}
-  {% if show_meeting_details -%}
-    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
-      Meeting link:
-      <a href="{{ meeting_join_url }}"
-         target="_blank"
-         rel="noopener noreferrer">{{ meeting_join_url }}</a>
-      <br />
-      {% if let Some(meeting_password) = &event.meeting_password -%}
-        Meeting password:
-        <code style="background-color:#f5f5f4;
-                     border-radius:4px;
-                     color:#292524;
-                     font-size:0.875em;
-                     font-weight:600;
-                     margin-left:8px;
-                     padding:2px 8px">
-          {{ meeting_password }}
-        </code>
-        <br />
-      {% endif -%}
-    {% endif -%}
-    {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
-      Meeting instructions:
-      <br />
-      <br />
-      <blockquote class="join-instructions">
-        {{ meeting_join_instructions }}
-      </blockquote>
-      <br />
-    {% endif -%}
-  {% endif -%}
-{% endmacro meeting_details %}
-
 {# Email button -#}
+{# Used by notification email templates for call-to-action links. -#}
 {% macro button(link, text = "", color = "#0094FF") -%}
   {# djlint:off H021 #}
   {# Button table -#}
@@ -129,3 +87,49 @@
   {# djlint:on H021 #}
 {% endmacro button %}
 {# End email button -#}
+
+{# Meeting details #}
+{# Used by event notification emails that include date, location, and meeting info. #}
+{% macro meeting_details(event, date_title = "Date & time:", show_meeting_details = true) -%}
+  {% if let Some(starts_at) = &event.starts_at -%}
+    {{ date_title }}
+    {{ starts_at.with_timezone(event.timezone).format("%A, %B %e, %G · %I:%M %p %Z") }}
+    <br />
+  {% endif -%}
+  {% if let Some(location) = &event.location(90) -%}
+    Location: {{ location }}
+    <br />
+  {% endif -%}
+  {% if show_meeting_details -%}
+    {% if let Some(meeting_join_url) = &event.meeting_join_url -%}
+      Meeting link:
+      <a href="{{ meeting_join_url }}"
+         target="_blank"
+         rel="noopener noreferrer">{{ meeting_join_url }}</a>
+      <br />
+      {% if let Some(meeting_password) = &event.meeting_password -%}
+        Meeting password:
+        <code style="background-color:#f5f5f4;
+                     border-radius:4px;
+                     color:#292524;
+                     font-size:0.875em;
+                     font-weight:600;
+                     margin-left:8px;
+                     padding:2px 8px">
+          {{ meeting_password }}
+        </code>
+        <br />
+      {% endif -%}
+    {% endif -%}
+    {% if let Some(meeting_join_instructions) = &event.meeting_join_instructions -%}
+      Meeting instructions:
+      <br />
+      <br />
+      <blockquote class="join-instructions">
+        {{ meeting_join_instructions }}
+      </blockquote>
+      <br />
+    {% endif -%}
+  {% endif -%}
+{% endmacro meeting_details %}
+{# End meeting details #}

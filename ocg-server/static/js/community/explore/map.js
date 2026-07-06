@@ -1,6 +1,6 @@
 import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
 import { loadScriptOnce } from "/static/js/common/dom.js";
-import { fetchData } from "/static/js/community/explore/explore.js";
+import { fetchData } from "/static/js/community/explore/results.js";
 import {
   cancelDelayedPopover,
   getExploreItemUrl,

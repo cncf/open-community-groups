@@ -1,4 +1,5 @@
 {# Open Graph meta tags -#}
+{# Used by public event, community, and group pages for link previews. -#}
 {% macro open_graph(title, description, url, image_url, image_alt) -%}
   <meta property="og:type" content="website">
   <meta property="og:title" content="{{ title|demoji }}">
@@ -16,6 +17,7 @@
 {# End Open Graph meta tags -#}
 
 {# Twitter meta tags -#}
+{# Used by public event, community, and group pages for social cards. -#}
 {% macro twitter(title, description, image_url) -%}
   {% if image_url.is_some() -%}
     <meta name="twitter:card" content="summary_large_image">

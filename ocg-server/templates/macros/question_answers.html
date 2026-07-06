@@ -1,3 +1,5 @@
+{# Fields -#}
+{# Used by attendee answers, user event lists, and sponsor question forms. -#}
 {% macro fields(questions, answers, answer_attr, radio_name_prefix) -%}
   {% for question in questions -%}
     <fieldset data-question-id="{{ question.id }}"
@@ -55,9 +57,13 @@
     </fieldset>
   {% endfor -%}
 {% endmacro fields -%}
+{# End fields -#}
 
+{# Required note -#}
+{# Used by attendee and user event views to mark required questions. -#}
 {% macro required_note() -%}
   <p class="text-xs text-stone-500">
     <span class="asterisk">*</span> Questions marked with an asterisk are required.
   </p>
 {% endmacro required_note -%}
+{# End required note -#}

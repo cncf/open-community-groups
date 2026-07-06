@@ -1,13 +1,17 @@
-{# Event Attendance Macros -#}
+{# Control content -#}
+{# Used by event attendance buttons for their icon and label content. -#}
 {% macro control_content(label, icon_class) -%}
   <div class="svg-icon size-3 {{ icon_class }}" data-attendance-icon></div>
   <span data-attendance-label>{{ label }}</span>
 {% endmacro control_content -%}
+{# End control content -#}
 
+{# Control content with badge -#}
+{# Used by attendance buttons that need an additional status badge. -#}
 {% macro control_content_with_badge(label, icon_class, badge_label, badge_classes) -%}
   <span class="{{ badge_classes }}"
         data-attendance-role="control-price-badge">{{ badge_label }}</span>
   <div class="svg-icon size-3 {{ icon_class }}" data-attendance-icon></div>
   <span data-attendance-label>{{ label }}</span>
 {% endmacro control_content_with_badge -%}
-{# End event attendance macros -#}
+{# End control content with badge -#}

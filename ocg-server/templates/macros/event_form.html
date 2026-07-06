@@ -1,4 +1,5 @@
 {# Event form tab button -#}
+{# Used by event add and update pages for primary form tabs. -#}
 {% macro tab_button(section, icon, label, active = false, extra_attrs = "") -%}
   {% let active_value -%}
   {% if active -%}
@@ -25,6 +26,7 @@
 {# End event form tab button -#}
 
 {# Event form tab option -#}
+{# Used by event add and update pages for option-style tab controls. -#}
 {% macro tab_option(section, label, active = false) -%}
   <option value="{{ section }}" {% if active -%} selected {% endif -%}>{{ label }}</option>
 {% endmacro tab_option -%}
