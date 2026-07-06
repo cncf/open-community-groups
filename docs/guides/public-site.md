@@ -78,6 +78,16 @@ Helpful details:
 - The join button may take a moment to update after the page loads.
 - After you join, OCG sends a welcome message with a link back to the group page.
 
+Some group pages show hierarchy sections:
+
+- `Parent group` links from a subgroup back to its active parent.
+- `Subgroups` links from a parent group to its active subgroups.
+
+When a group has active subgroups, its group page event stream includes events from the group and
+those active subgroups. This affects the next-event panel, upcoming events, past events, and the
+`See all events` Explore links from that group page. Public member counts and Explore group search
+do not aggregate subgroup data.
+
 ![Group page and membership controls](../screenshots/group-page.png)
 
 ## RSVP and Attend Events

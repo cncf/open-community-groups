@@ -68,8 +68,15 @@ pub(crate) async fn page(
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Analytics => {
-            let stats = db.get_group_stats(community_id, group_id).await?;
-            Content::Analytics(Box::new(analytics::Page { stats }))
+            let (stats, has_subgroups) = tokio::try_join!(
+                db.get_group_stats(community_id, group_id, false),
+                db.group_has_active_subgroups(community_id, group_id)
+            )?;
+            Content::Analytics(Box::new(analytics::Page {
+                include_subgroups: false,
+                has_subgroups,
+                stats,
+            }))
         }
         Tab::Events => {
             let (_, template) = events::prepare_list_page(
@@ -100,21 +107,26 @@ pub(crate) async fn page(
             Content::Logs(template)
         }
         Tab::Settings => {
-            let (can_manage_settings, group, categories, regions) = tokio::try_join!(
-                db.user_has_group_permission(
-                    &community_id,
-                    &group_id,
-                    &user.user_id,
-                    GroupPermission::SettingsWrite
-                ),
-                db.get_group_full(community_id, group_id),
-                db.list_group_categories(community_id),
-                db.list_regions(community_id)
-            )?;
+            let (can_manage_settings, group, has_child_links, categories, parent_options, regions) =
+                tokio::try_join!(
+                    db.user_has_group_permission(
+                        &community_id,
+                        &group_id,
+                        &user.user_id,
+                        GroupPermission::SettingsWrite
+                    ),
+                    db.get_group_full(community_id, group_id),
+                    db.group_has_child_links(community_id, group_id),
+                    db.list_group_categories(community_id),
+                    db.list_group_parent_options(community_id, user.user_id, Some(group_id)),
+                    db.list_regions(community_id)
+                )?;
             Content::Settings(Box::new(settings::UpdatePage {
                 can_manage_settings,
                 categories,
                 group,
+                has_child_links,
+                parent_options,
                 payments_enabled: payments_cfg.is_some(),
                 regions,
             }))

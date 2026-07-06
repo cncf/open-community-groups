@@ -35,7 +35,7 @@ pub(crate) async fn update_page(
     State(payments_cfg): State<Option<PaymentsConfig>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (can_manage_settings, group, categories, regions) = tokio::try_join!(
+    let (can_manage_settings, group, has_child_links, categories, parent_options, regions) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
             &group_id,
@@ -43,13 +43,17 @@ pub(crate) async fn update_page(
             GroupPermission::SettingsWrite
         ),
         db.get_group_full(community_id, group_id),
+        db.group_has_child_links(community_id, group_id),
         db.list_group_categories(community_id),
+        db.list_group_parent_options(community_id, user.user_id, Some(group_id)),
         db.list_regions(community_id)
     )?;
     let template = settings::UpdatePage {
         can_manage_settings,
         categories,
         group,
+        has_child_links,
+        parent_options,
         payments_enabled: payments_cfg.is_some(),
         regions,
     };

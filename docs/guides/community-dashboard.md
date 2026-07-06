@@ -244,6 +244,19 @@ You can:
 - Delete retired groups.
 - Open a group in [Group Dashboard](/dashboard/group ':ignore') for deeper operational work.
 
+The add and update forms also include an optional `Parent group` selector. Use it to create a
+single-level subgroup relationship during community-level group maintenance.
+
+Parent selector rules:
+
+- Candidates are active, same-community groups that are not deleted and are not already subgroups.
+- You must be able to manage the selected parent group.
+- A group cannot be its own parent.
+- A group with any non-deleted child link cannot be assigned a parent; the selector is disabled on
+  that update form.
+- Clearing an existing parent only requires permission to update the group being edited.
+- Saving without changing the current parent is allowed, even if that parent is no longer active.
+
 For execution workflows inside a specific group, continue with
 [Group Dashboard Guide](group-dashboard.md).
 

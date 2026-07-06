@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,12 @@ select plan(5);
 \set groupCategoryID '0c0a0000-0000-0000-0000-000000000002'
 \set groupID '0c0a0000-0000-0000-0000-000000000003'
 \set groupInactiveID '0c0a0000-0000-0000-0000-000000000004'
+\set groupNoLogoID '0c0a0000-0000-0000-0000-000000000012'
+\set groupPrettySlugID '0c0a0000-0000-0000-0000-000000000013'
+\set hierarchyChildActiveID '0c0a0000-0000-0000-0000-00000000000e'
+\set hierarchyChildDeletedID '0c0a0000-0000-0000-0000-00000000000f'
+\set hierarchyChildInactiveID '0c0a0000-0000-0000-0000-000000000010'
+\set hierarchyParentID '0c0a0000-0000-0000-0000-000000000011'
 \set regionID '0c0a0000-0000-0000-0000-000000000005'
 \set sponsor1ID '0c0a0000-0000-0000-0000-000000000006'
 \set sponsor2ID '0c0a0000-0000-0000-0000-000000000007'
@@ -295,6 +301,115 @@ insert into "group" (
     '2024-02-15 10:00:00+00'
 );
 
+-- Group variants
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    created_at,
+
+    logo_url,
+    slug_pretty
+) values
+    (
+        :'groupNoLogoID',
+        :'communityID',
+        :'groupCategoryID',
+        'Group Without Logo',
+        'group-without-logo',
+        true,
+        '2024-02-20 10:00:00+00',
+
+        null,
+        null
+    ),
+    (
+        :'groupPrettySlugID',
+        :'communityID',
+        :'groupCategoryID',
+        'Group With Pretty Slug',
+        'group-with-pretty-slug',
+        true,
+        '2024-02-21 10:00:00+00',
+
+        'https://example.com/pretty-slug-logo.png',
+        'seattle-kubernetes'
+    );
+
+-- Group hierarchy parent
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted,
+    created_at
+) values (
+    :'hierarchyParentID',
+    :'communityID',
+    :'groupCategoryID',
+    'Hierarchy Parent',
+    'hierarchy-parent',
+    true,
+    false,
+    '2024-03-01 10:00:00+00'
+);
+
+-- Group hierarchy children
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted,
+    created_at,
+
+    parent_group_id
+) values
+    (
+        :'hierarchyChildActiveID',
+        :'communityID',
+        :'groupCategoryID',
+        'Active Hierarchy Child',
+        'active-hierarchy-child',
+        true,
+        false,
+        '2024-03-02 10:00:00+00',
+
+        :'hierarchyParentID'
+    ),
+    (
+        :'hierarchyChildInactiveID',
+        :'communityID',
+        :'groupCategoryID',
+        'Inactive Hierarchy Child',
+        'inactive-hierarchy-child',
+        false,
+        false,
+        '2024-03-03 10:00:00+00',
+
+        :'hierarchyParentID'
+    ),
+    (
+        :'hierarchyChildDeletedID',
+        :'communityID',
+        :'groupCategoryID',
+        'Deleted Hierarchy Child',
+        'deleted-hierarchy-child',
+        false,
+        true,
+        '2024-03-04 10:00:00+00',
+
+        :'hierarchyParentID'
+    );
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -410,34 +525,84 @@ select is(
                 "logo_url": "https://example.com/logos/kube-corp.png",
                 "name": "Kube Corp"
             }
-        ]
+        ],
+        "subgroups": []
     }'::jsonb,
     'Should return complete group data with organizers and member count as JSON'
 );
 
+-- Should include only active visible parent and subgroup summaries
+select is(
+    jsonb_build_object(
+        'parent',
+        get_group_full(:'communityID'::uuid, :'hierarchyChildActiveID'::uuid)::jsonb->'parent',
+        'subgroups',
+        get_group_full(:'communityID'::uuid, :'hierarchyParentID'::uuid)::jsonb->'subgroups'
+    ),
+    format(
+        $json$
+        {
+            "parent": {
+                "active": true,
+                "category": {
+                    "group_category_id": "%s",
+                    "name": "Technology",
+                    "normalized_name": "technology"
+                },
+                "community_display_name": "Cloud Native Seattle",
+                "community_name": "cloud-native-seattle",
+                "created_at": 1709287200,
+                "group_id": "%s",
+                "logo_url": "https://example.com/logo.png",
+                "name": "Hierarchy Parent",
+                "slug": "hierarchy-parent"
+            },
+            "subgroups": [
+                {
+                    "active": true,
+                    "category": {
+                        "group_category_id": "%s",
+                        "name": "Technology",
+                        "normalized_name": "technology"
+                    },
+                    "community_display_name": "Cloud Native Seattle",
+                    "community_name": "cloud-native-seattle",
+                    "created_at": 1709373600,
+                    "group_id": "%s",
+                    "logo_url": "https://example.com/logo.png",
+                    "name": "Active Hierarchy Child",
+                    "slug": "active-hierarchy-child"
+                }
+            ]
+        }
+        $json$,
+        :'groupCategoryID',
+        :'hierarchyParentID',
+        :'groupCategoryID',
+        :'hierarchyChildActiveID'
+    )::jsonb,
+    'Should include only active visible parent and subgroup summaries'
+);
+
 -- Should use community logo when group has no logo
-update "group" set logo_url = null where group_id = :'groupID';
 select is(
     (get_group_full(
         :'communityID'::uuid,
-        :'groupID'::uuid
+        :'groupNoLogoID'::uuid
     )::jsonb)->>'logo_url',
     'https://example.com/logo.png',
     'Should use community logo when group has no logo'
 );
-update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
 
 -- Should include pretty slug when available
-update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
 select is(
     (get_group_full(
         :'communityID'::uuid,
-        :'groupID'::uuid
+        :'groupPrettySlugID'::uuid
     )::jsonb)->>'slug_pretty',
     'seattle-kubernetes',
     'Should include pretty slug when available'
 );
-update "group" set slug_pretty = null where group_id = :'groupID';
 
 -- Should return null for non-existent group
 select ok(

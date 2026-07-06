@@ -10,14 +10,20 @@ select plan(4);
 -- ============================================================================
 
 \set communityID '6a030000-0000-0000-0000-000000000001'
+\set deletedChildEventID '6a030000-0000-0000-0000-00000000000f'
+\set deletedChildGroupID '6a030000-0000-0000-0000-00000000000c'
 \set event1ID '6a030000-0000-0000-0000-000000000002'
 \set event2ID '6a030000-0000-0000-0000-000000000003'
 \set event3ID '6a030000-0000-0000-0000-000000000004'
 \set event4ID '6a030000-0000-0000-0000-000000000005'
 \set event5ID '6a030000-0000-0000-0000-000000000006'
+\set childEventID '6a030000-0000-0000-0000-00000000000d'
+\set childGroupID '6a030000-0000-0000-0000-00000000000a'
 \set eventCategoryID '6a030000-0000-0000-0000-000000000007'
 \set groupCategoryID '6a030000-0000-0000-0000-000000000008'
 \set groupID '6a030000-0000-0000-0000-000000000009'
+\set inactiveChildEventID '6a030000-0000-0000-0000-00000000000e'
+\set inactiveChildGroupID '6a030000-0000-0000-0000-00000000000b'
 
 -- ============================================================================
 -- SEED DATA
@@ -68,6 +74,22 @@ insert into "group" (
     'United States',
     'CA'
 );
+
+-- Child groups
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted,
+
+    parent_group_id
+) values
+    (:'childGroupID', :'communityID', :'groupCategoryID', 'Active Child Group', 'active-child-group', true, false, :'groupID'),
+    (:'inactiveChildGroupID', :'communityID', :'groupCategoryID', 'Inactive Child Group', 'inactive-child-group', false, false, :'groupID'),
+    (:'deletedChildGroupID', :'communityID', :'groupCategoryID', 'Deleted Child Group', 'deleted-child-group', false, true, :'groupID');
 
 -- Event category
 insert into event_category (event_category_id, community_id, name)
@@ -164,6 +186,76 @@ insert into event (
         'New York'
     );
 
+-- Child group events
+insert into event (
+    event_id,
+    name,
+    slug,
+    description,
+    description_short,
+    test_event,
+    timezone,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    published,
+    starts_at,
+    ends_at,
+    logo_url,
+    venue_city
+) values
+    (
+        :'childEventID',
+        'Active Child Future Event',
+        'active-child-future-event',
+        'Active child future event',
+        'Active child future event',
+        false,
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'childGroupID',
+        true,
+        now() + interval '15 days',
+        now() + interval '15 days' + interval '2 hours',
+        null,
+        'Los Angeles'
+    ),
+    (
+        :'inactiveChildEventID',
+        'Inactive Child Future Event',
+        'inactive-child-future-event',
+        'Inactive child future event',
+        'Inactive child future event',
+        false,
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'inactiveChildGroupID',
+        true,
+        now() + interval '10 days',
+        now() + interval '10 days' + interval '2 hours',
+        null,
+        'Los Angeles'
+    ),
+    (
+        :'deletedChildEventID',
+        'Deleted Child Future Event',
+        'deleted-child-future-event',
+        'Deleted child future event',
+        'Deleted child future event',
+        false,
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'deletedChildGroupID',
+        true,
+        now() + interval '12 days',
+        now() + interval '12 days' + interval '2 hours',
+        null,
+        'Los Angeles'
+    );
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -172,9 +264,10 @@ insert into event (
 select is(
     get_group_upcoming_events(:'communityID'::uuid, 'test-group', array['in-person', 'virtual', 'hybrid'], 10)::jsonb,
     jsonb_build_array(
+        get_event_summary(:'communityID'::uuid, :'childGroupID'::uuid, :'childEventID'::uuid)::jsonb,
         get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb
     ),
-    'Should return published non-test future events ordered by date ASC as JSON'
+    'Should return published non-test future events from the group and active children ordered by date ASC as JSON'
 );
 
 -- Should return empty array with non-existing group slug

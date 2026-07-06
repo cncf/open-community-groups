@@ -3,17 +3,19 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(12);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '2c0a0000-0000-0000-0000-000000000001'
+\set childGroupID '2c0a0000-0000-0000-0000-000000000007'
 \set groupAlreadyDeletedID '2c0a0000-0000-0000-0000-000000000002'
 \set groupCategoryID '2c0a0000-0000-0000-0000-000000000003'
 \set groupID '2c0a0000-0000-0000-0000-000000000004'
 \set groupWrongCommunityID '2c0a0000-0000-0000-0000-000000000005'
+\set linkedGroupID '2c0a0000-0000-0000-0000-000000000008'
 \set unknownCommunityID '2c0a0000-0000-0000-0000-000000000006'
 
 -- ============================================================================
@@ -58,6 +60,23 @@ insert into "group" (
     'active-group'
 );
 
+-- Child group linked to the active group
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    parent_group_id
+) values (
+    :'childGroupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Child Group',
+    'child-group',
+    :'groupID'
+);
+
 -- Already deleted group
 insert into "group" (
     group_id,
@@ -90,6 +109,23 @@ insert into "group" (
     :'groupCategoryID',
     'Cross Community Guard Group',
     'cross-community-guard-group'
+);
+
+-- Group with its own parent link
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    parent_group_id
+) values (
+    :'linkedGroupID',
+    :'communityID',
+    :'groupCategoryID',
+    'Linked Group',
+    'linked-group',
+    :'groupWrongCommunityID'
 );
 
 -- ============================================================================
@@ -130,6 +166,29 @@ select is(
     'Should set active to false when deleting'
 );
 
+-- Should clear child links for deleted parent group
+select is(
+    (select parent_group_id from "group" where group_id = :'childGroupID'::uuid),
+    null::uuid,
+    'Should clear child links for deleted parent group'
+);
+
+-- Should clear the deleted group's own parent link
+select lives_ok(
+    format(
+        'select delete_group(null::uuid, %L::uuid, %L::uuid)',
+        :'communityID',
+        :'linkedGroupID'
+    ),
+    'Should delete a group that has a parent link'
+);
+
+select is(
+    (select parent_group_id from "group" where group_id = :'linkedGroupID'::uuid),
+    null::uuid,
+    'Should clear the deleted group own parent link'
+);
+
 -- Should create the expected audit row
 select results_eq(
     $$
@@ -145,19 +204,32 @@ select results_eq(
     $$,
     format(
         $$
-        values (
-            'group_deleted',
-            null::uuid,
-            null::text,
-            %L::uuid,
-            %L::uuid,
-            'group',
-            %L::uuid
-        )
+        values
+            (
+                'group_deleted',
+                null::uuid,
+                null::text,
+                %L::uuid,
+                %L::uuid,
+                'group',
+                %L::uuid
+            ),
+            (
+                'group_deleted',
+                null::uuid,
+                null::text,
+                %L::uuid,
+                %L::uuid,
+                'group',
+                %L::uuid
+            )
         $$,
         :'communityID',
         :'groupID',
-        :'groupID'
+        :'groupID',
+        :'communityID',
+        :'linkedGroupID',
+        :'linkedGroupID'
     ),
     'Should create the expected audit row'
 );

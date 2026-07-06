@@ -62,6 +62,29 @@ returns json as $$
         'website_url', g.website_url,
         'youtube_url', g.youtube_url,
 
+        -- Include parent and children groups
+        'parent', (
+            select get_group_summary(g.community_id, parent.group_id)
+            from "group" parent
+            where parent.group_id = g.parent_group_id
+            and parent.community_id = g.community_id
+            and parent.active = true
+            and parent.deleted = false
+        ),
+        'subgroups', (
+            select coalesce(
+                json_agg(
+                    get_group_summary(g.community_id, child.group_id)
+                    order by child.name asc, child.group_id asc
+                ), '[]'::json
+            )
+            from "group" child
+            where child.parent_group_id = g.group_id
+            and child.community_id = g.community_id
+            and child.active = true
+            and child.deleted = false
+        ),
+
         -- Include community summary and related collections
         'community', get_community_summary(g.community_id),
         'organizers', (
@@ -87,6 +110,7 @@ returns json as $$
             where gt.group_id = g.group_id
             and gt.accepted = true
         ),
+
         -- Include group sponsors
         'sponsors', (
             select coalesce(

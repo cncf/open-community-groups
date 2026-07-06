@@ -48,8 +48,10 @@ async fn test_page_db_error() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_stats()
         .times(1)
-        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(|_, _| Err(anyhow!("db error")));
+        .withf(move |cid, gid, include_subgroups| {
+            *cid == community_id && *gid == group_id && !*include_subgroups
+        })
+        .returning(|_, _, _| Err(anyhow!("db error")));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -106,8 +108,14 @@ async fn test_page_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_get_group_stats()
         .times(1)
+        .withf(move |cid, gid, include_subgroups| {
+            *cid == community_id && *gid == group_id && *include_subgroups
+        })
+        .returning(move |_, _, _| Ok(stats.clone()));
+    db.expect_group_has_active_subgroups()
+        .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(stats.clone()));
+        .returning(|_, _| Ok(true));
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -116,7 +124,7 @@ async fn test_page_success() {
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
-        .uri("/dashboard/group/analytics")
+        .uri("/dashboard/group/analytics?include_subgroups=true")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();
@@ -131,4 +139,7 @@ async fn test_page_success() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(body.contains("Include subgroups"));
+    assert!(body.contains("checked"));
 }

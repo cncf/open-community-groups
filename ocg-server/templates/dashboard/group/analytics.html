@@ -6,6 +6,32 @@
 description = "Group statistics and growth trends. Analytics are cached for a few minutes and may not display up to date information.") }}
 {# End page title #}
 
+{% if has_subgroups -%}
+  <form class="mt-8"
+        hx-get="/dashboard/group/analytics"
+        hx-trigger="change"
+        hx-target="#dashboard-content"
+        hx-indicator="#dashboard-spinner"
+        hx-swap="innerHTML show:body:top">
+    <label class="inline-flex items-center cursor-pointer">
+      <input id="include_subgroups"
+             name="include_subgroups"
+             value="true"
+             type="checkbox"
+             class="sr-only peer"
+             {% if include_subgroups -%}
+               checked
+             {% endif -%}>
+      <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+      </div>
+      <span class="ms-3 text-sm font-medium text-stone-900">Include subgroups</span>
+    </label>
+    <p class="form-legend">
+      When enabled, every statistic on this page includes active subgroups. Members are counted as unique people across the hierarchy.
+    </p>
+  </form>
+{% endif -%}
+
 {# Summary stat cards #}
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-10">
   <div class="bg-white border border-stone-200 text-start rounded-lg p-5">

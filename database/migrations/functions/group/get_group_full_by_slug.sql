@@ -5,5 +5,6 @@ returns json as $$
     from "group" g
     where g.community_id = p_community_id
     and (g.slug = p_group_slug or g.slug_pretty = p_group_slug)
-    and g.active = true;
+    and g.active = true
+    and g.deleted = false;
 $$ language sql;

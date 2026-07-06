@@ -1,6 +1,7 @@
 -- Returns group statistics as a JSON object.
 --
--- The function computes statistics for 3 domains scoped to a single group:
+-- The function computes statistics for 3 domains scoped to a single group or
+-- to a group and its active subgroups:
 --   - members
 --   - events
 --   - attendees
@@ -17,28 +18,54 @@
 --
 -- Time series data is returned as arrays of [timestamp/value] pairs where
 -- timestamps are Unix milliseconds.
-create or replace function get_group_stats(p_community_id uuid, p_group_id uuid)
+create or replace function get_group_stats(
+    p_community_id uuid,
+    p_group_id uuid,
+    p_include_subgroups boolean
+)
 returns json as $$
 with params as (
     select
         p_community_id as community_id,
         p_group_id as group_id,
+        p_include_subgroups as include_subgroups,
         current_date - interval '2 years' as period_start,
         current_date - interval '1 month' as recent_views_start
 ),
-filtered_group as (
+target_group as (
     select g.group_id, g.community_id
     from "group" g
     join params p on g.group_id = p.group_id and g.community_id = p.community_id
     where g.active = true
         and g.deleted = false
 ),
+scoped_groups as (
+    select tg.group_id, tg.community_id
+    from target_group tg
+
+    union all
+
+    select child.group_id, child.community_id
+    from "group" child
+    join target_group tg on child.parent_group_id = tg.group_id
+    join params p on p.community_id = child.community_id
+    where p.include_subgroups = true
+        and child.active = true
+        and child.deleted = false
+),
+unique_members as (
+    select
+        gm.user_id,
+        min(gm.created_at) as first_seen_at
+    from group_member gm
+    join scoped_groups sg on sg.group_id = gm.group_id
+    group by gm.user_id
+),
 members as (
     select
-        gm.created_at,
-        timezone('UTC', date_trunc('month', gm.created_at at time zone 'UTC')) as created_month
-    from group_member gm
-    join filtered_group fg on fg.group_id = gm.group_id
+        um.first_seen_at,
+        timezone('UTC', date_trunc('month', um.first_seen_at at time zone 'UTC')) as created_month
+    from unique_members um
 ),
 events as (
     select
@@ -46,7 +73,7 @@ events as (
         e.starts_at,
         timezone('UTC', date_trunc('month', e.starts_at at time zone 'UTC')) as starts_month
     from event e
-    join filtered_group fg on fg.group_id = e.group_id
+    join scoped_groups sg on sg.group_id = e.group_id
     where e.published = true
         and e.canceled = false
         and e.deleted = false
@@ -55,7 +82,7 @@ events as (
 events_for_views as (
     select e.event_id
     from event e
-    join filtered_group fg on fg.group_id = e.group_id
+    join scoped_groups sg on sg.group_id = e.group_id
     where e.deleted = false
         and e.published = true
         and e.test_event = false
@@ -87,7 +114,7 @@ group_views_data as (
         timezone('UTC', date_trunc('month', gv.day::timestamp)) as viewed_month,
         gv.day
     from group_views gv
-    join filtered_group fg on fg.group_id = gv.group_id
+    join scoped_groups sg on sg.group_id = gv.group_id
 ),
 all_page_views_data as (
     select total, viewed_month, day
@@ -128,7 +155,7 @@ domain_monthly_counts as (
         to_char(m.created_month, 'YYYY-MM') as label,
         count(*)::int as count
     from members m
-    join params p on m.created_at >= p.period_start
+    join params p on m.first_seen_at >= p.period_start
     group by to_char(m.created_month, 'YYYY-MM')
 
     union all

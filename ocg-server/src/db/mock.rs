@@ -183,6 +183,22 @@ mock! {
 
     #[async_trait]
     impl crate::db::dashboard::common::DBDashboardCommon for DB {
+        async fn group_has_active_subgroups(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<bool>;
+        async fn group_has_child_links(
+            &self,
+            community_id: Uuid,
+            group_id: Uuid,
+        ) -> Result<bool>;
+        async fn list_group_parent_options(
+            &self,
+            community_id: Uuid,
+            user_id: Uuid,
+            group_id: Option<Uuid>,
+        ) -> Result<Vec<crate::types::group::GroupParentOption>>;
         async fn search_user(
             &self,
             query: &str,
@@ -413,6 +429,7 @@ mock! {
             &self,
             community_id: Uuid,
             group_id: Uuid,
+            include_subgroups: bool,
         ) -> Result<crate::templates::dashboard::group::analytics::GroupDashboardStats>;
         async fn invite_event_attendee(
             &self,

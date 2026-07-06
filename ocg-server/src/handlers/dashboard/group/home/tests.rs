@@ -57,8 +57,14 @@ async fn test_page_analytics_tab_success() {
         .returning(move |_| Ok(groups.clone()));
     db.expect_get_group_stats()
         .times(1)
+        .withf(move |cid, gid, include_subgroups| {
+            *cid == community_id && *gid == group_id && !*include_subgroups
+        })
+        .returning(move |_, _, _| Ok(stats.clone()));
+    db.expect_group_has_active_subgroups()
+        .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
-        .returning(move |_, _| Ok(stats.clone()));
+        .returning(|_, _| Ok(false));
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Ok(sample_site_settings()));
@@ -387,10 +393,20 @@ async fn test_page_settings_tab_success() {
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(move |_, _| Ok(group_full.clone()));
+    db.expect_group_has_child_links()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(false));
     db.expect_list_group_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![category.clone()]));
+    db.expect_list_group_parent_options()
+        .times(1)
+        .withf(move |cid, uid, gid| {
+            *cid == community_id && *uid == user_id && *gid == Some(group_id)
+        })
+        .returning(|_, _, _| Ok(vec![]));
     db.expect_list_regions()
         .times(1)
         .withf(move |cid| *cid == community_id)

@@ -2,7 +2,7 @@
 
 use askama::Template;
 use axum::{
-    extract::State,
+    extract::{Query, State},
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
@@ -27,9 +27,18 @@ pub(crate) async fn page(
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
+    Query(query): Query<analytics::AnalyticsQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let stats = db.get_group_stats(community_id, group_id).await?;
-    let page = analytics::Page { stats };
+    let include_subgroups = query.include_subgroups.unwrap_or(false);
+    let (stats, has_subgroups) = tokio::try_join!(
+        db.get_group_stats(community_id, group_id, include_subgroups),
+        db.group_has_active_subgroups(community_id, group_id)
+    )?;
+    let page = analytics::Page {
+        include_subgroups,
+        has_subgroups,
+        stats,
+    };
 
     Ok(Html(page.render()?))
 }

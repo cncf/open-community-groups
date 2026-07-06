@@ -7,17 +7,44 @@ create or replace function update_group(
 )
 returns void as $$
 declare
+    v_current_parent_group_id uuid;
     v_payment_recipient_changed boolean := false;
+    v_parent_group_id_present boolean := false;
+    v_new_parent_group_id uuid;
     v_new_payment_recipient jsonb;
     v_previous_payment_recipient jsonb;
 begin
-    -- Retrieve the existing payment recipient to compare against the update payload
-    select payment_recipient
-    into v_previous_payment_recipient
+    -- Retrieve existing values to compare against the update payload
+    select
+        parent_group_id,
+        payment_recipient
+    into
+        v_current_parent_group_id,
+        v_previous_payment_recipient
     from "group"
     where group_id = p_group_id
     and community_id = p_community_id
     and deleted = false;
+
+    -- Resolve the requested parent value
+    v_parent_group_id_present := coalesce((p_group->>'parent_group_id_present')::boolean, false);
+    v_new_parent_group_id := case
+        when v_parent_group_id_present then nullif(p_group->>'parent_group_id', '')::uuid
+        else v_current_parent_group_id
+    end;
+
+    -- Require permission on a newly selected parent, but not for no-op saves or clears
+    if v_parent_group_id_present
+       and v_new_parent_group_id is not null
+       and v_new_parent_group_id is distinct from v_current_parent_group_id
+       and not user_has_group_permission(
+           p_community_id,
+           v_new_parent_group_id,
+           p_actor_user_id,
+           'group.settings.write'
+       ) then
+        raise exception 'you must be able to manage the selected parent group';
+    end if;
 
     -- Normalize the optional payment recipient before persisting it
     v_new_payment_recipient := case
@@ -78,6 +105,10 @@ begin
         location = jsonb_geography_point(p_group),
         logo_url = nullif(p_group->>'logo_url', ''),
         og_image_url = nullif(p_group->>'og_image_url', ''),
+        parent_group_id = case
+            when v_parent_group_id_present then v_new_parent_group_id
+            else parent_group_id
+        end,
         payment_recipient = case
             when p_group ? 'payment_recipient' then v_new_payment_recipient
             else payment_recipient

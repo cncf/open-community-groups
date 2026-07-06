@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,7 +11,9 @@ select plan(3);
 
 \set communityID '6a010000-0000-0000-0000-000000000001'
 \set groupCategoryID '6a010000-0000-0000-0000-000000000002'
+\set groupDeletedID '6a010000-0000-0000-0000-00000000000a'
 \set groupID '6a010000-0000-0000-0000-000000000003'
+\set groupPrettySlugID '6a010000-0000-0000-0000-00000000000b'
 \set memberID '6a010000-0000-0000-0000-000000000004'
 \set organizer1ID '6a010000-0000-0000-0000-000000000005'
 \set organizer2ID '6a010000-0000-0000-0000-000000000006'
@@ -156,6 +158,41 @@ insert into "group" (
     'https://github.com/k8snyc'
 );
 
+-- Group variants
+insert into "group" (
+    group_id,
+    community_id,
+    group_category_id,
+    name,
+    slug,
+    active,
+    deleted,
+
+    slug_pretty
+) values
+    (
+        :'groupDeletedID',
+        :'communityID',
+        :'groupCategoryID',
+        'Deleted Kubernetes NYC',
+        'deleted-kubernetes-nyc',
+        false,
+        true,
+
+        null
+    ),
+    (
+        :'groupPrettySlugID',
+        :'communityID',
+        :'groupCategoryID',
+        'Pretty Slug Kubernetes NYC',
+        'pretty-slug-kubernetes-nyc',
+        true,
+        false,
+
+        'kubernetes-nyc'
+    );
+
 -- Group Member
 insert into group_member (group_id, user_id, created_at)
 values
@@ -230,6 +267,7 @@ select is(
                 "website_url": "https://hidden-sponsor.example.com"
             }
         ],
+        "subgroups": [],
         "longitude": -74.006,
         "og_image_url": "https://example.com/group-og.png",
         "banner_url": "https://example.com/k8s-banner.png",
@@ -303,11 +341,16 @@ select ok(
 );
 
 -- Should resolve group by pretty slug
-update "group" set slug_pretty = 'kubernetes-nyc' where group_id = :'groupID';
 select is(
     get_group_full_by_slug(:'communityID'::uuid, 'kubernetes-nyc')::jsonb->>'group_id',
-    :'groupID',
+    :'groupPrettySlugID',
     'Should resolve group by pretty slug'
+);
+
+-- Should return null when the matching group is deleted
+select ok(
+    get_group_full_by_slug(:'communityID'::uuid, 'deleted-kubernetes-nyc') is null,
+    'Should return null when the matching group is deleted'
 );
 
 -- ============================================================================
