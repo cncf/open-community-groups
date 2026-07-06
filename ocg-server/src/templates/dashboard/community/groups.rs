@@ -80,13 +80,14 @@ pub(crate) struct UpdatePage {
 pub(crate) struct CommunityGroupsFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Text search query.
+    #[serde(default, deserialize_with = "crate::validation::blank_string_as_none")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
 }

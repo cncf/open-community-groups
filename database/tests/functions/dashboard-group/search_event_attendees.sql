@@ -553,7 +553,8 @@ values (
 select is(
     search_event_attendees(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 50, 'offset', 0)
+        :'event1ID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
@@ -573,7 +574,8 @@ select is(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 1, 'offset', 1)
+        :'event1ID'::uuid,
+        jsonb_build_object('limit', 1, 'offset', 1)
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
@@ -589,7 +591,8 @@ select is(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'event1ID'::uuid)
+        :'event1ID'::uuid,
+        jsonb_build_object()
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
@@ -609,7 +612,8 @@ select is(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'event2ID'::uuid, 'limit', 50, 'offset', 0)
+        :'event2ID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'attendees', '[
@@ -621,10 +625,11 @@ select is(
     'Should return attendees for event2'
 );
 
--- Should return empty list when no event_id provided
+-- Should return empty list when event scope is null
 select is(
     search_event_attendees(
         :'groupID'::uuid,
+        null::uuid,
         '{"limit":50,"offset":0}'::jsonb
     )::jsonb,
     jsonb_build_object(
@@ -632,14 +637,15 @@ select is(
         'attendees', '[]'::jsonb,
         'total', 0
     ),
-    'Should return empty list when no event_id provided'
+    'Should return empty list when event scope is null'
 );
 
 -- Should return empty list for non-existing event
 select is(
     search_event_attendees(
         :'groupID'::uuid,
-        jsonb_build_object('event_id', :'missingEventID'::uuid, 'limit', 50, 'offset', 0)
+        :'missingEventID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'all_attendees_email_recipient_total', 0,
@@ -653,7 +659,8 @@ select is(
 select is(
     search_event_attendees(
         :'group2ID'::uuid,
-        jsonb_build_object('event_id', :'event1ID'::uuid, 'limit', 50, 'offset', 0)
+        :'event1ID'::uuid,
+        jsonb_build_object('limit', 50, 'offset', 0)
     )::jsonb,
     jsonb_build_object(
         'all_attendees_email_recipient_total', 0,
@@ -669,8 +676,8 @@ select ok(
         with result as (
             select search_event_attendees(
                 :'groupID'::uuid,
+                :'event1ID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'event1ID'::uuid,
                     'limit', 50,
                     'offset', 0,
                     'ts_query', 'ali'
@@ -691,8 +698,8 @@ select ok(
         with result as (
             select search_event_attendees(
                 :'groupID'::uuid,
+                :'eventStopwordSearchID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'eventStopwordSearchID'::uuid,
                     'limit', 50,
                     'offset', 0,
                     'ts_query', 'may'
@@ -713,8 +720,8 @@ select ok(
         with result as (
             select search_event_attendees(
                 :'groupID'::uuid,
+                :'event1ID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'event1ID'::uuid,
                     'limit', 50,
                     'offset', 0,
                     'ts_query', 'cloud corp'
@@ -735,8 +742,8 @@ select ok(
         with result as (
             select search_event_attendees(
                 :'groupID'::uuid,
+                :'event1ID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'event1ID'::uuid,
                     'limit', 50,
                     'offset', 0,
                     'ts_query', 'principal engineer'
@@ -755,8 +762,8 @@ select ok(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0,
             'sort', 'created-at-desc'
@@ -770,8 +777,8 @@ select is(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0,
             'title', 'present'
@@ -785,8 +792,8 @@ select is(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0,
             'title', 'missing'
@@ -800,9 +807,9 @@ select is(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
             'checked_in', true,
-            'event_id', :'event1ID'::uuid,
             'limit', 50,
             'offset', 0
         )
@@ -815,8 +822,8 @@ select is(
 select is(
     search_event_attendees(
         :'groupID'::uuid,
+        :'event1ID'::uuid,
         jsonb_build_object(
-            'event_id', :'event1ID'::uuid,
             'event_ticket_type_ids', jsonb_build_array(:'eventTicketType1ID'::uuid),
             'limit', 50,
             'offset', 0
@@ -832,8 +839,8 @@ select ok(
         with result as (
             select search_event_attendees(
                 :'groupID'::uuid,
+                :'eventPendingCheckoutID'::uuid,
                 jsonb_build_object(
-                    'event_id', :'eventPendingCheckoutID'::uuid,
                     'limit', 50,
                     'offset', 0
                 )
@@ -852,7 +859,7 @@ select is(
     (
         select attendee->'registration_answers'
         from jsonb_array_elements(
-            search_event_attendees(:'groupID'::uuid, jsonb_build_object('event_id', :'eventQuestionsID'::uuid, 'limit', 10, 'offset', 0))::jsonb->'attendees'
+            search_event_attendees(:'groupID'::uuid, :'eventQuestionsID'::uuid, jsonb_build_object('limit', 10, 'offset', 0))::jsonb->'attendees'
         ) attendee
         where attendee#>>'{user,user_id}' = :'questionsAttendeeUserID'
     ),

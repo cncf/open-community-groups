@@ -660,13 +660,13 @@ async fn test_download_csv_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit.is_none()
                 && filters.offset.is_none()
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -815,13 +815,13 @@ async fn test_download_csv_with_answers_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit.is_none()
                 && filters.offset.is_none()
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -1500,13 +1500,13 @@ async fn test_list_page_success() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -1801,13 +1801,13 @@ async fn test_list_page_with_pagination_params() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(5)
                 && filters.offset == Some(10)
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
@@ -1902,9 +1902,9 @@ async fn test_list_page_with_search_query() {
         .returning(|_, _, _, _| Ok(true));
     db.expect_search_event_attendees()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.checked_in == Some(true)
                 && filters.event_ticket_type_ids.as_deref() == Some(&[ticket_type_id][..])
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
@@ -1913,7 +1913,7 @@ async fn test_list_page_with_search_query() {
                 && filters.title == Some(PresenceFilter::Present)
                 && filters.ts_query.as_deref() == Some("ana")
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
     db.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)

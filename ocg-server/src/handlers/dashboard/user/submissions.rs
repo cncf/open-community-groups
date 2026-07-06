@@ -7,6 +7,7 @@ use axum::{
     response::{Html, IntoResponse},
 };
 use axum_messages::Messages;
+use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -94,6 +95,7 @@ pub(crate) async fn prepare_list_page(
     // Fetch submissions
     let filters: submissions::CfsSubmissionsFilters =
         serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let results = db.list_user_cfs_submissions(user_id, &filters).await?;
 
     // Prepare template

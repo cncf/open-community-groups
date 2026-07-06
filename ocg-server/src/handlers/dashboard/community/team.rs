@@ -197,6 +197,7 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(CommunityTeamFilters, team::ListPage), HandlerError> {
     // Fetch team members
     let filters: CommunityTeamFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let (results, roles, can_manage_team) = tokio::try_join!(
         db.list_community_team_members(community_id, &filters),
         db.list_community_roles(),

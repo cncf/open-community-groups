@@ -1,11 +1,10 @@
 -- Returns paginated invitation requests for a group's event using provided filters.
-create or replace function search_event_invitation_requests(p_group_id uuid, p_filters jsonb)
+create or replace function search_event_invitation_requests(p_group_id uuid, p_event_id uuid, p_filters jsonb)
 returns json as $$
     with
-        -- Parse filters for event scope and pagination
+        -- Parse filters for pagination
         filters as (
             select
-                (p_filters->>'event_id')::uuid as event_id,
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value,
                 case
@@ -72,7 +71,7 @@ returns json as $$
             join event e on e.event_id = eir.event_id
             join "user" u on u.user_id = eir.user_id
             where e.group_id = p_group_id
-            and eir.event_id = (select event_id from filters)
+            and eir.event_id = p_event_id
         ),
         -- Apply table filters while retaining internal search data
         filtered_invitation_requests as (

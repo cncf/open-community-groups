@@ -5,7 +5,6 @@ use chrono::{DateTime, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use uuid::Uuid;
 
 use crate::{
     templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
@@ -79,37 +78,10 @@ pub(crate) enum WaitlistSort {
     NameDesc,
 }
 
-/// Filter parameters for waitlist searches.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct WaitlistFilters {
-    /// Selected event to scope waitlist entries.
-    #[garde(skip)]
-    pub event_id: Uuid,
-
-    /// Number of results per page.
-    #[serde(default = "dashboard::default_limit")]
-    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
-    pub limit: Option<usize>,
-    /// Pagination offset for results.
-    #[serde(default = "dashboard::default_offset")]
-    #[garde(skip)]
-    pub offset: Option<usize>,
-    /// Sort option used to order waitlist entries.
-    #[garde(skip)]
-    pub sort: Option<WaitlistSort>,
-    /// User title presence filter.
-    #[garde(skip)]
-    pub title: Option<PresenceFilter>,
-    /// Search query for waitlist user name, username, email, company, or title.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
-    pub ts_query: Option<String>,
-}
-
-/// Filter parameters for waitlist list page URLs.
+/// Filter parameters for waitlist lists.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct WaitlistListPageFilters {
+pub(crate) struct WaitlistFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
@@ -125,11 +97,12 @@ pub(crate) struct WaitlistListPageFilters {
     #[garde(skip)]
     pub title: Option<PresenceFilter>,
     /// Text search query.
+    #[serde(default, deserialize_with = "crate::validation::blank_string_as_none")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
 }
 
-crate::impl_pagination_and_raw_query!(WaitlistListPageFilters, limit, offset);
+crate::impl_pagination_and_raw_query!(WaitlistFilters, limit, offset);
 
 /// Paginated waitlist response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]

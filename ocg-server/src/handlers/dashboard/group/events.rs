@@ -744,6 +744,7 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(EventsListFilters, events::ListPage), HandlerError> {
     // Fetch group's past and upcoming events
     let filters: EventsListFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let (can_manage_events, events) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,

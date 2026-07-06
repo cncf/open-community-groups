@@ -6,6 +6,7 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse},
 };
+use garde::Validate;
 use tracing::{instrument, warn};
 use uuid::Uuid;
 
@@ -19,7 +20,9 @@ use crate::{
     router::serde_qs_config,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
-        dashboard::group::submissions::{self, CfsSubmissionUpdate, CfsSubmissionsFilters},
+        dashboard::group::submissions::{
+            self, CfsSubmissionUpdate, CfsSubmissionsFilters, CfsSubmissionsSort,
+        },
         notifications::CfsSubmissionUpdated,
     },
     types::{
@@ -46,6 +49,7 @@ pub(crate) async fn list_page(
     // Fetch event submissions (checking event belongs to group)
     let filters: CfsSubmissionsFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    filters.validate()?;
     let (can_manage_events, _event, labels, statuses, submissions) = tokio::try_join!(
         db.user_has_group_permission(
             &community_id,
@@ -73,7 +77,7 @@ pub(crate) async fn list_page(
         navigation_links,
         refresh_url,
         selected_event_cfs_label_ids: filters.label_ids.clone(),
-        sort: filters.sort.clone().unwrap_or_else(|| "created-desc".to_string()),
+        sort: filters.sort.unwrap_or(CfsSubmissionsSort::CreatedDesc).to_string(),
         total: submissions.total,
         limit: filters.limit,
         offset: filters.offset,

@@ -17,7 +17,7 @@ use crate::{
     },
     validation::{
         MAX_LEN_DESCRIPTION, MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION,
-        MAX_LEN_SORT_KEY, MAX_PAGINATION_LIMIT, trimmed_non_empty, trimmed_non_empty_opt,
+        MAX_PAGINATION_LIMIT, trimmed_non_empty,
     },
 };
 
@@ -153,15 +153,15 @@ pub(crate) struct CfsSubmissionsFilters {
     pub label_ids: Option<Vec<Uuid>>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
     /// Sort option used to order submissions.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_SORT_KEY))]
-    pub sort: Option<String>,
+    #[garde(skip)]
+    pub sort: Option<CfsSubmissionsSort>,
 }
 
 crate::impl_pagination_and_raw_query!(CfsSubmissionsFilters, limit, offset);
@@ -173,6 +173,25 @@ pub(crate) struct CfsSubmissionsOutput {
     pub submissions: Vec<CfsSubmission>,
     /// Total number of submissions.
     pub total: usize,
+}
+
+/// Supported CFS submission sort options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum CfsSubmissionsSort {
+    /// Sort by submission creation time ascending.
+    CreatedAsc,
+    /// Sort by submission creation time descending.
+    CreatedDesc,
+    /// Sort by number of ratings ascending.
+    RatingsCountAsc,
+    /// Sort by number of ratings descending.
+    RatingsCountDesc,
+    /// Sort by average stars ascending.
+    StarsAsc,
+    /// Sort by average stars descending.
+    StarsDesc,
 }
 
 /// Submission update payload.

@@ -6,6 +6,7 @@ use axum::{
     http::{HeaderName, StatusCode},
     response::{Html, IntoResponse},
 };
+use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -190,6 +191,7 @@ pub(crate) async fn prepare_list_page(
 ) -> Result<(events::UserEventsFilters, events::ListPage), HandlerError> {
     // Fetch upcoming events
     let filters: events::UserEventsFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
     let results = db.list_user_events(user_id, &filters).await?;
 
     // Prepare template

@@ -13,6 +13,7 @@ use std::collections::BTreeMap;
 
 use garde::rules::email::parse_email;
 use reqwest::Url;
+use serde::{Deserialize, Deserializer};
 
 /// Allowed CFS label colors.
 pub const CFS_LABEL_COLORS: [&str; 10] = [
@@ -337,11 +338,26 @@ fn validate_trimmed_non_empty_vec(value: &Option<Vec<String>>, max_len: usize) -
     Ok(())
 }
 
+// Custom deserializers.
+
+/// Deserializes an optional string, treating blank values as absent.
+pub fn blank_string_as_none<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<String>::deserialize(deserializer)?;
+    Ok(value.filter(|value| !value.trim().is_empty()))
+}
+
 // Tests.
 
 #[cfg(test)]
 mod tests {
+    use serde::Deserialize;
+
     use super::*;
+
+    // Validators.
 
     #[test]
     fn test_email_vec_invalid() {
@@ -713,5 +729,36 @@ mod tests {
         assert!(valid_longitude(&Some(-180.0), &()).is_ok());
         assert!(valid_longitude(&Some(90.0), &()).is_ok());
         assert!(valid_longitude(&Some(-90.0), &()).is_ok());
+    }
+
+    // Deserializers.
+
+    #[derive(Debug, Deserialize)]
+    struct OptionalText {
+        #[serde(default, deserialize_with = "blank_string_as_none")]
+        value: Option<String>,
+    }
+
+    #[test]
+    fn test_blank_string_as_none_absent() {
+        let text: OptionalText = serde_json::from_value(serde_json::json!({})).unwrap();
+
+        assert_eq!(text.value, None);
+    }
+
+    #[test]
+    fn test_blank_string_as_none_blank() {
+        let text: OptionalText =
+            serde_json::from_value(serde_json::json!({ "value": "   " })).unwrap();
+
+        assert_eq!(text.value, None);
+    }
+
+    #[test]
+    fn test_blank_string_as_none_present() {
+        let text: OptionalText =
+            serde_json::from_value(serde_json::json!({ "value": "  rust  " })).unwrap();
+
+        assert_eq!(text.value.as_deref(), Some("  rust  "));
     }
 }

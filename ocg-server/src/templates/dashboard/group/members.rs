@@ -62,7 +62,7 @@ pub struct GroupMember {
 pub(crate) struct GroupMembersFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]

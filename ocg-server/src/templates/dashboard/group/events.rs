@@ -509,7 +509,7 @@ pub(crate) struct EventsListFilters {
     pub events_tab: Option<EventsTab>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for past events.
     #[serde(default = "dashboard::default_offset")]

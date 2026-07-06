@@ -13,6 +13,7 @@ use crate::{
     services::notifications::MockNotificationsManager,
     templates::dashboard::{
         DASHBOARD_PAGINATION_LIMIT,
+        audit::AuditLogSort,
         user::{events::UserEventsOutput, session_proposals::SessionProposalsOutput},
     },
 };
@@ -197,7 +198,7 @@ async fn test_page_logs_tab_success() {
             *uid == user_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.sort.as_deref() == Some("created-desc")
+                && filters.sort == Some(AuditLogSort::CreatedDesc)
         })
         .returning(move |_, _| Ok(output.clone()));
     db.expect_get_site_settings()

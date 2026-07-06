@@ -18,10 +18,12 @@ use crate::{
         DASHBOARD_PAGINATION_LIMIT,
         group::{
             PresenceFilter,
-            invitation_requests::{InvitationRequestsOutput, InvitationRequestsSort},
+            invitation_requests::{
+                InvitationRequestsOutput, InvitationRequestsSort, InvitationRequestsStatusFilter,
+            },
         },
     },
-    types::{event::EventInvitationRequestStatus, permissions::GroupPermission},
+    types::permissions::GroupPermission,
 };
 
 #[tokio::test]
@@ -76,14 +78,14 @@ async fn test_list_page_db_error() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_invitation_requests()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Pending)
+                && filters.status == InvitationRequestsStatusFilter::Pending
         })
-        .returning(|_, _| Err(anyhow!("db error")));
+        .returning(|_, _, _| Err(anyhow!("db error")));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -163,14 +165,14 @@ async fn test_list_page_success() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_invitation_requests()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Pending)
+                && filters.status == InvitationRequestsStatusFilter::Pending
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -370,14 +372,14 @@ async fn test_list_page_with_all_status_filter() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_invitation_requests()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
-                && filters.status.is_none()
+                && filters.status == InvitationRequestsStatusFilter::All
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -461,14 +463,14 @@ async fn test_list_page_with_pagination_params() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_invitation_requests()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(5)
                 && filters.offset == Some(10)
-                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Pending)
+                && filters.status == InvitationRequestsStatusFilter::Pending
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
@@ -551,17 +553,17 @@ async fn test_list_page_with_search_query() {
         .returning(move |_, _, _| Ok(event.clone()));
     db.expect_search_event_invitation_requests()
         .times(1)
-        .withf(move |gid, filters| {
+        .withf(move |gid, eid, filters| {
             *gid == group_id
-                && filters.event_id == event_id
+                && *eid == event_id
                 && filters.limit == Some(1)
                 && filters.offset == Some(0)
                 && filters.sort == Some(InvitationRequestsSort::NameDesc)
-                && filters.status.as_ref() == Some(&EventInvitationRequestStatus::Accepted)
+                && filters.status == InvitationRequestsStatusFilter::Accepted
                 && filters.title == Some(PresenceFilter::Missing)
                 && filters.ts_query.as_deref() == Some("req")
         })
-        .returning(move |_, _| Ok(output.clone()));
+        .returning(move |_, _, _| Ok(output.clone()));
 
     // Setup router and send request
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())

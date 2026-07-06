@@ -16,7 +16,7 @@ use crate::{
         audit::{AuditLogFilters, AuditLogsOutput},
         group::{
             analytics::GroupDashboardStats,
-            attendees::{AttendeesOutput, SearchEventAttendeesFilters},
+            attendees::{AttendeesFilters, AttendeesOutput},
             events::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
@@ -333,13 +333,15 @@ pub(crate) trait DBDashboardGroup {
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &SearchEventAttendeesFilters,
+        event_id: Uuid,
+        filters: &AttendeesFilters,
     ) -> Result<AttendeesOutput>;
 
     /// Searches invitation requests for a group's event using filters.
     async fn search_event_invitation_requests(
         &self,
         group_id: Uuid,
+        event_id: Uuid,
         filters: &InvitationRequestsFilters,
     ) -> Result<InvitationRequestsOutput>;
 
@@ -347,6 +349,7 @@ pub(crate) trait DBDashboardGroup {
     async fn search_event_waitlist(
         &self,
         group_id: Uuid,
+        event_id: Uuid,
         filters: &WaitlistFilters,
     ) -> Result<WaitlistOutput>;
 
@@ -1086,11 +1089,12 @@ where
     async fn search_event_attendees(
         &self,
         group_id: Uuid,
-        filters: &SearchEventAttendeesFilters,
+        event_id: Uuid,
+        filters: &AttendeesFilters,
     ) -> Result<AttendeesOutput> {
         self.fetch_json_one(
-            "select search_event_attendees($1::uuid, $2::jsonb)",
-            &[&group_id, &Json(filters)],
+            "select search_event_attendees($1::uuid, $2::uuid, $3::jsonb)",
+            &[&group_id, &event_id, &Json(filters)],
         )
         .await
     }
@@ -1100,11 +1104,12 @@ where
     async fn search_event_invitation_requests(
         &self,
         group_id: Uuid,
+        event_id: Uuid,
         filters: &InvitationRequestsFilters,
     ) -> Result<InvitationRequestsOutput> {
         self.fetch_json_one(
-            "select search_event_invitation_requests($1::uuid, $2::jsonb)",
-            &[&group_id, &Json(filters)],
+            "select search_event_invitation_requests($1::uuid, $2::uuid, $3::jsonb)",
+            &[&group_id, &event_id, &Json(filters)],
         )
         .await
     }
@@ -1114,11 +1119,12 @@ where
     async fn search_event_waitlist(
         &self,
         group_id: Uuid,
+        event_id: Uuid,
         filters: &WaitlistFilters,
     ) -> Result<WaitlistOutput> {
         self.fetch_json_one(
-            "select search_event_waitlist($1::uuid, $2::jsonb)",
-            &[&group_id, &Json(filters)],
+            "select search_event_waitlist($1::uuid, $2::uuid, $3::jsonb)",
+            &[&group_id, &event_id, &Json(filters)],
         )
         .await
     }

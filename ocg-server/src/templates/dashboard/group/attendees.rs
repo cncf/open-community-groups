@@ -116,10 +116,10 @@ pub(crate) enum AttendeesSort {
     NameDesc,
 }
 
-/// Filter parameters for attendee list page URLs.
+/// Filter parameters for attendee lists.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
-pub(crate) struct AttendeesListPageFilters {
+pub(crate) struct AttendeesFilters {
     /// Checked-in status filter.
     #[garde(skip)]
     pub checked_in: Option<bool>,
@@ -141,11 +141,12 @@ pub(crate) struct AttendeesListPageFilters {
     #[garde(skip)]
     pub title: Option<PresenceFilter>,
     /// Text search query.
+    #[serde(default, deserialize_with = "crate::validation::blank_string_as_none")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
 }
 
-crate::impl_pagination_and_raw_query!(AttendeesListPageFilters, limit, offset);
+crate::impl_pagination_and_raw_query!(AttendeesFilters, limit, offset);
 
 /// Paginated attendee response data.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,39 +157,6 @@ pub(crate) struct AttendeesOutput {
     pub attendees: Vec<Attendee>,
     /// Total number of attendees for the selected event.
     pub total: usize,
-}
-
-/// Filter parameters for the attendee search database function.
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-pub(crate) struct SearchEventAttendeesFilters {
-    /// Selected event to scope attendees list.
-    #[garde(skip)]
-    pub event_id: Uuid,
-
-    /// Checked-in status filter.
-    #[garde(skip)]
-    pub checked_in: Option<bool>,
-    /// Event ticket type identifiers used to filter attendees.
-    #[garde(length(max = MAX_ITEMS))]
-    pub event_ticket_type_ids: Option<Vec<Uuid>>,
-    /// Number of results per page.
-    #[serde(default = "dashboard::default_limit")]
-    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
-    pub limit: Option<usize>,
-    /// Pagination offset for results.
-    #[serde(default = "dashboard::default_offset")]
-    #[garde(skip)]
-    pub offset: Option<usize>,
-    /// Sort option used to order attendees.
-    #[garde(skip)]
-    pub sort: Option<AttendeesSort>,
-    /// User title presence filter.
-    #[garde(skip)]
-    pub title: Option<PresenceFilter>,
-    /// Search query for attendee name, username, email, company, or title.
-    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
-    pub ts_query: Option<String>,
 }
 
 // Helpers.

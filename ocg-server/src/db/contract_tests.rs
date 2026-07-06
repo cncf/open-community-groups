@@ -29,9 +29,9 @@ use crate::{
             audit::AuditLogFilters,
             community::team::CommunityTeamFilters,
             group::{
-                attendees::SearchEventAttendeesFilters,
+                attendees::AttendeesFilters,
                 events::{Event as EventUpdate, EventsListFilters},
-                invitation_requests::InvitationRequestsFilters,
+                invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
                 members::GroupMembersFilters,
                 sponsors::GroupSponsorsFilters,
                 submissions::CfsSubmissionsFilters as GroupCfsSubmissionsFilters,
@@ -1368,8 +1368,7 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let filters = SearchEventAttendeesFilters {
-        event_id: event_id(),
+    let filters = AttendeesFilters {
         checked_in: None,
         event_ticket_type_ids: None,
         limit: Some(10),
@@ -1378,7 +1377,7 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
         title: None,
         ts_query: None,
     };
-    let output = db.search_event_attendees(group_id(), &filters).await?;
+    let output = db.search_event_attendees(group_id(), event_id(), &filters).await?;
 
     assert_eq!(output.all_attendees_email_recipient_total, 1);
     assert_eq!(output.total, 2);
@@ -1421,16 +1420,16 @@ async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
 async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = InvitationRequestsFilters {
-        event_id: event_id(),
-
         limit: Some(10),
         offset: Some(0),
         sort: None,
-        status: None,
+        status: InvitationRequestsStatusFilter::All,
         title: None,
         ts_query: None,
     };
-    let output = db.search_event_invitation_requests(group_id(), &filters).await?;
+    let output = db
+        .search_event_invitation_requests(group_id(), event_id(), &filters)
+        .await?;
 
     assert_eq!(output.total, 1);
     assert_eq!(output.invitation_requests.len(), 1);
@@ -1456,15 +1455,13 @@ async fn db_contracts_search_event_invitation_requests_deserializes() -> Result<
 async fn db_contracts_search_event_waitlist_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = WaitlistFilters {
-        event_id: event_id(),
-
         limit: Some(10),
         offset: Some(0),
         sort: None,
         title: None,
         ts_query: None,
     };
-    let output = db.search_event_waitlist(group_id(), &filters).await?;
+    let output = db.search_event_waitlist(group_id(), event_id(), &filters).await?;
 
     assert_eq!(output.total, 1);
     assert_eq!(output.waitlist.len(), 1);
