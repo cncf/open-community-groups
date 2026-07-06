@@ -16,7 +16,7 @@
      {% endif %}
      data-ticket-purchase-available="{{ event.has_sellable_ticket_types() }}"
      data-profile-complete="{% if user.logged_in %}
-                              false
+                              {{ user.profile_complete }}
                             {% else %}
                               true
                             {% endif %}"

@@ -137,7 +137,6 @@ describe("event cfs modal", () => {
         <button
           id="open-cfs-modal"
           type="button"
-          data-profile-complete="false"
         >
           Submit session proposal
         </button>
@@ -191,7 +190,6 @@ describe("event cfs modal", () => {
         <div id="cfs-modal">
           <form
             id="cfs-submission-form"
-            data-profile-complete="false"
           ></form>
         </div>
       `;

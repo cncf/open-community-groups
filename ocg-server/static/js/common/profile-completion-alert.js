@@ -3,9 +3,13 @@ import { getCommonAlertOptions } from "/static/js/common/alerts.js";
 export const PROFILE_COMPLETION_URL = "/dashboard/user?tab=account";
 
 const PROFILE_COMPLETE_SELECTOR = "[data-profile-complete]";
-const SIGNED_IN_USER_SELECTOR = "[data-logged-in='true']";
+const USER_PROFILE_COMPLETE_SELECTOR = "[data-logged-in='true'][data-profile-complete]";
 
-const isSignedInFromPage = () => Boolean(document.querySelector(SIGNED_IN_USER_SELECTOR));
+const getProfileCompleteValue = (trigger) => {
+  const userConfig = document.querySelector(USER_PROFILE_COMPLETE_SELECTOR);
+  const actionConfig = trigger?.closest?.(PROFILE_COMPLETE_SELECTOR);
+  return userConfig?.dataset?.profileComplete?.trim() ?? actionConfig?.dataset?.profileComplete?.trim();
+};
 
 /**
  * Reads the current profile-completion state from an event action.
@@ -13,9 +17,7 @@ const isSignedInFromPage = () => Boolean(document.querySelector(SIGNED_IN_USER_S
  * @returns {boolean} Whether the action should prompt for profile completion.
  */
 export const shouldPromptForProfileCompletion = (trigger) => {
-  const config = trigger?.closest?.(PROFILE_COMPLETE_SELECTOR);
-  const profileComplete = config?.dataset?.profileComplete?.trim();
-  return profileComplete === "false" || (profileComplete === "true" && isSignedInFromPage());
+  return getProfileCompleteValue(trigger) === "false";
 };
 
 /**

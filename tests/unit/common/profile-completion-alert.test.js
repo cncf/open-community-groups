@@ -48,17 +48,30 @@ describe("profile completion alert", () => {
     expect(shouldPromptForProfileCompletion(document.querySelector("button"))).to.equal(true);
   });
 
-  it("prompts signed-in public pages while profile state comes from the header", () => {
-    // Render a public page action with the signed-in header loaded later.
+  it("prompts signed-in public pages when the header profile is incomplete", () => {
+    // Render a public page action with profile state from the user header.
     document.body.innerHTML = `
-      <button id="user-dropdown-button" data-logged-in="true" type="button"></button>
+      <button id="user-dropdown-button" data-logged-in="true" data-profile-complete="false" type="button"></button>
       <section data-profile-complete="true">
         <button type="button">Attend event</button>
       </section>
     `;
 
-    // Verify the signed-in header keeps public event actions eligible.
+    // Verify the signed-in header profile state takes precedence.
     expect(shouldPromptForProfileCompletion(document.querySelector("section button"))).to.equal(true);
+  });
+
+  it("does not prompt signed-in public pages when the header profile is complete", () => {
+    // Render a stale public page marker with a complete profile in the header.
+    document.body.innerHTML = `
+      <button id="user-dropdown-button" data-logged-in="true" data-profile-complete="true" type="button"></button>
+      <section data-profile-complete="false">
+        <button type="button">Attend event</button>
+      </section>
+    `;
+
+    // Verify the proper header profile state suppresses the prompt.
+    expect(shouldPromptForProfileCompletion(document.querySelector("section button"))).to.equal(false);
   });
 
   it("does not prompt without an incomplete profile marker", () => {
