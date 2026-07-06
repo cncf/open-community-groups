@@ -106,7 +106,7 @@ describe("profile completion alert", () => {
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].title).to.equal("Complete your profile");
     expect(swal.calls[0].text).to.equal(
-      "Add a few more details about you so organizers and community members can recognize you.",
+      "Complete your profile so organizers and community members can learn more about you.",
     );
     expect(swal.calls[0].confirmButtonText).to.equal("Complete profile");
     expect(swal.calls[0].cancelButtonText).to.equal("Continue anyway");
@@ -157,7 +157,7 @@ describe("profile completion alert", () => {
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].title).to.equal("You have successfully registered for this event.");
     expect(swal.calls[0].text).to.equal(
-      "Add a few more details about you so organizers and community members can recognize you.",
+      "Complete your profile so organizers and community members can learn more about you.",
     );
     expect(swal.calls[0].confirmButtonText).to.equal("Complete profile");
     expect(swal.calls[0].cancelButtonText).to.equal("Maybe later");
@@ -187,7 +187,7 @@ describe("profile completion alert", () => {
     expect(swal.calls).to.have.length(1);
     expect(swal.calls[0].title).to.equal("Complete your profile");
     expect(swal.calls[0].text).to.equal(
-      "Add a few more details about you so organizers and community members can recognize you.",
+      "Complete your profile so organizers and community members can learn more about you.",
     );
     expect(swal.calls[0].confirmButtonText).to.equal("Complete profile");
     expect(swal.calls[0].showCancelButton).to.equal(false);

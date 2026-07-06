@@ -15,7 +15,7 @@ const LOGIN_PROMPT_READY_KEY = "profileCompletionLoginPromptReady";
 const LOGIN_PROMPT_STORAGE_KEY = "ocg.loginProfileCompletionPrompt";
 const PROFILE_COMPLETION_TITLE = "Complete your profile";
 const PROFILE_COMPLETION_MESSAGE =
-  "Add a few more details about you so organizers and community members can recognize you.";
+  "Complete your profile so organizers and community members can learn more about you.";
 
 const getLoginPromptPending = () => {
   try {

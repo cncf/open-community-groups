@@ -24,6 +24,7 @@ describe("event cfs modal", () => {
     const template = normalizeWhitespace(await loadCfsModalTemplate());
 
     expect(template).to.include("{% if user.logged_in && !user.profile_complete -%}");
+    expect(template).to.include("Help organizers learn more about you and your work.");
     expect(template).to.include("Complete your profile");
   });
 
