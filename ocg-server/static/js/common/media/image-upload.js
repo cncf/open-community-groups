@@ -1,4 +1,4 @@
-import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
 export const DEFAULT_IMAGE_ACCEPTED_FORMATS = ".svg,.png,.jpg,.jpeg,.gif,.webp,.tif,.tiff";

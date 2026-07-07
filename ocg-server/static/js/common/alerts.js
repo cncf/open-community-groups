@@ -1,4 +1,4 @@
-import { scrollToDashboardTop } from "/static/js/common/common.js";
+import { scrollToDashboardTop } from "/static/js/common/dashboard-path.js";
 import {
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,

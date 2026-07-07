@@ -4,11 +4,6 @@ import "/static/js/common/users/user-profile-modal-triggers.js";
 import "/static/js/common/users/user-search-field.js";
 import { handleHtmxResponse, showErrorAlert } from "/static/js/common/alerts.js";
 import {
-  computeUserInitials,
-  isSuccessfulXHRStatus,
-  toggleModalVisibility,
-} from "/static/js/common/common.js";
-import {
   closestElement,
   closestElementWithinRoot,
   getElementById,
@@ -19,7 +14,10 @@ import {
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { readTrustedHtml, setTrustedHtml } from "/static/js/common/trusted-html.js";
+import { computeUserInitials } from "/static/js/common/users/initials.js";
+import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 
 const modalId = "attendee-notification-modal";
 const formId = "attendee-notification-form";

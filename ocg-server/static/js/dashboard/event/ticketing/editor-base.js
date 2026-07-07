@@ -1,4 +1,4 @@
-import { resolveEventTimezone } from "/static/js/common/common.js";
+import { resolveEventTimezone } from "/static/js/common/datetime.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { bindModalDismissListeners, closeModalBodyScroll } from "/static/js/common/modals/modal-lifecycle.js";

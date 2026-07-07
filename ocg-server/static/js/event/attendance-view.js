@@ -1,4 +1,4 @@
-import { toggleModalVisibility } from "/static/js/common/common.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import {
   isDatasetReady,
   isElementHidden,

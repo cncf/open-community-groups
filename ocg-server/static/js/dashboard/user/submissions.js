@@ -1,5 +1,5 @@
 import { bindHtmxResponseAlert, showConfirmAlert } from "/static/js/common/alerts.js";
-import { toggleModalVisibility } from "/static/js/common/common.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import {
   ensureElementId,
   getElementById,

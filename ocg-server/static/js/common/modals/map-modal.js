@@ -1,10 +1,11 @@
-import { loadMap, toggleModalVisibility } from "/static/js/common/common.js";
 import {
   getElementById,
   initializeOnReadyAndHtmxLoad,
   isDatasetReady,
   markDatasetReady,
 } from "/static/js/common/dom.js";
+import { loadMap } from "/static/js/common/location/leaflet.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 
 const MAP_MODAL_SELECTOR = "[data-map-modal]";
 const MAP_MODAL_READY_KEY = "mapModalReady";

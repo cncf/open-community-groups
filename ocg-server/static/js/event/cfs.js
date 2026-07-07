@@ -1,4 +1,4 @@
-import { toggleModalVisibility } from "/static/js/common/common.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 
 const ROOT_ID = "cfs-modal-root";

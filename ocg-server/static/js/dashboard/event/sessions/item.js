@@ -1,12 +1,11 @@
 import { html, nothing } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import {
-  isObjectEmpty,
   MEETING_RECORDING_RAW_URLS_LEGEND,
   MEETING_RECORDING_URL_LEGEND,
   MEETING_RECORDING_VISIBILITY_LEGEND,
-} from "/static/js/common/common.js";
+} from "/static/js/common/meeting-recording.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { parseJsonAttribute } from "/static/js/common/utils.js";
+import { isObjectEmpty, parseJsonAttribute } from "/static/js/common/utils.js";
 import "/static/js/common/users/speakers-selector.js";
 import "/static/js/common/online-event-details.js";
 import { combineDateAndTime, extractTimePart } from "/static/js/dashboard/event/sessions/datetime.js";

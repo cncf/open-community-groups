@@ -165,8 +165,51 @@ const toBoolean = (value, fallback = false) => {
   return fallback;
 };
 
+/**
+ * Returns a debounced version of the provided function.
+ * @param {Function} fn Function to debounce
+ * @param {number} delay Debounce delay in milliseconds
+ * @returns {Function} Debounced function
+ */
+const debounce = (fn, delay = 150) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), delay);
+  };
+};
+
+/**
+ * Checks if an object contains only empty values.
+ * Excludes the id field from the check, useful for form validation.
+ * @param {Object} obj Object to check
+ * @returns {boolean} True when all values except id are empty
+ */
+const isObjectEmpty = (obj) => {
+  const objectWithoutId = { ...obj };
+  delete objectWithoutId.id;
+  return Object.values(objectWithoutId).every(
+    (x) =>
+      x === null ||
+      x === "" ||
+      x === false ||
+      typeof x === "undefined" ||
+      (Array.isArray(x) && x.length === 0),
+  );
+};
+
+/**
+ * Checks if an HTTP status code indicates success.
+ * @param {number} status HTTP status code
+ * @returns {boolean} True when the status is in the 2xx range
+ */
+const isSuccessfulXHRStatus = (status) => status >= 200 && status < 300;
+
 export {
+  debounce,
   isString,
+  isObjectEmpty,
+  isSuccessfulXHRStatus,
   normalizeUsers,
   parseJsonAttribute,
   parseJsonText,

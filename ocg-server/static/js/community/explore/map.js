@@ -1,4 +1,5 @@
-import { hideLoadingSpinner, showLoadingSpinner, navigateWithHtmx } from "/static/js/common/common.js";
+import { navigateWithHtmx } from "/static/js/common/htmx-navigation.js";
+import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/loading-spinner.js";
 import { loadScriptOnce } from "/static/js/common/dom.js";
 import { fetchData } from "/static/js/community/explore/results.js";
 import {

@@ -11,7 +11,7 @@ import {
   MEETING_RECORDING_RAW_URLS_LEGEND,
   MEETING_RECORDING_URL_LEGEND,
   MEETING_RECORDING_VISIBILITY_LEGEND,
-} from "/static/js/common/common.js";
+} from "/static/js/common/meeting-recording.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";

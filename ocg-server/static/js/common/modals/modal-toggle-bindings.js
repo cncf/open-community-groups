@@ -1,4 +1,4 @@
-import { toggleModalVisibility } from "/static/js/common/common.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { closestElement } from "/static/js/common/dom.js";
 
 const modalToggleSelector = "[data-modal-toggle]";

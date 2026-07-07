@@ -1,4 +1,4 @@
-import { loadMap } from "/static/js/common/common.js";
+import { loadMap } from "/static/js/common/location/leaflet.js";
 import { getElementById } from "/static/js/common/dom.js";
 import { DEFAULT_MAP_ZOOM, parseCoordinate } from "/static/js/common/location/search-utils.js";
 

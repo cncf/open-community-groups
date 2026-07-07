@@ -5,7 +5,7 @@ import {
   showInfoAlert,
   showSuccessAlert,
 } from "/static/js/common/alerts.js";
-import { isSuccessfulXHRStatus } from "/static/js/common/common.js";
+import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import {
   closestElement,
   initializeOnReadyAndHtmxLoad,

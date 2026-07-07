@@ -2,7 +2,7 @@ import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import {
   convertTimestampToDateTimeLocal,
   convertTimestampToDateTimeLocalInTz,
-} from "/static/js/common/common.js";
+} from "/static/js/common/datetime.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import "/static/js/dashboard/event/sessions/card.js";
 import "/static/js/dashboard/event/sessions/form-modal.js";

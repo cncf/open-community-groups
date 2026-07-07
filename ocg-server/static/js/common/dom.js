@@ -58,6 +58,23 @@ export const setElementHidden = (element, hidden) => {
 export const isElementHidden = (element) => element?.classList?.contains("hidden") === true;
 
 /**
+ * Checks whether an element is fully visible in the viewport.
+ * @param {HTMLElement} element Element to check.
+ * @returns {boolean} True when the element is fully visible.
+ */
+export const isElementInView = (element) => {
+  if (!element || typeof element.getBoundingClientRect !== "function") {
+    return true;
+  }
+
+  const rect = element.getBoundingClientRect();
+  const viewHeight = window.innerHeight || document.documentElement.clientHeight;
+  const viewWidth = window.innerWidth || document.documentElement.clientWidth;
+
+  return rect.top >= 0 && rect.left >= 0 && rect.bottom <= viewHeight && rect.right <= viewWidth;
+};
+
+/**
  * Toggles the hidden class on optional UI elements.
  * @param {Element|null|undefined} element Element to update.
  * @returns {void}
