@@ -61,7 +61,7 @@ For invitation acceptance and dashboard access, see
 
 ## Roles and Permissions
 
-Community role permissions are fixed and enforced by middleware plus database checks:
+Community role permissions are fixed:
 
 | Community role   | Community read | Groups    | Settings  | Taxonomy  | Team      |
 | ---------------- | -------------- | --------- | --------- | --------- | --------- |
@@ -71,40 +71,28 @@ Community role permissions are fixed and enforced by middleware plus database ch
 
 ![Community roles](../screenshots/dashboard-community-team-roles.png)
 
-Community role impact on group-level operations in the same community:
+Community roles also affect group-level operations in the same community. `admin` and
+`groups-manager` can perform group write operations (`events`, `members`, `settings`, `sponsors`,
+`team`) without needing a group-team role assignment, while `viewer` keeps read-only visibility.
+If `Restrict group team management` is enabled in community settings, group team management
+(`team`) is limited to the community `admin` and `groups-manager` roles.
 
-- `admin` and `groups-manager` can perform group write operations (`events`, `members`,
-  `settings`, `sponsors`, `team`) without needing group-team role assignment.
-- If `Restrict group team management` is enabled in community settings, group team management
-  (`team`) is limited to community `admin` and `groups-manager` roles.
-- `viewer` keeps read-only visibility.
-
-UI behavior:
-
-- When your role cannot perform an action, controls are disabled.
-- Server-side authorization blocks unauthorized requests.
+When your role cannot perform an action, the UI disables those controls, and OCG enforces the
+same permissions on every operation.
 
 ![Community disabled form](../screenshots/dashboard-community-permissions-role.png)
 
 ## Settings: Community Identity
 
 `Settings` is where you shape how the community appears publicly and how organizers enrich it over
-time.
+time. Key sections include General Settings, Branding, Social Links, Advertisement, and
+Additional Content.
 
-Key sections include:
-
-- General Settings.
-- Branding.
-- Social Links.
-- Advertisement.
-- Additional Content.
-
-Common use cases:
-
-- Keeping display name and description up to date.
-- Restricting group team management to community admins and groups managers when policy requires it.
-- Maintaining logo, banner, and Open Graph preview assets for consistent presentation.
-- Managing social links, optional ad placements, gallery images, tags, and extra links.
+Most of the time you will use this tab to keep the display name and description up to date, to
+maintain logo, banner, and Open Graph preview assets for consistent presentation, and to manage
+social links, optional ad placements, gallery images, tags, and extra links. It is also where you
+can restrict group team management to community admins and groups managers when policy requires
+it.
 
 Advertisement settings are community-wide. When a banner image is configured, OCG shows it on the
 public community page and as a floating banner on public group and event pages for that community.
@@ -116,18 +104,11 @@ Field requirements, character limits, and list limits are shown inline in the se
 
 ## Team: Community Access
 
-Use `Team` to invite members with a community role, update existing roles, or remove members.
+Use `Team` to invite members with a community role, update existing roles, or remove members. The
+assignable roles are `admin`, `groups-manager`, and `viewer`.
 
-Current assignable roles:
-
-- `admin`
-- `groups-manager`
-- `viewer`
-
-Safety rules:
-
-- OCG blocks removing the final accepted community admin.
-- OCG blocks demoting the final accepted community admin to a non-admin role.
+As a safety rule, OCG blocks removing the final accepted community admin, and also blocks demoting
+that admin to a non-admin role.
 
 !> The final accepted community admin cannot be removed or demoted.
 Add another accepted member first, then retry removal.
@@ -142,82 +123,51 @@ When you add a team member, OCG sends an invitation with a direct link to
 
 ## Regions: Geographic Scope
 
-`Regions` is the community-level geography list used by groups.
+`Regions` is the community-level geography list used by groups. From here you can add regions,
+rename existing ones, and delete regions that have been retired.
 
-You can:
+Region names must be unique within the selected community, and you cannot delete a region while
+one or more groups still use it. To make those dependencies visible before cleanup, the table
+shows a `Groups` count for each region.
 
-- Add regions.
-- Rename existing regions.
-- Delete retired regions.
-
-Operational rules:
-
-- Region names must be unique within the selected community.
-- Deletion is blocked when one or more groups still use that region.
-- The table shows a `Groups` count to make dependencies visible before cleanup.
-
-Where this appears downstream:
-
-- Group setup/edit forms select region values from this list.
-- Public discovery and filtering can use region as a search dimension.
+Downstream, group setup and edit forms select their region values from this list, and public
+discovery and filtering can use region as a search dimension.
 
 ![Community dashboard regions](../screenshots/dashboard-community-regions.png)
 
 ## Group Categories: Group Taxonomy
 
-`Group Categories` defines reusable category values for all groups in the selected community.
+`Group Categories` defines reusable category values for all groups in the selected community. As
+with regions, you can add categories, rename existing ones, and delete the ones no longer in use.
 
-You can:
+Group category names must be unique within the selected community, and deletion is blocked while
+one or more groups still use a category. The `Groups` count shown per category helps you check
+dependencies before removing anything.
 
-- Add group categories.
-- Rename existing categories.
-- Delete unused categories.
-
-Operational rules:
-
-- Group category names must be unique within the selected community.
-- Deletion is blocked when one or more groups still use that category.
-- The table shows a `Groups` count per category for dependency checks.
-
-Where this appears downstream:
-
-- Group setup/edit forms select category values from this list.
-- Public discovery and filtering can use group category as a search dimension.
+These values feed the group setup and edit forms, and public discovery and filtering can use
+group category as a search dimension.
 
 ![Community dashboard group categories](../screenshots/dashboard-community-group-categories.png)
 
 ## Event Categories: Event Taxonomy
 
-`Event Categories` defines reusable category values for events across the selected community.
+`Event Categories` defines reusable category values for events across the selected community. The
+workflow is the same as for the other taxonomy tabs: add event categories, rename existing ones,
+and delete unused ones.
 
-You can:
+Event category names must be unique within the selected community, and a category cannot be
+deleted while one or more events still use it. The table shows an `Events` count per category for
+dependency checks.
 
-- Add event categories.
-- Rename existing categories.
-- Delete unused categories.
-
-Operational rules:
-
-- Event category names must be unique within the selected community.
-- Deletion is blocked when one or more events still use that category.
-- The table shows an `Events` count per category for dependency checks.
-
-Where this appears downstream:
-
-- Event editor (`Details` tab) uses this list for event categorization.
-- Public event discovery and filtering can use event category.
+Downstream, the event editor (`Details` tab) uses this list for event categorization, and public
+event discovery and filtering can use event category.
 
 ![Community dashboard event categories](../screenshots/dashboard-community-event-categories.png)
 
 ## Analytics: Momentum
 
-Community analytics shows totals and trends for:
-
-- Groups.
-- Members.
-- Events.
-- Attendees.
-- Page views for the community page, all group pages, and all event pages.
+Community analytics shows totals and trends for groups, members, events, attendees, and page
+views across the community page, all group pages, and all event pages.
 
 Each metric is available as total, running total, and monthly values. This helps you spot
 steady progress and notice unusual jumps with better context.
@@ -236,18 +186,14 @@ community umbrella.
 
 Group records rely on taxonomy values from community-level `Regions` and `Group Categories`.
 
-You can:
-
-- Search groups.
-- Add or update groups.
-- Activate/deactivate groups.
-- Delete retired groups.
-- Open a group in [Group Dashboard](/dashboard/group ':ignore') for deeper operational work.
+From here you can search groups, add or update them, activate or deactivate them, delete retired
+ones, and open any group in [Group Dashboard](/dashboard/group ':ignore') for deeper operational
+work.
 
 The add and update forms also include an optional `Parent group` selector. Use it to create a
 single-level subgroup relationship during community-level group maintenance.
 
-Parent selector rules:
+The selector follows these rules:
 
 - Candidates are active, same-community groups that are not deleted and are not already subgroups.
 - You must be able to manage the selected parent group.
@@ -260,27 +206,29 @@ Parent selector rules:
 For execution workflows inside a specific group, continue with
 [Group Dashboard Guide](group-dashboard.md).
 
-Activity states:
-
-- `Active`: group is available for normal public participation.
-- `Inactive`: group is paused and can be reactivated later.
+A group is either `Active`, meaning it is available for normal public participation, or
+`Inactive`, meaning it is paused and can be reactivated later.
 
 ![Community groups area](../screenshots/dashboard-community-groups.png)
 
 When creating a new group, `Add Group` starts with the basics first. Then you can add branding,
 location, links, and optional content before launch.
 
-Group-branding inheritance from this flow:
-
-- If group logo is empty, the public group view uses the community logo.
-- If group banner/mobile banner is empty, the public group view uses the community banner.
+Group-branding inheritance also applies from this flow: if the group logo is empty, the public
+group view uses the community logo, and if the group banner or mobile banner is empty, the public
+group view uses the community banner.
 
 ![Add group flow](../screenshots/dashboard-community-add-group.png)
 
 ### Group Lifecycle
 
-- `Activate` restores visibility and operational flow.
-- `Deactivate` pauses activity while preserving metadata.
+`Activate` restores visibility and operational flow, while `Deactivate` pauses activity while
+preserving metadata. `Delete` is permanent retirement for groups that should no longer exist
+operationally.
+
+When a group is inactive, its public-view shortcut is disabled in the groups table.
+
+![Community groups actions](../screenshots/dashboard-community-groups-actions.png)
 
 ## Audit: Logs
 
@@ -295,30 +243,17 @@ Coverage in this view includes:
 - Group portfolio actions done from the community dashboard, including add, activate, deactivate,
   delete, and update.
 
-Table behavior:
+Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
+can filter by `Action`, `Actor`, and date range, and pagination keeps the active filters applied.
+When an audit row has extra metadata, `Details` opens a popover with it.
 
-- Rows are ordered by newest first by default.
-- You can filter by `Action`, `Actor`, and date range.
-- You can switch ordering between newest first and oldest first.
-- Pagination keeps the active filters applied.
-- `Details` opens a popover when an audit row has extra metadata.
+For each entry, OCG shows the resource type plus the current resource name. If the resource no
+longer exists, the audit entry still remains and falls back to the name recorded when the action
+happened when available, or to the stored resource identifier.
 
-Target display behavior:
-
-- OCG shows the resource type plus the current resource name.
-- If the current resource row no longer exists, the audit row still remains and falls back to the
-  name snapshot stored with the entry when available, or to the stored resource identifier.
-
-Scope note:
-
-- This screen is community-dashboard focused.
-- Some overlapping actions, such as `group_updated`, can also appear in the group dashboard audit
-  view when they match that dashboard's accepted scope.
-- `Delete` is permanent retirement for groups that should no longer exist operationally.
-
-When a group is inactive, its public-view shortcut is disabled in the groups table.
-
-![Community groups actions](../screenshots/dashboard-community-groups-actions.png)
+This screen is community-dashboard focused, but some overlapping actions, such as
+`group_updated`, can also appear in the group dashboard audit view when they match that
+dashboard's accepted scope.
 
 ## Recommended Cadence
 

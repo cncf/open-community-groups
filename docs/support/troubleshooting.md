@@ -2,11 +2,12 @@
 
 # Troubleshooting
 
-This page helps you diagnose issues quickly by symptom.
+This page helps you diagnose issues quickly by symptom. Find the situation that matches what you
+are seeing and work through the checks in order.
 
 ## I Cannot Access a Dashboard
 
-Check:
+Check that:
 
 1. You are logged in.
 2. You accepted the related invitation in
@@ -21,9 +22,7 @@ If actions still fail, re-select the community/group from dashboard selectors an
 
 ## Controls Are Disabled in Dashboard Tabs
 
-Disabled controls usually indicate role-based authorization, not a UI bug.
-
-Examples:
+Disabled controls usually indicate role-based authorization, not a UI bug. Some examples:
 
 - Community `viewer` cannot modify settings/taxonomy/team/groups.
 - Community `groups-manager` cannot modify community settings/taxonomy/team.
@@ -34,22 +33,20 @@ If you need broader access, request a higher role from a team admin.
 
 ## Join Group or Attend Event Buttons Do Not Work
 
-Check:
+Check that:
 
 1. You are logged in.
 2. The group/event is active and available.
 3. Your session is up to date (refresh page).
 
-For events:
-
-- Capacity limits can block new attendance.
-- Canceled events disable normal participation.
+For events, also keep in mind that capacity limits can block new attendance and that canceled
+events disable normal participation.
 
 ## LF SSO Email Changes
 
 OCG can recognize returning LF SSO users after their LF email changes when the account has already
 been linked through LF SSO. If login reports that the account cannot be safely connected, an
-administrator should check whether another OCG user row already owns the new email or whether the
+administrator should check whether another OCG account already owns the new email or whether the
 user's older account needs to be reconnected.
 
 This reconciliation happens during login. Organizer-created email invitations still resolve by the
@@ -60,24 +57,20 @@ when the email differs, and ownership conflicts must be reconciled before the us
 
 ## CFS Submit Button Is Disabled
 
-Check:
+Check that:
 
 1. CFS is enabled for the event.
 2. CFS time window is currently open.
 3. You are logged in.
 4. You have at least one eligible session proposal.
 
-In modal:
-
-- Proposal options already submitted to the same event are disabled.
+Inside the modal, proposal options already submitted to the same event are disabled.
 
 ## I Cannot Resubmit or Withdraw a Submission
 
-Submission actions depend on status:
-
-- `Resubmit` is available for `Information requested`.
-- `Withdraw` is available only while the submission is still active in review.
-- After a final outcome (such as approved/linked), withdraw is no longer available.
+Submission actions depend on status. `Resubmit` is available for `Information requested`, while
+`Withdraw` is available only while the submission is still active in review. After a final
+outcome (such as approved/linked), withdraw is no longer available.
 
 Confirm current status in [User Dashboard -> Submissions](/dashboard/user?tab=submissions ':ignore').
 
@@ -117,7 +110,7 @@ not complete, check:
 
 ## Check-In Is Unavailable
 
-Check:
+Check that:
 
 1. You RSVP'd with this account.
 2. Event is published and not canceled.
@@ -127,33 +120,20 @@ Check:
 
 ## Team Member Remove Action Is Disabled
 
-For community/group team tables:
-
-- You cannot remove or demote the final accepted `admin`.
-
-Add another accepted team member first, then retry.
+In community and group team tables, you cannot remove or demote the final accepted `admin`. Add
+another accepted team member first, then retry.
 
 ![Dashboard group members list](../screenshots/dashboard-group-members-list.png)
 
 ## Analytics Looks Outdated
 
-Analytics is cached and can lag by a few minutes.
-
-Retry:
-
-1. Refresh the page.
-2. Wait briefly and refresh again.
+Analytics is cached and can lag by a few minutes. Refresh the page, wait briefly, and refresh
+again.
 
 ## Email Send Is Disabled
 
-For group members or event attendees:
-
-- Send actions are disabled when recipient count is zero.
-
-Also verify required fields:
-
-- Subject
-- Body (plain text)
+For group members or event attendees, send actions are disabled when the recipient count is
+zero. Also verify that the required fields are filled: `Subject` and the plain-text message body.
 
 ## More Help
 

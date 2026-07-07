@@ -3,10 +3,13 @@
 # Open Community Groups Documentation
 
 Open Community Groups (OCG) helps communities run groups, events, and speaker programs in one
-platform. These docs help you understand how OCG works, complete common tasks, and troubleshoot
-issues when something does not work as expected.
+platform. Whether you are attending your first event or running a whole community, these docs
+will help you understand how OCG works, get common tasks done, and troubleshoot issues when
+something does not work as expected.
 
 ## Start Here
+
+Pick the entry point that matches what you are trying to do:
 
 | If you want to...                          | Read this                                                    |
 | ------------------------------------------ | ------------------------------------------------------------ |
@@ -21,31 +24,35 @@ issues when something does not work as expected.
 
 ## How OCG Is Organized
 
-OCG has one public site and three dashboards.
+OCG is organized around one public site and three dashboards, each scoped to a different kind
+of work.
 
 ### Public Site
 
-The [public site](/ ':ignore') is where people discover groups and events: browsing in
-[Explore](/explore ':ignore'), RSVP'ing to events, checking in, and submitting to Call for
+The [public site](/ ':ignore') is where people discover groups and events. This is where you
+browse [Explore](/explore ':ignore'), RSVP to events, check in, and submit to Call for
 Speakers.
 
 ### User Dashboard
 
 The [user dashboard](/dashboard/user ':ignore') is where you manage your personal activity in
-OCG. It includes upcoming events, profile, invitations, session proposals, and submissions.
+OCG: your upcoming events, profile, invitations, session proposals, and submissions all live
+here.
 
 ### Community Dashboard
 
-The [community dashboard](/dashboard/community ':ignore') is for community-wide setup and
-management. Use it to manage identity, team access, regions, group and event categories,
-analytics, and groups.
+The [community dashboard](/dashboard/community ':ignore') covers community-wide setup and
+management. Use it to shape the community's identity and to manage team access, regions, group
+and event categories, analytics, and groups.
 
 ### Group Dashboard
 
-The [group dashboard](/dashboard/group ':ignore') is where organizers run groups and events. Use
-it to manage events, organizers, members, sponsors, and communication.
+The [group dashboard](/dashboard/group ':ignore') is where organizers run groups and events day
+to day, managing events, organizers, members, sponsors, and communication.
 
 ## Reading Paths by Role
+
+If you prefer a guided route, follow the reading path that matches your role.
 
 ### New member path
 
@@ -70,7 +77,8 @@ it to manage events, organizers, members, sponsors, and communication.
 ## If You Get Stuck
 
 Start with [Troubleshooting](support/troubleshooting.md) or the
-[Frequently Asked Questions](support/faq.md). For status-based behavior, review:
+[Frequently Asked Questions](support/faq.md). If your question is about how something behaves in
+a particular status, these two references cover the most common cases:
 
 - [Session and submission statuses](guides/user-dashboard.md#submissions-track-and-respond)
 - [Event lifecycle states](guides/event-operations.md#events-list-work-queue)

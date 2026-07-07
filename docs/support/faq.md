@@ -4,40 +4,43 @@
 
 ## Is OCG Mobile Friendly?
 
-Public pages are usable on mobile. Dashboards are currently desktop-only.
+Public pages are usable on mobile, so you can discover groups and events from your phone. The
+dashboards, however, are currently desktop-only.
 
 ## Where Do I Submit a Speaker Proposal?
 
-Create proposals in
+Proposal creation and submission happen in two different places. First create your proposals in
 [User Dashboard -> Session proposals](/dashboard/user?tab=session-proposals ':ignore'), then
-submit from each event's public CFS modal.
+submit them from each event's public CFS modal. This split lets you reuse the same proposal
+across multiple events.
 
 ![Session proposals list](../screenshots/dashboard-user-session-proposals-list.png)
 
 ## Why Is My Proposal Missing in CFS Modal?
 
-Likely causes:
+If a proposal you expect to see is not offered in the CFS modal, the likely causes are:
 
-- Proposal is not eligible for submission status.
-- Proposal was already submitted to this event.
+- The proposal is not in a status eligible for submission.
+- The proposal was already submitted to this event.
 - You are logged in with a different account.
 
 ## Can I Undo a Submission?
 
-You can withdraw while review is still active. After a final decision, withdraw is no longer
-available.
+Yes, within limits. You can withdraw a submission while review is still active. After a final
+decision has been made, withdraw is no longer available.
 
 ## Can I Check In Without RSVP?
 
-No. Only attendees can check in.
+No. Check-in is limited to attendees, so you need to RSVP first to be eligible for event-day
+check-in.
 
 ## What Happens If An Event Is Full?
 
-If organizers did not enable a waitlist, the event is sold out.
+That depends on whether organizers enabled a waitlist. If they did not, the event is sold out.
 
-If organizers enabled a waitlist, you can join it from the event page and may be promoted
-automatically if someone leaves, capacity increases, or organizers remove the
-capacity limit later while registration is open.
+If they did, you can join the waitlist from the event page and may be promoted automatically if
+someone leaves, capacity increases, or organizers remove the capacity limit later while
+registration is open.
 
 ## Why Is Registration Disabled?
 
@@ -53,12 +56,10 @@ accept and answer required registration questions outside the public registratio
 
 ## How Do Refunds Work For Paid Events?
 
-Paid attendees use `Request refund` from the public event page.
+Paid attendees use `Request refund` from the public event page, and organizers review the
+request from [Group Dashboard -> Event -> Attendees](/dashboard/group?tab=events ':ignore').
 
-Organizers review the request from
-[Group Dashboard -> Event -> Attendees](/dashboard/group?tab=events ':ignore').
-
-Current behavior:
+A few rules apply:
 
 - Refunds are full refunds only.
 - Refund requests are available only before the event starts.
@@ -71,7 +72,8 @@ release the ticket hold and choose a different ticket or discount code.
 
 ## Can I Use Automatic Meeting Creation on In-Person Events?
 
-No. Automatic meeting requests are allowed only for `virtual` and `hybrid` events.
+No. Automatic meeting requests are allowed only for `virtual` and `hybrid` events, since
+in-person events have no online meeting to create.
 
 ## Are Automatically Created Meetings Ended Automatically?
 
@@ -80,11 +82,12 @@ reached.
 
 ## Why Are Host Controls Missing in Automatically Created Zoom Meetings?
 
-At the moment, host controls are not available in automatically created Zoom meetings due to some
-technical limitations.
+Due to some current technical limitations, host controls are not available in automatically
+created Zoom meetings at the moment.
 
 ## Where Can I See Platform-Wide Growth Trends?
 
-Use the public [Stats](/stats ':ignore') page.
+The public [Stats](/stats ':ignore') page shows platform-level growth and trends: groups,
+members, events, and attendees over time.
 
 ![Stats page](../screenshots/stats-page.png)

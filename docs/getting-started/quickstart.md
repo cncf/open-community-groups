@@ -1,11 +1,9 @@
 # Quickstart
 
-Use this walkthrough to experience the core OCG flow in one sitting.
-
-Estimated time: 10-15 minutes.
-
-By the end, you will have discovered events and, if you sign in, joined a
-group, RSVP'd to an event, and seen which dashboards are available to you.
+This walkthrough takes you through the core OCG flow in one sitting, in
+about 10 to 15 minutes. By the end, you will have discovered events and, if
+you sign in, joined a group, RSVP'd to an event, and seen which dashboards
+are available to you.
 
 ## Optional: Sign In
 
@@ -23,7 +21,7 @@ From [Explore](/explore ':ignore'), start with `Events` to see what is
 happening soon, then switch to `Groups` to find where you want to participate
 long term.
 
-A practical pattern is:
+A practical pattern is to start broad and narrow down step by step:
 
 ?> Start broad, then narrow: community first, then one or two filters.
 
@@ -46,30 +44,25 @@ For deeper discovery patterns and participation mechanics, see
 
 Open a group page and click `Join group`. This turns your account into an
 active member of that specific group, which unlocks member-level communications
-and creates a cleaner path to event participation.
+and creates a cleaner path to event participation. After joining, OCG sends a
+welcome message with a link back to the group page.
 
 If you later decide to stop following that group, `Leave group` reverses the
 membership cleanly.
-
-After joining, OCG sends a welcome message with a link back to the group page.
 
 ![Group page and membership action](../screenshots/group-page.png)
 
 ## RSVP to an Event
 
 From the group page or explore results, open an event and click `Attend event`.
-
-This action records your attendance intent and is the basis for event-day
-check-in. For live virtual/hybrid events that have meeting information
-configured, attendees can also get `Join meeting` access at the right time
-window.
-
-After RSVP, OCG sends a confirmation message with a calendar attachment.
+This records your attendance intent and is the basis for event-day check-in.
+After you RSVP, OCG sends a confirmation message with a calendar attachment.
+For live virtual/hybrid events that have meeting information configured,
+attendees can also get `Join meeting` access at the right time window.
 
 If the event is already full, you may instead see `Join waiting list` when
-organizers have enabled waitlisting for that capacity-limited event.
-
-If a seat opens because someone leaves, capacity increases, or organizers
+organizers have enabled waitlisting for that capacity-limited event. Should a
+seat open later, because someone leaves, capacity increases, or organizers
 remove the capacity limit, OCG may promote you automatically.
 
 ![Event page and RSVP action](../screenshots/event-page.png)
@@ -78,9 +71,8 @@ remove the capacity limit, OCG may promote you automatically.
 
 If an event has Call for Speakers open, create a proposal in
 [User Dashboard -> Session proposals](/dashboard/user?tab=session-proposals ':ignore'),
-then submit that proposal from the event page.
-
-After submission, track lifecycle changes in
+then submit that proposal from the event page. Once submitted, you can track
+lifecycle changes in
 [User Dashboard -> Submissions](/dashboard/user?tab=submissions ':ignore').
 
 For speaker-side status detail, see

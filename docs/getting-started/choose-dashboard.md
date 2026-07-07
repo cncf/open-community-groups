@@ -18,7 +18,7 @@ expected outcomes in one view:
 
 ![Dashboard options from user menu](../screenshots/navigation-user-menu.png)
 
-Guide deep-dives:
+Once you know where you will be working, continue with the matching deep-dive guide:
 
 - [Public Site Guide](../guides/public-site.md)
 - [User Dashboard Guide](../guides/user-dashboard.md)
@@ -28,16 +28,14 @@ Guide deep-dives:
 
 ## Access Model and Why It Matters
 
-Dashboard visibility depends on your role. If a dashboard is missing from your menu, your account
+Dashboard visibility depends on your role: if a dashboard is missing from your menu, your account
 does not currently have access to it.
 
-The two organizer dashboards also depend on selected context:
-
-- [Community Dashboard](/dashboard/community ':ignore') requires a selected community.
-- [Group Dashboard](/dashboard/group ':ignore') requires both a selected community and a selected group.
-
-If the right context is not selected yet, some organizer actions stay unavailable until you choose
-the needed community or group.
+The two organizer dashboards also depend on selected context. The
+[Community Dashboard](/dashboard/community ':ignore') requires a selected community, while the
+[Group Dashboard](/dashboard/group ':ignore') requires both a selected community and a selected
+group. If the right context is not selected yet, some organizer actions stay unavailable until you
+choose the needed community or group.
 
 !> Missing dashboard entries usually mean you either do not have access yet or have not selected
 the right context.
@@ -46,8 +44,8 @@ Group Dashboard needs both a selected community and a selected group.
 
 ## Fixed Role Model
 
-OCG now uses fixed roles for community and group management. Roles are assigned per team member and
-define what operations are allowed.
+OCG uses fixed roles for community and group management. Each team member is assigned a role, and
+that role defines which operations are allowed.
 
 Community team roles:
 
@@ -69,11 +67,10 @@ Group team roles:
 
 ![Group roles](../screenshots/dashboard-group-members-list-roles.png)
 
-UI behavior:
-
-- Controls are disabled when your role cannot perform an operation.
-- Communities can restrict group team management to community `admin` and `groups-manager` roles.
-- Server-side authorization still enforces permissions even if a request is sent manually.
+In the UI, controls are disabled when your role cannot perform an operation. Communities can also
+restrict group team management to the community `admin` and `groups-manager` roles. Either way, a
+disabled control means the operation is not allowed for your current role; there is no way around
+it other than being granted a higher role.
 
 ## If a Dashboard Is Missing
 
