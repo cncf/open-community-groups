@@ -229,7 +229,9 @@
 {{ template "notifications/claim_pending_notification.sql" }}
 {{ template "notifications/enqueue_due_event_reminders.sql" }}
 {{ template "notifications/enqueue_notification.sql" }} -- Dependency for tracked custom and auth notification helpers
+{{ template "notifications/manual_requeue_notifications.sql" }}
 {{ template "notifications/mark_stale_processing_notifications_unknown.sql" }}
+{{ template "notifications/requeue_notification.sql" }}
 {{ template "notifications/track_custom_notification.sql" }} -- Dependency for enqueue_tracked_custom_notification
 {{ template "notifications/enqueue_tracked_custom_notification.sql" }}
 {{ template "notifications/update_notification.sql" }}

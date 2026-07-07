@@ -42,6 +42,10 @@ begin
         join "user" u using (user_id)
         where n.delivery_status = 'pending'
         and (
+            n.next_delivery_attempt_at is null
+            or n.next_delivery_attempt_at <= current_timestamp
+        )
+        and (
             (u.registration_status = 'registered' and u.email_verified = true)
             or n.kind = 'email-verification'
             or (n.kind = 'event-invitation' and u.registration_status = 'pre-registered')
@@ -57,7 +61,9 @@ begin
             delivery_attempts = n.delivery_attempts + 1,
             delivery_claimed_at = current_timestamp,
             delivery_status = 'processing',
-            error = null
+            error = null,
+            next_delivery_attempt_at = null,
+            processed_at = null
         from next_notification nn
         where n.notification_id = nn.notification_id
         returning

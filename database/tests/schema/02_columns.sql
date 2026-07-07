@@ -754,6 +754,7 @@ select columns_are('notification', array[
 
     'delivery_claimed_at',
     'error',
+    'next_delivery_attempt_at',
     'notification_template_data_id',
     'processed_at'
 ]);
