@@ -1,5 +1,4 @@
 {% extends "dashboard/dashboard_base.html" -%}
-{% import "macros/ui.html" as ui -%}
 {% import "macros/feedback.html" as feedback -%}
 {% import "macros/dashboard.html" as dashboard -%}
 
@@ -40,76 +39,71 @@
 {% endblock scripts -%}
 
 {% block menu -%}
-  <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
-    <div class="font-semibold text-stone-900 text-sm lg:text-lg">Group Dashboard</div>
-    <div id="dashboard-spinner" class="hx-spinner -mt-0.5 relative">{{ ui::spinner(size = "size-5") -}}</div>
-  </div>
+  {% call dashboard::dashboard_menu_shell("Group Dashboard", spinner_classes = "hx-spinner -mt-0.5 relative") -%}
+  {# Community and group selector -#}
+  <div>
+    {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
+    <div class="mt-2">
+      <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community">
+      {{ dashboard::selector_loading_button() -}}
+      </community-selector>
+    </div>
 
-  <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
-    {# Community and group selector -#}
-    <div>
-      {{ dashboard::menu_title(text = "Community and group", extra_styles = "py-1.5") -}}
-      <div class="mt-2">
-        <community-selector communities="{{ communities() |json }}" selected-community-id="{{ selected_community_id }}" select-endpoint="/dashboard/group/community">
-        {{ dashboard::selector_loading_button() -}}
-        </community-selector>
-      </div>
-
-      <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}">
-      <div class="my-4">{{ dashboard::selector_loading_button() -}}</div>
-      </group-selector>
-      {% if !selected_community_groups().is_empty() -%}
-        {% let current_selection = current_selection_details() -%}
-        {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + current_selection.1.public_slug() -%}
-        <div class="mt-6 grid gap-y-0.5">
-          {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/group?tab=settings") -}}
-          {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/group?tab=team") -}}
-          <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">
-            <a href="{{ group_public_url }}"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="flex items-center justify-between cursor-pointer">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-eye bg-primary-500"></div>
-                <div class="text-sm/8 ms-3">Group public site</div>
-                <div class="svg-icon size-2.5 icon-external-link bg-stone-700 ms-2"></div>
-              </div>
-            </a>
-          </div>
+    <group-selector groups="{{ selected_community_groups() |json }}" selected-group-id="{{ selected_group_id }}">
+    <div class="my-4">{{ dashboard::selector_loading_button() -}}</div>
+    </group-selector>
+    {% if !selected_community_groups().is_empty() -%}
+      {% let current_selection = current_selection_details() -%}
+      {% let group_public_url = "/".to_owned() + &current_selection.0.name + "/group/" + current_selection.1.public_slug() -%}
+      <div class="mt-6 grid gap-y-0.5">
+        {{ dashboard::menu_item(name = "Settings", icon = "gears", is_active = content.is_settings() , href = "/dashboard/group?tab=settings") -}}
+        {{ dashboard::menu_item(name = "Team", icon = "team", is_active = content.is_team() , href = "/dashboard/group?tab=team") -}}
+        <div class="rounded-md px-3 border border-transparent hover:bg-white hover:border-stone-200 transition-colors">
+          <a href="{{ group_public_url }}"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="flex items-center justify-between cursor-pointer">
+            <div class="flex items-center">
+              <div class="svg-icon size-4 icon-eye bg-primary-500"></div>
+              <div class="text-sm/8 ms-3">Group public site</div>
+              <div class="svg-icon size-2.5 icon-external-link bg-stone-700 ms-2"></div>
+            </div>
+          </a>
         </div>
-      {% endif -%}
-    </div>
-    {# End community and group selector -#}
-
-    {# Analytics -#}
-    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
-      {{ dashboard::menu_title(text = "Analytics", extra_styles = "py-1.5") -}}
-      {{ dashboard::menu_item(name = "Analytics", icon = "charts", is_active = content.is_analytics() , href = "/dashboard/group?tab=analytics") -}}
-    </div>
-    {# End analytics -#}
-
-    {# Events -#}
-    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
-      {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
-      {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events") -}}
-    </div>
-    {# End events -#}
-
-    {# Members and sponsors -#}
-    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
-      {{ dashboard::menu_title(text = "Members and sponsors", extra_styles = "py-1.5") -}}
-      {{ dashboard::menu_item(name = "Members", icon = "members", is_active = content.is_members() , href = "/dashboard/group?tab=members") -}}
-      {{ dashboard::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors() , href = "/dashboard/group?tab=sponsors") -}}
-    </div>
-    {# End members and sponsors -#}
-
-    {# Audit -#}
-    <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
-      {{ dashboard::menu_title(text = "AUDIT", extra_styles = "py-1.5") -}}
-      {{ dashboard::menu_item(name = "Logs", icon = "logs", is_active = content.is_logs() , href = "/dashboard/group?tab=logs") -}}
-    </div>
-    {# End audit -#}
+      </div>
+    {% endif -%}
   </div>
+  {# End community and group selector -#}
+
+  {# Analytics -#}
+  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+    {{ dashboard::menu_title(text = "Analytics", extra_styles = "py-1.5") -}}
+    {{ dashboard::menu_item(name = "Analytics", icon = "charts", is_active = content.is_analytics() , href = "/dashboard/group?tab=analytics") -}}
+  </div>
+  {# End analytics -#}
+
+  {# Events -#}
+  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+    {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
+    {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events") -}}
+  </div>
+  {# End events -#}
+
+  {# Members and sponsors -#}
+  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+    {{ dashboard::menu_title(text = "Members and sponsors", extra_styles = "py-1.5") -}}
+    {{ dashboard::menu_item(name = "Members", icon = "members", is_active = content.is_members() , href = "/dashboard/group?tab=members") -}}
+    {{ dashboard::menu_item(name = "Sponsors", icon = "handshake", is_active = content.is_sponsors() , href = "/dashboard/group?tab=sponsors") -}}
+  </div>
+  {# End members and sponsors -#}
+
+  {# Audit -#}
+  <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
+    {{ dashboard::menu_title(text = "AUDIT", extra_styles = "py-1.5") -}}
+    {{ dashboard::menu_item(name = "Logs", icon = "logs", is_active = content.is_logs() , href = "/dashboard/group?tab=logs") -}}
+  </div>
+  {# End audit -#}
+  {% endcall -%}
 {% endblock menu -%}
 
 {% block dashboard_main -%}

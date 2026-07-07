@@ -22,6 +22,20 @@
 {% endmacro active_table_filter_remove_button -%}
 {# End active table filter remove button #}
 
+{# Dashboard menu shell #}
+{# Used by dashboard home pages for the title, spinner, and menu wrapper. #}
+{% macro dashboard_menu_shell(title, spinner_classes = "group hx-spinner -mt-0.5 relative") -%}
+  <div class="flex justify-between items-center mt-3 mb-6 px-3 lg:px-5">
+    <div class="font-semibold text-stone-900 text-sm lg:text-lg">{{ title }}</div>
+    <div id="dashboard-spinner" class="{{ spinner_classes }}">{{ ui::spinner(size = "size-5") -}}</div>
+  </div>
+
+  <div class="max-h-full w-full flex flex-col flex-1 space-y-5 mb-5 overflow-y-auto px-3 lg:px-5">
+    {{ caller() }}
+  </div>
+{% endmacro dashboard_menu_shell -%}
+{# End dashboard menu shell #}
+
 {# Empty state #}
 {# Used by dashboard placeholder rows that include custom follow-up content. #}
 {% macro empty_state(title, title_margin = "mb-6", wrapper_class = "") -%}
