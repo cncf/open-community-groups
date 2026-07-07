@@ -301,13 +301,13 @@
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
             Parent group
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <a href="/{{ parent.community_name }}/group/{{ parent.public_slug() }}"
                hx-boost="true"
                hx-target="body"
-               class="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-stone-300 hover:bg-stone-50">
-              {{ ui::logo(logo_url = parent.logo_url, classes = "size-12 shrink-0", size = 48) -}}
-              <span class="min-w-0 truncate text-sm font-semibold text-stone-900">{{ parent.name|demoji }}</span>
+               class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+              {{ ui::logo(logo_url = parent.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+              <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ parent.name|demoji }}</span>
             </a>
           </div>
         </div>
@@ -320,14 +320,14 @@
           <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
             Subgroups
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for subgroup in group.subgroups -%}
               <a href="/{{ subgroup.community_name }}/group/{{ subgroup.public_slug() }}"
                  hx-boost="true"
                  hx-target="body"
-                 class="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-stone-300 hover:bg-stone-50">
-                {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-12 shrink-0", size = 48) -}}
-                <span class="min-w-0 truncate text-sm font-semibold text-stone-900">{{ subgroup.name|demoji }}</span>
+                 class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+                {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+                <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ subgroup.name|demoji }}</span>
               </a>
             {% endfor -%}
           </div>
