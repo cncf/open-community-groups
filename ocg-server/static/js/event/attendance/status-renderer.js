@@ -16,6 +16,7 @@ import { parseJsonResponse, showSignedOutFallback } from "/static/js/event/atten
  * Renders the current attendance response for a container.
  * @param {HTMLElement} container - Attendance container element
  * @param {Event} event - HTMX afterRequest event
+ * @returns {void}
  */
 export const renderAttendanceCheckResponse = (container, event) => {
   if (container.dataset.availabilityHydrated === "false") {
@@ -82,6 +83,7 @@ export const PENDING_ATTENDANCE_CHECK_RESPONSE = "__ocgPendingAttendanceCheckRes
  * Keeps the latest attendance status response while public availability loads.
  * @param {HTMLElement} container - Attendance container element
  * @param {Event} event - HTMX afterRequest event
+ * @returns {void}
  */
 export const storePendingAttendanceCheckResponse = (container, event) => {
   const xhr = event.detail?.xhr;

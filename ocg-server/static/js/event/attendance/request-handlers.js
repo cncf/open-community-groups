@@ -66,6 +66,7 @@ const PRIMARY_ACTION_CONFIG = {
 /**
  * Normalizes optional checkout parameters before HTMX submits the request.
  * @param {Event} event - htmx:configRequest event
+ * @returns {void}
  */
 const handleCheckoutConfigRequest = (event) => {
   const target = event.target;
@@ -104,6 +105,7 @@ const handleCheckoutConfigRequest = (event) => {
 /**
  * Handles the shared afterRequest flow for primary attendance actions.
  * @param {Event} event - HTMX afterRequest event
+ * @returns {void}
  */
 const handlePrimaryActionAfterRequest = (event) => {
   const target = event.target;
@@ -147,6 +149,7 @@ const handlePrimaryActionAfterRequest = (event) => {
 /**
  * Handles checkout form beforeRequest state.
  * @param {HTMLElement} target - Event target
+ * @returns {void}
  */
 const handleCheckoutBeforeRequest = (target) => {
   if (target.dataset.attendanceRole !== "checkout-form") {
@@ -164,6 +167,7 @@ const handleCheckoutBeforeRequest = (target) => {
 /**
  * Handles checkout form afterRequest state.
  * @param {Event} event - htmx:afterRequest event
+ * @returns {void}
  */
 const handleCheckoutAfterRequest = (event) => {
   const target = event.target;
@@ -209,6 +213,7 @@ const handleCheckoutAfterRequest = (event) => {
 /**
  * Handles htmx:beforeRequest events for attendance controls.
  * @param {Event} event - htmx:beforeRequest event
+ * @returns {void}
  */
 export const handleBeforeRequest = (event) => {
   const target = event.target;
@@ -236,6 +241,7 @@ export const handleBeforeRequest = (event) => {
 /**
  * Handles htmx:afterRequest events for attendance components.
  * @param {Event} event - htmx:afterRequest event
+ * @returns {void}
  */
 export const handleAfterRequest = (event) => {
   const target = event.target;
@@ -262,6 +268,7 @@ export const handleAfterRequest = (event) => {
 /**
  * Handles htmx:configRequest events for attendance components.
  * @param {Event} event - htmx:configRequest event
+ * @returns {void}
  */
 export const handleConfigRequest = (event) => {
   handleCheckoutConfigRequest(event);

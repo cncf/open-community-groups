@@ -64,7 +64,8 @@ const reportInvalidTarget = (target) => {
  * @param {Object} config Validation configuration.
  * @param {Document|Element} config.pageRoot Page root.
  * @param {string[]} config.formSections Form ids to validate.
- * @param {(sectionName: string) => void} config.displayActiveSection Section activation callback.
+ * @param {(sectionName: string) => void} config.displayActiveSection
+ * Section activation callback.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
  * @returns {boolean} True when every existing form is valid.
@@ -108,7 +109,8 @@ const validateEventFormsAcrossSections = ({
  * Validates session online-event-details widgets inside sessions-section.
  * @param {Object} config Validation configuration.
  * @param {(selector: string) => Element|null} config.queryOne Root-scoped query helper.
- * @param {(sectionName: string) => void} config.displayActiveSection Section activation callback.
+ * @param {(sectionName: string) => void} config.displayActiveSection
+ * Section activation callback.
  * @returns {boolean} True when every session online details widget is valid.
  */
 const validateSessionOnlineDetailsWidgets = ({ queryOne, displayActiveSection }) => {
@@ -134,12 +136,13 @@ const validateSessionOnlineDetailsWidgets = ({ queryOne, displayActiveSection })
  * Builds the shared validation callbacks used by event page bootstraps.
  * @param {Object} config Validation helper configuration.
  * @param {Document|Element} config.pageRoot Page root.
- * @param {(selector: string) => Element|null} config.queryOne Root-scoped selector lookup.
- * @param {(sectionName: string) => void} config.displayActiveSection Section activation callback.
+ * @param {(selector: string) => Element|null} config.queryOne
+ * Root-scoped selector lookup.
+ * @param {(sectionName: string) => void} config.displayActiveSection
+ * Section activation callback.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
- * @returns {{validateEventForms: () => boolean, validateSessionOnlineDetails: () => boolean, showSessionBoundsError: () => void}}
- * Shared validation callbacks.
+ * @returns {Object} Shared validation callbacks.
  */
 export const createEventPageValidationCallbacks = ({
   pageRoot,
@@ -194,13 +197,16 @@ const getSessionBoundsErrorMessage = ({ pageRoot }) => {
  * @param {HTMLElement|null} config.saveButton Save button element.
  * @param {string} config.saveButtonId Expected save button id.
  * @param {() => boolean} config.validateEventForms Cross-form validation callback.
- * @param {() => boolean} config.validateSessionOnlineDetails Session online details validation callback.
+ * @param {() => boolean} config.validateSessionOnlineDetails
+ * Session online details validation callback.
  * @param {() => void} config.showSessionBoundsError Session bounds error callback.
- * @param {(sectionName: string) => void} config.displayActiveSection Section activation callback.
+ * @param {(sectionName: string) => void} config.displayActiveSection
+ * Section activation callback.
  * @param {Document|Element} config.pageRoot Page root.
  * @param {HTMLInputElement|null} config.startsAtInput Event start input.
  * @param {HTMLInputElement|null} config.endsAtInput Event end input.
- * @param {HTMLInputElement|null} config.registrationStartsAtInput Registration start input.
+ * @param {HTMLInputElement|null} config.registrationStartsAtInput
+ * Registration start input.
  * @param {HTMLInputElement|null} config.registrationEndsAtInput Registration end input.
  * @param {HTMLInputElement|null} config.cfsEnabledInput Hidden CFS enabled input.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.

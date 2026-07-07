@@ -44,6 +44,7 @@ export const isCompletingRegistrationQuestions = (button) =>
  * Stores answer JSON in all hidden answer inputs in the attendance container.
  * @param {HTMLElement} container - Attendance container element
  * @param {object} answersPayload - Normalized answers payload
+ * @returns {void}
  */
 const setQuestionAnswersPayload = (container, answersPayload) => {
   const value = JSON.stringify(answersPayload);
@@ -75,6 +76,7 @@ const collectQuestionAnswers = (container) => {
  * Opens questions before continuing with attendance or ticket checkout.
  * @param {HTMLElement} container - Attendance container element
  * @param {"attend"|"ticket"} continueAction - Action to resume after questions
+ * @returns {void}
  */
 export const requestQuestionAnswers = (container, continueAction) => {
   container.dataset.questionsContinueAction = continueAction;
@@ -84,6 +86,7 @@ export const requestQuestionAnswers = (container, continueAction) => {
 /**
  * Handles the questions modal submit flow.
  * @param {Event} event - Submit event
+ * @returns {void}
  */
 export const handleAttendanceSubmit = (event) => {
   const target = event.target;

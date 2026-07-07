@@ -23,6 +23,7 @@ const getPaymentReturnOutcome = () => {
 
 /**
  * Removes the payment outcome query parameter from the current URL.
+ * @returns {void}
  */
 const clearPaymentReturnOutcome = () => {
   const nextUrl = new URL(window.location.href);
@@ -71,6 +72,7 @@ const waitForPoll = (durationMs) =>
  * Handles Stripe's attendee return flow after checkout redirects back to the event page.
  * Polls for webhook reconciliation when checkout succeeded and shows attendee feedback
  * for canceled or delayed returns.
+ * @returns {Promise<void>}
  */
 export const reconcilePaymentReturn = async () => {
   const paymentOutcome = getPaymentReturnOutcome();

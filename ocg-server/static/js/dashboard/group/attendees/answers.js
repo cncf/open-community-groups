@@ -49,6 +49,7 @@ const openAnswersModal = (root = document) => {
 /**
  * Initialize attendee answer review modal controls.
  * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
  */
 export const initializeAnswersModal = (root = document) => {
   if (!(root instanceof Element) || !markDatasetReady(root, "attendeeAnswersReady")) {

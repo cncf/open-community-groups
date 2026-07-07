@@ -49,8 +49,8 @@ const closeRefundModal = (root = document) => {
 
 /**
  * Update a refund modal action button label.
- * @param {HTMLElement | null} button
- * @param {string} label
+ * @param {HTMLElement|null} button Action button.
+ * @param {string} label Button label.
  * @returns {void}
  */
 const setRefundActionLabel = (button, label) => {
@@ -67,7 +67,7 @@ const setRefundActionLabel = (button, label) => {
 
 /**
  * Re-process a refund action button after its HTMX attributes change.
- * @param {HTMLElement | null} button
+ * @param {HTMLElement|null} button Action button.
  * @returns {void}
  */
 const processRefundActionButton = (button) => {
@@ -141,6 +141,7 @@ const populateRefundReviewModal = (triggerButton, root = document) => {
 /**
  * Initialize refund review modal controls for attendee purchases.
  * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
  */
 export const initializeRefundReviewModal = (root = document) => {
   if (!(root instanceof Element) || !markDatasetReady(root, "attendeeRefundReviewReady")) {

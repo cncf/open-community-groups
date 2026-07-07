@@ -241,6 +241,10 @@ export class DashboardSelectorBase extends LitWrapper {
     return "cursor-pointer text-stone-900 hover:bg-stone-50";
   }
 
+  /**
+   * Renders the selector and optional trailing content.
+   * @returns {import("lit").TemplateResult}
+   */
   render() {
     const selectedItem = this._findSelectedItem();
     const selector = this._renderSelector(selectedItem);
@@ -320,10 +324,10 @@ export class DashboardSelectorBase extends LitWrapper {
                     role="listbox"
                   >
                     ${repeat(
-                    this._filteredItems,
-                    (item) => this._getItemId(item),
-                    (item, index) => this._renderOption(item, index),
-                  )}
+                      this._filteredItems,
+                      (item) => this._getItemId(item),
+                      (item, index) => this._renderOption(item, index),
+                    )}
                   </ul>
                 `
               : html`<div class="px-4 py-3 text-sm text-stone-500">${this._selectorConfig.emptyLabel}</div>`

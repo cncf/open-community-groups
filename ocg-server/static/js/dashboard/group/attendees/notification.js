@@ -86,7 +86,8 @@ const getSelectedEmailRecipients = () => Array.from(attendeeEmailSelectionState.
 
 /**
  * Read one submitted HTMX parameter from FormData, URLSearchParams, or a plain object.
- * @param {FormData|URLSearchParams|Object|null|undefined} parameters Submitted parameters.
+ * @param {FormData|URLSearchParams|Object|null|undefined} parameters
+ * Submitted parameters.
  * @param {string} name Parameter name.
  * @returns {string} Submitted parameter value.
  */
@@ -383,6 +384,7 @@ const openNotificationFromSelection = (root) => {
 /**
  * Initialize attendee notification modal controls and response handling.
  * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
  */
 export const initializeAttendeeNotification = (root = document) => {
   if (!(root instanceof Element) || !markDatasetReady(root, dataKey)) {
@@ -454,6 +456,7 @@ export const initializeAttendeeNotification = (root = document) => {
 /**
  * Initialize table-integrated attendee email selection controls.
  * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
  */
 export const initializeAttendeeEmailSelection = (root = document) => {
   if (!(root instanceof Element)) {

@@ -4,6 +4,11 @@ import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.
 
 export const attendeesRootSelector = "#attendees-content";
 
+/**
+ * Resolves the attendee page root for scoped dashboard behavior.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {Document|Element} Attendees root element, body, or original root.
+ */
 export const resolveAttendeesRoot = (root = document) => {
   if (root instanceof Element && root.matches(attendeesRootSelector)) {
     return root;

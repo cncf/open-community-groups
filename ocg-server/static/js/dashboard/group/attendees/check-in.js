@@ -5,6 +5,7 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 /**
  * Initialize check-in toggle checkboxes with optimistic UI updates.
  * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
  */
 export const initCheckInToggles = (root = document) => {
   root.querySelectorAll(".check-in-toggle").forEach((checkbox) => {

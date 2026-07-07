@@ -237,6 +237,7 @@ const selectInvitationEmail = (root, email) => {
 /**
  * Initialize attendee invitation modal controls and response handling.
  * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
  */
 export const initializeInvitationModal = (root = document) => {
   if (!(root instanceof Element) || !markDatasetReady(root, "attendeeInvitationReady")) {

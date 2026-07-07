@@ -13,6 +13,7 @@ const AVAILABILITY_REFRESH_ERROR_MESSAGE =
  * @param {HTMLElement} container - Attendance container element
  * @param {Object} availability - Public availability payload
  * @param {{rerenderAttendance?: boolean}} options - Render options
+ * @returns {void}
  */
 const applyAvailability = (container, availability, options = {}) => {
   renderAttendanceAvailability(container, availability);
@@ -31,6 +32,7 @@ const applyAvailability = (container, availability, options = {}) => {
  * Falls back to cached event metadata when availability cannot be refreshed.
  * @param {HTMLElement} container - Attendance container element
  * @param {{rerenderAttendance?: boolean}} options - Render options
+ * @returns {void}
  */
 export const handleAvailabilityRefreshFailure = (container, options = {}) => {
   if (container?.dataset?.availabilityHydrated === "false") {
@@ -65,6 +67,7 @@ export const refreshAvailability = async (container, options = {}) => {
 /**
  * Refreshes public availability before asking HTMX to redraw attendance state.
  * @param {HTMLElement} container - Attendance container element
+ * @returns {void}
  */
 export const refreshAvailabilityAndRenderAttendance = (container) => {
   if (!container?.dataset?.availabilityUrl) {

@@ -4,6 +4,10 @@ const QUESTION_TYPES = [
   ["multi-select", "Multi select"],
 ];
 
+/**
+ * Creates a stable client-side id for draft questions and options.
+ * @returns {string} Unique draft identifier
+ */
 const newQuestionId = () => crypto.randomUUID();
 
 /**

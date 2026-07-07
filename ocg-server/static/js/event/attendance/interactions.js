@@ -33,6 +33,7 @@ import {
 /**
  * Handles click events for attendance actions.
  * @param {MouseEvent} event - Click event
+ * @returns {void}
  */
 export const handleAttendanceClick = (event) => {
   const target = event.target;
@@ -155,6 +156,7 @@ export const handleAttendanceClick = (event) => {
 /**
  * Handles keyboard shortcuts for attendance modals.
  * @param {KeyboardEvent} event - Keyboard event
+ * @returns {void}
  */
 export const handleAttendanceKeydown = (event) => {
   if (!isEscapeEvent(event)) {

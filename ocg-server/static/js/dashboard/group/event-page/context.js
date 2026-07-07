@@ -30,8 +30,7 @@ const resolveEventPageRoot = (root, pageName) => {
  * Initializes the shared root-scoped page context for an event bootstrap.
  * @param {Document|Element} root Query root.
  * @param {"add"|"update"} pageName Page marker value.
- * @returns {{pageRoot: Document|Element, queryOne: (selector: string) => Element|null}|null}
- * Shared event page context, or null when the page is already initialized.
+ * @returns {Object|null} Shared context, or null when already initialized.
  */
 export const initializeEventPageContext = (root, pageName) => {
   const pageRoot = resolveEventPageRoot(root, pageName);

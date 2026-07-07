@@ -120,7 +120,8 @@ export const initializeSharedEventPageControls = ({
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
  * @param {HTMLTextAreaElement|null} config.cfsDescriptionInput CFS description input.
  * @param {HTMLElement|null} config.cfsLabelsEditor CFS labels editor element.
- * @param {(field: HTMLElement|null) => boolean} [config.isFieldLocked] Locked-field lookup.
+ * @param {(field: HTMLElement|null) => boolean} [config.isFieldLocked]
+ * Locked-field lookup.
  * @returns {(enabled: boolean) => void} Shared CFS field updater.
  */
 const createEventPageCfsFieldUpdater = ({
@@ -158,7 +159,8 @@ const createEventPageCfsFieldUpdater = ({
  * @param {() => void} config.syncSessionsDateRange Sessions sync callback.
  * @param {HTMLInputElement|null} config.startsAtInput Event start input.
  * @param {HTMLInputElement|null} config.endsAtInput Event end input.
- * @param {HTMLInputElement|null} config.registrationStartsAtInput Registration start input.
+ * @param {HTMLInputElement|null} config.registrationStartsAtInput
+ * Registration start input.
  * @param {HTMLInputElement|null} config.registrationEndsAtInput Registration end input.
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS start input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS end input.
@@ -279,7 +281,8 @@ const bindSharedEventDateFieldListeners = ({
  * @param {HTMLInputElement|null} config.cfsStartsAtInput CFS starts input.
  * @param {HTMLInputElement|null} config.cfsEndsAtInput CFS ends input.
  * @param {(enabled: boolean) => void} config.updateCfsFields CFS field updater.
- * @param {boolean} [config.bindDisabledCfsToggle=false] Whether disabled CFS toggles should bind changes.
+ * @param {boolean} [config.bindDisabledCfsToggle=false]
+ * Whether disabled CFS toggles should bind changes.
  * @returns {void}
  */
 const initializeCommonEventPageToggles = ({
@@ -339,7 +342,8 @@ const initializeCommonEventPageToggles = ({
  * Configures ticketing editors with root-scoped dependencies.
  * @param {Object} config Ticketing editor configuration.
  * @param {Document|Element} config.pageRoot Page root.
- * @param {(selector: string) => Element|null} config.queryOne Root-scoped selector lookup.
+ * @param {(selector: string) => Element|null} config.queryOne
+ * Root-scoped selector lookup.
  * @returns {void}
  */
 const configureScopedTicketingEditors = ({ pageRoot, queryOne }) => {
@@ -367,7 +371,8 @@ const configureScopedTicketingEditors = ({ pageRoot, queryOne }) => {
  * @param {() => boolean} config.hasVenueData Whether venue data exists.
  * @param {() => Promise<boolean>} config.confirmVenueDataDeletion Confirmation callback.
  * @param {() => void} config.clearVenueFields Venue clearing callback.
- * @param {(kind: string) => void} config.updateSectionVisibility Section visibility callback.
+ * @param {(kind: string) => void} config.updateSectionVisibility
+ * Section visibility callback.
  * @returns {void}
  */
 const initializeEventKindField = ({

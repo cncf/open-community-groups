@@ -192,6 +192,10 @@ export const applyBrokenImagePlaceholders = (root = document) => {
   }, 0);
 };
 
+/**
+ * Applies broken-image placeholders across the current document.
+ * @returns {void}
+ */
 const applyBrokenImagePlaceholdersForDocument = () => {
   applyBrokenImagePlaceholders(document);
 };

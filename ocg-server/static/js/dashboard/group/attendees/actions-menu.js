@@ -69,6 +69,7 @@ const toggleAttendeeEmailActionsDropdown = (root = document) => {
 /**
  * Initialize the attendee actions dropdown.
  * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
  */
 export const initializeAttendeeActionsMenu = (root = document) => {
   if (!(root instanceof Element) || !markDatasetReady(root, "attendeeActionsMenuReady")) {
@@ -168,6 +169,7 @@ export const initializeAttendeeActionsMenu = (root = document) => {
 
 /**
  * Initialize document-level attendee menu cleanup.
+ * @returns {void}
  */
 export const initializeAttendeeOutsideClickListener = () => {
   if (!markDatasetReady(document.documentElement, "attendeeOutsideClickReady")) {

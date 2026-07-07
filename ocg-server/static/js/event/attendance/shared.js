@@ -34,7 +34,8 @@ export const parseJsonResponse = (xhr) => {
 /**
  * Applies the signed-out fallback UI for a container.
  * @param {HTMLElement} container - Attendance container element
- * @param {ReturnType<typeof import("/static/js/event/attendance-dom.js").getAttendanceMeta>} meta
+ * @param {object} meta Attendance metadata.
+ * @returns {void}
  */
 export const showSignedOutFallback = (container, meta) => {
   showSignedOutAttendanceState(container, meta);
