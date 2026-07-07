@@ -114,6 +114,7 @@ insert into "group" (
     slug,
     description,
     region_id,
+    parent_group_id,
     active
 ) values (
     '44444444-4444-4444-4444-444444444441',
@@ -123,6 +124,7 @@ insert into "group" (
     'test-group-alpha',
     'Primary meetup used for end-to-end dashboard and site coverage.',
     '22222222-2222-2222-2222-222222222301',
+    null,
     true
 ), (
     '44444444-4444-4444-4444-444444444442',
@@ -132,6 +134,7 @@ insert into "group" (
     'test-group-beta',
     null,
     '22222222-2222-2222-2222-222222222301',
+    '44444444-4444-4444-4444-444444444441',
     true
 ), (
     '44444444-4444-4444-4444-444444444443',
@@ -139,6 +142,7 @@ insert into "group" (
     '22222222-2222-2222-2222-222222222221',
     'Observability Guild',
     'test-group-gamma',
+    null,
     null,
     null,
     true

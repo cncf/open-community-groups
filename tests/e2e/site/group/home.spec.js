@@ -63,6 +63,12 @@ test.describe("group page", () => {
     await expect(
       page.getByText(TEST_EVENT_NAMES.alpha[2], { exact: true }),
     ).toBeVisible();
+    await expect(
+      page.getByText(TEST_EVENT_NAMES.beta[1], { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(TEST_EVENT_NAMES.beta[2], { exact: true }),
+    ).toBeVisible();
 
     // Verify the past events section includes historical events.
     await expect(page.getByText("Past Events", { exact: true })).toBeVisible();
@@ -93,6 +99,36 @@ test.describe("group page", () => {
       "https://techcorp.example.com",
     );
   });
+
+  test("renders seeded parent and subgroup links", async ({ page }) => {
+    // Verify the parent group shows its seeded child relationship.
+    await expect(page.getByText("Subgroups", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: TEST_GROUP_NAMES.beta, exact: true }),
+    ).toHaveAttribute(
+      "href",
+      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.beta}`,
+    );
+
+    // Load the child group page before checking the parent relationship.
+    await navigateToGroup(
+      page,
+      TEST_COMMUNITY_NAME,
+      TEST_GROUP_SLUGS.community1.beta,
+    );
+
+    // Verify the child group links back to its parent group.
+    await expect(
+      page.getByRole("heading", { level: 1, name: TEST_GROUP_NAMES.beta }),
+    ).toBeVisible();
+    await expect(page.getByText("Parent group", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: TEST_GROUP_NAMES.alpha, exact: true }),
+    ).toHaveAttribute(
+      "href",
+      `/${TEST_COMMUNITY_NAME}/group/${TEST_GROUP_SLUGS.community1.alpha}`,
+    );
+  });
 });
 
 test.describe("group page - responsive links", () => {
@@ -109,6 +145,7 @@ test.describe("group page - responsive links", () => {
     // Set up expected upcoming href.
     const expectedUpcomingHref =
       `/explore?entity=events&group[0]=${TEST_GROUP_SLUGS.community1.alpha}` +
+      `&group[1]=${TEST_GROUP_SLUGS.community1.beta}` +
       `&community[0]=${TEST_COMMUNITY_NAME}`;
 
     // Verify the desktop upcoming link keeps group and community filters.
@@ -123,6 +160,7 @@ test.describe("group page - responsive links", () => {
       "href",
       new RegExp(
         String.raw`^/explore\?entity=events&group\[0\]=${TEST_GROUP_SLUGS.community1.alpha}` +
+          String.raw`&group\[1\]=${TEST_GROUP_SLUGS.community1.beta}` +
           String.raw`&community\[0\]=${TEST_COMMUNITY_NAME}&date_from=1900-01-01` +
           String.raw`&sort_direction=desc&date_to=\d{4}-\d{2}-\d{2}$`,
       ),
