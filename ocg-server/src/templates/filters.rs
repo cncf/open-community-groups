@@ -110,6 +110,7 @@ pub(crate) fn landscape_kind_label<S: AsRef<str>>(
     _: &dyn askama::Values,
 ) -> askama::Result<String> {
     let label = match kind.as_ref() {
+        "accelerator" => "Accelerator",
         "github_project" => "GitHub project",
         "investor" => "Investor",
         "partner_community" => "Partner community",
@@ -260,6 +261,12 @@ mod tests {
     fn test_landscape_kind_label() {
         let values = askama::NO_VALUES;
 
+        assert_eq!(
+            landscape_kind_label::default()
+                .execute("accelerator", values)
+                .unwrap(),
+            "Accelerator"
+        );
         assert_eq!(
             landscape_kind_label::default()
                 .execute("partner_community", values)

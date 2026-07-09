@@ -17,7 +17,8 @@ use crate::{
     config::HttpServerConfig,
     db::DynDB,
     handlers::{
-        extractors::CurrentUser, request_matches_site, site::not_found, trim_public_gallery_images,
+        extractors::{CurrentUser, ValidatedForm},
+        request_matches_site, site::not_found, trim_public_gallery_images,
     },
     router::PUBLIC_SHARED_CACHE_HEADERS,
     router::serde_qs_config,
@@ -25,6 +26,9 @@ use crate::{
     templates::{
         PageId,
         auth::User,
+        dashboard::group::accelerator::{
+            AcceleratorApplicationInput, AcceleratorWeeklyUpdateInput,
+        },
         dashboard::group::members::GroupMembersFilters,
         group::{self, MembersPage, Page, ReportPage, SpotlightsPage, StorePage},
         notifications::GroupWelcome,
@@ -109,6 +113,43 @@ pub(crate) async fn page(
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
+}
+
+/// Submits an application to an accelerator cohort.
+#[instrument(skip_all, err)]
+pub(crate) async fn apply_to_accelerator_cohort(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    Path((_alliance_name, group_id, cohort_id)): Path<(String, Uuid, Uuid)>,
+    ValidatedForm(input): ValidatedForm<AcceleratorApplicationInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.submit_group_accelerator_application(user.user_id, group_id, cohort_id, &input)
+        .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        [(
+            "HX-Trigger",
+            "accelerator-application-submitted, refresh-body",
+        )],
+    ))
+}
+
+/// Submits a weekly update for an accepted accelerator member.
+#[instrument(skip_all, err)]
+pub(crate) async fn submit_accelerator_weekly_update(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    Path((_alliance_name, group_id, week_id)): Path<(String, Uuid, Uuid)>,
+    ValidatedForm(input): ValidatedForm<AcceleratorWeeklyUpdateInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.submit_group_accelerator_weekly_update(user.user_id, group_id, week_id, &input)
+        .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        [("HX-Trigger", "accelerator-weekly-update-submitted")],
+    ))
 }
 
 /// Handler that renders logged-in group member spotlights.

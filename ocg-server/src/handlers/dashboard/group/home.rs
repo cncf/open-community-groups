@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{coffee_meet, events, logs, members, sponsors, spotlights, store, team};
+use super::{accelerator, coffee_meet, events, logs, members, sponsors, spotlights, store, team};
 
 use crate::{
     auth::AuthSession,
@@ -67,6 +67,11 @@ pub(crate) async fn page(
 
     // Prepare content for the selected tab
     let content = match tab {
+        Tab::Accelerator => {
+            let template =
+                accelerator::prepare_page(&db, alliance_id, group_id, user.user_id).await?;
+            Content::Accelerator(template)
+        }
         Tab::Analytics => {
             let (group, stats) = tokio::try_join!(
                 db.get_group_full(alliance_id, group_id),

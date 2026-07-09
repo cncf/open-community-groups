@@ -1,0 +1,443 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{{ dashboard::page_title(title = "Accelerator", description = "Run accelerator programs, cohorts, applications, members, curriculum, and weekly updates from the group dashboard.") -}}
+
+<div class="my-5 grid gap-6">
+  <section class="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
+    <div class="border-b border-stone-100 bg-linear-to-br from-primary-50/80 via-white to-stone-50 px-5 py-5 sm:px-6">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div class="inline-flex rounded-full border border-primary-200 bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary-700">
+            Program
+          </div>
+          <h2 class="mt-3 text-xl font-black tracking-tight text-stone-950">Create accelerator program</h2>
+          <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
+            Programs are the top-level container for cohorts, applications, weekly curriculum, and updates.
+          </p>
+        </div>
+        {% if !can_manage_accelerator -%}
+          <div class="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 text-xs/5 font-medium text-stone-500 shadow-sm">
+            Read only.
+          </div>
+        {% endif -%}
+      </div>
+    </div>
+
+    <form class="inert-form grid gap-5 p-5 sm:p-6"
+          hx-post="/dashboard/group/accelerator/programs"
+          hx-target="#dashboard-content"
+          hx-indicator="#dashboard-spinner"
+          {% if !can_manage_accelerator -%}
+            inert
+          {% endif -%}>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <label class="block">
+          <span class="form-label">Name</span>
+          <input name="name"
+                 class="input-primary mt-2"
+                 placeholder="Open Source Accelerator"
+                 required>
+        </label>
+        <label class="block">
+          <span class="form-label">Summary</span>
+          <input name="summary"
+                 class="input-primary mt-2"
+                 placeholder="10-week build and distribution program"
+                 required>
+        </label>
+      </div>
+      <label class="block">
+        <span class="form-label">Description</span>
+        <textarea name="description"
+                  class="input-primary mt-2 min-h-24"
+                  placeholder="Who it is for, how it works, and what outcomes you expect."></textarea>
+      </label>
+      <div class="grid gap-4 lg:grid-cols-3">
+        <label class="block">
+          <span class="form-label">Application URL</span>
+          <input name="application_url"
+                 class="input-primary mt-2"
+                 placeholder="https://...">
+        </label>
+        <label class="block">
+          <span class="form-label">Curriculum URL</span>
+          <input name="curriculum_url"
+                 class="input-primary mt-2"
+                 placeholder="https://...">
+        </label>
+        <label class="block">
+          <span class="form-label">Active</span>
+          <select name="active" class="select-primary mt-2">
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </label>
+      </div>
+      <div class="flex justify-end border-t border-stone-100 pt-5">
+        <button type="submit"
+                class="btn-primary"
+                {% if !can_manage_accelerator %}disabled{% endif %}>Add program</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-2">
+    <article class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 class="text-xl font-black tracking-tight text-stone-950">Create cohort</h2>
+      <p class="mt-2 text-sm/6 text-stone-600">Open applications, run cohorts, and close them after demo day.</p>
+      <form class="inert-form mt-5 grid gap-4"
+            hx-post="/dashboard/group/accelerator/cohorts"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            {% if !can_manage_accelerator || programs.is_empty() -%}
+              inert
+            {% endif -%}>
+        <label class="block">
+          <span class="form-label">Program</span>
+          <select name="group_accelerator_program_id"
+                  class="select-primary mt-2"
+                  required>
+            {% for program in programs -%}
+              <option value="{{ program.group_accelerator_program_id }}">{{ program.name }}</option>
+            {% endfor -%}
+          </select>
+        </label>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <label class="block">
+            <span class="form-label">Name</span>
+            <input name="name"
+                   class="input-primary mt-2"
+                   placeholder="Spring 2027"
+                   required>
+          </label>
+          <label class="block">
+            <span class="form-label">Status</span>
+            <select name="status" class="select-primary mt-2">
+              <option value="planned">Planned</option>
+              <option value="open">Open</option>
+              <option value="running">Running</option>
+              <option value="completed">Completed</option>
+              <option value="archived">Archived</option>
+            </select>
+          </label>
+        </div>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label class="block">
+            <span class="form-label">Starts on</span>
+            <input name="starts_on" type="date" class="input-primary mt-2">
+          </label>
+          <label class="block">
+            <span class="form-label">Ends on</span>
+            <input name="ends_on" type="date" class="input-primary mt-2">
+          </label>
+          <label class="block">
+            <span class="form-label">Application deadline</span>
+            <input name="application_deadline" type="date" class="input-primary mt-2">
+          </label>
+          <label class="block">
+            <span class="form-label">Capacity</span>
+            <input name="capacity" type="number" min="1" class="input-primary mt-2">
+          </label>
+        </div>
+        <button type="submit"
+                class="btn-primary"
+                {% if !can_manage_accelerator || programs.is_empty() %}disabled{% endif %}>Add cohort</button>
+      </form>
+    </article>
+
+    <article class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 class="text-xl font-black tracking-tight text-stone-950">Add weekly curriculum</h2>
+      <p class="mt-2 text-sm/6 text-stone-600">Create or replace a week by cohort and week number.</p>
+      <form class="inert-form mt-5 grid gap-4"
+            hx-post="/dashboard/group/accelerator/weeks"
+            hx-target="#dashboard-content"
+            hx-indicator="#dashboard-spinner"
+            {% if !can_manage_accelerator || cohorts.is_empty() -%}
+              inert
+            {% endif -%}>
+        <label class="block">
+          <span class="form-label">Cohort</span>
+          <select name="group_accelerator_cohort_id"
+                  class="select-primary mt-2"
+                  required>
+            {% for cohort in cohorts -%}
+              <option value="{{ cohort.group_accelerator_cohort_id }}">{{ cohort.name }}</option>
+            {% endfor -%}
+          </select>
+        </label>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <label class="block">
+            <span class="form-label">Week number</span>
+            <input name="week_number"
+                   type="number"
+                   min="1"
+                   class="input-primary mt-2"
+                   required>
+          </label>
+          <label class="block">
+            <span class="form-label">Title</span>
+            <input name="title"
+                   class="input-primary mt-2"
+                   placeholder="AI Distribution"
+                   required>
+          </label>
+        </div>
+        <label class="block">
+          <span class="form-label">Goals</span>
+          <textarea name="goals"
+                    class="input-primary mt-2 min-h-20"
+                    placeholder="What participants should accomplish this week."></textarea>
+        </label>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <label class="block">
+            <span class="form-label">Resources URL</span>
+            <input name="resources_url"
+                   class="input-primary mt-2"
+                   placeholder="https://...">
+          </label>
+          <label class="block">
+            <span class="form-label">Deliverable</span>
+            <input name="deliverable"
+                   class="input-primary mt-2"
+                   placeholder="Publish 3 posts and share metrics">
+          </label>
+        </div>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <label class="block">
+            <span class="form-label">Starts on</span>
+            <input name="starts_on" type="date" class="input-primary mt-2">
+          </label>
+          <label class="block">
+            <span class="form-label">Due on</span>
+            <input name="due_on" type="date" class="input-primary mt-2">
+          </label>
+        </div>
+        <button type="submit"
+                class="btn-primary"
+                {% if !can_manage_accelerator || cohorts.is_empty() %}disabled{% endif %}>Save week</button>
+      </form>
+    </article>
+  </section>
+
+  <section class="grid gap-5 xl:grid-cols-2">
+    {% for program in programs -%}
+      <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold text-stone-950">{{ program.name }}</h2>
+            <p class="mt-1 text-sm/6 text-stone-600">{{ program.summary }}</p>
+          </div>
+          {% if program.active -%}
+            <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700">Active</span>
+          {% else -%}
+            <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-600">Inactive</span>
+          {% endif -%}
+        </div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          {% if let Some(application_url) = &program.application_url -%}
+            <a href="{{ application_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn-secondary-anchor">Application</a>
+          {% endif -%}
+          {% if let Some(curriculum_url) = &program.curriculum_url -%}
+            <a href="{{ curriculum_url }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn-secondary-anchor">Curriculum</a>
+          {% endif -%}
+        </div>
+      </article>
+    {% endfor -%}
+  </section>
+
+  <section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+    <h2 class="text-xl font-black tracking-tight text-stone-950">Cohorts and curriculum</h2>
+    {% if cohorts.is_empty() -%}
+      <p class="mt-3 text-sm text-stone-600">No cohorts yet.</p>
+    {% else -%}
+      <div class="mt-5 grid gap-5">
+        {% for cohort in cohorts -%}
+          <article class="rounded-2xl border border-stone-100 bg-stone-50/60 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="font-bold text-stone-950">{{ cohort.name }}</h3>
+                <p class="mt-1 text-sm text-stone-600">
+                  {{ cohort.status }}
+                  {% if let Some(starts_on) = &cohort.starts_on %}· Starts {{ starts_on }}{% endif %}
+                  {% if let Some(ends_on) = &cohort.ends_on %}· Ends {{ ends_on }}{% endif %}
+                  {% if let Some(capacity) = cohort.capacity %}· {{ capacity }} seats{% endif %}
+                </p>
+              </div>
+            </div>
+            <div class="mt-4 grid gap-3">
+              {% for week in weeks -%}
+                {% if week.group_accelerator_cohort_id == cohort.group_accelerator_cohort_id -%}
+                  <div class="rounded-xl border border-stone-200 bg-white p-3">
+                    <div class="font-semibold text-stone-950">Week {{ week.week_number }}: {{ week.title }}</div>
+                    {% if let Some(goals) = &week.goals -%}
+                      <p class="mt-1 text-sm/6 text-stone-600">{{ goals }}</p>
+                    {% endif -%}
+                    <div class="mt-2 flex flex-wrap gap-2 text-xs text-stone-500">
+                      {% if let Some(due_on) = &week.due_on -%}
+                        <span>Due {{ due_on }}</span>
+                      {% endif -%}
+                      {% if let Some(deliverable) = &week.deliverable -%}
+                        <span>{{ deliverable }}</span>
+                      {% endif -%}
+                      {% if let Some(resources_url) = &week.resources_url -%}
+                        <a href="{{ resources_url }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="text-primary-700 hover:underline">Resources</a>
+                      {% endif -%}
+                    </div>
+                  </div>
+                {% endif -%}
+              {% endfor -%}
+            </div>
+          </article>
+        {% endfor -%}
+      </div>
+    {% endif -%}
+  </section>
+
+  <section class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+    <h2 class="text-xl font-black tracking-tight text-stone-950">Applications</h2>
+    {% if applications.is_empty() -%}
+      <p class="mt-3 text-sm text-stone-600">No applications yet.</p>
+    {% else -%}
+      <div class="mt-5 grid gap-4">
+        {% for application in applications -%}
+          <article class="rounded-2xl border border-stone-200 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 class="font-bold text-stone-950">{{ application.project_name }}</h3>
+                <p class="mt-1 text-sm text-stone-600">
+                  {{ application.applicant_name }} · {{ application.applicant_email }} · {{ application.status }}
+                </p>
+              </div>
+              {% if let Some(project_url) = &application.project_url -%}
+                <a href="{{ project_url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="btn-secondary-anchor">Project</a>
+              {% endif -%}
+            </div>
+            <p class="mt-3 text-sm/6 text-stone-700">{{ application.pitch }}</p>
+            {% if let Some(goals) = &application.goals -%}
+              <p class="mt-2 text-sm/6 text-stone-500">{{ goals }}</p>
+            {% endif -%}
+            <form class="inert-form mt-4 grid gap-3 lg:grid-cols-[180px_1fr_auto_auto]"
+                  hx-put="/dashboard/group/accelerator/applications/{{ application.group_accelerator_application_id }}"
+                  hx-target="#dashboard-content"
+                  hx-indicator="#dashboard-spinner"
+                  {% if !can_manage_accelerator -%}
+                    inert
+                  {% endif -%}>
+              <select name="status" class="select-primary">
+                <option value="submitted"
+                        {% if application.status == "submitted" %}selected{% endif %}>Submitted</option>
+                <option value="reviewing"
+                        {% if application.status == "reviewing" %}selected{% endif %}>Reviewing</option>
+                <option value="accepted"
+                        {% if application.status == "accepted" %}selected{% endif %}>Accepted</option>
+                <option value="rejected"
+                        {% if application.status == "rejected" %}selected{% endif %}>Rejected</option>
+                <option value="waitlisted"
+                        {% if application.status == "waitlisted" %}selected{% endif %}>Waitlisted</option>
+              </select>
+              <input name="reviewer_notes"
+                     class="input-primary"
+                     value="{{ application.reviewer_notes.as_deref().unwrap_or("") }}"
+                     placeholder="Reviewer notes">
+              <button type="submit"
+                      class="btn-secondary"
+                      {% if !can_manage_accelerator %}disabled{% endif %}>Save review</button>
+              <button type="button"
+                      class="btn-primary"
+                      hx-post="/dashboard/group/accelerator/applications/{{ application.group_accelerator_application_id }}/accept"
+                      hx-target="#dashboard-content"
+                      hx-indicator="#dashboard-spinner"
+                      {% if !can_manage_accelerator -%}
+                        disabled
+                      {% endif -%}>Accept</button>
+            </form>
+          </article>
+        {% endfor -%}
+      </div>
+    {% endif -%}
+  </section>
+
+  <section class="grid gap-6 xl:grid-cols-2">
+    <article class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 class="text-xl font-black tracking-tight text-stone-950">Cohort members</h2>
+      {% if members.is_empty() -%}
+        <p class="mt-3 text-sm text-stone-600">No accepted members yet.</p>
+      {% else -%}
+        <div class="mt-5 grid gap-3">
+          {% for member in members -%}
+            <div class="rounded-xl border border-stone-200 p-3">
+              <div class="font-semibold text-stone-950">{{ member.display_name }}</div>
+              <div class="text-sm text-stone-600">{{ member.project_name }} · {{ member.status }}</div>
+              {% if let Some(project_url) = &member.project_url -%}
+                <a href="{{ project_url }}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   class="mt-2 inline-flex text-sm font-semibold text-primary-700 hover:underline">Project</a>
+              {% endif -%}
+            </div>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    </article>
+
+    <article class="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <h2 class="text-xl font-black tracking-tight text-stone-950">Weekly updates</h2>
+      {% if weekly_updates.is_empty() -%}
+        <p class="mt-3 text-sm text-stone-600">No weekly updates yet.</p>
+      {% else -%}
+        <div class="mt-5 grid gap-4">
+          {% for update in weekly_updates -%}
+            <form class="inert-form rounded-2xl border border-stone-200 p-4"
+                  hx-put="/dashboard/group/accelerator/weekly-updates/{{ update.group_accelerator_weekly_update_id }}"
+                  hx-target="#dashboard-content"
+                  hx-indicator="#dashboard-spinner"
+                  {% if !can_manage_accelerator -%}
+                    inert
+                  {% endif -%}>
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="font-semibold text-stone-950">{{ update.status }}</div>
+                <select name="status" class="select-primary max-w-40">
+                  <option value="submitted"
+                          {% if update.status == "submitted" %}selected{% endif %}>Submitted</option>
+                  <option value="reviewed"
+                          {% if update.status == "reviewed" %}selected{% endif %}>Reviewed</option>
+                </select>
+              </div>
+              <p class="mt-3 text-sm/6 text-stone-700">{{ update.shipped }}</p>
+              {% if let Some(metrics) = &update.metrics -%}
+                <p class="mt-2 text-sm/6 text-stone-500">Metrics: {{ metrics }}</p>
+              {% endif -%}
+              {% if let Some(blockers) = &update.blockers -%}
+                <p class="mt-2 text-sm/6 text-stone-500">Blockers: {{ blockers }}</p>
+              {% endif -%}
+              {% if let Some(asks) = &update.asks -%}
+                <p class="mt-2 text-sm/6 text-stone-500">Asks: {{ asks }}</p>
+              {% endif -%}
+              {% if let Some(links) = &update.links -%}
+                <p class="mt-2 text-sm/6 text-stone-500">Links: {{ links }}</p>
+              {% endif -%}
+              <textarea name="reviewer_notes"
+                        class="input-primary mt-3 min-h-20"
+                        placeholder="Feedback for the member">{{ update.reviewer_notes.as_deref().unwrap_or("") }}</textarea>
+              <button type="submit"
+                      class="btn-primary mt-3"
+                      {% if !can_manage_accelerator %}disabled{% endif %}>Save feedback</button>
+            </form>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    </article>
+  </section>
+</div>

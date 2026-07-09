@@ -12,6 +12,7 @@ begin
     with matches as (
         select le.*
         from landscape_entry le
+        left join landscape_accelerator_profile lap on lap.landscape_entry_id = le.landscape_entry_id
         where le.alliance_id = p_alliance_id
         and (
             v_query is null
@@ -19,10 +20,19 @@ begin
             or le.summary ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
             or le.description ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
             or le.category ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
+            or lap.application_url ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
+            or lap.curriculum_url ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
+            or lap.cohort_status ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
+            or lap.weekly_agenda::text ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
             or exists (
                 select 1
                 from unnest(le.tags) tag
                 where tag ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
+            )
+            or exists (
+                select 1
+                from unnest(lap.tracks) track
+                where track ilike '%' || escape_ilike_pattern(v_query) || '%' escape '\'
             )
         )
     ),

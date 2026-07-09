@@ -208,6 +208,14 @@ pub(crate) async fn setup(
         )
         .route("/{alliance}/group/{group_id}/join", post(group::join_group))
         .route(
+            "/{alliance}/group/{group_id}/accelerator/cohorts/{cohort_id}/apply",
+            post(group::apply_to_accelerator_cohort),
+        )
+        .route(
+            "/{alliance}/group/{group_id}/accelerator/weeks/{week_id}/updates",
+            post(group::submit_accelerator_weekly_update),
+        )
+        .route(
             "/{alliance}/group/{group_id}/leave",
             delete(group::leave_group),
         )

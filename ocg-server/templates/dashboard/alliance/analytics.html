@@ -32,8 +32,7 @@ description = "Alliance statistics and growth trends. Analytics are cached for a
           <button type="submit" class="btn-secondary">Unpublish</button>
         </form>
       {% else -%}
-        <form hx-put="/dashboard/alliance/analytics/report/public"
-              hx-swap="none">
+        <form hx-put="/dashboard/alliance/analytics/report/public" hx-swap="none">
           <button type="submit" class="btn-primary">Publish to public page</button>
         </form>
       {% endif -%}

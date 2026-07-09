@@ -10,7 +10,7 @@ use crate::{
     db::PgExecutor,
     types::landscape::{
         DashboardLandscapeFilters, LandscapeEntryInput, LandscapeFilters, LandscapeOutput,
-        parse_tags,
+        parse_accelerator_tracks, parse_tags,
     },
 };
 
@@ -18,8 +18,10 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBLandscape {
     /// Search published landscape entries.
-    async fn search_landscape_entries(&self, filters: &LandscapeFilters)
-    -> Result<LandscapeOutput>;
+    async fn search_landscape_entries(
+        &self,
+        filters: &LandscapeFilters,
+    ) -> Result<LandscapeOutput>;
 
     /// List entries for one alliance dashboard.
     async fn list_alliance_landscape_entries(
@@ -101,9 +103,16 @@ where
         input: &LandscapeEntryInput,
     ) -> Result<Uuid> {
         let tags = parse_tags(input.tags.as_deref());
+        let accelerator_tracks = parse_accelerator_tracks(input.accelerator_tracks.as_deref());
         self.fetch_scalar_one(
-            "select add_landscape_entry($1::uuid, $2::uuid, $3::jsonb, $4::text[])",
-            &[&actor_user_id, &alliance_id, &Json(input), &tags],
+            "select add_landscape_entry($1::uuid, $2::uuid, $3::jsonb, $4::text[], $5::text[])",
+            &[
+                &actor_user_id,
+                &alliance_id,
+                &Json(input),
+                &tags,
+                &accelerator_tracks,
+            ],
         )
         .await
     }
@@ -117,9 +126,17 @@ where
         input: &LandscapeEntryInput,
     ) -> Result<()> {
         let tags = parse_tags(input.tags.as_deref());
+        let accelerator_tracks = parse_accelerator_tracks(input.accelerator_tracks.as_deref());
         self.execute(
-            "select update_landscape_entry($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::text[])",
-            &[&actor_user_id, &alliance_id, &entry_id, &Json(input), &tags],
+            "select update_landscape_entry($1::uuid, $2::uuid, $3::uuid, $4::jsonb, $5::text[], $6::text[])",
+            &[
+                &actor_user_id,
+                &alliance_id,
+                &entry_id,
+                &Json(input),
+                &tags,
+                &accelerator_tracks,
+            ],
         )
         .await?;
         Ok(())

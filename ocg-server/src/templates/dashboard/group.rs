@@ -1,5 +1,6 @@
 //! Templates for the group dashboard.
 
+pub(crate) mod accelerator;
 pub(crate) mod analytics;
 pub(crate) mod attendees;
 pub(crate) mod coffee_meet;

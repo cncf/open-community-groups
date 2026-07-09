@@ -258,6 +258,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
     // Read-only group dashboard endpoints
     let dashboard_read = Router::new()
         .route("/", get(dashboard::group::home::page))
+        .route("/accelerator", get(dashboard::group::accelerator::page))
         .route("/analytics", get(dashboard::group::analytics::page))
         .route(
             "/coffee-meet",
@@ -320,6 +321,30 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
 
     // Group events management endpoints
     let events_management = Router::new()
+        .route(
+            "/accelerator/applications/{application_id}",
+            put(dashboard::group::accelerator::review_application),
+        )
+        .route(
+            "/accelerator/applications/{application_id}/accept",
+            post(dashboard::group::accelerator::accept_application),
+        )
+        .route(
+            "/accelerator/cohorts",
+            post(dashboard::group::accelerator::add_cohort),
+        )
+        .route(
+            "/accelerator/programs",
+            post(dashboard::group::accelerator::add_program),
+        )
+        .route(
+            "/accelerator/weekly-updates/{weekly_update_id}",
+            put(dashboard::group::accelerator::review_weekly_update),
+        )
+        .route(
+            "/accelerator/weeks",
+            post(dashboard::group::accelerator::add_week),
+        )
         .route("/events/add", post(dashboard::group::events::add))
         .route("/events/preview", post(dashboard::group::events::preview))
         .route(

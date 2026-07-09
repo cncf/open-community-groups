@@ -9,11 +9,14 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tokio_postgres::types::{FromSql, Json, ToSql};
 
 use crate::db::{
-    activity_tracker::DBActivityTracker, alliance::DBAlliance, auth::DBAuth, common::DBCommon,
-    dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, jobs::DBJobs,
-    landscape::DBLandscape, meetings::DBMeetings, notifications::DBNotifications,
-    payments::DBPayments, site::DBSite,
+    accelerator::DBAccelerator, activity_tracker::DBActivityTracker, alliance::DBAlliance,
+    auth::DBAuth, common::DBCommon, dashboard::DBDashboard, event::DBEvent, group::DBGroup,
+    images::DBImages, jobs::DBJobs, landscape::DBLandscape, meetings::DBMeetings,
+    notifications::DBNotifications, payments::DBPayments, site::DBSite,
 };
+
+/// Module containing database functionality for accelerator management.
+pub(crate) mod accelerator;
 
 /// Module containing authentication database operations.
 pub(crate) mod auth;
@@ -71,6 +74,7 @@ pub(crate) mod site;
 /// Database operations supported by root and transaction-scoped handles.
 pub(crate) trait DBOperations:
     DBAuth
+    + DBAccelerator
     + DBActivityTracker
     + DBCommon
     + DBAlliance
@@ -91,6 +95,7 @@ pub(crate) trait DBOperations:
 
 impl<T> DBOperations for T where
     T: DBAuth
+        + DBAccelerator
         + DBActivityTracker
         + DBCommon
         + DBAlliance

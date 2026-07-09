@@ -2,7 +2,8 @@ create or replace function add_landscape_entry(
     p_actor_user_id uuid,
     p_alliance_id uuid,
     p_input jsonb,
-    p_tags text[]
+    p_tags text[],
+    p_accelerator_tracks text[]
 ) returns uuid language plpgsql as $$
 declare
     v_entry_id uuid;
@@ -45,6 +46,29 @@ begin
         coalesce(p_tags, '{}'::text[])
     )
     returning landscape_entry_id into v_entry_id;
+
+    if trim(p_input->>'kind') = 'accelerator' then
+        insert into landscape_accelerator_profile (
+            landscape_entry_id,
+            application_url,
+            curriculum_url,
+            cohort_status,
+            starts_on,
+            ends_on,
+            tracks,
+            weekly_agenda
+        )
+        values (
+            v_entry_id,
+            nullif(trim(p_input->>'accelerator_application_url'), ''),
+            nullif(trim(p_input->>'accelerator_curriculum_url'), ''),
+            nullif(trim(p_input->>'accelerator_cohort_status'), ''),
+            nullif(trim(p_input->>'accelerator_starts_on'), '')::date,
+            nullif(trim(p_input->>'accelerator_ends_on'), '')::date,
+            coalesce(p_accelerator_tracks, '{}'::text[]),
+            nullif(trim(p_input->>'accelerator_weekly_agenda'), '')::jsonb
+        );
+    end if;
 
     perform insert_audit_log(
         'landscape_entry_added',

@@ -27,13 +27,11 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
          rel="noopener noreferrer"
          class="btn-secondary-anchor">Generate PDF</a>
       {% if group.report_public_enabled -%}
-        <form hx-delete="/dashboard/group/analytics/report/public"
-              hx-swap="none">
+        <form hx-delete="/dashboard/group/analytics/report/public" hx-swap="none">
           <button type="submit" class="btn-secondary">Unpublish</button>
         </form>
       {% else -%}
-        <form hx-put="/dashboard/group/analytics/report/public"
-              hx-swap="none">
+        <form hx-put="/dashboard/group/analytics/report/public" hx-swap="none">
           <button type="submit" class="btn-primary">Publish to public page</button>
         </form>
       {% endif -%}

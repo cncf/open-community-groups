@@ -12,8 +12,8 @@ use crate::{
         dashboard::{
             audit,
             group::{
-                analytics, coffee_meet, events, members, settings, sponsors, spotlights, store,
-                team,
+                accelerator, analytics, coffee_meet, events, members, settings, sponsors,
+                spotlights, store, team,
             },
         },
         filters,
@@ -80,6 +80,8 @@ impl Page {
 /// Content section for the group dashboard home page.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) enum Content {
+    /// Accelerator operations page.
+    Accelerator(accelerator::Page),
     /// Analytics page.
     Analytics(Box<analytics::Page>),
     /// Events management page.
@@ -103,6 +105,11 @@ pub(crate) enum Content {
 }
 
 impl Content {
+    /// Check if the content is the analytics page.
+    fn is_accelerator(&self) -> bool {
+        matches!(self, Content::Accelerator(_))
+    }
+
     /// Check if the content is the analytics page.
     fn is_analytics(&self) -> bool {
         matches!(self, Content::Analytics(_))
@@ -157,6 +164,7 @@ impl Content {
 impl std::fmt::Display for Content {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Content::Accelerator(template) => write!(f, "{}", template.render()?),
             Content::Analytics(template) => write!(f, "{}", template.render()?),
             Content::CoffeeMeet(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
@@ -178,6 +186,8 @@ impl std::fmt::Display for Content {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub(crate) enum Tab {
+    /// Accelerator tab.
+    Accelerator,
     /// Analytics tab (default).
     #[default]
     Analytics,

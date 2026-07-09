@@ -2,7 +2,7 @@
 {% import "macros/form_fields.html" as form_fields -%}
 {% import "macros/pagination.html" as pagination -%}
 
-{{ dashboard::page_title(title = "Landscape", description = "Manage startups, GitHub projects, partner communities, investors, and podcast leads shown on the public landscape.") -}}
+{{ dashboard::page_title(title = "Landscape", description = "Manage startups, accelerators, GitHub projects, partner communities, investors, and podcast leads shown on the public landscape.") -}}
 
 {% if can_manage_landscape -%}
   <section class="mt-8 overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
@@ -14,7 +14,7 @@
           </div>
           <h2 class="mt-3 text-xl font-black tracking-tight text-stone-950">Add landscape entry</h2>
           <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
-            Add startups, open-source projects, partner communities, investors, podcast leads, and tools that should appear in the public GOUP
+            Add startups, accelerators, open-source projects, partner communities, investors, podcast leads, and tools that should appear in the public GOUP
             ecosystem map. Keep the summary clear so visitors understand what it does quickly.
           </p>
         </div>
@@ -33,12 +33,13 @@
           <input id="new-landscape-name"
                  name="name"
                  class="input-primary"
-                 placeholder="Project, startup, community, investor, or podcast name"
+                 placeholder="Project, startup, accelerator, community, investor, or podcast name"
                  required />
         </div>
         <div class="space-y-2 lg:col-span-3">
           <label class="form-label" for="new-landscape-kind">Kind</label>
           <select id="new-landscape-kind" name="kind" class="select-primary" required>
+            <option value="accelerator">Accelerator</option>
             <option value="startup">Startup</option>
             <option value="github_project">GitHub project</option>
             <option value="partner_community">Partner community</option>
@@ -96,6 +97,74 @@
         </div>
         {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", legend = "Optional logo shown on public landscape cards.", field_class = "lg:col-span-12") -}}
       </div>
+      <div class="rounded-3xl border border-primary-100 bg-primary-50/40 p-5">
+        <div class="mb-4">
+          <h3 class="text-base font-black tracking-tight text-stone-950">Accelerator details</h3>
+          <p class="mt-1 text-sm/6 text-stone-600">
+            Used when the kind is Accelerator. These fields power application, curriculum, cohort, and track details on the public landscape.
+          </p>
+        </div>
+        <div class="grid gap-5 lg:grid-cols-12">
+          <div class="space-y-2 lg:col-span-6">
+            <label class="form-label" for="new-accelerator-application-url">Application URL</label>
+            <input id="new-accelerator-application-url"
+                   name="accelerator_application_url"
+                   class="input-primary"
+                   type="url"
+                   placeholder="https://..." />
+          </div>
+          <div class="space-y-2 lg:col-span-6">
+            <label class="form-label" for="new-accelerator-curriculum-url">Curriculum URL</label>
+            <input id="new-accelerator-curriculum-url"
+                   name="accelerator_curriculum_url"
+                   class="input-primary"
+                   type="url"
+                   placeholder="https://..." />
+          </div>
+          <div class="space-y-2 lg:col-span-4">
+            <label class="form-label" for="new-accelerator-cohort-status">Cohort status</label>
+            <select id="new-accelerator-cohort-status"
+                    name="accelerator_cohort_status"
+                    class="select-primary">
+              <option value="">Not set</option>
+              <option value="planned">Planned</option>
+              <option value="open">Open</option>
+              <option value="running">Running</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+          <div class="space-y-2 lg:col-span-4">
+            <label class="form-label" for="new-accelerator-starts-on">Starts on</label>
+            <input id="new-accelerator-starts-on"
+                   name="accelerator_starts_on"
+                   class="input-primary"
+                   type="date" />
+          </div>
+          <div class="space-y-2 lg:col-span-4">
+            <label class="form-label" for="new-accelerator-ends-on">Ends on</label>
+            <input id="new-accelerator-ends-on"
+                   name="accelerator_ends_on"
+                   class="input-primary"
+                   type="date" />
+          </div>
+          <div class="space-y-2 lg:col-span-12">
+            <label class="form-label" for="new-accelerator-tracks">Tracks</label>
+            <input id="new-accelerator-tracks"
+                   name="accelerator_tracks"
+                   class="input-primary"
+                   placeholder="AI, Open Source, Startup, Revenue" />
+          </div>
+          <div class="space-y-2 lg:col-span-12">
+            <label class="form-label" for="new-accelerator-weekly-agenda">Weekly agenda JSON</label>
+            <textarea id="new-accelerator-weekly-agenda"
+                      name="accelerator_weekly_agenda"
+                      rows="6"
+                      class="input-primary min-h-40 resize-y"
+                      placeholder='[{"week":1,"focus":"AI Distribution","outcome":"Publish AI content"}]'></textarea>
+            <p class="form-legend">Optional structured agenda JSON. Leave blank if the curriculum URL is enough.</p>
+          </div>
+        </div>
+      </div>
       <div class="flex flex-col gap-4 rounded-3xl border border-stone-100 bg-stone-50/80 p-4 sm:flex-row sm:items-center sm:justify-end">
         <button class="btn-primary" type="submit">Add entry</button>
       </div>
@@ -130,7 +199,7 @@
   <div class="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
     <h2 class="text-lg font-semibold text-stone-900">No landscape entries yet</h2>
     <p class="mt-2 text-sm text-stone-600">
-      Add startups, GitHub projects, partner communities, investors, or podcast leads using the form above.
+      Add startups, accelerators, GitHub projects, partner communities, investors, or podcast leads using the form above.
     </p>
   </div>
 {% else -%}
@@ -179,6 +248,8 @@
                       class="select-primary"
                       required>
                 <option value="startup" {% if entry.kind == "startup" %}selected{% endif %}>Startup</option>
+                <option value="accelerator"
+                        {% if entry.kind == "accelerator" %}selected{% endif %}>Accelerator</option>
                 <option value="github_project"
                         {% if entry.kind == "github_project" %}selected{% endif %}>GitHub project</option>
                 <option value="partner_community"
@@ -235,7 +306,9 @@
                      value="{{ entry.github_url.as_deref().unwrap_or("") }}" />
             </div>
             {% let logo_value -%}
-            {% if let Some(logo_url) = &entry.logo_url %}value="{{ logo_url }}"{% endif %}
+            {% if let Some(logo_url) = &entry.logo_url %}
+              value="{{ logo_url }}"
+            {% endif %}
           {%- endlet %}
           {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", legend = "Optional logo shown on public landscape cards.", value_attr = logo_value, field_class = "lg:col-span-2") -}}
           <div class="space-y-2">
@@ -245,6 +318,106 @@
                    name="tags"
                    class="input-primary"
                    value="{{ entry.tags.join(", ") }}" />
+          </div>
+        </div>
+        <div class="rounded-3xl border border-primary-100 bg-primary-50/40 p-5">
+          <div class="mb-4">
+            <h3 class="text-base font-black tracking-tight text-stone-950">Accelerator details</h3>
+            <p class="mt-1 text-sm/6 text-stone-600">
+              Used when the kind is Accelerator. Changing the kind away from Accelerator clears these details on save.
+            </p>
+          </div>
+          <div class="grid gap-5 lg:grid-cols-12">
+            <div class="space-y-2 lg:col-span-6">
+              <label class="form-label"
+                     for="accelerator-application-url-{{ entry.landscape_entry_id }}">Application URL</label>
+              <input id="accelerator-application-url-{{ entry.landscape_entry_id }}"
+                     name="accelerator_application_url"
+                     class="input-primary"
+                     type="url"
+                     {% if let Some(accelerator) = &entry.accelerator -%}
+                     value="{{ accelerator.application_url.as_deref().unwrap_or("") }}"
+                     {%- endif %} />
+            </div>
+            <div class="space-y-2 lg:col-span-6">
+              <label class="form-label"
+                     for="accelerator-curriculum-url-{{ entry.landscape_entry_id }}">Curriculum URL</label>
+              <input id="accelerator-curriculum-url-{{ entry.landscape_entry_id }}"
+                     name="accelerator_curriculum_url"
+                     class="input-primary"
+                     type="url"
+                     {% if let Some(accelerator) = &entry.accelerator -%}
+                     value="{{ accelerator.curriculum_url.as_deref().unwrap_or("") }}"
+                     {%- endif %} />
+            </div>
+            <div class="space-y-2 lg:col-span-4">
+              <label class="form-label"
+                     for="accelerator-cohort-status-{{ entry.landscape_entry_id }}">Cohort status</label>
+              <select id="accelerator-cohort-status-{{ entry.landscape_entry_id }}"
+                      name="accelerator_cohort_status"
+                      class="select-primary">
+                <option value="">Not set</option>
+                <option value="planned"
+                        {% if let Some(accelerator) = &entry.accelerator %}
+                          {% if accelerator.cohort_status.as_deref() == Some("planned") %}selected{% endif %}
+                        {% endif %}>Planned</option>
+                <option value="open"
+                        {% if let Some(accelerator) = &entry.accelerator %}
+                          {% if accelerator.cohort_status.as_deref() == Some("open") %}selected{% endif %}
+                        {% endif %}>Open</option>
+                <option value="running"
+                        {% if let Some(accelerator) = &entry.accelerator %}
+                          {% if accelerator.cohort_status.as_deref() == Some("running") %}selected{% endif %}
+                        {% endif %}>Running</option>
+                <option value="completed"
+                        {% if let Some(accelerator) = &entry.accelerator %}
+                          {% if accelerator.cohort_status.as_deref() == Some("completed") %}selected{% endif %}
+                        {% endif %}>Completed</option>
+              </select>
+            </div>
+            <div class="space-y-2 lg:col-span-4">
+              <label class="form-label"
+                     for="accelerator-starts-on-{{ entry.landscape_entry_id }}">Starts on</label>
+              <input id="accelerator-starts-on-{{ entry.landscape_entry_id }}"
+                     name="accelerator_starts_on"
+                     class="input-primary"
+                     type="date"
+                     {% if let Some(accelerator) = &entry.accelerator -%}
+                     value="{{ accelerator.starts_on.as_deref().unwrap_or("") }}"
+                     {%- endif %} />
+            </div>
+            <div class="space-y-2 lg:col-span-4">
+              <label class="form-label"
+                     for="accelerator-ends-on-{{ entry.landscape_entry_id }}">Ends on</label>
+              <input id="accelerator-ends-on-{{ entry.landscape_entry_id }}"
+                     name="accelerator_ends_on"
+                     class="input-primary"
+                     type="date"
+                     {% if let Some(accelerator) = &entry.accelerator -%}
+                     value="{{ accelerator.ends_on.as_deref().unwrap_or("") }}"
+                     {%- endif %} />
+            </div>
+            <div class="space-y-2 lg:col-span-12">
+              <label class="form-label"
+                     for="accelerator-tracks-{{ entry.landscape_entry_id }}">Tracks</label>
+              <input id="accelerator-tracks-{{ entry.landscape_entry_id }}"
+                     name="accelerator_tracks"
+                     class="input-primary"
+                     placeholder="AI, Open Source, Startup, Revenue"
+                     {% if let Some(accelerator) = &entry.accelerator -%}value="{{ accelerator.tracks.join(", ") }}"{%- endif %} />
+            </div>
+            <div class="space-y-2 lg:col-span-12">
+              <label class="form-label"
+                     for="accelerator-weekly-agenda-{{ entry.landscape_entry_id }}">
+                Weekly agenda JSON
+              </label>
+              <textarea id="accelerator-weekly-agenda-{{ entry.landscape_entry_id }}"
+                        name="accelerator_weekly_agenda"
+                        rows="6"
+                        class="input-primary min-h-40 resize-y"
+                        placeholder='[{"week":1,"focus":"AI Distribution","outcome":"Publish AI content"}]'>{% if let Some(accelerator) = &entry.accelerator %}{% if let Some(weekly_agenda) = &accelerator.weekly_agenda %}{{ weekly_agenda }}{% endif %}{% endif %}</textarea>
+              <p class="form-legend">Optional structured agenda JSON. Leave blank if the curriculum URL is enough.</p>
+            </div>
           </div>
         </div>
         {% if can_manage_landscape -%}

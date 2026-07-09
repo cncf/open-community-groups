@@ -16,6 +16,23 @@ returns jsonb language sql stable as $$
         'tags', p_entry.tags,
         'published', p_entry.published,
         'created_at', extract(epoch from p_entry.created_at)::bigint,
-        'updated_at', extract(epoch from p_entry.updated_at)::bigint
+        'updated_at', extract(epoch from p_entry.updated_at)::bigint,
+        'accelerator', (
+            select case
+                when lap.landscape_entry_id is null then null
+                else jsonb_build_object(
+                    'application_url', lap.application_url,
+                    'curriculum_url', lap.curriculum_url,
+                    'cohort_status', lap.cohort_status,
+                    'starts_on', lap.starts_on,
+                    'ends_on', lap.ends_on,
+                    'tracks', lap.tracks,
+                    'weekly_agenda', lap.weekly_agenda,
+                    'updated_at', extract(epoch from lap.updated_at)::bigint
+                )
+            end
+            from landscape_accelerator_profile lap
+            where lap.landscape_entry_id = p_entry.landscape_entry_id
+        )
     );
 $$;

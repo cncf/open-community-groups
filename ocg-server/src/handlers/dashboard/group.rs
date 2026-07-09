@@ -22,6 +22,7 @@ use crate::{
 mod tests;
 
 pub(crate) mod analytics;
+pub(crate) mod accelerator;
 pub(crate) mod attendees;
 pub(crate) mod coffee_meet;
 pub(crate) mod events;

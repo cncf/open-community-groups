@@ -23,6 +23,66 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::accelerator::DBAccelerator for DB {
+        async fn get_group_accelerator_dashboard(
+            &self,
+            group_id: Uuid,
+        ) -> Result<crate::templates::dashboard::group::accelerator::AcceleratorDashboard>;
+        async fn add_group_accelerator_program(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            input: &crate::templates::dashboard::group::accelerator::AcceleratorProgramInput,
+        ) -> Result<Uuid>;
+        async fn add_group_accelerator_cohort(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            input: &crate::templates::dashboard::group::accelerator::AcceleratorCohortInput,
+        ) -> Result<Uuid>;
+        async fn add_group_accelerator_week(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            input: &crate::templates::dashboard::group::accelerator::AcceleratorWeekInput,
+        ) -> Result<Uuid>;
+        async fn submit_group_accelerator_application(
+            &self,
+            user_id: Uuid,
+            group_id: Uuid,
+            cohort_id: Uuid,
+            input: &crate::templates::dashboard::group::accelerator::AcceleratorApplicationInput,
+        ) -> Result<Uuid>;
+        async fn review_group_accelerator_application(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            application_id: Uuid,
+            input: &crate::templates::dashboard::group::accelerator::AcceleratorApplicationReviewInput,
+        ) -> Result<()>;
+        async fn accept_group_accelerator_application(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            application_id: Uuid,
+        ) -> Result<Uuid>;
+        async fn submit_group_accelerator_weekly_update(
+            &self,
+            user_id: Uuid,
+            group_id: Uuid,
+            week_id: Uuid,
+            input: &crate::templates::dashboard::group::accelerator::AcceleratorWeeklyUpdateInput,
+        ) -> Result<Uuid>;
+        async fn review_group_accelerator_weekly_update(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            weekly_update_id: Uuid,
+            input: &crate::templates::dashboard::group::accelerator::AcceleratorWeeklyUpdateReviewInput,
+        ) -> Result<()>;
+    }
+
+    #[async_trait]
     impl crate::db::auth::DBAuth for DB {
         async fn activate_pre_registered_user_email_password(
             &self,
