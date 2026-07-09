@@ -251,7 +251,7 @@ where
             insert into group_accelerator_cohort (
                 group_accelerator_program_id, created_by, name, status, starts_on, ends_on, application_deadline, capacity
             )
-            select gap.group_accelerator_program_id, $2::uuid, $3, $4, $5::date, $6::date, $7::date, $8
+            select gap.group_accelerator_program_id, $2::uuid, $3, $4, $5::text::date, $6::text::date, $7::text::date, $8
             from group_accelerator_program gap
             where gap.group_id = $1::uuid
             and gap.group_accelerator_program_id = $9::uuid
@@ -284,7 +284,7 @@ where
             insert into group_accelerator_week (
                 group_accelerator_cohort_id, created_by, week_number, title, goals, resources_url, deliverable, starts_on, due_on
             )
-            select gac.group_accelerator_cohort_id, $2::uuid, $3, $4, $5, $6, $7, $8::date, $9::date
+            select gac.group_accelerator_cohort_id, $2::uuid, $3, $4, $5, $6, $7, $8::text::date, $9::text::date
             from group_accelerator_cohort gac
             join group_accelerator_program gap on gap.group_accelerator_program_id = gac.group_accelerator_program_id
             where gap.group_id = $1::uuid

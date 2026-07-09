@@ -3,7 +3,7 @@
 {# Group Categories header -#}
 {{ dashboard::page_title(title = "Group Categories") -}}
 
-<div class="flex justify-between items-end my-5">
+<div class="my-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
   <div class="text-sm text-stone-600">
     {{ categories.len() }} categor{%- if categories.len() == 1 -%}y{%- else -%}ies{%- endif -%}
   </div>
@@ -25,7 +25,7 @@
 {# End group categories header -#}
 
 {# Group categories table -#}
-<div class="relative overflow-visible mt-5">
+<div class="dashboard-table-scroll relative mt-5 overflow-x-auto">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8">
     {# Table header -#}
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
@@ -67,7 +67,7 @@
             {# End groups count -#}
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[112px]">
-              <div class="flex items-center justify-end gap-2">
+              <div class="flex flex-wrap items-center justify-end gap-2">
                 <button hx-get="/dashboard/alliance/group-categories/{{ category.group_category_id }}/update"
                         hx-target="#dashboard-content"
                         hx-replace-url="/dashboard/alliance?tab=group-categories"

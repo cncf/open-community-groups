@@ -4,7 +4,7 @@
 {# Sponsors header -#}
 {{ dashboard::page_title(title = "Sponsors") -}}
 
-<div class="flex justify-between items-end my-5">
+<div class="my-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
   <div class="text-sm text-stone-600">
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = sponsors.len(), total = total, label = "sponsor") }}
   </div>
@@ -26,7 +26,7 @@
 {# End sponsors header -#}
 
 {# Sponsors table -#}
-<div class="relative overflow-visible mt-5">
+<div class="dashboard-table-scroll relative mt-5 overflow-x-auto">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Sponsors list">
@@ -116,7 +116,7 @@
 
             {# Actions -#}
             <td class="px-3 xl:px-5 py-4 w-[112px]">
-              <div class="flex items-center justify-end gap-2">
+              <div class="flex flex-wrap items-center justify-end gap-2">
                 <div>
                   <button hx-get="/dashboard/group/sponsors/{{ sponsor.group_sponsor_id }}/update"
                           hx-target="#dashboard-content"

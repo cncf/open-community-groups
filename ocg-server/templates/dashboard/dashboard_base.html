@@ -25,13 +25,27 @@
     <aside class="w-full shrink-0 border-b border-stone-200 bg-stone-100 md:h-dvh md:sticky md:top-0 md:w-[225px] md:border-b-0 lg:w-[300px]"
            role="navigation"
            aria-label="Dashboard navigation">
-      <div class="flex h-full flex-col justify-between gap-4 py-4 md:gap-0 md:py-5 md:pt-24">
-        <div class="flex flex-col grow min-h-0 w-full">
+      <input id="dashboard-mobile-menu-toggle"
+             type="checkbox"
+             class="peer sr-only"
+             aria-label="Toggle dashboard navigation" />
+      <div class="sticky top-20 z-10 border-b border-stone-200 bg-stone-100 px-3 py-3 md:hidden">
+        <label for="dashboard-mobile-menu-toggle"
+               class="flex min-h-11 cursor-pointer items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-900 shadow-sm">
+          <span>Dashboard menu</span>
+          <span class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <span>Menu</span>
+            <span class="svg-icon size-3 icon-caret-down bg-stone-500"></span>
+          </span>
+        </label>
+      </div>
+      <div class="hidden max-h-[calc(100dvh-8.5rem)] overflow-y-auto border-b border-stone-200 bg-stone-100 peer-checked:block md:flex md:h-full md:max-h-none md:flex-col md:justify-between md:gap-0 md:overflow-visible md:border-b-0 md:py-5 md:pt-24">
+        <div class="flex min-h-0 grow flex-col py-4 md:w-full md:py-0">
           {% block menu -%}
           {% endblock menu -%}
         </div>
 
-        <div class="w-full px-3 pb-1 md:pb-0 lg:px-5 shrink-0">
+        <div class="w-full shrink-0 px-3 pb-4 md:pb-0 lg:px-5">
           {# Logout -#}
           <a href="/log-out"
              hx-boost="false"

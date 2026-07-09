@@ -7,7 +7,7 @@
 {{ dashboard::page_title(title = "Submissions",
 description = "Track and manage your call for speakers submissions.") -}}
 
-<div class="flex justify-between items-end my-5">
+<div class="my-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
   <div class="text-sm text-stone-600">
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = submissions.len(), total = total, label = "submission") }}
   </div>
@@ -16,7 +16,7 @@ description = "Track and manage your call for speakers submissions.") -}}
 
 {# Submissions table -#}
 <div>
-  <div class="relative overflow-visible">
+  <div class="dashboard-table-scroll relative overflow-x-auto">
     <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
       {# Table columns -#}
       <colgroup>
@@ -106,7 +106,7 @@ description = "Track and manage your call for speakers submissions.") -}}
               {# End updated date -#}
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[112px]">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex flex-wrap items-center justify-end gap-2">
                   {% if submission.status_id == "information-requested" -%}
                     <button type="button"
                             class="btn-tertiary p-2"

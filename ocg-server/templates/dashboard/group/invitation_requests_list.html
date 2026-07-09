@@ -10,7 +10,7 @@
      hx-swap="innerHTML">
   {# Filters -#}
   <div class="my-5">
-    <div class="relative w-[36rem] max-w-full">
+    <div class="relative w-full max-w-full sm:w-[36rem]">
       <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
         <div class="svg-icon size-4 icon-search bg-stone-300"></div>
       </div>
@@ -57,7 +57,7 @@
   {# End header -#}
 
   {# Invitation requests table -#}
-  <div class="relative overflow-visible pb-12">
+  <div class="dashboard-table-scroll relative overflow-x-auto pb-12">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
            role="table"
            aria-label="Invitation requests">
@@ -101,9 +101,7 @@
               {# Requester -#}
               <td class="px-3 xl:px-5 py-4 max-w-0">
                 <div class="flex items-center space-x-5">
-                  <logo-image
-                  {% if let Some(photo_url) = &request.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                  size="size-10" placeholder="{{ self::user_initials(request.name.as_deref() , request.username.as_str()) }}">
+                  <logo-image {% if let Some(photo_url) = &request.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-10" placeholder="{{ self::user_initials(request.name.as_deref() , request.username.as_str()) }}">
                   </logo-image>
                   <div class="min-w-0">
                     <div class="font-medium text-stone-900 truncate mb-1">{{ request.name|assigned_or(request.username) }}</div>

@@ -28,11 +28,11 @@
          hx-target="body"
          hx-indicator="#dashboard-spinner"
          hx-push-url="true"
-         class="flex items-center justify-between cursor-pointer"
+         class="flex min-h-11 items-center justify-between gap-3 cursor-pointer md:min-h-8"
          aria-current="page">
-        <div class="flex items-center">
-          <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-stone-950"></div>
-          <div class="text-sm/8 font-semibold ms-3 text-stone-950">{{ name }}</div>
+        <div class="flex min-w-0 items-center">
+          <div class="svg-icon {{ icon_size }} shrink-0 icon-{{ icon }} bg-stone-950"></div>
+          <div class="min-w-0 text-sm/8 font-semibold ms-3 text-stone-950">{{ name }}</div>
         </div>
         {% if items_count + 0 > 0 -%}
           <div class="text-[0.65rem]/4 font-bold text-stone-700 border border-stone-200 bg-white rounded-full px-2 pt-px ms-3">
@@ -44,14 +44,14 @@
     </div>
   {% else -%}
     {% if disabled -%}
-      <button class="rounded-md px-3 border border-transparent cursor-not-allowed {{ extra_styles }} py-2"
+      <button class="min-h-11 rounded-md px-3 border border-transparent cursor-not-allowed {{ extra_styles }} py-2 md:min-h-8"
               disabled
               aria-disabled="true"
               title="Coming soon!"
               aria-label="{{ name }} - Coming soon">
-        <div class="flex items-center opacity-50">
-          <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-stone-500"></div>
-          <div class="text-sm/8 ms-3 text-stone-500">{{ name }}</div>
+        <div class="flex min-w-0 items-center opacity-50">
+          <div class="svg-icon {{ icon_size }} shrink-0 icon-{{ icon }} bg-stone-500"></div>
+          <div class="min-w-0 text-sm/8 ms-3 text-stone-500">{{ name }}</div>
         </div>
       </button>
     {% else -%}
@@ -60,10 +60,10 @@
            hx-target="body"
            hx-indicator="#dashboard-spinner"
            hx-push-url="true"
-           class="flex items-center justify-between cursor-pointer">
-          <div class="flex items-center">
-            <div class="svg-icon {{ icon_size }} icon-{{ icon }} bg-stone-500"></div>
-            <div class="text-sm/8 ms-3 text-stone-700">{{ name }}</div>
+           class="flex min-h-11 items-center justify-between gap-3 cursor-pointer md:min-h-8">
+          <div class="flex min-w-0 items-center">
+            <div class="svg-icon {{ icon_size }} shrink-0 icon-{{ icon }} bg-stone-500"></div>
+            <div class="min-w-0 text-sm/8 ms-3 text-stone-700">{{ name }}</div>
           </div>
           {% if items_count + 0 > 0 -%}
             <div class="text-[0.65rem]/4 font-bold text-stone-700 border border-stone-200 bg-white rounded-full px-2 pt-px ms-3">
@@ -82,8 +82,8 @@
   <div>
     <div class="text-xl lg:text-2xl font-black tracking-tight text-stone-950">{{ title }}</div>
     {% if !description.is_empty() -%}
-      <div class="mt-1 flex flex-wrap items-center gap-3">
-        <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
+      <div class="mt-1 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <p class="m-0 min-w-0 text-sm/6 text-stone-500">{{ description }}</p>
         {% if !button.is_empty() -%}
           {{ button | safe }}
         {% endif -%}
@@ -98,12 +98,12 @@
 {# Page title #}
 {% macro page_title(title, description = "", button = "") -%}
   <div>
-    <div class="flex items-center justify-between gap-3">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="text-xl lg:text-2xl font-black tracking-tight text-stone-950">{{ title }}</div>
     </div>
     {% if !description.is_empty() -%}
-      <div class="mt-1 flex flex-wrap items-center gap-3">
-        <p class="text-sm/6 text-stone-500 m-0">{{ description }}</p>
+      <div class="mt-1 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <p class="m-0 min-w-0 text-sm/6 text-stone-500">{{ description }}</p>
         {% if !button.is_empty() -%}
           {{ button | safe }}
         {% endif -%}
@@ -117,16 +117,16 @@
 
 {# Form actions #}
 {% macro form_actions(cancel_href, spinner_id, submit_label, disabled = false, disabled_title = "") -%}
-  <div class="mt-6 flex items-center justify-end gap-x-6">
+  <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-x-6">
     <button id="cancel-button"
             type="button"
             hx-get="{{ cancel_href }}"
             hx-target="body"
             hx-indicator="#dashboard-spinner"
-            class="btn-primary-outline">Cancel</button>
+            class="btn-primary-outline w-full sm:w-auto">Cancel</button>
 
     <button type="submit"
-            class="btn-primary relative
+            class="btn-primary relative w-full sm:w-auto
                    {% if disabled -%}
                      opacity-50 cursor-not-allowed
                    {% endif -%}"

@@ -26,7 +26,7 @@ description = "Create reusable session proposals to submit to events.") -}}
   {# Pending invitations table -#}
   <div class="mb-10">
     <div class="overflow-hidden bg-white">
-      <div class="relative overflow-visible">
+      <div class="dashboard-table-scroll relative overflow-x-auto">
         <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
           {# Table header -#}
           <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
@@ -52,9 +52,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                 {# Invited by -#}
                 <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
-                    <logo-image
-                    {% if let Some(photo_url) = &invitation.speaker_photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                    size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str() ) }}">
+                    <logo-image {% if let Some(photo_url) = &invitation.speaker_photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(None, invitation.speaker_name.as_str() ) }}">
                     </logo-image>
                     <div class="font-medium text-stone-900">{{ invitation.speaker_name }}</div>
                   </div>
@@ -71,7 +69,7 @@ description = "Create reusable session proposals to submit to events.") -}}
                 {# End updated date -#}
                 {# Actions -#}
                 <td class="px-3 xl:px-5 py-4 w-[152px]">
-                  <div class="flex items-center justify-end gap-2">
+                  <div class="flex flex-wrap items-center justify-end gap-2">
                     <button type="button"
                             class="btn-tertiary p-2"
                             data-action="view-pending-session-proposal"
@@ -121,7 +119,7 @@ description = "Create reusable session proposals to submit to events.") -}}
 {% endif -%}
 
 {# Proposals header -#}
-<div class="flex justify-between items-end my-5">
+<div class="my-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
   <div class="text-sm text-stone-600">
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = session_proposals.len(), total = total, label = "session proposal") }}
   </div>
@@ -133,7 +131,7 @@ description = "Create reusable session proposals to submit to events.") -}}
 
 {# Session proposals table -#}
 <div>
-  <div class="relative overflow-visible">
+  <div class="dashboard-table-scroll relative overflow-x-auto">
     <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
       {# Table header -#}
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
@@ -180,9 +178,7 @@ description = "Create reusable session proposals to submit to events.") -}}
               <td class="px-3 xl:px-5 py-4 text-nowrap hidden xl:table-cell">
                 {% if let Some(co_speaker) = &session_proposal.co_speaker -%}
                   <div class="flex items-center space-x-3">
-                    <logo-image
-                    {% if let Some(photo_url) = &co_speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                    size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
+                    <logo-image {% if let Some(photo_url) = &co_speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(co_speaker.name.as_deref() , co_speaker.username.as_str()) }}">
                     </logo-image>
                     <div class="font-medium text-stone-900">
                       {{ co_speaker.name.as_deref().unwrap_or(&co_speaker.username) }}
@@ -217,7 +213,7 @@ description = "Create reusable session proposals to submit to events.") -}}
               {# End status -#}
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[152px]">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex flex-wrap items-center justify-end gap-2">
                   {% set edit_disabled = session_proposal.linked_session_id.is_some() -%}
                   <button type="button"
                           class="btn-tertiary p-2

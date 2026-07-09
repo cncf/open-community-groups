@@ -62,7 +62,7 @@ description = "Review and manage call for speakers submissions.") -}}
 
 {# Submissions table -#}
 <div class="mt-10">
-  <div class="relative overflow-visible">
+  <div class="dashboard-table-scroll relative overflow-x-auto">
     <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500">
       {# Table columns -#}
       <colgroup>
@@ -109,9 +109,7 @@ description = "Review and manage call for speakers submissions.") -}}
               {# Speaker -#}
               <td class="px-3 xl:px-5 py-4">
                 <div class="flex items-center space-x-3">
-                  <logo-image
-                  {% if let Some(photo_url) = &submission.speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                  size="size-8" placeholder="{{ self::user_initials(submission.speaker.name.as_deref() , submission.speaker.username.as_str()) }}">
+                  <logo-image {% if let Some(photo_url) = &submission.speaker.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-8" placeholder="{{ self::user_initials(submission.speaker.name.as_deref() , submission.speaker.username.as_str()) }}">
                   </logo-image>
                   <div class="font-medium text-stone-900 truncate">
                     {{ submission.speaker.name.as_deref().unwrap_or(&submission.speaker.username) }}

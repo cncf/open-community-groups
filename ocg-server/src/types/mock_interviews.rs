@@ -341,6 +341,27 @@ impl MockInterviewRequest {
             .as_deref()
             .unwrap_or(self.requester_username.as_str())
     }
+
+    /// Returns the requester in the shape expected by user search selectors.
+    pub(crate) fn requester_selection(&self) -> Vec<MockInterviewUserSelection> {
+        vec![MockInterviewUserSelection {
+            user_id: self.requester_user_id,
+            username: self.requester_username.clone(),
+            name: Some(self.display_name().to_string()),
+        }]
+    }
+}
+
+/// User selection payload for dashboard search components.
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct MockInterviewUserSelection {
+    /// User ID.
+    pub user_id: Uuid,
+    /// Username.
+    pub username: String,
+    /// Display name.
+    pub name: Option<String>,
 }
 
 /// Mock interview match.

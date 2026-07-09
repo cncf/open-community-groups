@@ -7,7 +7,7 @@
 {# End events list header -#}
 
 {# Add event button -#}
-<div class="mb-10 mt-5 flex justify-end">
+<div class="mb-10 mt-5 flex flex-col sm:flex-row sm:justify-end">
   <button id="add-event-button"
           hx-get="/dashboard/group/events/add"
           hx-target="#dashboard-content"
@@ -65,7 +65,7 @@
     {{ pagination::range_display(offset = upcoming_offset.unwrap_or(0) , count = events.upcoming.events.len(), total = events.upcoming.total, label = "event") }}
   </div>
   {# Upcoming events table -#}
-  <div class="relative overflow-visible">
+  <div class="dashboard-table-scroll relative overflow-x-auto">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"
            role="table"
            aria-label="Upcoming events list">
@@ -196,7 +196,7 @@
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[152px]">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex flex-wrap items-center justify-end gap-2">
                   {# Update event button -#}
                   <div>
                     <button type="button"
@@ -351,7 +351,7 @@
     {{ pagination::range_display(offset = past_offset.unwrap_or(0) , count = events.past.events.len(), total = events.past.total, label = "event") }}
   </div>
   {# Past events table -#}
-  <div class="relative overflow-visible">
+  <div class="dashboard-table-scroll relative overflow-x-auto">
     <table class="table-auto w-full text-xs lg:text-sm text-left rtl:text-right text-stone-500 mb-8"
            role="table"
            aria-label="Past events list">
@@ -482,7 +482,7 @@
 
               {# Actions -#}
               <td class="px-3 xl:px-5 py-4 w-[152px]">
-                <div class="flex items-center justify-end gap-2">
+                <div class="flex flex-wrap items-center justify-end gap-2">
                   {# Update event button -#}
                   <div>
                     <button type="button"

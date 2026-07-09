@@ -14,7 +14,7 @@
 
 {# Filters -#}
 <div class="my-5">
-  <div class="relative w-[36rem] max-w-full">
+  <div class="relative w-full max-w-full sm:w-[36rem]">
     <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
       <div class="svg-icon size-4 icon-search bg-stone-300"></div>
     </div>
@@ -53,11 +53,11 @@
 {# End filters -#}
 
 {# Header actions -#}
-<div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
+<div class="my-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
     {{ pagination::range_display(offset = refresh_offset , count = attendees.len() , total = total, label = "attendee") }}
   </div>
-  <div class="shrink-0 w-auto mb-1.5 flex gap-3 flex-row">
+  <div class="mb-1.5 flex w-full shrink-0 flex-col gap-3 sm:flex-row lg:w-auto">
     <button id="open-event-qr-code-modal"
             type="button"
             class="btn-primary-outline w-full lg:w-auto whitespace-nowrap
@@ -166,7 +166,7 @@
       </button>
       <div id="attendee-actions-menu"
            data-attendee-actions-dropdown
-           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[22rem] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+           class="dropdown absolute hidden z-10 end-0 top-full mt-2 w-[min(22rem,calc(100vw-2rem))] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
         <ul class="py-2 text-sm text-stone-700" role="menu">
           <li>
             <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
@@ -221,7 +221,7 @@
 {# End email selection mode -#}
 
 {# Attendees table -#}
-<div class="relative overflow-visible pb-12">
+<div class="dashboard-table-scroll relative overflow-x-auto pb-12">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          role="table"
          aria-label="Attendees list">
@@ -297,9 +297,7 @@
             {# Attendee -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
               <div class="flex items-center space-x-5">
-                <logo-image
-                {% if let Some(photo_url) = &attendee.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
-                size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str()) }}">
+                <logo-image {% if let Some(photo_url) = &attendee.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-10" placeholder="{{ self::user_initials(attendee.name.as_deref() , attendee.username.as_str()) }}">
                 </logo-image>
                 <div class="min-w-0">
                   <div class="flex items-center space-x-3 mb-1 min-w-0">

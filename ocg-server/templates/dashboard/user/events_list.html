@@ -8,7 +8,7 @@
 {{ dashboard::page_title(title = "My Events",
 description = "Upcoming events where you'll participate.") -}}
 
-<div class="flex justify-between items-end my-5">
+<div class="my-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
   <div class="text-sm text-stone-600">
     {{ pagination::range_display(offset = offset.unwrap_or(0) , count = events.len(), total = total, label = "event") }}
   </div>
@@ -16,7 +16,7 @@ description = "Upcoming events where you'll participate.") -}}
 {# End header -#}
 
 {# Events table -#}
-<div class="relative overflow-visible">
+<div class="dashboard-table-scroll relative overflow-x-auto">
   <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       {# Table header -#}
@@ -131,7 +131,7 @@ description = "Upcoming events where you'll participate.") -}}
                          title="Open event actions">
                   <div class="svg-icon size-4 icon-vertical-dots"></div>
                 </summary>
-                <div class="dropdown absolute z-10 end-0 top-8 w-[220px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
+                <div class="dropdown absolute z-10 end-0 top-8 w-[min(220px,calc(100vw-2rem))] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                   <ul class="py-2 text-sm text-stone-700" role="menu">
                     {% if let Some(resume_checkout_url) = &item.resume_checkout_url -%}
                       <li>
@@ -213,45 +213,45 @@ description = "Upcoming events where you'll participate.") -}}
           <p class="mt-1 text-sm text-stone-600">{{ item.event.name }}</p>
         {%- endlet %}
         {% let questions_title_id -%}user-event-questions-title-{{ item.event.event_id }}{%- endlet %}
-        {{ dashboard::modal_header(title_id = questions_title_id,
-                title = "Registration questions",
-                close_attrs = "data-user-event-questions-close",
-                subtitle = questions_subtitle,
-                align_items = "items-start") -}}
-        {# End modal header -#}
-        {# Modal form -#}
-        <form data-user-event-questions-form
-              hx-put="/dashboard/user/events/{{ item.event.alliance_name }}/{{ item.event.event_id }}/registration-answers"
-              hx-indicator="#dashboard-spinner"
-              hx-disabled-elt="find button[type='submit']"
-              class="modal-body p-4 md:p-6 space-y-7">
-          {% let radio_name_prefix -%}question-{{ item.event.event_id }}{%- endlet %}
-          {{ question_answers::fields(questions = item.registration_questions,
-                    answers = item.registration_answers.as_ref() ,
-          answer_attr = "data-question-answer",
-          radio_name_prefix = radio_name_prefix) -}}
-          <input type="hidden" data-question-answers-input name="registration_answers">
-          <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
-            {{ question_answers::required_note() -}}
-            <div class="flex flex-col gap-3 md:flex-row md:justify-end">
-              <button data-user-event-questions-close
-                      type="button"
-                      class="btn-primary-outline">Cancel</button>
-              <button type="submit" class="btn-primary">
-                {% if item.registration_questions_pending() -%}
-                  Complete registration
-                {% else -%}
-                  Save answers
-                {% endif -%}
-              </button>
-            </div>
-          </div>
-        </form>
-        {# End modal form -#}
+      {{ dashboard::modal_header(title_id = questions_title_id,
+            title = "Registration questions",
+            close_attrs = "data-user-event-questions-close",
+            subtitle = questions_subtitle,
+            align_items = "items-start") -}}
+      {# End modal header -#}
+      {# Modal form -#}
+      <form data-user-event-questions-form
+            hx-put="/dashboard/user/events/{{ item.event.alliance_name }}/{{ item.event.event_id }}/registration-answers"
+            hx-indicator="#dashboard-spinner"
+            hx-disabled-elt="find button[type='submit']"
+            class="modal-body p-4 md:p-6 space-y-7">
+        {% let radio_name_prefix -%}question-{{ item.event.event_id }}{%- endlet %}
+      {{ question_answers::fields(questions = item.registration_questions,
+            answers = item.registration_answers.as_ref() ,
+      answer_attr = "data-question-answer",
+      radio_name_prefix = radio_name_prefix) -}}
+      <input type="hidden" data-question-answers-input name="registration_answers">
+      <div class="flex flex-col gap-3 border-t border-stone-200 pt-4 md:flex-row md:items-center md:justify-between">
+        {{ question_answers::required_note() -}}
+        <div class="flex flex-col gap-3 md:flex-row md:justify-end">
+          <button data-user-event-questions-close
+                  type="button"
+                  class="btn-primary-outline">Cancel</button>
+          <button type="submit" class="btn-primary">
+            {% if item.registration_questions_pending() -%}
+              Complete registration
+            {% else -%}
+              Save answers
+            {% endif -%}
+          </button>
+        </div>
       </div>
-    </div>
+    </form>
+    {# End modal form -#}
   </div>
-  {# End registration questions modal -#}
+</div>
+</div>
+{# End registration questions modal -#}
 {% endif -%}
 {% endfor -%}
 {# End registration questions modals -#}

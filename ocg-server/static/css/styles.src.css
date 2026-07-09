@@ -66,7 +66,7 @@
   }
 
   .btn-primary {
-     @apply py-1.5 px-5 h-10 text-sm font-bold text-center text-white rounded-full bg-stone-950 shadow-sm transition-colors enabled:hover:bg-stone-800 enabled:focus:ring-4 enabled:focus:ring-stone-200 enabled:active:ring-4 enabled:active:ring-stone-200 enabled:focus:bg-stone-800 enabled:focus:text-white relative overflow-hidden;
+     @apply inline-flex min-h-10 items-center justify-center py-1.5 px-5 text-sm font-bold text-center text-white rounded-full bg-stone-950 shadow-sm transition-colors enabled:hover:bg-stone-800 enabled:focus:ring-4 enabled:focus:ring-stone-200 enabled:active:ring-4 enabled:active:ring-stone-200 enabled:focus:bg-stone-800 enabled:focus:text-white relative overflow-hidden;
   }
 
   .btn-primary-anchor {
@@ -74,7 +74,7 @@
   }
 
   .btn-secondary {
-    @apply py-1.5 px-5 h-10 bg-white items-center text-sm font-bold text-center text-stone-700 rounded-full border border-stone-200 shadow-sm transition-colors enabled:hover:border-stone-950 enabled:hover:bg-stone-950 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-stone-200 enabled:active:ring-4 enabled:active:ring-stone-200 enabled:focus:bg-stone-950 enabled:focus:text-white relative overflow-hidden;
+    @apply inline-flex min-h-10 items-center justify-center py-1.5 px-5 bg-white text-sm font-bold text-center text-stone-700 rounded-full border border-stone-200 shadow-sm transition-colors enabled:hover:border-stone-950 enabled:hover:bg-stone-950 enabled:hover:text-white enabled:focus:ring-4 enabled:focus:ring-stone-200 enabled:active:ring-4 enabled:active:ring-stone-200 enabled:focus:bg-stone-950 enabled:focus:text-white relative overflow-hidden;
   }
 
   .btn-secondary-anchor {
@@ -82,7 +82,7 @@
   }
 
   .btn-tertiary {
-    @apply enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden;
+    @apply inline-flex items-center justify-center enabled:cursor-pointer text-center text-sm/6 text-stone-900 px-5 py-2 border-transparent transition-colors rounded-full focus:ring-0 focus:outline-none focus:ring-transparent hover:enabled:bg-stone-50 hover:enabled:border-stone-50 relative overflow-hidden;
   }
 
   .btn-tertiary-anchor {
@@ -95,7 +95,7 @@
   }
 
   .btn-primary-outline {
-    @apply enabled:cursor-pointer text-center font-bold text-stone-700 border border-stone-200 shadow-sm transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-stone-950 hover:enabled:border-stone-950 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
+    @apply inline-flex items-center justify-center enabled:cursor-pointer text-center font-bold text-stone-700 border border-stone-200 shadow-sm transition-colors bg-white rounded-full hover:enabled:text-white hover:enabled:bg-stone-950 hover:enabled:border-stone-950 focus:ring-0 focus:outline-none focus:ring-transparent text-sm px-5 py-2 relative overflow-hidden;
   }
 
   .btn-primary-outline-anchor {
@@ -295,11 +295,15 @@
   }
 
   .dashboard-scroll-area {
-    @apply min-w-0 overflow-x-auto;
+    @apply min-w-0 overflow-x-hidden;
+  }
+
+  .dashboard-scroll-area :is(.dashboard-table-scroll, .table-scroll, .overflow-x-auto) {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
   }
 
   .dashboard-scroll-area table {
-    min-width: 42rem;
+    min-width: min(42rem, calc(100vw - 2rem));
   }
 
   .dashboard-scroll-area input,
@@ -307,6 +311,18 @@
   .dashboard-scroll-area textarea,
   .dashboard-scroll-area button {
     max-width: 100%;
+  }
+
+  .dashboard-action-row {
+    @apply flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center;
+  }
+
+  .dashboard-action-row > :is(a, button) {
+    @apply w-full justify-center sm:w-auto;
+  }
+
+  .dashboard-card-grid {
+    @apply grid grid-cols-1 gap-4;
   }
 
   .modal-panel {
