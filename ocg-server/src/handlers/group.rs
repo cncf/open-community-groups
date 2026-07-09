@@ -422,14 +422,14 @@ async fn enqueue_mock_interview_match_notifications(
     site_settings: &SiteSettings,
     context: &MockInterviewMatchNotificationContext,
 ) {
-    let Some(interviewer_id) = context.interviewer_user_id else {
+    let Some(host_user_id) = context.interviewer_user_id else {
         warn!(
             match_id = %context.mock_interview_match_id,
             "mock interview match notification skipped because interviewer is missing"
         );
         return;
     };
-    let Some(interviewee_id) = context.interviewee_user_id else {
+    let Some(candidate_user_id) = context.interviewee_user_id else {
         warn!(
             match_id = %context.mock_interview_match_id,
             "mock interview match notification skipped because interviewee is missing"
@@ -447,7 +447,7 @@ async fn enqueue_mock_interview_match_notifications(
     let interview_type = option_label(&context.interview_type).to_string();
     let notifications = [
         (
-            interviewer_id,
+            host_user_id,
             MockInterviewMatched {
                 dashboard_link: dashboard_link.clone(),
                 interview_type: interview_type.clone(),
@@ -458,7 +458,7 @@ async fn enqueue_mock_interview_match_notifications(
             },
         ),
         (
-            interviewee_id,
+            candidate_user_id,
             MockInterviewMatched {
                 dashboard_link,
                 interview_type,

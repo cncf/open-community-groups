@@ -97,7 +97,7 @@ where
     #[instrument(skip(self), err)]
     async fn get_group_accelerator_dashboard(&self, group_id: Uuid) -> Result<AcceleratorDashboard> {
         self.fetch_json_one(
-            r#"
+            r"
             with programs as (
                 select gap.*
                 from group_accelerator_program gap
@@ -204,7 +204,7 @@ where
                     'created_at', extract(epoch from created_at)::bigint
                 ) order by created_at desc) from weekly_updates), '[]'::jsonb)
             )
-            "#,
+            ",
             &[&group_id],
         )
         .await
@@ -218,13 +218,13 @@ where
         input: &AcceleratorProgramInput,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            r#"
+            r"
             insert into group_accelerator_program (
                 group_id, created_by, name, summary, description, application_url, curriculum_url, active
             )
             values ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8)
             returning group_accelerator_program_id
-            "#,
+            ",
             &[
                 &group_id,
                 &actor_user_id,
@@ -247,7 +247,7 @@ where
         input: &AcceleratorCohortInput,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            r#"
+            r"
             insert into group_accelerator_cohort (
                 group_accelerator_program_id, created_by, name, status, starts_on, ends_on, application_deadline, capacity
             )
@@ -256,7 +256,7 @@ where
             where gap.group_id = $1::uuid
             and gap.group_accelerator_program_id = $9::uuid
             returning group_accelerator_cohort_id
-            "#,
+            ",
             &[
                 &group_id,
                 &actor_user_id,
@@ -280,7 +280,7 @@ where
         input: &AcceleratorWeekInput,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            r#"
+            r"
             insert into group_accelerator_week (
                 group_accelerator_cohort_id, created_by, week_number, title, goals, resources_url, deliverable, starts_on, due_on
             )
@@ -298,7 +298,7 @@ where
                 due_on = excluded.due_on,
                 updated_at = current_timestamp
             returning group_accelerator_week_id
-            "#,
+            ",
             &[
                 &group_id,
                 &actor_user_id,
@@ -324,7 +324,7 @@ where
         input: &AcceleratorApplicationInput,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            r#"
+            r"
             insert into group_accelerator_application (
                 group_accelerator_cohort_id, user_id, applicant_name, applicant_email, project_name, project_url, pitch, goals
             )
@@ -334,7 +334,7 @@ where
             where gap.group_id = $1::uuid
             and gac.group_accelerator_cohort_id = $9::uuid
             returning group_accelerator_application_id
-            "#,
+            ",
             &[
                 &group_id,
                 &user_id,
@@ -359,7 +359,7 @@ where
         input: &AcceleratorApplicationReviewInput,
     ) -> Result<()> {
         self.execute(
-            r#"
+            r"
             update group_accelerator_application gaa
             set status = $3,
                 reviewer_notes = $4,
@@ -371,7 +371,7 @@ where
             where gaa.group_accelerator_cohort_id = gac.group_accelerator_cohort_id
             and gap.group_id = $1::uuid
             and gaa.group_accelerator_application_id = $2::uuid
-            "#,
+            ",
             &[
                 &group_id,
                 &application_id,
@@ -391,7 +391,7 @@ where
         application_id: Uuid,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            r#"
+            r"
             with accepted as (
                 update group_accelerator_application gaa
                 set status = 'accepted',
@@ -425,7 +425,7 @@ where
             set status = 'active',
                 updated_at = current_timestamp
             returning group_accelerator_member_id
-            "#,
+            ",
             &[&group_id, &actor_user_id, &application_id],
         )
         .await
@@ -440,7 +440,7 @@ where
         input: &AcceleratorWeeklyUpdateInput,
     ) -> Result<Uuid> {
         self.fetch_scalar_one(
-            r#"
+            r"
             insert into group_accelerator_weekly_update (
                 group_accelerator_member_id,
                 group_accelerator_week_id,
@@ -472,7 +472,7 @@ where
                 reviewed_at = null,
                 updated_at = current_timestamp
             returning group_accelerator_weekly_update_id
-            "#,
+            ",
             &[
                 &group_id,
                 &user_id,
@@ -497,7 +497,7 @@ where
         input: &AcceleratorWeeklyUpdateReviewInput,
     ) -> Result<()> {
         self.execute(
-            r#"
+            r"
             update group_accelerator_weekly_update gawu
             set status = $3,
                 reviewer_notes = $4,
@@ -510,7 +510,7 @@ where
             where gawu.group_accelerator_member_id = gam.group_accelerator_member_id
             and gap.group_id = $1::uuid
             and gawu.group_accelerator_weekly_update_id = $2::uuid
-            "#,
+            ",
             &[
                 &group_id,
                 &weekly_update_id,
