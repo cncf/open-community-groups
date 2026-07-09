@@ -201,7 +201,10 @@ button = clear_location_button) -}}
     {{ dashboard::form_title(title = "Payments", description = "Configure how this group receives money for paid events.") -}}
 
     <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-      <input type="hidden" name="payment_recipient[provider]" value="stripe">
+      <input type="hidden"
+             name="payment_recipient[provider]"
+             value="stripe"
+             data-hx-exclude-if-empty="#payment_recipient_recipient_id">
 
       <div class="col-span-full lg:col-span-4">
         <label for="payment_recipient_recipient_id" class="form-label">Stripe Recipient</label>

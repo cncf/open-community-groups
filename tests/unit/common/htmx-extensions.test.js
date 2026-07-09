@@ -24,8 +24,7 @@ import {
 
 // Convert form data into comparable entries.
 const formDataToEntries = (formData) => Array.from(formData.entries());
-const waitForDelay = (delay = 0) =>
-  new Promise((resolve) => setTimeout(resolve, delay));
+const waitForDelay = (delay = 0) => new Promise((resolve) => setTimeout(resolve, delay));
 
 // Set the loaded commit SHA meta tag for deployment header checks.
 const setLoadedCommitSha = (commitSha) => {
@@ -265,6 +264,75 @@ describe("htmx extensions", () => {
     expect(formDataToEntries(parameters)).to.deep.equal([["test_event", "true"]]);
   });
 
+  it("excludes dependent parameters when a related form control is empty", () => {
+    document.body.innerHTML = `
+      <form id="groups-form">
+        <input
+          type="hidden"
+          name="payment_recipient[provider]"
+          value="stripe"
+          data-hx-exclude-if-empty="#payment_recipient_recipient_id"
+        >
+        <input
+          id="payment_recipient_recipient_id"
+          name="payment_recipient[recipient_id]"
+          value="   "
+        >
+        <button id="save-button" type="submit">Save</button>
+      </form>
+    `;
+    const parameters = new FormData();
+    parameters.append("payment_recipient[provider]", "stripe");
+    parameters.append("payment_recipient[recipient_id]", "   ");
+    parameters.append("name", "Group name");
+
+    handleHtmxExcludeConfigRequest({
+      detail: {
+        elt: document.getElementById("save-button"),
+        parameters,
+      },
+    });
+
+    expect(formDataToEntries(parameters)).to.deep.equal([
+      ["payment_recipient[recipient_id]", "   "],
+      ["name", "Group name"],
+    ]);
+  });
+
+  it("keeps dependent parameters when the related form control has a value", () => {
+    document.body.innerHTML = `
+      <form id="groups-form">
+        <input
+          type="hidden"
+          name="payment_recipient[provider]"
+          value="stripe"
+          data-hx-exclude-if-empty="#payment_recipient_recipient_id"
+        >
+        <input
+          id="payment_recipient_recipient_id"
+          name="payment_recipient[recipient_id]"
+          value="acct_test"
+        >
+        <button id="save-button" type="submit">Save</button>
+      </form>
+    `;
+    const parameters = new FormData();
+    parameters.append("payment_recipient[provider]", "stripe");
+    parameters.append("payment_recipient[recipient_id]", "acct_test");
+
+    handleHtmxExcludeConfigRequest({
+      detail: {
+        elt: document.getElementById("save-button"),
+        parameters,
+      },
+    });
+
+    expect(formDataToEntries(parameters)).to.deep.equal([
+      ["payment_recipient[provider]", "stripe"],
+      ["payment_recipient[recipient_id]", "acct_test"],
+    ]);
+  });
+
   it("warns and ignores invalid custom hx-exclude selectors", () => {
     // Capture warnings while the invalid selector is handled.
     const originalWarn = console.warn;
@@ -501,8 +569,7 @@ describe("htmx extensions", () => {
     };
     const successfulOtherRefresh = {
       status: 204,
-      getResponseHeader: (name) =>
-        name === "HX-Trigger" ? "refresh-sidebar, refresh-body" : null,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-sidebar, refresh-body" : null),
     };
     const failedRefresh = {
       status: 500,
@@ -613,8 +680,7 @@ describe("htmx extensions", () => {
         xhr: {
           status: 201,
           responseText: "",
-          getResponseHeader: (name) =>
-            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+          getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-community-dashboard-table" : null),
         },
       },
     });
@@ -635,8 +701,7 @@ describe("htmx extensions", () => {
     const xhr = {
       status: 201,
       responseText: "",
-      getResponseHeader: (name) =>
-        name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-community-dashboard-table" : null),
     };
 
     // Handle the response before HTMX removes the source element.

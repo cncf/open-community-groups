@@ -14,6 +14,7 @@ const htmxResponseSelector = "[data-htmx-response]";
 const REFRESH_BODY_TRIGGER = "refresh-body";
 const BODY_REFRESH_SUCCESS_TIMEOUT_MS = 10000;
 const HTMX_EXCLUDE_SELECTOR = "[hx-exclude], [data-hx-exclude]";
+const HTMX_EXCLUDE_IF_EMPTY_SELECTOR = "[data-hx-exclude-if-empty]";
 
 /**
  * Finds the closest response owner from whichever element HTMX exposes.
@@ -98,6 +99,14 @@ const deleteHtmxParameter = (parameters, name) => {
 };
 
 /**
+ * Checks whether a form control carries an empty string value.
+ * @param {Element|null} control Possible form control.
+ * @returns {boolean} True when the control value is empty.
+ */
+const isEmptyFormControl = (control) =>
+  "value" in (control || {}) && String(control.value || "").trim().length === 0;
+
+/**
  * Builds an HTMX extension that removes empty values before request encoding.
  * @param {boolean} dropZero Whether the string "0" should be treated as empty.
  * @returns {object} HTMX extension definition.
@@ -178,6 +187,30 @@ export const handleHtmxExcludeConfigRequest = (event) => {
   if (!(triggerElement instanceof Element) || !parameters) {
     return;
   }
+
+  const requestRoot = triggerElement.closest("form") || triggerElement.ownerDocument;
+  requestRoot.querySelectorAll(HTMX_EXCLUDE_IF_EMPTY_SELECTOR).forEach((control) => {
+    const controlName = control.getAttribute("name");
+    const dependencySelector = control.dataset.hxExcludeIfEmpty;
+    if (!controlName || !dependencySelector) {
+      return;
+    }
+
+    let dependency;
+    try {
+      dependency = requestRoot.querySelector(dependencySelector);
+    } catch (error) {
+      console.warn("Invalid data-hx-exclude-if-empty selector ignored.", {
+        selector: dependencySelector,
+        error,
+      });
+      return;
+    }
+
+    if (isEmptyFormControl(dependency)) {
+      deleteHtmxParameter(parameters, controlName);
+    }
+  });
 
   const excludeElement = triggerElement.closest(HTMX_EXCLUDE_SELECTOR);
   const excludeSelector = excludeElement?.getAttribute("hx-exclude") || excludeElement?.dataset.hxExclude;

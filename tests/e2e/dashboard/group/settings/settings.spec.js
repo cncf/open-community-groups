@@ -182,7 +182,7 @@ test.describe("group dashboard settings view", () => {
     await expect(paymentRecipientInput).toHaveCount(0);
   });
 
-  test("organizer can update and restore the Stripe recipient", async ({
+  test("organizer can update, clear, and restore the Stripe recipient", async ({
     organizerGroupPage,
   }) => {
     // Define the settings URL and payment fields used for restoration.
@@ -223,6 +223,23 @@ test.describe("group dashboard settings view", () => {
 
     // Assert the field value was updated.
     await expect(paymentRecipientInput).toHaveValue("acct_e2e_alpha_updated");
+
+    // Clear the form field.
+    await paymentRecipientInput.fill("");
+
+    // Click Update Group.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          response.url().includes("/dashboard/group/settings/update") &&
+          response.ok(),
+      ),
+      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+    ]);
+
+    // Assert the field value was cleared.
+    await expect(paymentRecipientInput).toHaveValue("");
 
     // Fill the form field.
     await paymentRecipientInput.fill(TEST_PAYMENT_GROUP_RECIPIENT);
