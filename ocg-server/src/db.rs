@@ -12,7 +12,8 @@ use crate::db::{
     accelerator::DBAccelerator, activity_tracker::DBActivityTracker, alliance::DBAlliance,
     auth::DBAuth, common::DBCommon, dashboard::DBDashboard, event::DBEvent, group::DBGroup,
     images::DBImages, jobs::DBJobs, landscape::DBLandscape, meetings::DBMeetings,
-    notifications::DBNotifications, payments::DBPayments, site::DBSite,
+    mock_interviews::DBMockInterviews, notifications::DBNotifications, payments::DBPayments,
+    site::DBSite,
 };
 
 /// Module containing database functionality for accelerator management.
@@ -55,6 +56,9 @@ pub(crate) mod landscape;
 /// Module containing database functionality for managing meetings.
 pub(crate) mod meetings;
 
+/// Module containing database functionality for mock interviews.
+pub(crate) mod mock_interviews;
+
 /// Module containing mock database implementation for testing.
 #[cfg(test)]
 pub(crate) mod mock;
@@ -85,6 +89,7 @@ pub(crate) trait DBOperations:
     + DBJobs
     + DBLandscape
     + DBMeetings
+    + DBMockInterviews
     + DBNotifications
     + DBPayments
     + DBSite
@@ -106,6 +111,7 @@ impl<T> DBOperations for T where
         + DBJobs
         + DBLandscape
         + DBMeetings
+        + DBMockInterviews
         + DBNotifications
         + DBPayments
         + DBSite

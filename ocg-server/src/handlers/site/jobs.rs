@@ -22,11 +22,13 @@ use crate::{
     templates::{PageId, auth::User, site::jobs},
     types::{
         jobs::{JobApplicationInput, JobsFilters},
+        mock_interviews::{MockInterviewFilters, MockInterviewRequestInput},
         pagination::NavigationLinks,
     },
 };
 
 const JOBS_URL: &str = "/jobs";
+const MOCK_INTERVIEWS_URL: &str = "/jobs/mock-interviews";
 
 /// Render the public jobs listing page.
 #[instrument(skip_all, err)]
@@ -82,6 +84,42 @@ pub(crate) async fn details(
         [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
         Html(template.render()?),
     ))
+}
+
+/// Render the public mock interview practice page.
+#[instrument(skip_all, err)]
+pub(crate) async fn mock_interviews_page(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let dashboard = db
+        .get_mock_interview_dashboard(&MockInterviewFilters::default())
+        .await?;
+    let site_settings = db.get_site_settings().await?;
+    let template = jobs::MockInterviewsPage::new(
+        MOCK_INTERVIEWS_URL.to_string(),
+        site_settings,
+        User::from_session(auth_session).await?,
+        dashboard,
+    );
+
+    Ok((
+        [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
+        Html(template.render()?),
+    ))
+}
+
+/// Submit a mock interview request as the current user.
+#[instrument(skip_all, err)]
+pub(crate) async fn request_mock_interview(
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    ValidatedForm(input): ValidatedForm<MockInterviewRequestInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.add_mock_interview_request(user.user_id, &input).await?;
+    messages.success("Mock interview request added.");
+    Ok((StatusCode::SEE_OTHER, [("Location", MOCK_INTERVIEWS_URL)]))
 }
 
 /// Apply to a job as the current user.

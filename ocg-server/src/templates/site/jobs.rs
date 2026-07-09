@@ -7,6 +7,10 @@ use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
         jobs::{JobFull, JobSummary, JobsFilters},
+        mock_interviews::{
+            INTERVIEW_TYPE_OPTIONS, LOCATION_OPTIONS, MockInterviewDashboard,
+            MockInterviewOption, PRACTICE_ROLE_OPTIONS, SENIORITY_OPTIONS, TARGET_COMPANY_OPTIONS,
+        },
         pagination::NavigationLinks,
         site::SiteSettings,
     },
@@ -48,4 +52,53 @@ pub(crate) struct DetailsPage {
     pub user: User,
     /// Job details.
     pub job: JobFull,
+}
+
+/// Public mock interviews page.
+#[derive(Debug, Clone, Template, Serialize)]
+#[template(path = "site/jobs/mock_interviews.html")]
+pub(crate) struct MockInterviewsPage {
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current URL path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Authenticated user information.
+    pub user: User,
+    /// Dashboard stats and recent totals.
+    pub dashboard: MockInterviewDashboard,
+    /// Practice role options.
+    pub practice_role_options: Vec<MockInterviewOption>,
+    /// Interview type options.
+    pub interview_type_options: Vec<MockInterviewOption>,
+    /// Target company options.
+    pub target_company_options: Vec<MockInterviewOption>,
+    /// Seniority options.
+    pub seniority_options: Vec<MockInterviewOption>,
+    /// Location options.
+    pub location_options: Vec<MockInterviewOption>,
+}
+
+impl MockInterviewsPage {
+    /// Create with the static poll option lists.
+    pub(crate) fn new(
+        path: String,
+        site_settings: SiteSettings,
+        user: User,
+        dashboard: MockInterviewDashboard,
+    ) -> Self {
+        Self {
+            page_id: PageId::SiteJobs,
+            path,
+            site_settings,
+            user,
+            dashboard,
+            practice_role_options: PRACTICE_ROLE_OPTIONS.to_vec(),
+            interview_type_options: INTERVIEW_TYPE_OPTIONS.to_vec(),
+            target_company_options: TARGET_COMPANY_OPTIONS.to_vec(),
+            seniority_options: SENIORITY_OPTIONS.to_vec(),
+            location_options: LOCATION_OPTIONS.to_vec(),
+        }
+    }
 }

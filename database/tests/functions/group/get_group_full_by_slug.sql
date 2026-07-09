@@ -286,7 +286,8 @@ select is(
         },
         "members_count": 3,
         "mentorship_enabled": true,
-        "membership_approval_required": false
+        "membership_approval_required": false,
+        "report_public_enabled": false
     }
         $json$,
         :'groupID',

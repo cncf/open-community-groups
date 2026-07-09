@@ -98,6 +98,7 @@ select is(
         "membership_approval_required": false,
         "mentorship_enabled": true,
         "organizers": [],
+        "report_public_enabled": false,
         "sponsors": []
     }',
         :'groupCategoryID'
@@ -239,6 +240,7 @@ select is(
         "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}],
         "membership_approval_required": false,
         "organizers": [],
+        "report_public_enabled": false,
         "sponsors": []
     }',
         :'groupCategoryID',

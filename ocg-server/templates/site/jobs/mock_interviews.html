@@ -1,0 +1,186 @@
+{% extends "common/base.html" -%}
+
+{% block jumbotron -%}
+  <section class="container mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 lg:px-8 lg:pt-16 lg:pb-8">
+    <div class="relative overflow-hidden rounded-[2.25rem] border border-stone-200 bg-white/95 p-6 shadow-xl shadow-stone-200/60 backdrop-blur sm:p-8 lg:p-10">
+      <div class="pointer-events-none absolute inset-y-0 right-0 w-1/2 bg-linear-to-l from-primary-50 to-transparent">
+      </div>
+      <div class="relative max-w-4xl">
+        <p class="mb-4 inline-flex rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-primary-700">
+          Jobs practice
+        </p>
+        <h1 class="mb-4 text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
+          Practice mock interviews with GOUP members
+        </h1>
+        <p class="max-w-2xl text-base/7 font-medium text-stone-600">
+          Match with peers for software engineering, AI/ML, product, startup, DevOps, security, and behavioral interview practice.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a class="inline-flex h-11 items-center justify-center rounded-full bg-stone-950 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-stone-800"
+             href="#request">Request practice</a>
+          <a class="inline-flex h-11 items-center justify-center rounded-full border border-stone-200 bg-white px-6 text-sm font-bold text-stone-700 shadow-sm transition hover:border-stone-950 hover:bg-stone-950 hover:text-white"
+             href="/jobs">Browse jobs</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock jumbotron -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-16">
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+      <section class="grid gap-4">
+        <div class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-black tracking-tight text-stone-950">Community demand</h2>
+              <p class="mt-2 text-sm/6 text-stone-600">
+                These categories come from the member poll so the queue starts with the most requested practice areas.
+              </p>
+            </div>
+            <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-700">
+              {{ dashboard.total }} request
+              {% if dashboard.total != 1 %}s{% endif %}
+            </span>
+          </div>
+
+          <div class="mt-5 grid gap-3 sm:grid-cols-2">
+            {% for option in interview_type_options -%}
+              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                <div class="text-sm font-semibold text-stone-950">{{ option.label }}</div>
+                <div class="mt-1 text-xs text-stone-500">
+                  {{ option.votes }} poll vote
+                  {% if option.votes != 1 %}s{% endif %}
+                </div>
+              </div>
+            {% endfor -%}
+          </div>
+        </div>
+
+        <div class="grid gap-4 md:grid-cols-3">
+          <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">Top company targets</h3>
+            <div class="mt-4 grid gap-2">
+              {% for option in target_company_options -%}
+                <div class="flex justify-between gap-3 text-sm">
+                  <span class="font-medium text-stone-800">{{ option.label }}</span>
+                  <span class="text-stone-500">{{ option.votes }}</span>
+                </div>
+              {% endfor -%}
+            </div>
+          </article>
+          <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">Seniority</h3>
+            <div class="mt-4 grid gap-2">
+              {% for option in seniority_options -%}
+                <div class="flex justify-between gap-3 text-sm">
+                  <span class="font-medium text-stone-800">{{ option.label }}</span>
+                  <span class="text-stone-500">{{ option.votes }}</span>
+                </div>
+              {% endfor -%}
+            </div>
+          </article>
+          <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">Locations</h3>
+            <div class="mt-4 grid gap-2">
+              {% for option in location_options -%}
+                <div class="flex justify-between gap-3 text-sm">
+                  <span class="font-medium text-stone-800">{{ option.label }}</span>
+                  <span class="text-stone-500">{{ option.votes }}</span>
+                </div>
+              {% endfor -%}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <aside id="request"
+             class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-lg shadow-stone-200/50">
+        <h2 class="text-xl font-black tracking-tight text-stone-950">Request a mock interview</h2>
+        <p class="mt-2 text-sm/6 text-stone-600">
+          Share what you want to practice and when you are available. Organizers can match and schedule from the dashboard.
+        </p>
+
+        {% if user.logged_in -%}
+          <form class="mt-5 grid gap-4"
+                method="post"
+                action="/jobs/mock-interviews/request">
+            <div class="space-y-2">
+              <label class="form-label" for="practice-role">I want to practice as</label>
+              <select id="practice-role"
+                      name="practice_role"
+                      class="input-primary"
+                      required>
+                {% for option in practice_role_options -%}
+                  <option value="{{ option.value }}">{{ option.label }}</option>
+                {% endfor -%}
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label class="form-label" for="interview-type">Interview type</label>
+              <select id="interview-type"
+                      name="interview_type"
+                      class="input-primary"
+                      required>
+                {% for option in interview_type_options -%}
+                  <option value="{{ option.value }}">{{ option.label }}</option>
+                {% endfor -%}
+              </select>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="space-y-2">
+                <label class="form-label" for="target-company">Target</label>
+                <select id="target-company"
+                        name="target_company"
+                        class="input-primary"
+                        required>
+                  {% for option in target_company_options -%}
+                    <option value="{{ option.value }}">{{ option.label }}</option>
+                  {% endfor -%}
+                </select>
+              </div>
+              <div class="space-y-2">
+                <label class="form-label" for="seniority">Seniority</label>
+                <select id="seniority" name="seniority" class="input-primary" required>
+                  {% for option in seniority_options -%}
+                    <option value="{{ option.value }}">{{ option.label }}</option>
+                  {% endfor -%}
+                </select>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <label class="form-label" for="location">Location</label>
+              <select id="location" name="location" class="input-primary" required>
+                {% for option in location_options -%}
+                  <option value="{{ option.value }}">{{ option.label }}</option>
+                {% endfor -%}
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label class="form-label" for="availability">Availability</label>
+              <input id="availability"
+                     name="availability"
+                     class="input-primary"
+                     placeholder="Weeknights after 7pm Baku time, weekends, etc." />
+            </div>
+            <div class="space-y-2">
+              <label class="form-label" for="notes">Notes</label>
+              <textarea id="notes"
+                        name="notes"
+                        rows="4"
+                        class="input-primary min-h-28 resize-y"
+                        placeholder="What role, company, question style, or feedback would help most?"></textarea>
+            </div>
+            <button class="btn-primary w-full" type="submit">Join the practice queue</button>
+          </form>
+        {% else -%}
+          <div class="mt-5 rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-5 text-sm/6 text-stone-600">
+            Log in to join the mock interview practice queue.
+            <a class="font-semibold text-stone-950 hover:text-stone-700"
+               href="/log-in?next_url=/jobs/mock-interviews">Log in</a>
+          </div>
+        {% endif -%}
+      </aside>
+    </div>
+  </div>
+{% endblock content -%}

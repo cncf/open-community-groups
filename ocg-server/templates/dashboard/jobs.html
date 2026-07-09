@@ -13,6 +13,7 @@
     <div class="leading-10 grid gap-y-0.5">
       {{ dashboard::menu_title(text = "Jobs", extra_styles = "py-1.5") -}}
       {{ dashboard::menu_item(name = "My Jobs", icon = "search", is_active = true, href = "/dashboard/jobs") -}}
+      {{ dashboard::menu_item(name = "Mock Interviews", icon = "user-small", is_active = false, href = "/dashboard/jobs/mock-interviews") -}}
       {{ dashboard::menu_item(name = "Public Jobs", icon = "external-link", is_active = false, href = "/jobs") -}}
     </div>
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">

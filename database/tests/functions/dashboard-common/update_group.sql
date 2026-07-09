@@ -351,6 +351,7 @@ select is(
         "membership_approval_required": false,
         "mentorship_enabled": false,
         "organizers": [],
+        "report_public_enabled": false,
         "sponsors": []
     }
         $json$,
@@ -513,6 +514,7 @@ select is(
         "coffee_meet_enabled": false,
         "mentorship_enabled": false,
         "name": "Updated Group Empty Strings",
+        "report_public_enabled": false,
         "slug": "pqr4jkl",
         "logo_url": "https://example.com/logo.png"
     }'::jsonb,
@@ -565,6 +567,7 @@ select is(
         "coffee_meet_enabled": false,
         "mentorship_enabled": false,
         "name": "Updated Group Null Arrays",
+        "report_public_enabled": false,
         "slug": "mno3ghi",
         "description": "Updated description",
         "logo_url": "https://example.com/logo.png"

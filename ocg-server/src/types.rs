@@ -6,6 +6,7 @@ pub mod group;
 pub(crate) mod jobs;
 pub(crate) mod landscape;
 pub mod location;
+pub(crate) mod mock_interviews;
 pub mod pagination;
 pub mod payments;
 pub mod permissions;

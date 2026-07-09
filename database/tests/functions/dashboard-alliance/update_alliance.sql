@@ -105,7 +105,8 @@ select is(
         "group_team_management_restricted": false,
         "logo_url": "https://updated.com/logo.png",
         "mentorship_enabled": true,
-        "name": "cloud-native-seattle"
+        "name": "cloud-native-seattle",
+        "report_public_enabled": false
     }'::jsonb,
     'Should persist required fields and clear omitted optional fields'
 );
@@ -204,6 +205,7 @@ select is(
         "new_group_details": "New groups welcome!",
         "og_image_url": "https://new.com/og-image.png",
         "photos_urls": ["https://new.com/p1.jpg", "https://new.com/p2.jpg", "https://new.com/p3.jpg"],
+        "report_public_enabled": false,
         "slack_url": "https://new.slack.com",
         "twitter_url": "https://twitter.com/new",
         "website_url": "https://new.com",
@@ -261,6 +263,7 @@ select is(
         "mentorship_enabled": false,
         "new_group_details": null,
         "og_image_url": null,
+        "report_public_enabled": false,
         "slack_url": null,
         "twitter_url": null,
         "website_url": null,

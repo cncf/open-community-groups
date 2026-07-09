@@ -1,0 +1,293 @@
+{% extends "dashboard/dashboard_base.html" -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/feedback.html" as feedback -%}
+{% import "macros/pagination.html" as pagination -%}
+
+{% block menu -%}
+  <div class="mt-3 mb-6 flex items-center justify-between px-3 lg:px-5">
+    <div class="text-sm font-semibold text-stone-900 lg:text-lg">Jobs Dashboard</div>
+  </div>
+
+  <div class="mb-5 flex max-h-full w-full flex-1 flex-col space-y-5 overflow-y-auto px-3 lg:px-5">
+    <div class="grid gap-y-0.5 leading-10">
+      {{ dashboard::menu_title(text = "Jobs", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "My Jobs", icon = "search", is_active = false, href = "/dashboard/jobs") -}}
+      {{ dashboard::menu_item(name = "Mock Interviews", icon = "user-small", is_active = true, href = "/dashboard/jobs/mock-interviews") -}}
+      {{ dashboard::menu_item(name = "Public Jobs", icon = "external-link", is_active = false, href = "/jobs") -}}
+      {{ dashboard::menu_item(name = "Public Practice Page", icon = "external-link", is_active = false, href = "/jobs/mock-interviews") -}}
+    </div>
+    <div class="grid gap-y-0.5 border-t border-stone-200 pt-6 leading-10">
+      {{ dashboard::menu_title(text = "GOUP", extra_styles = "py-1.5") -}}
+      {{ dashboard::menu_item(name = "User Dashboard", icon = "user-small", is_active = false, href = "/dashboard/user") -}}
+    </div>
+  </div>
+{% endblock menu -%}
+
+{% block dashboard_main -%}
+  <div class="p-4 sm:p-6 lg:p-12">
+    {{ dashboard::page_title(title = "Mock Interviews", description = "Review the practice queue, match members, schedule sessions, and capture feedback.") -}}
+
+    {% if !messages.is_empty() -%}
+      <div class="mt-6">{{ feedback::alerts(messages) -}}</div>
+    {% endif -%}
+
+    <section class="mt-8 rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div class="inline-flex rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary-700">
+            Poll-informed taxonomy
+          </div>
+          <h2 class="mt-3 text-xl font-black tracking-tight text-stone-950">Practice queue</h2>
+          <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
+            Requests use the poll categories for role, interview type, company target, seniority, and location.
+          </p>
+        </div>
+        <form method="get"
+              action="/dashboard/jobs/mock-interviews"
+              class="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <label class="sr-only" for="mock-interview-status">Status</label>
+          <select id="mock-interview-status"
+                  name="status"
+                  class="input-primary min-w-44">
+            <option value="">All statuses</option>
+            <option value="requested"
+                    {% if filters.status.as_deref() == Some("requested") %}selected{% endif %}>Requested</option>
+            <option value="matched"
+                    {% if filters.status.as_deref() == Some("matched") %}selected{% endif %}>Matched</option>
+            <option value="scheduled"
+                    {% if filters.status.as_deref() == Some("scheduled") %}selected{% endif %}>Scheduled</option>
+            <option value="completed"
+                    {% if filters.status.as_deref() == Some("completed") %}selected{% endif %}>Completed</option>
+            <option value="canceled"
+                    {% if filters.status.as_deref() == Some("canceled") %}selected{% endif %}>Canceled</option>
+          </select>
+          <button class="btn-secondary" type="submit">Filter</button>
+        </form>
+      </div>
+
+      <div class="mt-5 grid gap-3 md:grid-cols-3">
+        {% for stat in dashboard.stats -%}
+          {% if stat.dimension == "interview_type" -%}
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div class="text-sm font-semibold text-stone-950">{{ self::option_label(stat.value.as_str() ) }}</div>
+              <div class="mt-1 text-xs text-stone-500">
+                {{ stat.count }} request
+                {% if stat.count != 1 %}s{% endif %}
+              </div>
+            </div>
+          {% endif -%}
+        {% endfor -%}
+      </div>
+    </section>
+
+    <div class="my-8 text-sm text-stone-600">
+      {{ pagination::range_display(offset = filters.offset.unwrap_or(0) , count = dashboard.requests.len(), total = dashboard.total, label = "request") }}
+    </div>
+
+    {% if dashboard.requests.is_empty() -%}
+      <div class="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
+        <h2 class="text-lg font-semibold text-stone-900">No mock interview requests yet</h2>
+        <p class="mt-2 text-sm text-stone-600">Share the public practice page to start collecting requests.</p>
+      </div>
+    {% else -%}
+      <div class="grid gap-5">
+        {% for request in dashboard.requests -%}
+          <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div class="mb-2 flex flex-wrap items-center gap-2">
+                  <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-medium text-white">{{ request.status }}</span>
+                  <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ self::option_label(request.interview_type.as_str() ) }}</span>
+                  <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ self::option_label(request.seniority.as_str() ) }}</span>
+                  <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ self::option_label(request.location.as_str() ) }}</span>
+                </div>
+                <h2 class="text-lg font-semibold text-stone-950">{{ request.display_name() }}</h2>
+                <p class="mt-1 text-sm text-stone-600">
+                  @{{ request.requester_username }} · {{ request.requester_email }} · submitted {{ request.created_at.format("%b %d, %Y") }}
+                </p>
+                <p class="mt-3 text-sm/6 text-stone-700">
+                  Wants to practice as <span class="font-semibold">{{ self::option_label(request.practice_role.as_str() ) }}</span>
+                  for <span class="font-semibold">{{ self::option_label(request.target_company.as_str() ) }}</span>.
+                </p>
+                {% if let Some(availability) = &request.availability -%}
+                  <p class="mt-2 rounded-xl bg-stone-50 px-3 py-2 text-sm/6 text-stone-700 ring-1 ring-inset ring-stone-200">
+                    Availability: {{ availability }}
+                  </p>
+                {% endif -%}
+                {% if let Some(notes) = &request.notes -%}
+                  <p class="mt-2 rounded-xl bg-stone-50 px-3 py-2 text-sm/6 text-stone-700 ring-1 ring-inset ring-stone-200">
+                    {{ notes }}
+                  </p>
+                {% endif -%}
+              </div>
+              <a class="btn-tertiary shrink-0 text-sm"
+                 href="mailto:{{ request.requester_email }}">Email</a>
+            </div>
+
+            <form class="mt-5 grid gap-4 rounded-2xl border border-stone-200 bg-stone-50 p-4 lg:grid-cols-12"
+                  method="post"
+                  action="/dashboard/jobs/mock-interviews/{{ request.mock_interview_request_id }}/match"
+                  hx-post="/dashboard/jobs/mock-interviews/{{ request.mock_interview_request_id }}/match"
+                  hx-target="body">
+              <div class="space-y-2 lg:col-span-3">
+                <label class="form-label"
+                       for="interviewer-{{ request.mock_interview_request_id }}">Interviewer user ID</label>
+                <input id="interviewer-{{ request.mock_interview_request_id }}"
+                       name="interviewer_user_id"
+                       class="input-primary"
+                       placeholder="Optional UUID" />
+              </div>
+              <div class="space-y-2 lg:col-span-3">
+                <label class="form-label"
+                       for="interviewee-{{ request.mock_interview_request_id }}">Interviewee user ID</label>
+                <input id="interviewee-{{ request.mock_interview_request_id }}"
+                       name="interviewee_user_id"
+                       class="input-primary"
+                       value="{{ request.requester_user_id }}" />
+              </div>
+              <div class="space-y-2 lg:col-span-3">
+                <label class="form-label"
+                       for="scheduled-{{ request.mock_interview_request_id }}">Scheduled time</label>
+                <input id="scheduled-{{ request.mock_interview_request_id }}"
+                       name="scheduled_at"
+                       class="input-primary"
+                       placeholder="2026-07-15 19:00 +04" />
+              </div>
+              <div class="space-y-2 lg:col-span-3">
+                <label class="form-label"
+                       for="status-{{ request.mock_interview_request_id }}">Status</label>
+                <select id="status-{{ request.mock_interview_request_id }}"
+                        name="status"
+                        class="input-primary">
+                  <option value="matched">Matched</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="completed">Completed</option>
+                  <option value="canceled">Canceled</option>
+                </select>
+              </div>
+              <div class="space-y-2 lg:col-span-5">
+                <label class="form-label"
+                       for="meeting-{{ request.mock_interview_request_id }}">Meeting URL</label>
+                <input id="meeting-{{ request.mock_interview_request_id }}"
+                       name="meeting_url"
+                       class="input-primary"
+                       placeholder="https://meet.google.com/..." />
+              </div>
+              <div class="space-y-2 lg:col-span-7">
+                <label class="form-label"
+                       for="notes-{{ request.mock_interview_request_id }}">Internal notes</label>
+                <input id="notes-{{ request.mock_interview_request_id }}"
+                       name="internal_notes"
+                       class="input-primary"
+                       placeholder="Pairing rationale, prep focus, follow-up owner" />
+              </div>
+              <div class="lg:col-span-12">
+                <button class="btn-primary" type="submit">Save match and schedule</button>
+              </div>
+            </form>
+          </article>
+        {% endfor -%}
+      </div>
+
+      {{ pagination::navigation_links(links = navigation_links, hx_target = "body") }}
+    {% endif -%}
+
+    <section class="mt-10">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-black tracking-tight text-stone-950">Scheduled matches</h2>
+          <p class="mt-1 text-sm text-stone-600">Capture outcomes and feedback after each session.</p>
+        </div>
+        <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-700">
+          {{ dashboard.matches.len() }} match
+          {% if dashboard.matches.len() != 1 %}es{% endif %}
+        </span>
+      </div>
+
+      {% if dashboard.matches.is_empty() -%}
+        <div class="rounded-2xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center">
+          <h3 class="text-base font-semibold text-stone-900">No matches scheduled yet</h3>
+          <p class="mt-2 text-sm text-stone-600">Use the queue above to create the first match.</p>
+        </div>
+      {% else -%}
+        <div class="grid gap-4">
+          {% for session in dashboard.matches -%}
+            <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-medium text-white">{{ session.status }}</span>
+                    {% if let Some(scheduled_at) = &session.scheduled_at -%}
+                      <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">{{ scheduled_at }}</span>
+                    {% endif -%}
+                  </div>
+                  <p class="mt-3 text-sm text-stone-700">
+                    Interviewer:
+                    <span class="font-semibold">{{ session.interviewer_label.as_deref().unwrap_or("TBD") }}</span>
+                    · Interviewee:
+                    <span class="font-semibold">{{ session.interviewee_label.as_deref().unwrap_or("TBD") }}</span>
+                  </p>
+                  {% if let Some(internal_notes) = &session.internal_notes -%}
+                    <p class="mt-2 rounded-xl bg-stone-50 px-3 py-2 text-sm/6 text-stone-700 ring-1 ring-inset ring-stone-200">
+                      {{ internal_notes }}
+                    </p>
+                  {% endif -%}
+                </div>
+                {% if let Some(meeting_url) = &session.meeting_url -%}
+                  <a class="btn-tertiary shrink-0 text-sm"
+                     href="{{ meeting_url }}"
+                     target="_blank"
+                     rel="noopener noreferrer">Open meeting</a>
+                {% endif -%}
+              </div>
+
+              <form class="mt-5 grid gap-4 rounded-2xl border border-stone-200 bg-stone-50 p-4 lg:grid-cols-12"
+                    method="post"
+                    action="/dashboard/jobs/mock-interviews/matches/{{ session.mock_interview_match_id }}/feedback"
+                    hx-post="/dashboard/jobs/mock-interviews/matches/{{ session.mock_interview_match_id }}/feedback"
+                    hx-target="body">
+                <div class="space-y-2 lg:col-span-3">
+                  <label class="form-label"
+                         for="match-status-{{ session.mock_interview_match_id }}">Status</label>
+                  <select id="match-status-{{ session.mock_interview_match_id }}"
+                          name="status"
+                          class="input-primary">
+                    <option value="matched"
+                            {% if session.status == "matched" %}selected{% endif %}>Matched</option>
+                    <option value="scheduled"
+                            {% if session.status == "scheduled" %}selected{% endif %}>Scheduled</option>
+                    <option value="completed"
+                            {% if session.status == "completed" %}selected{% endif %}>Completed</option>
+                    <option value="canceled"
+                            {% if session.status == "canceled" %}selected{% endif %}>Canceled</option>
+                  </select>
+                </div>
+                <div class="space-y-2 lg:col-span-9">
+                  <label class="form-label"
+                         for="interviewer-feedback-{{ session.mock_interview_match_id }}">Interviewer feedback</label>
+                  <input id="interviewer-feedback-{{ session.mock_interview_match_id }}"
+                         name="interviewer_feedback"
+                         class="input-primary"
+                         value="{{ session.interviewer_feedback.as_deref().unwrap_or("") }}"
+                         placeholder="Strengths, gaps, recommended prep" />
+                </div>
+                <div class="space-y-2 lg:col-span-12">
+                  <label class="form-label"
+                         for="interviewee-feedback-{{ session.mock_interview_match_id }}">Interviewee feedback</label>
+                  <textarea id="interviewee-feedback-{{ session.mock_interview_match_id }}"
+                            name="interviewee_feedback"
+                            rows="3"
+                            class="input-primary min-h-24 resize-y"
+                            placeholder="What helped, what to improve next time">{{ session.interviewee_feedback.as_deref().unwrap_or("") }}</textarea>
+                </div>
+                <div class="lg:col-span-12">
+                  <button class="btn-primary" type="submit">Save feedback</button>
+                </div>
+              </form>
+            </article>
+          {% endfor -%}
+        </div>
+      {% endif -%}
+    </section>
+  </div>
+{% endblock dashboard_main -%}

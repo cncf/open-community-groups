@@ -1159,6 +1159,31 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::mock_interviews::DBMockInterviews for DB {
+        async fn get_mock_interview_dashboard(
+            &self,
+            filters: &crate::types::mock_interviews::MockInterviewFilters,
+        ) -> Result<crate::types::mock_interviews::MockInterviewDashboard>;
+        async fn add_mock_interview_request(
+            &self,
+            user_id: Uuid,
+            input: &crate::types::mock_interviews::MockInterviewRequestInput,
+        ) -> Result<Uuid>;
+        async fn upsert_mock_interview_match(
+            &self,
+            actor_user_id: Uuid,
+            request_id: Uuid,
+            input: &crate::types::mock_interviews::MockInterviewMatchInput,
+        ) -> Result<Uuid>;
+        async fn update_mock_interview_feedback(
+            &self,
+            actor_user_id: Uuid,
+            match_id: Uuid,
+            input: &crate::types::mock_interviews::MockInterviewFeedbackInput,
+        ) -> Result<()>;
+    }
+
+    #[async_trait]
     impl crate::db::landscape::DBLandscape for DB {
         async fn search_landscape_entries(
             &self,

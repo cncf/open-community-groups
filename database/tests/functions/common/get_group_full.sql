@@ -336,6 +336,7 @@ select is(
             "recipient_id": "acct_test_group"
         },
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
+        "report_public_enabled": false,
         "region": {
             "region_id": "0c0a0000-0000-0000-0000-000000000005",
             "name": "North America",
