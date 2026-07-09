@@ -16,7 +16,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [User Dashboard Structure](#user-dashboard-structure)
 - [My Events: Upcoming Participation](#my-events-upcoming-participation)
 - [Profile: Public Identity](#profile-public-identity)
-- [Invitations: Unlock Organizer Access](#invitations-unlock-organizer-access)
+- [Invitations: Access and Attendance](#invitations-access-and-attendance)
 - [Session Proposals: Reusable Talks](#session-proposals-reusable-talks)
 - [Submissions: Track and Respond](#submissions-track-and-respond)
 - [Audit: Logs](#audit-logs)
@@ -24,7 +24,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into five areas:
+The dashboard is organized into six areas:
 
 - [My Events](/dashboard/user?tab=events ':ignore')
 - [Profile](/dashboard/user?tab=account ':ignore')
@@ -34,7 +34,7 @@ The dashboard is organized into five areas:
 - [Logs](/dashboard/user?tab=logs ':ignore')
 
 Each area supports a different part of your participation in OCG: events,
-profile, access, audit visibility, proposals, and submissions.
+profile, access, proposals, submissions, and audit visibility.
 
 ## My Events: Upcoming Participation
 
@@ -60,15 +60,8 @@ If organizers configured a registration window, new public registration actions 
 outside that window. Organizer-created manual invitations and active checkout holds are the
 exceptions for completing required registration questions from `My Events`.
 
-Filtering behavior:
-
-- Includes only upcoming published events.
-- Excludes canceled events.
-- Excludes events from inactive or deleted groups.
-
-Sorting behavior:
-
-- Ordered by date ascending, so the next event appears first.
+The list includes only upcoming published events; canceled events and events from inactive or
+deleted groups are excluded. Rows are ordered by date ascending, so the next event appears first.
 
 ![User profile area](../screenshots/dashboard-user-my-events.png)
 
@@ -86,28 +79,23 @@ You can maintain:
 
 Field requirements and limits are shown inline in the dashboard forms while you edit.
 
-Notification preferences:
-
-- `Receive optional notifications` controls broader announcements such as new event
-  announcements, event reminders, and custom messages from organizers.
-- Turning this off does not disable account, invitation, registration, speaker, refund, waitlist,
-  cancellation, or reschedule updates.
+Notification preferences deserve a note: `Receive optional notifications` controls broader
+announcements such as new event announcements, event reminders, and custom messages from
+organizers. Turning it off does not disable account, invitation, registration, speaker, refund,
+waitlist, cancellation, or reschedule updates.
 
 ![User profile area](../screenshots/dashboard-user-profile.png)
 
-## Invitations: Unlock Organizer Access
+## Invitations: Access and Attendance
 
 When a community or group invites you to help run operations, or an organizer
 invites you to attend an event, the invitation appears here. Accepting an
 invitation updates your access or confirms your event attendance.
 
-Invitation statuses:
-
-- Community and group team invites: Invitation sent, accepted, rejected.
-- Event invitations: Invitation sent, accepted, rejected.
-- Pending team invites do not grant dashboard access until accepted.
-- Invitation rows include the role that will be assigned on acceptance.
-- Pending event invitations do not make you an attendee until accepted.
+Both community/group team invites and event invitations move through the same statuses:
+invitation sent, accepted, or rejected. Invitation rows include the role that will be assigned on
+acceptance. Keep in mind that pending team invites do not grant dashboard access until accepted,
+and pending event invitations do not make you an attendee until accepted.
 
 When someone invites you to a team, you receive an in-app and email invitation with a direct path
 to accept or decline.
@@ -117,7 +105,7 @@ OCG account, use the LF account whose primary email matches the invited address.
 OCG accounts can still be recognized by LF SSO identity after an LF email change. If you cannot
 accept an invitation, ask the site administrators to reconcile the account records.
 
-Typical post-accept behavior:
+After you accept an invitation, this is what typically happens:
 
 1. Access is granted to the related scope.
 2. The assigned community/group role becomes active for permission checks.
@@ -153,13 +141,13 @@ For event-side CFS controls and reviewer operations, see
 
 ### Proposal Status Model
 
-Base statuses:
+Every proposal has one of these base statuses:
 
 - `Ready for submission`
 - `Awaiting co-speaker response`
 - `Declined by co-speaker`
 
-Derived badges may also appear:
+On top of the base status, derived badges may also appear:
 
 - `Submitted` (used in one or more event submissions).
 - `Linked` (already tied to an approved session).
@@ -176,10 +164,9 @@ updated, but delete and some co-speaker changes are blocked.
   - Delete is blocked.
   - Co-speaker changes are restricted after submission.
 
-Status-related submission locks:
-
-- `Awaiting co-speaker response` and `Declined by co-speaker` are not full edit locks, but they do
-  block CFS submission eligibility until co-speaker state is resolved.
+There are also status-related submission locks: `Awaiting co-speaker response` and
+`Declined by co-speaker` are not full edit locks, but they do block CFS submission eligibility
+until co-speaker state is resolved.
 
 ### Co-Speaker Invitations
 
@@ -195,7 +182,7 @@ review progress.
 
 ![Submissions area](../screenshots/dashboard-user-submissions-list.png)
 
-Common statuses:
+The statuses you will see most often are:
 
 - `Not reviewed`
 - `Information requested`
@@ -203,11 +190,9 @@ Common statuses:
 - `Rejected`
 - `Withdrawn`
 
-Action behavior:
-
-- `Resubmit` appears when status is `Information requested`.
-- `Withdraw` stays available while the submission is active and not finalized.
-- Withdraw is blocked for finalized or linked outcomes.
+Available actions depend on status. `Resubmit` appears when the status is
+`Information requested`. `Withdraw` stays available while the submission is active and not
+finalized, and is blocked for finalized or linked outcomes.
 
 When organizers change your submission review state, OCG sends an update message with the new
 status and any action you need to take.
@@ -227,18 +212,12 @@ Coverage in this view includes:
 - Submission resubmits and withdrawals.
 - Account profile and password updates.
 
-Table behavior:
+Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
+can filter by `Action` and date range, and pagination keeps the active filters applied. When an
+audit row has extra metadata, `Details` opens a popover with it.
 
-- Rows are ordered by newest first by default.
-- You can filter by `Action` and date range.
-- You can switch ordering between newest first and oldest first.
-- Pagination keeps the active filters applied.
-- `Details` opens a popover when an audit row has extra metadata.
-
-Scope note:
-
-- This screen shows actions performed by the signed-in user.
-- It does not try to list unrelated actions performed by other people against your account.
+Note that this screen shows actions performed by the signed-in user; it does not try to list
+unrelated actions performed by other people against your account.
 
 ## Recommended Working Rhythm
 

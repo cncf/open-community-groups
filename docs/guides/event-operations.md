@@ -37,21 +37,12 @@ When phase 1 is done well, every downstream step is faster and safer.
 
 ## Authorization Model
 
-Event write operations require the `group.events.write` permission.
+Event write operations require events write access. This is granted by the group `admin` and
+`events-manager` roles, and by the community `admin` and `groups-manager` roles. Read-only roles
+can still view event data but cannot change it.
 
-This is granted by:
-
-- Group `admin`
-- Group `events-manager`
-- Community `admin`
-- Community `groups-manager`
-
-Read-only roles can still view event data but cannot mutate it.
-
-UI behavior:
-
-- Event action controls are disabled when your role cannot perform the operation.
-- Middleware authorization is enforced server-side for every write endpoint.
+When your role cannot perform an operation, the event action controls are disabled in the UI, and
+OCG enforces the same permissions on every event change.
 
 ![Group disabled form](../screenshots/dashboard-group-permissions-role.png)
 
@@ -69,12 +60,9 @@ From each row, you can:
 - Cancel.
 - Delete.
 
-State intent:
-
-- `Draft`: still being authored.
-- `Published`: live for public participation.
-- `Canceled`: no longer running. If the event was published, its public page remains available
-  with canceled-state messaging.
+Each event is in one of three states: `Draft` while it is still being authored, `Published` once
+it is live for public participation, and `Canceled` when it is no longer running. If a canceled
+event was published, its public page remains available with canceled-state messaging.
 
 ![Events operations list](../screenshots/dashboard-group-events.png)
 
@@ -121,13 +109,11 @@ Publish readiness checks in this tab:
 - Branding is consistent with group/community standards.
 - Capacity and registration policy match expected demand.
 
-Ticketing also starts in `Details`:
+Ticketing also starts in `Details`. `Event Currency` sets a single currency for the event,
+`Ticket Types` lets you add attendee-facing tiers, seat counts, and date-based price windows, and
+`Discount Codes` lets you add event-level promotions, availability windows, and usage limits.
 
-- `Event Currency` sets a single currency for the event.
-- `Ticket Types` lets you add attendee-facing tiers, seat counts, and date-based price windows.
-- `Discount Codes` lets you add event-level promotions, availability windows, and usage limits.
-
-Ticketing rules:
+These are the ticketing rules to keep in mind:
 
 - Free tickets are allowed by setting a ticket price window amount to `0`.
 - Multiple ticket types can exist on the same event.
@@ -176,11 +162,9 @@ Invitation review also lives here:
 - Disabling invitation review is blocked while pending requests exist.
 - Accepted requests become regular attendees and receive the standard registration confirmation.
 
-Brand inheritance model in event details:
-
-- If event logo is not provided, OCG falls back to group logo, then community logo.
-- If event banner or mobile banner is not provided, OCG falls back to group banner, then
-  community banner.
+Brand inheritance in event details mirrors the group model: if the event logo is not provided,
+OCG falls back to the group logo, then the community logo; if the event banner or mobile banner
+is not provided, OCG falls back to the group banner, then the community banner.
 
 ![Event details](../screenshots/dashboard-group-event-details.png)
 
@@ -241,11 +225,9 @@ whole linked series, but editing event content is intentionally one event at a t
 
 ### Hosts, Speakers, and Organizers
 
-In this tab, you manage event-level people and sponsor attribution:
-
-- Add hosts from any user account on the site.
-- Add visible speakers/presenters.
-- Attach event sponsors from reusable sponsor records.
+In this tab, you manage event-level people and sponsor attribution: adding hosts from any user
+account on the site, adding visible speakers/presenters, and attaching event sponsors from
+reusable sponsor records.
 
 OCG also shows an `Organizers` section on the public event page. Organizers are snapshotted from
 the accepted group team when the event is created, so later group team changes do not rewrite
@@ -258,11 +240,9 @@ This is where attendees understand who is running, organizing, and presenting th
 
 ### Sessions
 
-Sessions turns approved content into an actual agenda:
-
-- Create agenda rows with time bounds.
-- Keep session times inside event start/end.
-- Link approved CFS submissions into the schedule.
+Sessions turns approved content into an actual agenda. Here you create agenda rows with time
+bounds, keep session times inside the event start/end, and link approved CFS submissions into the
+schedule.
 
 This tab is usually most useful once review outcomes are clearer and your schedule is taking
 final shape.
@@ -273,12 +253,9 @@ final shape.
 
 ### CFS
 
-This tab configures speaker intake:
-
-- Enable/disable CFS.
-- Set open/close timestamps.
-- Write CFS description shown on the event page.
-- Define optional labels (tracks/topics/themes).
+This tab configures speaker intake: enabling or disabling CFS, setting open/close timestamps,
+writing the CFS description shown on the event page, and defining optional labels
+(tracks/topics/themes).
 
 Label model tip: if you edit an existing label name, that rename affects submissions already using
 that label.
@@ -310,29 +287,22 @@ Ticket and discount data model:
 - Remaining uses are consumed by active holds and active purchases, then restored when a hold
   expires, a free ticket is released, or a refund is finalized.
 
-Refunds:
+Refunds follow a request-and-review model. Paid attendees do not use `Leave event`; they use
+`Request refund` from the public event page instead. Organizers review refund requests in
+`Event -> Attendees` and can approve or reject them. Refund requests must be submitted before the
+event starts, though organizers can still approve or reject a request later if it was submitted
+before the start time. Approved refunds are full refunds only, and rejecting a request leaves the
+attendee and ticket unchanged.
 
-- Paid attendees do not use `Leave event`.
-- Paid attendees use `Request refund` from the public event page.
-- Organizers review refund requests in `Event -> Attendees`.
-- Organizers can approve or reject the request.
-- Refund requests must be submitted before the event starts.
-- Organizers can still approve or reject a request later if it was submitted before the start
-  time.
-- Approved refunds are full refunds only.
-- Rejecting a request leaves the attendee and ticket unchanged.
-
-Audit and notifications:
-
-- Refund requests, approvals, rejections, and completed refunds are written to audit logs.
-- Organizers are notified when attendees request refunds.
-- Attendees are notified when organizers approve or reject the request.
+Refund requests, approvals, rejections, and completed refunds are all written to audit logs.
+Organizers are notified when attendees request refunds, and attendees are notified when
+organizers approve or reject the request.
 
 ### Attendance, Invitation, and Waitlist Operations
 
 The dashboard separates confirmed attendees from people waiting for a seat or organizer approval.
 
-Organizer behavior:
+On the organizer side, the tabs work like this:
 
 - `Attendees` shows confirmed attendees who can be checked in, plus organizer-created event
   invitations while they are pending or rejected.
@@ -347,7 +317,7 @@ Organizer behavior:
 - Sending, canceling, accepting, or rejecting an organizer-created event invitation is written to
   the audit log.
 
-Capacity behavior:
+Capacity changes drive automatic waitlist behavior:
 
 - If an attendee leaves and the event has a capacity limit, OCG automatically promotes the oldest
   waitlisted person while registration is open.
@@ -359,15 +329,15 @@ Capacity behavior:
 - If you clear `Capacity` and disable waitlist, OCG treats the event as unlimited-capacity and
   immediately promotes everyone still on the waitlist when registration is open.
 - Attendee cancellation notifications and any promotion notifications caused by attendance
-  cancellation are part of that mutation. If OCG cannot queue a required notification, the
-  attendance cancellation is not saved.
-- Promotion notifications caused by saving event capacity changes are part of that mutation. If OCG
-  cannot queue a required promotion notification, the event update is not saved.
+  cancellation are guaranteed: if OCG cannot send a required notification, the attendance
+  cancellation is not saved.
+- Promotion notifications caused by saving event capacity changes work the same way: if OCG
+  cannot send a required promotion notification, the event update is not saved.
 - Organizer-created manual invitations bypass capacity when the invitee accepts. Use them when an
   organizer intentionally wants to admit someone even if the event is full or outside the public
   registration window.
 
-Member-facing behavior:
+On the member side, these actions trigger notifications:
 
 - Accepting an invitation-review request sends a confirmation notification with calendar
   attachment.
@@ -378,11 +348,10 @@ Member-facing behavior:
 - Leaving the waitlist sends a waitlist removal notification.
 - Promotion sends a confirmation notification with calendar attachment.
 - Confirmation notifications caused by accepting invitation-review requests, accepting
-  organizer-created event invitations, or completing pending registration questions are saved with
-  the attendance confirmation. If OCG cannot queue the required notification, the attendance change
-  is rolled back.
+  organizer-created event invitations, or completing pending registration questions are guaranteed:
+  if OCG cannot send the required notification, the attendance change is not saved.
 
-Paid-attendance behavior:
+Paid attendance behaves differently in a few ways:
 
 - Paid tickets require payment before attendance is created.
 - Checkout can only start while registration is open. If registration closes before a pending
@@ -396,14 +365,10 @@ Paid-attendance behavior:
 
 ### Submissions
 
-This tab is the reviewer control center:
+This tab is the reviewer control center. From here you can filter by labels, sort by submission
+time, rating count, or stars, open the review modal, and update status with reviewer feedback.
 
-- Filter by labels.
-- Sort by submission time, rating count, or stars.
-- Open review modal.
-- Update status and add reviewer feedback.
-
-Reviewer-facing statuses are:
+The reviewer-facing statuses are:
 
 - `Not reviewed`
 - `Information requested`
@@ -429,7 +394,7 @@ When a reviewer update requires notifying the speaker, OCG sends a submission up
 
 ### Attendees
 
-This tab supports delivery-day execution:
+This tab supports delivery-day execution. From here you can:
 
 - Review attendee list and RSVP timing.
 - Run manual check-in.
@@ -507,11 +472,9 @@ Duplicate proposal submission to the same event is blocked.
 - Duplicate submission of the same proposal to the same event is blocked.
 - Labels must belong to that event's label set.
 
-Response loop behavior:
-
-- `Information requested` asks speaker for changes before re-review.
-- `Resubmit` is used after requested changes are addressed.
-- `Withdrawn` is speaker-initiated and typically ends active review.
+The review loop works in both directions: `Information requested` asks the speaker for changes
+before re-review, `Resubmit` is used after the requested changes are addressed, and `Withdrawn`
+is speaker-initiated and typically ends active review.
 
 Every review-side change that should reach the speaker is sent as a submission update message.
 
@@ -575,15 +538,12 @@ Constraint violations can disable automatic mode until fixed.
 
 ## Publish, Unpublish, Cancel, Delete
 
-These actions serve different intents:
+Each of these actions serves a different intent. `Publish` makes the event publicly available,
+while `Unpublish` hides it without changing its canceled state. `Cancel` marks the event as not
+proceeding while keeping an already published page available as canceled, and `Delete`
+permanently removes it from normal operations.
 
-- `Publish`: make event publicly available.
-- `Unpublish`: hide event without changing its canceled state.
-- `Cancel`: mark event as not proceeding while keeping an already published page available as
-  canceled.
-- `Delete`: permanently remove from normal operations.
-
-Message behavior:
+Notification behavior differs per action:
 
 !> `Publish` and `Cancel` can notify large participant sets.
 `Unpublish` and `Delete` do not send broad attendee updates in this flow.
@@ -598,15 +558,13 @@ Message behavior:
   time changes by at least 15 minutes. Waitlisted users are not included in reschedule notices.
 - `Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
-For `Publish`, `Cancel`, and event-editor updates that queue required publish, cancellation,
-reschedule, or waitlist promotion notifications, OCG saves the event change and notification queue
-entries together. If one of those required notification rows cannot be queued, the event change is
-rolled back.
+For `Publish`, `Cancel`, and event-editor updates that require publish, cancellation, reschedule,
+or waitlist promotion notifications, the notifications are guaranteed: if one of them cannot be
+sent, the event change is not saved.
 
-Automatic-meeting lifecycle in these actions:
-
-- `Publish` triggers creation/sync for configured automatic meetings (event and session meetings).
-- `Unpublish`, `Cancel`, and `Delete` trigger removal/sync for configured automatic meetings.
+Automatic meetings follow these actions too: `Publish` triggers creation/sync for configured
+automatic meetings (event and session meetings), while `Unpublish`, `Cancel`, and `Delete`
+trigger removal/sync for them.
 
 If an event belongs to a recurring series, `Publish`, `Unpublish`, `Cancel`, and `Delete` ask
 whether to apply the action to only the selected event or all active events in that series. Series

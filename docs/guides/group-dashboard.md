@@ -42,18 +42,13 @@ Main areas:
 
 ## Access and Context
 
-To operate here, you need:
-
-1. Logged-in session.
-2. Group-team membership.
-3. A selected community and group.
-
-If the right community or group is not selected yet, some actions stay unavailable until you pick
-them.
+To operate here, you need a logged-in session, group-team membership, and a selected community
+and group. If the right community or group is not selected yet, some actions stay unavailable
+until you pick them.
 
 ## Roles and Permissions
 
-Group role permissions are fixed and enforced by middleware plus database checks:
+Group role permissions are fixed:
 
 | Group role       | Group read | Events    | Members   | Settings  | Sponsors  | Team      |
 | ---------------- | ---------- | --------- | --------- | --------- | --------- | --------- |
@@ -63,17 +58,13 @@ Group role permissions are fixed and enforced by middleware plus database checks
 
 ![Group roles](../screenshots/dashboard-group-members-list-roles.png)
 
-Community role interaction:
+Community roles interact with this dashboard too. Community `admin` and `groups-manager` also
+have group write permissions inside that community, while community `viewer` remains read-only at
+group scope. In addition, communities can restrict group team management so that only the
+community `admin` and `groups-manager` roles can add, update, or remove group team members.
 
-- Community `admin` and `groups-manager` also have group write permissions inside that community.
-- Communities can restrict group team management so only community `admin` and `groups-manager`
-  roles can add, update, or remove group team members.
-- Community `viewer` remains read-only at group scope.
-
-UI behavior:
-
-- Controls are disabled when your role does not allow that action.
-- Server-side authorization still applies.
+Controls are disabled in the UI when your role does not allow an action, and OCG enforces the
+same permissions on every operation.
 
 ![Community disabled form](../screenshots/dashboard-group-permissions-role.png)
 
@@ -94,17 +85,15 @@ Category and region options in this form come from the defined community's
 [Group Categories](/dashboard/community?tab=group-categories ':ignore') and
 [Regions](/dashboard/community?tab=regions ':ignore') tabs.
 
-Brand inheritance model in this scope:
-
-- If a group logo is not set, OCG falls back to the community logo.
-- If a group banner or mobile banner is not set, OCG falls back to the community banner.
-- If a group Open Graph image is not set, group and event link previews fall
-  back to the community Open Graph image.
+Brand inheritance works as follows in this scope: if a group logo is not set, OCG falls back to
+the community logo; if a group banner or mobile banner is not set, OCG falls back to the
+community banner; and if a group Open Graph image is not set, group and event link previews fall
+back to the community Open Graph image.
 
 Pretty URL slugs are optional. When set, OCG uses the pretty slug in generated
 group and event links, while the generated group slug continues to work.
 
-Pretty URL slug rules:
+Pretty URL slugs follow these rules:
 
 - Use lowercase ASCII letters, numbers, and hyphens only.
 - Start and end with a letter or number.
@@ -120,15 +109,15 @@ Field requirements and limits are shown inline in the settings form while editin
 The `Parent group` section in `Settings` creates a single-level relationship between groups.
 Use it when one group should appear under another group on the public site.
 
-Rules:
+The relationship follows these rules:
 
 - A parent must be active, in the same community, and not deleted.
 - A parent cannot be a subgroup itself.
 - A subgroup cannot have its own subgroups.
 - A group with any non-deleted child link cannot be assigned a parent. The selector is disabled
   while those child links exist.
-- Choosing a new parent requires `group.settings.write` on both this group and the selected parent.
-- Clearing the parent only requires `group.settings.write` on this group.
+- Choosing a new parent requires settings write access on both this group and the selected parent.
+- Clearing the parent only requires settings write access on this group.
 - Saving other settings with an unchanged current parent is allowed, even if that parent later
   becomes inactive.
 
@@ -140,16 +129,11 @@ the parent/child links connected to that group.
 
 ## Payments: Group Recipient Setup
 
-Ticketed events are available only when two prerequisites are both true:
+Ticketed events are available only when two prerequisites are both true: your OCG deployment has
+payments enabled, and the group has a payment recipient configured in `Settings`.
 
-1. Your OCG deployment has payments enabled.
-2. The group has a payment recipient configured in `Settings`.
-
-Group-level setup:
-
-- Open [Settings](/dashboard/group?tab=settings ':ignore').
-- Enter the group's Stripe connected account ID in the payments section.
-- Save the group settings.
+To set up the group side, open [Settings](/dashboard/group?tab=settings ':ignore'), enter the
+group's Stripe connected account ID in the payments section, and save the group settings.
 
 OCG expects a Stripe connected account identifier in the `acct_...` format.
 The dashboard does not create or onboard the Stripe account for you.
@@ -164,26 +148,16 @@ zero-price tiers.
 If you do not see payment controls in the event editor at all, your deployment may not have
 payments enabled yet. That setup is managed outside the public dashboard documentation.
 
-Organizer permissions:
-
-- Configuring the group payment recipient requires `group.settings.write`.
-- Creating paid events and approving/rejecting refund requests require `group.events.write`.
-- Organizers with read access can still view attendee refund status in `Event -> Attendees`.
+Permission-wise, configuring the group payment recipient requires settings write access, while
+creating paid events and approving/rejecting refund requests require events write access.
+Organizers with read access can still view attendee refund status in `Event -> Attendees`.
 
 ## Team: Organizer Capacity
 
 `Team` supports invitation-driven organizer management with role updates for existing members.
+The assignable roles are `admin`, `events-manager`, and `viewer`.
 
-Current assignable roles:
-
-- `admin`
-- `events-manager`
-- `viewer`
-
-Important protection:
-
-- The last accepted group admin cannot be removed or demoted.
-
+One important protection applies: the last accepted group admin cannot be removed or demoted.
 This protects continuity for critical event operations and approvals.
 
 !> The last accepted group admin cannot be removed or demoted.
@@ -199,12 +173,8 @@ Invitation acceptance and dashboard visibility details are covered in
 
 ## Analytics: Delivery Health
 
-Group analytics focuses on operational output:
-
-- Members.
-- Events.
-- Attendees.
-- Page views for the group page and all event pages.
+Group analytics focuses on operational output: members, events, attendees, and page views for
+the group page and all event pages.
 
 Each metric includes running totals and monthly trends, so it is easier to tell whether growth is
 steady over time or mainly tied to isolated spikes.
@@ -223,10 +193,8 @@ counted once. The switch is not saved; each fresh page load starts with subgroup
 
 ## Members: Communication
 
-`Members` provides two practical capabilities:
-
-- Browse member list and join dates.
-- Send plain-text email to all group members.
+`Members` provides two practical capabilities: browsing the member list with join dates, and
+sending plain-text email to all group members.
 
 `Send email` reaches both group members and group team members who receive optional
 notifications. The email form includes a required `Subject`, defaults it to the group name, and
@@ -253,10 +221,8 @@ Typical flow:
 Most organizer time is spent in [Events](/dashboard/group?tab=events ':ignore'): creating drafts,
 publishing, managing CFS, reviewing submissions, and running attendance/check-in flows.
 
-List classification is based on event start time:
-
-- `Upcoming events` includes items whose start time has not yet passed.
-- `Past events` includes items whose start time has already passed.
+The events list is classified by event start time: `Upcoming events` includes items whose start
+time has not yet passed, and `Past events` includes items whose start time already has.
 
 ![Group events area](../screenshots/dashboard-group-events.png)
 
@@ -292,7 +258,7 @@ Invitation-review event operations include:
 
 Organizer-created event invitations are managed from the event `Attendees` tab:
 
-- Organizers with `group.events.write` can invite a registered platform user or enter an email
+- Organizers with events write access can invite a registered platform user or enter an email
   address for someone who has not registered yet.
 - For new invitees, email invitations should use the invitee's LF account primary email because LF
   SSO activates the placeholder by email. For existing users, select the registered platform user
@@ -327,23 +293,14 @@ Coverage in this view includes:
 - Event lifecycle actions such as add, update, publish, unpublish, cancel, and delete.
 - Check-ins, CFS submission reviews, and custom notification sends.
 
-Table behavior:
+Rows are ordered by newest first by default, and you can switch the ordering to oldest first. You
+can filter by `Action`, `Actor`, and date range, and pagination keeps the active filters applied.
+When an audit row has extra metadata, such as a role or notification subject, `Details` opens a
+popover with it.
 
-- Rows are ordered by newest first by default.
-- You can filter by `Action`, `Actor`, and date range.
-- You can switch ordering between newest first and oldest first.
-- Pagination keeps the active filters applied.
-- `Details` opens a popover when an audit row has extra metadata such as a role or notification
-  subject.
+For each entry, OCG shows the resource type plus the current resource name. If the resource no
+longer exists, the audit entry still remains and falls back to the stored resource identifier.
 
-Target display behavior:
-
-- OCG shows the resource type plus the current resource name.
-- If the current resource row no longer exists, the audit row still remains and falls back to the
-  stored resource identifier.
-
-Scope note:
-
-- This screen is group-dashboard focused.
-- Some overlapping actions, such as `group_updated`, can also appear in the community dashboard
-  audit view when they match that dashboard's accepted scope.
+This screen is group-dashboard focused, but some overlapping actions, such as `group_updated`,
+can also appear in the community dashboard audit view when they match that dashboard's accepted
+scope.

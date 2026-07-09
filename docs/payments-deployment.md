@@ -2,10 +2,9 @@
 
 # Stripe Payments Deployment Guide
 
-This document is for OCG operators and deployment maintainers.
-
-It is intentionally unlisted from the public docs navigation because it covers
-server configuration, Stripe platform setup, and operational caveats.
+This document is for OCG operators and deployment maintainers. It is intentionally unlisted
+from the public docs navigation because it covers server configuration, Stripe platform setup,
+and operational caveats.
 
 ## What This Enables
 
@@ -52,7 +51,7 @@ payments:
   webhookSecret: "whsec_..."
 ```
 
-Notes:
+A few notes about these values:
 
 - Set `enabled: true` to make payments available in OCG.
 - Set `provider: stripe` because OCG currently supports one configured payments
@@ -148,11 +147,9 @@ Reference:
 
 ## Connected Accounts For Groups
 
-Enabling Stripe on the server does not automatically make every group
-payment-ready.
-
-Each group still needs its own Stripe connected account on the same Stripe
-Connect platform used by this OCG deployment.
+Enabling Stripe on the server does not automatically make every group payment-ready. Each group
+still needs its own Stripe connected account on the same Stripe Connect platform used by this
+OCG deployment.
 
 The expected flow is:
 
@@ -234,7 +231,7 @@ card payments only when OCG creates Stripe Checkout sessions.
 
 ### Payments Section Does Not Appear In Group Settings
 
-Check:
+Check that:
 
 - Stripe payments are enabled in OCG configuration.
 - All required Stripe values are present.
@@ -242,7 +239,7 @@ Check:
 
 ### Stripe Returns Signature Errors
 
-Check:
+Check that:
 
 - The webhook endpoint secret in OCG matches the exact Stripe endpoint you
   created.
@@ -254,7 +251,7 @@ Reference:
 
 ### Paid Events Are Still Unavailable For A Group
 
-Check:
+Check that:
 
 - The platform administrator created a connected account for that group on the
   same Stripe Connect platform used by OCG.

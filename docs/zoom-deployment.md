@@ -2,11 +2,9 @@
 
 # Zoom Meetings Deployment Guide
 
-This document is for OCG operators and deployment maintainers.
-
-It is intentionally unlisted from the public docs navigation because it covers
-server configuration, Zoom app setup, webhook configuration, and internal
-operational caveats.
+This document is for OCG operators and deployment maintainers. It is intentionally unlisted
+from the public docs navigation because it covers server configuration, Zoom app setup, webhook
+configuration, and internal operational caveats.
 
 ## What This Enables
 
@@ -66,7 +64,7 @@ meetings:
     webhookSecretToken: "{YOUR_ZOOM_WEBHOOK_SECRET_TOKEN}"
 ```
 
-Notes:
+A few notes about these values:
 
 - Set `enabled: true` to make Zoom available in OCG automatic meeting flows.
 - `accountId`, `clientId`, and `clientSecret` come from the Zoom
@@ -131,11 +129,8 @@ Reference: [Internal apps (Server-to-server)](https://developers.zoom.us/docs/in
 
 ### Step 2: Choose the Host Pool Users
 
-OCG does not turn event organizers or speaker emails into Zoom hosts
-automatically.
-
-Instead, OCG selects an available host from the configured `hostPoolUsers`
-list when it creates a meeting.
+OCG does not turn event organizers or speaker emails into Zoom hosts automatically. Instead, it
+selects an available host from the configured `hostPoolUsers` list when it creates a meeting.
 
 Choose host users that:
 
@@ -165,11 +160,9 @@ Configure these settings in Zoom:
 When Zoom shows multiple `join before host` choices, select the option that
 lets participants join `15 minutes before start time`.
 
-These defaults align with the way OCG currently creates Zoom meetings:
-
-- OCG requests a generated default password for new meetings.
-- OCG enables `join_before_host`.
-- OCG sets join-before-host time to `15` minutes.
+These defaults align with the way OCG currently creates Zoom meetings: OCG requests a generated
+default password for new meetings, enables `join_before_host`, and sets the join-before-host
+time to `15` minutes.
 
 Reference: [Meetings APIs](https://developers.zoom.us/docs/api/meetings/).
 
@@ -287,10 +280,9 @@ If Zoom is disabled, the route is not registered.
 
 ### Recording URL Handling
 
-OCG currently listens for `recording.completed` and stores every distinct
-`share_url` provided by Zoom for the matching meeting.
-
-If the webhook payload has no `share_url`, OCG skips the recording-link update.
+OCG currently listens for `recording.completed` and stores every distinct `share_url` provided
+by Zoom for the matching meeting. If the webhook payload has no `share_url`, OCG skips the
+recording-link update.
 
 Raw Zoom URLs remain organizer-only candidates. OCG does not use them as a
 public fallback because Zoom can produce extra recordings when isolated
@@ -305,7 +297,7 @@ automatically created Zoom meetings.
 
 ### Zoom Is Not Available In Automatic Meeting Setup
 
-Check:
+Check that:
 
 - Zoom is enabled in OCG configuration.
 - All required Zoom credentials are present.
@@ -314,7 +306,7 @@ Check:
 
 ### Zoom Webhook Validation Or Signature Checks Fail
 
-Check:
+Check that:
 
 - The webhook endpoint is exactly `https://{YOUR_OCG_BASE_URL}/webhooks/zoom`.
 - The webhook secret token in OCG matches the secret configured in Zoom.
@@ -322,7 +314,7 @@ Check:
 
 ### Recording Links Are Missing
 
-Check:
+Check that:
 
 - `Cloud recording` is enabled in Zoom.
 - `Automatic recording` is enabled and set to `Record in the cloud` in Zoom.

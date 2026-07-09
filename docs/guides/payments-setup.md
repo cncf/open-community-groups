@@ -14,11 +14,9 @@ OCG does not create or onboard Stripe accounts from the group dashboard. The
 group dashboard only stores the Stripe connected account identifier that should
 receive payouts for that group's paid events.
 
-In practice, this setup usually involves two people:
-
-- A group administrator who wants to enable paid events for the group.
-- A platform administrator who manages the Stripe Connect platform for that OCG
-  deployment.
+In practice, this setup usually involves two people: a group administrator
+who wants to enable paid events for the group, and a platform administrator
+who manages the Stripe Connect platform for that OCG deployment.
 
 **Sections:**
 
@@ -131,14 +129,11 @@ those first. An incomplete account can delay payouts or block charges.
 
 ## Step 3: Copy the Stripe Account ID
 
-After the connected account exists, copy its Stripe account ID.
-
-What to look for:
-
-- The identifier is the connected account ID, not a publishable key, secret
-  key, payment link, or customer ID.
-- Stripe documents connected account IDs as values that usually start with
-  `acct_`: [Connected Accounts API reference](https://docs.stripe.com/api/connected_accounts).
+After the connected account exists, copy its Stripe account ID. Make sure you
+copy the connected account ID itself, not a publishable key, secret key,
+payment link, or customer ID. Stripe documents connected account IDs as values
+that usually start with `acct_`:
+[Connected Accounts API reference](https://docs.stripe.com/api/connected_accounts).
 
 If you are working from the Stripe dashboard, use the account details for the
 connected account created for the group in the previous step.
@@ -161,13 +156,10 @@ cannot use ticketed events.
 
 ## What Happens After Setup
 
-After the recipient is saved:
-
-- Group administrators can create ticketed events for the group.
-- Paid attendees are sent to Stripe Checkout during purchase.
-- Refund requests stay managed in OCG by group administrators.
-- The group can continue managing its connected account details in Stripe when
-  needed.
+Once the recipient is saved, group administrators can create ticketed events
+for the group, and paid attendees are sent to Stripe Checkout during purchase.
+Refund requests stay managed in OCG by group administrators, while the group
+can continue managing its connected account details in Stripe when needed.
 
 For the rest of the paid-event flow, continue to
 [Event Operations](event-operations.md#paid-events-tickets-discounts-refunds).

@@ -3,9 +3,8 @@
 # Public Site Guide
 
 The public site is where people discover communities, join groups, RSVP to
-events, check in, and, when enabled, submit talks to Call for Speakers.
-
-If you are not sure where to start, this is the best place to begin.
+events, check in, and, when enabled, submit talks to Call for Speakers. If you
+are not sure where to start, this is the best place to begin.
 
 If you prefer a faster task-oriented run-through first, use
 [Quickstart](../getting-started/quickstart.md).
@@ -47,16 +46,13 @@ and date range. Keeping this order avoids over-filtering too early.
 need to narrow results further.
 
 Explore gives you multiple view styles, and the available options depend on
-what you are browsing:
+what you are browsing: events offer `List` and `Calendar` views, while groups
+offer `List` and `Map`.
 
-- `Events`: `List` and `Calendar`.
-- `Groups`: `List` and `Map`.
-
-Quick guide:
-
-- `List` helps when you want to scan titles, dates, and descriptions quickly.
-- `Calendar` helps when you are planning around time conflicts and busy periods.
-- `Map` helps when place matters, like finding nearby groups.
+As a quick guide, `List` helps when you want to scan titles, dates, and
+descriptions quickly; `Calendar` helps when you are planning around time
+conflicts and busy periods; and `Map` helps when place matters, like finding
+nearby groups.
 
 ![Explore events list](../screenshots/explore-events-list.png)
 
@@ -69,19 +65,15 @@ Quick guide:
 Joining a group is how you stay connected to a community over time. Events
 come and go, but groups are where ongoing participation happens.
 
-On the group page, `Join group` adds you as a member. If you later step back,
-`Leave group` removes you from the group.
+On the group page, `Join group` adds you as a member. If you are logged out,
+you are prompted to sign in with Linux Foundation SSO first, and the join
+button may take a moment to update after the page loads. Once you join, OCG
+sends a welcome message with a link back to the group page. If you later step
+back, `Leave group` removes you from the group.
 
-Helpful details:
-
-- Logged-out users are prompted to sign in with Linux Foundation SSO.
-- The join button may take a moment to update after the page loads.
-- After you join, OCG sends a welcome message with a link back to the group page.
-
-Some group pages show hierarchy sections:
-
-- `Parent group` links from a subgroup back to its active parent.
-- `Subgroups` links from a parent group to its active subgroups.
+Some group pages also show hierarchy sections: `Parent group` links from a
+subgroup back to its active parent, and `Subgroups` links from a parent group
+to its active subgroups.
 
 When a group has active subgroups, its group page event stream includes events from the group and
 those active subgroups. This affects the next-event panel, upcoming events, past events, and the
@@ -92,13 +84,13 @@ do not aggregate subgroup data.
 
 ## RSVP and Attend Events
 
-The event page is the best place to check event details. Use it for RSVP,
-logistics, links, and speaker-program status.
+The event page is the best place to check event details: RSVP, logistics,
+links, and speaker-program status all live there.
 
 Click `Attend event` to RSVP. If the event is virtual/hybrid and meeting access
 is configured, attendees can see `Join meeting` when the event is live.
 
-Helpful details:
+A few details shape how RSVP behaves:
 
 - The RSVP button may take a moment to update after the page loads.
 - RSVP actions are available only before the event start time.
@@ -133,7 +125,7 @@ When an event has a capacity limit, the button behavior depends on organizer set
   `My Events` before your registration is complete.
 - Organizer invitations can still be completed outside the public registration window.
 
-For invitation-review events:
+For invitation-review events, keep these points in mind:
 
 - Pending requests do not reserve seats.
 - Organizers accept requests while capacity remains available.
@@ -150,19 +142,12 @@ You must RSVP first to be eligible for event-day check-in.
 ## Check In on Event Day
 
 Check-in confirms that you attended the event, so time limits and attendance
-rules apply.
+rules apply. The check-in window opens 2 hours before the start time and
+closes at the end of the event day; for multi-day events, it closes at the end
+of the last day.
 
-Window rules:
-
-- Opens 2 hours before start time.
-- Closes at the end of the event day.
-- For multi-day events, closes at the end of the last day.
-
-You cannot check in if:
-
-- You are not an attendee.
-- The event is not published or active.
-- The check-in window is closed.
+You cannot check in if you are not an attendee, if the event is not published
+or active, or if the check-in window is closed.
 
 !> Check-in is only available when you are an attendee, the event is active,
 and the check-in window is open.
