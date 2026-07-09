@@ -11,13 +11,18 @@ use tracing::warn;
 use uuid::Uuid;
 
 use crate::{
-    config::HttpServerConfig, db::DynDB, services::notifications::DynNotificationsManager,
-    types::payments::PreparedEventCheckout,
+    config::HttpServerConfig,
+    db::{
+        DynDB,
+        payments::{EventPurchaseRefund, EventPurchaseRefundKind, EventPurchaseRefundStatus},
+    },
+    services::notifications::DynNotificationsManager,
+    types::payments::{EventPurchaseSummary, PreparedEventCheckout},
 };
 
 use super::{
-    CreateCheckoutSessionInput, DynPaymentsProvider, RefundPaymentInput,
-    notification_composer::PaymentsNotificationComposer,
+    CreateCheckoutSessionInput, DynPaymentsProvider, FindRefundInput, RefundPaymentInput,
+    RefundPaymentResult, RefundPaymentStatus, notification_composer::PaymentsNotificationComposer,
     webhook_reconciler::PaymentsWebhookReconciler,
 };
 
@@ -105,6 +110,7 @@ impl PgPaymentsManager {
         &self,
         input: &ApproveRefundRequestInput,
     ) -> Result<()> {
+        // Load the configured provider before changing refund request state
         let payments_provider = self.payments_provider()?;
 
         // Mark the refund request as being processed and load the purchase
@@ -126,38 +132,65 @@ impl PgPaymentsManager {
             )
             .await?;
 
-        // Submit the refund to the payments provider or roll back the approval state
+        // Start the durable refund handoff before the provider call
         let refund = self
             .revert_refund_approval_on_error(
                 input.group_id,
                 input.event_id,
                 input.user_id,
-                payments_provider
-                    .refund_payment(&RefundPaymentInput {
-                        amount_minor: purchase.amount_minor,
-                        provider_payment_reference,
-                        purchase_id: purchase.event_purchase_id,
-                    })
+                self.db
+                    .ensure_event_purchase_refund_started(
+                        purchase.event_purchase_id,
+                        payments_provider.provider(),
+                        EventPurchaseRefundKind::RefundRequestApproval,
+                    )
                     .await,
             )
             .await?;
 
+        // Reconcile or create the provider refund from the durable handoff
+        let refund = self
+            .resolve_refund_request_provider_refund(
+                payments_provider,
+                &purchase,
+                provider_payment_reference,
+                refund,
+            )
+            .await
+            .map_err(|err| {
+                warn!(error = %err, "failed to resolve refund request provider refund");
+                err
+            })?;
+
+        // Require the provider identifier before local finalization
+        let provider_refund_id = refund
+            .provider_refund_id
+            .ok_or_else(|| anyhow::anyhow!("provider refund id is missing after refund"))?;
+
         // Persist the refund approval in the database
-        self.db
+        let completed_refund = self
+            .db
             .approve_event_refund_request(
                 input.actor_user_id,
                 input.group_id,
                 input.event_id,
                 input.user_id,
-                refund.provider_refund_id,
+                provider_refund_id,
                 input.review_note.clone(),
             )
             .await?;
 
         // Notify the attendee about the approved refund
-        self.notification_composer
-            .enqueue_refund_approval_notification(input.community_id, input.event_id, input.user_id)
-            .await;
+        if completed_refund.finalized_now {
+            debug_assert_eq!(completed_refund.community_id, input.community_id);
+            self.notification_composer
+                .enqueue_refund_approval_notification(
+                    completed_refund.community_id,
+                    completed_refund.event_id,
+                    completed_refund.user_id,
+                )
+                .await;
+        }
 
         Ok(())
     }
@@ -321,7 +354,134 @@ impl PgPaymentsManager {
             .ok_or_else(|| anyhow::anyhow!("payments are not configured"))
     }
 
-    /// Runs a refund approval step and restores the pending state if it fails.
+    /// Records or reuses the provider refund for an approved refund request.
+    async fn resolve_refund_request_provider_refund(
+        &self,
+        payments_provider: &DynPaymentsProvider,
+        purchase: &EventPurchaseSummary,
+        provider_payment_reference: String,
+        refund: EventPurchaseRefund,
+    ) -> Result<EventPurchaseRefund> {
+        // Return provider-complete refunds without another external request
+        if matches!(
+            refund.status,
+            EventPurchaseRefundStatus::Finalized | EventPurchaseRefundStatus::ProviderSucceeded
+        ) {
+            return Ok(refund);
+        }
+
+        // Reconcile provider state before risking another refund request
+        let provider_refund_id = refund.provider_refund_id.clone();
+        match payments_provider
+            .find_refund(&FindRefundInput {
+                amount_minor: purchase.amount_minor,
+                provider_payment_reference: provider_payment_reference.clone(),
+                purchase_id: purchase.event_purchase_id,
+
+                provider_refund_id: provider_refund_id.clone(),
+            })
+            .await
+        {
+            Ok(Some(provider_refund)) => {
+                return self.record_provider_refund_result(&refund, provider_refund).await;
+            }
+            Ok(None) if provider_refund_id.is_some() => {
+                return Err(anyhow::anyhow!("provider refund not found"));
+            }
+            Ok(None) => {}
+            Err(err) => {
+                warn!(error = %err, "failed to find existing provider refund");
+                return Err(err);
+            }
+        }
+
+        // Submit a fresh provider refund with the durable idempotency key
+        let provider_refund = payments_provider
+            .refund_payment(&RefundPaymentInput {
+                amount_minor: purchase.amount_minor,
+                idempotency_key: refund.idempotency_key.clone(),
+                provider_payment_reference,
+                purchase_id: purchase.event_purchase_id,
+            })
+            .await;
+
+        // Persist the provider outcome while preserving the original failure
+        match provider_refund {
+            Ok(provider_refund) => {
+                self.record_provider_refund_result(&refund, provider_refund).await
+            }
+            Err(err) => {
+                self.record_provider_refund_failure(&refund, &err).await;
+                Err(err)
+            }
+        }
+    }
+
+    /// Records a provider refund result and only returns success when final.
+    async fn record_provider_refund_result(
+        &self,
+        refund: &EventPurchaseRefund,
+        provider_refund: RefundPaymentResult,
+    ) -> Result<EventPurchaseRefund> {
+        // Persist the provider lifecycle outcome
+        match provider_refund.status {
+            RefundPaymentStatus::Succeeded => {
+                self.db
+                    .record_event_purchase_refund_succeeded(
+                        refund.event_purchase_refund_id,
+                        provider_refund.provider_refund_id,
+                    )
+                    .await
+            }
+            RefundPaymentStatus::Pending => {
+                let refund = self
+                    .db
+                    .record_event_purchase_refund_pending(
+                        refund.event_purchase_refund_id,
+                        refund.idempotency_key.clone(),
+                        provider_refund.provider_refund_id,
+                    )
+                    .await?;
+                if matches!(
+                    refund.status,
+                    EventPurchaseRefundStatus::Finalized
+                        | EventPurchaseRefundStatus::ProviderSucceeded
+                ) {
+                    return Ok(refund);
+                }
+
+                Err(anyhow::anyhow!("provider refund is not complete yet"))
+            }
+            RefundPaymentStatus::Failed => {
+                self.db
+                    .record_event_purchase_refund_terminal_failed(
+                        refund.event_purchase_refund_id,
+                        refund.idempotency_key.clone(),
+                        provider_refund.provider_refund_id,
+                        "provider refund failed".to_string(),
+                    )
+                    .await?;
+                Err(anyhow::anyhow!("provider refund failed"))
+            }
+        }
+    }
+
+    /// Records a provider refund failure without hiding the original error.
+    async fn record_provider_refund_failure(
+        &self,
+        refund: &EventPurchaseRefund,
+        err: &anyhow::Error,
+    ) {
+        if let Err(record_err) = self
+            .db
+            .record_event_purchase_refund_failed(refund.event_purchase_refund_id, err.to_string())
+            .await
+        {
+            warn!(error = %record_err, "failed to record provider refund failure");
+        }
+    }
+
+    /// Runs a pre-handoff refund approval step and restores the pending state if it fails.
     async fn revert_refund_approval_on_error<T>(
         &self,
         group_id: Uuid,
@@ -338,7 +498,7 @@ impl PgPaymentsManager {
         }
     }
 
-    /// Reverts the temporary refund approval state after a failed provider call.
+    /// Reverts the temporary refund approval state before a durable refund starts.
     async fn revert_refund_approval_state(&self, group_id: Uuid, event_id: Uuid, user_id: Uuid) {
         if let Err(revert_err) = self
             .db

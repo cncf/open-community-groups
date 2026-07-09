@@ -15,11 +15,12 @@ pub(crate) use manager::{
     RejectRefundRequestInput, RequestRefundInput,
 };
 pub(crate) use provider::{
-    CheckoutSession, CreateCheckoutSessionInput, DynPaymentsProvider, PaymentsWebhookEvent,
-    RefundPaymentInput, build_payments_provider,
+    CheckoutSession, CreateCheckoutSessionInput, DynPaymentsProvider, FindRefundInput,
+    PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus,
+    build_payments_provider,
 };
 
 #[cfg(test)]
 pub(crate) use manager::MockPaymentsManager;
 #[cfg(test)]
-pub(crate) use provider::{MockPaymentsProvider, PaymentsProvider, RefundPaymentResult};
+pub(crate) use provider::{MockPaymentsProvider, PaymentsProvider};

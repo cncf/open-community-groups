@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(69);
+select plan(70);
 
 -- ============================================================================
 -- TESTS
@@ -214,6 +214,16 @@ select indexes_are('event_purchase', array[
     'event_purchase_user_id_idx',
     'event_purchase_provider_checkout_session_idx',
     'event_purchase_event_id_user_id_active_idx'
+]);
+
+-- Test: event_purchase_refund indexes should match expected
+select indexes_are('event_purchase_refund', array[
+    'event_purchase_refund_pkey',
+    'event_purchase_refund_event_purchase_id_key',
+    'event_purchase_refund_idempotency_key_key',
+    'event_purchase_refund_event_refund_request_id_idx',
+    'event_purchase_refund_payment_provider_refund_id_idx',
+    'event_purchase_refund_status_idx'
 ]);
 
 -- Test: event_refund_request indexes should match expected

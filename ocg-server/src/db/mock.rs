@@ -993,7 +993,7 @@ mock! {
             user_id: Uuid,
             provider_refund_id: String,
             review_note: Option<String>,
-        ) -> Result<crate::db::payments::CompletedEventPurchase>;
+        ) -> Result<crate::db::payments::CompletedEventRefund>;
         async fn attach_checkout_session_to_event_purchase(
             &self,
             event_purchase_id: Uuid,
@@ -1021,6 +1021,12 @@ mock! {
             provider: crate::types::payments::PaymentProvider,
             provider_session_id: &str,
         ) -> Result<()>;
+        async fn ensure_event_purchase_refund_started(
+            &self,
+            event_purchase_id: Uuid,
+            provider: crate::types::payments::PaymentProvider,
+            kind: crate::db::payments::EventPurchaseRefundKind,
+        ) -> Result<crate::db::payments::EventPurchaseRefund>;
         async fn get_event_purchase_summary(
             &self,
             event_purchase_id: Uuid,
@@ -1040,6 +1046,29 @@ mock! {
             &self,
             event_purchase_id: Uuid,
             provider_refund_id: String,
+        ) -> Result<()>;
+        async fn record_event_purchase_refund_failed(
+            &self,
+            event_purchase_refund_id: Uuid,
+            failure_message: String,
+        ) -> Result<()>;
+        async fn record_event_purchase_refund_pending(
+            &self,
+            event_purchase_refund_id: Uuid,
+            expected_idempotency_key: String,
+            provider_refund_id: String,
+        ) -> Result<crate::db::payments::EventPurchaseRefund>;
+        async fn record_event_purchase_refund_succeeded(
+            &self,
+            event_purchase_refund_id: Uuid,
+            provider_refund_id: String,
+        ) -> Result<crate::db::payments::EventPurchaseRefund>;
+        async fn record_event_purchase_refund_terminal_failed(
+            &self,
+            event_purchase_refund_id: Uuid,
+            expected_idempotency_key: String,
+            provider_refund_id: String,
+            failure_message: String,
         ) -> Result<()>;
         async fn reject_event_refund_request(
             &self,

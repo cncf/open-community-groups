@@ -1,6 +1,4 @@
--- Used by the dashboard refund approval flow after the provider refund succeeds:
--- marks the purchase as refunded, approves the refund request, releases any
--- reserved discount availability, and returns identifiers for notifications
+-- Finalizes a recorded refund request approval after the provider succeeds.
 create or replace function approve_event_refund_request(
     p_actor_user_id uuid,
     p_group_id uuid,
@@ -14,26 +12,68 @@ declare
     v_community_id uuid;
     v_event_discount_code_id uuid;
     v_event_purchase_id uuid;
+    v_event_purchase_refund_id uuid;
 begin
-    -- Lock the refund request and purchase before changing their state
+    -- Treat already finalized provider refunds as successful retries
     select
         g.community_id,
         ep.event_discount_code_id,
-        ep.event_purchase_id
+        ep.event_purchase_id,
+        epr.event_purchase_refund_id
     into
         v_community_id,
         v_event_discount_code_id,
-        v_event_purchase_id
+        v_event_purchase_id,
+        v_event_purchase_refund_id
     from event_purchase ep
     join event e on e.event_id = ep.event_id
     join "group" g on g.group_id = e.group_id
     join event_refund_request err on err.event_purchase_id = ep.event_purchase_id
+    join event_purchase_refund epr on epr.event_purchase_id = ep.event_purchase_id
+    where g.group_id = p_group_id
+    and ep.event_id = p_event_id
+    and ep.user_id = p_user_id
+    and ep.status = 'refunded'
+    and err.status = 'approved'
+    and epr.kind = 'refund-request-approval'
+    and epr.provider_refund_id = p_provider_refund_id
+    and epr.status = 'finalized'
+    for update of ep, err, epr;
+
+    if found then
+        return jsonb_build_object(
+            'community_id', v_community_id,
+            'event_id', p_event_id,
+            'finalized_now', false,
+            'user_id', p_user_id
+        );
+    end if;
+
+    -- Lock the refund request, purchase, and provider refund before finalizing
+    select
+        g.community_id,
+        ep.event_discount_code_id,
+        ep.event_purchase_id,
+        epr.event_purchase_refund_id
+    into
+        v_community_id,
+        v_event_discount_code_id,
+        v_event_purchase_id,
+        v_event_purchase_refund_id
+    from event_purchase ep
+    join event e on e.event_id = ep.event_id
+    join "group" g on g.group_id = e.group_id
+    join event_refund_request err on err.event_purchase_id = ep.event_purchase_id
+    join event_purchase_refund epr on epr.event_purchase_id = ep.event_purchase_id
     where g.group_id = p_group_id
     and ep.event_id = p_event_id
     and ep.user_id = p_user_id
     and ep.status = 'refund-requested'
     and err.status = 'approving'
-    for update of ep, err;
+    and epr.kind = 'refund-request-approval'
+    and epr.provider_refund_id = p_provider_refund_id
+    and epr.status = 'provider-succeeded'
+    for update of ep, err, epr;
 
     if not found then
         raise exception 'refund request not found';
@@ -69,6 +109,15 @@ begin
     where event_purchase_id = v_event_purchase_id
     and status = 'approving';
 
+    -- Mark the durable provider refund as locally finalized
+    update event_purchase_refund
+    set
+        finalized_at = current_timestamp,
+        status = 'finalized',
+        updated_at = current_timestamp
+    where event_purchase_refund_id = v_event_purchase_refund_id
+    and status = 'provider-succeeded';
+
     -- Record the completed refund for payment reconciliation and support work
     perform insert_audit_log(
         'event_refunded',
@@ -89,6 +138,7 @@ begin
     return jsonb_build_object(
         'community_id', v_community_id,
         'event_id', p_event_id,
+        'finalized_now', true,
         'user_id', p_user_id
     );
 end;

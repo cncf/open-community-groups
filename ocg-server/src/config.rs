@@ -497,12 +497,12 @@ mod tests {
         let cfg = sample_config();
         let outputs = [
             format!("{cfg:?}"),
-            format!("{:?}", &cfg.email.smtp),
-            format!("{:?}", &cfg.images),
-            format!("{:?}", &cfg.meetings),
-            format!("{:?}", &cfg.payments),
-            format!("{:?}", &cfg.server.oauth2),
-            format!("{:?}", &cfg.server.oidc),
+            format!("{:?}", cfg.email.smtp),
+            format!("{:?}", cfg.images),
+            format!("{:?}", cfg.meetings),
+            format!("{:?}", cfg.payments),
+            format!("{:?}", cfg.server.oauth2),
+            format!("{:?}", cfg.server.oidc),
         ];
 
         // Check root and nested debug output redacts all secret values

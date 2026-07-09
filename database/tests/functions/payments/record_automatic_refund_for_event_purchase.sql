@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,7 @@ select plan(4);
 \set groupID '79450000-0000-0000-0000-000000000007'
 \set priceWindowID '79450000-0000-0000-0000-000000000008'
 \set refundPendingPurchaseID '79450000-0000-0000-0000-000000000009'
+\set refundID '79450000-0000-0000-0000-000000000011'
 \set userID '79450000-0000-0000-0000-000000000010'
 
 -- ============================================================================
@@ -112,7 +113,7 @@ insert into event_ticket_price_window (
     :'eventTicketTypeID'
 );
 
--- Purchases
+-- Purchases in completed and refund-pending states
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -142,6 +143,33 @@ insert into event_purchase (
     :'userID'
 );
 
+-- Provider refund record
+insert into event_purchase_refund (
+    event_purchase_refund_id,
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status,
+
+    provider_refund_id,
+    provider_refunded_at
+) values (
+    :'refundID',
+    2500,
+    'USD',
+    :'refundPendingPurchaseID',
+    'event-purchase-refund-' || :'refundPendingPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'provider-succeeded',
+
+    're_auto_123',
+    current_timestamp
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -155,17 +183,33 @@ select lives_ok(
     'Should record an automatic refund for a refund-pending purchase'
 );
 
--- Should persist the refunded purchase fields
+-- Should persist the refunded purchase and refund record fields
 select results_eq(
     format($$
         select
-            refunded_at is not null,
-            status
-        from event_purchase
-        where event_purchase_id = %L::uuid
-    $$, :'refundPendingPurchaseID'),
-    $$ values (true, 'refunded'::text) $$,
-    'Should persist the refunded purchase fields'
+            (select refunded_at is not null from event_purchase where event_purchase_id = %L::uuid),
+            (select status from event_purchase where event_purchase_id = %L::uuid),
+            (select finalized_at is not null from event_purchase_refund where event_purchase_refund_id = %L::uuid),
+            (select status from event_purchase_refund where event_purchase_refund_id = %L::uuid)
+    $$, :'refundPendingPurchaseID', :'refundPendingPurchaseID', :'refundID', :'refundID'),
+    $$ values (true, 'refunded'::text, true, 'finalized'::text) $$,
+    'Should persist the refunded purchase and refund record fields'
+);
+
+-- Should treat an already finalized automatic refund as a successful retry
+select lives_ok(
+    format($$select record_automatic_refund_for_event_purchase(
+        %L::uuid,
+        're_auto_123'
+    )$$, :'refundPendingPurchaseID'),
+    'Should treat an already finalized automatic refund as a successful retry'
+);
+
+-- Should not duplicate the automatic refund audit row on retry
+select is(
+    (select count(*)::int from audit_log),
+    1,
+    'Should not duplicate the automatic refund audit row on retry'
 );
 
 -- Should create the expected automatic refund audit row

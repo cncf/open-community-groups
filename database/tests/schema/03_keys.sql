@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(154);
+select plan(158);
 
 -- ============================================================================
 -- TESTS
@@ -35,6 +35,7 @@ select has_pk('event_host');
 select has_pk('event_kind');
 select has_pk('event_organizer');
 select has_pk('event_purchase');
+select has_pk('event_purchase_refund');
 select has_pk('event_refund_request');
 select has_pk('event_ticket_price_window');
 select has_pk('event_ticket_type');
@@ -114,6 +115,9 @@ select col_is_fk('event_purchase', 'event_id', 'event');
 select col_is_fk('event_purchase', 'payment_provider_id', 'payment_provider');
 select col_is_fk('event_purchase', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_purchase', 'user_id', 'user');
+select col_is_fk('event_purchase_refund', 'event_purchase_id', 'event_purchase');
+select col_is_fk('event_purchase_refund', 'event_refund_request_id', 'event_refund_request');
+select col_is_fk('event_purchase_refund', 'payment_provider_id', 'payment_provider');
 select col_is_fk('event_refund_request', 'event_purchase_id', 'event_purchase');
 select col_is_fk('event_refund_request', 'requested_by_user_id', 'user');
 select col_is_fk('event_refund_request', 'reviewed_by_user_id', 'user');

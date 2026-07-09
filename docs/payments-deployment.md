@@ -115,13 +115,21 @@ Reference:
 
 ### Step 3: Subscribe the Webhook to the Events OCG Uses
 
+Set the webhook endpoint API version to `2024-10-28.acacia` or newer. OCG pins
+its API requests to that version; configuring the event destination version as
+well keeps the refund event names and payloads consistent.
+
 Configure the Stripe webhook endpoint to send only these events:
 
 - `checkout.session.completed`
 - `checkout.session.expired`
+- `refund.created`
+- `refund.failed`
+- `refund.updated`
 
-These are the only Stripe Checkout events the current OCG payments handler
-accepts for purchase completion and expired seat holds.
+The checkout events complete purchases and expire seat holds. The refund events
+let OCG reconcile asynchronous provider refunds, finalize automatic refunds,
+and record terminal failures for explicit recovery.
 
 Subscribing extra Stripe events is not recommended here because unsupported
 events are currently rejected by the webhook handler.
@@ -129,8 +137,10 @@ events are currently rejected by the webhook handler.
 References:
 
 - [Types of events](https://docs.stripe.com/api/events/types)
+- [Refund webhook event update](https://docs.stripe.com/changelog/acacia/2024-10-28/refund-webhook-update)
 - [Fulfill orders](https://docs.stripe.com/checkout/fulfillment)
 - [How Checkout works](https://docs.stripe.com/payments/checkout/how-checkout-works)
+- [Refund and cancel payments](https://docs.stripe.com/refunds)
 
 ### Step 4: Copy the Endpoint Signing Secret
 
@@ -195,9 +205,9 @@ Reference:
 
 ### Delayed Payment Methods
 
-Based on the current OCG implementation, the webhook handler accepts
-`checkout.session.completed` and `checkout.session.expired` events. Delayed
-payment events such as `checkout.session.async_payment_succeeded` and
+Based on the current OCG implementation, the webhook handler accepts checkout
+completion and expiration events plus refund lifecycle events. Delayed payment
+events such as `checkout.session.async_payment_succeeded` and
 `checkout.session.async_payment_failed` are not currently covered here.
 
 Stripe documents those async events for delayed payment methods. Because of
@@ -215,8 +225,9 @@ card payments only when OCG creates Stripe Checkout sessions.
 3. Copy the matching Stripe publishable and secret keys.
 4. Create a Stripe webhook endpoint pointing to
    `https://{YOUR_OCG_BASE_URL}/webhooks/payments`.
-5. Subscribe the webhook only to `checkout.session.completed` and
-   `checkout.session.expired`.
+5. Set the webhook endpoint API version to `2024-10-28.acacia` or newer, then
+   subscribe it to `checkout.session.completed`, `checkout.session.expired`,
+   `refund.created`, `refund.failed`, and `refund.updated`.
 6. Copy the webhook signing secret into OCG config.
 7. Deploy OCG with `payments.enabled: true`.
 8. Verify the `Payments` section appears in group settings.

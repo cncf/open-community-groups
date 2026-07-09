@@ -20,7 +20,10 @@ use crate::{
         event::DBEvent,
         group::DBGroup,
         meetings::DBMeetings,
-        payments::{DBPayments, PrepareEventCheckoutPurchaseInput, ReconcileEventPurchaseResult},
+        payments::{
+            DBPayments, EventPurchaseRefundKind, EventPurchaseRefundStatus,
+            PrepareEventCheckoutPurchaseInput, ReconcileEventPurchaseResult,
+        },
         site::DBSite,
     },
     services::meetings::MeetingProvider,
@@ -101,6 +104,7 @@ async fn db_contracts_approve_event_refund_request_deserializes() -> Result<()> 
 
     assert_eq!(purchase.community_id, community_id());
     assert_eq!(purchase.event_id, ticketed_event_id());
+    assert!(purchase.finalized_now);
     assert_eq!(purchase.user_id, refund_approve_buyer_id());
 
     Ok(())
@@ -193,6 +197,83 @@ async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> 
     assert_eq!(purchase.community_id, community_id());
     assert_eq!(purchase.event_id, ticketed_event_id());
     assert_eq!(purchase.user_id, free_buyer_id());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<()> {
+    // Start a durable manual refund from deterministic contract data
+    let db = contract_tests_db()?;
+    let refund = db
+        .ensure_event_purchase_refund_started(
+            refund_lifecycle_purchase_id(),
+            PaymentProvider::Stripe,
+            EventPurchaseRefundKind::RefundRequestApproval,
+        )
+        .await?;
+
+    // Check required fields and initial workflow metadata
+    assert_eq!(refund.amount_minor, 2500);
+    assert_eq!(refund.currency_code, "USD");
+    assert_eq!(refund.event_purchase_id, refund_lifecycle_purchase_id());
+    assert_ne!(refund.event_purchase_refund_id, Uuid::nil());
+    assert_eq!(
+        refund.idempotency_key,
+        format!("event-purchase-refund-{}", refund_lifecycle_purchase_id())
+    );
+    assert_eq!(refund.kind, EventPurchaseRefundKind::RefundRequestApproval);
+    assert_eq!(refund.payment_provider, PaymentProvider::Stripe);
+    assert!(refund.started_now);
+    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+
+    // Check optional provider outcome fields are absent initially
+    assert!(refund.failure_message.is_none());
+    assert!(refund.finalized_at.is_none());
+    assert!(refund.provider_refund_id.is_none());
+    assert!(refund.provider_refunded_at.is_none());
+
+    // Record the in-progress provider refund
+    let refund = db
+        .record_event_purchase_refund_pending(
+            refund.event_purchase_refund_id,
+            refund.idempotency_key.clone(),
+            "re_contract_refund_lifecycle".to_string(),
+        )
+        .await?;
+
+    // Check the pending provider identifier and workflow state
+    assert_eq!(refund.event_purchase_id, refund_lifecycle_purchase_id());
+    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
+
+    assert!(refund.failure_message.is_none());
+    assert!(refund.finalized_at.is_none());
+    assert_eq!(
+        refund.provider_refund_id.as_deref(),
+        Some("re_contract_refund_lifecycle")
+    );
+    assert!(refund.provider_refunded_at.is_none());
+
+    // Record provider success for the same durable refund
+    let refund = db
+        .record_event_purchase_refund_succeeded(
+            refund.event_purchase_refund_id,
+            "re_contract_refund_lifecycle".to_string(),
+        )
+        .await?;
+
+    // Check the successful provider outcome deserializes completely
+    assert_eq!(refund.event_purchase_id, refund_lifecycle_purchase_id());
+    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderSucceeded);
+
+    assert!(refund.failure_message.is_none());
+    assert!(refund.finalized_at.is_none());
+    assert_eq!(
+        refund.provider_refund_id.as_deref(),
+        Some("re_contract_refund_lifecycle")
+    );
+    assert!(refund.provider_refunded_at.is_some());
 
     Ok(())
 }
@@ -1693,6 +1774,7 @@ const RECONCILE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e3";
 const REFUND_APPROVE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e6";
 const REFUND_BEGIN_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e5";
 const REFUND_BEGIN_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f4";
+const REFUND_LIFECYCLE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fb";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
@@ -1836,6 +1918,10 @@ fn refund_begin_buyer_id() -> Uuid {
 
 fn refund_begin_purchase_id() -> Uuid {
     parse_uuid(REFUND_BEGIN_PURCHASE_ID)
+}
+
+fn refund_lifecycle_purchase_id() -> Uuid {
+    parse_uuid(REFUND_LIFECYCLE_PURCHASE_ID)
 }
 
 fn refund_reject_buyer_id() -> Uuid {

@@ -20,12 +20,15 @@ use crate::{
 };
 
 use super::{
-    CheckoutSession, CreateCheckoutSessionInput, PaymentsProvider, PaymentsWebhookEvent,
-    RefundPaymentInput, RefundPaymentResult,
+    CheckoutSession, CreateCheckoutSessionInput, FindRefundInput, PaymentsProvider,
+    PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus,
 };
 
 #[cfg(test)]
 mod tests;
+
+/// Stripe API version used by OCG requests.
+const STRIPE_API_VERSION: &str = "2024-10-28.acacia";
 
 /// Stripe Checkout payment methods currently allowed by OCG.
 const STRIPE_CHECKOUT_PAYMENT_METHOD_TYPES: [&str; 1] = ["card"];
@@ -35,16 +38,18 @@ const STRIPE_WEBHOOK_TOLERANCE_SECS: i64 = 300;
 
 /// Stripe-backed payments provider implementation.
 pub(crate) struct StripeProvider {
-    client: Client,
+    /// Stripe provider configuration.
     cfg: PaymentsStripeConfig,
+    /// HTTP client used for Stripe API requests.
+    client: Client,
 }
 
 impl StripeProvider {
     /// Creates a new Stripe provider.
     pub(crate) fn new(cfg: PaymentsStripeConfig) -> Self {
         Self {
-            client: Client::new(),
             cfg,
+            client: Client::new(),
         }
     }
 
@@ -128,6 +133,22 @@ impl StripeProvider {
         form_fields
     }
 
+    /// Builds the Stripe refund form body for a destination charge.
+    fn build_refund_form_fields(input: &RefundPaymentInput) -> BTreeMap<String, String> {
+        BTreeMap::from([
+            ("amount".to_string(), input.amount_minor.to_string()),
+            (
+                "metadata[event_purchase_id]".to_string(),
+                input.purchase_id.to_string(),
+            ),
+            (
+                "payment_intent".to_string(),
+                input.provider_payment_reference.clone(),
+            ),
+            ("reverse_transfer".to_string(), "true".to_string()),
+        ])
+    }
+
     /// Builds a deterministic idempotency key for Stripe checkout sessions.
     fn checkout_idempotency_key(purchase_id: Uuid) -> String {
         format!("event-purchase-checkout-{purchase_id}")
@@ -152,6 +173,43 @@ impl StripeProvider {
             input.public_group_slug(),
             input.event_slug
         )
+    }
+
+    /// Finds a matching Stripe refund and maps its current status.
+    fn find_matching_refund_result(
+        input: &FindRefundInput,
+        refunds: Vec<StripeListedRefund>,
+    ) -> Result<Option<RefundPaymentResult>> {
+        // Normalize the purchase and optional provider identifiers used for matching
+        let purchase_id = input.purchase_id.to_string();
+        let provider_refund_id = input.provider_refund_id.as_deref();
+
+        // Select matching non-terminal attempts unless a specific refund is pinned
+        let mut matching_refunds = refunds
+            .into_iter()
+            .filter(|refund| {
+                refund.amount == input.amount_minor
+                    && refund.metadata.get("event_purchase_id") == Some(&purchase_id)
+                    && provider_refund_id.is_none_or(|id| refund.id == id)
+                    && (provider_refund_id.is_some()
+                        || !Self::is_terminal_failure_status(&refund.status))
+            })
+            .collect::<Vec<_>>();
+
+        // Prefer successful refunds over in-progress or terminal results
+        matching_refunds.sort_by_key(|refund| Self::refund_status_rank(&refund.status));
+
+        // Map the most useful matching provider refund into the shared result
+        matching_refunds
+            .into_iter()
+            .next()
+            .map(|refund| Self::refund_result(refund.id, &refund.status))
+            .transpose()
+    }
+
+    /// Returns whether a Stripe refund status cannot complete later.
+    fn is_terminal_failure_status(status: &str) -> bool {
+        matches!(status, "canceled" | "failed")
     }
 
     /// Normalizes a currency code for Stripe requests.
@@ -191,9 +249,29 @@ impl StripeProvider {
         Ok((timestamp, signatures))
     }
 
-    /// Builds a deterministic idempotency key for Stripe refunds.
-    fn refund_idempotency_key(purchase_id: Uuid) -> String {
-        format!("event-purchase-refund-{purchase_id}")
+    /// Converts a Stripe refund status into the provider result.
+    fn refund_result(id: String, status: &str) -> Result<RefundPaymentResult> {
+        let status = match status {
+            "succeeded" => RefundPaymentStatus::Succeeded,
+            "pending" | "requires_action" => RefundPaymentStatus::Pending,
+            "canceled" | "failed" => RefundPaymentStatus::Failed,
+            unsupported => bail!("unsupported Stripe refund status: {unsupported}"),
+        };
+
+        Ok(RefundPaymentResult {
+            provider_refund_id: id,
+            status,
+        })
+    }
+
+    /// Ranks matching refund statuses by reconciliation usefulness.
+    fn refund_status_rank(status: &str) -> u8 {
+        match status {
+            "succeeded" => 0,
+            "pending" | "requires_action" => 1,
+            "canceled" | "failed" => 2,
+            _ => 3,
+        }
     }
 
     /// Validates the freshness of a Stripe webhook timestamp.
@@ -239,6 +317,7 @@ impl PaymentsProvider for StripeProvider {
                 "idempotency-key",
                 Self::checkout_idempotency_key(input.purchase_id),
             )
+            .header("stripe-version", STRIPE_API_VERSION)
             .body(serde_urlencoded::to_string(&form_fields)?)
             .send()
             .await
@@ -266,6 +345,44 @@ impl PaymentsProvider for StripeProvider {
         })
     }
 
+    /// [`PaymentsProvider::find_refund`].
+    #[instrument(skip(self, input), err)]
+    async fn find_refund(&self, input: &FindRefundInput) -> Result<Option<RefundPaymentResult>> {
+        // Build the provider query for refunds attached to the payment intent
+        let query = serde_urlencoded::to_string([
+            ("payment_intent", input.provider_payment_reference.as_str()),
+            ("limit", "100"),
+        ])?;
+
+        // List refunds for the payment intent before risking another provider refund
+        let response = self
+            .client
+            .get(format!("{}/refunds?{query}", Self::api_base_url()))
+            .basic_auth(&self.cfg.secret_key, Some(""))
+            .header("stripe-version", STRIPE_API_VERSION)
+            .send()
+            .await
+            .context("error listing Stripe refunds")?;
+
+        // Preserve Stripe's error body to simplify refund diagnostics
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "unable to read Stripe error response".to_string());
+            bail!("Stripe refund lookup failed ({status}): {body}");
+        }
+
+        // Deserialize and select the most useful matching refund
+        let response: StripeRefundListResponse = response
+            .json()
+            .await
+            .context("error parsing Stripe refund list response")?;
+
+        Self::find_matching_refund_result(input, response.data)
+    }
+
     /// [`PaymentsProvider::provider`].
     fn provider(&self) -> PaymentProvider {
         PaymentProvider::Stripe
@@ -279,19 +396,8 @@ impl PaymentsProvider for StripeProvider {
             bail!("cannot refund a non-positive purchase amount");
         }
 
-        // Send the purchase metadata Stripe needs to process and deduplicate refunds
-        let mut form_fields = BTreeMap::from([
-            (
-                "payment_intent".to_string(),
-                input.provider_payment_reference.clone(),
-            ),
-            (
-                "metadata[event_purchase_id]".to_string(),
-                input.purchase_id.to_string(),
-            ),
-        ]);
-
-        form_fields.insert("amount".to_string(), input.amount_minor.to_string());
+        // Build the destination-charge refund request and reverse its transfer
+        let form_fields = Self::build_refund_form_fields(input);
 
         // Create the refund against the original payment intent
         let response = self
@@ -299,10 +405,8 @@ impl PaymentsProvider for StripeProvider {
             .post(format!("{}/refunds", Self::api_base_url()))
             .basic_auth(&self.cfg.secret_key, Some(""))
             .header("content-type", "application/x-www-form-urlencoded")
-            .header(
-                "idempotency-key",
-                Self::refund_idempotency_key(input.purchase_id),
-            )
+            .header("idempotency-key", &input.idempotency_key)
+            .header("stripe-version", STRIPE_API_VERSION)
             .body(serde_urlencoded::to_string(&form_fields)?)
             .send()
             .await
@@ -324,9 +428,7 @@ impl PaymentsProvider for StripeProvider {
             .await
             .context("error parsing Stripe refund response")?;
 
-        Ok(RefundPaymentResult {
-            provider_refund_id: response.id,
-        })
+        Self::refund_result(response.id, &response.status)
     }
 
     /// [`PaymentsProvider::verify_and_parse_webhook`].
@@ -368,8 +470,8 @@ impl PaymentsProvider for StripeProvider {
                 };
 
                 Ok(PaymentsWebhookEvent::CheckoutCompleted {
-                    provider_payment_reference: object.payment_intent,
                     provider_session_id: object.id,
+                    provider_payment_reference: object.payment_intent,
                 })
             }
             "checkout.session.expired" => {
@@ -381,6 +483,31 @@ impl PaymentsProvider for StripeProvider {
                     provider_session_id: object.id,
                 })
             }
+            "refund.created" | "refund.failed" | "refund.updated" => {
+                // Require refund object data and OCG purchase metadata
+                let Some(object) = event.data.object else {
+                    bail!("Stripe webhook payload is missing object data");
+                };
+                let Some(purchase_id) = object.metadata.get("event_purchase_id") else {
+                    return Ok(PaymentsWebhookEvent::Noop);
+                };
+                let purchase_id = purchase_id
+                    .parse::<Uuid>()
+                    .context("Stripe refund webhook has invalid event purchase metadata")?;
+
+                // Normalize the provider refund status into the shared lifecycle
+                let status = object
+                    .status
+                    .as_deref()
+                    .context("Stripe refund webhook is missing status")?;
+                let refund = Self::refund_result(object.id, status)?;
+
+                Ok(PaymentsWebhookEvent::RefundUpdated {
+                    purchase_id,
+                    provider_refund_id: refund.provider_refund_id,
+                    status: refund.status,
+                })
+            }
             unsupported => bail!("unsupported Stripe webhook event: {unsupported}"),
         }
     }
@@ -389,33 +516,71 @@ impl PaymentsProvider for StripeProvider {
 /// Minimal response payload returned by Stripe checkout session creation.
 #[derive(Debug, Deserialize)]
 struct StripeCheckoutSessionResponse {
+    /// Stripe checkout session identifier.
     id: String,
+    /// Hosted checkout URL.
     url: String,
+}
+
+/// Minimal refund payload used to reconcile existing Stripe refunds.
+#[derive(Debug, Deserialize)]
+struct StripeListedRefund {
+    /// Refund amount in minor units.
+    amount: i64,
+    /// Stripe refund identifier.
+    id: String,
+    /// Stripe refund lifecycle status.
+    status: String,
+
+    /// Metadata attached when the refund was created.
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
 }
 
 /// Minimal response payload returned by Stripe refund creation.
 #[derive(Debug, Deserialize)]
 struct StripeRefundResponse {
+    /// Stripe refund identifier.
     id: String,
+    /// Stripe refund lifecycle status.
+    status: String,
+}
+
+/// Minimal response payload returned by Stripe refund listing.
+#[derive(Debug, Deserialize)]
+struct StripeRefundListResponse {
+    /// Stripe refunds returned by the list operation.
+    data: Vec<StripeListedRefund>,
 }
 
 /// Nested webhook event data containing the Stripe object payload.
 #[derive(Debug, Deserialize)]
 struct StripeWebhookData {
+    /// Event object supplied by Stripe when present.
     object: Option<StripeWebhookObject>,
 }
 
 /// Stripe webhook event envelope received from the webhook endpoint.
 #[derive(Debug, Deserialize)]
 struct StripeWebhookEvent {
+    /// Data envelope containing the Stripe object.
+    data: StripeWebhookData,
+    /// Stripe event type.
     #[serde(rename = "type")]
     event_type: String,
-    data: StripeWebhookData,
 }
 
 /// Stripe webhook object used by the supported checkout session events.
 #[derive(Debug, Deserialize)]
 struct StripeWebhookObject {
+    /// Stripe object identifier.
     id: String,
+
+    /// Metadata attached to the Stripe object.
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
+    /// Payment intent associated with a checkout session.
     payment_intent: Option<String>,
+    /// Refund lifecycle status when the object is a refund.
+    status: Option<String>,
 }
