@@ -10,7 +10,8 @@ begin
     update "group" set
         active = false,
         deleted = true,
-        deleted_at = current_timestamp
+        deleted_at = current_timestamp,
+        parent_group_id = null
     where group_id = p_group_id
     and community_id = p_community_id
     and deleted = false;
@@ -19,6 +20,13 @@ begin
     if not found then
         raise exception 'group not found or inactive';
     end if;
+
+    -- Clear child links pointing to the deleted group
+    update "group" set
+        parent_group_id = null
+    where community_id = p_community_id
+    and deleted = false
+    and parent_group_id = p_group_id;
 
     -- Track the deletion
     perform insert_audit_log(

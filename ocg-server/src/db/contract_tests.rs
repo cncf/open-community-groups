@@ -237,8 +237,9 @@ async fn db_contracts_get_community_recently_added_groups_deserializes() -> Resu
     let db = contract_tests_db()?;
     let groups = db.get_community_recently_added_groups(community_id()).await?;
 
-    assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].group_id, group_id());
+    assert_eq!(groups.len(), 2);
+    assert!(groups.iter().any(|group| group.group_id == group_id()));
+    assert!(groups.iter().any(|group| group.group_id == subgroup_id()));
 
     Ok(())
 }
@@ -251,7 +252,7 @@ async fn db_contracts_get_community_site_stats_deserializes() -> Result<()> {
 
     assert_eq!(stats.events, 2);
     assert_eq!(stats.events_attendees, 1);
-    assert_eq!(stats.groups, 1);
+    assert_eq!(stats.groups, 2);
     assert_eq!(stats.groups_members, 1);
 
     Ok(())
@@ -265,7 +266,7 @@ async fn db_contracts_get_community_stats_deserializes() -> Result<()> {
 
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
-    assert_eq!(stats.groups.total, 1);
+    assert_eq!(stats.groups.total, 2);
     assert_eq!(stats.members.total, 1);
     assert_eq!(stats.page_views.community.total_views, 0);
     assert_eq!(stats.page_views.events.total_views, 2);
@@ -450,8 +451,9 @@ async fn db_contracts_get_filters_options_deserializes() -> Result<()> {
     assert_eq!(event_category.len(), 1);
     assert_eq!(event_category[0].name, "Conference");
     let groups = options.groups.expect("groups should be present");
-    assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].name, "Contract Group");
+    assert_eq!(groups.len(), 2);
+    assert!(groups.iter().any(|group| group.name == "Contract Group"));
+    assert!(groups.iter().any(|group| group.name == "Contract Subgroup"));
     let region = options.region.expect("regions should be present");
     assert_eq!(region.len(), 1);
     assert_eq!(region[0].name, "North America");
@@ -476,9 +478,22 @@ async fn db_contracts_get_group_full_deserializes() -> Result<()> {
     assert_eq!(group.group_id, group_id());
     assert_eq!(group.organizers.len(), 1);
     assert_eq!(group.sponsors.len(), 1);
+    assert_eq!(group.subgroups.len(), 1);
+    assert_eq!(group.subgroups[0].group_id, subgroup_id());
+    assert!(group.parent.is_none());
     assert_eq!(
         group.organizers[0].github_url.as_deref(),
         Some("https://github.com/contract-organizer")
+    );
+
+    let subgroup = db.get_group_full(community_id(), subgroup_id()).await?;
+    assert_eq!(
+        subgroup
+            .parent
+            .as_ref()
+            .expect("subgroup should have a parent")
+            .group_id,
+        group_id()
     );
 
     Ok(())
@@ -497,6 +512,7 @@ async fn db_contracts_get_group_full_by_slug_deserializes() -> Result<()> {
     assert_eq!(group.name, "Contract Group");
     assert_eq!(group.organizers.len(), 1);
     assert_eq!(group.sponsors.len(), 1);
+    assert_eq!(group.subgroups.len(), 1);
 
     Ok(())
 }
@@ -553,7 +569,7 @@ async fn db_contracts_get_group_sponsor_deserializes() -> Result<()> {
 #[ignore = "requires the contract test database"]
 async fn db_contracts_get_group_stats_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
-    let stats = db.get_group_stats(community_id(), group_id()).await?;
+    let stats = db.get_group_stats(community_id(), group_id(), false).await?;
 
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
@@ -607,7 +623,7 @@ async fn db_contracts_get_site_home_stats_deserializes() -> Result<()> {
     assert_eq!(stats.communities, 1);
     assert_eq!(stats.events, 2);
     assert_eq!(stats.events_attendees, 1);
-    assert_eq!(stats.groups, 1);
+    assert_eq!(stats.groups, 2);
     assert_eq!(stats.groups_members, 1);
 
     Ok(())
@@ -619,8 +635,9 @@ async fn db_contracts_get_site_recently_added_groups_deserializes() -> Result<()
     let db = contract_tests_db()?;
     let groups = db.get_site_recently_added_groups().await?;
 
-    assert_eq!(groups.len(), 1);
-    assert_eq!(groups[0].group_id, group_id());
+    assert_eq!(groups.len(), 2);
+    assert!(groups.iter().any(|group| group.group_id == group_id()));
+    assert!(groups.iter().any(|group| group.group_id == subgroup_id()));
 
     Ok(())
 }
@@ -654,7 +671,7 @@ async fn db_contracts_get_site_stats_deserializes() -> Result<()> {
 
     assert_eq!(stats.attendees.total, 1);
     assert_eq!(stats.events.total, 2);
-    assert_eq!(stats.groups.total, 1);
+    assert_eq!(stats.groups.total, 2);
     assert_eq!(stats.members.total, 1);
 
     Ok(())
@@ -991,6 +1008,26 @@ async fn db_contracts_list_group_members_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_group_parent_options_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let options = db
+        .list_group_parent_options(community_id(), organizer_id(), Some(subgroup_id()))
+        .await?;
+    let parent = options
+        .iter()
+        .find(|option| option.group_id == group_id())
+        .expect("contract group should be a parent option");
+
+    assert!(parent.active);
+    assert_eq!(parent.name, "Contract Group");
+    assert!(!parent.is_current);
+    assert!(parent.is_selectable);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_roles_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let roles = db.list_group_roles().await?;
@@ -1217,9 +1254,15 @@ async fn db_contracts_list_user_groups_deserializes() -> Result<()> {
 
     assert_eq!(output.len(), 1);
     assert_eq!(output[0].community.community_id, community_id());
-    assert_eq!(output[0].groups.len(), 2);
-    assert_eq!(output[0].groups[0].group_id, group_id());
-    assert_eq!(output[0].groups[1].group_id, claim_group_id());
+    assert_eq!(output[0].groups.len(), 3);
+    assert!(output[0].groups.iter().any(|group| group.group_id == group_id()));
+    assert!(output[0].groups.iter().any(|group| group.group_id == subgroup_id()));
+    assert!(
+        output[0]
+            .groups
+            .iter()
+            .any(|group| group.group_id == claim_group_id())
+    );
 
     Ok(())
 }
@@ -1515,8 +1558,8 @@ async fn db_contracts_search_groups_deserializes() -> Result<()> {
     };
     let output = db.search_groups(&filters).await?;
 
-    assert_eq!(output.total, 1);
-    assert_eq!(output.groups.len(), 1);
+    assert_eq!(output.total, 2);
+    assert_eq!(output.groups.len(), 2);
     assert!(output.bbox.is_some());
 
     Ok(())
@@ -1653,6 +1696,7 @@ const REFUND_BEGIN_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f4";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
+const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
 const SUMMARY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f1";
 const SYNC_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0a1";
 const TICKETED_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
@@ -1808,6 +1852,10 @@ fn pre_registered_id() -> Uuid {
 
 fn site_id() -> Uuid {
     parse_uuid(SITE_ID)
+}
+
+fn subgroup_id() -> Uuid {
+    parse_uuid(SUBGROUP_ID)
 }
 
 fn summary_purchase_id() -> Uuid {

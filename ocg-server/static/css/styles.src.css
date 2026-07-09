@@ -197,6 +197,10 @@
     @apply relative col-start-1 row-start-1 w-full appearance-none rounded-md bg-white py-1.5 pl-3 pr-8 text-base text-stone-900 border border-stone-200 focus:outline-2 focus:-outline-offset-2 focus:outline-primary-700 focus:ring-transparent sm:text-sm/6;
   }
 
+  .select-primary:disabled {
+    @apply cursor-not-allowed border-stone-200 bg-stone-100 text-stone-500 opacity-100;
+  }
+
   .radio-primary {
     @apply size-4 text-primary-700 border border-stone-200 bg-stone-50 checked:border-primary-500 checked:bg-primary-500 cursor-pointer focus:ring-0 focus:ring-transparent;
   }

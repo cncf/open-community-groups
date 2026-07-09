@@ -70,18 +70,20 @@ pub(crate) async fn add_page(
     State(db): State<DynDB>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (can_manage_groups, categories, regions) = tokio::try_join!(
+    let (can_manage_groups, categories, parent_options, regions) = tokio::try_join!(
         db.user_has_community_permission(
             &community_id,
             &user.user_id,
             CommunityPermission::GroupsWrite
         ),
         db.list_group_categories(community_id),
+        db.list_group_parent_options(community_id, user.user_id, None),
         db.list_regions(community_id)
     )?;
     let template = groups::AddPage {
         can_manage_groups,
         categories,
+        parent_options,
         regions,
     };
 
@@ -97,20 +99,24 @@ pub(crate) async fn update_page(
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Prepare template
-    let (can_manage_groups, group, categories, regions) = tokio::try_join!(
+    let (can_manage_groups, group, has_child_links, categories, parent_options, regions) = tokio::try_join!(
         db.user_has_community_permission(
             &community_id,
             &user.user_id,
             CommunityPermission::GroupsWrite
         ),
         db.get_group_full(community_id, group_id),
+        db.group_has_child_links(community_id, group_id),
         db.list_group_categories(community_id),
+        db.list_group_parent_options(community_id, user.user_id, Some(group_id)),
         db.list_regions(community_id)
     )?;
     let template = groups::UpdatePage {
         can_manage_groups,
         categories,
         group,
+        has_child_links,
+        parent_options,
         regions,
     };
 

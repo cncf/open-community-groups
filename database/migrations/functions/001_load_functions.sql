@@ -58,6 +58,9 @@
 {{ template "community/get_community_upcoming_events.sql" }}
 {{ template "community/update_community_views.sql" }}
 
+{{ template "dashboard-common/group_has_active_subgroups.sql" }}
+{{ template "dashboard-common/group_has_child_links.sql" }}
+{{ template "dashboard-common/list_group_parent_options.sql" }}
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
 

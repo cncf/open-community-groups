@@ -295,6 +295,46 @@
       {% endif -%}
       {# End group description -#}
 
+      {# Parent group section -#}
+      {% if let Some(parent) = &group.parent -%}
+        <div>
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+            Parent group
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="/{{ parent.community_name }}/group/{{ parent.public_slug() }}"
+               hx-boost="true"
+               hx-target="body"
+               class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+              {{ ui::logo(logo_url = parent.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+              <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ parent.name|demoji }}</span>
+            </a>
+          </div>
+        </div>
+      {% endif -%}
+      {# End parent group section -#}
+
+      {# Subgroups section -#}
+      {% if !group.subgroups.is_empty() -%}
+        <div>
+          <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 pb-8 lg:pt-2 lg:pb-14">
+            Subgroups
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for subgroup in group.subgroups -%}
+              <a href="/{{ subgroup.community_name }}/group/{{ subgroup.public_slug() }}"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="flex w-full items-center gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:border-primary-300 hover:shadow-sm">
+                {{ ui::logo(logo_url = subgroup.logo_url, classes = "size-15 md:size-18 shrink-0", size = 72) -}}
+                <span class="min-w-0 text-base font-semibold leading-tight text-stone-900 line-clamp-2">{{ subgroup.name|demoji }}</span>
+              </a>
+            {% endfor -%}
+          </div>
+        </div>
+      {% endif -%}
+      {# End subgroups section -#}
+
       {# Tags -#}
       {% if let Some(tags) = &group.tags -%}
         {% if !tags.is_empty() -%}
@@ -314,13 +354,12 @@
 
       {# Next events section -#}
       {% if !upcoming_events.is_empty() -%}
-        {% let upcoming_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&community[0]=" + &group.community.name -%}
         <div>
           <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Upcoming Events</div>
             {# See all events on desktop -#}
             <div class="hidden justify-self-end md:flex">
-              <a href="{{ upcoming_events_link }}"
+              <a href="{{ self.upcoming_events_link() }}"
                  hx-boost="true"
                  hx-target="body"
                  class="btn-secondary-anchor ms-4">See all events</a>
@@ -336,7 +375,7 @@
           </div>
           {# See all events on mobile -#}
           <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-            <a href="{{ upcoming_events_link }}"
+            <a href="{{ self.upcoming_events_link() }}"
                hx-boost="true"
                hx-target="body"
                class="btn-secondary-anchor">See all events</a>
@@ -348,15 +387,12 @@
 
       {# Past events section -#}
       {% if !past_events.is_empty() -%}
-        {% let past_events_date_option = Some(chrono::Utc::now() - chrono::Duration::days(1)) -%}
-        {% let past_events_date_to = past_events_date_option|display_some_datetime_tz("%Y-%m-%d", chrono_tz::UTC) -%}
-        {% let past_events_link = "/explore?entity=events&group[0]=".to_owned() + group.public_slug() + "&community[0]=" + &group.community.name + "&date_from=1900-01-01&sort_direction=desc" + "&date_to=" + &past_events_date_to -%}
         <div>
           <div class="flex items-center justify-between pb-6 sm:pb-8 lg:pb-12">
             <div class="uppercase text-lg lg:text-2xl tracking-wide font-bold leading-10 lg:py-2">Past Events</div>
             {# See all events on desktop -#}
             <div class="hidden justify-self-end md:flex">
-              <a href="{{ past_events_link }}"
+              <a href="{{ self.past_events_link() }}"
                  hx-boost="true"
                  hx-target="body"
                  class="btn-secondary-anchor ms-4">See all events</a>
@@ -372,7 +408,7 @@
           </div>
           {# See all events on mobile -#}
           <div class="flex mt-9 justify-self-center md:hidden md:mt-0">
-            <a href="{{ past_events_link }}"
+            <a href="{{ self.past_events_link() }}"
                hx-boost="true"
                hx-target="body"
                class="btn-secondary-anchor">See all events</a>

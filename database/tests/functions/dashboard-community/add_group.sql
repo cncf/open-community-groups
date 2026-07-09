@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(7);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,7 +11,9 @@ select plan(7);
 
 \set communityID '2c040000-0000-0000-0000-000000000001'
 \set groupCategoryID '2c040000-0000-0000-0000-000000000002'
+\set groupAdminID '2c040000-0000-0000-0000-000000000005'
 \set groupPrettySlugID '2c040000-0000-0000-0000-000000000003'
+\set noPermissionUserID '2c040000-0000-0000-0000-000000000006'
 \set regionID '2c040000-0000-0000-0000-000000000004'
 
 -- ============================================================================
@@ -41,6 +43,11 @@ insert into community (
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
+-- Users
+insert into "user" (user_id, auth_hash, email, username) values
+    (:'groupAdminID', 'hash-1', 'group-admin@example.com', 'group-admin'),
+    (:'noPermissionUserID', 'hash-2', 'no-permission@example.com', 'no-permission');
+
 -- Existing group with a pretty slug in the generated-slug space
 insert into "group" (
     group_id,
@@ -57,6 +64,10 @@ insert into "group" (
     'existing-slug',
     'abc2345'
 );
+
+-- Existing group team
+insert into group_team (group_id, user_id, role, accepted)
+values (:'groupPrettySlugID', :'groupAdminID', 'admin', true);
 
 -- Region
 insert into region (region_id, community_id, name)
@@ -95,7 +106,8 @@ select is(
         "description_short": "Brief overview of the test group",
         "logo_url": "https://example.com/logo.png",
         "organizers": [],
-        "sponsors": []
+        "sponsors": [],
+        "subgroups": []
     }',
         :'groupCategoryID'
     )::jsonb,
@@ -233,7 +245,8 @@ select is(
         "photos_urls": ["https://example.com/photo1.jpg", "https://example.com/photo2.jpg"],
         "extra_links": [{"name": "blog", "url": "https://blog.example.com"}, {"name": "docs", "url": "https://docs.example.com"}],
         "organizers": [],
-        "sponsors": []
+        "sponsors": [],
+        "subgroups": []
     }',
         :'groupCategoryID',
         :'regionID'
@@ -315,6 +328,66 @@ select is(
     'Should convert empty strings to null for nullable fields'
 );
 
+-- Should create a group with a parent when the actor can manage the parent
+select lives_ok(
+    format(
+        $$
+        select add_group(
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "Child Test Group",
+                "category_id": "%s",
+                "description": "Testing parent assignment",
+                "description_short": "Child",
+                "parent_group_id": "%s"
+            }'::jsonb
+        )
+        $$,
+        :'groupAdminID',
+        :'communityID',
+        :'groupCategoryID',
+        :'groupPrettySlugID'
+    ),
+    'Should create a group with a parent when the actor can manage the parent'
+);
+
+select is(
+    (
+        select parent_group_id
+        from "group"
+        where name = 'Child Test Group'
+    ),
+    :'groupPrettySlugID'::uuid,
+    'Should persist the selected parent group'
+);
+
+-- Should reject a selected parent when the actor cannot manage the parent
+select throws_ok(
+    format(
+        $$
+        select add_group(
+            %L::uuid,
+            %L::uuid,
+            '{
+                "name": "Unauthorized Child Test Group",
+                "category_id": "%s",
+                "description": "Testing parent permission",
+                "description_short": "Child",
+                "parent_group_id": "%s"
+            }'::jsonb
+        )
+        $$,
+        :'noPermissionUserID',
+        :'communityID',
+        :'groupCategoryID',
+        :'groupPrettySlugID'
+    ),
+    'you must be able to manage the selected parent group',
+    'Should reject a selected parent when the actor cannot manage the parent'
+);
+
+-- Keep this test last: it replaces generate_slug() for the rest of the transaction
 -- Should retry generated slugs matching existing pretty slugs
 create temporary sequence add_group_slug_test_seq;
 

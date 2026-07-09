@@ -1,5 +1,7 @@
 //! This module defines the templates for the group site.
 
+use std::fmt::Write;
+
 use askama::Template;
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +65,18 @@ impl Page {
             .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
     }
 
+    /// Builds the Explore link for all past events in this group hierarchy.
+    pub(crate) fn past_events_link(&self) -> String {
+        let date_to = (chrono::Utc::now() - chrono::Duration::days(1)).format("%Y-%m-%d");
+
+        format!(
+            "/explore?entity=events&{}&community[0]={}&date_from=1900-01-01&sort_direction=desc&date_to={}",
+            self.event_group_filters(),
+            self.group.community.name,
+            date_to
+        )
+    }
+
     /// Returns the preview description for the group page.
     pub(crate) fn preview_description(&self) -> String {
         format!(
@@ -74,6 +88,26 @@ impl Page {
     /// Returns the preview title for the group page.
     pub(crate) fn preview_title(&self) -> String {
         self.group.name.clone()
+    }
+
+    /// Builds the Explore link for upcoming events in this group hierarchy.
+    pub(crate) fn upcoming_events_link(&self) -> String {
+        format!(
+            "/explore?entity=events&{}&community[0]={}",
+            self.event_group_filters(),
+            self.group.community.name
+        )
+    }
+
+    /// Builds repeated group filters for the current group and active subgroups.
+    fn event_group_filters(&self) -> String {
+        let mut filters = format!("group[0]={}", self.group.public_slug());
+
+        for (index, subgroup) in self.group.subgroups.iter().enumerate() {
+            let _ = write!(filters, "&group[{}]={}", index + 1, subgroup.public_slug());
+        }
+
+        filters
     }
 }
 

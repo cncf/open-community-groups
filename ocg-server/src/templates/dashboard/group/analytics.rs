@@ -1,8 +1,10 @@
 //! Templates and data types for the analytics page in the group dashboard.
 
-use crate::templates::filters;
 use askama::Template;
+use garde::Validate;
 use serde::{Deserialize, Serialize};
+
+use crate::templates::filters;
 
 // Pages templates.
 
@@ -10,11 +12,23 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/analytics.html")]
 pub(crate) struct Page {
+    /// Whether statistics include active subgroups.
+    pub include_subgroups: bool,
+    /// Whether the group has active subgroups.
+    pub has_subgroups: bool,
     /// Statistics to render.
     pub stats: GroupDashboardStats,
 }
 
 // Types.
+
+/// Analytics query parameters.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
+pub(crate) struct AnalyticsQuery {
+    /// Whether to include active subgroup data.
+    #[garde(skip)]
+    pub include_subgroups: Option<bool>,
+}
 
 /// Aggregated group statistics used across charts.
 #[derive(Debug, Clone, Serialize, Deserialize)]

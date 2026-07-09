@@ -11,8 +11,10 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, services::notifications::MockNotificationsManager,
-    types::permissions::GroupPermission,
+    db::mock::MockDB,
+    handlers::tests::*,
+    services::notifications::MockNotificationsManager,
+    types::{group::GroupParentOption, permissions::GroupPermission},
 };
 
 #[tokio::test]
@@ -66,10 +68,20 @@ async fn test_update_page_success() {
         .times(1)
         .withf(move |cid, gid| *cid == community_id && *gid == group_id)
         .returning(move |_, _| Ok(group.clone()));
+    db.expect_group_has_child_links()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(false));
     db.expect_list_group_categories()
         .times(1)
         .withf(move |cid| *cid == community_id)
         .returning(move |_| Ok(vec![category.clone()]));
+    db.expect_list_group_parent_options()
+        .times(1)
+        .withf(move |cid, uid, gid| {
+            *cid == community_id && *uid == user_id && *gid == Some(group_id)
+        })
+        .returning(|_, _, _| Ok(vec![]));
     db.expect_list_regions()
         .times(1)
         .withf(move |cid| *cid == community_id)
@@ -97,6 +109,113 @@ async fn test_update_page_success() {
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
     assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_update_page_selects_current_inactive_parent_option() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let parent_group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let group = sample_group_full(community_id, group_id);
+    let category = sample_group_category();
+    let parent_option = GroupParentOption {
+        active: false,
+        group_id: parent_group_id,
+        is_current: true,
+        is_selectable: false,
+        name: "Inactive Parent".to_string(),
+    };
+    let region = sample_group_region();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::SettingsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_get_group_full()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(move |_, _| Ok(group.clone()));
+    db.expect_group_has_child_links()
+        .times(1)
+        .withf(move |cid, gid| *cid == community_id && *gid == group_id)
+        .returning(|_, _| Ok(false));
+    db.expect_list_group_categories()
+        .times(1)
+        .withf(move |cid| *cid == community_id)
+        .returning(move |_| Ok(vec![category.clone()]));
+    db.expect_list_group_parent_options()
+        .times(1)
+        .withf(move |cid, uid, gid| {
+            *cid == community_id && *uid == user_id && *gid == Some(group_id)
+        })
+        .returning(move |_, _, _| Ok(vec![parent_option.clone()]));
+    db.expect_list_regions()
+        .times(1)
+        .withf(move |cid| *cid == community_id)
+        .returning(move |_| Ok(vec![region.clone()]));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group/settings/update")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    let option_start = body
+        .find(&format!("value=\"{parent_group_id}\""))
+        .expect("parent option should render");
+    let option_end = body[option_start..]
+        .find("</option>")
+        .expect("parent option should close");
+    let option_html = &body[option_start..option_start + option_end];
+    assert!(option_html.contains("selected"));
+    assert!(option_html.contains("(current, no longer selectable)"));
 }
 
 #[tokio::test]

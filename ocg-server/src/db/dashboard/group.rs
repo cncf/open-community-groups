@@ -174,6 +174,7 @@ pub(crate) trait DBDashboardGroup {
         &self,
         community_id: Uuid,
         group_id: Uuid,
+        include_subgroups: bool,
     ) -> Result<GroupDashboardStats>;
 
     /// Creates an organizer-created event invitation.
@@ -689,22 +690,24 @@ where
         &self,
         community_id: Uuid,
         group_id: Uuid,
+        include_subgroups: bool,
     ) -> Result<GroupDashboardStats> {
         #[cached(
             ttl = 3600,
-            key = "(Uuid, Uuid)",
-            convert = "{ (community_id, group_id) }",
+            key = "(Uuid, Uuid, bool)",
+            convert = "{ (community_id, group_id, include_subgroups) }",
             sync_writes = "by_key"
         )]
         async fn inner(
             db: PgClient<'_>,
             community_id: Uuid,
             group_id: Uuid,
+            include_subgroups: bool,
         ) -> Result<GroupDashboardStats> {
             let row = db
                 .query_one(
-                    "select get_group_stats($1::uuid, $2::uuid)",
-                    &[&community_id, &group_id],
+                    "select get_group_stats($1::uuid, $2::uuid, $3::bool)",
+                    &[&community_id, &group_id, &include_subgroups],
                 )
                 .await?;
             let stats = row.try_get::<_, Json<GroupDashboardStats>>(0)?.0;
@@ -713,7 +716,7 @@ where
         }
 
         let db = self.client().await?;
-        inner(db, community_id, group_id).await
+        inner(db, community_id, group_id, include_subgroups).await
     }
 
     /// [`DBDashboardGroup::invite_event_attendee`]

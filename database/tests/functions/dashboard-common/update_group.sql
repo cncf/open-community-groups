@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(26);
 
 -- ============================================================================
 -- VARIABLES
@@ -21,9 +21,13 @@ select plan(20);
 \set groupCategory2ID '1c020000-0000-0000-0000-00000000000a'
 \set groupDeletedID '1c020000-0000-0000-0000-00000000000b'
 \set groupID '1c020000-0000-0000-0000-00000000000c'
+\set groupAdminID '1c020000-0000-0000-0000-000000000010'
 \set nonExistentCommunityID '1c020000-0000-0000-0000-00000000000d'
+\set noPermissionUserID '1c020000-0000-0000-0000-000000000011'
+\set parentGroupID '1c020000-0000-0000-0000-000000000012'
 \set ticketTypeID '1c020000-0000-0000-0000-00000000000e'
 \set ticketTypeUnpublishedID '1c020000-0000-0000-0000-00000000000f'
+\set unauthorizedParentGroupID '1c020000-0000-0000-0000-000000000013'
 
 -- ============================================================================
 -- SEED DATA
@@ -54,6 +58,11 @@ values
     (:'groupCategory1ID', :'communityID', 'Technology'),
     (:'groupCategory2ID', :'communityID', 'Business');
 
+-- Users
+insert into "user" (user_id, auth_hash, email, username) values
+    (:'groupAdminID', 'hash-1', 'group-admin@example.com', 'group-admin'),
+    (:'noPermissionUserID', 'hash-2', 'no-permission@example.com', 'no-permission');
+
 -- Event category
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'Meetup');
@@ -76,6 +85,39 @@ insert into "group" (
     'Original description',
     '2024-01-15 10:00:00+00'
 );
+
+-- Groups used for parent relationship updates
+insert into "group" (
+    group_id,
+    name,
+    slug,
+    community_id,
+    group_category_id,
+    description,
+    created_at
+) values
+    (
+        :'parentGroupID'::uuid,
+        'Parent Group',
+        'parent-group',
+        :'communityID',
+        :'groupCategory1ID',
+        'Parent group for hierarchy tests',
+        '2024-01-15 10:00:00+00'
+    ),
+    (
+        :'unauthorizedParentGroupID'::uuid,
+        'Unauthorized Parent Group',
+        'unauthorized-parent-group',
+        :'communityID',
+        :'groupCategory1ID',
+        'Parent group without actor permissions',
+        '2024-01-15 10:00:00+00'
+    );
+
+-- Parent group team
+insert into group_team (group_id, user_id, role, accepted)
+values (:'parentGroupID', :'groupAdminID', 'admin', true);
 
 -- Group (deleted)
 insert into "group" (
@@ -346,7 +388,8 @@ select is(
         "logo_url": "https://example.com/updated-logo.png",
         "og_image_url": "https://example.com/updated-og.png",
         "organizers": [],
-        "sponsors": []
+        "sponsors": [],
+        "subgroups": []
     }
         $json$,
         :'groupCategory2ID',
@@ -503,7 +546,7 @@ select lives_ok(
 
 -- Should keep minimal fields after empty-string conversion
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'communityID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors' - 'subgroups'),
     '{
         "name": "Updated Group Empty Strings",
         "slug": "pqr4jkl",
@@ -553,7 +596,7 @@ select lives_ok(
 
 -- Should persist explicit null arrays in result
 select is(
-    (select get_group_full(:'communityID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors'),
+    (select get_group_full(:'communityID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'category' - 'community' - 'organizers' - 'sponsors' - 'subgroups'),
     '{
         "name": "Updated Group Null Arrays",
         "slug": "mno3ghi",
@@ -742,6 +785,118 @@ select is(
     (select get_group_full(:'communityID'::uuid, :'group5ID'::uuid)::jsonb->'payment_recipient'),
     null::jsonb,
     'Should clear the stored payment recipient when only unpublished ticketed events exist'
+);
+
+-- Should update parent when the actor can manage the selected parent
+select lives_ok(
+    format(
+        $$select update_group(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Updated Group",
+            "category_id": "%s",
+            "description": "Updated description",
+            "parent_group_id_present": true,
+            "parent_group_id": "%s"
+        }'::jsonb
+    )$$,
+        :'groupAdminID',
+        :'communityID',
+        :'groupID',
+        :'groupCategory1ID',
+        :'parentGroupID'
+    ),
+    'Should update parent when the actor can manage the selected parent'
+);
+
+select is(
+    (select parent_group_id from "group" where group_id = :'groupID'::uuid),
+    :'parentGroupID'::uuid,
+    'Should persist the selected parent group'
+);
+
+-- Should allow unchanged parent values even when the current parent is inactive
+update "group"
+set active = false
+where group_id = :'parentGroupID';
+
+select lives_ok(
+    format(
+        $$select update_group(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Updated Group With Inactive Parent",
+            "category_id": "%s",
+            "description": "Updated description",
+            "parent_group_id_present": true,
+            "parent_group_id": "%s"
+        }'::jsonb
+    )$$,
+        :'noPermissionUserID',
+        :'communityID',
+        :'groupID',
+        :'groupCategory1ID',
+        :'parentGroupID'
+    ),
+    'Should allow unchanged parent values even when the current parent is inactive'
+);
+
+-- Should allow clearing a parent without parent-side permission
+select lives_ok(
+    format(
+        $$select update_group(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Updated Group With Cleared Parent",
+            "category_id": "%s",
+            "description": "Updated description",
+            "parent_group_id_present": true,
+            "parent_group_id": ""
+        }'::jsonb
+    )$$,
+        :'noPermissionUserID',
+        :'communityID',
+        :'groupID',
+        :'groupCategory1ID'
+    ),
+    'Should allow clearing a parent without parent-side permission'
+);
+
+select is(
+    (select parent_group_id from "group" where group_id = :'groupID'::uuid),
+    null::uuid,
+    'Should clear the selected parent group'
+);
+
+-- Should reject changing to a parent the actor cannot manage
+select throws_ok(
+    format(
+        $$select update_group(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        '{
+            "name": "Updated Group Unauthorized Parent",
+            "category_id": "%s",
+            "description": "Updated description",
+            "parent_group_id_present": true,
+            "parent_group_id": "%s"
+        }'::jsonb
+    )$$,
+        :'noPermissionUserID',
+        :'communityID',
+        :'groupID',
+        :'groupCategory1ID',
+        :'unauthorizedParentGroupID'
+    ),
+    'you must be able to manage the selected parent group',
+    'Should reject changing to a parent the actor cannot manage'
 );
 
 -- ============================================================================

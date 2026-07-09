@@ -257,7 +257,8 @@ select indexes_are('group', array[
     'group_tsdoc_idx',
     'group_og_image_url_idx',
     'group_active_created_at_idx',
-    'group_community_active_created_at_idx'
+    'group_community_active_created_at_idx',
+    'group_parent_group_id_idx'
 ]);
 
 -- Test: group_category indexes should match expected

@@ -7,10 +7,24 @@ create or replace function add_group(
 returns uuid as $$
 declare
     v_group_id uuid;
+    v_parent_group_id uuid;
     v_slug text;
     v_retries int := 0;
     v_max_retries int := 10;
 begin
+    -- Normalize and authorize the optional parent group before inserting
+    v_parent_group_id := nullif(p_group->>'parent_group_id', '')::uuid;
+
+    if v_parent_group_id is not null
+       and not user_has_group_permission(
+           p_community_id,
+           v_parent_group_id,
+           p_actor_user_id,
+           'group.settings.write'
+       ) then
+        raise exception 'you must be able to manage the selected parent group';
+    end if;
+
     -- Insert group with unique slug generation and collision retry
     loop
         -- Generate a candidate slug for the new group
@@ -57,6 +71,7 @@ begin
                 location,
                 logo_url,
                 og_image_url,
+                parent_group_id,
                 photos_urls,
                 region_id,
                 slack_url,
@@ -89,6 +104,7 @@ begin
                 jsonb_geography_point(p_group),
                 nullif(p_group->>'logo_url', ''),
                 nullif(p_group->>'og_image_url', ''),
+                v_parent_group_id,
                 jsonb_text_array(p_group->'photos_urls'),
                 case when p_group->>'region_id' <> '' then (p_group->>'region_id')::uuid else null end,
                 nullif(p_group->>'slack_url', ''),

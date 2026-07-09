@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(153);
+select plan(154);
 
 -- ============================================================================
 -- TESTS
@@ -131,6 +131,7 @@ select col_is_fk('event_waitlist', 'user_id', 'user');
 select col_is_fk('group', 'community_id', 'community');
 select col_is_fk('group', 'group_category_id', 'group_category');
 select col_is_fk('group', 'group_site_layout_id', 'group_site_layout');
+select col_is_fk('group', 'parent_group_id', 'group');
 select col_is_fk('group', 'region_id', 'region');
 select col_is_fk('group_category', 'community_id', 'community');
 select col_is_fk('group_member', 'group_id', 'group');

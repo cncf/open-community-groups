@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     templates::dashboard,
     types::{
-        group::{GroupCategory, GroupFull, GroupRegion, GroupSummary},
+        group::{GroupCategory, GroupFull, GroupParentOption, GroupRegion, GroupSummary},
         pagination::{self, Pagination, ToRawQuery},
         payments::GroupPaymentRecipient,
     },
@@ -33,6 +33,8 @@ pub(crate) struct AddPage {
     pub can_manage_groups: bool,
     /// List of available group categories.
     pub categories: Vec<GroupCategory>,
+    /// List of groups that can be selected as parents.
+    pub parent_options: Vec<GroupParentOption>,
     /// List of available regions.
     pub regions: Vec<GroupRegion>,
 }
@@ -68,6 +70,10 @@ pub(crate) struct UpdatePage {
     pub categories: Vec<GroupCategory>,
     /// Group details to update.
     pub group: GroupFull,
+    /// Whether this group has non-deleted child links.
+    pub has_child_links: bool,
+    /// List of groups that can be selected as parents.
+    pub parent_options: Vec<GroupParentOption>,
     /// List of available regions.
     pub regions: Vec<GroupRegion>,
 }
@@ -156,6 +162,12 @@ pub(crate) struct Group {
     /// URL to the group's Open Graph image.
     #[garde(custom(image_url_opt))]
     pub og_image_url: Option<String>,
+    /// Optional parent group.
+    #[garde(skip)]
+    pub parent_group_id: Option<Uuid>,
+    /// Whether the parent group field was submitted.
+    #[garde(skip)]
+    pub parent_group_id_present: Option<bool>,
     /// Payments recipient configuration for the group.
     #[garde(skip)]
     pub payment_recipient: Option<GroupPaymentRecipient>,

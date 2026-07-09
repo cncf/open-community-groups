@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(281);
+select plan(286);
 
 -- ============================================================================
 -- VARIABLES
@@ -158,10 +158,12 @@ select has_function('get_group_full', array['uuid', 'uuid']::name[]);
 select has_function('get_group_full_by_slug', array['uuid', 'text']::name[]);
 select has_function('get_group_past_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
 select has_function('get_group_sponsor', array['uuid', 'uuid']::name[]);
-select has_function('get_group_stats', array['uuid', 'uuid']::name[]);
+select has_function('get_group_stats', array['uuid', 'uuid', 'boolean']::name[]);
 select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
 select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
 select has_function('get_public_user_provider', array['jsonb']::name[]);
+select has_function('group_has_active_subgroups', array['uuid', 'uuid']::name[]);
+select has_function('group_has_child_links', array['uuid', 'uuid']::name[]);
 select has_function('get_session_meeting_sync_state_hash', array['uuid']::name[]);
 select has_function('get_site_home_stats', '{}'::name[]);
 select has_function('get_site_recently_added_groups', '{}'::name[]);
@@ -215,6 +217,7 @@ select has_function('list_group_categories', array['uuid']::name[]);
 select has_function('list_group_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_group_members_ids', array['uuid']::name[]);
+select has_function('list_group_parent_options', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('list_group_roles', '{}'::name[]);
 select has_function('list_group_sponsors', array['uuid', 'jsonb', 'boolean']::name[]);
 select has_function('list_group_team_members', array['uuid', 'jsonb']::name[]);
@@ -342,6 +345,7 @@ select has_function('check_event_sponsor_group', '{}'::name[]);
 select has_function('check_event_ticketing_consistency', '{}'::name[]);
 select has_function('check_event_waitlist_attendee', '{}'::name[]);
 select has_function('check_group_category_community', '{}'::name[]);
+select has_function('check_group_parent_relationship', '{}'::name[]);
 select has_function('check_group_region_community', '{}'::name[]);
 select has_function('check_session_cfs_submission_approved', '{}'::name[]);
 select has_function('check_session_within_event_bounds', '{}'::name[]);
@@ -358,6 +362,7 @@ select has_trigger('event_sponsor', 'event_sponsor_group_check');
 select has_trigger('event_ticket_type', 'event_ticketing_consistency_on_event_ticket_type');
 select has_trigger('event_waitlist', 'event_waitlist_attendee_check');
 select has_trigger('group', 'group_category_community_check');
+select has_trigger('group', 'group_parent_relationship_check');
 select has_trigger('group', 'group_region_community_check');
 select has_trigger('group', 'group_slug_pretty_validate');
 select has_trigger('session', 'session_cfs_submission_approved_check');

@@ -199,6 +199,29 @@
   {% let tag_legend -%}Optional tags for the group. Max {{ crate::validation::MAX_LEN_TAG }} characters per tag.{%- endlet %}
 {{ form_fields::tags_gallery_links_section(title = "Additional Content", description = "Optional tags, photos, and custom links.", tag_legend = tag_legend, photo_legend = "Photos that will be displayed in the group gallery.", extra_links_legend = "Additional custom links displayed in the group page.") -}}
 
+{# Parent group section -#}
+<div class="border-t border-stone-900/10 pt-12 pb-12">
+  {{ dashboard::form_title(title = "Parent group", description = "Optional single-level relationship to another group.") -}}
+
+  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+    <div class="col-span-full lg:col-span-4">
+      <label for="parent_group_id" class="form-label">Parent group</label>
+      <div class="mt-2 grid grid-cols-1">
+        <select id="parent_group_id" name="parent_group_id" class="select-primary">
+          <option value="">No parent group</option>
+          {% for option in parent_options -%}
+            <option value="{{ option.group_id }}">{{ option.name }}</option>
+          {% endfor -%}
+        </select>
+      </div>
+      <p class="form-legend">
+        Choose an active same-community parent group that you can manage. Parents cannot be deleted, inactive, or subgroups. A subgroup cannot have its own subgroups.
+      </p>
+    </div>
+  </div>
+</div>
+{# End parent group section -#}
+
 <div class="mt-6 flex items-center justify-end gap-x-6">
   {# Cancel button -#}
   <button id="cancel-button"

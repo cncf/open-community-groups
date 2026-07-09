@@ -136,6 +136,9 @@ pub struct GroupFull {
     pub slug: String,
     /// List of group sponsors.
     pub sponsors: Vec<GroupSponsor>,
+    /// Active subgroups linked to this group.
+    #[serde(default)]
+    pub subgroups: Vec<GroupSummary>,
 
     /// URL to the group's banner image optimized for mobile devices.
     pub banner_mobile_url: Option<String>,
@@ -171,6 +174,8 @@ pub struct GroupFull {
     pub longitude: Option<f64>,
     /// URL to the group's Open Graph image used for link previews.
     pub og_image_url: Option<String>,
+    /// Active parent group linked to this group.
+    pub parent: Option<GroupSummary>,
     /// Payments recipient configuration for the group.
     pub payment_recipient: Option<GroupPaymentRecipient>,
     /// Gallery of photo URLs.
@@ -230,6 +235,21 @@ pub struct GroupCategory {
     pub groups_count: Option<usize>,
     /// Sort order for display.
     pub order: Option<i32>,
+}
+
+/// Parent group selector option for dashboard forms.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct GroupParentOption {
+    /// Whether this parent group is active.
+    pub active: bool,
+    /// Unique identifier for the candidate group.
+    pub group_id: Uuid,
+    /// Whether this option is the group's current parent.
+    pub is_current: bool,
+    /// Whether this option can be newly selected.
+    pub is_selectable: bool,
+    /// Display name of the candidate group.
+    pub name: String,
 }
 
 /// Geographic region information.

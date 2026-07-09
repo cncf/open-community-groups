@@ -115,6 +115,27 @@ Pretty URL slug rules:
 
 Field requirements and limits are shown inline in the settings form while editing.
 
+### Parent Groups and Subgroups
+
+The `Parent group` section in `Settings` creates a single-level relationship between groups.
+Use it when one group should appear under another group on the public site.
+
+Rules:
+
+- A parent must be active, in the same community, and not deleted.
+- A parent cannot be a subgroup itself.
+- A subgroup cannot have its own subgroups.
+- A group with any non-deleted child link cannot be assigned a parent. The selector is disabled
+  while those child links exist.
+- Choosing a new parent requires `group.settings.write` on both this group and the selected parent.
+- Clearing the parent only requires `group.settings.write` on this group.
+- Saving other settings with an unchanged current parent is allowed, even if that parent later
+  becomes inactive.
+
+Inactive parents and inactive children are hidden from public relationship displays and merged
+event lists, but the stored link is preserved so reactivation is reversible. Deleting a group clears
+the parent/child links connected to that group.
+
 ![Group settings area](../screenshots/dashboard-group-settings.png)
 
 ## Payments: Group Recipient Setup
@@ -192,6 +213,11 @@ The `Page views` section starts with total group and event page views, then brea
 page type with daily charts for the last month.
 
 Analytics values can lag briefly due to caching.
+
+When the group has active subgroups, the analytics page shows an `Include subgroups` switch. Turning
+it on recalculates every metric on the page across the group and its active subgroups. Member metrics
+count unique people across the hierarchy, so someone who belongs to both the parent and a subgroup is
+counted once. The switch is not saved; each fresh page load starts with subgroup data excluded.
 
 ![Group dashboard analytics](../screenshots/dashboard-group-analytics.png)
 

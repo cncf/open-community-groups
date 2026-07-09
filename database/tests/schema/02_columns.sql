@@ -536,6 +536,7 @@ select columns_are('group', array[
     'location',
     'logo_url',
     'og_image_url',
+    'parent_group_id',
     'payment_recipient',
     'photos_urls',
     'region_id',
