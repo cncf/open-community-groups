@@ -227,6 +227,7 @@ select is(
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "mentorship_enabled": true,
+                "mock_interviews_enabled": true,
                 "name": "cloud-native-seattle",
                 "og_image_url": "https://example.com/alliance-og.png"
             },
@@ -263,6 +264,7 @@ select is(
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "mentorship_enabled": true,
+                "mock_interviews_enabled": true,
                 "name": "cloud-native-seattle",
                 "og_image_url": "https://example.com/alliance-og.png"
             },
@@ -305,6 +307,7 @@ select is(
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "mentorship_enabled": true,
+                "mock_interviews_enabled": true,
                 "name": "cloud-native-seattle",
                 "og_image_url": "https://example.com/alliance-og.png"
             },
@@ -347,6 +350,7 @@ select is(
                 "display_name": "Cloud Native Seattle",
                 "logo_url": "https://example.com/logo.png",
                 "mentorship_enabled": true,
+                "mock_interviews_enabled": true,
                 "name": "cloud-native-seattle",
                 "og_image_url": "https://example.com/alliance-og.png"
             },
@@ -369,6 +373,7 @@ select is(
                 "display_name": "DevOps NYC",
                 "logo_url": "https://example.com/logo2.png",
                 "mentorship_enabled": true,
+                "mock_interviews_enabled": true,
                 "name": "devops-nyc",
                 "og_image_url": "https://example.com/alliance-og2.png"
             },

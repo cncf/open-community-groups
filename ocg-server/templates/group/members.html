@@ -150,6 +150,12 @@
                        hx-boost="true"
                        hx-target="body">Request mentorship</a>
                   {% endif -%}
+                  {% if group.mock_interviews_available() && user.username.as_deref() != Some(member.username.as_str()) -%}
+                    <button type="button"
+                            class="btn-secondary btn-mini"
+                            hx-post="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/members/{{ member.user_id }}/mock-interview-requests"
+                            hx-target="body">Request interviewer</button>
+                  {% endif -%}
                   {% if member.has_phone_number && !member.phone_visible() -%}
                     {% if member.phone_request_pending() -%}
                       <span class="inline-flex items-center rounded-full bg-stone-50 px-3 py-1.5 text-xs font-medium text-stone-600 ring-1 ring-inset ring-stone-200">Phone requested</span>

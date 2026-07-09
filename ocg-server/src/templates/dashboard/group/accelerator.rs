@@ -1,5 +1,7 @@
 //! Templates and types for group accelerator management.
 
+#![allow(clippy::ref_option, clippy::trivially_copy_pass_by_ref)]
+
 use chrono::{DateTime, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};

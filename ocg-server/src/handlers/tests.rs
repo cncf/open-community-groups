@@ -364,6 +364,7 @@ pub(crate) fn sample_alliance_full(alliance_id: Uuid) -> AllianceFull {
         group_team_management_restricted: false,
         logo_url: "/static/images/placeholder_goup.png".to_string(),
         mentorship_enabled: true,
+        mock_interviews_enabled: true,
         name: "test".to_string(),
         ..Default::default()
     }
@@ -379,6 +380,7 @@ pub(crate) fn sample_alliance_summary(alliance_id: Uuid) -> AllianceSummary {
         display_name: "Test".to_string(),
         logo_url: "/static/images/placeholder_goup.png".to_string(),
         mentorship_enabled: true,
+        mock_interviews_enabled: true,
         name: "test".to_string(),
         ad_banner_link_url: None,
         ad_banner_url: None,
@@ -1430,6 +1432,7 @@ pub(crate) fn sample_user_alliances(alliance_id: Uuid) -> Vec<AllianceSummary> {
         display_name: "Test Alliance".to_string(),
         logo_url: "https://example.com/logo.png".to_string(),
         mentorship_enabled: true,
+        mock_interviews_enabled: true,
         name: "test-alliance".to_string(),
         ad_banner_link_url: None,
         ad_banner_url: None,
@@ -1451,6 +1454,7 @@ pub(crate) fn sample_user_groups_by_alliance(
             display_name: "Test Alliance".to_string(),
             logo_url: "https://example.com/logo.png".to_string(),
             mentorship_enabled: true,
+            mock_interviews_enabled: true,
             name: "test-alliance".to_string(),
             ad_banner_link_url: None,
             ad_banner_url: None,

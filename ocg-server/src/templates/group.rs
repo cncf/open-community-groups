@@ -4,6 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    templates::dashboard::group::accelerator::AcceleratorDashboard,
     templates::dashboard::group::{
         analytics::GroupDashboardStats, members::GroupMember, spotlights::GroupMemberSpotlight,
         store::GroupStoreItem,
@@ -32,6 +33,8 @@ pub(crate) struct Page {
     pub base_url: String,
     /// Detailed information about the group.
     pub group: GroupFull,
+    /// Whether this group has accelerator content to show publicly.
+    pub has_accelerator: bool,
     /// Identifier for the current page.
     pub page_id: PageId,
     /// List of past events for this group.
@@ -46,6 +49,26 @@ pub(crate) struct Page {
     pub store_items: Vec<GroupStoreItem>,
     /// List of upcoming events for this group.
     pub upcoming_events: Vec<UpcomingEventCard>,
+    /// Authenticated user information.
+    pub user: User,
+}
+
+/// Public group accelerator page.
+#[derive(Debug, Clone, Template)]
+#[template(path = "group/accelerator.html")]
+pub(crate) struct AcceleratorPage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Accelerator programs, cohorts, curriculum, and members.
+    pub accelerator: AcceleratorDashboard,
+    /// Detailed information about the group.
+    pub group: GroupFull,
+    /// Identifier for the current page.
+    pub page_id: PageId,
+    /// Current URL path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
 }
@@ -171,6 +194,60 @@ impl Page {
     /// Returns the preview title for the group page.
     pub(crate) fn preview_title(&self) -> String {
         self.group.name.clone()
+    }
+}
+
+impl AcceleratorPage {
+    /// Counts published weeks for a cohort.
+    pub(crate) fn cohort_weeks_count(&self, cohort_id: &uuid::Uuid) -> usize {
+        self.accelerator
+            .weeks
+            .iter()
+            .filter(|week| week.group_accelerator_cohort_id == *cohort_id)
+            .count()
+    }
+
+    /// Counts accepted members for a cohort.
+    pub(crate) fn cohort_members_count(&self, cohort_id: &uuid::Uuid) -> usize {
+        self.accelerator
+            .members
+            .iter()
+            .filter(|member| member.group_accelerator_cohort_id == *cohort_id)
+            .count()
+    }
+
+    /// Returns the canonical URL for the group accelerator page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!(
+                "/{}/group/{}/accelerator",
+                self.group.alliance.name,
+                self.group.public_slug()
+            ),
+        )
+    }
+
+    /// Returns the preview title.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} Accelerator", self.group.name)
+    }
+
+    /// Returns the preview description.
+    pub(crate) fn preview_description(&self) -> String {
+        format!(
+            "Programs, cohorts, curriculum, and applications for {}.",
+            self.group.name
+        )
+    }
+
+    /// Returns the Open Graph image URL for the page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.group
+            .og_image_url
+            .as_deref()
+            .or(self.group.alliance.og_image_url.as_deref())
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
     }
 }
 

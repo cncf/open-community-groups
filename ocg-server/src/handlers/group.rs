@@ -30,13 +30,15 @@ use crate::{
             AcceleratorApplicationInput, AcceleratorWeeklyUpdateInput,
         },
         dashboard::group::members::GroupMembersFilters,
-        group::{self, MembersPage, Page, ReportPage, SpotlightsPage, StorePage},
-        notifications::GroupWelcome,
+        group::{self, AcceleratorPage, MembersPage, Page, ReportPage, SpotlightsPage, StorePage},
+        notifications::{GroupWelcome, MockInterviewMatched},
     },
     types::{
         event::EventKind,
         group::{GroupFull, GroupJoinOutcome},
+        mock_interviews::{MockInterviewMatchNotificationContext, option_label},
         pagination::NavigationLinks,
+        site::SiteSettings,
     },
 };
 
@@ -87,15 +89,19 @@ pub(crate) async fn page(
     // Only display featured sponsors on the group page
     group.sponsors.retain(|sponsor| sponsor.featured);
 
-    let (spotlights, store_items) = tokio::try_join!(
+    let (accelerator, spotlights, store_items) = tokio::try_join!(
+        db.get_group_accelerator_dashboard(group.group_id),
         db.list_group_member_spotlights(group.group_id, false),
         db.list_group_store_items(group.group_id, false)
     )?;
+    let has_accelerator = accelerator.programs.iter().any(|program| program.active)
+        || !accelerator.cohorts.is_empty();
 
     // Prepare the page template
     let template = Page {
         base_url: server_cfg.base_url,
         group,
+        has_accelerator,
         page_id: PageId::Group,
         past_events: past_events
             .into_iter()
@@ -110,6 +116,44 @@ pub(crate) async fn page(
             .map(|event| group::UpcomingEventCard { event })
             .collect(),
         user: User::default(),
+    };
+
+    Ok(Html(template.render()?).into_response())
+}
+
+/// Handler that renders the public group accelerator page.
+#[instrument(skip_all)]
+pub(crate) async fn accelerator_page(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((alliance_name, group_slug)): Path<(String, String)>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let Some(mut group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return not_found::render(site_settings);
+    };
+
+    trim_public_gallery_images(&mut group.photos_urls);
+    group.sponsors.clear();
+    let accelerator = db.get_group_accelerator_dashboard(group.group_id).await?;
+
+    let template = AcceleratorPage {
+        base_url: server_cfg.base_url,
+        accelerator,
+        group,
+        page_id: PageId::Group,
+        path: uri.path().to_string(),
+        site_settings,
+        user: User::from_session(auth_session).await?,
     };
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
@@ -322,6 +366,131 @@ pub(crate) async fn request_member_phone(
         .await?;
 
     Ok((StatusCode::NO_CONTENT, [("HX-Refresh", "true")]).into_response())
+}
+
+/// Requests another group member as a mock interview interviewer.
+#[instrument(skip_all)]
+pub(crate) async fn request_member_mock_interview(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    Path((alliance_name, group_slug, interviewer_user_id)): Path<(String, String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    if user.user_id == interviewer_user_id {
+        return Ok(StatusCode::BAD_REQUEST.into_response());
+    }
+
+    let Some(alliance_id) = db.get_alliance_id_by_name(&alliance_name).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+    let Some(group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    };
+
+    if !group.mock_interviews_available() {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    }
+
+    let match_id = db
+        .request_group_mock_interviewer(user.user_id, alliance_id, group.group_id, interviewer_user_id)
+        .await?;
+
+    let Some(match_id) = match_id else {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    };
+
+    let context = db
+        .get_mock_interview_match_notification_context(match_id)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+    let site_settings = db.get_site_settings().await?;
+    enqueue_mock_interview_match_notifications(
+        &notifications_manager,
+        &server_cfg,
+        &site_settings,
+        &context,
+    )
+    .await;
+
+    Ok((StatusCode::NO_CONTENT, [("HX-Refresh", "true")]).into_response())
+}
+
+async fn enqueue_mock_interview_match_notifications(
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    site_settings: &SiteSettings,
+    context: &MockInterviewMatchNotificationContext,
+) {
+    let Some(interviewer_id) = context.interviewer_user_id else {
+        warn!(
+            match_id = %context.mock_interview_match_id,
+            "mock interview match notification skipped because interviewer is missing"
+        );
+        return;
+    };
+    let Some(interviewee_id) = context.interviewee_user_id else {
+        warn!(
+            match_id = %context.mock_interview_match_id,
+            "mock interview match notification skipped because interviewee is missing"
+        );
+        return;
+    };
+
+    let dashboard_link = format!(
+        "{}/dashboard/user?tab=mock-interviews",
+        server_cfg
+            .base_url
+            .strip_suffix('/')
+            .unwrap_or(&server_cfg.base_url)
+    );
+    let interview_type = option_label(&context.interview_type).to_string();
+    let notifications = [
+        (
+            interviewer_id,
+            MockInterviewMatched {
+                dashboard_link: dashboard_link.clone(),
+                interview_type: interview_type.clone(),
+                recipient_role: "interviewer".to_string(),
+                partner_name: context.interviewee_label(),
+                partner_username: context.interviewee_username.clone(),
+                theme: site_settings.theme.clone(),
+            },
+        ),
+        (
+            interviewee_id,
+            MockInterviewMatched {
+                dashboard_link,
+                interview_type,
+                recipient_role: "interviewee".to_string(),
+                partner_name: context.interviewer_label(),
+                partner_username: context.interviewer_username.clone(),
+                theme: site_settings.theme.clone(),
+            },
+        ),
+    ];
+
+    for (recipient, template_data) in notifications {
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::MockInterviewMatched,
+            recipients: vec![recipient],
+            template_data: match serde_json::to_value(&template_data) {
+                Ok(value) => Some(value),
+                Err(err) => {
+                    warn!(error = %err, "failed to serialize mock interview match notification");
+                    continue;
+                }
+            },
+        };
+        if let Err(err) = notifications_manager.enqueue(&notification).await {
+            warn!(
+                error = %err,
+                recipient = %recipient,
+                "failed to enqueue mock interview match notification"
+            );
+        }
+    }
 }
 
 /// Approves a pending phone visibility request for the current member.

@@ -9,6 +9,7 @@ returns json as $$
         'display_name', display_name,
         'logo_url', logo_url,
         'mentorship_enabled', mentorship_enabled,
+        'mock_interviews_enabled', mock_interviews_enabled,
         'name', name,
 
         'ad_banner_link_url', ad_banner_link_url,

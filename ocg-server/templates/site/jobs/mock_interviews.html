@@ -30,30 +30,60 @@
   <div class="container mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-16">
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
       <section class="grid gap-4">
-        <div class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <h2 class="text-xl font-black tracking-tight text-stone-950">Community demand</h2>
-              <p class="mt-2 text-sm/6 text-stone-600">
-                These categories come from the member poll so the queue starts with the most requested practice areas.
-              </p>
-            </div>
-            <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-700">
-              {{ dashboard.total }} request
-              {% if dashboard.total != 1 %}s{% endif %}
-            </span>
-          </div>
-
-          <div class="mt-5 grid gap-3 sm:grid-cols-2">
-            {% for option in interview_type_options -%}
-              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-                <div class="text-sm font-semibold text-stone-950">{{ option.label }}</div>
-                <div class="mt-1 text-xs text-stone-500">
-                  {{ option.votes }} poll vote
-                  {% if option.votes != 1 %}s{% endif %}
+        <div class="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm">
+          <div class="border-b border-stone-100 bg-linear-to-br from-primary-50/70 via-white to-stone-50 p-5">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p class="text-xs font-black uppercase tracking-[0.22em] text-primary-700">Community demand</p>
+                <h2 class="mt-2 text-2xl font-black tracking-tight text-stone-950">Practice areas members want most</h2>
+                <p class="mt-2 max-w-2xl text-sm/6 text-stone-600">
+                  Poll demand helps organizers prioritize the queue and match members into the highest-signal practice areas first.
+                </p>
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="rounded-2xl border border-white/80 bg-white/80 px-3 py-3 shadow-sm">
+                  <div class="text-xl font-black text-stone-950">{{ dashboard.total }}</div>
+                  <div class="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-stone-500">Requests</div>
+                </div>
+                <div class="rounded-2xl border border-white/80 bg-white/80 px-3 py-3 shadow-sm">
+                  <div class="text-xl font-black text-stone-950">{{ self.interview_type_vote_total() }}</div>
+                  <div class="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-stone-500">Poll votes</div>
+                </div>
+                <div class="rounded-2xl border border-white/80 bg-white/80 px-3 py-3 shadow-sm">
+                  <div class="truncate text-sm font-black text-stone-950">{{ self.top_interview_type_label() }}</div>
+                  <div class="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-stone-500">Top demand</div>
                 </div>
               </div>
-            {% endfor -%}
+            </div>
+          </div>
+
+          <div class="p-5">
+            <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 class="text-sm font-black uppercase tracking-[0.18em] text-stone-500">Interview tracks</h3>
+                <p class="mt-1 text-xs text-stone-500">Higher bars mean stronger member demand.</p>
+              </div>
+              <a href="#request" class="btn-secondary-anchor btn-mini">Join queue</a>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2">
+              {% for option in interview_type_options -%}
+                <div class="rounded-2xl border border-stone-200 bg-stone-50/80 p-4 transition hover:-translate-y-0.5 hover:border-primary-200 hover:bg-white hover:shadow-sm">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div class="text-sm font-bold text-stone-950">{{ option.label }}</div>
+                      <div class="mt-1 text-xs font-medium text-stone-500">{{ option.vote_label() }}</div>
+                    </div>
+                    {% if loop.index == 1 -%}
+                      <span class="rounded-full bg-primary-100 px-2.5 py-1 text-[0.65rem] font-black uppercase tracking-[0.12em] text-primary-700">Top</span>
+                    {% endif -%}
+                  </div>
+                  <div class="mt-4 h-2 overflow-hidden rounded-full bg-stone-200">
+                    <div class="h-full rounded-full bg-stone-950"
+                         style="width: {{ option.demand_percent() }}%"></div>
+                  </div>
+                </div>
+              {% endfor -%}
+            </div>
           </div>
         </div>
 
@@ -62,9 +92,11 @@
             <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">Top company targets</h3>
             <div class="mt-4 grid gap-2">
               {% for option in target_company_options -%}
-                <div class="flex justify-between gap-3 text-sm">
-                  <span class="font-medium text-stone-800">{{ option.label }}</span>
-                  <span class="text-stone-500">{{ option.votes }}</span>
+                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                  <div class="flex justify-between gap-3 text-sm">
+                    <span class="font-medium text-stone-800">{{ option.label }}</span>
+                    <span class="font-semibold text-stone-500">{{ option.votes }}</span>
+                  </div>
                 </div>
               {% endfor -%}
             </div>
@@ -73,9 +105,11 @@
             <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">Seniority</h3>
             <div class="mt-4 grid gap-2">
               {% for option in seniority_options -%}
-                <div class="flex justify-between gap-3 text-sm">
-                  <span class="font-medium text-stone-800">{{ option.label }}</span>
-                  <span class="text-stone-500">{{ option.votes }}</span>
+                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                  <div class="flex justify-between gap-3 text-sm">
+                    <span class="font-medium text-stone-800">{{ option.label }}</span>
+                    <span class="font-semibold text-stone-500">{{ option.votes }}</span>
+                  </div>
                 </div>
               {% endfor -%}
             </div>
@@ -84,9 +118,11 @@
             <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">Locations</h3>
             <div class="mt-4 grid gap-2">
               {% for option in location_options -%}
-                <div class="flex justify-between gap-3 text-sm">
-                  <span class="font-medium text-stone-800">{{ option.label }}</span>
-                  <span class="text-stone-500">{{ option.votes }}</span>
+                <div class="rounded-xl bg-stone-50 px-3 py-2">
+                  <div class="flex justify-between gap-3 text-sm">
+                    <span class="font-medium text-stone-800">{{ option.label }}</span>
+                    <span class="font-semibold text-stone-500">{{ option.votes }}</span>
+                  </div>
                 </div>
               {% endfor -%}
             </div>

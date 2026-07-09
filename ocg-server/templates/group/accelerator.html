@@ -1,0 +1,273 @@
+{% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="{{ self.preview_description() |demoji }}">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title() ,
+  description = self.preview_description(),
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &group.name) -}}
+{% endblock open_graph_meta -%}
+
+{% block twitter_meta -%}
+  {{ meta::twitter(title = self.preview_title() ,
+  description = self.preview_description(),
+  image_url = self.open_graph_image_url()) -}}
+{% endblock twitter_meta -%}
+
+{% block content -%}
+  <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div class="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-xl shadow-stone-200/50">
+      <section class="border-b border-stone-100 bg-linear-to-br from-primary-50/80 via-white to-stone-50 px-6 py-8 sm:px-8 lg:px-10">
+        <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}"
+           class="text-sm font-bold text-stone-700 hover:text-stone-950">← Back to {{ group.name|demoji }}</a>
+        <div class="mt-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p class="inline-flex rounded-full border border-primary-200 bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-primary-700">
+              Accelerator
+            </p>
+            <h1 class="mt-4 text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl">
+              {{ group.name|demoji }} accelerator
+            </h1>
+            <p class="mt-3 max-w-3xl text-base/7 font-medium text-stone-600">
+              Browse programs, cohorts, weekly curriculum, accepted builders, and application opportunities.
+            </p>
+          </div>
+          <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
+              <div class="text-2xl font-black text-stone-950">{{ accelerator.programs.len() }}</div>
+              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Programs</div>
+            </div>
+            <div class="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
+              <div class="text-2xl font-black text-stone-950">{{ accelerator.cohorts.len() }}</div>
+              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Cohorts</div>
+            </div>
+            <div class="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
+              <div class="text-2xl font-black text-stone-950">{{ accelerator.members.len() }}</div>
+              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Members</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid gap-10 px-6 py-8 sm:px-8 lg:px-10">
+        {% if accelerator.programs.is_empty() && accelerator.cohorts.is_empty() -%}
+          <div class="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-8 py-14 text-center">
+            <h2 class="text-lg font-semibold text-stone-950">No accelerator cohorts yet</h2>
+            <p class="mt-2 text-sm text-stone-600">Check back when this group opens its next cohort.</p>
+          </div>
+        {% else -%}
+          <section>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <h2 class="text-2xl font-black tracking-tight text-stone-950">Programs</h2>
+                <p class="mt-1 text-sm/6 text-stone-600">Top-level accelerator programs managed by this group.</p>
+              </div>
+            </div>
+            <div class="mt-5 grid gap-4 lg:grid-cols-2">
+              {% for program in accelerator.programs -%}
+                <article class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+                  <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 class="text-lg font-bold text-stone-950">{{ program.name }}</h3>
+                      <p class="mt-1 text-sm/6 text-stone-600">{{ program.summary }}</p>
+                    </div>
+                    {% if program.active -%}
+                      <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700">Active</span>
+                    {% else -%}
+                      <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-600">Inactive</span>
+                    {% endif -%}
+                  </div>
+                  {% if let Some(description) = &program.description -%}
+                    <p class="mt-4 text-sm/6 text-stone-700">{{ description }}</p>
+                  {% endif -%}
+                  <div class="mt-5 flex flex-wrap gap-2">
+                    {% if let Some(application_url) = &program.application_url -%}
+                      <a href="{{ application_url }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="btn-secondary-anchor">Application</a>
+                    {% endif -%}
+                    {% if let Some(curriculum_url) = &program.curriculum_url -%}
+                      <a href="{{ curriculum_url }}"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         class="btn-secondary-anchor">Curriculum</a>
+                    {% endif -%}
+                  </div>
+                </article>
+              {% endfor -%}
+            </div>
+          </section>
+
+          <section>
+            <h2 class="text-2xl font-black tracking-tight text-stone-950">Cohorts</h2>
+            <div class="mt-5 grid gap-6">
+              {% for cohort in accelerator.cohorts -%}
+                <article id="cohort-{{ cohort.group_accelerator_cohort_id }}"
+                         class="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm">
+                  <div class="border-b border-stone-100 bg-stone-50 px-5 py-5">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div class="mb-2 flex flex-wrap gap-2">
+                          <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-bold capitalize text-white">{{ cohort.status }}</span>
+                          {% if let Some(capacity) = cohort.capacity -%}
+                            <span class="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-stone-700 ring-1 ring-inset ring-stone-200">{{ capacity }} seats</span>
+                          {% endif -%}
+                        </div>
+                        <h3 class="text-xl font-black tracking-tight text-stone-950">{{ cohort.name }}</h3>
+                        <p class="mt-2 text-sm/6 text-stone-600">
+                          {% if let Some(starts_on) = &cohort.starts_on -%}
+                            Starts {{ starts_on }}
+                          {% endif -%}
+                          {% if let Some(ends_on) = &cohort.ends_on -%}
+                            · Ends {{ ends_on }}
+                          {% endif -%}
+                          {% if let Some(application_deadline) = &cohort.application_deadline -%}
+                            · Apply by {{ application_deadline }}
+                          {% endif -%}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+                    <div>
+                      <h4 class="text-sm font-black uppercase tracking-[0.18em] text-stone-500">Weekly curriculum</h4>
+                      {% let cohort_weeks_count = self.cohort_weeks_count(cohort.group_accelerator_cohort_id) -%}
+                      {% if cohort_weeks_count == 0 -%}
+                        <p class="mt-3 rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-600">
+                          Curriculum has not been published for this cohort yet.
+                        </p>
+                      {% else -%}
+                        <div class="mt-4 grid gap-3">
+                          {% for week in accelerator.weeks -%}
+                            {% if week.group_accelerator_cohort_id == cohort.group_accelerator_cohort_id -%}
+                              <div class="rounded-2xl border border-stone-200 bg-white p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <div class="text-xs font-bold uppercase tracking-[0.16em] text-primary-700">Week {{ week.week_number }}</div>
+                                    <h5 class="mt-1 text-base font-bold text-stone-950">{{ week.title }}</h5>
+                                  </div>
+                                  {% if let Some(resources_url) = &week.resources_url -%}
+                                    <a href="{{ resources_url }}"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="btn-secondary-anchor btn-mini">Resources</a>
+                                  {% endif -%}
+                                </div>
+                                {% if let Some(goals) = &week.goals -%}
+                                  <p class="mt-3 text-sm/6 text-stone-600">{{ goals }}</p>
+                                {% endif -%}
+                                {% if let Some(deliverable) = &week.deliverable -%}
+                                  <p class="mt-3 rounded-xl bg-stone-50 px-3 py-2 text-sm/6 text-stone-700">Deliverable: {{ deliverable }}</p>
+                                {% endif -%}
+                              </div>
+                            {% endif -%}
+                          {% endfor -%}
+                        </div>
+                      {% endif -%}
+
+                      <h4 class="mt-7 text-sm font-black uppercase tracking-[0.18em] text-stone-500">Accepted members</h4>
+                      {% let cohort_members_count = self.cohort_members_count(cohort.group_accelerator_cohort_id) -%}
+                      {% if cohort_members_count == 0 -%}
+                        <p class="mt-3 rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-5 text-sm text-stone-600">
+                          No accepted members are public for this cohort yet.
+                        </p>
+                      {% else -%}
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                          {% for member in accelerator.members -%}
+                            {% if member.group_accelerator_cohort_id == cohort.group_accelerator_cohort_id -%}
+                              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                                <div class="font-semibold text-stone-950">{{ member.display_name }}</div>
+                                <div class="mt-1 text-sm text-stone-600">{{ member.project_name }}</div>
+                                {% if let Some(project_url) = &member.project_url -%}
+                                  <a href="{{ project_url }}"
+                                     target="_blank"
+                                     rel="noopener noreferrer"
+                                     class="mt-3 inline-flex text-sm font-semibold text-primary-700 hover:text-primary-900">Project</a>
+                                {% endif -%}
+                              </div>
+                            {% endif -%}
+                          {% endfor -%}
+                        </div>
+                      {% endif -%}
+                    </div>
+
+                    <aside class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
+                      <h4 class="text-lg font-black tracking-tight text-stone-950">Apply to this cohort</h4>
+                      {% if cohort.status == "open" -%}
+                        {% if user.logged_in -%}
+                          <form class="mt-4 grid gap-4"
+                                method="post"
+                                action="/{{ group.alliance.name }}/group/{{ group.group_id }}/accelerator/cohorts/{{ cohort.group_accelerator_cohort_id }}/apply"
+                                hx-post="/{{ group.alliance.name }}/group/{{ group.group_id }}/accelerator/cohorts/{{ cohort.group_accelerator_cohort_id }}/apply"
+                                hx-target="closest aside"
+                                hx-swap="innerHTML">
+                            <label class="block">
+                              <span class="form-label">Your name</span>
+                              <input name="applicant_name"
+                                     class="input-primary mt-2"
+                                     {% if let Some(user_name) = &user.name -%}
+                                       value="{{ user_name }}"
+                                     {% endif -%}
+                                     required>
+                            </label>
+                            <label class="block">
+                              <span class="form-label">Email</span>
+                              <input name="applicant_email"
+                                     type="email"
+                                     class="input-primary mt-2"
+                                     required>
+                            </label>
+                            <label class="block">
+                              <span class="form-label">Project name</span>
+                              <input name="project_name" class="input-primary mt-2" required>
+                            </label>
+                            <label class="block">
+                              <span class="form-label">Project URL</span>
+                              <input name="project_url"
+                                     type="url"
+                                     class="input-primary mt-2"
+                                     placeholder="https://...">
+                            </label>
+                            <label class="block">
+                              <span class="form-label">Pitch</span>
+                              <textarea name="pitch" class="input-primary mt-2 min-h-28" required></textarea>
+                            </label>
+                            <label class="block">
+                              <span class="form-label">Goals</span>
+                              <textarea name="goals" class="input-primary mt-2 min-h-20"></textarea>
+                            </label>
+                            <button type="submit" class="btn-primary">Submit application</button>
+                          </form>
+                        {% else -%}
+                          <p class="mt-3 text-sm/6 text-stone-600">Log in to apply to this cohort.</p>
+                          <a href="/log-in?next_url={{ path }}" class="btn-primary-anchor mt-4">Log in to apply</a>
+                        {% endif -%}
+                      {% else -%}
+                        <p class="mt-3 text-sm/6 text-stone-600">Applications are not open for this cohort right now.</p>
+                      {% endif -%}
+                    </aside>
+                  </div>
+                </article>
+              {% endfor -%}
+            </div>
+          </section>
+        {% endif -%}
+      </div>
+    </div>
+  </div>
+{% endblock content -%}

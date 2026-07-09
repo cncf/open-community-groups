@@ -349,6 +349,24 @@ pub(crate) struct GroupWelcome {
     pub theme: Theme,
 }
 
+/// Template for mock interview match notifications.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/mock_interview_matched.html")]
+pub(crate) struct MockInterviewMatched {
+    /// Link to the user's mock interview dashboard.
+    pub dashboard_link: String,
+    /// Interview format label.
+    pub interview_type: String,
+    /// Recipient's assigned role.
+    pub recipient_role: String,
+    /// Matched partner display name.
+    pub partner_name: String,
+    /// Matched partner username.
+    pub partner_username: Option<String>,
+    /// Theme configuration for the site.
+    pub theme: Theme,
+}
+
 /// Template for site onboarding notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/site_onboarding.html")]

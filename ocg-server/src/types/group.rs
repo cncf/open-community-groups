@@ -136,6 +136,9 @@ pub struct GroupFull {
     /// Whether mentorship requests are enabled for this group.
     #[serde(default = "default_true")]
     pub mentorship_enabled: bool,
+    /// Whether mock interview requests are enabled for this group.
+    #[serde(default = "default_true")]
+    pub mock_interviews_enabled: bool,
     /// Group name.
     pub name: String,
     /// List of group organizers.
@@ -232,6 +235,11 @@ impl GroupFull {
     /// Returns true when mentorship requests are available for this group and alliance.
     pub fn mentorship_available(&self) -> bool {
         self.mentorship_enabled && self.alliance.mentorship_enabled
+    }
+
+    /// Returns true when mock interview requests are available for this group and alliance.
+    pub fn mock_interviews_available(&self) -> bool {
+        self.mock_interviews_enabled && self.alliance.mock_interviews_enabled
     }
 
     /// Build a display-friendly location string from available location data.
@@ -382,5 +390,22 @@ mod tests {
         group.mentorship_enabled = true;
         group.alliance.mentorship_enabled = false;
         assert!(!group.mentorship_available());
+    }
+
+    #[test]
+    fn mock_interviews_available_requires_group_and_alliance_enabled() {
+        let mut group = GroupFull {
+            mock_interviews_enabled: true,
+            ..Default::default()
+        };
+        group.alliance.mock_interviews_enabled = true;
+        assert!(group.mock_interviews_available());
+
+        group.mock_interviews_enabled = false;
+        assert!(!group.mock_interviews_available());
+
+        group.mock_interviews_enabled = true;
+        group.alliance.mock_interviews_enabled = false;
+        assert!(!group.mock_interviews_available());
     }
 }

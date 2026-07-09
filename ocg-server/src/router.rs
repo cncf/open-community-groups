@@ -236,6 +236,10 @@ pub(crate) async fn setup(
             post(group::request_member_phone),
         )
         .route(
+            "/{alliance}/group/{group_slug}/members/{user_id}/mock-interview-requests",
+            post(group::request_member_mock_interview),
+        )
+        .route(
             "/{alliance}/group/{group_slug}/members/phone-requests/{user_id}/approve",
             post(group::approve_member_phone_request),
         )
@@ -280,6 +284,10 @@ pub(crate) async fn setup(
         .route(
             "/dashboard/jobs/mock-interviews/matches/{match_id}/feedback",
             post(crate::handlers::dashboard::jobs::update_mock_interview_feedback),
+        )
+        .route(
+            "/dashboard/jobs/users/search",
+            get(crate::handlers::dashboard::common::search_user),
         )
         .route(
             "/dashboard/jobs/{job_id}",
@@ -367,6 +375,10 @@ pub(crate) async fn setup(
         .route(
             "/{alliance}/group/{group_slug}/reports",
             get(group::report_page),
+        )
+        .route(
+            "/{alliance}/group/{group_slug}/accelerator",
+            get(group::accelerator_page),
         )
         .route("/{alliance}/group/{group_slug}", get(group::page))
         .route(

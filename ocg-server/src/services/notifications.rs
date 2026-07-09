@@ -33,8 +33,8 @@ use crate::{
         EventRefundApproved, EventRefundRejected, EventRefundRequested, EventReminder,
         EventRescheduled, EventSeriesCanceled, EventSeriesPublished, EventWaitlistJoined,
         EventWaitlistLeft, EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation,
-        GroupWelcome, SessionProposalCoSpeakerInvitation, SiteOnboarding, SpeakerSeriesWelcome,
-        SpeakerWelcome,
+        GroupWelcome, MockInterviewMatched, SessionProposalCoSpeakerInvitation, SiteOnboarding,
+        SpeakerSeriesWelcome, SpeakerWelcome,
     },
 };
 
@@ -488,6 +488,12 @@ impl DeliveryWorker {
                 let body = template.render()?;
                 (subject, body)
             }
+            NotificationKind::MockInterviewMatched => {
+                let subject = "You have a mock interview match".to_string();
+                let template: MockInterviewMatched = serde_json::from_value(template_data)?;
+                let body = template.render()?;
+                (subject, body)
+            }
             NotificationKind::SiteOnboarding => {
                 let template: SiteOnboarding = serde_json::from_value(template_data)?;
                 let subject = template.subject.clone();
@@ -763,6 +769,8 @@ pub(crate) enum NotificationKind {
     GroupTeamInvitation,
     /// Notification welcoming a new group member.
     GroupWelcome,
+    /// Notification for a mock interview match.
+    MockInterviewMatched,
     /// Notification with first steps for a newly created account.
     SiteOnboarding,
     /// Notification inviting a co-speaker to respond to a session proposal invitation.

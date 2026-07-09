@@ -1,0 +1,44 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  You have a mock interview match
+{% endblock subject -%}
+
+{% block preheader -%}
+  Connect with {{ partner_name }} to pick a time and meeting link.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="group mb-15" style="margin-bottom: 15px">Mock Interviews</p>
+  <p class="default big mb-15" style="margin-bottom: 15px">
+    You have been matched for a <strong>{{ interview_type }}</strong> mock interview as
+    <strong>{{ recipient_role }}</strong>.
+  </p>
+  <p class="default mb-30" style="margin-bottom: 30px">
+    Coordinate directly with your match to choose the scheduled time and meeting URL.
+  </p>
+
+  <div class="default mb-30"
+       style="margin-bottom: 30px;
+              padding: 16px;
+              border: 1px solid #e7e5e4;
+              border-radius: 16px;
+              background: #fafaf9">
+    <p class="default" style="margin-bottom: 8px">
+      <strong>{{ partner_name }}</strong>
+      {% if let Some(username) = &partner_username -%}
+        <span style="color: #78716c">@{{ username }}</span>
+      {% endif -%}
+    </p>
+    <p class="default" style="color: #57534e">
+      Reply to this notification from your dashboard after you agree on logistics.
+    </p>
+  </div>
+
+  {{ email::button(link = dashboard_link, text = "Open mock interviews", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you were matched for mock interview practice.
+{% endblock footer -%}

@@ -241,6 +241,7 @@ select is(
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "mentorship_enabled": true,
+            "mock_interviews_enabled": true,
             "name": "cloud-native-seattle",
             "og_image_url": "https://example.com/alliance-og.png"
         },
@@ -286,6 +287,7 @@ select is(
         },
         "members_count": 3,
         "mentorship_enabled": true,
+        "mock_interviews_enabled": true,
         "membership_approval_required": false,
         "report_public_enabled": false
     }

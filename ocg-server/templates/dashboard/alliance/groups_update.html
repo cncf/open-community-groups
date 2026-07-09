@@ -59,6 +59,9 @@
           <input type="hidden"
                  name="mentorship_enabled"
                  value="{{ group.mentorship_enabled }}">
+          <input type="hidden"
+                 name="mock_interviews_enabled"
+                 value="{{ group.mock_interviews_enabled }}">
 
           <div class="hidden lg:flex col-span-3"></div>
 
@@ -158,67 +161,79 @@
           {# End Group Description -#}
 
           {% let logo_value -%}value="{{ group.logo_url }}"{%- endlet %}
-        {% let banner_value -%}value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
-      {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
-    {% let og_image_value -%}value="{%- if let Some(og_image_url) = &group.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}
+          {% let banner_value -%}value="{%- if let Some(banner_url) = &group.banner_url -%}{{ banner_url }}{%- endif -%}"{%- endlet %}
+          {% let banner_mobile_value -%}value="{%- if let Some(banner_mobile_url) = &group.banner_mobile_url -%}{{ banner_mobile_url }}{%- endif -%}"{%- endlet %}
+          {% let og_image_value -%}value="{%- if let Some(og_image_url) = &group.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}
 
-  {# Logo URL -#}
-  {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the alliance logo.", value_attr = logo_value, field_class = "col-span-full lg:col-span-4") -}}
-  {# End Logo URL -#}
+          {# Logo URL -#}
+          {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", legend = "If this logo isn't provided, we'll fall back to the alliance logo.", value_attr = logo_value, field_class = "col-span-full lg:col-span-4") -}}
+          {# End Logo URL -#}
 
-  {# Banner URL -#}
-  {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.", value_attr = banner_value) -}}
-  {# End Banner URL -#}
+          {# Banner URL -#}
+          {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.", value_attr = banner_value) -}}
+          {# End Banner URL -#}
 
-  {# Banner Mobile URL -#}
-  {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.", value_attr = banner_mobile_value) -}}
-  {# End Banner Mobile URL -#}
+          {# Banner Mobile URL -#}
+          {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", legend = "If this banner isn't provided, we'll fall back to the alliance banner.", value_attr = banner_mobile_value) -}}
+          {# End Banner Mobile URL -#}
 
-  {# Open Graph image URL -#}
-  {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for group and event link previews. If this image isn't provided, we'll fall back to the alliance Open Graph image if set.", value_attr = og_image_value) -}}
-  {# End Open Graph image URL -#}
-</div>
-</div>
+          {# Open Graph image URL -#}
+          {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for group and event link previews. If this image isn't provided, we'll fall back to the alliance Open Graph image if set.", value_attr = og_image_value) -}}
+          {# End Open Graph image URL -#}
+        </div>
+      </div>
 
-{# Location section -#}
-<div class="border-b border-stone-900/10 pb-12">
-  {% let clear_location_button -%}
-  <button id="clear-location-fields"
-          type="button"
-          class="btn-primary-outline btn-mini whitespace-nowrap"
-          aria-label="Clear location details">Clear location</button>
-{%- endlet %}
-{{ dashboard::form_title(title = "Location",
-description = "Optional location information for the group.",
-button = clear_location_button) -}}
+      {# Location section -#}
+      <div class="border-b border-stone-900/10 pb-12">
+        {% let clear_location_button -%}
+        <button id="clear-location-fields"
+                type="button"
+                class="btn-primary-outline btn-mini whitespace-nowrap"
+                aria-label="Clear location details">Clear location</button>
+      {%- endlet %}
+      {{ dashboard::form_title(title = "Location",
+            description = "Optional location information for the group.",
+            button = clear_location_button) -}}
 
-<div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-  {# Location search -#}
-  <div class="col-span-full">
-    <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude" {% if let Some(city) = &group.city %}initial-venue-city="{{ city }}"{% endif %}  {% if let Some(state) = &group.state %}initial-state="{{ state }}"{% endif %}  {% if let Some(country_name) = &group.country_name %}initial-country-name="{{ country_name }}"{% endif %}  {% if let Some(country_code) = &group.country_code %}initial-country-code="{{ country_code }}"{% endif %}  {% if let Some(lat) = &group.latitude %}initial-latitude="{{ lat }}"{% endif %}  {% if let Some(lng) = &group.longitude %}initial-longitude="{{ lng }}"{% endif %}>
-    </location-search-field>
-  </div>
-  {# End Location search -#}
-</div>
-</div>
-{# End location section -#}
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {# Location search -#}
+        <div class="col-span-full">
+          <location-search-field id="group-location-search" placeholder-text="Search for a city, state, country..." venue-city-field-name="city" state-field-name="state" country-name-field-name="country_name" country-code-field-name="country_code" latitude-field-name="latitude" longitude-field-name="longitude"
+          {% if let Some(city) = &group.city %}initial-venue-city="{{ city }}"{% endif %}
 
-{# Social links section -#}
-<div class="border-b border-stone-900/10 pb-12">
-  {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
+          {% if let Some(state) = &group.state %}initial-state="{{ state }}"{% endif %}
 
-  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-    {% let website_value -%}
-    {% if let Some(website_url) = &group.website_url %}value="{{ website_url }}"{% endif %}
+          {% if let Some(country_name) = &group.country_name %}initial-country-name="{{ country_name }}"{% endif %}
+
+          {% if let Some(country_code) = &group.country_code %}initial-country-code="{{ country_code }}"{% endif %}
+
+          {% if let Some(lat) = &group.latitude %}initial-latitude="{{ lat }}"{% endif %}
+
+          {% if let Some(lng) = &group.longitude %}initial-longitude="{{ lng }}"{% endif %}
+          >
+          </location-search-field>
+        </div>
+        {# End Location search -#}
+      </div>
+    </div>
+    {# End location section -#}
+
+    {# Social links section -#}
+    <div class="border-b border-stone-900/10 pb-12">
+      {{ dashboard::form_title(title = "Social links", description = "Optional social media profiles and website links.") -}}
+
+      <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+        {% let website_value -%}
+        {% if let Some(website_url) = &group.website_url %}value="{{ website_url }}"{% endif %}
+      {%- endlet %}
+      {% let bluesky_value -%}
+      {% if let Some(bluesky_url) = &group.bluesky_url %}value="{{ bluesky_url }}"{% endif %}
+    {%- endlet %}
+    {% let facebook_value -%}
+    {% if let Some(facebook_url) = &group.facebook_url %}value="{{ facebook_url }}"{% endif %}
   {%- endlet %}
-  {% let bluesky_value -%}
-  {% if let Some(bluesky_url) = &group.bluesky_url %}value="{{ bluesky_url }}"{% endif %}
-{%- endlet %}
-{% let facebook_value -%}
-{% if let Some(facebook_url) = &group.facebook_url %}value="{{ facebook_url }}"{% endif %}
-{%- endlet %}
-{% let flickr_value -%}
-{% if let Some(flickr_url) = &group.flickr_url %}value="{{ flickr_url }}"{% endif %}
+  {% let flickr_value -%}
+  {% if let Some(flickr_url) = &group.flickr_url %}value="{{ flickr_url }}"{% endif %}
 {%- endlet %}
 {% let discord_value -%}
 {% if let Some(discord_url) = &group.discord_url %}value="{{ discord_url }}"{% endif %}

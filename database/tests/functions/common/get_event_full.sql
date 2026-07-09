@@ -1045,6 +1045,7 @@ select is(
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "mentorship_enabled": true,
+            "mock_interviews_enabled": true,
             "name": "cloud-native-seattle",
             "ad_banner_link_url": "https://example.com/ad-banner-link",
             "ad_banner_url": "https://example.com/ad-banner.png",

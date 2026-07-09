@@ -25,6 +25,10 @@ begin
             (p_data->>'mentorship_enabled')::boolean,
             mentorship_enabled
         ),
+        mock_interviews_enabled = coalesce(
+            (p_data->>'mock_interviews_enabled')::boolean,
+            mock_interviews_enabled
+        ),
 
         ad_banner_link_url = nullif(p_data->>'ad_banner_link_url', ''),
         ad_banner_url = nullif(p_data->>'ad_banner_url', ''),

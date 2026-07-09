@@ -33,12 +33,14 @@ create table mock_interview_match (
     internal_notes text,
     interviewer_feedback text,
     interviewee_feedback text,
+    interviewer_rating int,
     created_at timestamptz default current_timestamp not null,
     updated_at timestamptz,
     constraint mock_interview_match_meeting_url_check check (meeting_url is null or btrim(meeting_url) <> ''),
     constraint mock_interview_match_internal_notes_check check (internal_notes is null or btrim(internal_notes) <> ''),
     constraint mock_interview_match_interviewer_feedback_check check (interviewer_feedback is null or btrim(interviewer_feedback) <> ''),
-    constraint mock_interview_match_interviewee_feedback_check check (interviewee_feedback is null or btrim(interviewee_feedback) <> '')
+    constraint mock_interview_match_interviewee_feedback_check check (interviewee_feedback is null or btrim(interviewee_feedback) <> ''),
+    constraint mock_interview_match_interviewer_rating_check check (interviewer_rating is null or interviewer_rating between 1 and 5)
 );
 
 create index mock_interview_match_status_idx

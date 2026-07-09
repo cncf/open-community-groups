@@ -10,7 +10,10 @@ use crate::{
         auth::{self, User},
         dashboard::{
             audit,
-            user::{coffee_meet, events, invitations, mentorship, session_proposals, submissions},
+            user::{
+                coffee_meet, events, invitations, mentorship, mock_interviews, session_proposals,
+                submissions,
+            },
         },
         filters,
         helpers::user_initials,
@@ -53,6 +56,8 @@ pub(crate) enum Content {
     Logs(audit::ListPage),
     /// Mentorship requests page.
     Mentorship(mentorship::ListPage),
+    /// Mock interview matches page.
+    MockInterviews(mock_interviews::ListPage),
     /// Session proposals page.
     SessionProposals(session_proposals::ListPage),
     /// Submissions page.
@@ -90,6 +95,11 @@ impl Content {
         matches!(self, Content::Mentorship(_))
     }
 
+    /// Check if the content is the mock interviews page.
+    fn is_mock_interviews(&self) -> bool {
+        matches!(self, Content::MockInterviews(_))
+    }
+
     /// Check if the content is the session proposals page.
     fn is_session_proposals(&self) -> bool {
         matches!(self, Content::SessionProposals(_))
@@ -110,6 +120,7 @@ impl std::fmt::Display for Content {
             Content::Invitations(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Mentorship(template) => write!(f, "{}", template.render()?),
+            Content::MockInterviews(template) => write!(f, "{}", template.render()?),
             Content::SessionProposals(template) => write!(f, "{}", template.render()?),
             Content::Submissions(template) => write!(f, "{}", template.render()?),
         }
@@ -136,6 +147,8 @@ pub(crate) enum Tab {
     Logs,
     /// Mentorship requests tab.
     Mentorship,
+    /// Mock interviews tab.
+    MockInterviews,
     /// Session proposals tab.
     SessionProposals,
     /// Submissions tab.

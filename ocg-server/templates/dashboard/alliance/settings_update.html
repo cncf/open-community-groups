@@ -140,6 +140,31 @@
           </div>
           {# End mentorship availability -#}
 
+          {# Mock interview availability -#}
+          <div class="col-span-full">
+            <label class="inline-flex items-center cursor-pointer">
+              <input id="toggle_mock_interviews_enabled"
+                     name="toggle_mock_interviews_enabled"
+                     value="enabled"
+                     type="checkbox"
+                     class="sr-only peer"
+                     {% if alliance.mock_interviews_enabled -%}
+                       checked
+                     {% endif -%}>
+              <input type="hidden"
+                     id="mock_interviews_enabled"
+                     name="mock_interviews_enabled"
+                     value="{{ alliance.mock_interviews_enabled }}">
+              <div class="relative w-11 h-6 bg-stone-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-stone-300 after:border after:border-stone-200 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500">
+              </div>
+              <span class="ms-3 text-sm font-medium text-stone-900">Enable mock interview requests across this alliance</span>
+            </label>
+            <p class="form-legend">
+              When disabled, member cards do not show mock interview request actions anywhere in this alliance.
+            </p>
+          </div>
+          {# End mock interview availability -#}
+
           {# Hidden layout field -#}
           <input type="hidden"
                  name="alliance_site_layout_id"
@@ -154,48 +179,48 @@
 
         <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
           {% let logo_value -%}value="{{ alliance.logo_url }}"{%- endlet %}
-        {% let banner_value -%}value="{{ alliance.banner_url }}"{%- endlet %}
-      {% let banner_mobile_value -%}value="{{ alliance.banner_mobile_url }}"{%- endlet %}
-    {% let og_image_value -%}value="{%- if let Some(og_image_url) = &alliance.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}
+          {% let banner_value -%}value="{{ alliance.banner_url }}"{%- endlet %}
+          {% let banner_mobile_value -%}value="{{ alliance.banner_mobile_url }}"{%- endlet %}
+          {% let og_image_value -%}value="{%- if let Some(og_image_url) = &alliance.og_image_url -%}{{ og_image_url }}{%- endif -%}"{%- endlet %}
 
-  {# Logo URL -#}
-  {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", help_prefix_text = "Size required 360 x 360 px.", value_attr = logo_value, extra_attrs = "required") -}}
-  {# End logo URL -#}
+          {# Logo URL -#}
+          {{ form_fields::image_field(label = "Logo", name = "logo_url", image_kind = "logo", target = "logo", help_prefix_text = "Size required 360 x 360 px.", value_attr = logo_value, extra_attrs = "required") -}}
+          {# End logo URL -#}
 
-  {# Banner URL -#}
-  {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", value_attr = banner_value, extra_attrs = "required") -}}
-  {# End Banner URL -#}
+          {# Banner URL -#}
+          {{ form_fields::image_field(label = "Banner", name = "banner_url", image_kind = "banner", target = "banner", help_prefix_text = "Size required 2428 x 192 px.", value_attr = banner_value, extra_attrs = "required") -}}
+          {# End Banner URL -#}
 
-  {# Banner Mobile URL -#}
-  {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", value_attr = banner_mobile_value, extra_attrs = "required") -}}
-  {# End Banner Mobile URL -#}
+          {# Banner Mobile URL -#}
+          {{ form_fields::image_field(label = "Banner Mobile", name = "banner_mobile_url", image_kind = "banner", target = "banner_mobile", help_prefix_text = "Size required 1220 x 192 px.", value_attr = banner_mobile_value, extra_attrs = "required") -}}
+          {# End Banner Mobile URL -#}
 
-  {# Open Graph image URL -#}
-  {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for alliance, group, and event link previews when a more specific image isn't provided.", value_attr = og_image_value) -}}
-  {# End Open Graph image URL -#}
-</div>
-</div>
-{# End branding section -#}
+          {# Open Graph image URL -#}
+          {{ form_fields::image_field(label = "Open Graph Image", name = "og_image_url", image_kind = "banner", target = "open_graph", help_prefix_text = "Size required 1200 x 630 px. Format must be PNG, JPEG, or WebP.", legend = "Used for alliance, group, and event link previews when a more specific image isn't provided.", value_attr = og_image_value) -}}
+          {# End Open Graph image URL -#}
+        </div>
+      </div>
+      {# End branding section -#}
 
-{# Social links section -#}
-<div class="border-b border-stone-900/10 pb-12">
-  {{ dashboard::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -}}
+      {# Social links section -#}
+      <div class="border-b border-stone-900/10 pb-12">
+        {{ dashboard::form_title(title = "Social Links", description = "Configure social media profiles and website links.") -}}
 
-  <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
-    {% let website_value -%}
-    {% if let Some(website_url) = &alliance.website_url %}value="{{ website_url }}"{% endif %}
+        <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+          {% let website_value -%}
+          {% if let Some(website_url) = &alliance.website_url %}value="{{ website_url }}"{% endif %}
+        {%- endlet %}
+        {% let bluesky_value -%}
+        {% if let Some(bluesky_url) = &alliance.bluesky_url %}value="{{ bluesky_url }}"{% endif %}
+      {%- endlet %}
+      {% let facebook_value -%}
+      {% if let Some(facebook_url) = &alliance.facebook_url %}value="{{ facebook_url }}"{% endif %}
+    {%- endlet %}
+    {% let flickr_value -%}
+    {% if let Some(flickr_url) = &alliance.flickr_url %}value="{{ flickr_url }}"{% endif %}
   {%- endlet %}
-  {% let bluesky_value -%}
-  {% if let Some(bluesky_url) = &alliance.bluesky_url %}value="{{ bluesky_url }}"{% endif %}
-{%- endlet %}
-{% let facebook_value -%}
-{% if let Some(facebook_url) = &alliance.facebook_url %}value="{{ facebook_url }}"{% endif %}
-{%- endlet %}
-{% let flickr_value -%}
-{% if let Some(flickr_url) = &alliance.flickr_url %}value="{{ flickr_url }}"{% endif %}
-{%- endlet %}
-{% let github_value -%}
-{% if let Some(github_url) = &alliance.github_url %}value="{{ github_url }}"{% endif %}
+  {% let github_value -%}
+  {% if let Some(github_url) = &alliance.github_url %}value="{{ github_url }}"{% endif %}
 {%- endlet %}
 {% let instagram_value -%}
 {% if let Some(instagram_url) = &alliance.instagram_url %}value="{{ instagram_url }}"{% endif %}
@@ -270,26 +295,26 @@
   <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
     {# Ad banner -#}
     {% let ad_banner_value -%}value="{%- if let Some(ad_banner_url) = &alliance.ad_banner_url -%}{{ ad_banner_url }}{%- endif -%}"{%- endlet %}
-  {{ form_fields::image_field(label = "Banner Image", name = "ad_banner_url", image_kind = "banner", help_prefix_text = "Size recommended 2400 x 300 px.", value_attr = ad_banner_value) -}}
-  {# End ad banner -#}
+    {{ form_fields::image_field(label = "Banner Image", name = "ad_banner_url", image_kind = "banner", help_prefix_text = "Size recommended 2400 x 300 px.", value_attr = ad_banner_value) -}}
+    {# End ad banner -#}
 
-  {# Ad banner link URL -#}
-  <div class="col-span-full lg:col-span-3">
-    <label for="ad_banner_link_url" class="form-label">Banner Link URL</label>
-    <div class="mt-2">
-      <input type="url"
-             name="ad_banner_link_url"
-             id="ad_banner_link_url"
-             class="input-primary"
-             placeholder="https://example.com/landing-page"
-             {% if let Some(ad_banner_link_url) = &alliance.ad_banner_link_url %}
-               value="{{ ad_banner_link_url }}"
-             {% endif %}>
+    {# Ad banner link URL -#}
+    <div class="col-span-full lg:col-span-3">
+      <label for="ad_banner_link_url" class="form-label">Banner Link URL</label>
+      <div class="mt-2">
+        <input type="url"
+               name="ad_banner_link_url"
+               id="ad_banner_link_url"
+               class="input-primary"
+               placeholder="https://example.com/landing-page"
+               {% if let Some(ad_banner_link_url) = &alliance.ad_banner_link_url %}
+                 value="{{ ad_banner_link_url }}"
+               {% endif %}>
+      </div>
+      <p class="form-legend">Target URL when users click on the advertisement banner.</p>
     </div>
-    <p class="form-legend">Target URL when users click on the advertisement banner.</p>
+    {# End ad banner link URL -#}
   </div>
-  {# End ad banner link URL -#}
-</div>
 </div>
 {# End advertisement section -#}
 
@@ -302,23 +327,25 @@
     <div class="col-span-full">
       <label for="new_group_details" class="form-label">New Group Details</label>
       <div class="mt-2">
-        <markdown-editor id="new_group_details" name="new_group_details" mini {% if let Some(new_group_details) = &alliance.new_group_details -%} content="{{ new_group_details }}" {% endif -%}></markdown-editor>
+        <markdown-editor id="new_group_details" name="new_group_details" mini
+        {% if let Some(new_group_details) = &alliance.new_group_details -%} content="{{ new_group_details }}" {% endif -%}
+        ></markdown-editor>
       </div>
       <p class="form-legend">Instructions for creating new groups.</p>
     </div>
     {# End new group details -#}
 
     {% let photos_attr -%}images="{{ alliance.photos_urls|json }}"{%- endlet %}
-  {% let extra_links_attr -%}items="{{ alliance.extra_links|json }}"{%- endlet %}
+    {% let extra_links_attr -%}items="{{ alliance.extra_links|json }}"{%- endlet %}
 
-{# Photo gallery -#}
-{{ form_fields::gallery_field(images_attr = photos_attr, helper_text = "Photos that will be displayed in the alliance gallery.") -}}
-{# End photo gallery -#}
+    {# Photo gallery -#}
+    {{ form_fields::gallery_field(images_attr = photos_attr, helper_text = "Photos that will be displayed in the alliance gallery.") -}}
+    {# End photo gallery -#}
 
-{# Extra links -#}
-{{ form_fields::key_value_links_field(items_attr = extra_links_attr, helper_text = "Additional custom links displayed in the footer.") -}}
-{# End extra links -#}
-</div>
+    {# Extra links -#}
+    {{ form_fields::key_value_links_field(items_attr = extra_links_attr, helper_text = "Additional custom links displayed in the footer.") -}}
+    {# End extra links -#}
+  </div>
 </div>
 {# End additional content section -#}
 

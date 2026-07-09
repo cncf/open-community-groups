@@ -331,6 +331,7 @@ select is(
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
             "mentorship_enabled": true,
+            "mock_interviews_enabled": true,
             "name": "cloud-native-seattle"
         },
         "group_id": "%s",
@@ -350,6 +351,7 @@ select is(
         "og_image_url": "https://example.com/updated-og.png",
         "membership_approval_required": false,
         "mentorship_enabled": false,
+        "mock_interviews_enabled": false,
         "organizers": [],
         "report_public_enabled": false,
         "sponsors": []
@@ -513,6 +515,7 @@ select is(
     '{
         "coffee_meet_enabled": false,
         "mentorship_enabled": false,
+        "mock_interviews_enabled": false,
         "name": "Updated Group Empty Strings",
         "report_public_enabled": false,
         "slug": "pqr4jkl",
@@ -566,6 +569,7 @@ select is(
     '{
         "coffee_meet_enabled": false,
         "mentorship_enabled": false,
+        "mock_interviews_enabled": false,
         "name": "Updated Group Null Arrays",
         "report_public_enabled": false,
         "slug": "mno3ghi",

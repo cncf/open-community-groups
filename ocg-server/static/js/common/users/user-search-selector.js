@@ -118,7 +118,9 @@ export class UserSearchSelector extends LitWrapper {
       const initials = computeUserInitials(user.name, user.username, 2);
 
       return html`
-        <div class="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm">
+        <div
+          class="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-sm"
+        >
           <div class="flex min-w-0 items-center gap-3">
             <logo-image
               image-url=${user.photo_url || ""}
@@ -214,14 +216,13 @@ export class UserSearchSelector extends LitWrapper {
         ${
           this.fieldName
             ? this.selectedUsers.map(
-                (user) =>
-                  html`
-                    <input
-                      type="hidden"
-                      name="${this.singleValue ? this.fieldName : `${this.fieldName}[]`}"
-                      value=${user.user_id}
-                    />
-                  `,
+                (user) => html`
+                  <input
+                    type="hidden"
+                    name="${this.singleValue ? this.fieldName : `${this.fieldName}[]`}"
+                    value=${user.user_id}
+                  />
+                `,
               )
             : ""
         }

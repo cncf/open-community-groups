@@ -95,6 +95,7 @@ crate::impl_pagination_and_raw_query!(AllianceGroupsFilters, limit, offset);
 
 /// Group details for dashboard management.
 #[skip_serializing_none]
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct Group {
     /// Category this group belongs to.
@@ -170,6 +171,10 @@ pub(crate) struct Group {
     #[serde(default = "default_true")]
     #[garde(skip)]
     pub mentorship_enabled: bool,
+    /// Whether mock interview requests are enabled for this group.
+    #[serde(default = "default_true")]
+    #[garde(skip)]
+    pub mock_interviews_enabled: bool,
     /// URL to the group's Open Graph image.
     #[garde(custom(image_url_opt))]
     pub og_image_url: Option<String>,

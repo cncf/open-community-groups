@@ -36,7 +36,7 @@
     <a class="btn-primary-anchor w-full sm:w-auto"
        href="/jobs/mock-interviews">Request mock interview</a>
   {%- endlet %}
-  {{ dashboard::page_title(title = "Mock Interviews", description = "Review the practice queue, match members, schedule sessions, and capture feedback.", button = request_practice_button) -}}
+  {{ dashboard::page_title(title = "Mock Interviews", description = "Review the practice queue, match members, notify participants, and capture feedback.", button = request_practice_button) -}}
 
   {% if !messages.is_empty() -%}
     <div class="mt-6">{{ feedback::alerts(messages) -}}</div>
@@ -65,8 +65,6 @@
                   {% if filters.status.as_deref() == Some("requested") %}selected{% endif %}>Requested</option>
           <option value="matched"
                   {% if filters.status.as_deref() == Some("matched") %}selected{% endif %}>Matched</option>
-          <option value="scheduled"
-                  {% if filters.status.as_deref() == Some("scheduled") %}selected{% endif %}>Scheduled</option>
           <option value="completed"
                   {% if filters.status.as_deref() == Some("completed") %}selected{% endif %}>Completed</option>
           <option value="canceled"
@@ -76,7 +74,42 @@
       </form>
     </div>
 
-    <div class="mt-5 grid gap-3 md:grid-cols-3">
+    <div class="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Requests</div>
+        <div class="mt-2 text-2xl font-black text-stone-950">{{ dashboard.metrics.total_requests }}</div>
+        <p class="mt-1 text-xs text-stone-500">{{ dashboard.metrics.pending_requests }} pending</p>
+      </div>
+      <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Active requests</div>
+        <div class="mt-2 text-2xl font-black text-stone-950">{{ dashboard.metrics.active_requests }}</div>
+        <p class="mt-1 text-xs text-stone-500">Matched or scheduled</p>
+      </div>
+      <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Matches</div>
+        <div class="mt-2 text-2xl font-black text-stone-950">{{ dashboard.metrics.total_matches }}</div>
+        <p class="mt-1 text-xs text-stone-500">{{ dashboard.metrics.active_matches }} active</p>
+      </div>
+      <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Completed</div>
+        <div class="mt-2 text-2xl font-black text-stone-950">{{ dashboard.metrics.completed_matches }}</div>
+        <p class="mt-1 text-xs text-stone-500">{{ dashboard.metrics.canceled_matches }} canceled</p>
+      </div>
+      <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Feedback</div>
+        <div class="mt-2 text-2xl font-black text-stone-950">{{ dashboard.metrics.feedback_count }}</div>
+        <p class="mt-1 text-xs text-stone-500">Matches with notes or rating</p>
+      </div>
+      <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Avg rating</div>
+        <div class="mt-2 text-2xl font-black text-stone-950">
+          {{ dashboard.metrics.average_interviewer_rating_display() }}
+        </div>
+        <p class="mt-1 text-xs text-stone-500">Interviewer rating</p>
+      </div>
+    </div>
+
+    <div class="mt-6 grid gap-3 md:grid-cols-3">
       {% for stat in dashboard.stats -%}
         {% if stat.dimension == "interview_type" -%}
           <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
@@ -150,33 +183,16 @@
             </div>
             <div class="space-y-2 lg:col-span-3">
               <label class="form-label"
-                     for="scheduled-{{ request.mock_interview_request_id }}">Scheduled time</label>
-              <input id="scheduled-{{ request.mock_interview_request_id }}"
-                     name="scheduled_at"
-                     class="input-primary"
-                     placeholder="2026-07-15 19:00 +04" />
-            </div>
-            <div class="space-y-2 lg:col-span-3">
-              <label class="form-label"
                      for="status-{{ request.mock_interview_request_id }}">Status</label>
               <select id="status-{{ request.mock_interview_request_id }}"
                       name="status"
                       class="input-primary">
                 <option value="matched">Matched</option>
-                <option value="scheduled">Scheduled</option>
                 <option value="completed">Completed</option>
                 <option value="canceled">Canceled</option>
               </select>
             </div>
-            <div class="space-y-2 lg:col-span-5">
-              <label class="form-label"
-                     for="meeting-{{ request.mock_interview_request_id }}">Meeting URL</label>
-              <input id="meeting-{{ request.mock_interview_request_id }}"
-                     name="meeting_url"
-                     class="input-primary"
-                     placeholder="https://meet.google.com/..." />
-            </div>
-            <div class="space-y-2 lg:col-span-7">
+            <div class="space-y-2 lg:col-span-9">
               <label class="form-label"
                      for="notes-{{ request.mock_interview_request_id }}">Internal notes</label>
               <input id="notes-{{ request.mock_interview_request_id }}"
@@ -185,7 +201,7 @@
                      placeholder="Pairing rationale, prep focus, follow-up owner" />
             </div>
             <div class="lg:col-span-12">
-              <button class="btn-primary" type="submit">Save match and schedule</button>
+              <button class="btn-primary" type="submit">Save match and notify</button>
             </div>
           </form>
         </article>
@@ -198,8 +214,10 @@
   <section class="mt-10">
     <div class="mb-4 flex items-center justify-between gap-3">
       <div>
-        <h2 class="text-xl font-black tracking-tight text-stone-950">Scheduled matches</h2>
-        <p class="mt-1 text-sm text-stone-600">Capture outcomes and feedback after each session.</p>
+        <h2 class="text-xl font-black tracking-tight text-stone-950">Matches</h2>
+        <p class="mt-1 text-sm text-stone-600">
+          Participants coordinate time and meeting links directly, then feedback is captured here.
+        </p>
       </div>
       <span class="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-700">
         {{ dashboard.matches.len() }} match
@@ -285,21 +303,40 @@
               </div>
               <div class="space-y-2 lg:col-span-9">
                 <label class="form-label"
-                       for="interviewer-feedback-{{ session.mock_interview_match_id }}">Interviewer feedback</label>
+                       for="interviewer-feedback-{{ session.mock_interview_match_id }}">Interviewer feedback for interviewee</label>
                 <input id="interviewer-feedback-{{ session.mock_interview_match_id }}"
                        name="interviewer_feedback"
                        class="input-primary"
                        value="{{ session.interviewer_feedback.as_deref().unwrap_or("") }}"
-                       placeholder="Strengths, gaps, recommended prep" />
+                       placeholder="Strengths, gaps, recommended prep. Visible to the interviewee and admins." />
               </div>
-              <div class="space-y-2 lg:col-span-12">
+              <div class="space-y-2 lg:col-span-3">
                 <label class="form-label"
-                       for="interviewee-feedback-{{ session.mock_interview_match_id }}">Interviewee feedback</label>
+                       for="interviewer-rating-{{ session.mock_interview_match_id }}">Interviewer rating</label>
+                <select id="interviewer-rating-{{ session.mock_interview_match_id }}"
+                        name="interviewer_rating"
+                        class="input-primary">
+                  <option value="">No rating</option>
+                  <option value="5"
+                          {% if session.interviewer_rating_is(5) %}selected{% endif %}>5 - Excellent</option>
+                  <option value="4"
+                          {% if session.interviewer_rating_is(4) %}selected{% endif %}>4 - Good</option>
+                  <option value="3"
+                          {% if session.interviewer_rating_is(3) %}selected{% endif %}>3 - Okay</option>
+                  <option value="2"
+                          {% if session.interviewer_rating_is(2) %}selected{% endif %}>2 - Needs work</option>
+                  <option value="1"
+                          {% if session.interviewer_rating_is(1) %}selected{% endif %}>1 - Poor</option>
+                </select>
+              </div>
+              <div class="space-y-2 lg:col-span-9">
+                <label class="form-label"
+                       for="interviewee-feedback-{{ session.mock_interview_match_id }}">Interviewee comments about interviewer</label>
                 <textarea id="interviewee-feedback-{{ session.mock_interview_match_id }}"
                           name="interviewee_feedback"
                           rows="3"
                           class="input-primary min-h-24 resize-y"
-                          placeholder="What helped, what to improve next time">{{ session.interviewee_feedback.as_deref().unwrap_or("") }}</textarea>
+                          placeholder="What helped, what the interviewer can improve next time">{{ session.interviewee_feedback.as_deref().unwrap_or("") }}</textarea>
               </div>
               <div class="lg:col-span-12">
                 <button class="btn-primary" type="submit">Save feedback</button>

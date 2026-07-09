@@ -31,6 +31,7 @@ pub(crate) struct UpdatePage {
 
 /// Alliance update form data.
 #[skip_serializing_none]
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct AllianceUpdate {
     /// URL to the alliance banner image optimized for mobile devices.
@@ -59,6 +60,10 @@ pub(crate) struct AllianceUpdate {
     #[serde(default = "default_true")]
     #[garde(skip)]
     pub mentorship_enabled: bool,
+    /// Whether mock interview requests are enabled across this alliance.
+    #[serde(default = "default_true")]
+    #[garde(skip)]
+    pub mock_interviews_enabled: bool,
 
     /// Target URL when users click on the advertisement banner.
     #[garde(url, length(max = MAX_LEN_L))]

@@ -6,6 +6,8 @@ const COFFEE_MEET_TOGGLE_ID = "toggle_coffee_meet_enabled";
 const COFFEE_MEET_INPUT_ID = "coffee_meet_enabled";
 const MENTORSHIP_TOGGLE_ID = "toggle_mentorship_enabled";
 const MENTORSHIP_INPUT_ID = "mentorship_enabled";
+const MOCK_INTERVIEWS_TOGGLE_ID = "toggle_mock_interviews_enabled";
+const MOCK_INTERVIEWS_INPUT_ID = "mock_interviews_enabled";
 const GROUP_TEAM_RESTRICTION_TOGGLE_ID = "toggle_group_team_management_restricted";
 const GROUP_TEAM_RESTRICTION_INPUT_ID = "group_team_management_restricted";
 const SETTINGS_BOUND_KEY = "allianceSettingsBound";
@@ -27,6 +29,8 @@ export const initializeAllianceSettings = (root = document) => {
   const coffeeMeetInput = getElementById(root, COFFEE_MEET_INPUT_ID);
   const mentorshipToggle = getElementById(root, MENTORSHIP_TOGGLE_ID);
   const mentorshipInput = getElementById(root, MENTORSHIP_INPUT_ID);
+  const mockInterviewsToggle = getElementById(root, MOCK_INTERVIEWS_TOGGLE_ID);
+  const mockInterviewsInput = getElementById(root, MOCK_INTERVIEWS_INPUT_ID);
 
   bindBooleanToggle({
     toggle: groupTeamRestrictionToggle,
@@ -43,6 +47,12 @@ export const initializeAllianceSettings = (root = document) => {
   bindBooleanToggle({
     toggle: mentorshipToggle,
     hiddenInput: mentorshipInput,
+    syncOnInit: true,
+  });
+
+  bindBooleanToggle({
+    toggle: mockInterviewsToggle,
+    hiddenInput: mockInterviewsInput,
     syncOnInit: true,
   });
 };

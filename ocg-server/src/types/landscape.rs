@@ -1,5 +1,7 @@
 //! Landscape domain types.
 
+#![allow(clippy::ref_option, clippy::trivially_copy_pass_by_ref)]
+
 use chrono::{DateTime, NaiveDate, Utc};
 use garde::Validate;
 use serde::{Deserialize, Serialize};

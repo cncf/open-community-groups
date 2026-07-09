@@ -94,11 +94,30 @@ impl MockInterviewsPage {
             site_settings,
             user,
             dashboard,
-            practice_role_options: PRACTICE_ROLE_OPTIONS.to_vec(),
+            practice_role_options: PRACTICE_ROLE_OPTIONS
+                .iter()
+                .copied()
+                .filter(|option| matches!(option.value, "interviewee" | "interviewer"))
+                .collect(),
             interview_type_options: INTERVIEW_TYPE_OPTIONS.to_vec(),
             target_company_options: TARGET_COMPANY_OPTIONS.to_vec(),
             seniority_options: SENIORITY_OPTIONS.to_vec(),
             location_options: LOCATION_OPTIONS.to_vec(),
         }
+    }
+
+    /// Returns the total number of interview type poll votes represented.
+    pub(crate) fn interview_type_vote_total(&self) -> i32 {
+        self.interview_type_options
+            .iter()
+            .map(|option| option.votes)
+            .sum()
+    }
+
+    /// Returns the most requested interview type label.
+    pub(crate) fn top_interview_type_label(&self) -> &str {
+        self.interview_type_options
+            .first()
+            .map_or("Mock interviews", |option| option.label)
     }
 }

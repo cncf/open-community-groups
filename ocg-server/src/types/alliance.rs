@@ -37,6 +37,9 @@ pub struct AllianceFull {
     /// Whether mentorship requests are enabled across this alliance.
     #[serde(default = "default_true")]
     pub mentorship_enabled: bool,
+    /// Whether mock interview requests are enabled across this alliance.
+    #[serde(default = "default_true")]
+    pub mock_interviews_enabled: bool,
     /// Unique identifier used in URLs and database references.
     pub name: String,
 
@@ -122,6 +125,9 @@ pub struct AllianceSummary {
     /// Whether mentorship requests are enabled across this alliance.
     #[serde(default = "default_true")]
     pub mentorship_enabled: bool,
+    /// Whether mock interview requests are enabled across this alliance.
+    #[serde(default = "default_true")]
+    pub mock_interviews_enabled: bool,
     /// Unique identifier used in URLs and database references.
     pub name: String,
 

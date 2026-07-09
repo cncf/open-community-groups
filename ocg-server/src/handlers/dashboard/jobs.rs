@@ -8,25 +8,29 @@ use axum::{
 };
 use axum_messages::Messages;
 use garde::Validate;
-use tracing::instrument;
+use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
     db::DynDB,
+    config::HttpServerConfig,
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm},
     },
     router::serde_qs_config,
+    services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
         auth::User,
         dashboard::jobs::{MockInterviewsPage, Page},
+        notifications::MockInterviewMatched,
     },
     types::{
         jobs::{DashboardJobsFilters, JobInput},
         mock_interviews::{
             MockInterviewFeedbackInput, MockInterviewFilters, MockInterviewMatchInput,
+            MockInterviewMatchNotificationContext, option_label,
         },
         pagination::NavigationLinks,
     },
@@ -167,18 +171,34 @@ pub(crate) async fn unpublish(
     Ok((StatusCode::SEE_OTHER, [("Location", DASHBOARD_JOBS_URL)]))
 }
 
-/// Create or update a mock interview match and schedule.
+/// Create or update a mock interview match and notify participants.
 #[instrument(skip_all, err)]
 pub(crate) async fn upsert_mock_interview_match(
     messages: Messages,
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    State(notifications_manager): State<DynNotificationsManager>,
     Path(request_id): Path<Uuid>,
     ValidatedForm(input): ValidatedForm<MockInterviewMatchInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.upsert_mock_interview_match(user.user_id, request_id, &input)
+    let match_id = db
+        .upsert_mock_interview_match(user.user_id, request_id, &input)
         .await?;
-    messages.success("Mock interview schedule saved.");
+    let context = db
+        .get_mock_interview_match_notification_context(match_id)
+        .await?
+        .ok_or(HandlerError::NotFound)?;
+    let site_settings = db.get_site_settings().await?;
+    enqueue_mock_interview_match_notifications(
+        &notifications_manager,
+        &server_cfg,
+        &site_settings,
+        &context,
+    )
+    .await;
+
+    messages.success("Mock interview match saved and participants notified.");
     Ok((
         StatusCode::SEE_OTHER,
         [("Location", DASHBOARD_MOCK_INTERVIEWS_URL)],
@@ -194,13 +214,95 @@ pub(crate) async fn update_mock_interview_feedback(
     Path(match_id): Path<Uuid>,
     ValidatedForm(input): ValidatedForm<MockInterviewFeedbackInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    db.update_mock_interview_feedback(user.user_id, match_id, &input)
+    let updated = db
+        .update_mock_interview_feedback(user.user_id, match_id, &input)
         .await?;
+    if !updated {
+        return Err(HandlerError::NotFound);
+    }
+
     messages.success("Mock interview feedback saved.");
     Ok((
         StatusCode::SEE_OTHER,
         [("Location", DASHBOARD_MOCK_INTERVIEWS_URL)],
     ))
+}
+
+async fn enqueue_mock_interview_match_notifications(
+    notifications_manager: &DynNotificationsManager,
+    server_cfg: &HttpServerConfig,
+    site_settings: &crate::types::site::SiteSettings,
+    context: &MockInterviewMatchNotificationContext,
+) {
+    let Some(interviewer_id) = context.interviewer_user_id else {
+        warn!(
+            match_id = %context.mock_interview_match_id,
+            "mock interview match notification skipped because interviewer is missing"
+        );
+        return;
+    };
+    let Some(interviewee_id) = context.interviewee_user_id else {
+        warn!(
+            match_id = %context.mock_interview_match_id,
+            "mock interview match notification skipped because interviewee is missing"
+        );
+        return;
+    };
+
+    let dashboard_link = format!(
+        "{}/dashboard/user?tab=mock-interviews",
+        server_cfg
+            .base_url
+            .strip_suffix('/')
+            .unwrap_or(&server_cfg.base_url)
+    );
+    let interview_type = option_label(&context.interview_type).to_string();
+    let notifications = [
+        (
+            interviewer_id,
+            MockInterviewMatched {
+                dashboard_link: dashboard_link.clone(),
+                interview_type: interview_type.clone(),
+                recipient_role: "interviewer".to_string(),
+                partner_name: context.interviewee_label(),
+                partner_username: context.interviewee_username.clone(),
+                theme: site_settings.theme.clone(),
+            },
+        ),
+        (
+            interviewee_id,
+            MockInterviewMatched {
+                dashboard_link,
+                interview_type,
+                recipient_role: "interviewee".to_string(),
+                partner_name: context.interviewer_label(),
+                partner_username: context.interviewer_username.clone(),
+                theme: site_settings.theme.clone(),
+            },
+        ),
+    ];
+
+    for (recipient, template_data) in notifications {
+        let notification = NewNotification {
+            attachments: vec![],
+            kind: NotificationKind::MockInterviewMatched,
+            recipients: vec![recipient],
+            template_data: match serde_json::to_value(&template_data) {
+                Ok(value) => Some(value),
+                Err(err) => {
+                    warn!(error = %err, "failed to serialize mock interview match notification");
+                    continue;
+                }
+            },
+        };
+        if let Err(err) = notifications_manager.enqueue(&notification).await {
+            warn!(
+                error = %err,
+                recipient = %recipient,
+                "failed to enqueue mock interview match notification"
+            );
+        }
+    }
 }
 
 fn parse_filters(raw_query: &str) -> Result<DashboardJobsFilters, HandlerError> {

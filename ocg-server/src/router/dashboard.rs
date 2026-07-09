@@ -546,6 +546,18 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route("/mentorship", get(dashboard::user::mentorship::list_page))
         .route(
+            "/mock-interviews",
+            get(dashboard::user::mock_interviews::list_page),
+        )
+        .route(
+            "/mock-interviews/{match_id}/feedback",
+            post(dashboard::user::mock_interviews::update_feedback),
+        )
+        .route(
+            "/mock-interviews/{match_id}/schedule",
+            post(dashboard::user::mock_interviews::update_schedule),
+        )
+        .route(
             "/invitations/alliance/{alliance_id}/accept",
             put(dashboard::user::invitations::accept_alliance_team_invitation),
         )

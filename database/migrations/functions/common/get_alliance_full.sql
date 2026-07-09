@@ -16,6 +16,7 @@ returns json as $$
         'group_team_management_restricted', group_team_management_restricted,
         'logo_url', logo_url,
         'mentorship_enabled', mentorship_enabled,
+        'mock_interviews_enabled', mock_interviews_enabled,
         'name', name,
 
         -- Include optional alliance profile fields

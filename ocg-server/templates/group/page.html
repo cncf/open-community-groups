@@ -155,6 +155,13 @@
                     <div class="svg-icon size-4 icon-shopping-bag bg-stone-600"></div>
                     Store
                   </a>
+                  {% if has_accelerator -%}
+                    <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/accelerator"
+                       class="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">
+                      <div class="svg-icon size-4 icon-rocket bg-stone-600"></div>
+                      Accelerator
+                    </a>
+                  {% endif -%}
                   {% if group.report_public_enabled -%}
                     <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/reports"
                        class="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">

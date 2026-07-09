@@ -1164,23 +1164,50 @@ mock! {
             &self,
             filters: &crate::types::mock_interviews::MockInterviewFilters,
         ) -> Result<crate::types::mock_interviews::MockInterviewDashboard>;
+        async fn list_user_mock_interview_matches(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<crate::types::mock_interviews::UserMockInterviewMatch>>;
         async fn add_mock_interview_request(
             &self,
             user_id: Uuid,
             input: &crate::types::mock_interviews::MockInterviewRequestInput,
         ) -> Result<Uuid>;
+        async fn request_group_mock_interviewer(
+            &self,
+            requester_user_id: Uuid,
+            alliance_id: Uuid,
+            group_id: Uuid,
+            interviewer_user_id: Uuid,
+        ) -> Result<Option<Uuid>>;
         async fn upsert_mock_interview_match(
             &self,
             actor_user_id: Uuid,
             request_id: Uuid,
             input: &crate::types::mock_interviews::MockInterviewMatchInput,
         ) -> Result<Uuid>;
+        async fn get_mock_interview_match_notification_context(
+            &self,
+            match_id: Uuid,
+        ) -> Result<Option<crate::types::mock_interviews::MockInterviewMatchNotificationContext>>;
         async fn update_mock_interview_feedback(
             &self,
             actor_user_id: Uuid,
             match_id: Uuid,
             input: &crate::types::mock_interviews::MockInterviewFeedbackInput,
-        ) -> Result<()>;
+        ) -> Result<bool>;
+        async fn update_user_mock_interview_feedback(
+            &self,
+            actor_user_id: Uuid,
+            match_id: Uuid,
+            input: &crate::types::mock_interviews::MockInterviewParticipantFeedbackInput,
+        ) -> Result<bool>;
+        async fn update_user_mock_interview_schedule(
+            &self,
+            actor_user_id: Uuid,
+            match_id: Uuid,
+            input: &crate::types::mock_interviews::MockInterviewParticipantScheduleInput,
+        ) -> Result<bool>;
     }
 
     #[async_trait]

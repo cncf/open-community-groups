@@ -97,6 +97,7 @@ select is(
         "logo_url": "https://example.com/logo.png",
         "membership_approval_required": false,
         "mentorship_enabled": true,
+        "mock_interviews_enabled": true,
         "organizers": [],
         "report_public_enabled": false,
         "sponsors": []
@@ -216,6 +217,7 @@ select is(
         "country_name": "United States",
         "coffee_meet_enabled": true,
         "mentorship_enabled": true,
+        "mock_interviews_enabled": true,
         "state": "CA",
         "region": {
             "region_id": "%s",

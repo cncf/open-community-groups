@@ -135,6 +135,7 @@ select is(
             'display_name', 'Alpha Alliance',
             'logo_url', 'https://example.com/alpha-logo.png',
             'mentorship_enabled', true,
+            'mock_interviews_enabled', true,
             'name', 'alpha-alliance'
         )
     ),

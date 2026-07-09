@@ -48,6 +48,7 @@ returns json as $$
         'logo_url', coalesce(g.logo_url, c.logo_url),
         'longitude', st_x(g.location::geometry),
         'mentorship_enabled', g.mentorship_enabled,
+        'mock_interviews_enabled', g.mock_interviews_enabled,
         'og_image_url', g.og_image_url,
         'payment_recipient', g.payment_recipient,
         'photos_urls', g.photos_urls,
