@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,11 +18,17 @@ select plan(6);
 \set finalizedUserID '79490000-0000-0000-0000-000000000015'
 \set groupCategoryID '79490000-0000-0000-0000-000000000005'
 \set groupID '79490000-0000-0000-0000-000000000006'
+\set invalidPurchaseID '79490000-0000-0000-0000-000000000016'
+\set invalidRefundID '79490000-0000-0000-0000-000000000017'
+\set invalidUserID '79490000-0000-0000-0000-000000000018'
 \set missingRefundID '79490000-0000-0000-0000-000000000012'
 \set priceWindowID '79490000-0000-0000-0000-000000000007'
 \set purchaseID '79490000-0000-0000-0000-000000000008'
 \set refundID '79490000-0000-0000-0000-000000000009'
 \set refundRequestID '79490000-0000-0000-0000-000000000010'
+\set terminalPurchaseID '79490000-0000-0000-0000-000000000019'
+\set terminalRefundID '79490000-0000-0000-0000-000000000020'
+\set terminalUserID '79490000-0000-0000-0000-000000000021'
 \set userID '79490000-0000-0000-0000-000000000011'
 
 -- ============================================================================
@@ -56,7 +62,7 @@ values (:'groupCategoryID', :'communityID', 'Tech');
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'General');
 
--- Buyers for the pending and finalized refund scenarios
+-- Buyers for the pending, finalized, and invalid recovery scenarios
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
     (
@@ -65,6 +71,20 @@ values
         'finalized-buyer@example.com',
         true,
         'finalized-buyer'
+    ),
+    (
+        :'invalidUserID',
+        'hash-invalid',
+        'invalid-buyer@example.com',
+        true,
+        'invalid-buyer'
+    ),
+    (
+        :'terminalUserID',
+        'hash-terminal',
+        'terminal-buyer@example.com',
+        true,
+        'terminal-buyer'
     ),
     (:'userID', 'hash', 'success-buyer@example.com', true, 'success-buyer');
 
@@ -131,7 +151,7 @@ insert into event_ticket_price_window (
     :'eventTicketTypeID'
 );
 
--- Purchases for the pending and finalized refund scenarios
+-- Purchases for the pending, finalized, and invalid recovery scenarios
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -147,9 +167,27 @@ insert into event_purchase (
     'USD',
     :'eventID',
     :'eventTicketTypeID',
-    'refunded',
+    'refund-recovery-pending',
     'General admission',
     :'finalizedUserID'
+), (
+    :'invalidPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'completed',
+    'General admission',
+    :'invalidUserID'
+), (
+    :'terminalPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-pending',
+    'General admission',
+    :'terminalUserID'
 ), (
     :'purchaseID',
     2500,
@@ -174,7 +212,7 @@ insert into event_refund_request (
     'approving'
 );
 
--- Provider records for the pending and finalized refund scenarios
+-- Provider records for the pending, finalized, and invalid recovery scenarios
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
@@ -186,6 +224,7 @@ insert into event_purchase_refund (
     status,
 
     event_refund_request_id,
+    failure_message,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
@@ -197,12 +236,28 @@ insert into event_purchase_refund (
     'event-purchase-refund-' || :'finalizedPurchaseID',
     'automatic-unfulfillable-checkout',
     'stripe',
-    'finalized',
+    'provider-failed',
 
     null,
+    'provider refund failed: re_failed_123',
     current_timestamp,
-    're_finalized_123',
-    current_timestamp
+    null,
+    null
+), (
+    :'invalidRefundID',
+    2500,
+    'USD',
+    :'invalidPurchaseID',
+    'event-purchase-refund-' || :'invalidPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'provider-failed',
+
+    null,
+    'provider refund failed: re_invalid_123',
+    current_timestamp,
+    null,
+    null
 ), (
     :'refundID',
     2500,
@@ -216,6 +271,22 @@ insert into event_purchase_refund (
     :'refundRequestID',
     null,
     null,
+    null,
+    null
+), (
+    :'terminalRefundID',
+    2500,
+    'USD',
+    :'terminalPurchaseID',
+    'event-purchase-refund-' || :'terminalPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'provider-failed',
+
+    null,
+    'provider refund failed: re_terminal_123',
+    null,
+    're_terminal_123',
     null
 );
 
@@ -223,12 +294,24 @@ insert into event_purchase_refund (
 -- TESTS
 -- ============================================================================
 
+-- Should reject empty expected idempotency keys
+select throws_ok(
+    format($$select record_event_purchase_refund_succeeded(
+        %L::uuid,
+        '   ',
+        're_success_123'
+    )$$, :'refundID'),
+    'expected idempotency key is required',
+    'Should reject empty expected idempotency keys'
+);
+
 -- Should reject empty provider refund ids
 select throws_ok(
     format($$select record_event_purchase_refund_succeeded(
         %L::uuid,
+        %L,
         '   '
-    )$$, :'refundID'),
+    )$$, :'refundID', 'event-purchase-refund-' || :'purchaseID'),
     'provider refund id is required',
     'Should reject empty provider refund ids'
 );
@@ -237,6 +320,7 @@ select throws_ok(
 select is(
     record_event_purchase_refund_succeeded(
         :'refundID'::uuid,
+        'event-purchase-refund-' || :'purchaseID',
         're_success_123'
     ) - 'event_purchase_refund_id' - 'provider_refunded_at',
     jsonb_build_object(
@@ -257,6 +341,7 @@ select is(
 select is(
     record_event_purchase_refund_succeeded(
         :'refundID'::uuid,
+        'event-purchase-refund-' || :'purchaseID',
         're_success_123'
     ) - 'event_purchase_refund_id' - 'provider_refunded_at',
     jsonb_build_object(
@@ -277,26 +362,150 @@ select is(
 select throws_ok(
     format($$select record_event_purchase_refund_succeeded(
         %L::uuid,
+        %L,
         're_success_456'
-    )$$, :'refundID'),
+    )$$, :'refundID', 'event-purchase-refund-' || :'purchaseID'),
     'event purchase refund already has a different provider refund id',
     'Should reject conflicting provider refund ids'
 );
 
--- Should not downgrade a locally finalized refund
+-- Should ignore a successful result from a superseded attempt
+select results_eq(
+    format($$
+        with stale_success as materialized (
+            select record_event_purchase_refund_succeeded(
+                %L::uuid,
+                'event-purchase-refund-stale',
+                're_stale_123'
+            )
+        )
+        select provider_refund_id, status
+        from event_purchase_refund
+        cross join stale_success
+        where event_purchase_refund_id = %L::uuid
+    $$, :'refundID', :'refundID'),
+    $$ values ('re_success_123'::text, 'provider-succeeded'::text) $$,
+    'Should ignore a successful result from a superseded attempt'
+);
+
+-- Should not revive a terminal provider refund with delayed success
+select results_eq(
+    format($$
+        with delayed_success as materialized (
+            select record_event_purchase_refund_succeeded(
+                %L::uuid,
+                %L,
+                're_terminal_123'
+            )
+        )
+        select failure_message, provider_refund_id, status
+        from event_purchase_refund
+        cross join delayed_success
+        where event_purchase_refund_id = %L::uuid
+    $$,
+        :'terminalRefundID',
+        'event-purchase-refund-' || :'terminalPurchaseID',
+        :'terminalRefundID'
+    ),
+    $$ values (
+        'provider refund failed: re_terminal_123'::text,
+        're_terminal_123'::text,
+        'provider-failed'::text
+    ) $$,
+    'Should not revive a terminal provider refund with delayed success'
+);
+
+-- Should reject finalized refunds whose purchase is not recoverable
+select throws_ok(
+    format($$select record_event_purchase_refund_succeeded(
+        %L::uuid,
+        %L,
+        're_invalid_123'
+    )$$, :'invalidRefundID', 'event-purchase-refund-' || :'invalidPurchaseID'),
+    'finalized event purchase not found',
+    'Should reject finalized refunds whose purchase is not recoverable'
+);
+
+-- Should preserve invalid refund and purchase state after rejection
+select results_eq(
+    format($$
+        select epr.failure_message, epr.provider_refund_id, epr.status, ep.status
+        from event_purchase_refund epr
+        join event_purchase ep using (event_purchase_id)
+        where epr.event_purchase_refund_id = %L::uuid
+    $$, :'invalidRefundID'),
+    $$ values (
+        'provider refund failed: re_invalid_123'::text,
+        null::text,
+        'provider-failed'::text,
+        'completed'::text
+    ) $$,
+    'Should preserve invalid refund and purchase state after rejection'
+);
+
+-- Should finalize a success after an uncertain provider outcome
 select is(
     record_event_purchase_refund_succeeded(
         :'finalizedRefundID'::uuid,
-        're_finalized_123'
+        'event-purchase-refund-' || :'finalizedPurchaseID',
+        're_recovery_123'
     )->>'status',
     'finalized',
-    'Should not downgrade a locally finalized refund'
+    'Should finalize a success after an uncertain provider outcome'
+);
+
+-- Should restore the refunded purchase after provider recovery
+select results_eq(
+    format($$
+        select
+            epr.failure_message,
+            epr.provider_refund_id,
+            epr.provider_refunded_at is not null,
+            ep.status
+        from event_purchase_refund epr
+        join event_purchase ep using (event_purchase_id)
+        where epr.event_purchase_refund_id = %L::uuid
+    $$, :'finalizedRefundID'),
+    $$ values (null::text, 're_recovery_123'::text, true, 'refunded'::text) $$,
+    'Should restore the refunded purchase after provider recovery'
+);
+
+-- Should preserve the purchase timestamp on successful replay
+select results_eq(
+    format($$
+        with before_replay as materialized (
+            select updated_at
+            from event_purchase
+            where event_purchase_id = %L::uuid
+        ),
+        replay as materialized (
+            select record_event_purchase_refund_succeeded(
+                %L::uuid,
+                %L,
+                're_recovery_123'
+            )
+            from before_replay
+        )
+        select ep.updated_at = br.updated_at
+        from event_purchase ep
+        cross join before_replay br
+        cross join replay
+        where ep.event_purchase_id = %L::uuid
+    $$,
+        :'finalizedPurchaseID',
+        :'finalizedRefundID',
+        'event-purchase-refund-' || :'finalizedPurchaseID',
+        :'finalizedPurchaseID'
+    ),
+    $$ values (true) $$,
+    'Should preserve the purchase timestamp on successful replay'
 );
 
 -- Should reject missing refund rows
 select throws_ok(
     format($$select record_event_purchase_refund_succeeded(
         %L::uuid,
+        'event-purchase-refund-missing',
         're_missing_123'
     )$$, :'missingRefundID'),
     'event purchase refund not found',

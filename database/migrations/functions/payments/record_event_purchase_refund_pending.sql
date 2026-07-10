@@ -28,15 +28,19 @@ begin
         raise exception 'event purchase refund not found';
     end if;
 
-    -- Ignore results from an attempt superseded by terminal failure handling
+    -- Ignore stale attempts and avoid reviving completed or terminal refunds
     if v_refund.idempotency_key = p_expected_idempotency_key then
         if v_refund.provider_refund_id is not null
            and v_refund.provider_refund_id <> p_provider_refund_id then
             raise exception 'event purchase refund already has a different provider refund id';
         end if;
 
-        if v_refund.status not in ('finalized', 'provider-succeeded') then
-            -- Record provider progress without downgrading a completed refund
+        if v_refund.status not in ('finalized', 'provider-succeeded')
+           and not (
+               v_refund.status = 'provider-failed'
+               and v_refund.provider_refund_id is not null
+           ) then
+            -- Record provider progress without reviving a terminal refund
             update event_purchase_refund
             set
                 failure_message = null,

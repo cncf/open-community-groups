@@ -22,7 +22,9 @@ use crate::{
 
 use super::{
     CreateCheckoutSessionInput, DynPaymentsProvider, FindRefundInput, RefundPaymentInput,
-    RefundPaymentResult, RefundPaymentStatus, notification_composer::PaymentsNotificationComposer,
+    RefundPaymentResult,
+    notification_composer::PaymentsNotificationComposer,
+    refund_recorder::{RecordedProviderRefund, persist_provider_refund_result},
     webhook_reconciler::PaymentsWebhookReconciler,
 };
 
@@ -375,25 +377,10 @@ impl PgPaymentsManager {
         refund: &EventPurchaseRefund,
         provider_refund: RefundPaymentResult,
     ) -> Result<EventPurchaseRefund> {
-        // Persist the provider lifecycle outcome
-        match provider_refund.status {
-            RefundPaymentStatus::Succeeded => {
-                self.db
-                    .record_event_purchase_refund_succeeded(
-                        refund.event_purchase_refund_id,
-                        provider_refund.provider_refund_id,
-                    )
-                    .await
-            }
-            RefundPaymentStatus::Pending => {
-                let refund = self
-                    .db
-                    .record_event_purchase_refund_pending(
-                        refund.event_purchase_refund_id,
-                        refund.idempotency_key.clone(),
-                        provider_refund.provider_refund_id,
-                    )
-                    .await?;
+        // Persist the normalized result before applying manager workflow policy
+        match persist_provider_refund_result(&self.db, refund, provider_refund).await? {
+            RecordedProviderRefund::Failed => Err(anyhow::anyhow!("provider refund failed")),
+            RecordedProviderRefund::Pending(refund) => {
                 if matches!(
                     refund.status,
                     EventPurchaseRefundStatus::Finalized
@@ -404,16 +391,18 @@ impl PgPaymentsManager {
 
                 Err(anyhow::anyhow!("provider refund is not complete yet"))
             }
-            RefundPaymentStatus::Failed => {
-                self.db
-                    .record_event_purchase_refund_terminal_failed(
-                        refund.event_purchase_refund_id,
-                        refund.idempotency_key.clone(),
-                        provider_refund.provider_refund_id,
-                        "provider refund failed".to_string(),
-                    )
-                    .await?;
-                Err(anyhow::anyhow!("provider refund failed"))
+            RecordedProviderRefund::Succeeded(refund) => {
+                if matches!(
+                    refund.status,
+                    EventPurchaseRefundStatus::Finalized
+                        | EventPurchaseRefundStatus::ProviderSucceeded
+                ) {
+                    return Ok(refund);
+                }
+
+                Err(anyhow::anyhow!(
+                    "provider refund success is no longer current"
+                ))
             }
         }
     }

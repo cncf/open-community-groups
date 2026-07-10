@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(63);
+select plan(65);
 
 -- ============================================================================
 -- VARIABLES
@@ -214,6 +214,7 @@ select results_eq(
         ('expired'),
         ('pending'),
         ('refund-pending'),
+        ('refund-recovery-pending'),
         ('refund-requested'),
         ('refunded')
     $$,
@@ -254,6 +255,23 @@ select results_eq(
 select has_check(
     'event_purchase_refund',
     'event_purchase_refund_finalized_at_status_chk'
+);
+select has_check(
+    'event_purchase_refund',
+    'event_purchase_refund_recovery_completed_chk'
+);
+
+-- Test: only terminal provider failures should preserve local finalization
+select ok(
+    (
+        select pg_get_constraintdef(oid) like '%provider-failed%'
+            and pg_get_constraintdef(oid) like '%provider-pending%'
+            and pg_get_constraintdef(oid) like '%finalized_at IS NOT NULL%'
+            and pg_get_constraintdef(oid) like '%finalized_at IS NULL%'
+        from pg_constraint
+        where conname = 'event_purchase_refund_finalized_at_status_chk'
+    ),
+    'Only terminal provider failures should preserve local finalization'
 );
 select has_check(
     'event_purchase_refund',

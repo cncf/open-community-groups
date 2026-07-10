@@ -259,6 +259,7 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
     let refund = db
         .record_event_purchase_refund_succeeded(
             refund.event_purchase_refund_id,
+            refund.idempotency_key.clone(),
             "re_contract_refund_lifecycle".to_string(),
         )
         .await?;
@@ -452,6 +453,58 @@ async fn db_contracts_get_event_full_by_slug_deserializes() -> Result<()> {
     assert_eq!(event.name, "Future Contract Event");
     assert_eq!(event.sessions.len(), 1);
     assert_eq!(event.sponsors.len(), 1);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_purchase_recovery_summary_deserializes() -> Result<()> {
+    // Load the deterministic purchase awaiting provider refund recovery
+    let db = contract_tests_db()?;
+    let summary = db.get_event_purchase_summary(refund_recovery_purchase_id()).await?;
+
+    // Check the recovery status crosses the SQL-to-Rust contract
+    assert_eq!(summary.event_purchase_id, refund_recovery_purchase_id());
+    assert_eq!(summary.status, EventPurchaseStatus::RefundRecoveryPending);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_purchase_refund_deserializes() -> Result<()> {
+    // Load the deterministic post-finalization recovery record
+    let db = contract_tests_db()?;
+    let refund = db.get_event_purchase_refund(refund_recovery_purchase_id()).await?;
+
+    // Check the required durable refund contract
+    assert_eq!(refund.amount_minor, 2500);
+    assert_eq!(refund.currency_code, "USD");
+    assert_eq!(refund.event_purchase_id, refund_recovery_purchase_id());
+    assert_eq!(refund.event_purchase_refund_id, refund_recovery_refund_id());
+    assert_eq!(
+        refund.idempotency_key,
+        "event-purchase-refund-00000000-0000-0000-0000-00000000c0fd-recovery"
+    );
+    assert_eq!(
+        refund.kind,
+        EventPurchaseRefundKind::AutomaticUnfulfillableCheckout
+    );
+    assert_eq!(refund.payment_provider, PaymentProvider::Stripe);
+    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderFailed);
+
+    // Check the optional recovery outcome fields
+    assert_eq!(
+        refund.failure_message.as_deref(),
+        Some("provider refund failed: re_contract_refund_failed")
+    );
+    assert!(refund.finalized_at.is_some());
+    assert!(refund.provider_refund_id.is_none());
+    assert!(refund.provider_refunded_at.is_none());
+
+    // Check the computed durable refund metadata
+    assert!(!refund.started_now);
 
     Ok(())
 }
@@ -1775,6 +1828,10 @@ const REFUND_APPROVE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e6";
 const REFUND_BEGIN_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e5";
 const REFUND_BEGIN_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f4";
 const REFUND_LIFECYCLE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fb";
+/// Purchase fixture whose locally finalized refund requires recovery.
+const REFUND_RECOVERY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fd";
+/// Durable refund fixture preserving post-finalization recovery state.
+const REFUND_RECOVERY_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c0fe";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
@@ -1922,6 +1979,16 @@ fn refund_begin_purchase_id() -> Uuid {
 
 fn refund_lifecycle_purchase_id() -> Uuid {
     parse_uuid(REFUND_LIFECYCLE_PURCHASE_ID)
+}
+
+/// Returns the purchase identifier for the refund recovery fixture.
+fn refund_recovery_purchase_id() -> Uuid {
+    parse_uuid(REFUND_RECOVERY_PURCHASE_ID)
+}
+
+/// Returns the durable refund identifier for the recovery fixture.
+fn refund_recovery_refund_id() -> Uuid {
+    parse_uuid(REFUND_RECOVERY_REFUND_ID)
 }
 
 fn refund_reject_buyer_id() -> Uuid {

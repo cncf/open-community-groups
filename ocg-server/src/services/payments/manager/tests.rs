@@ -60,6 +60,7 @@ async fn approve_refund_request_approves_pending_refund_and_enqueues_notificatio
         .returning(move |_, _, _| {
             Ok(EventPurchaseSummary {
                 amount_minor: 2_500,
+                currency_code: "usd".to_string(),
                 event_purchase_id,
                 event_ticket_type_id,
                 provider_payment_reference: Some("pi_test_123".to_string()),
@@ -419,7 +420,7 @@ async fn approve_refund_request_keeps_approval_state_when_provider_refund_fails(
 }
 
 #[tokio::test]
-async fn approve_refund_request_uses_rotated_idempotency_key_after_terminal_failure() {
+async fn approve_refund_request_retries_uncertain_refund_with_same_idempotency_key() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -428,7 +429,7 @@ async fn approve_refund_request_uses_rotated_idempotency_key_after_terminal_fail
     let event_purchase_refund_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let idempotency_key = format!("event-purchase-refund-{event_purchase_id}-retry");
+    let idempotency_key = format!("event-purchase-refund-{event_purchase_id}");
     let site_settings = SiteSettings::default();
     let target_user_id = Uuid::new_v4();
     let event = sample_event_summary(event_id);
@@ -531,7 +532,7 @@ async fn approve_refund_request_uses_rotated_idempotency_key_after_terminal_fail
 }
 
 #[tokio::test]
-async fn approve_refund_request_rotates_attempt_when_provider_refund_terminally_fails() {
+async fn approve_refund_request_records_terminal_provider_refund_failure() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -730,7 +731,7 @@ async fn approve_refund_request_records_pending_provider_refund_without_finalizi
 }
 
 #[tokio::test]
-async fn approve_refund_request_ignores_stale_pending_result_after_attempt_rotation() {
+async fn approve_refund_request_does_not_revive_a_terminal_refund_with_pending_result() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
@@ -782,10 +783,10 @@ async fn approve_refund_request_ignores_stale_pending_result_after_attempt_rotat
                 event_purchase_id,
                 event_purchase_refund_id,
                 EventPurchaseRefundKind::RefundRequestApproval,
-                None,
+                Some("re_failed_123".to_string()),
                 false,
                 EventPurchaseRefundStatus::ProviderFailed,
-                format!("event-purchase-refund-{event_purchase_id}-retry"),
+                format!("event-purchase-refund-{event_purchase_id}"),
             ))
         });
     db.expect_record_event_purchase_refund_succeeded().never();
@@ -1089,7 +1090,7 @@ async fn approve_refund_request_keeps_state_when_finalization_fails_after_provid
     db.expect_record_event_purchase_refund_failed().never();
     db.expect_record_event_purchase_refund_succeeded()
         .times(1)
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(sample_event_purchase_refund(
                 event_purchase_id,
                 event_purchase_refund_id,
@@ -1140,6 +1141,113 @@ async fn approve_refund_request_keeps_state_when_finalization_fails_after_provid
 
     // Check the returned error
     assert_eq!(err.to_string(), "approval finalization failed");
+}
+
+#[tokio::test]
+async fn approve_refund_request_does_not_finalize_a_stale_provider_success() {
+    // Setup identifiers and data structures
+    let actor_user_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let target_user_id = Uuid::new_v4();
+    let expected_idempotency_key = format!("event-purchase-refund-{event_purchase_id}");
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_begin_event_refund_approval()
+        .times(1)
+        .returning(move |_, _, _| {
+            Ok(EventPurchaseSummary {
+                amount_minor: 2_500,
+                event_purchase_id,
+                event_ticket_type_id,
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                status: EventPurchaseStatus::RefundRequested,
+                ticket_title: "General admission".to_string(),
+                ..EventPurchaseSummary::default()
+            })
+        });
+    db.expect_approve_event_refund_request().never();
+    db.expect_ensure_event_purchase_refund_started()
+        .times(1)
+        .returning(move |_, _, _| {
+            Ok(sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::RefundRequestApproval,
+                None,
+                true,
+                EventPurchaseRefundStatus::ProviderPending,
+            ))
+        });
+    db.expect_get_event_summary_by_id().never();
+    db.expect_get_site_settings().never();
+    db.expect_record_event_purchase_refund_failed().never();
+    db.expect_record_event_purchase_refund_succeeded()
+        .times(1)
+        .withf(move |refund_id, idempotency_key, provider_refund_id| {
+            *refund_id == event_purchase_refund_id
+                && idempotency_key == &expected_idempotency_key
+                && provider_refund_id == "re_test_123"
+        })
+        .returning(move |_, _, _| {
+            Ok(sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::RefundRequestApproval,
+                Some("re_failed_123".to_string()),
+                false,
+                EventPurchaseRefundStatus::ProviderFailed,
+            ))
+        });
+    db.expect_revert_event_refund_approval().never();
+
+    // Setup notifications manager and payments provider mocks
+    let mut notifications_manager = MockNotificationsManager::new();
+    notifications_manager.expect_enqueue().never();
+
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider
+        .expect_find_refund()
+        .times(1)
+        .returning(|_| Box::pin(async { Ok(None) }));
+    payments_provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().times(1).returning(|_| {
+        Box::pin(async move {
+            Ok(RefundPaymentResult {
+                provider_refund_id: "re_test_123".to_string(),
+                status: RefundPaymentStatus::Succeeded,
+            })
+        })
+    });
+
+    // Run the refund approval workflow
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let err = manager
+        .approve_refund_request(&ApproveRefundRequestInput {
+            actor_user_id,
+            community_id,
+            event_id,
+            group_id,
+            user_id: target_user_id,
+
+            review_note: None,
+        })
+        .await
+        .expect_err("stale provider success to be rejected");
+
+    // Check the stale success does not advance local finalization
+    assert_eq!(
+        err.to_string(),
+        "provider refund success is no longer current"
+    );
 }
 
 #[tokio::test]
@@ -1919,11 +2027,11 @@ async fn handle_webhook_fails_closed_when_automatic_refund_lookup_fails() {
 }
 
 #[tokio::test]
-async fn handle_webhook_uses_rotated_idempotency_key_after_terminal_failure() {
+async fn handle_webhook_retries_uncertain_refund_with_same_idempotency_key() {
     // Setup identifiers and data structures
     let event_purchase_id = Uuid::new_v4();
     let event_purchase_refund_id = Uuid::new_v4();
-    let idempotency_key = format!("event-purchase-refund-{event_purchase_id}-retry");
+    let idempotency_key = format!("event-purchase-refund-{event_purchase_id}");
 
     // Setup database mock
     let mut db = MockDB::new();
@@ -2119,11 +2227,13 @@ async fn handle_webhook_finalizes_pending_automatic_refund_after_provider_update
         .returning(move |_| {
             Ok(EventPurchaseSummary {
                 amount_minor: 2_500,
+                currency_code: "usd".to_string(),
                 event_purchase_id,
                 event_ticket_type_id,
-                provider_payment_reference: Some("pi_test_123".to_string()),
                 status: EventPurchaseStatus::RefundPending,
                 ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
                 ..EventPurchaseSummary::default()
             })
         });
@@ -2159,7 +2269,7 @@ async fn handle_webhook_finalizes_pending_automatic_refund_after_provider_update
     payments_provider.expect_find_refund().never();
     payments_provider
         .expect_provider()
-        .times(1)
+        .times(2)
         .return_const(PaymentProvider::Stripe);
     payments_provider.expect_refund_payment().never();
     payments_provider
@@ -2167,8 +2277,11 @@ async fn handle_webhook_finalizes_pending_automatic_refund_after_provider_update
         .times(1)
         .returning(move |_, _| {
             Ok(PaymentsWebhookEvent::RefundUpdated {
-                purchase_id: event_purchase_id,
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
                 provider_refund_id: "re_pending_123".to_string(),
+                purchase_id: event_purchase_id,
                 status: RefundPaymentStatus::Succeeded,
             })
         });
@@ -2197,6 +2310,7 @@ async fn handle_webhook_records_refund_request_success_without_finalizing() {
         .returning(move |_| {
             Ok(EventPurchaseSummary {
                 amount_minor: 2_500,
+                currency_code: "usd".to_string(),
                 event_purchase_id,
                 event_ticket_type_id,
                 provider_payment_reference: Some("pi_test_123".to_string()),
@@ -2232,7 +2346,7 @@ async fn handle_webhook_records_refund_request_success_without_finalizing() {
     payments_provider.expect_find_refund().never();
     payments_provider
         .expect_provider()
-        .times(1)
+        .times(2)
         .return_const(PaymentProvider::Stripe);
     payments_provider.expect_refund_payment().never();
     payments_provider
@@ -2240,8 +2354,11 @@ async fn handle_webhook_records_refund_request_success_without_finalizing() {
         .times(1)
         .returning(move |_, _| {
             Ok(PaymentsWebhookEvent::RefundUpdated {
-                purchase_id: event_purchase_id,
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
                 provider_refund_id: "re_pending_123".to_string(),
+                purchase_id: event_purchase_id,
                 status: RefundPaymentStatus::Succeeded,
             })
         });
@@ -2256,13 +2373,15 @@ async fn handle_webhook_records_refund_request_success_without_finalizing() {
 }
 
 #[tokio::test]
-async fn handle_webhook_records_failed_automatic_refund_without_retrying() {
-    // Setup identifiers for the terminal automatic refund
+#[allow(clippy::too_many_lines)]
+async fn handle_webhook_reconciles_stale_success_to_terminal_failure() {
+    // Setup identifiers for the uncertain provider attempt
     let event_purchase_id = Uuid::new_v4();
     let event_purchase_refund_id = Uuid::new_v4();
     let event_ticket_type_id = Uuid::new_v4();
+    let recovery_idempotency_key = format!("event-purchase-refund-{event_purchase_id}");
 
-    // Setup database mock
+    // Setup an unpinned durable refund after an uncertain provider response
     let mut db = MockDB::new();
     db.expect_get_event_purchase_summary()
         .times(1)
@@ -2270,41 +2389,150 @@ async fn handle_webhook_records_failed_automatic_refund_without_retrying() {
         .returning(move |_| {
             Ok(EventPurchaseSummary {
                 amount_minor: 2_500,
+                currency_code: "usd".to_string(),
                 event_purchase_id,
                 event_ticket_type_id,
-                provider_payment_reference: Some("pi_test_123".to_string()),
                 status: EventPurchaseStatus::RefundPending,
                 ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
                 ..EventPurchaseSummary::default()
             })
         });
-    expect_event_purchase_refund_started(
-        &mut db,
-        event_purchase_id,
-        event_purchase_refund_id,
-        EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
-        Some("re_failed_123"),
-        false,
-        EventPurchaseRefundStatus::ProviderPending,
-    );
+    db.expect_ensure_event_purchase_refund_started()
+        .times(1)
+        .withf(move |purchase_id, provider, kind| {
+            *purchase_id == event_purchase_id
+                && *provider == PaymentProvider::Stripe
+                && *kind == EventPurchaseRefundKind::AutomaticUnfulfillableCheckout
+        })
+        .returning({
+            let recovery_idempotency_key = recovery_idempotency_key.clone();
+            move |_, _, _| {
+                Ok(sample_event_purchase_refund_with_idempotency_key(
+                    event_purchase_id,
+                    event_purchase_refund_id,
+                    EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
+                    None,
+                    false,
+                    EventPurchaseRefundStatus::ProviderFailed,
+                    recovery_idempotency_key.clone(),
+                ))
+            }
+        });
     db.expect_record_event_purchase_refund_failed().never();
     db.expect_record_event_purchase_refund_pending().never();
-    db.expect_record_event_purchase_refund_succeeded().never();
     db.expect_record_event_purchase_refund_terminal_failed()
         .times(1)
         .withf(
             move |refund_id, expected_idempotency_key, provider_refund_id, failure_message| {
                 *refund_id == event_purchase_refund_id
-                    && expected_idempotency_key
-                        == &format!("event-purchase-refund-{event_purchase_id}")
-                    && provider_refund_id == "re_failed_123"
+                    && expected_idempotency_key == &recovery_idempotency_key
+                    && provider_refund_id == "re_stale_123"
                     && failure_message == "provider refund failed"
             },
         )
         .returning(|_, _, _, _| Ok(()));
+    db.expect_get_event_purchase_refund().never();
+    db.expect_record_event_purchase_refund_succeeded().never();
     db.expect_record_automatic_refund_for_event_purchase().never();
 
-    // Setup notifications manager and payments provider mocks
+    // Setup provider truth for the stale success event
+    let notifications_manager = MockNotificationsManager::new();
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider
+        .expect_find_refund()
+        .times(1)
+        .withf(move |input| {
+            input.amount_minor == 2_500
+                && input.provider_payment_reference == "pi_test_123"
+                && input.purchase_id == event_purchase_id
+                && input.provider_refund_id.as_deref() == Some("re_stale_123")
+        })
+        .returning(|_| {
+            Box::pin(async {
+                Ok(Some(RefundPaymentResult {
+                    provider_refund_id: "re_stale_123".to_string(),
+                    status: RefundPaymentStatus::Failed,
+                }))
+            })
+        });
+    payments_provider
+        .expect_provider()
+        .times(2)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().never();
+    payments_provider
+        .expect_verify_and_parse_webhook()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(PaymentsWebhookEvent::RefundUpdated {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
+                provider_refund_id: "re_stale_123".to_string(),
+                purchase_id: event_purchase_id,
+                status: RefundPaymentStatus::Succeeded,
+            })
+        });
+
+    // Run the out-of-order provider success workflow
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
+
+    // Check provider truth prevents stale success from reviving the failed refund
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn handle_webhook_ignores_success_after_terminal_refund_failure() {
+    // Setup identifiers for the pinned terminal refund
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+
+    // Setup the durable recovery state without accepting another transition
+    let mut db = MockDB::new();
+    db.expect_ensure_event_purchase_refund_started().never();
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(EventPurchaseSummary {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                event_purchase_id,
+                event_ticket_type_id,
+                status: EventPurchaseStatus::RefundRecoveryPending,
+                ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                ..EventPurchaseSummary::default()
+            })
+        });
+    db.expect_get_event_purchase_refund()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            let mut refund = sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
+                Some("re_failed_123".to_string()),
+                false,
+                EventPurchaseRefundStatus::ProviderFailed,
+            );
+            refund.finalized_at = Some(chrono::Utc::now());
+            Ok(refund)
+        });
+    db.expect_record_automatic_refund_for_event_purchase().never();
+    db.expect_record_event_purchase_refund_failed().never();
+    db.expect_record_event_purchase_refund_pending().never();
+    db.expect_record_event_purchase_refund_succeeded().never();
+    db.expect_record_event_purchase_refund_terminal_failed().never();
+
+    // Setup a delayed success event for the pinned provider attempt
     let notifications_manager = MockNotificationsManager::new();
     let mut payments_provider = MockPaymentsProvider::new();
     payments_provider.expect_find_refund().never();
@@ -2318,23 +2546,292 @@ async fn handle_webhook_records_failed_automatic_refund_without_retrying() {
         .times(1)
         .returning(move |_, _| {
             Ok(PaymentsWebhookEvent::RefundUpdated {
-                purchase_id: event_purchase_id,
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
                 provider_refund_id: "re_failed_123".to_string(),
-                status: RefundPaymentStatus::Failed,
+                purchase_id: event_purchase_id,
+                status: RefundPaymentStatus::Succeeded,
             })
         });
 
-    // Run the refund update workflow
+    // Run the delayed success workflow
     let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
     let headers = sample_webhook_headers();
     let result = manager.handle_webhook(&headers, "payload").await;
 
-    // Check result matches expectations
+    // Check the pinned terminal failure remains authoritative
     assert!(result.is_ok());
 }
 
 #[tokio::test]
-async fn handle_webhook_ignores_stale_pending_update_after_terminal_failure() {
+async fn handle_webhook_pins_uncertain_automatic_refund_failure_without_retrying() {
+    // Setup identifiers for the failed automatic refund
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(EventPurchaseSummary {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                event_purchase_id,
+                event_ticket_type_id,
+                status: EventPurchaseStatus::RefundPending,
+                ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                ..EventPurchaseSummary::default()
+            })
+        });
+    expect_event_purchase_refund_started(
+        &mut db,
+        event_purchase_id,
+        event_purchase_refund_id,
+        EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
+        None,
+        false,
+        EventPurchaseRefundStatus::ProviderFailed,
+    );
+    db.expect_record_event_purchase_refund_failed().never();
+    db.expect_record_event_purchase_refund_pending().never();
+    db.expect_record_event_purchase_refund_terminal_failed()
+        .times(1)
+        .withf(
+            move |refund_id, expected_idempotency_key, provider_refund_id, failure_message| {
+                *refund_id == event_purchase_refund_id
+                    && expected_idempotency_key
+                        == &format!("event-purchase-refund-{event_purchase_id}")
+                    && provider_refund_id == "re_failed_123"
+                    && failure_message == "provider refund failed"
+            },
+        )
+        .returning(|_, _, _, _| Ok(()));
+    db.expect_get_event_purchase_refund().never();
+    db.expect_record_event_purchase_refund_succeeded().never();
+    db.expect_record_automatic_refund_for_event_purchase().never();
+
+    // Setup notifications manager and payments provider mocks
+    let notifications_manager = MockNotificationsManager::new();
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider.expect_find_refund().never();
+    payments_provider
+        .expect_provider()
+        .times(2)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().never();
+    payments_provider
+        .expect_verify_and_parse_webhook()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(PaymentsWebhookEvent::RefundUpdated {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
+                provider_refund_id: "re_failed_123".to_string(),
+                purchase_id: event_purchase_id,
+                status: RefundPaymentStatus::Failed,
+            })
+        });
+
+    // Run the failed refund webhook workflow
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
+
+    // Check the terminal failure is acknowledged without another provider request
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn handle_webhook_records_failed_refund_after_local_finalization_without_retrying() {
+    // Setup identifiers for the finalized organizer refund
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+
+    // Setup the finalized organizer refund and delayed provider failure
+    let mut db = MockDB::new();
+    db.expect_ensure_event_purchase_refund_started().never();
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(EventPurchaseSummary {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                event_purchase_id,
+                event_ticket_type_id,
+                status: EventPurchaseStatus::Refunded,
+                ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                ..EventPurchaseSummary::default()
+            })
+        });
+    db.expect_get_event_purchase_refund()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            let mut refund = sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::RefundRequestApproval,
+                Some("re_failed_organizer_123".to_string()),
+                false,
+                EventPurchaseRefundStatus::Finalized,
+            );
+            refund.finalized_at = Some(chrono::Utc::now());
+            refund.provider_refunded_at = Some(chrono::Utc::now());
+            Ok(refund)
+        });
+    db.expect_record_event_purchase_refund_failed().never();
+    db.expect_record_event_purchase_refund_pending().never();
+    db.expect_record_event_purchase_refund_terminal_failed()
+        .times(1)
+        .withf(
+            move |refund_id, expected_idempotency_key, provider_refund_id, failure_message| {
+                *refund_id == event_purchase_refund_id
+                    && expected_idempotency_key
+                        == &format!("event-purchase-refund-{event_purchase_id}")
+                    && provider_refund_id == "re_failed_organizer_123"
+                    && failure_message == "provider refund failed"
+            },
+        )
+        .returning(|_, _, _, _| Ok(()));
+    db.expect_record_event_purchase_refund_succeeded().never();
+    db.expect_record_automatic_refund_for_event_purchase().never();
+
+    // Setup the failed provider event without a replacement request
+    let notifications_manager = MockNotificationsManager::new();
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider.expect_find_refund().never();
+    payments_provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().never();
+    payments_provider
+        .expect_verify_and_parse_webhook()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(PaymentsWebhookEvent::RefundUpdated {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
+                provider_refund_id: "re_failed_organizer_123".to_string(),
+                purchase_id: event_purchase_id,
+                status: RefundPaymentStatus::Failed,
+            })
+        });
+
+    // Run the delayed organizer refund failure workflow
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
+
+    // Check the webhook succeeds without starting another provider refund
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn handle_webhook_records_failed_automatic_refund_after_finalization_without_retrying() {
+    // Setup identifiers for the finalized automatic refund
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+
+    // Setup the finalized purchase and delayed provider failure
+    let mut db = MockDB::new();
+    db.expect_ensure_event_purchase_refund_started().never();
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(EventPurchaseSummary {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                event_purchase_id,
+                event_ticket_type_id,
+                status: EventPurchaseStatus::Refunded,
+                ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                ..EventPurchaseSummary::default()
+            })
+        });
+    db.expect_get_event_purchase_refund()
+        .times(1)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            let mut refund = sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
+                Some("re_failed_123".to_string()),
+                false,
+                EventPurchaseRefundStatus::Finalized,
+            );
+            refund.finalized_at = Some(chrono::Utc::now());
+            refund.provider_refunded_at = Some(chrono::Utc::now());
+            Ok(refund)
+        });
+    db.expect_record_event_purchase_refund_failed().never();
+    db.expect_record_event_purchase_refund_pending().never();
+    db.expect_record_event_purchase_refund_terminal_failed()
+        .times(1)
+        .withf(
+            move |refund_id, expected_idempotency_key, provider_refund_id, failure_message| {
+                *refund_id == event_purchase_refund_id
+                    && expected_idempotency_key
+                        == &format!("event-purchase-refund-{event_purchase_id}")
+                    && provider_refund_id == "re_failed_123"
+                    && failure_message == "provider refund failed"
+            },
+        )
+        .returning(|_, _, _, _| Ok(()));
+    db.expect_record_event_purchase_refund_succeeded().never();
+    db.expect_record_automatic_refund_for_event_purchase().never();
+
+    // Setup the failed provider event without a replacement request
+    let notifications_manager = MockNotificationsManager::new();
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider.expect_find_refund().never();
+    payments_provider
+        .expect_provider()
+        .times(1)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().never();
+    payments_provider
+        .expect_verify_and_parse_webhook()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(PaymentsWebhookEvent::RefundUpdated {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
+                provider_refund_id: "re_failed_123".to_string(),
+                purchase_id: event_purchase_id,
+                status: RefundPaymentStatus::Failed,
+            })
+        });
+
+    // Run the delayed automatic refund failure workflow
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let result = manager.handle_webhook(&headers, "payload").await;
+
+    // Check the event is acknowledged without replaying automatic finalization
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn handle_webhook_records_pending_update_after_uncertain_provider_failure() {
     // Setup identifiers and data structures
     let event_purchase_id = Uuid::new_v4();
     let event_purchase_refund_id = Uuid::new_v4();
@@ -2348,6 +2845,7 @@ async fn handle_webhook_ignores_stale_pending_update_after_terminal_failure() {
         .returning(move |_| {
             Ok(EventPurchaseSummary {
                 amount_minor: 2_500,
+                currency_code: "usd".to_string(),
                 event_purchase_id,
                 event_ticket_type_id,
                 provider_payment_reference: Some("pi_test_123".to_string()),
@@ -2366,7 +2864,26 @@ async fn handle_webhook_ignores_stale_pending_update_after_terminal_failure() {
         EventPurchaseRefundStatus::ProviderFailed,
     );
     db.expect_record_event_purchase_refund_failed().never();
-    db.expect_record_event_purchase_refund_pending().never();
+    db.expect_record_event_purchase_refund_pending()
+        .times(1)
+        .withf(
+            move |refund_id, expected_idempotency_key, provider_refund_id| {
+                *refund_id == event_purchase_refund_id
+                    && expected_idempotency_key
+                        == &format!("event-purchase-refund-{event_purchase_id}")
+                    && provider_refund_id == "re_failed_123"
+            },
+        )
+        .returning(move |_, _, _| {
+            Ok(sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
+                Some("re_failed_123".to_string()),
+                false,
+                EventPurchaseRefundStatus::ProviderPending,
+            ))
+        });
     db.expect_record_event_purchase_refund_succeeded().never();
     db.expect_record_event_purchase_refund_terminal_failed().never();
     db.expect_record_automatic_refund_for_event_purchase().never();
@@ -2377,7 +2894,7 @@ async fn handle_webhook_ignores_stale_pending_update_after_terminal_failure() {
     payments_provider.expect_find_refund().never();
     payments_provider
         .expect_provider()
-        .times(1)
+        .times(2)
         .return_const(PaymentProvider::Stripe);
     payments_provider.expect_refund_payment().never();
     payments_provider
@@ -2385,18 +2902,21 @@ async fn handle_webhook_ignores_stale_pending_update_after_terminal_failure() {
         .times(1)
         .returning(move |_, _| {
             Ok(PaymentsWebhookEvent::RefundUpdated {
-                purchase_id: event_purchase_id,
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
                 provider_refund_id: "re_failed_123".to_string(),
+                purchase_id: event_purchase_id,
                 status: RefundPaymentStatus::Pending,
             })
         });
 
-    // Run the stale refund update workflow
+    // Run the pending refund update workflow
     let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
     let headers = sample_webhook_headers();
     let result = manager.handle_webhook(&headers, "payload").await;
 
-    // Check result matches expectations
+    // Check the uncertain attempt accepts its provider progress
     assert!(result.is_ok());
 }
 
@@ -2490,7 +3010,7 @@ async fn handle_webhook_accepts_concurrently_finalized_pending_refund() {
 }
 
 #[tokio::test]
-async fn handle_webhook_rotates_attempt_when_automatic_provider_refund_terminally_fails() {
+async fn handle_webhook_records_terminal_automatic_provider_refund_failure() {
     // Setup identifiers and data structures
     let event_purchase_id = Uuid::new_v4();
     let event_purchase_refund_id = Uuid::new_v4();
@@ -2934,6 +3454,137 @@ async fn handle_webhook_retries_automatic_refund_after_provider_failure() {
 }
 
 #[tokio::test]
+#[allow(clippy::too_many_lines)]
+async fn handle_webhook_acknowledges_duplicate_terminal_failures_without_retrying() {
+    // Setup identifiers and durable terminal state
+    let event_purchase_id = Uuid::new_v4();
+    let event_purchase_refund_id = Uuid::new_v4();
+    let event_ticket_type_id = Uuid::new_v4();
+    let mut durable_refund_sequence = Sequence::new();
+    let mut purchase_sequence = Sequence::new();
+
+    // Setup the initial finalized purchase and its persisted recovery state
+    let mut db = MockDB::new();
+    db.expect_ensure_event_purchase_refund_started().never();
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .in_sequence(&mut purchase_sequence)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(EventPurchaseSummary {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                event_purchase_id,
+                event_ticket_type_id,
+                status: EventPurchaseStatus::Refunded,
+                ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                ..EventPurchaseSummary::default()
+            })
+        });
+    db.expect_get_event_purchase_summary()
+        .times(1)
+        .in_sequence(&mut purchase_sequence)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            Ok(EventPurchaseSummary {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                event_purchase_id,
+                event_ticket_type_id,
+                status: EventPurchaseStatus::RefundRecoveryPending,
+                ticket_title: "General admission".to_string(),
+
+                provider_payment_reference: Some("pi_test_123".to_string()),
+                ..EventPurchaseSummary::default()
+            })
+        });
+    db.expect_get_event_purchase_refund()
+        .times(1)
+        .in_sequence(&mut durable_refund_sequence)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            let mut refund = sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
+                Some("re_failed_123".to_string()),
+                false,
+                EventPurchaseRefundStatus::Finalized,
+            );
+            refund.finalized_at = Some(chrono::Utc::now());
+            refund.provider_refunded_at = Some(chrono::Utc::now());
+            Ok(refund)
+        });
+    db.expect_record_event_purchase_refund_terminal_failed()
+        .times(1)
+        .withf(
+            move |refund_id, expected_idempotency_key, provider_refund_id, failure_message| {
+                *refund_id == event_purchase_refund_id
+                    && expected_idempotency_key
+                        == &format!("event-purchase-refund-{event_purchase_id}")
+                    && provider_refund_id == "re_failed_123"
+                    && failure_message == "provider refund failed"
+            },
+        )
+        .returning(|_, _, _, _| Ok(()));
+    db.expect_get_event_purchase_refund()
+        .times(1)
+        .in_sequence(&mut durable_refund_sequence)
+        .withf(move |purchase_id| *purchase_id == event_purchase_id)
+        .returning(move |_| {
+            let mut refund = sample_event_purchase_refund(
+                event_purchase_id,
+                event_purchase_refund_id,
+                EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
+                Some("re_failed_123".to_string()),
+                false,
+                EventPurchaseRefundStatus::ProviderFailed,
+            );
+            refund.finalized_at = Some(chrono::Utc::now());
+            Ok(refund)
+        });
+    db.expect_record_event_purchase_refund_failed().never();
+    db.expect_record_event_purchase_refund_pending().never();
+    db.expect_record_event_purchase_refund_succeeded().never();
+    db.expect_record_automatic_refund_for_event_purchase().never();
+
+    // Setup duplicate failed provider events without replacement requests
+    let notifications_manager = MockNotificationsManager::new();
+    let mut payments_provider = MockPaymentsProvider::new();
+    payments_provider.expect_find_refund().never();
+    payments_provider
+        .expect_provider()
+        .times(2)
+        .return_const(PaymentProvider::Stripe);
+    payments_provider.expect_refund_payment().never();
+    payments_provider
+        .expect_verify_and_parse_webhook()
+        .times(2)
+        .returning(move |_, _| {
+            Ok(PaymentsWebhookEvent::RefundUpdated {
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
+                provider_refund_id: "re_failed_123".to_string(),
+                purchase_id: event_purchase_id,
+                status: RefundPaymentStatus::Failed,
+            })
+        });
+
+    // Run the failed webhook and its duplicate delivery
+    let manager = sample_payments_manager(db, notifications_manager, Some(payments_provider));
+    let headers = sample_webhook_headers();
+    let first_result = manager.handle_webhook(&headers, "payload").await;
+    let second_result = manager.handle_webhook(&headers, "payload").await;
+
+    // Check both deliveries stop after persisting terminal state
+    assert!(first_result.is_ok());
+    assert!(second_result.is_ok());
+}
+
+#[tokio::test]
 async fn reject_refund_request_persists_rejection_and_enqueues_notification() {
     // Setup identifiers and data structures
     let actor_user_id = Uuid::new_v4();
@@ -3203,16 +3854,18 @@ fn expect_event_purchase_refund_succeeded_with_provider_id(
     kind: EventPurchaseRefundKind,
     provider_refund_id: &str,
 ) {
+    let expected_idempotency_key = format!("event-purchase-refund-{event_purchase_id}");
     let provider_refund_id = provider_refund_id.to_string();
     let expected_provider_refund_id = provider_refund_id.clone();
 
     db.expect_record_event_purchase_refund_succeeded()
         .times(1)
-        .withf(move |refund_id, provider_refund_id| {
+        .withf(move |refund_id, idempotency_key, provider_refund_id| {
             *refund_id == event_purchase_refund_id
+                && idempotency_key == &expected_idempotency_key
                 && provider_refund_id == expected_provider_refund_id.as_str()
         })
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(sample_event_purchase_refund(
                 event_purchase_id,
                 event_purchase_refund_id,

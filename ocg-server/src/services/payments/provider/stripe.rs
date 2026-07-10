@@ -484,7 +484,7 @@ impl PaymentsProvider for StripeProvider {
                 })
             }
             "refund.created" | "refund.failed" | "refund.updated" => {
-                // Require refund object data and OCG purchase metadata
+                // Require the refund fields needed to bind the event to its purchase
                 let Some(object) = event.data.object else {
                     bail!("Stripe webhook payload is missing object data");
                 };
@@ -494,6 +494,13 @@ impl PaymentsProvider for StripeProvider {
                 let purchase_id = purchase_id
                     .parse::<Uuid>()
                     .context("Stripe refund webhook has invalid event purchase metadata")?;
+                let amount_minor =
+                    object.amount.context("Stripe refund webhook is missing amount")?;
+                let currency_code =
+                    object.currency.context("Stripe refund webhook is missing currency")?;
+                let provider_payment_reference = object
+                    .payment_intent
+                    .context("Stripe refund webhook is missing payment intent")?;
 
                 // Normalize the provider refund status into the shared lifecycle
                 let status = object
@@ -503,8 +510,11 @@ impl PaymentsProvider for StripeProvider {
                 let refund = Self::refund_result(object.id, status)?;
 
                 Ok(PaymentsWebhookEvent::RefundUpdated {
-                    purchase_id,
+                    amount_minor,
+                    currency_code,
+                    provider_payment_reference,
                     provider_refund_id: refund.provider_refund_id,
+                    purchase_id,
                     status: refund.status,
                 })
             }
@@ -570,16 +580,20 @@ struct StripeWebhookEvent {
     event_type: String,
 }
 
-/// Stripe webhook object used by the supported checkout session events.
+/// Stripe webhook object used by the supported checkout and refund events.
 #[derive(Debug, Deserialize)]
 struct StripeWebhookObject {
     /// Stripe object identifier.
     id: String,
 
+    /// Refund amount in minor units.
+    amount: Option<i64>,
+    /// Refund currency code.
+    currency: Option<String>,
     /// Metadata attached to the Stripe object.
     #[serde(default)]
     metadata: BTreeMap<String, String>,
-    /// Payment intent associated with a checkout session.
+    /// Payment intent associated with a checkout session or refund.
     payment_intent: Option<String>,
     /// Refund lifecycle status when the object is a refund.
     status: Option<String>,

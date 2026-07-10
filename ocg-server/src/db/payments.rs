@@ -76,6 +76,12 @@ pub(crate) trait DBPayments {
         provider_session_id: &str,
     ) -> Result<()>;
 
+    /// Loads the durable refund record for a purchase.
+    async fn get_event_purchase_refund(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<EventPurchaseRefund>;
+
     /// Loads the current attendee-facing summary for a purchase.
     async fn get_event_purchase_summary(
         &self,
@@ -119,14 +125,15 @@ pub(crate) trait DBPayments {
         provider_refund_id: String,
     ) -> Result<EventPurchaseRefund>;
 
-    /// Records a successful provider refund before finalizing local state.
+    /// Records a successful provider refund for the expected attempt.
     async fn record_event_purchase_refund_succeeded(
         &self,
         event_purchase_refund_id: Uuid,
+        expected_idempotency_key: String,
         provider_refund_id: String,
     ) -> Result<EventPurchaseRefund>;
 
-    /// Records a terminal failure and rotates the expected provider attempt.
+    /// Records a terminal failure and pins the expected provider attempt.
     async fn record_event_purchase_refund_terminal_failed(
         &self,
         event_purchase_refund_id: Uuid,
@@ -308,6 +315,19 @@ where
         .await
     }
 
+    /// [`DBPayments::get_event_purchase_refund`].
+    #[instrument(skip(self), err)]
+    async fn get_event_purchase_refund(
+        &self,
+        event_purchase_id: Uuid,
+    ) -> Result<EventPurchaseRefund> {
+        self.fetch_json_one(
+            "select get_event_purchase_refund($1::uuid)",
+            &[&event_purchase_id],
+        )
+        .await
+    }
+
     /// [`DBPayments::get_event_purchase_summary`].
     #[instrument(skip(self), err)]
     async fn get_event_purchase_summary(
@@ -433,11 +453,16 @@ where
     async fn record_event_purchase_refund_succeeded(
         &self,
         event_purchase_refund_id: Uuid,
+        expected_idempotency_key: String,
         provider_refund_id: String,
     ) -> Result<EventPurchaseRefund> {
         self.fetch_json_one(
-            "select record_event_purchase_refund_succeeded($1::uuid, $2::text)",
-            &[&event_purchase_refund_id, &provider_refund_id],
+            "select record_event_purchase_refund_succeeded($1::uuid, $2::text, $3::text)",
+            &[
+                &event_purchase_refund_id,
+                &expected_idempotency_key,
+                &provider_refund_id,
+            ],
         )
         .await
     }
@@ -674,7 +699,7 @@ pub(crate) enum EventPurchaseRefundKind {
 pub(crate) enum EventPurchaseRefundStatus {
     /// Local purchase and request state have been finalized.
     Finalized,
-    /// The last provider refund attempt failed before success was known.
+    /// Represents a terminal provider failure, possibly after local finalization.
     ProviderFailed,
     /// Provider refund has not succeeded yet.
     ProviderPending,

@@ -231,6 +231,11 @@ const AUDIT_ACTION_DEFINITIONS: &[AuditActionDefinition] = &[
         value: "event_refund_approved",
     },
     AuditActionDefinition {
+        label: "Event refund recovery completed",
+        scopes: GROUP_SCOPES,
+        value: "event_refund_recovery_completed",
+    },
+    AuditActionDefinition {
         label: "Event refund rejected",
         scopes: GROUP_SCOPES,
         value: "event_refund_rejected",

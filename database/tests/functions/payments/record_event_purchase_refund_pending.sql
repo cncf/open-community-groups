@@ -20,6 +20,10 @@ select plan(8);
 \set purchaseID '79510000-0000-0000-0000-000000000008'
 \set refundID '79510000-0000-0000-0000-000000000009'
 \set refundRequestID '79510000-0000-0000-0000-000000000010'
+\set succeededPurchaseID '79510000-0000-0000-0000-000000000013'
+\set succeededRefundID '79510000-0000-0000-0000-000000000014'
+\set terminalPurchaseID '79510000-0000-0000-0000-000000000015'
+\set terminalRefundID '79510000-0000-0000-0000-000000000016'
 \set userID '79510000-0000-0000-0000-000000000011'
 
 -- ============================================================================
@@ -120,7 +124,7 @@ insert into event_ticket_price_window (
     :'eventTicketTypeID'
 );
 
--- Purchase
+-- Purchases for pending, succeeded, and terminal refund scenarios
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -139,6 +143,24 @@ insert into event_purchase (
     'refund-requested',
     'General admission',
     :'userID'
+), (
+    :'succeededPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-pending',
+    'General admission',
+    :'userID'
+), (
+    :'terminalPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-pending',
+    'General admission',
+    :'userID'
 );
 
 -- Refund request
@@ -154,7 +176,7 @@ insert into event_refund_request (
     'approving'
 );
 
--- Provider refund record
+-- Provider refund records for pending, succeeded, and terminal scenarios
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
@@ -165,7 +187,11 @@ insert into event_purchase_refund (
     payment_provider_id,
     status,
 
-    event_refund_request_id
+    event_refund_request_id,
+    failure_message,
+    finalized_at,
+    provider_refund_id,
+    provider_refunded_at
 ) values (
     :'refundID',
     2500,
@@ -176,7 +202,41 @@ insert into event_purchase_refund (
     'stripe',
     'provider-pending',
 
-    :'refundRequestID'
+    :'refundRequestID',
+    null,
+    null,
+    null,
+    null
+), (
+    :'succeededRefundID',
+    2500,
+    'USD',
+    :'succeededPurchaseID',
+    'event-purchase-refund-' || :'succeededPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'provider-succeeded',
+
+    null,
+    null,
+    null,
+    're_succeeded_123',
+    current_timestamp
+), (
+    :'terminalRefundID',
+    2500,
+    'USD',
+    :'terminalPurchaseID',
+    'event-purchase-refund-' || :'terminalPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'provider-failed',
+
+    null,
+    'provider refund failed: re_terminal_123',
+    null,
+    're_terminal_123',
+    null
 );
 
 -- ============================================================================
@@ -258,6 +318,28 @@ select throws_ok(
     'Should reject conflicting provider refund ids'
 );
 
+-- Should not downgrade provider success to pending
+select is(
+    record_event_purchase_refund_pending(
+        :'succeededRefundID'::uuid,
+        'event-purchase-refund-' || :'succeededPurchaseID',
+        're_succeeded_123'
+    )->>'status',
+    'provider-succeeded',
+    'Should not downgrade provider success to pending'
+);
+
+-- Should not revive terminal provider failure as pending
+select is(
+    record_event_purchase_refund_pending(
+        :'terminalRefundID'::uuid,
+        'event-purchase-refund-' || :'terminalPurchaseID',
+        're_terminal_123'
+    )->>'status',
+    'provider-failed',
+    'Should not revive terminal provider failure as pending'
+);
+
 -- Should reject missing refund rows
 select throws_ok(
     format($$select record_event_purchase_refund_pending(
@@ -267,46 +349,6 @@ select throws_ok(
     )$$, :'missingRefundID'),
     'event purchase refund not found',
     'Should reject missing refund rows'
-);
-
--- Rotate the provider attempt to verify stale pending results are ignored
-select record_event_purchase_refund_terminal_failed(
-    :'refundID'::uuid,
-    'event-purchase-refund-' || :'purchaseID',
-    're_pending_123',
-    'provider refund failed'
-);
-
--- Should ignore a delayed pending result from the superseded attempt
-select is(
-    record_event_purchase_refund_pending(
-        :'refundID'::uuid,
-        'event-purchase-refund-' || :'purchaseID',
-        're_pending_123'
-    )->>'status',
-    'provider-failed',
-    'Should ignore a delayed pending result from the superseded attempt'
-);
-
--- Record provider success to verify pending updates cannot downgrade it
-select record_event_purchase_refund_succeeded(
-    :'refundID'::uuid,
-    're_succeeded_123'
-);
-
--- Should not downgrade provider success to pending
-select is(
-    record_event_purchase_refund_pending(
-        :'refundID'::uuid,
-        (
-            select idempotency_key
-            from event_purchase_refund
-            where event_purchase_refund_id = :'refundID'::uuid
-        ),
-        're_succeeded_123'
-    )->>'status',
-    'provider-succeeded',
-    'Should not downgrade provider success to pending'
 );
 
 -- ============================================================================

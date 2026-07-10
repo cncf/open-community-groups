@@ -408,7 +408,11 @@ select columns_are('event_purchase_refund', array[
     'failure_message',
     'finalized_at',
     'provider_refund_id',
-    'provider_refunded_at'
+    'provider_refunded_at',
+    'recovery_completed_at',
+    'recovery_completed_by_user_id',
+    'recovery_note',
+    'recovery_reference'
 ]);
 
 -- Test: event_refund_request columns should match expected
