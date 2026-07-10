@@ -1,6 +1,4 @@
--- Used by start_checkout after creating a provider checkout session: stores
--- the provider, session id, and redirect URL on the pending purchase so later
--- webhooks can reconcile it
+-- Attaches a provider checkout session to a pending purchase.
 create or replace function attach_checkout_session_to_event_purchase(
     p_event_purchase_id uuid,
     p_provider text,

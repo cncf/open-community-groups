@@ -172,53 +172,59 @@ insert into "user" (
 -- Group
 insert into "group" (
     group_id,
+    active,
     community_id,
+    deleted,
+    description,
     group_category_id,
     name,
-    description,
     slug
 ) values (
     :'groupID',
+    true,
     :'communityID',
+    false,
+    'Weekly Kubernetes study and discussion group',
     :'groupCategoryID',
     'Kubernetes Study Group',
-    'Weekly Kubernetes study and discussion group',
     'kubernetes-study'
 ), (
     :'otherGroupID',
+    true,
     :'communityID',
+    false,
+    'Weekly open source study and discussion group',
     :'groupCategoryID',
     'Open Source Study Group',
-    'Weekly open source study and discussion group',
     'open-source-study'
 ), (
     :'deletedGroupID',
+    false,
     :'communityID',
+    true,
+    'Deleted group used for permission checks',
     :'groupCategoryID',
     'Deleted Study Group',
-    'Deleted group used for permission checks',
     'deleted-study'
 ), (
     :'otherCommunityGroupID',
+    true,
     :'otherCommunityID',
+    false,
+    'Platform engineering group in a different community',
     :'otherGroupCategoryID',
     'Internal Developer Platform',
-    'Platform engineering group in a different community',
     'internal-developer-platform'
 ), (
     :'restrictedGroupID',
+    true,
     :'restrictedCommunityID',
+    false,
+    'Weekly Kubernetes study and discussion group in a restricted community',
     :'restrictedGroupCategoryID',
     'Restricted Kubernetes Study Group',
-    'Weekly Kubernetes study and discussion group in a restricted community',
     'restricted-kubernetes-study'
 );
-
--- Soft-delete one group for permission checks
-update "group" set
-    active = false,
-    deleted = true
-where group_id = :'deletedGroupID';
 
 -- Group team memberships
 insert into group_team (

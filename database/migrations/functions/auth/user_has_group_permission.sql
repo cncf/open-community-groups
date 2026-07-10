@@ -1,5 +1,4 @@
--- user_has_group_permission checks whether a user has a specific
--- group capability for a group in a given community.
+-- Checks whether a user has a group permission.
 create or replace function user_has_group_permission(
     p_community_id uuid,
     p_group_id uuid,

@@ -124,6 +124,8 @@ pub struct EventSummary {
     /// UTC timestamp when the event starts.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub starts_at: Option<DateTime<Utc>>,
+    /// Ticket types available for the event.
+    pub ticket_types: Option<Vec<EventTicketType>>,
     /// Street address of the venue.
     pub venue_address: Option<String>,
     /// City where the event venue is located (for in-person events).
@@ -136,8 +138,6 @@ pub struct EventSummary {
     pub venue_name: Option<String>,
     /// State or province where the venue is located.
     pub venue_state: Option<String>,
-    /// Ticket types available for the event.
-    pub ticket_types: Option<Vec<EventTicketType>>,
     /// Venue zip code.
     pub zip_code: Option<String>,
 }
@@ -626,13 +626,13 @@ impl From<&EventFull> for EventSummary {
             registration_starts_at: event.registration_starts_at,
             remaining_capacity: event.remaining_capacity,
             starts_at: event.starts_at,
+            ticket_types: event.ticket_types.clone(),
             venue_address: event.venue_address.clone(),
             venue_city: event.venue_city.clone(),
             venue_country_code: event.venue_country_code.clone(),
             venue_country_name: event.venue_country_name.clone(),
             venue_name: event.venue_name.clone(),
             venue_state: event.venue_state.clone(),
-            ticket_types: event.ticket_types.clone(),
             zip_code: event.venue_zip_code.clone(),
         }
     }
@@ -651,10 +651,10 @@ pub struct EventAttendanceInfo {
     /// Current attendance status.
     pub status: EventAttendanceStatus,
 
-    /// Refund request state associated with the user purchase.
-    pub refund_request_status: Option<EventRefundRequestStatus>,
     /// Purchase amount associated with the user and event.
     pub purchase_amount_minor: Option<i64>,
+    /// Refund request state associated with the user purchase.
+    pub refund_request_status: Option<EventRefundRequestStatus>,
     /// Provider URL for resuming a pending checkout.
     pub resume_checkout_url: Option<String>,
 }
@@ -730,8 +730,11 @@ pub struct EventCfsLabel {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum EventInvitationRequestStatus {
+    /// Invitation request was accepted.
     Accepted,
+    /// Invitation request awaits review.
     Pending,
+    /// Invitation request was rejected.
     Rejected,
 }
 
@@ -743,19 +746,22 @@ pub enum EventInvitationRequestStatus {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum EventKind {
+    /// Event supports both in-person and virtual attendance.
     Hybrid,
+    /// Event requires in-person attendance.
     #[default]
     InPerson,
+    /// Event is attended virtually.
     Virtual,
 }
 
 /// Event kind summary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventKindSummary {
-    /// Kind identifier.
-    pub event_kind_id: String,
     /// Display name.
     pub display_name: String,
+    /// Kind identifier.
+    pub event_kind_id: String,
 }
 
 /// Result returned when leaving an event or waiting list.
@@ -868,19 +874,22 @@ impl Session {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum SessionKind {
+    /// Session supports both in-person and virtual attendance.
     Hybrid,
+    /// Session requires in-person attendance.
     #[default]
     InPerson,
+    /// Session is attended virtually.
     Virtual,
 }
 
 /// Session kind summary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionKindSummary {
-    /// Kind identifier.
-    pub session_kind_id: String,
     /// Display name.
     pub display_name: String,
+    /// Kind identifier.
+    pub session_kind_id: String,
 }
 
 /// Event/session speaker details.
@@ -933,15 +942,15 @@ fn format_ticket_price_badge(
     ))
 }
 
-/// Returns true when the event uses the ticketing flow.
-fn has_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
-    ticket_types.is_some_and(|ticket_types| !ticket_types.is_empty())
-}
-
 /// Returns true when attendees can currently select a ticket.
 fn has_sellable_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
     ticket_types
         .is_some_and(|ticket_types| ticket_types.iter().any(EventTicketType::is_sellable_now))
+}
+
+/// Returns true when the event uses the ticketing flow.
+fn has_ticket_types(ticket_types: Option<&[EventTicketType]>) -> bool {
+    ticket_types.is_some_and(|ticket_types| !ticket_types.is_empty())
 }
 
 /// Returns true when a registration window has been configured.

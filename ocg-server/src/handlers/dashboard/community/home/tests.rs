@@ -94,6 +94,7 @@ async fn test_page_groups_tab_success() {
     let ts_query = "rust".to_string();
     let groups_output = SearchGroupsOutput {
         total: 0,
+
         bbox: None,
         ..sample_search_groups_output(group_id)
     };

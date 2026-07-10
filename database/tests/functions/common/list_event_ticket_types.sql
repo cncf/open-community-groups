@@ -117,6 +117,7 @@ insert into event_ticket_type (
 ) values
     (:'ticketTypeAlphaID', :'eventID', 1, 3, 'Alpha pass');
 
+-- Second ticket type used to verify stable listing order
 insert into event_ticket_type (
     event_ticket_type_id,
     description,

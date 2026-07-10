@@ -116,6 +116,7 @@ insert into event_discount_code (
         25
     );
 
+-- Second discount code used to verify stable listing order
 insert into event_discount_code (
     event_discount_code_id,
     available_override_active,

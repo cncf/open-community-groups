@@ -70,6 +70,7 @@ pub(crate) async fn setup_layer(cfg: &HttpServerConfig, db: DynDB) -> Result<Aut
 /// Store for managing user sessions in the database.
 #[derive(Clone)]
 pub(crate) struct SessionStore {
+    /// Database handle used for session persistence.
     db: DynDB,
 }
 
@@ -96,10 +97,10 @@ impl tower_sessions::SessionStore for SessionStore {
             .map_err(Self::to_session_store_error)
     }
 
-    /// Save (update) a session record in the database.
-    async fn save(&self, record: &session::Record) -> session_store::Result<()> {
+    /// Delete a session record by session ID from the database.
+    async fn delete(&self, session_id: &session::Id) -> session_store::Result<()> {
         self.db
-            .update_session(record)
+            .delete_session(session_id)
             .await
             .map_err(Self::to_session_store_error)
     }
@@ -115,10 +116,10 @@ impl tower_sessions::SessionStore for SessionStore {
             .map_err(Self::to_session_store_error)
     }
 
-    /// Delete a session record by session ID from the database.
-    async fn delete(&self, session_id: &session::Id) -> session_store::Result<()> {
+    /// Save (update) a session record in the database.
+    async fn save(&self, record: &session::Record) -> session_store::Result<()> {
         self.db
-            .delete_session(session_id)
+            .update_session(record)
             .await
             .map_err(Self::to_session_store_error)
     }
@@ -204,7 +205,7 @@ impl AuthnBackend {
             .request_async(&self.http_client)
             .await?;
 
-        // Extract and verify ID token claims.
+        // Extract and verify ID token claims
         let id_token_verifier = oidc_provider.client.id_token_verifier();
         let Some(id_token) = token_response.extra_fields().id_token() else {
             bail!("id token missing")
@@ -495,8 +496,6 @@ pub(crate) struct PasswordCredentials {
 /// Represents a user in the system.
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub(crate) struct User {
-    /// Unique user ID.
-    pub user_id: Uuid,
     /// Authentication hash for session validation.
     pub auth_hash: String,
     /// User's email address.
@@ -510,6 +509,8 @@ pub(crate) struct User {
     /// Registration state for placeholder and regular users.
     #[serde(default = "default_registration_status")]
     pub registration_status: String,
+    /// Unique user ID.
+    pub user_id: Uuid,
     /// User's username.
     pub username: String,
 
@@ -627,7 +628,7 @@ pub(crate) struct UserSummary {
 impl UserSummary {
     /// Create a `UserSummary` instance from a GitHub profile.
     async fn from_github_profile(access_token: &str) -> Result<Self> {
-        // Setup headers for GitHub API requests.
+        // Setup headers for GitHub API requests
         let mut headers = HeaderMap::new();
         headers.insert(USER_AGENT, "open-community-groups".parse()?);
         headers.insert(
@@ -635,7 +636,7 @@ impl UserSummary {
             format!("Bearer {access_token}").as_str().parse()?,
         );
 
-        // Get user profile from GitHub.
+        // Get user profile from GitHub
         let profile = reqwest::Client::new()
             .get("https://api.github.com/user")
             .headers(headers.clone())
@@ -644,7 +645,7 @@ impl UserSummary {
             .json::<GitHubProfile>()
             .await?;
 
-        // Get user emails from GitHub.
+        // Get user emails from GitHub
         let emails = reqwest::Client::new()
             .get("https://api.github.com/user/emails")
             .headers(headers)
@@ -653,7 +654,7 @@ impl UserSummary {
             .json::<Vec<GitHubUserEmail>>()
             .await?;
 
-        // Get primary, verified email.
+        // Get primary, verified email
         let email = emails
             .into_iter()
             .find(|email| email.primary && email.verified)
@@ -673,7 +674,7 @@ impl UserSummary {
     fn from_oidc_id_token_claims(
         claims: &oidc::IdTokenClaims<oidc::EmptyAdditionalClaims, oidc::core::CoreGenderClaim>,
     ) -> Result<Self> {
-        // Ensure email is verified and extract user info.
+        // Ensure email is verified and extract user info
         if !claims.email_verified().unwrap_or(false) {
             bail!("email not verified");
         }

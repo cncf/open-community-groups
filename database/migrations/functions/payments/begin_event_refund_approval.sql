@@ -1,6 +1,4 @@
--- Used by the dashboard refund approval flow before calling the payments
--- provider: locks the refund request, moves it from pending to approving when
--- needed, and returns the purchase summary required for the refund step
+-- Starts refund approval and returns the provider refund summary.
 create or replace function begin_event_refund_approval(
     p_group_id uuid,
     p_event_id uuid,

@@ -102,6 +102,7 @@ insert into "group" (
     'NY'
 );
 
+-- In-person group that owns upcoming site events
 insert into "group" (
     group_id,
     community_id,
@@ -118,6 +119,7 @@ insert into "group" (
     'https://example.com/virtual-group-logo.png'
 );
 
+-- Virtual group that owns upcoming site events
 insert into "group" (
     group_id,
     community_id,

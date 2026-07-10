@@ -532,5 +532,6 @@ where
 /// Co-speaker identifier for a session proposal.
 #[derive(Debug, Clone)]
 pub(crate) struct SessionProposalCoSpeakerUser {
+    /// Optional co-speaker user identifier.
     pub co_speaker_user_id: Option<Uuid>,
 }

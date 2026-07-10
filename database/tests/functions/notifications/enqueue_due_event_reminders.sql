@@ -398,6 +398,7 @@ insert into event_attendee (event_id, user_id, status) values
     (:'eventDueID', :'userUnverifiedID', 'confirmed'),
     (:'eventDueID', :'userPreRegisteredInvitedID', 'invitation-pending');
 
+-- Event speakers considered by reminder recipient selection
 insert into event_speaker (event_id, user_id, featured) values
     (:'eventDueID', :'userVerifiedSpeakerID', true),
     (:'eventDueID', :'userVerifiedAttendeeID', false),

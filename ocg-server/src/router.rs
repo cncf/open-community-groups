@@ -172,7 +172,7 @@ pub(crate) async fn setup(
     let user_dashboard_router = dashboard::setup_user_dashboard_router();
 
     // Setup router
-    // Routes that require login are placed before the login_required middleware layer.
+    // Register protected routes before applying the login middleware layer
     let mut router = Router::new()
         // Community-prefixed protected routes
         .route(
@@ -392,15 +392,15 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
     // Set cache policy based on resource type
     #[cfg(any(not(debug_assertions), test))]
     let cache = if path.starts_with("js/") || path.starts_with("css/") {
-        // These assets are hashed.
+        // Cache content-hashed assets indefinitely
         CACHE_CONTROL_IMMUTABLE
     } else if path.starts_with("vendor/") {
-        // Vendor library files include versions.
+        // Cache versioned vendor assets indefinitely
         CACHE_CONTROL_IMMUTABLE
     } else if path.starts_with("images/") {
         CACHE_CONTROL_STATIC_IMAGES
     } else {
-        // Default cache duration for other static resources.
+        // Use the default cache duration for other static resources
         CACHE_CONTROL_STATIC_DEFAULT
     };
     #[cfg(all(debug_assertions, not(test)))]
@@ -418,6 +418,22 @@ async fn static_handler(uri: Uri) -> impl IntoResponse {
 }
 
 // Middleware.
+
+/// Returns whether a request header has the string value `true`.
+fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {
+    headers
+        .get(header_name)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
+}
+
+/// Inserts the current commit SHA response header.
+fn insert_commit_sha_header(headers: &mut axum::http::HeaderMap) {
+    headers.insert(
+        HeaderName::from_static(COMMIT_SHA_HEADER),
+        HeaderValue::from_static(COMMIT_SHA),
+    );
+}
 
 /// Middleware that redirects requests from old hosts to the base URL.
 ///
@@ -455,22 +471,6 @@ async fn refresh_stale_clients(request: Request, next: Next) -> impl IntoRespons
     insert_commit_sha_header(response.headers_mut());
 
     response
-}
-
-/// Returns whether a request header has the string value `true`.
-fn header_value_is_true(headers: &axum::http::HeaderMap, header_name: &str) -> bool {
-    headers
-        .get(header_name)
-        .and_then(|value| value.to_str().ok())
-        .is_some_and(|value| value.eq_ignore_ascii_case("true"))
-}
-
-/// Inserts the current commit SHA response header.
-fn insert_commit_sha_header(headers: &mut axum::http::HeaderMap) {
-    headers.insert(
-        HeaderName::from_static(COMMIT_SHA_HEADER),
-        HeaderValue::from_static(COMMIT_SHA),
-    );
 }
 
 /// Returns whether the request came from a page loaded with an older commit.

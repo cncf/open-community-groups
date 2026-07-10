@@ -116,74 +116,84 @@ insert into group_category (
 -- Groups
 insert into "group" (
     group_id,
+    active,
     community_id,
+    created_at,
+    deleted,
     group_category_id,
     name,
     slug,
+
     city,
     country_code,
     country_name,
-    created_at,
     slug_pretty
 ) values (
     :'group1ID',
+    true,
     :'community1ID',
+    '2024-01-01 10:00:00+00',
+    false,
     :'groupCategory1ID',
     'Group A',
     'abc1234',
     'Test City',
     'US',
     'United States',
-    '2024-01-01 10:00:00+00',
     'group-a'
 ), (
     :'group2ID',
+    true,
     :'community1ID',
+    '2024-01-02 10:00:00+00',
+    false,
     :'groupCategory1ID',
     'Group B',
     'def5678',
     'Test City',
     'US',
     'United States',
-    '2024-01-02 10:00:00+00',
     null
 ), (
     :'group3ID',
+    true,
     :'community1ID',
+    '2024-01-03 10:00:00+00',
+    false,
     :'groupCategory1ID',
     'Group C',
     'ghi9abc',
     'Test City',
     'US',
     'United States',
-    '2024-01-03 10:00:00+00',
     null
 ), (
     :'group4ID',
+    false,
     :'community1ID',
+    '2024-01-04 10:00:00+00',
+    true,
     :'groupCategory1ID',
     'Group D (Deleted)',
     'jkl2def',
     'Test City',
     'US',
     'United States',
-    '2024-01-04 10:00:00+00',
     null
 ), (
     :'group5ID',
+    true,
     :'community2ID',
+    '2024-01-05 10:00:00+00',
+    false,
     :'groupCategory2ID',
     'NYC DevOps Meetup',
     'mno3ghi',
     'New York',
     'US',
     'United States',
-    '2024-01-05 10:00:00+00',
     null
 );
-
--- Mark group4 as deleted (must also set active = false per check constraint)
-update "group" set deleted = true, active = false where group_id = :'group4ID';
 
 -- Group Team
 insert into group_team (group_id, user_id, role, accepted) values
@@ -199,6 +209,8 @@ insert into community_team (accepted, community_id, role, user_id) values
 -- Community Team (dual membership)
 insert into community_team (accepted, community_id, role, user_id) values
     (true, :'community1ID', 'admin', :'dualRoleUserID');
+
+-- Group membership held by the same dual-role user
 insert into group_team (group_id, user_id, role, accepted) values
     (:'group2ID', :'dualRoleUserID', 'admin', true);
 

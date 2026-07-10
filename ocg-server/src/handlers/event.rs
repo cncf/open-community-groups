@@ -113,41 +113,6 @@ pub(crate) async fn page(
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
-/// Handler that renders the check-in page.
-#[instrument(skip_all, err)]
-pub(crate) async fn check_in_page(
-    auth_session: AuthSession,
-    State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
-    Path((_, event_id)): Path<(String, Uuid)>,
-    uri: Uri,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
-
-    // Get site settings and event details
-    let (event, site_settings, attendance, check_in_window_open) = tokio::try_join!(
-        db.get_event_summary_by_id(community_id, event_id),
-        db.get_site_settings(),
-        db.get_event_attendance(community_id, event_id, user.user_id),
-        db.is_event_check_in_window_open(community_id, event_id),
-    )?;
-
-    // Prepare template
-    let template = CheckInPage {
-        check_in_window_open,
-        event,
-        page_id: PageId::CheckIn,
-        path: uri.path().to_string(),
-        site_settings,
-        user: User::from_session(auth_session).await?,
-        user_is_attendee: attendance.status == EventAttendanceStatus::Attendee,
-        user_is_checked_in: attendance.is_checked_in,
-    };
-
-    Ok(Html(template.render()?))
-}
-
 /// Handler that renders the CFS submission modal.
 #[instrument(skip_all, err)]
 pub(crate) async fn cfs_modal(
@@ -180,6 +145,41 @@ pub(crate) async fn cfs_modal(
         session_proposals,
         user,
         notice: None,
+    };
+
+    Ok(Html(template.render()?))
+}
+
+/// Handler that renders the check-in page.
+#[instrument(skip_all, err)]
+pub(crate) async fn check_in_page(
+    auth_session: AuthSession,
+    State(db): State<DynDB>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get user from session (endpoint is behind login_required)
+    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
+
+    // Get site settings and event details
+    let (event, site_settings, attendance, check_in_window_open) = tokio::try_join!(
+        db.get_event_summary_by_id(community_id, event_id),
+        db.get_site_settings(),
+        db.get_event_attendance(community_id, event_id, user.user_id),
+        db.is_event_check_in_window_open(community_id, event_id),
+    )?;
+
+    // Prepare template
+    let template = CheckInPage {
+        check_in_window_open,
+        event,
+        page_id: PageId::CheckIn,
+        path: uri.path().to_string(),
+        site_settings,
+        user: User::from_session(auth_session).await?,
+        user_is_attendee: attendance.status == EventAttendanceStatus::Attendee,
+        user_is_checked_in: attendance.is_checked_in,
     };
 
     Ok(Html(template.render()?))
@@ -232,7 +232,7 @@ pub(crate) async fn attend_event(
         return Err(anyhow::anyhow!("ticketed events must be purchased before attending").into());
     }
 
-    // Users joining a waitlist answer registration questions only after promotion.
+    // Defer waitlisted users' registration answers until promotion
     let waitlist_join_without_answers = !event.attendee_approval_required
         && event.waitlist_enabled
         && event.remaining_capacity == Some(0);

@@ -290,8 +290,11 @@ where
 pub(crate) struct MeetingAutoEndCandidate {
     /// Claim token that must match when releasing the claim or recording the outcome.
     pub auto_end_check_claimed_at: DateTime<Utc>,
+    /// Local meeting identifier.
     pub meeting_id: Uuid,
+    /// Provider that hosts the meeting.
     #[serde(alias = "meeting_provider_id")]
     pub provider: MeetingProvider,
+    /// Provider-assigned meeting identifier.
     pub provider_meeting_id: String,
 }

@@ -75,6 +75,7 @@ insert into "group" (
     'NY'
 );
 
+-- Group that owns the community's upcoming events
 insert into "group" (
     group_id,
     community_id,

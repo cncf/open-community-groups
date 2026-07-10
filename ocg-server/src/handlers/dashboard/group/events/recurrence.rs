@@ -237,9 +237,13 @@ impl RecurringEventPayloads {
 
 /// Validated recurrence settings from the submitted event form.
 struct RecurrenceRequest {
+    /// Number of occurrences created after the base event.
     additional_occurrences: usize,
+    /// Base event start time in its local timezone.
     base_starts_at: NaiveDateTime,
+    /// Recurrence cadence selected by the organizer.
     pattern: EventRecurrencePattern,
+    /// Timezone used to expand local occurrence dates.
     timezone: Tz,
 }
 

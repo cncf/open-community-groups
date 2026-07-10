@@ -117,6 +117,7 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Price window that supplies the purchase amount
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -148,6 +149,7 @@ insert into event_purchase (
     :'userID'
 );
 
+-- Pending refund request rejected by the test scenarios
 insert into event_refund_request (
     event_refund_request_id,
     event_purchase_id,

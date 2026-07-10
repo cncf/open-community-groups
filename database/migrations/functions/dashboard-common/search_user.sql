@@ -1,5 +1,4 @@
--- search_user searches for users by username or name prefix, or by exact
--- email match.
+-- Searches verified users by username, name prefix, or exact email.
 create or replace function search_user(p_query text)
 returns jsonb as $$
     select coalesce(jsonb_agg(row_to_json(t)::jsonb), '[]'::jsonb)

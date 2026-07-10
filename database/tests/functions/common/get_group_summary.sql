@@ -188,7 +188,6 @@ select is(
     'https://example.com/logo.png',
     'Should use community logo when group has no logo'
 );
-update "group" set logo_url = 'https://example.com/group-logo.png' where group_id = :'groupID';
 
 -- Should include pretty slug when available
 update "group" set slug_pretty = 'seattle-kubernetes' where group_id = :'groupID';
@@ -200,7 +199,6 @@ select is(
     'seattle-kubernetes',
     'Should include pretty slug when available'
 );
-update "group" set slug_pretty = null where group_id = :'groupID';
 
 -- Should return null for non-existent group
 select ok(

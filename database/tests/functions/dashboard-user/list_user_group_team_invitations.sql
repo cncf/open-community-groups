@@ -87,17 +87,11 @@ values
     (:'groupAcceptedID', :'communityID', :'groupCategoryID', 'Group Two', 'group-two'),
     (:'groupOtherID', :'communityOtherID', :'groupCategoryOtherID', 'Group Three', 'group-three');
 
--- Pending group invitations (two in main community, one in other community)
+-- Pending and accepted group invitations used by listing scenarios
 insert into group_team (group_id, user_id, role, accepted, created_at) values
     (:'groupID', :'userID', 'admin', false, '2024-01-02 10:00:00+00'),
-    (:'groupAcceptedID', :'userID', 'admin', false, '2024-01-03 10:00:00+00'),
+    (:'groupAcceptedID', :'userID', 'admin', true, '2024-01-03 10:00:00+00'),
     (:'groupOtherID', :'userID', 'admin', false, '2024-01-04 10:00:00+00');
-
--- Accepted membership should not be listed (mark existing invite as accepted)
-update group_team
-set accepted = true
-where group_id = :'groupAcceptedID'
-  and user_id = :'userID';
 
 -- ============================================================================
 -- TESTS

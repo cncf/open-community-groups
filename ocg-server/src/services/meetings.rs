@@ -94,8 +94,11 @@ pub(crate) type DynMeetingsProviders = Arc<HashMap<MeetingProvider, DynMeetingsP
 /// Meeting details returned by the provider.
 #[derive(Clone, Debug)]
 pub(crate) struct MeetingProviderMeeting {
+    /// Provider-assigned meeting identifier.
     pub id: String,
+    /// Join URL returned to attendees.
     pub join_url: String,
+    /// Optional provider-generated meeting password.
     pub password: Option<String>,
 }
 
@@ -450,6 +453,61 @@ impl MeetingsSyncWorker {
         Ok(true)
     }
 
+    /// Assign provider-specific host user information before meeting creation.
+    async fn assign_provider_host_user(&self, meeting: &Meeting) -> Result<Meeting, SyncError> {
+        match meeting.provider {
+            MeetingProvider::Zoom => self.assign_zoom_host_user(meeting).await,
+        }
+    }
+
+    /// Assign a Zoom host user from the configured pool based on overlapping load.
+    async fn assign_zoom_host_user(&self, meeting: &Meeting) -> Result<Meeting, SyncError> {
+        if meeting.provider_host_user_id.is_some() {
+            return Ok(meeting.clone());
+        }
+
+        // Ensure Zoom configuration is available
+        let zoom_cfg = self
+            .zoom_cfg
+            .as_ref()
+            .ok_or(SyncError::ProviderNotConfigured(MeetingProvider::Zoom))?;
+
+        // Ensure meeting has necessary timing information for slot allocation
+        let starts_at = meeting.starts_at.ok_or_else(|| {
+            SyncError::Provider(MeetingProviderError::Client(
+                "missing meeting starts_at".to_string(),
+            ))
+        })?;
+        let ends_at = meeting.ends_at().ok_or_else(|| {
+            SyncError::Provider(MeetingProviderError::Client(
+                "missing meeting duration".to_string(),
+            ))
+        })?;
+
+        // Query database for an available host user with capacity for this meeting's time slot
+        let provider_host_user_id = self
+            .db
+            .assign_zoom_host_user(
+                meeting,
+                &zoom_cfg.host_pool_users,
+                zoom_cfg.max_simultaneous_meetings_per_host,
+                starts_at,
+                ends_at,
+            )
+            .await
+            .map_err(SyncError::Other)?;
+
+        // No host user available, cannot create meeting
+        let Some(provider_host_user_id) = provider_host_user_id else {
+            return Err(SyncError::Provider(MeetingProviderError::NoSlotsAvailable));
+        };
+
+        Ok(Meeting {
+            provider_host_user_id: Some(provider_host_user_id),
+            ..meeting.clone()
+        })
+    }
+
     /// Create a meeting on the provider and update local database.
     #[instrument(skip(self, meeting, provider), err)]
     async fn create_meeting(
@@ -531,61 +589,6 @@ impl MeetingsSyncWorker {
 
         Ok(())
     }
-
-    /// Assign provider-specific host user information before meeting creation.
-    async fn assign_provider_host_user(&self, meeting: &Meeting) -> Result<Meeting, SyncError> {
-        match meeting.provider {
-            MeetingProvider::Zoom => self.assign_zoom_host_user(meeting).await,
-        }
-    }
-
-    /// Assign a Zoom host user from the configured pool based on overlapping load.
-    async fn assign_zoom_host_user(&self, meeting: &Meeting) -> Result<Meeting, SyncError> {
-        if meeting.provider_host_user_id.is_some() {
-            return Ok(meeting.clone());
-        }
-
-        // Ensure Zoom configuration is available
-        let zoom_cfg = self
-            .zoom_cfg
-            .as_ref()
-            .ok_or(SyncError::ProviderNotConfigured(MeetingProvider::Zoom))?;
-
-        // Ensure meeting has necessary timing information for slot allocation
-        let starts_at = meeting.starts_at.ok_or_else(|| {
-            SyncError::Provider(MeetingProviderError::Client(
-                "missing meeting starts_at".to_string(),
-            ))
-        })?;
-        let ends_at = meeting.ends_at().ok_or_else(|| {
-            SyncError::Provider(MeetingProviderError::Client(
-                "missing meeting duration".to_string(),
-            ))
-        })?;
-
-        // Query database for an available host user with capacity for this meeting's time slot
-        let provider_host_user_id = self
-            .db
-            .assign_zoom_host_user(
-                meeting,
-                &zoom_cfg.host_pool_users,
-                zoom_cfg.max_simultaneous_meetings_per_host,
-                starts_at,
-                ends_at,
-            )
-            .await
-            .map_err(SyncError::Other)?;
-
-        // No host user available, cannot create meeting
-        let Some(provider_host_user_id) = provider_host_user_id else {
-            return Err(SyncError::Provider(MeetingProviderError::NoSlotsAvailable));
-        };
-
-        Ok(Meeting {
-            provider_host_user_id: Some(provider_host_user_id),
-            ..meeting.clone()
-        })
-    }
 }
 
 /// Represents a meeting to be synced with the provider.
@@ -593,30 +596,47 @@ impl MeetingsSyncWorker {
 #[serde_as]
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub(crate) struct Meeting {
+    /// Provider used to host the meeting.
     #[serde(alias = "meeting_provider_id", default)]
     #[serde_as(deserialize_as = "DefaultOnNull")]
     pub provider: MeetingProvider,
 
+    /// Whether the provider meeting should be deleted.
     pub delete: Option<bool>,
+    /// Meeting duration.
     #[serde(alias = "duration_secs")]
     #[serde_as(deserialize_as = "Option<DurationSecondsWithFrac<f64>>")]
     pub duration: Option<Duration>,
+    /// Owning event identifier for event-level meetings.
     pub event_id: Option<Uuid>,
+    /// Explicit host email addresses.
     pub hosts: Option<Vec<String>>,
+    /// Provider join URL.
     pub join_url: Option<String>,
+    /// Local meeting identifier.
     pub meeting_id: Option<Uuid>,
+    /// Provider meeting password.
     pub password: Option<String>,
+    /// Provider host user assigned to the meeting.
     pub provider_host_user_id: Option<String>,
+    /// Provider-assigned meeting identifier.
     pub provider_meeting_id: Option<String>,
+    /// Whether automatic recording was requested.
     #[serde(alias = "meeting_recording_requested")]
     pub recording_requested: Option<bool>,
+    /// Owning session identifier for session-level meetings.
     pub session_id: Option<Uuid>,
+    /// Meeting start timestamp.
     pub starts_at: Option<DateTime<Utc>>,
+    /// Timestamp identifying the active synchronization claim.
     #[serde(skip_serializing)]
     pub sync_claimed_at: Option<DateTime<Utc>>,
+    /// Hash identifying the state covered by the synchronization claim.
     #[serde(skip_serializing)]
     pub sync_state_hash: Option<String>,
+    /// IANA timezone used by the provider payload.
     pub timezone: Option<String>,
+    /// Meeting topic shown by the provider.
     pub topic: Option<String>,
 }
 
@@ -660,6 +680,7 @@ impl Meeting {
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum MeetingProvider {
+    /// Zoom meetings provider.
     #[default]
     Zoom,
 }
@@ -668,22 +689,31 @@ pub(crate) enum MeetingProvider {
 #[derive(AsRefStr, Clone, Copy, Debug, Display, EnumString, Eq, PartialEq)]
 #[strum(serialize_all = "snake_case")]
 pub(crate) enum MeetingAutoEndCheckOutcome {
+    /// Meeting had already stopped running.
     AlreadyNotRunning,
+    /// Meeting was ended successfully.
     AutoEnded,
+    /// Provider processing failed.
     Error,
+    /// Provider meeting no longer exists.
     NotFound,
 }
 
 /// Result returned by providers when trying to end a meeting.
 pub(crate) enum MeetingEndResult {
+    /// Meeting had already stopped running.
     AlreadyNotRunning,
+    /// Meeting was ended by this request.
     Ended,
 }
 
 /// Action to take to sync a meeting with the provider.
 pub(crate) enum SyncAction {
+    /// Create the provider meeting.
     Create,
+    /// Delete the provider meeting.
     Delete,
+    /// Update the provider meeting.
     Update,
 }
 

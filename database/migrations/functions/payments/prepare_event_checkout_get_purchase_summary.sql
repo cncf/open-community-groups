@@ -1,4 +1,4 @@
--- Used by prepare_event_checkout_purchase to build the checkout response payload
+-- Returns the checkout response summary for a purchase.
 create or replace function prepare_event_checkout_get_purchase_summary(
     p_event_purchase_id uuid
 )

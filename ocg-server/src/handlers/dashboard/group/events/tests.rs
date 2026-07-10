@@ -591,7 +591,7 @@ async fn test_preview_uses_submitted_payload_without_event_db_calls() {
         Some(group_id),
     );
 
-    // Setup database mock for session and permission middleware only.
+    // Setup database mock for session and permission middleware only
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)

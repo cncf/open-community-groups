@@ -118,9 +118,9 @@ impl PgNotificationsManager {
         // Setup and run workers to enqueue due notifications
         for _ in 1..=NUM_ENQUEUE_WORKERS {
             let worker = EnqueueWorker {
-                db: db.clone(),
                 base_url: base_url.to_string(),
                 cancellation_token: cancellation_token.clone(),
+                db: db.clone(),
             };
             task_tracker.spawn(async move {
                 worker.run().await;
@@ -130,8 +130,8 @@ impl PgNotificationsManager {
         // Setup and run workers to recover abandoned notification delivery claims
         for _ in 1..=NUM_DELIVERY_RECOVERY_WORKERS {
             let worker = DeliveryRecoveryWorker {
-                db: db.clone(),
                 cancellation_token: cancellation_token.clone(),
+                db: db.clone(),
             };
             task_tracker.spawn(async move {
                 worker.run().await;
@@ -141,9 +141,9 @@ impl PgNotificationsManager {
         // Setup and run workers to deliver notifications
         for _ in 1..=NUM_DELIVERY_WORKERS {
             let mut worker = DeliveryWorker {
-                db: db.clone(),
-                cfg: cfg.clone(),
                 cancellation_token: cancellation_token.clone(),
+                cfg: cfg.clone(),
+                db: db.clone(),
                 email_sender: email_sender.clone(),
             };
             task_tracker.spawn(async move {
@@ -165,12 +165,12 @@ impl NotificationsManager for PgNotificationsManager {
 
 /// Worker responsible for enqueuing due notifications.
 struct EnqueueWorker {
-    /// Database handle for notification queries.
-    db: DynDB,
     /// Base URL used for generated links in reminders.
     base_url: String,
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
+    /// Database handle for notification queries.
+    db: DynDB,
 }
 
 impl EnqueueWorker {
@@ -203,10 +203,10 @@ impl EnqueueWorker {
 
 /// Worker responsible for marking abandoned delivery claims as unknown.
 struct DeliveryRecoveryWorker {
-    /// Database handle for notification queries.
-    db: DynDB,
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
+    /// Database handle for notification queries.
+    db: DynDB,
 }
 
 impl DeliveryRecoveryWorker {
@@ -246,12 +246,12 @@ impl DeliveryRecoveryWorker {
 
 /// Worker responsible for delivering notifications from the queue.
 struct DeliveryWorker {
-    /// Database handle for notification queries.
-    db: DynDB,
-    /// Email configuration for sending notifications.
-    cfg: EmailConfig,
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
+    /// Email configuration for sending notifications.
+    cfg: EmailConfig,
+    /// Database handle for notification queries.
+    db: DynDB,
     /// Email sender for dispatching messages.
     email_sender: DynEmailSender,
 }
@@ -542,7 +542,7 @@ impl DeliveryWorker {
 
         // Send email
         if let Some(whitelist) = &self.cfg.rcpts_whitelist {
-            // If whitelist is present but empty, none are allowed.
+            // Reject every recipient when the configured whitelist is empty
             let allowed = !whitelist.is_empty() && whitelist.iter().any(|wa| wa == to_address);
             if !allowed {
                 warn!(%to_address, "email recipient not allowed; skipping send");
@@ -614,6 +614,7 @@ pub(crate) type DynEmailSender = Arc<dyn EmailSender + Send + Sync>;
 
 /// Concrete email sender backed by a Lettre SMTP transport.
 pub(crate) struct LettreEmailSender {
+    /// SMTP transport used to deliver messages.
     transport: AsyncSmtpTransport<Tokio1Executor>,
 }
 
@@ -632,7 +633,7 @@ impl LettreEmailSender {
 
     /// Create a SMTP transport builder for the configured server.
     fn transport_builder(cfg: &EmailConfig) -> Result<AsyncSmtpTransportBuilder> {
-        // Port 465 expects TLS before SMTP; other submission ports use STARTTLS.
+        // Use implicit TLS on port 465 and STARTTLS on other submission ports
         let builder = if cfg.smtp.port == SUBMISSIONS_PORT {
             AsyncSmtpTransport::<Tokio1Executor>::relay(&cfg.smtp.host)?
         } else {

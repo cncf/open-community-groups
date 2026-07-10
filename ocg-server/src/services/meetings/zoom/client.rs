@@ -45,10 +45,14 @@ const ZOOM_TOKEN_URL: &str = "https://zoom.us/oauth/token";
 
 /// Zoom client for meeting CRUD operations.
 pub(crate) struct ZoomClient {
+    /// Zoom provider configuration.
     cfg: MeetingsZoomConfig,
+    /// HTTP client used for Zoom API calls.
     http_client: HttpClient,
 
+    /// Earliest time when the next API request may start.
     next_request_at: Mutex<Option<Instant>>,
+    /// Cached OAuth token.
     token: Mutex<Option<CachedToken>>,
 }
 
@@ -294,7 +298,9 @@ impl ZoomClient {
 
 /// Cached OAuth access token with expiry tracking.
 struct CachedToken {
+    /// OAuth access token.
     access_token: String,
+    /// Time when the token becomes invalid for reuse.
     expires_at: Instant,
 }
 
@@ -302,14 +308,21 @@ struct CachedToken {
 #[skip_serializing_none]
 #[derive(Debug, Serialize)]
 pub(crate) struct CreateMeetingRequest {
+    /// Zoom meeting type identifier.
     #[serde(rename = "type")]
     pub meeting_type: i32,
+    /// Meeting topic.
     pub topic: String,
 
+    /// Whether Zoom should generate the default password.
     pub default_password: Option<bool>,
+    /// Meeting duration in minutes.
     pub duration: Option<Minutes>,
+    /// Provider meeting settings.
     pub settings: Option<MeetingSettings>,
+    /// Meeting start time.
     pub start_time: Option<DateTime<Utc>>,
+    /// IANA meeting timezone.
     pub timezone: Option<String>,
 }
 
@@ -334,11 +347,17 @@ impl TryFrom<&Meeting> for CreateMeetingRequest {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct MeetingSettings {
+    /// Provider automatic recording mode.
     pub auto_recording: Option<String>,
+    /// Minutes before the host when attendees may join.
     pub jbh_time: Option<i32>,
+    /// Whether attendees may join before the host.
     pub join_before_host: Option<bool>,
+    /// Whether attendees start muted.
     pub mute_upon_entry: Option<bool>,
+    /// Whether attendee video starts enabled.
     pub participant_video: Option<bool>,
+    /// Whether the waiting room is enabled.
     pub waiting_room: Option<bool>,
 }
 
@@ -361,7 +380,9 @@ impl Minutes {
 /// Response from Zoom's OAuth token endpoint.
 #[derive(Debug, Deserialize)]
 struct TokenResponse {
+    /// OAuth access token.
     access_token: String,
+    /// Token lifetime in seconds.
     expires_in: u64,
 }
 
@@ -369,10 +390,15 @@ struct TokenResponse {
 #[skip_serializing_none]
 #[derive(Debug, Default, Serialize)]
 pub(crate) struct UpdateMeetingRequest {
+    /// Meeting duration in minutes.
     pub duration: Option<Minutes>,
+    /// Provider meeting settings.
     pub settings: Option<MeetingSettings>,
+    /// Meeting start time.
     pub start_time: Option<DateTime<Utc>>,
+    /// IANA meeting timezone.
     pub timezone: Option<String>,
+    /// Meeting topic.
     pub topic: Option<String>,
 }
 
@@ -393,6 +419,7 @@ impl TryFrom<&Meeting> for UpdateMeetingRequest {
 /// Request to update a meeting status.
 #[derive(Debug, Serialize)]
 struct UpdateMeetingStatusRequest {
+    /// Zoom status transition action.
     action: &'static str,
 }
 
@@ -501,8 +528,10 @@ impl ZoomClientError {
 /// Error response from Zoom client (for deserialization).
 #[derive(Debug, Default, Deserialize)]
 struct ZoomClientErrorResponse {
+    /// Zoom error code.
     #[serde(default)]
     code: i32,
+    /// Zoom error message.
     #[serde(default)]
     message: String,
 }
@@ -510,9 +539,13 @@ struct ZoomClientErrorResponse {
 /// Meeting response from Zoom client.
 #[derive(Debug, Deserialize)]
 pub(crate) struct ZoomMeeting {
+    /// Provider-assigned meeting identifier.
     pub id: i64,
+    /// Meeting join URL.
     pub join_url: String,
+    /// Optional meeting password.
     pub password: Option<String>,
+    /// Optional provider meeting status.
     pub status: Option<String>,
 }
 

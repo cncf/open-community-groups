@@ -1,6 +1,4 @@
--- Used by the attendee refund request flow on the event page: validates that
--- the purchase is still refundable, creates the pending refund request, marks
--- the purchase as refund-requested, and enqueues organizer notifications
+-- Requests a refund and enqueues organizer notifications.
 create or replace function request_event_refund(
     p_community_id uuid,
     p_event_id uuid,

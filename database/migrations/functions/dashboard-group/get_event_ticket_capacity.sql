@@ -2,10 +2,12 @@
 create or replace function get_event_ticket_capacity(p_ticket_types jsonb)
 returns int as $$
 begin
+    -- Preserve omitted ticket configuration as an unknown capacity
     if p_ticket_types is null then
         return null;
     end if;
 
+    -- Sum the non-negative capacity declared by each ticket type
     return (
         select coalesce(sum(greatest((ticket_type->>'seats_total')::int, 0)), 0)::int
         from jsonb_array_elements(p_ticket_types) as ticket_types(ticket_type)

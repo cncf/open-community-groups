@@ -1,4 +1,4 @@
--- Entry point for start_checkout: reuse an active purchase or create a pending hold
+-- Reuses an active purchase or creates a pending checkout hold.
 create or replace function prepare_event_checkout_purchase(
     p_community_id uuid,
     p_event_id uuid,

@@ -376,8 +376,11 @@ pub(crate) struct CustomNotificationTracking {
 /// Serialized attachment payload passed to `enqueue_notification`.
 #[derive(Serialize)]
 struct EnqueueNotificationAttachment<'a> {
+    /// MIME type for the attachment body.
     content_type: &'a str,
+    /// Base64-encoded attachment data.
     data_base64: String,
+    /// File name shown to recipients.
     file_name: &'a str,
 }
 

@@ -10,6 +10,29 @@ select plan(8);
 -- ============================================================================
 
 \set invalidVerificationCodeID '0a0f0000-0000-0000-0000-000000000001'
+\set expiredUserID '0a0f0000-0000-0000-0000-000000000002'
+\set expiredVerificationCodeID '0a0f0000-0000-0000-0000-000000000003'
+
+-- ============================================================================
+-- SEED DATA
+-- ============================================================================
+
+-- User with an expired email verification code
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values (
+    :'expiredUserID',
+    'expired-verification-code-hash',
+    'test2@example.com',
+    false,
+    'testuser2'
+);
+
+insert into email_verification_code (email_verification_code_id, created_at, user_id)
+values (
+    :'expiredVerificationCodeID',
+    current_timestamp - interval '25 hours',
+    :'expiredUserID'
+);
 
 -- ============================================================================
 -- TESTS
@@ -82,28 +105,8 @@ select throws_ok(
 );
 
 -- Should raise exception for expired verification code
-with test_user as (
-    select * from sign_up_user(
-        jsonb_build_object(
-            'email', 'test2@example.com',
-            'username', 'testuser2',
-            'name', 'Test User 2'
-        ),
-        false,
-        gen_random_uuid(),
-        '{}'::jsonb
-    )
-)
-
-select verification_code as "expiredVerificationCode"
-from test_user \gset
-
-update email_verification_code
-set created_at = current_timestamp - interval '25 hours'
-where email_verification_code_id = :'expiredVerificationCode'::uuid;
-
 select throws_ok(
-    format('select verify_email(%L::uuid)', :'expiredVerificationCode'),
+    format('select verify_email(%L::uuid)', :'expiredVerificationCodeID'),
     'email verification failed: invalid code',
     'Should raise exception for expired verification code'
 );

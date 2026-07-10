@@ -14,27 +14,27 @@ use crate::db::{
     notifications::DBNotifications, payments::DBPayments, site::DBSite,
 };
 
+/// Module containing database functionality for the activity tracker.
+pub(crate) mod activity_tracker;
+
 /// Module containing authentication database operations.
 pub(crate) mod auth;
 
 /// Module containing common database operations.
 pub(crate) mod common;
 
+/// Module containing database functionality for the community site.
+pub(crate) mod community;
+
 /// Module containing database contract tests.
 #[cfg(test)]
 mod contract_tests;
-
-/// Module containing database functionality for the community site.
-pub(crate) mod community;
 
 /// Module containing database functionality for dashboards.
 pub(crate) mod dashboard;
 
 /// Module containing database functionality for the event page.
 pub(crate) mod event;
-
-/// Module containing database functionality for the activity tracker.
-pub(crate) mod activity_tracker;
 
 /// Module containing database functionality for the group site.
 pub(crate) mod group;
@@ -368,9 +368,13 @@ pub(crate) type TransactionFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T>
 /// Geographic bounding box coordinates.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct BBox {
+    /// Northeastern latitude.
     pub ne_lat: f64,
+    /// Northeastern longitude.
     pub ne_lon: f64,
+    /// Southwestern latitude.
     pub sw_lat: f64,
+    /// Southwestern longitude.
     pub sw_lon: f64,
 }
 

@@ -109,9 +109,13 @@ where
 /// User search result.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct User {
+    /// User identifier.
     pub user_id: Uuid,
+    /// Unique username.
     pub username: String,
 
+    /// Optional display name.
     pub name: Option<String>,
+    /// Optional profile photo URL.
     pub photo_url: Option<String>,
 }

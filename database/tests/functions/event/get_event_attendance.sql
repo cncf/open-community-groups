@@ -381,6 +381,7 @@ insert into event_purchase (
     :'user2ID'
 );
 
+-- Completed purchase used to expose paid attendance details
 insert into event_purchase (
     event_purchase_id,
     amount_minor,

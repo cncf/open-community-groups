@@ -42,41 +42,41 @@ select plan(7);
 -- Communities
 insert into community (
     community_id,
-    name,
-    display_name,
-    description,
+    active,
     banner_mobile_url,
     banner_url,
-    logo_url
+    description,
+    display_name,
+    logo_url,
+    name
 ) values (
     :'activeCommunityID',
-    'active-community',
-    'Active Community',
-    'An active community',
+    true,
     'https://example.com/banner-mobile-active.png',
     'https://example.com/banner-active.png',
-    'https://example.com/logo-active.png'
+    'An active community',
+    'Active Community',
+    'https://example.com/logo-active.png',
+    'active-community'
 ), (
     :'duplicateCommunityID',
-    'duplicate-community',
-    'Duplicate Community',
-    'A community for duplicate redirect tests',
+    true,
     'https://example.com/banner-mobile-duplicate.png',
     'https://example.com/banner-duplicate.png',
-    'https://example.com/logo-duplicate.png'
+    'A community for duplicate redirect tests',
+    'Duplicate Community',
+    'https://example.com/logo-duplicate.png',
+    'duplicate-community'
 ), (
     :'inactiveCommunityID',
-    'inactive-community',
-    'Inactive Community',
-    'A disabled community',
+    false,
     'https://example.com/banner-mobile-inactive.png',
     'https://example.com/banner-inactive.png',
-    'https://example.com/logo-inactive.png'
+    'A disabled community',
+    'Inactive Community',
+    'https://example.com/logo-inactive.png',
+    'inactive-community'
 );
-
-update community
-set active = false
-where community_id = :'inactiveCommunityID'::uuid;
 
 -- Group categories
 insert into group_category (group_category_id, community_id, name) values

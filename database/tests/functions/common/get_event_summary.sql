@@ -623,7 +623,6 @@ select is(
     'seattle-kubernetes',
     'Should include pretty group slug when available'
 );
-update "group" set slug_pretty = null where group_id = :'groupID';
 
 -- Should use group logo when event has no logo
 select is(

@@ -89,6 +89,7 @@ insert into session_proposal (
         :'user1ID'
     );
 
+-- Session proposals available to the CFS listing scenarios
 insert into session_proposal (
     session_proposal_id,
     created_at,

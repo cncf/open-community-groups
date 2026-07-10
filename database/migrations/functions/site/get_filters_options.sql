@@ -1,6 +1,4 @@
--- Returns the filters options used in the explore page. When a community name
--- is provided, community-specific filters are included. When the entity kind
--- is 'events' and a community name is provided, groups are also included.
+-- Returns global and community-specific explore filters.
 create or replace function get_filters_options(
     p_community_name text default null,
     p_entity_kind text default null

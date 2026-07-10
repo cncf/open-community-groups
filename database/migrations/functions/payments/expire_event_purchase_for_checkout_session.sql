@@ -1,5 +1,4 @@
--- Used by the checkout-expired webhook handler: expires the pending purchase
--- linked to the provider checkout session and restores reserved discounts
+-- Expires a pending purchase and releases its checkout reservations.
 create or replace function expire_event_purchase_for_checkout_session(
     p_provider text,
     p_provider_session_id text

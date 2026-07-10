@@ -79,7 +79,7 @@ impl ActivityTrackerDB {
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
     ) -> Self {
-        // Setup channels.
+        // Setup channels
         let (activities_tx, activities_rx) = mpsc::channel(100);
         let (batches_tx, batches_rx) = mpsc::channel(5);
 
@@ -205,8 +205,11 @@ fn prepare_batch_data(data: &HashMap<(EntityId, Day), Total>) -> Vec<(EntityId, 
 /// Aggregated in-memory batches.
 #[derive(Debug, Clone, Default)]
 struct Batches {
+    /// Aggregated community view counts.
     community_views: HashMap<(EntityId, Day), Total>,
+    /// Aggregated event view counts.
     event_views: HashMap<(EntityId, Day), Total>,
+    /// Aggregated group view counts.
     group_views: HashMap<(EntityId, Day), Total>,
 }
 

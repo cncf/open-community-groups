@@ -192,10 +192,10 @@ pub struct GroupFull {
     pub tags: Option<Vec<String>>,
     /// Twitter profile URL.
     pub twitter_url: Option<String>,
-    /// `WeChat` URL.
-    pub wechat_url: Option<String>,
     /// Group website URL.
     pub website_url: Option<String>,
+    /// `WeChat` URL.
+    pub wechat_url: Option<String>,
     /// `YouTube` channel URL.
     pub youtube_url: Option<String>,
 }
@@ -255,12 +255,12 @@ pub struct GroupParentOption {
 /// Geographic region information.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupRegion {
-    /// Unique identifier for the region.
-    pub region_id: Uuid,
     /// Display name of the region.
     pub name: String,
     /// URL-friendly normalized name.
     pub normalized_name: String,
+    /// Unique identifier for the region.
+    pub region_id: Uuid,
 
     /// Number of groups currently using this region.
     pub groups_count: Option<usize>,
@@ -273,8 +273,11 @@ pub struct GroupRegion {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum GroupRole {
+    /// Full group administrator.
     Admin,
+    /// Group event manager.
     EventsManager,
+    /// Read-only group viewer.
     #[default]
     Viewer,
 }

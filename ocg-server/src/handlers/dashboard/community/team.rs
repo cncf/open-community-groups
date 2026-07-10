@@ -173,8 +173,10 @@ pub(crate) async fn update_role(
 /// Data needed to add a new team member.
 #[derive(Debug, Deserialize, Serialize, Validate)]
 pub(crate) struct NewTeamMember {
+    /// Role assigned to the new team member.
     #[garde(skip)]
     role: CommunityRole,
+    /// User added to the community team.
     #[garde(skip)]
     user_id: Uuid,
 }
@@ -182,6 +184,7 @@ pub(crate) struct NewTeamMember {
 /// Data needed to update a team member role.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct NewTeamRole {
+    /// Replacement community role.
     #[garde(skip)]
     role: CommunityRole,
 }

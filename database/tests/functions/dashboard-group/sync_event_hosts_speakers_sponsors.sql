@@ -107,9 +107,11 @@ insert into event (
 insert into event_host (event_id, user_id)
 values (:'eventID', :'user1ID');
 
+-- Existing event speaker retained by synchronization
 insert into event_speaker (event_id, user_id, featured)
 values (:'eventID', :'user1ID', true);
 
+-- Existing event sponsor retained by synchronization
 insert into event_sponsor (event_id, group_sponsor_id, level)
 values (:'eventID', :'sponsor1ID', 'Gold');
 

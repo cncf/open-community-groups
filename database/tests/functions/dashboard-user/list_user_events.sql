@@ -490,9 +490,11 @@ values
 insert into event_host (event_id, user_id) values
     (:'eventAID', :'userID');
 
+-- Event speaker relationship included in the user's event list
 insert into event_speaker (event_id, user_id, featured) values
     (:'eventAID', :'userID', true);
 
+-- Session speaker relationships included in the user's event list
 insert into session_speaker (session_id, user_id, featured) values
     (:'sessionAID', :'userID', false),
     (:'sessionCID', :'userID', true);

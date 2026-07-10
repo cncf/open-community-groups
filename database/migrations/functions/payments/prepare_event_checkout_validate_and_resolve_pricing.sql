@@ -1,4 +1,4 @@
--- Used by prepare_event_checkout_purchase to validate selection and price checkout
+-- Validates a ticket selection and resolves its checkout price.
 create or replace function prepare_event_checkout_validate_and_resolve_pricing(
     p_event_id uuid,
     p_event_ticket_type_id uuid,

@@ -1,4 +1,4 @@
--- Used by prepare_event_checkout_purchase to validate event state and return currency
+-- Validates an event for checkout and returns its currency.
 create or replace function prepare_event_checkout_validate_event(
     p_community_id uuid,
     p_event_id uuid,

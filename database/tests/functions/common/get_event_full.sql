@@ -1656,6 +1656,7 @@ update event
 set meeting_recording_published = false
 where event_id = :'eventRecordingOverrideID'::uuid;
 
+-- Hide the session recording before checking unpublished URL behavior
 update session
 set meeting_recording_published = false
 where session_id = :'sessionOverrideID'::uuid;

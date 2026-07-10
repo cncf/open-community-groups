@@ -897,11 +897,12 @@ pub(crate) fn sample_group_minimal(group_id: Uuid) -> GroupMinimal {
 /// Sample group region definition reused across tests.
 pub(crate) fn sample_group_region() -> GroupRegion {
     GroupRegion {
-        groups_count: Some(0),
         name: "North America".to_string(),
         normalized_name: "north-america".to_string(),
-        order: Some(1),
         region_id: Uuid::new_v4(),
+
+        groups_count: Some(0),
+        order: Some(1),
     }
 }
 
@@ -1095,8 +1096,9 @@ pub(crate) fn sample_purchase_summary(status: EventPurchaseStatus) -> EventPurch
 pub(crate) fn sample_search_events_output(event_id: Uuid) -> SearchEventsOutput {
     SearchEventsOutput {
         events: vec![sample_event_summary(event_id, Uuid::new_v4())],
-        bbox: Some(sample_bbox()),
         total: 1,
+
+        bbox: Some(sample_bbox()),
     }
 }
 
@@ -1104,8 +1106,9 @@ pub(crate) fn sample_search_events_output(event_id: Uuid) -> SearchEventsOutput 
 pub(crate) fn sample_search_groups_output(group_id: Uuid) -> SearchGroupsOutput {
     SearchGroupsOutput {
         groups: vec![sample_group_summary(group_id)],
-        bbox: Some(sample_bbox()),
         total: 1,
+
+        bbox: Some(sample_bbox()),
     }
 }
 

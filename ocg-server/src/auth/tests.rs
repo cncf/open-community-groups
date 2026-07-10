@@ -1029,15 +1029,16 @@ fn sample_oidc_provider_config() -> OidcProviderConfig {
 
 fn sample_user() -> User {
     User {
-        user_id: Uuid::new_v4(),
         auth_hash: "session-auth-hash".to_string(),
         email: "user@example.com".to_string(),
         email_verified: true,
         name: "Test User".to_string(),
         optional_notifications_enabled: true,
-        provider: Some(sample_user_provider()),
         registration_status: "registered".to_string(),
+        user_id: Uuid::new_v4(),
         username: "test-user".to_string(),
+
+        provider: Some(sample_user_provider()),
         ..User::default()
     }
 }

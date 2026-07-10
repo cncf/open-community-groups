@@ -208,6 +208,7 @@ insert into event (
     'https://meetup.com/event123'
 );
 
+-- Published paid event returned with ticketing details
 insert into event (
     event_id,
     name,
@@ -236,6 +237,7 @@ insert into event (
     '2024-06-16 09:00:00+00'
 );
 
+-- Published canceled event available by slug
 insert into event (
     event_id,
     name,
@@ -264,6 +266,7 @@ insert into event (
     '2024-06-17 09:00:00+00'
 );
 
+-- Unpublished canceled event excluded from public lookup
 insert into event (
     event_id,
     name,
@@ -292,6 +295,7 @@ insert into event (
     '2024-06-19 09:00:00+00'
 );
 
+-- Deleted event excluded from public lookup
 insert into event (
     event_id,
     name,

@@ -220,17 +220,17 @@ impl fmt::Debug for MeetingsZoomConfig {
 impl MeetingsZoomConfig {
     /// Validate Zoom meetings configuration.
     fn validate(&self) -> Result<()> {
-        // If Zoom meetings are not enabled, skip validation.
+        // Skip validation when Zoom meetings are disabled
         if !self.enabled {
             return Ok(());
         }
 
-        // Validate max overlapping meetings allowed for each host.
+        // Validate max overlapping meetings allowed for each host
         if self.max_simultaneous_meetings_per_host < 1 {
             bail!("meetings.zoom.max_simultaneous_meetings_per_host must be >= 1");
         }
 
-        // Validate that the user pool is not empty and contains valid, unique email addresses.
+        // Validate that the user pool contains valid, unique email addresses
         let mut seen = HashSet::new();
         if self.host_pool_users.is_empty() {
             bail!("meetings.zoom.host_pool_users cannot be empty when zoom is enabled");
@@ -329,21 +329,21 @@ impl PaymentsStripeConfig {
 pub(crate) struct SmtpConfig {
     /// SMTP server hostname.
     pub host: String,
+    /// SMTP password.
+    pub password: String,
     /// SMTP server port.
     pub port: u16,
     /// SMTP username.
     pub username: String,
-    /// SMTP password.
-    pub password: String,
 }
 
 impl fmt::Debug for SmtpConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SmtpConfig")
             .field("host", &self.host)
+            .field("password", &REDACTED_CONFIG_VALUE)
             .field("port", &self.port)
             .field("username", &self.username)
-            .field("password", &REDACTED_CONFIG_VALUE)
             .finish()
     }
 }
@@ -552,9 +552,9 @@ mod tests {
                 from_name: "OCG".to_string(),
                 smtp: SmtpConfig {
                     host: "smtp.example.test".to_string(),
+                    password: "smtp-sensitive-value".to_string(),
                     port: 587,
                     username: "smtp-user".to_string(),
-                    password: "smtp-sensitive-value".to_string(),
                 },
                 rcpts_whitelist: None,
             },

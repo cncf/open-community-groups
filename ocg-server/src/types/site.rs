@@ -52,8 +52,10 @@ pub struct SiteSettings {
 /// Theme information used to customize the site layout.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Theme {
+    /// Color palette indexed by intensity.
     #[serde(default)]
     pub palette: Palette,
+    /// Primary theme color.
     pub primary_color: String,
 }
 

@@ -23,7 +23,7 @@ use crate::{
 
 #[tokio::test]
 async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notification() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -36,7 +36,7 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
     let event_for_validation = event.clone();
     let site_settings = sample_site_settings();
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -97,10 +97,10 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
@@ -114,7 +114,7 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
@@ -126,7 +126,7 @@ async fn test_cancel_attendance_cancels_pending_registration_and_enqueues_notifi
 #[tokio::test]
 #[allow(clippy::too_many_lines)]
 async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notification() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -141,7 +141,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
     let site_settings_for_notifications = site_settings.clone();
     let primary_color = site_settings.theme.primary_color.clone();
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -217,9 +217,9 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
@@ -233,7 +233,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get("HX-Trigger"),
@@ -244,7 +244,7 @@ async fn test_cancel_attendance_promotes_waitlisted_users_and_enqueues_notificat
 
 #[tokio::test]
 async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -255,7 +255,7 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
     let event = sample_event_summary(event_id, group_id);
     let site_settings = sample_site_settings();
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -309,10 +309,10 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
         .returning(|_| Err(anyhow!("queue error")));
     expect_rolled_back_transaction(&mut db, tx);
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
@@ -326,14 +326,14 @@ async fn test_cancel_attendance_rolls_back_when_notification_enqueue_fails() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_cancel_attendance_rejects_non_attendee_status() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
@@ -341,7 +341,7 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -371,11 +371,11 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
         });
     db.expect_leave_event().times(0);
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
@@ -389,14 +389,14 @@ async fn test_cancel_attendance_rejects_non_attendee_status() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -411,7 +411,7 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
         ..Default::default()
     }]);
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -445,11 +445,11 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
         .returning(move |_, _| Ok(event.clone()));
     db.expect_leave_event().times(0);
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
@@ -463,21 +463,21 @@ async fn test_cancel_attendance_rejects_ticketed_pending_registration() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let event_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -492,11 +492,11 @@ async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
         .withf(|name| name == "missing-community")
         .returning(|_| Ok(None));
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("DELETE")
@@ -510,20 +510,20 @@ async fn test_cancel_attendance_returns_not_found_when_community_is_unknown() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NOT_FOUND);
     assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_list_page_db_error() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -542,10 +542,10 @@ async fn test_list_page_db_error() {
         })
         .returning(|_, _| Err(anyhow!("db error")));
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
@@ -557,14 +557,14 @@ async fn test_list_page_db_error() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
 }
 
 #[tokio::test]
 async fn test_list_page_success() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -585,7 +585,7 @@ async fn test_list_page_success() {
         total: 1,
     };
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -604,10 +604,10 @@ async fn test_list_page_success() {
         })
         .returning(move |_, _| Ok(output.clone()));
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
@@ -619,7 +619,7 @@ async fn test_list_page_success() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
@@ -630,7 +630,7 @@ async fn test_list_page_success() {
 
 #[tokio::test]
 async fn test_list_page_with_pagination_params() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -640,7 +640,7 @@ async fn test_list_page_with_pagination_params() {
         total: 0,
     };
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -657,10 +657,10 @@ async fn test_list_page_with_pagination_params() {
         })
         .returning(move |_, _| Ok(output.clone()));
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("GET")
@@ -672,7 +672,7 @@ async fn test_list_page_with_pagination_params() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
@@ -683,7 +683,7 @@ async fn test_list_page_with_pagination_params() {
 
 #[tokio::test]
 async fn test_submit_registration_answers_success() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -705,7 +705,7 @@ async fn test_submit_registration_answers_success() {
     let form_body =
         serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -753,10 +753,10 @@ async fn test_submit_registration_answers_success() {
         .returning(|_| Ok(()));
     expect_successful_transaction(&mut db, tx);
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
@@ -771,7 +771,7 @@ async fn test_submit_registration_answers_success() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get("hx-trigger").unwrap(),
@@ -782,7 +782,7 @@ async fn test_submit_registration_answers_success() {
 
 #[tokio::test]
 async fn test_submit_registration_answers_update_skips_welcome_notification() {
-    // Setup identifiers and data structures.
+    // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let question_id = Uuid::new_v4();
@@ -801,7 +801,7 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
     let form_body =
         serde_urlencoded::to_string([("registration_answers", answers.to_string())]).unwrap();
 
-    // Setup database mock.
+    // Setup database mock
     let mut db = MockDB::new();
     db.expect_get_session()
         .times(1)
@@ -832,11 +832,11 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
     tx.expect_get_event_summary_by_id().times(0);
     expect_successful_transaction(&mut db, tx);
 
-    // Setup notifications manager mock.
+    // Setup notifications manager mock
     let mut nm = MockNotificationsManager::new();
     nm.expect_enqueue().times(0);
 
-    // Setup router and send request.
+    // Setup router and send request
     let router = TestRouterBuilder::new(db, nm).build().await;
     let request = Request::builder()
         .method("PUT")
@@ -851,7 +851,7 @@ async fn test_submit_registration_answers_update_skips_welcome_notification() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations.
+    // Check response matches expectations
     assert_eq!(parts.status, StatusCode::NO_CONTENT);
     assert_eq!(
         parts.headers.get("hx-trigger").unwrap(),
