@@ -106,21 +106,28 @@ export class ImagesGallery extends LitWrapper {
         ${this.images.map(
           (image, index) => html`
             <div class="hidden md:block">
-              <button class="relative w-full" @click=${() => this._openModal(index)}>
+              <button
+                class="relative w-full overflow-hidden rounded-lg bg-white outline outline-offset-1 outline-1 outline-stone-300 transition-all hover:outline-primary-300 hover:shadow-sm"
+                @click=${() => this._openModal(index)}
+              >
                 <img
                   width="160"
                   height="160"
-                  class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
+                  class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white"
+                  data-ocg-broken-image-bg-class="bg-stone-50 m-[5px] rounded-md"
                   src=${image}
                   alt="${this.altImage} image ${index + 1}"
                 />
               </button>
             </div>
-            <div class="relative block md:hidden">
+            <div
+              class="relative block overflow-hidden rounded-lg bg-white outline outline-offset-1 outline-1 outline-stone-300 md:hidden"
+            >
               <img
                 width="160"
                 height="160"
-                class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white outline outline-offset-1 outline-1 outline-stone-300"
+                class="bg-white w-full aspect-[1/1] object-cover rounded-lg border border-5 border-white"
+                data-ocg-broken-image-bg-class="bg-stone-50 m-[5px] rounded-md"
                 src=${image}
                 alt="${this.altImage} image ${index + 1}"
               />

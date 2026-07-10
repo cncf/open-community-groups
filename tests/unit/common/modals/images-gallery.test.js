@@ -1,5 +1,6 @@
 import { expect } from "@open-wc/testing";
 
+import { applyBrokenImagePlaceholder } from "/static/js/common/media/broken-images.js";
 import "/static/js/common/modals/images-gallery.js";
 import {
   mountLitComponent,
@@ -45,15 +46,30 @@ describe("images-gallery", () => {
     const thumbnailButton = [...element.querySelectorAll("button")].find(
       (button) => button.querySelector('img[alt="Gallery image 1"]'),
     );
+    const thumbnailImage = thumbnailButton?.querySelector(
+      'img[alt="Gallery image 1"]',
+    );
     const mobileImage = [
       ...element.querySelectorAll('img[alt="Gallery image 1"]'),
     ].find((image) => image.parentElement?.classList.contains("md:hidden"));
 
     // Inline gallery image containers keep relative positioning.
     expect(thumbnailButton?.classList.contains("relative")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("overflow-hidden")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("bg-white")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("hover:outline-primary-300")).to.equal(true);
+    expect(thumbnailButton?.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(mobileImage?.parentElement?.classList.contains("relative")).to.equal(
       true,
     );
+    expect(mobileImage?.parentElement?.classList.contains("overflow-hidden")).to.equal(true);
+    expect(mobileImage?.parentElement?.classList.contains("bg-white")).to.equal(true);
+
+    // Broken thumbnails keep the white mat and clip the fallback inside it.
+    applyBrokenImagePlaceholder(thumbnailImage);
+    const thumbnailFallback = thumbnailImage?.nextElementSibling;
+    expect(thumbnailFallback?.classList.contains("m-[5px]")).to.equal(true);
+    expect(thumbnailFallback?.classList.contains("rounded-md")).to.equal(true);
 
     // Open the modal to inspect the fixed-position carousel image.
     element._openModal(0);

@@ -128,7 +128,71 @@ describe("user-chip", () => {
 
     // The rendered text shows the scenario data.
     expect(card?.className).to.include("bg-amber-50/50");
+    expect(card?.classList.contains("hover:border-amber-400")).to.equal(false);
     expect(element.querySelector(".icon-star")).to.not.equal(null);
     expect(element.textContent).to.include("Radia Perlman");
+  });
+
+  it("renders the compact rollover variants without changing backgrounds", async () => {
+    const regularElement = await mountLitComponent("user-chip", {
+      user: {
+        name: "Grace Hopper",
+        username: "grace",
+      },
+      displayModal: true,
+      small: true,
+    });
+    const featuredElement = await mountLitComponent("user-chip", {
+      user: {
+        name: "Radia Perlman",
+        username: "radia",
+      },
+      displayModal: true,
+      featured: true,
+      small: true,
+    });
+
+    const regularCard = regularElement.firstElementChild;
+    const featuredCard = featuredElement.firstElementChild;
+
+    expect(regularCard?.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(regularCard?.classList.contains("hover:shadow-sm")).to.equal(true);
+    expect(regularCard?.className).to.not.include("hover:bg-");
+    expect(featuredCard?.classList.contains("hover:border-amber-400")).to.equal(true);
+    expect(featuredCard?.classList.contains("hover:shadow-sm")).to.equal(true);
+    expect(featuredCard?.className).to.not.include("hover:bg-");
+  });
+
+  it("renders the card rollover variants", async () => {
+    const regularElement = await mountLitComponent("user-chip", {
+      user: {
+        name: "Grace Hopper",
+        username: "grace",
+      },
+      displayModal: true,
+    });
+    const featuredElement = await mountLitComponent("user-chip", {
+      user: {
+        name: "Radia Perlman",
+        username: "radia",
+      },
+      displayModal: true,
+      featured: true,
+    });
+
+    const regularCard = regularElement.firstElementChild;
+    const featuredCard = featuredElement.firstElementChild;
+
+    expect(
+      regularCard?.classList.contains("hover:border-primary-300"),
+    ).to.equal(true);
+    expect(regularCard?.classList.contains("hover:shadow-sm")).to.equal(true);
+    expect(regularCard?.className).to.not.include("hover:bg-");
+    expect(
+      featuredCard?.classList.contains("hover:border-amber-500"),
+    ).to.equal(true);
+    expect(featuredCard?.classList.contains("hover:shadow-sm")).to.equal(true);
+    expect(featuredCard?.className).to.not.include("hover:bg-");
+    expect(featuredCard?.classList.contains("shadow-sm")).to.equal(false);
   });
 });

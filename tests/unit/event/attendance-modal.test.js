@@ -127,7 +127,10 @@ const renderPaidAttendanceDom = ({
                   name="event_ticket_type_id"
                   value="ticket-2"
                 />
-                <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer">
+                <div
+                  data-attendance-role="ticket-type-card-body"
+                  class="bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"
+                >
                   <span data-attendance-role="ticket-type-title">Community</span>
                   <div class="ticket-price-badge">
                     Free
@@ -142,7 +145,10 @@ const renderPaidAttendanceDom = ({
                   name="event_ticket_type_id"
                   value="ticket-1"
                 />
-                <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer">
+                <div
+                  data-attendance-role="ticket-type-card-body"
+                  class="bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"
+                >
                   <span data-attendance-role="ticket-type-title">General</span>
                   <div class="ticket-price-badge">
                     EUR 50.00
@@ -443,9 +449,10 @@ describe("event attendance paid modal", () => {
 
   it("hides the button price badge when tickets are unavailable", async () => {
     // Render the paid attendance fixture.
-    const { checker, attendButton } = renderPaidAttendanceDom({
-      ticketPurchaseAvailable: "false",
-    });
+    const { checker, attendButton, ticketTypeOptions, ticketCardBodies } =
+      renderPaidAttendanceDom({
+        ticketPurchaseAvailable: "false",
+      });
     await initializeAttendanceDom();
 
     // Dispatch the HTMX after-request event.
@@ -463,6 +470,14 @@ describe("event attendance paid modal", () => {
     expect(
       attendButton.querySelector(".ticket-price-badge")?.style.display,
     ).to.equal("none");
+    expect(
+      Array.from(ticketTypeOptions).every((option) => option.disabled),
+    ).to.equal(true);
+    ticketCardBodies.forEach((cardBody) => {
+      expect(cardBody.classList.contains("cursor-not-allowed")).to.equal(true);
+      expect(cardBody.classList.contains("hover:border-primary-300")).to.equal(false);
+      expect(cardBody.classList.contains("hover:shadow-sm")).to.equal(false);
+    });
   });
 
   it("keeps sold-out ticket types visible but disabled in the modal", async () => {

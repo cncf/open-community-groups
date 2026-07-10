@@ -58,6 +58,20 @@ describe("online-event-details", () => {
     });
   });
 
+  it("renders the shared rollover on selectable meeting mode cards", async () => {
+    // Render the default manual meeting mode.
+    const element = await mountLitComponent("online-event-details");
+    const automaticModeInput = element.renderRoot.querySelector(
+      'input[type="radio"][value="automatic"]',
+    );
+    const automaticModeCard = automaticModeInput.nextElementSibling;
+
+    // The unselected selectable card uses the shared border and shadow rollover.
+    expect(automaticModeInput.disabled).to.equal(false);
+    expect(automaticModeCard.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(automaticModeCard.classList.contains("hover:shadow-sm")).to.equal(true);
+  });
+
   it("submits recording visibility and explains the public target", async () => {
     // Save browser globals before mocking clipboard and window open.
     const originalClipboardDescriptor = Object.getOwnPropertyDescriptor(
@@ -227,6 +241,7 @@ describe("online-event-details", () => {
       expect(automaticModeInput.disabled).to.equal(true);
       expect(automaticModeCard.classList.contains("border-dashed")).to.equal(true);
       expect(automaticModeCard.classList.contains("bg-stone-50")).to.equal(true);
+      expect(automaticModeCard.classList.contains("hover:shadow-sm")).to.equal(false);
       expect(element.textContent).to.include(
         "Automatic meetings are not available for past events.",
       );

@@ -2,11 +2,15 @@ import { expect, test } from "@playwright/test";
 
 import {
   E2E_PAYMENTS_ENABLED,
+  TEST_COMMUNITY_AD_BANNER_LINK_URL_2,
+  TEST_COMMUNITY_AD_BANNER_URL_2,
   TEST_COMMUNITY_BANNER_MOBILE_URL,
   TEST_COMMUNITY_BANNER_URL,
   TEST_COMMUNITY_DESCRIPTION,
   TEST_COMMUNITY_NAME,
+  TEST_COMMUNITY_NAME_2,
   TEST_COMMUNITY_TITLE,
+  TEST_COMMUNITY_TITLE_2,
   TEST_EVENT_NAMES,
   TEST_GROUP_NAMES,
   TEST_GROUP_SLUGS,
@@ -238,6 +242,35 @@ test.describe("community home page", () => {
         const text = await valueElement.textContent();
         expect(text?.trim()).toMatch(/^\d[\d,]*$/);
       }
+    });
+
+    test("advertisement banner links to the seeded destination", async ({
+      page,
+    }) => {
+      // Load the secondary community with the seeded advertisement banner.
+      await navigateToCommunityHome(page, TEST_COMMUNITY_NAME_2);
+
+      // Target the linked advertisement by its accessible image name.
+      const advertisementLink = page.getByRole("link", {
+        name: `${TEST_COMMUNITY_TITLE_2} advertisement`,
+      });
+      const advertisementImage = advertisementLink.getByRole("img", {
+        name: `${TEST_COMMUNITY_TITLE_2} advertisement`,
+      });
+      const advertisementCard = advertisementLink.locator("..");
+
+      // Verify the advertisement exposes its seeded image and destination.
+      await expect(advertisementLink).toBeVisible();
+      await expect(advertisementLink).toHaveAttribute(
+        "href",
+        TEST_COMMUNITY_AD_BANNER_LINK_URL_2,
+      );
+      await expect(advertisementImage).toHaveAttribute(
+        "src",
+        TEST_COMMUNITY_AD_BANNER_URL_2,
+      );
+      await expect(advertisementCard).toHaveClass(/hover:border-primary-300/);
+      await expect(advertisementCard).toHaveClass(/hover:shadow-sm/);
     });
 
     test("stats strip shows desktop layout at lg breakpoint", async ({

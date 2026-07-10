@@ -45,7 +45,7 @@ class AttendanceTicketCard extends LitWrapper {
 
   get _cardStateClasses() {
     return !this._isDisabled
-      ? "bg-white cursor-pointer hover:border-primary-300"
+      ? "bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"
       : "bg-stone-50 cursor-not-allowed opacity-60";
   }
 

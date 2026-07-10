@@ -25,6 +25,8 @@ insert into community (
     name,
     display_name,
     description,
+    ad_banner_link_url,
+    ad_banner_url,
     banner_url,
     banner_mobile_url,
     logo_url
@@ -33,6 +35,8 @@ insert into community (
     'e2e-test-community',
     'Platform Engineering Community',
     'Platform engineering community used for end-to-end coverage.',
+    null,
+    null,
     '/static/images/e2e/community-primary-banner.svg',
     '/static/images/e2e/community-primary-banner-mobile.svg',
     '/static/images/e2e/community-primary-logo.svg'
@@ -41,6 +45,8 @@ insert into community (
     'e2e-second-community',
     'Developer Experience Community',
     'Developer experience community used for end-to-end coverage.',
+    'https://example.com/e2e-advertisement',
+    '/static/images/e2e/event-banner.svg',
     '/static/images/e2e/community-secondary-banner.svg',
     '/static/images/e2e/community-secondary-banner-mobile.svg',
     '/static/images/e2e/community-secondary-logo.svg'
@@ -2203,6 +2209,10 @@ values (
     '88888888-8888-8888-8888-888888888801',
     '77777777-7777-7777-7777-777777777705',
     true
+), (
+    '88888888-8888-8888-8888-888888888801',
+    '77777777-7777-7777-7777-777777777706',
+    false
 ), (
     '88888888-8888-8888-8888-888888888803',
     '77777777-7777-7777-7777-777777777705',

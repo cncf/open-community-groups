@@ -400,7 +400,11 @@ class SessionItem extends LitWrapper {
                         this.inputMode === "cfs"
                           ? "border-primary-400 ring-2 ring-primary-200"
                           : "border-stone-200"
-                      } ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:border-primary-300"}"
+                      } ${
+                        this.disabled
+                          ? "opacity-60 cursor-not-allowed"
+                          : "hover:border-primary-300 hover:shadow-sm"
+                      }"
                     >
                       <div class="flex items-start gap-3">
                         <span class="mt-1 inline-flex">
@@ -440,7 +444,11 @@ class SessionItem extends LitWrapper {
                         this.inputMode === "manual"
                           ? "border-primary-400 ring-2 ring-primary-200"
                           : "border-stone-200"
-                      } ${this.disabled ? "opacity-60 cursor-not-allowed" : "hover:border-primary-300"}"
+                      } ${
+                        this.disabled
+                          ? "opacity-60 cursor-not-allowed"
+                          : "hover:border-primary-300 hover:shadow-sm"
+                      }"
                     >
                       <div class="flex items-start gap-3">
                         <span class="mt-1 inline-flex">

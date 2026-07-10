@@ -480,7 +480,7 @@ export class OnlineEventDetails extends LitWrapper {
         ? "border-stone-300 border-dashed bg-stone-50 cursor-not-allowed"
         : isSelected
           ? "border-primary-400 ring-2 ring-primary-200 bg-white"
-          : "border-stone-200 bg-white hover:border-primary-300",
+          : "border-stone-200 bg-white hover:border-primary-300 hover:shadow-sm",
     ].join(" ");
     const radioClasses = [
       "relative flex h-5 w-5 items-center justify-center rounded-full border",

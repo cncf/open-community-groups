@@ -90,6 +90,10 @@ export const TEST_COMMUNITY_TITLE_2 = "Developer Experience Community";
 /** Community details for assertions. */
 export const TEST_COMMUNITY_DESCRIPTION =
   "Platform engineering community used for end-to-end coverage.";
+export const TEST_COMMUNITY_AD_BANNER_LINK_URL_2 =
+  "https://example.com/e2e-advertisement";
+export const TEST_COMMUNITY_AD_BANNER_URL_2 =
+  "/static/images/e2e/event-banner.svg";
 export const TEST_COMMUNITY_BANNER_URL =
   "/static/images/e2e/community-primary-banner.svg";
 export const TEST_COMMUNITY_BANNER_MOBILE_URL =

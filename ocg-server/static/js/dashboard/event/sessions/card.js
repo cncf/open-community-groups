@@ -94,7 +94,9 @@ class SessionCard extends LitWrapper {
 
     return html`
       <div
-        class="flex w-full min-w-0 items-center gap-4 p-4 border border-stone-200 rounded-lg bg-white hover:border-stone-300 transition-colors overflow-hidden"
+        class="flex w-full min-w-0 items-center gap-4 p-4 border border-stone-200 rounded-lg bg-white transition-all overflow-hidden ${
+          this.disabled ? "" : "hover:border-primary-300 hover:shadow-sm"
+        }"
       >
         <div class="flex items-center gap-3 shrink-0">
           <div class="text-right w-14">
