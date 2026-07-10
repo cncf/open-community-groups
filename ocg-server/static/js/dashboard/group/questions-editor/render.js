@@ -1,5 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
-import { QUESTION_TYPES, getQuestionTypeLabel } from "./model.js";
+import { QUESTION_TYPES, getQuestionTypeLabel } from "/static/js/dashboard/group/questions-editor/model.js";
 
 /**
  * Renders the complete editor.

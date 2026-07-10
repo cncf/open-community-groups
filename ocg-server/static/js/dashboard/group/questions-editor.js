@@ -7,8 +7,8 @@ import {
   createBlankQuestionOption,
   normalizeQuestionOptions,
   normalizeQuestions,
-} from "./questions-editor/model.js";
-import { renderQuestionsEditor } from "./questions-editor/render.js";
+} from "/static/js/dashboard/group/questions-editor/model.js";
+import { renderQuestionsEditor } from "/static/js/dashboard/group/questions-editor/render.js";
 
 /**
  * Renders the event registration questions editor and its form payload fields.
