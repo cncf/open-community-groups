@@ -17,6 +17,7 @@ begin
         set
             delivery_status = 'delivery-unknown',
             error = 'delivery outcome unknown after processing timeout',
+            next_delivery_attempt_at = null,
             processed_at = current_timestamp
         where delivery_status = 'processing'
         and delivery_claimed_at < current_timestamp - make_interval(

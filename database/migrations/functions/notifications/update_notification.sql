@@ -10,6 +10,7 @@ begin
     set
         delivery_status = case when p_error is null then 'processed' else 'failed' end,
         error = p_error,
+        next_delivery_attempt_at = null,
         processed_at = current_timestamp
     where notification_id = p_notification_id
     and delivery_status = 'processing';

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(286);
+select plan(288);
 
 -- ============================================================================
 -- VARIABLES
@@ -240,6 +240,7 @@ select has_function('list_user_pending_session_proposal_co_speaker_invitations',
 select has_function('list_user_session_proposals', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_session_proposals_for_cfs_event', array['uuid', 'uuid']::name[]);
 select has_function('manual_check_in_event', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
+select has_function('manual_requeue_notifications', array['uuid[]', 'text']::name[]);
 select has_function('mark_stale_meeting_auto_end_checks_unknown', array['bigint']::name[]);
 select has_function('mark_stale_meeting_syncs_unknown', array['bigint']::name[]);
 select has_function('mark_stale_processing_notifications_unknown', array['bigint']::name[]);
@@ -270,6 +271,7 @@ select has_function('release_event_discount_code_availability', array['uuid', 'i
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
+select has_function('requeue_notification', array['uuid', 'text', 'bigint', 'bigint', 'integer']::name[]);
 select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);
 select has_function('resubmit_cfs_submission', array['uuid', 'uuid']::name[]);

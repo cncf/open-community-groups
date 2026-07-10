@@ -12,7 +12,8 @@ use crate::{
 };
 
 use super::{
-    Attachment, DELIVERY_PROCESSING_TIMEOUT, DeliveryRecoveryWorker, DeliveryWorker,
+    Attachment, DELIVERY_MAX_CLAIMS, DELIVERY_PROCESSING_TIMEOUT, DELIVERY_REQUEUE_BASE_DELAY,
+    DELIVERY_REQUEUE_MAX_DELAY, DELIVERY_SEND_MAX_ATTEMPTS, DeliveryRecoveryWorker, DeliveryWorker,
     DynEmailSender, EnqueueWorker, LettreEmailSender, MockEmailSender, NewNotification,
     Notification, NotificationKind, NotificationsManager, PgNotificationsManager,
 };
@@ -360,6 +361,58 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
     es.expect_send()
         .times(1)
         .returning(|_| Box::pin(async { Err(anyhow!("delivery error")) }));
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker and deliver notification
+    let mut worker = DeliveryWorker {
+        db,
+        cfg: sample_email_config(None),
+        cancellation_token: CancellationToken::new(),
+        email_sender: es,
+    };
+    let delivered = worker.deliver_notification().await.unwrap();
+
+    // Check result matches expectations
+    assert!(delivered);
+}
+
+#[tokio::test(start_paused = true)]
+async fn test_delivery_worker_deliver_notification_requeues_retryable_send_error() {
+    // Setup identifiers and data structures
+    let notification = Notification {
+        attachments: vec![],
+        email: "notify@example.test".to_string(),
+        kind: NotificationKind::EmailVerification,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_email_verification_template_data()),
+    };
+    let notification_id = notification.notification_id;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_claim_pending_notification()
+        .times(1)
+        .returning(move || Ok(Some(notification.clone())));
+    db.expect_requeue_notification()
+        .times(1)
+        .withf(
+            move |notif, err, base_retry_after, max_retry_after, max_delivery_attempts| {
+                notif.notification_id == notification_id
+                    && err == "Connection error: smtp unavailable"
+                    && *base_retry_after == DELIVERY_REQUEUE_BASE_DELAY
+                    && *max_retry_after == DELIVERY_REQUEUE_MAX_DELAY
+                    && *max_delivery_attempts == DELIVERY_MAX_CLAIMS
+            },
+        )
+        .returning(|_, _, _, _, _| Ok(()));
+    db.expect_update_notification().never();
+    let db: DynDB = Arc::new(db);
+
+    // Setup email sender mock
+    let mut es = MockEmailSender::new();
+    es.expect_send()
+        .times(DELIVERY_SEND_MAX_ATTEMPTS)
+        .returning(|_| Box::pin(async { Err(anyhow!("Connection error: smtp unavailable")) }));
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
