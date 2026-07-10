@@ -8,6 +8,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
+    fmt,
     path::PathBuf,
 };
 
@@ -24,8 +25,11 @@ use tracing::instrument;
 
 use crate::types::payments::{PaymentMode, PaymentProvider};
 
+/// Placeholder used when formatting sensitive configuration values.
+const REDACTED_CONFIG_VALUE: &str = "[redacted]";
+
 /// Root configuration structure for the OCG server.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub(crate) struct Config {
     /// Database configuration.
     pub db: DbConfig,
@@ -89,6 +93,20 @@ impl Config {
     }
 }
 
+impl fmt::Debug for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Config")
+            .field("db", &REDACTED_CONFIG_VALUE)
+            .field("email", &self.email)
+            .field("images", &self.images)
+            .field("log", &self.log)
+            .field("server", &self.server)
+            .field("meetings", &self.meetings)
+            .field("payments", &self.payments)
+            .finish()
+    }
+}
+
 /// Email configuration.
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct EmailConfig {
@@ -116,7 +134,7 @@ pub(crate) enum ImageStorageConfig {
 }
 
 /// Configuration for S3-compatible image storage providers.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct ImageStorageConfigS3 {
     /// Access key identifier used for authentication.
     pub access_key_id: String,
@@ -131,6 +149,19 @@ pub(crate) struct ImageStorageConfigS3 {
     pub endpoint: Option<String>,
     /// Use path-style requests for compatibility with certain providers.
     pub force_path_style: Option<bool>,
+}
+
+impl fmt::Debug for ImageStorageConfigS3 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ImageStorageConfigS3")
+            .field("access_key_id", &self.access_key_id)
+            .field("bucket", &self.bucket)
+            .field("region", &self.region)
+            .field("secret_access_key", &REDACTED_CONFIG_VALUE)
+            .field("endpoint", &self.endpoint)
+            .field("force_path_style", &self.force_path_style)
+            .finish()
+    }
 }
 
 /// Meetings configuration (multiple providers supported).
@@ -148,7 +179,7 @@ impl MeetingsConfig {
 }
 
 /// Zoom meetings configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct MeetingsZoomConfig {
     /// Zoom account identifier.
     pub account_id: String,
@@ -166,6 +197,24 @@ pub(crate) struct MeetingsZoomConfig {
     pub max_simultaneous_meetings_per_host: i32,
     /// Webhook secret token for signature verification.
     pub webhook_secret_token: String,
+}
+
+impl fmt::Debug for MeetingsZoomConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MeetingsZoomConfig")
+            .field("account_id", &self.account_id)
+            .field("client_id", &self.client_id)
+            .field("client_secret", &REDACTED_CONFIG_VALUE)
+            .field("enabled", &self.enabled)
+            .field("host_pool_users", &self.host_pool_users)
+            .field("max_participants", &self.max_participants)
+            .field(
+                "max_simultaneous_meetings_per_host",
+                &self.max_simultaneous_meetings_per_host,
+            )
+            .field("webhook_secret_token", &REDACTED_CONFIG_VALUE)
+            .finish()
+    }
 }
 
 impl MeetingsZoomConfig {
@@ -230,7 +279,7 @@ impl PaymentsConfig {
 }
 
 /// Stripe payments configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct PaymentsStripeConfig {
     /// Mode used for the configured keys.
     ///
@@ -243,6 +292,17 @@ pub(crate) struct PaymentsStripeConfig {
     pub secret_key: String,
     /// Stripe webhook secret used for signature verification.
     pub webhook_secret: String,
+}
+
+impl fmt::Debug for PaymentsStripeConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PaymentsStripeConfig")
+            .field("mode", &self.mode)
+            .field("publishable_key", &self.publishable_key)
+            .field("secret_key", &REDACTED_CONFIG_VALUE)
+            .field("webhook_secret", &REDACTED_CONFIG_VALUE)
+            .finish()
+    }
 }
 
 impl PaymentsStripeConfig {
@@ -265,7 +325,7 @@ impl PaymentsStripeConfig {
 }
 
 /// SMTP server configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct SmtpConfig {
     /// SMTP server hostname.
     pub host: String,
@@ -275,6 +335,17 @@ pub(crate) struct SmtpConfig {
     pub username: String,
     /// SMTP password.
     pub password: String,
+}
+
+impl fmt::Debug for SmtpConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SmtpConfig")
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("username", &self.username)
+            .field("password", &REDACTED_CONFIG_VALUE)
+            .finish()
+    }
 }
 
 /// Logging configuration.
@@ -348,7 +419,7 @@ pub(crate) enum OAuth2Provider {
 }
 
 /// `OAuth2` provider configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct OAuth2ProviderConfig {
     /// Authorization endpoint URL.
     pub auth_url: String,
@@ -364,6 +435,19 @@ pub(crate) struct OAuth2ProviderConfig {
     pub token_url: String,
 }
 
+impl fmt::Debug for OAuth2ProviderConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OAuth2ProviderConfig")
+            .field("auth_url", &self.auth_url)
+            .field("client_id", &self.client_id)
+            .field("client_secret", &REDACTED_CONFIG_VALUE)
+            .field("redirect_uri", &self.redirect_uri)
+            .field("scopes", &self.scopes)
+            .field("token_url", &self.token_url)
+            .finish()
+    }
+}
+
 /// Type alias for the OIDC configuration section.
 pub(crate) type OidcConfig = HashMap<OidcProvider, OidcProviderConfig>;
 
@@ -377,7 +461,7 @@ pub(crate) enum OidcProvider {
 }
 
 /// OIDC provider configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct OidcProviderConfig {
     /// OIDC client ID.
     pub client_id: String,
@@ -389,4 +473,156 @@ pub(crate) struct OidcProviderConfig {
     pub redirect_uri: String,
     /// Scopes requested from the provider.
     pub scopes: Vec<String>,
+}
+
+impl fmt::Debug for OidcProviderConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OidcProviderConfig")
+            .field("client_id", &self.client_id)
+            .field("client_secret", &REDACTED_CONFIG_VALUE)
+            .field("issuer_url", &self.issuer_url)
+            .field("redirect_uri", &self.redirect_uri)
+            .field("scopes", &self.scopes)
+            .finish()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn config_debug_redacts_sensitive_values() {
+        // Setup config with sentinel secret values
+        let cfg = sample_config();
+        let outputs = [
+            format!("{cfg:?}"),
+            format!("{:?}", &cfg.email.smtp),
+            format!("{:?}", &cfg.images),
+            format!("{:?}", &cfg.meetings),
+            format!("{:?}", &cfg.payments),
+            format!("{:?}", &cfg.server.oauth2),
+            format!("{:?}", &cfg.server.oidc),
+        ];
+
+        // Check root and nested debug output redacts all secret values
+        for output in outputs {
+            for sensitive_value in sensitive_values() {
+                assert!(
+                    !output.contains(sensitive_value),
+                    "debug output exposed sensitive value '{sensitive_value}': {output}"
+                );
+            }
+            assert!(output.contains(REDACTED_CONFIG_VALUE));
+        }
+    }
+
+    // Helpers.
+
+    fn sample_config() -> Config {
+        let mut oauth2 = HashMap::new();
+        oauth2.insert(
+            OAuth2Provider::GitHub,
+            OAuth2ProviderConfig {
+                auth_url: "https://github.example.test/auth".to_string(),
+                client_id: "github-client-id".to_string(),
+                client_secret: "oauth2-sensitive-value".to_string(),
+                redirect_uri: "https://app.example.test/auth/github/callback".to_string(),
+                scopes: vec!["user:email".to_string()],
+                token_url: "https://github.example.test/token".to_string(),
+            },
+        );
+
+        let mut oidc = HashMap::new();
+        oidc.insert(
+            OidcProvider::LinuxFoundation,
+            OidcProviderConfig {
+                client_id: "lf-client-id".to_string(),
+                client_secret: "oidc-sensitive-value".to_string(),
+                issuer_url: "https://oidc.example.test".to_string(),
+                redirect_uri: "https://app.example.test/auth/lf/callback".to_string(),
+                scopes: vec!["openid".to_string(), "email".to_string()],
+            },
+        );
+
+        Config {
+            db: sample_db_config(),
+            email: EmailConfig {
+                from_address: "noreply@example.test".to_string(),
+                from_name: "OCG".to_string(),
+                smtp: SmtpConfig {
+                    host: "smtp.example.test".to_string(),
+                    port: 587,
+                    username: "smtp-user".to_string(),
+                    password: "smtp-sensitive-value".to_string(),
+                },
+                rcpts_whitelist: None,
+            },
+            images: ImageStorageConfig::S3(ImageStorageConfigS3 {
+                access_key_id: "s3-access-key-id".to_string(),
+                bucket: "images".to_string(),
+                region: "eu-west-1".to_string(),
+                secret_access_key: "s3-sensitive-value".to_string(),
+                endpoint: Some("https://s3.example.test".to_string()),
+                force_path_style: Some(true),
+            }),
+            log: LogConfig {
+                format: LogFormat::Json,
+            },
+            server: HttpServerConfig {
+                addr: "127.0.0.1:9000".to_string(),
+                base_url: "https://app.example.test".to_string(),
+                disable_referer_checks: false,
+                login: LoginOptions {
+                    email: true,
+                    github: true,
+                    linuxfoundation: true,
+                },
+                oauth2,
+                oidc,
+                cookie: None,
+                redirect_hosts: None,
+            },
+            meetings: Some(MeetingsConfig {
+                zoom: Some(MeetingsZoomConfig {
+                    account_id: "zoom-account-id".to_string(),
+                    client_id: "zoom-client-id".to_string(),
+                    client_secret: "zoom-client-sensitive-value".to_string(),
+                    enabled: true,
+                    host_pool_users: vec!["host@example.test".to_string()],
+                    max_participants: 100,
+                    max_simultaneous_meetings_per_host: 2,
+                    webhook_secret_token: "zoom-webhook-sensitive-value".to_string(),
+                }),
+            }),
+            payments: Some(PaymentsConfig::Stripe(PaymentsStripeConfig {
+                mode: PaymentMode::Test,
+                publishable_key: "pk_test_public".to_string(),
+                secret_key: "stripe-key-sensitive-value".to_string(),
+                webhook_secret: "stripe-webhook-sensitive-value".to_string(),
+            })),
+        }
+    }
+
+    fn sample_db_config() -> DbConfig {
+        let mut cfg = DbConfig::new();
+        cfg.password = Some("db-password-sensitive-value".to_string());
+        cfg.url = Some("postgres://user:db-url-sensitive-value@db.example.test/ocg".to_string());
+        cfg
+    }
+
+    fn sensitive_values() -> [&'static str; 10] {
+        [
+            "db-password-sensitive-value",
+            "db-url-sensitive-value",
+            "oauth2-sensitive-value",
+            "oidc-sensitive-value",
+            "s3-sensitive-value",
+            "smtp-sensitive-value",
+            "stripe-key-sensitive-value",
+            "stripe-webhook-sensitive-value",
+            "zoom-client-sensitive-value",
+            "zoom-webhook-sensitive-value",
+        ]
+    }
 }
