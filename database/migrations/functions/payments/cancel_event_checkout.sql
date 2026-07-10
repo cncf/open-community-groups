@@ -1,4 +1,4 @@
--- Used by attendee checkout cancellation to release an active pending purchase
+-- Cancels an attendee's active pending checkout purchase.
 create or replace function cancel_event_checkout(
     p_community_id uuid,
     p_event_id uuid,

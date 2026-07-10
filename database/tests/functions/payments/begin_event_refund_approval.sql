@@ -119,6 +119,7 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Price window that supplies the refund approval amount
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,

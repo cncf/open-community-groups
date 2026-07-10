@@ -221,13 +221,6 @@ insert into session (
     current_timestamp + interval '7 days'
 );
 
--- Linked submission guard state
-update cfs_submission
-set
-    action_required_message = 'Need final info',
-    status_id = 'information-requested'
-where cfs_submission_id = :'submission4ID'::uuid;
-
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -306,6 +299,13 @@ select throws_ok(
     'submission not found or cannot be resubmitted',
     'Should reject resubmitting approved submission'
 );
+
+-- Move the linked submission into a resubmittable state to exercise the session guard
+update cfs_submission
+set
+    action_required_message = 'Need final info',
+    status_id = 'information-requested'
+where cfs_submission_id = :'submission4ID'::uuid;
 
 -- Should reject resubmitting submission linked to a session
 select throws_ok(

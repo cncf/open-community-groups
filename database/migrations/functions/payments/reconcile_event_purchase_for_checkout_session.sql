@@ -1,6 +1,4 @@
--- Used by the checkout-completed webhook handler: reconciles the provider
--- checkout session with the local purchase by completing it, returning noop,
--- or marking it for automatic refund when it can no longer be fulfilled.
+-- Reconciles a completed provider checkout session with its local purchase.
 create or replace function reconcile_event_purchase_for_checkout_session(
     p_provider text,
     p_provider_session_id text,

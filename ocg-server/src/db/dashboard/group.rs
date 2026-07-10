@@ -190,13 +190,6 @@ pub(crate) trait DBDashboardGroup {
     /// Lists reviewer-available CFS submission statuses.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
 
-    /// Lists group dashboard audit log rows.
-    async fn list_group_audit_logs(
-        &self,
-        group_id: Uuid,
-        filters: &AuditLogFilters,
-    ) -> Result<AuditLogsOutput>;
-
     /// Lists approved CFS submissions for an event.
     async fn list_event_approved_cfs_submissions(
         &self,
@@ -235,6 +228,13 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all verified waitlisted user ids for an event.
     async fn list_event_waitlist_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
+
+    /// Lists group dashboard audit log rows.
+    async fn list_group_audit_logs(
+        &self,
+        group_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput>;
 
     /// Lists all events for a group for management.
     async fn list_group_events(
@@ -743,20 +743,6 @@ where
             .await
     }
 
-    /// [`DBDashboardGroup::list_group_audit_logs`]
-    #[instrument(skip(self, filters), err)]
-    async fn list_group_audit_logs(
-        &self,
-        group_id: Uuid,
-        filters: &AuditLogFilters,
-    ) -> Result<AuditLogsOutput> {
-        self.fetch_json_one(
-            "select list_group_audit_logs($1::uuid, $2::jsonb)",
-            &[&group_id, &Json(filters)],
-        )
-        .await
-    }
-
     /// [`DBDashboardGroup::list_event_approved_cfs_submissions`]
     #[instrument(skip(self), err)]
     async fn list_event_approved_cfs_submissions(
@@ -855,6 +841,20 @@ where
         self.fetch_scalar_one(
             "select list_event_waitlist_ids($1::uuid, $2::uuid)",
             &[&group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_group_audit_logs`]
+    #[instrument(skip(self, filters), err)]
+    async fn list_group_audit_logs(
+        &self,
+        group_id: Uuid,
+        filters: &AuditLogFilters,
+    ) -> Result<AuditLogsOutput> {
+        self.fetch_json_one(
+            "select list_group_audit_logs($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
         )
         .await
     }

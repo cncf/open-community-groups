@@ -124,9 +124,8 @@ impl SearchEventsFilters {
         // Populate the latitude and longitude fields from the headers provided
         (filters.latitude, filters.longitude) = extract_location(headers);
 
-        // Set default date range when not provided. We'll use the current month as the
-        // date range when the view mode is calendar. Otherwise, we'll use the next 12
-        // months from now.
+        // Set missing date bounds to the current month for calendar view, or from
+        // today through 12 months from now for other views.
         let now = Utc::now();
         if filters.date_from.is_none() {
             let default_date_from = if filters.view_mode == Some(ViewMode::Calendar) {

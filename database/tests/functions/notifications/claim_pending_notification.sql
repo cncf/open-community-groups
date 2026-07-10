@@ -230,6 +230,8 @@ insert into notification (
 insert into attachment (attachment_id, content_type, data, file_name, hash) values
     (:'attachmentID1', 'text/calendar', 'BEGIN:VCALENDAR'::bytea, 'event.ics', 'hash1'),
     (:'attachmentID2', 'application/pdf', 'PDF'::bytea, 'ticket.pdf', 'hash2');
+
+-- Attachment links returned with the claimed notification
 insert into notification_attachment (attachment_id, notification_id) values
     (:'attachmentID1', :'notificationAttachmentID'),
     (:'attachmentID2', :'notificationAttachmentID');
@@ -270,6 +272,7 @@ select is(
     'Leaves pending notification unclaimed when delivery rate limit is exhausted'
 );
 
+-- Mark a claimed notification as stale for the next claim-selection scenario
 update notification
 set delivery_claimed_at = '2025-01-01 00:00:00+00'
 where notification_id = :'notificationAlreadyClaimedID';

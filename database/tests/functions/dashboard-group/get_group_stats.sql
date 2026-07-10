@@ -289,6 +289,7 @@ insert into group_views (day, group_id, total) values
     (current_date, :'group4ID', 100),
     (current_date, :'group5ID', 100);
 
+-- Event views aggregated into group analytics
 insert into event_views (day, event_id, total) values
     (date_trunc('month', current_timestamp at time zone 'UTC') - interval '2 months', :'event1ID', 7),
     (current_date, :'event2ID', 5),

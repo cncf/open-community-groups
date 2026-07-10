@@ -9,8 +9,10 @@ use uuid::Uuid;
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum EventDiscountType {
+    /// Fixed discount in minor currency units.
     #[default]
     FixedAmount,
+    /// Percentage discount.
     Percentage,
 }
 
@@ -30,13 +32,19 @@ pub enum EventDiscountType {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum EventPurchaseStatus {
+    /// Purchase completed successfully.
     Completed,
+    /// Pending purchase expired.
     Expired,
+    /// Purchase awaits checkout completion.
     #[default]
     Pending,
-    RefundPending,
-    RefundRequested,
+    /// Purchase was refunded.
     Refunded,
+    /// Provider refund is still pending.
+    RefundPending,
+    /// Attendee requested a refund.
+    RefundRequested,
 }
 
 /// Status of an attendee refund request.
@@ -55,10 +63,14 @@ pub enum EventPurchaseStatus {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum EventRefundRequestStatus {
+    /// Refund request was approved.
     Approved,
+    /// Refund request is being approved with the provider.
     Approving,
+    /// Refund request awaits organizer review.
     #[default]
     Pending,
+    /// Refund request was rejected.
     Rejected,
 }
 
@@ -66,7 +78,9 @@ pub enum EventRefundRequestStatus {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentMode {
+    /// Provider accepts live payments.
     Live,
+    /// Provider uses test transactions.
     Test,
 }
 
@@ -86,6 +100,7 @@ pub enum PaymentMode {
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum PaymentProvider {
+    /// Stripe payments provider.
     #[default]
     Stripe,
 }
@@ -105,13 +120,13 @@ pub struct EventDiscountCode {
     /// Display title shown in the dashboard.
     pub title: String,
 
+    /// Fixed amount discount in minor units.
+    pub amount_minor: Option<i64>,
     /// Number of redemptions still available.
     pub available: Option<i32>,
     /// Whether Uses remaining is currently in manual override mode.
     #[serde(default)]
     pub available_override_active: bool,
-    /// Fixed amount discount in minor units.
-    pub amount_minor: Option<i64>,
     /// Last date and time when the code can be used.
     #[serde(default)]
     pub ends_at: Option<DateTime<Utc>>,
@@ -128,26 +143,26 @@ pub struct EventDiscountCode {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct EventPurchaseSummary {
-    /// Discount amount applied to the purchase.
-    pub discount_amount_minor: i64,
     /// Recorded purchase amount after discounts.
     pub amount_minor: i64,
     /// Currency used for the purchase.
     pub currency_code: String,
+    /// Discount amount applied to the purchase.
+    pub discount_amount_minor: i64,
     /// Purchase identifier.
     pub event_purchase_id: Uuid,
-    /// Purchase status.
-    pub status: EventPurchaseStatus,
     /// Ticket type identifier.
     pub event_ticket_type_id: Uuid,
+    /// Purchase status.
+    pub status: EventPurchaseStatus,
     /// Ticket type title snapshot.
     pub ticket_title: String,
 
-    /// Discount code used for the purchase.
-    pub discount_code: Option<String>,
     /// Time when the purchase was completed.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub completed_at: Option<DateTime<Utc>>,
+    /// Discount code used for the purchase.
+    pub discount_code: Option<String>,
     /// Time when the payment hold expires.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub hold_expires_at: Option<DateTime<Utc>>,
@@ -232,16 +247,16 @@ pub struct EventTicketType {
     pub current_price: Option<EventTicketCurrentPrice>,
     /// Optional subtitle shown in forms and event pages.
     pub description: Option<String>,
-    /// Number of seats still available.
-    pub remaining_seats: Option<i32>,
     /// Price windows configured for this ticket type.
     #[serde(default)]
     pub price_windows: Vec<EventTicketPriceWindow>,
+    /// Number of seats still available.
+    pub remaining_seats: Option<i32>,
+    /// Total seats available for this ticket type.
+    pub seats_total: Option<i32>,
     /// Whether this ticket type is sold out.
     #[serde(default)]
     pub sold_out: bool,
-    /// Total seats available for this ticket type.
-    pub seats_total: Option<i32>,
 }
 
 impl EventTicketType {

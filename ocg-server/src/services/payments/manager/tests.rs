@@ -3383,11 +3383,12 @@ fn sample_event_purchase_summary(
     EventPurchaseSummary {
         amount_minor: 2_500,
         currency_code: "usd".to_string(),
-        discount_code,
         event_purchase_id,
         event_ticket_type_id,
-        provider_checkout_url,
         ticket_title: "General admission".to_string(),
+
+        discount_code,
+        provider_checkout_url,
         ..EventPurchaseSummary::default()
     }
 }

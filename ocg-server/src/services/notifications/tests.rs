@@ -1087,9 +1087,9 @@ fn sample_email_config(rcpts_whitelist: Option<Vec<String>>) -> EmailConfig {
         from_name: "Open Community Groups".to_string(),
         smtp: SmtpConfig {
             host: "smtp.example.test".to_string(),
+            password: "pass".to_string(),
             port: 587,
             username: "user".to_string(),
-            password: "pass".to_string(),
         },
 
         rcpts_whitelist,
@@ -1101,9 +1101,9 @@ fn sample_delivery_worker(cfg: EmailConfig, email_sender: DynEmailSender) -> Del
     let db: DynDB = Arc::new(MockDB::new());
 
     DeliveryWorker {
-        db,
-        cfg,
         cancellation_token: CancellationToken::new(),
+        cfg,
+        db,
         email_sender,
     }
 }

@@ -75,8 +75,11 @@ pub struct CommunityFull {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum CommunityRole {
+    /// Full community administrator.
     Admin,
+    /// Community group manager.
     GroupsManager,
+    /// Read-only community viewer.
     #[default]
     Viewer,
 }

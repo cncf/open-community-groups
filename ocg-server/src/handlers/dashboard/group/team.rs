@@ -206,6 +206,7 @@ pub(crate) struct NewTeamMember {
 /// Data needed to update a team member role.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct NewTeamRole {
+    /// Replacement group role.
     #[garde(skip)]
     role: GroupRole,
 }

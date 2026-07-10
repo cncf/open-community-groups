@@ -278,6 +278,7 @@ values
         'General admission'
     );
 
+-- Price window that supplies the refundable purchase amount
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,

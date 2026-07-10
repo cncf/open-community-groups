@@ -1,4 +1,4 @@
--- Used by prepare_event_checkout_purchase to reserve one discount redemption
+-- Reserves one redemption from an event discount code.
 create or replace function prepare_event_checkout_reserve_discount_code_availability(
     p_event_discount_code_id uuid
 )

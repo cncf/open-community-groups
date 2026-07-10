@@ -182,6 +182,7 @@ insert into event_purchase (
     :'completedUserID'
 );
 
+-- Completed purchase that must reject checkout-session attachment
 insert into event_purchase (
     event_purchase_id,
     amount_minor,

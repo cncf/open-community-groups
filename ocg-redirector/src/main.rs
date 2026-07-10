@@ -57,43 +57,6 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Parse the command line arguments and load configuration.
-fn setup_config() -> Result<Config> {
-    let args = Args::parse();
-    Config::new(args.config_file.as_ref()).context("error setting up configuration")
-}
-
-/// Configure tracing based on the configured log format.
-fn setup_logging(log_format: &LogFormat) {
-    // Build the shared subscriber configuration first
-    let ts = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-        )
-        .with_file(true)
-        .with_line_number(true);
-
-    // Select the configured output formatter
-    match log_format {
-        LogFormat::Json => ts.json().init(),
-        LogFormat::Pretty => ts.init(),
-    }
-}
-
-/// Configure the database pool used by the redirector.
-fn setup_db(cfg: &Config) -> Result<PgDB> {
-    // Build the TLS connector used by the Postgres pool
-    let mut builder = SslConnector::builder(SslMethod::tls())?;
-    builder.set_verify(SslVerifyMode::NONE);
-
-    // Create the pool with the configured TLS connector
-    let connector = MakeTlsConnector::new(builder.build());
-    let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
-
-    Ok(PgDB::new(pool))
-}
-
 /// Build the router and serve HTTP requests until shutdown.
 async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
     // Load redirects before building the router
@@ -121,23 +84,41 @@ async fn run_server(db: PgDB, server_cfg: &HttpServerConfig) -> Result<()> {
     Ok(())
 }
 
-/// Spawns the periodic redirect map refresh task.
-fn spawn_redirect_refresh(db: PgDB, redirects: Arc<RwLock<router::Redirects>>) {
-    let _redirect_refresh_handle = tokio::spawn(async move {
-        loop {
-            time::sleep(REDIRECT_REFRESH_INTERVAL).await;
+/// Parse the command line arguments and load configuration.
+fn setup_config() -> Result<Config> {
+    let args = Args::parse();
+    Config::new(args.config_file.as_ref()).context("error setting up configuration")
+}
 
-            match db.load_redirects().await {
-                Ok(refreshed_redirects) => {
-                    *redirects.write().await = refreshed_redirects;
-                    info!("redirect mappings refreshed");
-                }
-                Err(err) => {
-                    error!(?err, "failed to refresh redirect mappings");
-                }
-            }
-        }
-    });
+/// Configure the database pool used by the redirector.
+fn setup_db(cfg: &Config) -> Result<PgDB> {
+    // Build the TLS connector used by the Postgres pool
+    let mut builder = SslConnector::builder(SslMethod::tls())?;
+    builder.set_verify(SslVerifyMode::NONE);
+
+    // Create the pool with the configured TLS connector
+    let connector = MakeTlsConnector::new(builder.build());
+    let pool = cfg.db.create_pool(Some(Runtime::Tokio1), connector)?;
+
+    Ok(PgDB::new(pool))
+}
+
+/// Configure tracing based on the configured log format.
+fn setup_logging(log_format: &LogFormat) {
+    // Build the shared subscriber configuration first
+    let ts = tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+        )
+        .with_file(true)
+        .with_line_number(true);
+
+    // Select the configured output formatter
+    match log_format {
+        LogFormat::Json => ts.json().init(),
+        LogFormat::Pretty => ts.init(),
+    }
 }
 
 /// Returns a future that completes when the program receives a shutdown signal.
@@ -166,4 +147,23 @@ async fn shutdown_signal() {
         () = ctrl_c => {},
         () = terminate => {},
     }
+}
+
+/// Spawns the periodic redirect map refresh task.
+fn spawn_redirect_refresh(db: PgDB, redirects: Arc<RwLock<router::Redirects>>) {
+    let _redirect_refresh_handle = tokio::spawn(async move {
+        loop {
+            time::sleep(REDIRECT_REFRESH_INTERVAL).await;
+
+            match db.load_redirects().await {
+                Ok(refreshed_redirects) => {
+                    *redirects.write().await = refreshed_redirects;
+                    info!("redirect mappings refreshed");
+                }
+                Err(err) => {
+                    error!(?err, "failed to refresh redirect mappings");
+                }
+            }
+        }
+    });
 }

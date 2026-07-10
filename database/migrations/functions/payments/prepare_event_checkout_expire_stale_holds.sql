@@ -1,4 +1,4 @@
--- Used by prepare_event_checkout_purchase to expire timed-out holds before checkout
+-- Expires stale checkout holds for an event.
 create or replace function prepare_event_checkout_expire_stale_holds(
     p_event_id uuid
 )

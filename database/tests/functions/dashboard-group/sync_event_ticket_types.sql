@@ -108,6 +108,7 @@ insert into event_ticket_type (
     (:'ticketType2ID', :'eventID', 2, 5, 'VIP pass'),
     (:'ticketTypeProtectedID', :'eventProtectedID', 1, 2, 'Protected pass');
 
+-- Ticket type owned by another event for cross-parent validation
 insert into event_ticket_type (
     event_ticket_type_id,
     description,

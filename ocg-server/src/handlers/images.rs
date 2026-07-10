@@ -47,7 +47,7 @@ pub(crate) async fn serve(
     State(server_cfg): State<HttpServerConfig>,
     Path(file_name): Path<String>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate referer header matches configured hostname.
+    // Validate that the referer matches the configured hostname
     if !request_matches_site(&server_cfg, &headers)? {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
@@ -377,9 +377,13 @@ fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Result<()> {
 /// Image target defining expected dimensions.
 #[derive(Clone, Copy)]
 enum ImageTarget {
+    /// Desktop banner image.
     Banner,
+    /// Mobile banner image.
     BannerMobile,
+    /// Square logo image.
     Logo,
+    /// Open Graph preview image.
     OpenGraph,
 }
 
@@ -411,11 +415,17 @@ impl FromStr for ImageTarget {
 
 /// Supported image formats accepted by the upload endpoint.
 enum SupportedImageFormat {
+    /// Graphics Interchange Format image.
     Gif,
+    /// Joint Photographic Experts Group image.
     Jpeg,
+    /// Portable Network Graphics image.
     Png,
+    /// Scalable Vector Graphics image.
     Svg,
+    /// Tagged Image File Format image.
     Tiff,
+    /// WebP image.
     Webp,
 }
 

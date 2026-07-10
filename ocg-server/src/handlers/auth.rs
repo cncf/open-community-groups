@@ -85,7 +85,9 @@ pub(crate) const SELECTED_GROUP_ID_KEY: &str = "selected_group_id";
 
 /// Defines whether syncing a community selection requires a group selection.
 pub(crate) enum SelectedGroupPolicy {
+    /// Group selection may be absent.
     Optional,
+    /// Group selection must be present.
     Required,
 }
 
@@ -647,12 +649,12 @@ where
 /// Login form data from the user.
 #[derive(Debug, Deserialize, Validate)]
 pub(crate) struct LoginForm {
-    /// Username for authentication.
-    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
-    pub username: String,
     /// Password for authentication.
     #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
     pub password: String,
+    /// Username for authentication.
+    #[garde(custom(trimmed_non_empty), length(max = MAX_LEN_S))]
+    pub username: String,
 }
 
 // Deserialization helpers.
@@ -989,23 +991,6 @@ fn get_log_in_url(next_url: Option<&str>) -> String {
     log_in_url
 }
 
-/// Resolves the selected community ID from the current session.
-async fn get_selected_community_id(session: &Session) -> Result<Uuid, Response> {
-    match get_selected_community_id_optional(session).await {
-        Ok(Some(community_id)) => Ok(community_id),
-        Ok(None) => Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
-        Err(response) => Err(response),
-    }
-}
-
-/// Resolves the selected community ID from the current session if present.
-async fn get_selected_community_id_optional(session: &Session) -> Result<Option<Uuid>, Response> {
-    match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
-        Ok(community_id) => Ok(community_id),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
-    }
-}
-
 /// Resolves selected community and group IDs from the current session if present.
 async fn get_selected_community_and_group_ids_optional(
     session: &Session,
@@ -1024,6 +1009,23 @@ async fn get_selected_community_and_group_ids_optional(
 
     // Return the complete dashboard context when both parts are present
     Ok(Some((community_id, group_id)))
+}
+
+/// Resolves the selected community ID from the current session.
+async fn get_selected_community_id(session: &Session) -> Result<Uuid, Response> {
+    match get_selected_community_id_optional(session).await {
+        Ok(Some(community_id)) => Ok(community_id),
+        Ok(None) => Err(Redirect::to(USER_DASHBOARD_INVITATIONS_URL).into_response()),
+        Err(response) => Err(response),
+    }
+}
+
+/// Resolves the selected community ID from the current session if present.
+async fn get_selected_community_id_optional(session: &Session) -> Result<Option<Uuid>, Response> {
+    match session.get::<Uuid>(SELECTED_COMMUNITY_ID_KEY).await {
+        Ok(community_id) => Ok(community_id),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+    }
 }
 
 /// Get the sign up url including the next url if provided.

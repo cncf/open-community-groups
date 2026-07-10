@@ -35,6 +35,7 @@ insert into community (
     'https://example.com/community-id-lookup-logo.png'
 );
 
+-- Second community used to verify name-specific lookup
 insert into community (
     community_id,
     name,

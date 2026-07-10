@@ -146,6 +146,8 @@ select is(
     '[]'::jsonb,
     'Should exclude communities with only test events'
 );
+
+-- Restore the event before evaluating group-based exclusions
 update event set test_event = false where event_id = :'event1ID';
 
 -- Should exclude communities with only deleted groups
@@ -166,6 +168,8 @@ select is(
 
 -- Should exclude communities with only canceled events
 update "group" set active = true where group_id = :'group1ID';
+
+-- Cancel the remaining public event for this exclusion scenario
 update event set canceled = true, published = false where event_id = :'event1ID';
 select is(
     list_communities()::jsonb,
@@ -175,6 +179,8 @@ select is(
 
 -- Should return empty array when no communities meet criteria
 delete from event;
+
+-- Remove the remaining groups after their dependent events
 delete from "group";
 select is(
     list_communities()::jsonb,

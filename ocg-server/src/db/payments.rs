@@ -540,15 +540,24 @@ where
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "outcome")]
 enum ReconcileEventPurchaseForCheckoutSessionOutput {
+    /// Purchase completed successfully.
     Completed {
+        /// Community that owns the event.
         community_id: Uuid,
+        /// Purchased event identifier.
         event_id: Uuid,
+        /// Purchasing user identifier.
         user_id: Uuid,
     },
+    /// Purchase was already reconciled.
     Noop,
+    /// Purchase cannot be fulfilled and requires an automatic refund.
     RefundRequired {
+        /// Amount to refund in minor units.
         amount_minor: i64,
+        /// Purchase requiring the refund.
         event_purchase_id: Uuid,
+        /// Provider payment reference to refund.
         provider_payment_reference: String,
     },
 }

@@ -47,20 +47,20 @@ pub(crate) trait DBDashboardCommunity {
         role: &CommunityRole,
     ) -> Result<()>;
 
-    /// Adds a new group to the database.
-    async fn add_group(
-        &self,
-        actor_user_id: Uuid,
-        community_id: Uuid,
-        group: &Group,
-    ) -> Result<Uuid>;
-
     /// Adds a new event category to the database.
     async fn add_event_category(
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
         event_category: &EventCategoryInput,
+    ) -> Result<Uuid>;
+
+    /// Adds a new group to the database.
+    async fn add_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group: &Group,
     ) -> Result<Uuid>;
 
     /// Adds a new group category to the database.
@@ -95,20 +95,20 @@ pub(crate) trait DBDashboardCommunity {
         user_id: Uuid,
     ) -> Result<()>;
 
-    /// Deletes a group (soft delete by setting active=false).
-    async fn delete_group(
-        &self,
-        actor_user_id: Uuid,
-        community_id: Uuid,
-        group_id: Uuid,
-    ) -> Result<()>;
-
     /// Deletes an event category from the database.
     async fn delete_event_category(
         &self,
         actor_user_id: Uuid,
         community_id: Uuid,
         event_category_id: Uuid,
+    ) -> Result<()>;
+
+    /// Deletes a group (soft delete by setting active=false).
+    async fn delete_group(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
     ) -> Result<()>;
 
     /// Deletes a group category from the database.

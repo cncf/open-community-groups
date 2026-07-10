@@ -529,11 +529,16 @@ insert into session (
 -- eventCreateID combines explicit meeting_hosts, event_host, and event_speaker
 insert into event_host (event_id, user_id)
 values (:'eventCreateID', :'userEventHostID');
+
+-- Event speaker included in the event meeting claim payload
 insert into event_speaker (event_id, user_id, featured)
 values (:'eventCreateID', :'userEventSpeakerID', false);
+
 -- eventWithSessionsID and sessionCreateID combine parent host and session speaker
 insert into event_host (event_id, user_id)
 values (:'eventWithSessionsID', :'userEventHostID');
+
+-- Session speaker included in the session meeting claim payload
 insert into session_speaker (session_id, user_id, featured)
 values (:'sessionCreateID', :'userSessionSpeakerID', false);
 
@@ -1142,6 +1147,8 @@ update event
 set meeting_in_sync = false,
     meeting_sync_claimed_at = null
 where event_id = :'eventPastImportID';
+
+-- Make the imported past session eligible except for its historical timestamp
 update session
 set meeting_in_sync = false,
     meeting_sync_claimed_at = null

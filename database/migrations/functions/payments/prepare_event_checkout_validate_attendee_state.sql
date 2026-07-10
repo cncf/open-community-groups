@@ -1,5 +1,4 @@
--- Used by prepare_event_checkout_purchase to reject attendee states that
--- checkout completion cannot confirm
+-- Validates that an attendee can begin checkout for an event.
 create or replace function prepare_event_checkout_validate_attendee_state(
     p_event_id uuid,
     p_user_id uuid

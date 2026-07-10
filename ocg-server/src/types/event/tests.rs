@@ -586,19 +586,19 @@ fn sample_ticket_type(
 ) -> EventTicketType {
     EventTicketType {
         active,
+        event_ticket_type_id: Uuid::nil(),
+        order: 1,
+        title: title.to_string(),
+
         current_price: amount_minor.map(|amount_minor| EventTicketCurrentPrice {
             amount_minor,
             ..Default::default()
         }),
-        event_ticket_type_id: Uuid::nil(),
-        order: 1,
-        price_windows: vec![],
-        sold_out,
-        title: title.to_string(),
-
         description: None,
+        price_windows: vec![],
         remaining_seats: None,
         seats_total: None,
+        sold_out,
     }
 }
 

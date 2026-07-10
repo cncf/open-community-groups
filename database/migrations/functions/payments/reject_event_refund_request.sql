@@ -1,6 +1,4 @@
--- Used by the dashboard refund review flow when organizers reject a request:
--- restores the purchase to completed, marks the refund request as rejected,
--- and returns identifiers for attendee notification
+-- Rejects a refund request and returns attendee notification data.
 create or replace function reject_event_refund_request(
     p_actor_user_id uuid,
     p_group_id uuid,

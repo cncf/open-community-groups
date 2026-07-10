@@ -2,6 +2,7 @@
 create or replace function ensure_event_is_active(p_community_id uuid, p_event_id uuid)
 returns void as $$
 begin
+    -- Validate that the event is currently available to attendees
     if not exists (
         select 1
         from event e

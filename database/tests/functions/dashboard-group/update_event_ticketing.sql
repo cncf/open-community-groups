@@ -579,6 +579,7 @@ insert into event (
     'USD'
 );
 
+-- Ticket type initially owned by the primary ticketed event
 insert into event_ticket_type (
     event_ticket_type_id,
     active,
@@ -595,6 +596,7 @@ insert into event_ticket_type (
     'General'
 );
 
+-- Price window for the primary event ticket type
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -605,6 +607,7 @@ insert into event_ticket_price_window (
     '3a3c0000-0000-0000-0000-000000000033'::uuid
 );
 
+-- Discount code initially owned by the primary ticketed event
 insert into event_discount_code (
     event_discount_code_id,
     active,
@@ -623,6 +626,7 @@ insert into event_discount_code (
     'Launch'
 );
 
+-- Protected ticket type referenced by a completed purchase
 insert into event_ticket_type (
     event_ticket_type_id,
     active,
@@ -639,6 +643,7 @@ insert into event_ticket_type (
     'Protected General'
 );
 
+-- Price window for the protected general ticket type
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -649,6 +654,7 @@ insert into event_ticket_price_window (
     '3a3c0000-0000-0000-0000-000000000036'::uuid
 );
 
+-- Second protected ticket type used by synchronization scenarios
 insert into event_ticket_type (
     event_ticket_type_id,
     active,
@@ -665,6 +671,7 @@ insert into event_ticket_type (
     'Protected VIP'
 );
 
+-- Price window for the protected VIP ticket type
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -675,6 +682,7 @@ insert into event_ticket_price_window (
     '3a3c0000-0000-0000-0000-000000000038'::uuid
 );
 
+-- Protected discount code referenced by a completed purchase
 insert into event_discount_code (
     event_discount_code_id,
     active,
@@ -712,6 +720,7 @@ insert into event_ticket_type (
     'Other Event General'
 );
 
+-- Price window owned by the other event
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -722,6 +731,7 @@ insert into event_ticket_price_window (
     '3a3c0000-0000-0000-0000-000000000041'::uuid
 );
 
+-- Discount code owned by the other event
 insert into event_discount_code (
     event_discount_code_id,
     active,
@@ -740,6 +750,7 @@ insert into event_discount_code (
     'Other launch'
 );
 
+-- Ticket type referenced by a pending registration-answer hold
 insert into event_ticket_type (
     event_ticket_type_id,
     active,
@@ -756,6 +767,7 @@ insert into event_ticket_type (
     'Held General'
 );
 
+-- Price window for the held ticket type
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -766,6 +778,7 @@ insert into event_ticket_price_window (
     :'questionsHoldTicketTypeID'
 );
 
+-- Completed purchase that protects ticketing rows from removal
 insert into event_purchase (
     amount_minor,
     currency_code,
@@ -788,6 +801,7 @@ insert into event_purchase (
     :'user1ID'
 );
 
+-- Pending purchase that retains registration answers during ticketing updates
 insert into event_purchase (
     event_purchase_id,
     amount_minor,

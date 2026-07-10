@@ -24,8 +24,11 @@ mod tests;
 /// Composes and enqueues notifications for payments workflows.
 #[derive(Clone)]
 pub(super) struct PaymentsNotificationComposer {
+    /// Database handle used to load notification context.
     db: DynDB,
+    /// Notifications manager used to enqueue composed messages.
     notifications_manager: DynNotificationsManager,
+    /// Server configuration used to build public links.
     server_cfg: HttpServerConfig,
 }
 

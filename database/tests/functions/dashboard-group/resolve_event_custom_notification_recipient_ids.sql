@@ -53,6 +53,8 @@ insert into community (
 -- Categories
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Tech');
+
+-- Event category owned by the notification event's community
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'General');
 

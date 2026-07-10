@@ -354,6 +354,70 @@ impl PgPaymentsManager {
             .ok_or_else(|| anyhow::anyhow!("payments are not configured"))
     }
 
+    /// Records a provider refund failure without hiding the original error.
+    async fn record_provider_refund_failure(
+        &self,
+        refund: &EventPurchaseRefund,
+        err: &anyhow::Error,
+    ) {
+        if let Err(record_err) = self
+            .db
+            .record_event_purchase_refund_failed(refund.event_purchase_refund_id, err.to_string())
+            .await
+        {
+            warn!(error = %record_err, "failed to record provider refund failure");
+        }
+    }
+
+    /// Records a provider refund result and only returns success when final.
+    async fn record_provider_refund_result(
+        &self,
+        refund: &EventPurchaseRefund,
+        provider_refund: RefundPaymentResult,
+    ) -> Result<EventPurchaseRefund> {
+        // Persist the provider lifecycle outcome
+        match provider_refund.status {
+            RefundPaymentStatus::Succeeded => {
+                self.db
+                    .record_event_purchase_refund_succeeded(
+                        refund.event_purchase_refund_id,
+                        provider_refund.provider_refund_id,
+                    )
+                    .await
+            }
+            RefundPaymentStatus::Pending => {
+                let refund = self
+                    .db
+                    .record_event_purchase_refund_pending(
+                        refund.event_purchase_refund_id,
+                        refund.idempotency_key.clone(),
+                        provider_refund.provider_refund_id,
+                    )
+                    .await?;
+                if matches!(
+                    refund.status,
+                    EventPurchaseRefundStatus::Finalized
+                        | EventPurchaseRefundStatus::ProviderSucceeded
+                ) {
+                    return Ok(refund);
+                }
+
+                Err(anyhow::anyhow!("provider refund is not complete yet"))
+            }
+            RefundPaymentStatus::Failed => {
+                self.db
+                    .record_event_purchase_refund_terminal_failed(
+                        refund.event_purchase_refund_id,
+                        refund.idempotency_key.clone(),
+                        provider_refund.provider_refund_id,
+                        "provider refund failed".to_string(),
+                    )
+                    .await?;
+                Err(anyhow::anyhow!("provider refund failed"))
+            }
+        }
+    }
+
     /// Records or reuses the provider refund for an approved refund request.
     async fn resolve_refund_request_provider_refund(
         &self,
@@ -414,70 +478,6 @@ impl PgPaymentsManager {
                 self.record_provider_refund_failure(&refund, &err).await;
                 Err(err)
             }
-        }
-    }
-
-    /// Records a provider refund result and only returns success when final.
-    async fn record_provider_refund_result(
-        &self,
-        refund: &EventPurchaseRefund,
-        provider_refund: RefundPaymentResult,
-    ) -> Result<EventPurchaseRefund> {
-        // Persist the provider lifecycle outcome
-        match provider_refund.status {
-            RefundPaymentStatus::Succeeded => {
-                self.db
-                    .record_event_purchase_refund_succeeded(
-                        refund.event_purchase_refund_id,
-                        provider_refund.provider_refund_id,
-                    )
-                    .await
-            }
-            RefundPaymentStatus::Pending => {
-                let refund = self
-                    .db
-                    .record_event_purchase_refund_pending(
-                        refund.event_purchase_refund_id,
-                        refund.idempotency_key.clone(),
-                        provider_refund.provider_refund_id,
-                    )
-                    .await?;
-                if matches!(
-                    refund.status,
-                    EventPurchaseRefundStatus::Finalized
-                        | EventPurchaseRefundStatus::ProviderSucceeded
-                ) {
-                    return Ok(refund);
-                }
-
-                Err(anyhow::anyhow!("provider refund is not complete yet"))
-            }
-            RefundPaymentStatus::Failed => {
-                self.db
-                    .record_event_purchase_refund_terminal_failed(
-                        refund.event_purchase_refund_id,
-                        refund.idempotency_key.clone(),
-                        provider_refund.provider_refund_id,
-                        "provider refund failed".to_string(),
-                    )
-                    .await?;
-                Err(anyhow::anyhow!("provider refund failed"))
-            }
-        }
-    }
-
-    /// Records a provider refund failure without hiding the original error.
-    async fn record_provider_refund_failure(
-        &self,
-        refund: &EventPurchaseRefund,
-        err: &anyhow::Error,
-    ) {
-        if let Err(record_err) = self
-            .db
-            .record_event_purchase_refund_failed(refund.event_purchase_refund_id, err.to_string())
-            .await
-        {
-            warn!(error = %record_err, "failed to record provider refund failure");
         }
     }
 

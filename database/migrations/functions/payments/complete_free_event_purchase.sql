@@ -1,6 +1,4 @@
--- Used by start_checkout for zero-amount tickets: validates that the pending
--- purchase is still a live free hold, adds the attendee, marks it completed,
--- and returns identifiers for the welcome notification flow
+-- Completes a pending free-ticket purchase and returns its notification data.
 create or replace function complete_free_event_purchase(
     p_event_purchase_id uuid
 )

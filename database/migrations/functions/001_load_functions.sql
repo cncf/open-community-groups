@@ -1,3 +1,5 @@
+-- Loads database functions in dependency-safe domain groups.
+
 {{ template "common/jsonb_geography_point.sql" }} -- Dependency for payload location mappings and distance search filters
 {{ template "common/jsonb_text_array.sql" }} -- Dependency for payload text-array mappings
 
@@ -114,9 +116,9 @@
 {{ template "dashboard-group/add_event_series.sql" }}
 {{ template "dashboard-group/add_group_sponsor.sql" }}
 {{ template "dashboard-group/add_group_team_member.sql" }}
+{{ template "dashboard-group/cancel_event.sql" }}
 {{ template "dashboard-group/cancel_event_attendee_attendance.sql" }}
 {{ template "dashboard-group/cancel_event_attendee_invitation.sql" }}
-{{ template "dashboard-group/cancel_event.sql" }}
 {{ template "dashboard-group/cancel_event_series_events.sql" }}
 {{ template "dashboard-group/delete_event.sql" }}
 {{ template "dashboard-group/delete_event_series_events.sql" }}
@@ -158,10 +160,10 @@
 {{ template "dashboard-group/unpublish_event_series_events.sql" }}
 {{ template "dashboard-group/update_cfs_submission.sql" }}
 {{ template "dashboard-group/validate_update_event_dates.sql" }} -- Dependency for update_event
+{{ template "dashboard-group/update_event.sql" }}
 {{ template "dashboard-group/update_group_sponsor.sql" }}
 {{ template "dashboard-group/update_group_sponsor_featured.sql" }}
 {{ template "dashboard-group/update_group_team_member_role.sql" }}
-{{ template "dashboard-group/update_event.sql" }}
 
 {{ template "dashboard-user/accept_community_team_invitation.sql" }}
 {{ template "dashboard-user/accept_event_attendee_invitation.sql" }}

@@ -154,6 +154,7 @@ insert into event (
     true
 );
 
+-- Event without approved submissions
 insert into event (
     event_id,
     event_category_id,

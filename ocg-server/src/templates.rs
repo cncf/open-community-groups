@@ -29,18 +29,32 @@ pub(crate) mod site;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum PageId {
+    /// Event check-in page.
     CheckIn,
-    CommunityDashboard,
+    /// Public community page.
     Community,
+    /// Community administration dashboard.
+    CommunityDashboard,
+    /// Public event page.
     Event,
+    /// Public group page.
     Group,
+    /// Group administration dashboard.
     GroupDashboard,
+    /// Log-in page.
     LogIn,
+    /// Sign-up page.
     SignUp,
+    /// Site documentation page.
     SiteDocs,
+    /// Site exploration page.
     SiteExplore,
+    /// Site home page.
     SiteHome,
+    /// Site not-found page.
     SiteNotFound,
+    /// Site statistics page.
     SiteStats,
+    /// User dashboard.
     UserDashboard,
 }

@@ -18,6 +18,7 @@ pub(crate) mod client;
 
 /// Zoom-backed meetings provider implementation.
 pub(crate) struct ZoomMeetingsProvider {
+    /// Zoom API client.
     client: ZoomClient,
 }
 

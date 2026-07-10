@@ -1,4 +1,4 @@
--- Returns pending co-speaker invitations for a user
+-- Returns pending co-speaker invitations for a user.
 create or replace function list_user_pending_session_proposal_co_speaker_invitations(p_user_id uuid)
 returns json as $$
     with

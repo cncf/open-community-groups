@@ -170,6 +170,7 @@ values
 insert into event_ticket_type (event_ticket_type_id, event_id, "order", seats_total, title)
 values (:'eventTicketTypeID', :'eventPaidID', 1, 10, 'Paid admission');
 
+-- Completed paid purchase linked to the paid attendee
 insert into event_purchase (
     amount_minor,
     currency_code,

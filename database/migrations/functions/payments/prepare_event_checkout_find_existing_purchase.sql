@@ -1,4 +1,4 @@
--- Used by prepare_event_checkout_purchase to find the attendee's active purchase
+-- Finds an attendee's active purchase for a ticket selection.
 create or replace function prepare_event_checkout_find_existing_purchase(
     p_event_id uuid,
     p_event_ticket_type_id uuid,

@@ -1017,7 +1017,7 @@ async fn db_contracts_list_event_kinds_deserializes() -> Result<()> {
 async fn db_contracts_list_group_audit_logs_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = AuditLogFilters {
-        // Scope to the fixture action so refund mutation tests don't interfere.
+        // Scope to the fixture action so refund mutation tests do not interfere
         action: Some("group_payment_recipient_updated".to_string()),
         limit: Some(10),
         offset: Some(0),
@@ -1064,7 +1064,7 @@ async fn db_contracts_list_group_events_deserializes() -> Result<()> {
     let events = db.list_group_events(group_id(), &filters).await?;
 
     assert_eq!(events.past.total, 1);
-    // Includes the regular upcoming event and the two upcoming test events.
+    // Include the regular upcoming event and both upcoming test events
     assert_eq!(events.upcoming.total, 3);
 
     Ok(())

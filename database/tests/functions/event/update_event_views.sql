@@ -61,6 +61,7 @@ values (
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'Meetup');
 
+-- Event whose views are updated by the test scenarios
 insert into event (
     event_id,
     event_category_id,

@@ -118,6 +118,7 @@ select isnt(
     'updated_at is set after recording URL update'
 );
 
+-- Reset publication so the distinct-URL scenario can verify republishing
 update event
 set meeting_recording_published = false
 where event_id = :'eventID';

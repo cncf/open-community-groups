@@ -108,58 +108,10 @@ insert into event (
 -- Event host and speaker are meeting sync inputs
 insert into event_host (event_id, user_id)
 values (:'eventID', :'userHostID');
+
+-- Event speaker included in the meeting sync hash
 insert into event_speaker (event_id, user_id, featured)
 values (:'eventID', :'userSpeakerID', false);
-
--- Hash captures
-create temporary table event_sync_hash (
-    label text primary key,
-    sync_state_hash text not null
-);
-
--- Capture hashes before and after changing an unrelated event field
-insert into event_sync_hash (label, sync_state_hash)
-values ('before_description_change', get_event_meeting_sync_state_hash(:'eventID'));
-update event
-set description = 'Changed description'
-where event_id = :'eventID';
-insert into event_sync_hash (label, sync_state_hash)
-values ('after_description_change', get_event_meeting_sync_state_hash(:'eventID'));
-
--- Capture hashes before and after changing the meeting payload
-insert into event_sync_hash (label, sync_state_hash)
-values ('before_name_change', get_event_meeting_sync_state_hash(:'eventID'));
-update event
-set name = 'Changed Hash Target Event'
-where event_id = :'eventID';
-insert into event_sync_hash (label, sync_state_hash)
-values ('after_name_change', get_event_meeting_sync_state_hash(:'eventID'));
-
--- Capture hashes before and after changing explicit meeting hosts
-insert into event_sync_hash (label, sync_state_hash)
-values ('before_meeting_hosts_change', get_event_meeting_sync_state_hash(:'eventID'));
-update event
-set meeting_hosts = array['explicit@example.com', 'new-host@example.com']
-where event_id = :'eventID';
-insert into event_sync_hash (label, sync_state_hash)
-values ('after_meeting_hosts_change', get_event_meeting_sync_state_hash(:'eventID'));
-
--- Capture hashes before and after changing the recording preference
-insert into event_sync_hash (label, sync_state_hash)
-values ('before_recording_requested_change', get_event_meeting_sync_state_hash(:'eventID'));
-update event
-set meeting_recording_requested = false
-where event_id = :'eventID';
-insert into event_sync_hash (label, sync_state_hash)
-values ('after_recording_requested_change', get_event_meeting_sync_state_hash(:'eventID'));
-
--- Capture hashes before and after changing event hosts
-insert into event_sync_hash (label, sync_state_hash)
-values ('before_event_hosts_change', get_event_meeting_sync_state_hash(:'eventID'));
-delete from event_host
-where event_id = :'eventID';
-insert into event_sync_hash (label, sync_state_hash)
-values ('after_event_hosts_change', get_event_meeting_sync_state_hash(:'eventID'));
 
 -- ============================================================================
 -- TESTS
@@ -172,53 +124,72 @@ select isnt(
     'Should return hash for existing event'
 );
 
--- Changing unrelated event fields should not change the hash
+-- Should keep the hash when an unrelated event field changes
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Change only a field intentionally excluded from the hash
+update event
+set description = 'Changed description'
+where event_id = :'eventID';
+
 select is(
-    (select before.sync_state_hash = after.sync_state_hash
-     from event_sync_hash before, event_sync_hash after
-     where before.label = 'before_description_change'
-       and after.label = 'after_description_change'),
-    true,
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
     'Should keep same hash when unrelated event field changes'
 );
 
--- Changing event payload fields should change the hash
-select is(
-    (select before.sync_state_hash <> after.sync_state_hash
-     from event_sync_hash before, event_sync_hash after
-     where before.label = 'before_name_change'
-       and after.label = 'after_name_change'),
-    true,
+-- Should change the hash when an event meeting payload changes
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Change an event field included in the provider payload
+update event
+set name = 'Changed Hash Target Event'
+where event_id = :'eventID';
+
+select isnt(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
     'Should change hash when event meeting payload changes'
 );
 
--- Changing explicit meeting hosts should change the hash
-select is(
-    (select before.sync_state_hash <> after.sync_state_hash
-     from event_sync_hash before, event_sync_hash after
-     where before.label = 'before_meeting_hosts_change'
-       and after.label = 'after_meeting_hosts_change'),
-    true,
+-- Should change the hash when explicit meeting hosts change
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Change the explicit meeting-host input included in the hash
+update event
+set meeting_hosts = array['explicit@example.com', 'new-host@example.com']
+where event_id = :'eventID';
+
+select isnt(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
     'Should change hash when explicit meeting hosts change'
 );
 
--- Changing recording preference should change the hash
-select is(
-    (select before.sync_state_hash <> after.sync_state_hash
-     from event_sync_hash before, event_sync_hash after
-     where before.label = 'before_recording_requested_change'
-       and after.label = 'after_recording_requested_change'),
-    true,
+-- Should change the hash when the recording preference changes
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Change the recording preference included in the provider payload
+update event
+set meeting_recording_requested = false
+where event_id = :'eventID';
+
+select isnt(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
     'Should change hash when event meeting recording preference changes'
 );
 
--- Changing event hosts should change the hash
-select is(
-    (select before.sync_state_hash <> after.sync_state_hash
-     from event_sync_hash before, event_sync_hash after
-     where before.label = 'before_event_hosts_change'
-       and after.label = 'after_event_hosts_change'),
-    true,
+-- Should change the hash when event hosts change
+select get_event_meeting_sync_state_hash(:'eventID') as "hashBefore" \gset
+
+-- Remove a related host included in the hash
+delete from event_host
+where event_id = :'eventID';
+
+select isnt(
+    get_event_meeting_sync_state_hash(:'eventID'),
+    :'hashBefore',
     'Should change hash when event hosts change'
 );
 

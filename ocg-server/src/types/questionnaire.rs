@@ -341,11 +341,6 @@ fn parse_questionnaire_answers(value: &str) -> Result<QuestionnaireAnswers, Stri
     })
 }
 
-/// Validates a decoded questionnaire answers payload.
-fn validate_questionnaire_answers(value: &QuestionnaireAnswers, _ctx: &()) -> garde::Result {
-    value.validate_payload()
-}
-
 /// Validates an optional decoded questionnaire answers payload.
 fn validate_optional_questionnaire_answers(
     value: &Option<QuestionnaireAnswers>,
@@ -356,6 +351,11 @@ fn validate_optional_questionnaire_answers(
     }
 
     Ok(())
+}
+
+/// Validates a decoded questionnaire answers payload.
+fn validate_questionnaire_answers(value: &QuestionnaireAnswers, _ctx: &()) -> garde::Result {
+    value.validate_payload()
 }
 
 #[cfg(test)]

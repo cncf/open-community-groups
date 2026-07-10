@@ -385,6 +385,7 @@ values
         'confirmed'
     );
 
+-- Manually invited attendee allowed through the closed registration window
 insert into event_attendee (event_id, user_id, manually_invited, status)
 values (
     :'eventRegistrationClosedID',

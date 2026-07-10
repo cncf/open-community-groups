@@ -122,7 +122,11 @@ insert into event (
 
 -- Add initial host and sponsor to the event
 insert into event_host (event_id, user_id) values (:'event1ID', :'user1ID');
+
+-- Initial speaker synchronized by the event update
 insert into event_speaker (event_id, user_id, featured) values (:'event1ID', :'user1ID', true);
+
+-- Initial sponsor synchronized by the event update
 insert into event_sponsor (event_id, group_sponsor_id, level)
 values (:'event1ID', :'sponsorOrigID', 'Bronze');
 
@@ -308,6 +312,8 @@ insert into event (
 insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
     (:'label1ID', :'event12ID', '#CCFBF1', 'track / backend'),
     (:'label2ID', :'event12ID', '#FEE2E2', 'track / frontend');
+
+-- Existing labels owned by a different event
 insert into event_cfs_label (event_cfs_label_id, event_id, color, name) values
     (:'label3ID', :'event18ID', '#CCFBF1', 'track / backend'),
     (:'label4ID', :'event18ID', '#FEE2E2', 'track / frontend');
@@ -320,6 +326,7 @@ values (:'event10ID', :'user1ID');
 insert into event_attendee (event_id, user_id)
 values (:'eventWaitlistWindowID', :'user2ID');
 
+-- Waitlisted user eligible for promotion after the event update
 insert into event_waitlist (event_id, user_id, created_at)
 values (:'eventWaitlistWindowID', :'waitlistUserID', current_timestamp - interval '30 minutes');
 

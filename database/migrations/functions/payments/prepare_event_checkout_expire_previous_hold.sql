@@ -1,4 +1,4 @@
--- Used by prepare_event_checkout_purchase to expire a replaced hold and release discounts
+-- Expires a replaced checkout hold and releases its discount reservation.
 create or replace function prepare_event_checkout_expire_previous_hold(
     p_event_purchase_id uuid
 )

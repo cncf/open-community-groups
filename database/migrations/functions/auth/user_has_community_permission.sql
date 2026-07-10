@@ -1,5 +1,4 @@
--- user_has_community_permission checks whether a user has a specific
--- community capability in a given community.
+-- Checks whether a user has a community permission.
 create or replace function user_has_community_permission(
     p_community_id uuid,
     p_user_id uuid,

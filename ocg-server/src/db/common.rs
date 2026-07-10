@@ -189,15 +189,23 @@ where
 /// Output structure for events search operations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct SearchEventsOutput {
+    /// Events on the current result page.
     pub events: Vec<EventSummary>,
-    pub bbox: Option<BBox>,
+    /// Total matching event count.
     pub total: Total,
+
+    /// Optional geographic bounds covering the results.
+    pub bbox: Option<BBox>,
 }
 
 /// Output structure for groups search operations.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct SearchGroupsOutput {
+    /// Groups on the current result page.
     pub groups: Vec<GroupSummary>,
-    pub bbox: Option<BBox>,
+    /// Total matching group count.
     pub total: Total,
+
+    /// Optional geographic bounds covering the results.
+    pub bbox: Option<BBox>,
 }

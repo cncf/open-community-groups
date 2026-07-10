@@ -91,27 +91,6 @@ pub(crate) async fn page(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Handler that renders the events section of the explore page.
-#[instrument(skip_all, err)]
-pub(crate) async fn events_section(
-    State(db): State<DynDB>,
-    RawQuery(raw_query): RawQuery,
-    headers: HeaderMap,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare events section template
-    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let template = prepare_events_section(&db, &filters).await?;
-
-    // Prepare response headers
-    let url = pagination::build_url("/explore?entity=events", &filters)?;
-    let headers = search_response_headers_with_extra(
-        filters.uses_viewer_location(),
-        &[("HX-Push-Url", url.as_str())],
-    )?;
-
-    Ok((headers, Html(template.render()?)))
-}
-
 /// Handler that renders the events results section of the explore page.
 #[instrument(skip_all, err)]
 pub(crate) async fn events_results_section(
@@ -133,73 +112,46 @@ pub(crate) async fn events_results_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Prepares the events section template.
-#[instrument(skip(db), err)]
-async fn prepare_events_section(
-    db: &DynDB,
-    filters: &SearchEventsFilters,
-) -> Result<explore::EventsSection> {
-    // Pass community_name to get_filters_options only when exactly one is selected
-    let community_name = if filters.community.len() == 1 {
-        Some(filters.community[0].clone())
-    } else {
-        None
-    };
+/// Handler that renders the events section of the explore page.
+#[instrument(skip_all, err)]
+pub(crate) async fn events_section(
+    State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Prepare events section template
+    let filters = SearchEventsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let template = prepare_events_section(&db, &filters).await?;
 
-    // Prepare template
-    let (filters_options, results_section) = tokio::try_join!(
-        db.get_filters_options(community_name, Some(explore::Entity::Events)),
-        prepare_events_result_section(db, filters)
+    // Prepare response headers
+    let url = pagination::build_url("/explore?entity=events", &filters)?;
+    let headers = search_response_headers_with_extra(
+        filters.uses_viewer_location(),
+        &[("HX-Push-Url", url.as_str())],
     )?;
-    let template = explore::EventsSection {
-        filters: filters.clone(),
-        filters_options,
-        results_section,
-    };
 
-    Ok(template)
+    Ok((headers, Html(template.render()?)))
 }
 
-/// Prepares the events result section template.
-#[instrument(skip(db), err)]
-async fn prepare_events_result_section(
-    db: &DynDB,
-    filters: &SearchEventsFilters,
-) -> Result<explore::EventsResultsSection> {
-    // Search for events based on filters
-    let SearchEventsOutput {
-        mut events,
-        bbox,
-        total,
-    } = db.search_events(filters).await?;
+/// Handler that renders the groups results section of the explore page.
+#[instrument(skip_all, err)]
+pub(crate) async fn groups_results_section(
+    State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Prepare groups results section template
+    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
+    let template = prepare_groups_result_section(&db, &filters).await?;
 
-    // Render popover HTML for map and calendar views
-    if filters.view_mode == Some(ViewMode::Map) {
-        for event in &mut events {
-            event.popover_html = Some(render_event_popover(event)?);
-        }
-    } else if filters.view_mode == Some(ViewMode::Calendar) {
-        for event in &mut events {
-            event.popover_html = Some(render_calendar_event_popover(event)?);
-        }
-    }
+    // Prepare response headers
+    let url = pagination::build_url("/explore?entity=groups", &filters)?;
+    let headers = search_response_headers_with_extra(
+        filters.uses_viewer_location(),
+        &[("HX-Push-Url", url.as_str())],
+    )?;
 
-    // Prepare template
-    let template = explore::EventsResultsSection {
-        events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
-        navigation_links: NavigationLinks::from_filters(
-            filters,
-            total,
-            "/explore?entity=events",
-            "/explore/events-results-section",
-        )?,
-        total,
-        bbox,
-        offset: filters.offset,
-        view_mode: filters.view_mode.clone(),
-    };
-
-    Ok(template)
+    Ok((headers, Html(template.render()?)))
 }
 
 /// Handler that renders the groups section of the explore page.
@@ -223,25 +175,108 @@ pub(crate) async fn groups_section(
     Ok((headers, Html(template.render()?)))
 }
 
-/// Handler that renders the groups results section of the explore page.
-#[instrument(skip_all, err)]
-pub(crate) async fn groups_results_section(
-    State(db): State<DynDB>,
-    RawQuery(raw_query): RawQuery,
-    headers: HeaderMap,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Prepare groups section template
-    let filters = SearchGroupsFilters::new(&headers, &raw_query.unwrap_or_default())?;
-    let template = prepare_groups_result_section(&db, &filters).await?;
+/// Prepares the events result section template.
+#[instrument(skip(db), err)]
+async fn prepare_events_result_section(
+    db: &DynDB,
+    filters: &SearchEventsFilters,
+) -> Result<explore::EventsResultsSection> {
+    // Search for events based on filters
+    let SearchEventsOutput {
+        mut events,
+        total,
 
-    // Prepare response headers
-    let url = pagination::build_url("/explore?entity=groups", &filters)?;
-    let headers = search_response_headers_with_extra(
-        filters.uses_viewer_location(),
-        &[("HX-Push-Url", url.as_str())],
+        bbox,
+    } = db.search_events(filters).await?;
+
+    // Render popover HTML for map and calendar views
+    if filters.view_mode == Some(ViewMode::Map) {
+        for event in &mut events {
+            event.popover_html = Some(render_event_popover(event)?);
+        }
+    } else if filters.view_mode == Some(ViewMode::Calendar) {
+        for event in &mut events {
+            event.popover_html = Some(render_calendar_event_popover(event)?);
+        }
+    }
+
+    // Prepare template
+    Ok(explore::EventsResultsSection {
+        events: events.into_iter().map(|event| explore::EventCard { event }).collect(),
+        navigation_links: NavigationLinks::from_filters(
+            filters,
+            total,
+            "/explore?entity=events",
+            "/explore/events-results-section",
+        )?,
+        total,
+        bbox,
+        offset: filters.offset,
+        view_mode: filters.view_mode.clone(),
+    })
+}
+
+/// Prepares the events section template.
+#[instrument(skip(db), err)]
+async fn prepare_events_section(
+    db: &DynDB,
+    filters: &SearchEventsFilters,
+) -> Result<explore::EventsSection> {
+    // Pass community_name to get_filters_options only when exactly one is selected
+    let community_name = if filters.community.len() == 1 {
+        Some(filters.community[0].clone())
+    } else {
+        None
+    };
+
+    // Prepare template
+    let (filters_options, results_section) = tokio::try_join!(
+        db.get_filters_options(community_name, Some(explore::Entity::Events)),
+        prepare_events_result_section(db, filters)
     )?;
 
-    Ok((headers, Html(template.render()?)))
+    Ok(explore::EventsSection {
+        filters: filters.clone(),
+        filters_options,
+        results_section,
+    })
+}
+
+/// Prepares the groups result section template.
+#[instrument(skip(db), err)]
+async fn prepare_groups_result_section(
+    db: &DynDB,
+    filters: &SearchGroupsFilters,
+) -> Result<explore::GroupsResultsSection> {
+    // Search for groups based on filters
+    let SearchGroupsOutput {
+        mut groups,
+        total,
+
+        bbox,
+    } = db.search_groups(filters).await?;
+
+    // Render popover HTML for map and calendar views
+    if filters.view_mode == Some(ViewMode::Map) || filters.view_mode == Some(ViewMode::Calendar) {
+        for group in &mut groups {
+            group.popover_html = Some(render_group_popover(group)?);
+        }
+    }
+
+    // Prepare template
+    Ok(explore::GroupsResultsSection {
+        groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
+        navigation_links: NavigationLinks::from_filters(
+            filters,
+            total,
+            "/explore?entity=groups",
+            "/explore/groups-results-section",
+        )?,
+        total,
+        bbox,
+        offset: filters.offset,
+        view_mode: filters.view_mode.clone(),
+    })
 }
 
 /// Prepares groups section template.
@@ -262,51 +297,12 @@ async fn prepare_groups_section(
         db.get_filters_options(community_name, Some(explore::Entity::Groups)),
         prepare_groups_result_section(db, filters)
     )?;
-    let template = explore::GroupsSection {
+
+    Ok(explore::GroupsSection {
         filters: filters.clone(),
         filters_options,
         results_section,
-    };
-
-    Ok(template)
-}
-
-/// Prepares the groups result section template.
-#[instrument(skip(db), err)]
-async fn prepare_groups_result_section(
-    db: &DynDB,
-    filters: &SearchGroupsFilters,
-) -> Result<explore::GroupsResultsSection> {
-    // Search for groups based on filters
-    let SearchGroupsOutput {
-        mut groups,
-        bbox,
-        total,
-    } = db.search_groups(filters).await?;
-
-    // Render popover HTML for map and calendar views
-    if filters.view_mode == Some(ViewMode::Map) || filters.view_mode == Some(ViewMode::Calendar) {
-        for group in &mut groups {
-            group.popover_html = Some(render_group_popover(group)?);
-        }
-    }
-
-    // Prepare template
-    let template = explore::GroupsResultsSection {
-        groups: groups.into_iter().map(|group| explore::GroupCard { group }).collect(),
-        navigation_links: NavigationLinks::from_filters(
-            filters,
-            total,
-            "/explore?entity=groups",
-            "/explore/groups-results-section",
-        )?,
-        total,
-        bbox,
-        offset: filters.offset,
-        view_mode: filters.view_mode.clone(),
-    };
-
-    Ok(template)
+    })
 }
 
 // JSON search handlers.
