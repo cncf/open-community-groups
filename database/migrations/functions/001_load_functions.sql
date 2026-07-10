@@ -241,6 +241,7 @@
 {{ template "payments/begin_event_refund_approval.sql" }}
 {{ template "payments/cancel_event_checkout.sql" }}
 {{ template "payments/complete_free_event_purchase.sql" }}
+{{ template "payments/ensure_event_purchase_refund_started.sql" }}
 {{ template "payments/expire_event_purchase_for_checkout_session.sql" }}
 {{ template "payments/prepare_event_checkout_expire_previous_hold.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_expire_stale_holds.sql" }} -- Dependency for prepare_event_checkout_purchase
@@ -254,6 +255,10 @@
 {{ template "payments/prepare_event_checkout_purchase.sql" }}
 {{ template "payments/reconcile_event_purchase_for_checkout_session.sql" }}
 {{ template "payments/record_automatic_refund_for_event_purchase.sql" }}
+{{ template "payments/record_event_purchase_refund_failed.sql" }}
+{{ template "payments/record_event_purchase_refund_pending.sql" }}
+{{ template "payments/record_event_purchase_refund_succeeded.sql" }}
+{{ template "payments/record_event_purchase_refund_terminal_failed.sql" }}
 {{ template "payments/reject_event_refund_request.sql" }}
 {{ template "payments/release_event_discount_code_availability.sql" }}
 {{ template "payments/request_event_refund.sql" }}

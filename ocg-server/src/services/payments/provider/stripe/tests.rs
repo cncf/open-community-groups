@@ -6,11 +6,14 @@ use uuid::Uuid;
 
 use crate::{
     config::PaymentsStripeConfig,
-    services::payments::{CreateCheckoutSessionInput, PaymentsProvider, PaymentsWebhookEvent},
+    services::payments::{
+        CreateCheckoutSessionInput, FindRefundInput, PaymentsProvider, PaymentsWebhookEvent,
+        RefundPaymentInput, RefundPaymentStatus,
+    },
     types::payments::{GroupPaymentRecipient, PaymentMode, PaymentProvider},
 };
 
-use super::StripeProvider;
+use super::{StripeListedRefund, StripeProvider};
 
 #[test]
 fn build_checkout_session_form_fields_populates_checkout_metadata() {
@@ -66,6 +69,30 @@ fn build_checkout_session_form_fields_restricts_checkout_to_card_payments() {
 }
 
 #[test]
+fn build_refund_form_fields_reverses_destination_transfer() {
+    // Setup a refund for a destination charge
+    let input = sample_refund_payment_input();
+
+    // Build the provider form fields
+    let form_fields = StripeProvider::build_refund_form_fields(&input);
+
+    // Check the refund targets the payment and reverses its transfer
+    assert_eq!(form_fields.get("amount"), Some(&"2500".to_string()));
+    assert_eq!(
+        form_fields.get("metadata[event_purchase_id]"),
+        Some(&input.purchase_id.to_string())
+    );
+    assert_eq!(
+        form_fields.get("payment_intent"),
+        Some(&"pi_test_123".to_string())
+    );
+    assert_eq!(
+        form_fields.get("reverse_transfer"),
+        Some(&"true".to_string())
+    );
+}
+
+#[test]
 fn checkout_idempotency_key_is_deterministic_per_purchase() {
     let purchase_id = Uuid::new_v4();
 
@@ -73,6 +100,113 @@ fn checkout_idempotency_key_is_deterministic_per_purchase() {
         StripeProvider::checkout_idempotency_key(purchase_id),
         format!("event-purchase-checkout-{purchase_id}")
     );
+}
+
+#[test]
+fn find_matching_refund_result_ignores_terminal_refunds_when_unpinned() {
+    // Setup an unpinned purchase refund lookup
+    let purchase_id = Uuid::new_v4();
+    let input = sample_find_refund_input(purchase_id);
+
+    for status in ["canceled", "failed"] {
+        // Find refunds without pinning a provider refund id
+        let refunds = vec![sample_listed_refund(purchase_id, "re_test_123", status)];
+
+        // Check terminal refunds do not block a fresh attempt
+        assert_eq!(
+            StripeProvider::find_matching_refund_result(&input, refunds)
+                .expect("refund lookup to parse"),
+            None,
+            "expected {status} refund to be ignored"
+        );
+    }
+}
+
+#[test]
+fn find_matching_refund_result_prefers_succeeded_refunds() {
+    // Setup matching pending and successful provider refunds
+    let purchase_id = Uuid::new_v4();
+    let input = sample_find_refund_input(purchase_id);
+    let refunds = vec![
+        sample_listed_refund(purchase_id, "re_pending_123", "pending"),
+        sample_listed_refund(purchase_id, "re_succeeded_123", "succeeded"),
+    ];
+
+    // Find the most useful matching provider refund
+    let refund = StripeProvider::find_matching_refund_result(&input, refunds)
+        .expect("refund lookup to parse")
+        .expect("matching refund to exist");
+
+    // Check provider success takes precedence over pending state
+    assert_eq!(refund.provider_refund_id, "re_succeeded_123");
+    assert_eq!(refund.status, RefundPaymentStatus::Succeeded);
+}
+
+#[test]
+fn find_matching_refund_result_returns_matching_succeeded_refund() {
+    // Setup a matching successful provider refund
+    let purchase_id = Uuid::new_v4();
+    let input = sample_find_refund_input(purchase_id);
+    let refunds = vec![sample_listed_refund(
+        purchase_id,
+        "re_test_123",
+        "succeeded",
+    )];
+
+    // Find the matching provider refund
+    let refund = StripeProvider::find_matching_refund_result(&input, refunds)
+        .expect("refund lookup to parse")
+        .expect("succeeded refund to match");
+
+    // Check the matching successful refund is returned
+    assert_eq!(refund.provider_refund_id, "re_test_123");
+    assert_eq!(refund.status, RefundPaymentStatus::Succeeded);
+}
+
+#[test]
+fn find_matching_refund_result_returns_pending_refund_statuses() {
+    // Setup a purchase refund lookup
+    let purchase_id = Uuid::new_v4();
+    let input = sample_find_refund_input(purchase_id);
+
+    for status in ["pending", "requires_action"] {
+        // Find each pending provider refund status
+        let refunds = vec![sample_listed_refund(purchase_id, "re_test_123", status)];
+        let refund = StripeProvider::find_matching_refund_result(&input, refunds)
+            .expect("refund lookup to parse")
+            .expect("pending refund to match");
+
+        // Check the provider status maps to a pending refund
+        assert_eq!(refund.status, RefundPaymentStatus::Pending);
+    }
+}
+
+#[test]
+fn find_matching_refund_result_returns_terminal_refund_when_pinned() {
+    // Setup a lookup pinned to a terminal provider refund
+    let purchase_id = Uuid::new_v4();
+    let mut input = sample_find_refund_input(purchase_id);
+    input.provider_refund_id = Some("re_failed_123".to_string());
+    let refunds = vec![sample_listed_refund(purchase_id, "re_failed_123", "failed")];
+
+    // Find the pinned provider refund
+    let refund = StripeProvider::find_matching_refund_result(&input, refunds)
+        .expect("refund lookup to parse")
+        .expect("pinned refund to match");
+
+    // Check the pinned terminal refund is returned for reconciliation
+    assert_eq!(refund.provider_refund_id, "re_failed_123");
+    assert_eq!(refund.status, RefundPaymentStatus::Failed);
+}
+
+#[test]
+fn refund_result_rejects_unknown_statuses() {
+    // Map an unsupported provider refund status
+    let err = StripeProvider::refund_result("re_test_123".to_string(), "unknown")
+        .expect_err("unknown refund status should be rejected");
+
+    // Check the unsupported status remains actionable
+    assert_eq!(err.to_string(), "unsupported Stripe refund status: unknown");
 }
 
 #[test]
@@ -91,8 +225,9 @@ fn verify_and_parse_webhook_accepts_recent_signature() {
     assert_eq!(
         webhook_event,
         PaymentsWebhookEvent::CheckoutCompleted {
-            provider_payment_reference: Some("pi_test_123".to_string()),
             provider_session_id: "cs_test_123".to_string(),
+
+            provider_payment_reference: Some("pi_test_123".to_string()),
         }
     );
 }
@@ -118,8 +253,9 @@ fn verify_and_parse_webhook_accepts_any_matching_v1_signature() {
     assert_eq!(
         webhook_event,
         PaymentsWebhookEvent::CheckoutCompleted {
-            provider_payment_reference: Some("pi_test_123".to_string()),
             provider_session_id: "cs_test_123".to_string(),
+
+            provider_payment_reference: Some("pi_test_123".to_string()),
         }
     );
 }
@@ -143,6 +279,61 @@ fn verify_and_parse_webhook_maps_checkout_session_expired_events() {
             provider_session_id: "cs_test_123".to_string(),
         }
     );
+}
+
+#[test]
+fn verify_and_parse_webhook_maps_refund_lifecycle_events() {
+    // Setup provider and refund lifecycle scenarios
+    let provider = sample_stripe_provider();
+    let purchase_id = Uuid::new_v4();
+    let scenarios = [
+        ("refund.created", "pending", RefundPaymentStatus::Pending),
+        ("refund.failed", "failed", RefundPaymentStatus::Failed),
+        (
+            "refund.updated",
+            "succeeded",
+            RefundPaymentStatus::Succeeded,
+        ),
+    ];
+
+    for (event_type, status, expected_status) in scenarios {
+        let body = format!(
+            r#"{{"type":"{event_type}","data":{{"object":{{"id":"re_test_123","metadata":{{"event_purchase_id":"{purchase_id}"}},"status":"{status}"}}}}}}"#
+        );
+        let signature_header = sample_signature_header(&body, Utc::now().timestamp());
+
+        // Verify and parse the webhook payload
+        let webhook_event = provider
+            .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), &body)
+            .expect("refund webhook to verify");
+
+        // Check the parsed event matches expectations
+        assert_eq!(
+            webhook_event,
+            PaymentsWebhookEvent::RefundUpdated {
+                purchase_id,
+                provider_refund_id: "re_test_123".to_string(),
+                status: expected_status,
+            }
+        );
+    }
+}
+
+#[test]
+fn verify_and_parse_webhook_ignores_refunds_without_purchase_metadata() {
+    // Setup provider and webhook payload
+    let provider = sample_stripe_provider();
+    let body =
+        r#"{"type":"refund.updated","data":{"object":{"id":"re_test_123","status":"succeeded"}}}"#;
+    let signature_header = sample_signature_header(body, Utc::now().timestamp());
+
+    // Verify and parse the webhook payload
+    let webhook_event = provider
+        .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), body)
+        .expect("unrelated refund webhook to verify");
+
+    // Check the unrelated refund is acknowledged without reconciliation
+    assert_eq!(webhook_event, PaymentsWebhookEvent::Noop);
 }
 
 #[test]
@@ -254,7 +445,7 @@ fn verify_and_parse_webhook_rejects_unsupported_event_types() {
 
 // Helpers.
 
-/// Convert checkout session form fields into a map for assertions.
+/// Converts checkout session form fields into a map for assertions.
 fn checkout_session_form_fields_map(
     provider: &StripeProvider,
     input: &CreateCheckoutSessionInput,
@@ -265,7 +456,7 @@ fn checkout_session_form_fields_map(
         .collect()
 }
 
-/// Create sample checkout session input.
+/// Creates sample checkout session input.
 fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
     CreateCheckoutSessionInput {
         amount_minor: 2_500,
@@ -288,13 +479,45 @@ fn sample_checkout_session_input() -> CreateCheckoutSessionInput {
     }
 }
 
-/// Build a signed Stripe webhook header for tests.
+/// Creates sample refund lookup input.
+fn sample_find_refund_input(purchase_id: Uuid) -> FindRefundInput {
+    FindRefundInput {
+        amount_minor: 2_500,
+        provider_payment_reference: "pi_test_123".to_string(),
+        purchase_id,
+
+        provider_refund_id: None,
+    }
+}
+
+/// Creates sample Stripe refund list item.
+fn sample_listed_refund(purchase_id: Uuid, id: &str, status: &str) -> StripeListedRefund {
+    StripeListedRefund {
+        amount: 2_500,
+        id: id.to_string(),
+        status: status.to_string(),
+
+        metadata: BTreeMap::from([("event_purchase_id".to_string(), purchase_id.to_string())]),
+    }
+}
+
+/// Creates sample refund payment input.
+fn sample_refund_payment_input() -> RefundPaymentInput {
+    RefundPaymentInput {
+        amount_minor: 2_500,
+        idempotency_key: "event-purchase-refund-test".to_string(),
+        provider_payment_reference: "pi_test_123".to_string(),
+        purchase_id: Uuid::new_v4(),
+    }
+}
+
+/// Builds a signed Stripe webhook header for tests.
 fn sample_signature_header(body: &str, timestamp: i64) -> String {
     let signature = StripeProvider::compute_signature("whsec_test", &format!("{timestamp}.{body}"));
     format!("t={timestamp},v1={signature}")
 }
 
-/// Create a sample Stripe provider.
+/// Creates a sample Stripe provider.
 fn sample_stripe_provider() -> StripeProvider {
     StripeProvider::new(PaymentsStripeConfig {
         mode: PaymentMode::Test,
@@ -304,7 +527,7 @@ fn sample_stripe_provider() -> StripeProvider {
     })
 }
 
-// Create sample webhook headers with the given signature header value.
+/// Creates sample webhook headers with the given signature header value.
 fn sample_webhook_headers(signature_header: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(

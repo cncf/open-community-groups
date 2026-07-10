@@ -29,6 +29,9 @@ pub(crate) trait PaymentsProvider {
         input: &CreateCheckoutSessionInput,
     ) -> Result<CheckoutSession>;
 
+    /// Finds an existing provider refund for a purchase when retrying.
+    async fn find_refund(&self, input: &FindRefundInput) -> Result<Option<RefundPaymentResult>>;
+
     /// Returns the configured provider.
     fn provider(&self) -> PaymentProvider;
 
@@ -94,16 +97,47 @@ impl CreateCheckoutSessionInput {
     }
 }
 
+/// Request used to find an existing provider refund.
+#[derive(Clone, Debug)]
+pub(crate) struct FindRefundInput {
+    /// Completed purchase amount in minor units.
+    pub amount_minor: i64,
+    /// Provider payment reference used for refunds.
+    pub provider_payment_reference: String,
+    /// Platform purchase identifier.
+    pub purchase_id: Uuid,
+
+    /// Provider refund identifier to poll when a refund was already created.
+    pub provider_refund_id: Option<String>,
+}
+
 /// Supported webhook events normalized across providers.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) enum PaymentsWebhookEvent {
     /// A checkout session completed successfully.
     CheckoutCompleted {
-        provider_payment_reference: Option<String>,
+        /// Provider-specific checkout session identifier.
         provider_session_id: String,
+
+        /// Provider payment reference used for refunds.
+        provider_payment_reference: Option<String>,
     },
     /// A checkout session expired before payment.
-    CheckoutExpired { provider_session_id: String },
+    CheckoutExpired {
+        /// Provider-specific checkout session identifier.
+        provider_session_id: String,
+    },
+    /// A verified provider event that does not belong to OCG.
+    Noop,
+    /// A provider refund lifecycle state changed.
+    RefundUpdated {
+        /// Platform purchase identifier from provider metadata.
+        purchase_id: Uuid,
+        /// Provider-specific refund identifier.
+        provider_refund_id: String,
+        /// Current provider refund lifecycle status.
+        status: RefundPaymentStatus,
+    },
 }
 
 /// Request used to refund a completed payment.
@@ -111,17 +145,32 @@ pub(crate) enum PaymentsWebhookEvent {
 pub(crate) struct RefundPaymentInput {
     /// Completed purchase amount in minor units.
     pub amount_minor: i64,
+    /// Provider idempotency key used to deduplicate refund creation.
+    pub idempotency_key: String,
     /// Provider payment reference used for refunds.
     pub provider_payment_reference: String,
     /// Platform purchase identifier.
     pub purchase_id: Uuid,
 }
 
-/// Result returned after a provider refund succeeds.
+/// Result returned after a provider refund request or lookup.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct RefundPaymentResult {
     /// Provider-specific refund identifier.
     pub provider_refund_id: String,
+    /// Current provider refund lifecycle status.
+    pub status: RefundPaymentStatus,
+}
+
+/// Provider refund lifecycle status.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum RefundPaymentStatus {
+    /// Provider refund did not complete.
+    Failed,
+    /// Provider refund was created and is not final yet.
+    Pending,
+    /// Provider refund completed successfully.
+    Succeeded,
 }
 
 /// Builds a payments provider from configuration.

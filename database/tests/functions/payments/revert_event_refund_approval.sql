@@ -3,13 +3,16 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '79480000-0000-0000-0000-000000000001'
+\set durablePurchaseID '79480000-0000-0000-0000-000000000013'
+\set durableRefundID '79480000-0000-0000-0000-000000000014'
+\set durableRefundRequestID '79480000-0000-0000-0000-000000000015'
 \set eventCategoryID '79480000-0000-0000-0000-000000000002'
 \set eventID '79480000-0000-0000-0000-000000000003'
 \set eventTicketTypeID '79480000-0000-0000-0000-000000000004'
@@ -142,7 +145,7 @@ insert into event_ticket_price_window (
     :'eventTicketTypeID'
 );
 
--- Purchase and refund request
+-- Purchases for the revertible and durable approval scenarios
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -152,28 +155,71 @@ insert into event_purchase (
     status,
     ticket_title,
     user_id
-) values (
-    :'purchaseID',
-    2500,
-    'USD',
-    :'eventID',
-    :'eventTicketTypeID',
-    'refund-requested',
-    'General admission',
-    :'userID'
-);
+) values
+    (
+        :'durablePurchaseID',
+        2500,
+        'USD',
+        :'eventID',
+        :'eventTicketTypeID',
+        'refund-requested',
+        'General admission',
+        :'otherUserID'
+    ),
+    (
+        :'purchaseID',
+        2500,
+        'USD',
+        :'eventID',
+        :'eventTicketTypeID',
+        'refund-requested',
+        'General admission',
+        :'userID'
+    );
 
--- Event refund request
+-- Refund requests for the revertible and durable approval scenarios
 insert into event_refund_request (
     event_refund_request_id,
     event_purchase_id,
     requested_by_user_id,
     status
+) values
+    (
+        :'durableRefundRequestID',
+        :'durablePurchaseID',
+        :'otherUserID',
+        'approving'
+    ),
+    (
+        :'refundRequestID',
+        :'purchaseID',
+        :'userID',
+        'approving'
+    );
+
+-- Durable provider handoff that protects its approving refund request
+insert into event_purchase_refund (
+    event_purchase_refund_id,
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status,
+
+    event_refund_request_id
 ) values (
-    :'refundRequestID',
-    :'purchaseID',
-    :'userID',
-    'approving'
+    :'durableRefundID',
+    2500,
+    'USD',
+    :'durablePurchaseID',
+    'event-purchase-refund-' || :'durablePurchaseID',
+    'refund-request-approval',
+    'stripe',
+    'provider-pending',
+
+    :'durableRefundRequestID'
 );
 
 -- ============================================================================
@@ -199,6 +245,27 @@ select is(
     ),
     'pending',
     'Should update the refund request status to pending'
+);
+
+-- Should preserve an approving request after its durable refund handoff
+select lives_ok(
+    format($$select revert_event_refund_approval(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid
+    )$$, :'groupID', :'eventID', :'otherUserID'),
+    'Should preserve an approving request after its durable refund handoff'
+);
+
+-- Should leave the durable refund request approving
+select is(
+    (
+        select status
+        from event_refund_request
+        where event_refund_request_id = :'durableRefundRequestID'::uuid
+    ),
+    'approving',
+    'Should leave the durable refund request approving'
 );
 
 -- Should ignore requests outside the selected scope

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(70);
+select plan(71);
 
 -- ============================================================================
 -- TESTS
@@ -389,6 +389,26 @@ select columns_are('event_purchase', array[
     'provider_payment_reference',
     'refunded_at',
     'event_discount_code_id'
+]);
+
+-- Test: event_purchase_refund columns should match expected
+select columns_are('event_purchase_refund', array[
+    'event_purchase_refund_id',
+    'amount_minor',
+    'created_at',
+    'currency_code',
+    'event_purchase_id',
+    'idempotency_key',
+    'kind',
+    'payment_provider_id',
+    'status',
+    'updated_at',
+
+    'event_refund_request_id',
+    'failure_message',
+    'finalized_at',
+    'provider_refund_id',
+    'provider_refunded_at'
 ]);
 
 -- Test: event_refund_request columns should match expected

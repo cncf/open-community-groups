@@ -250,6 +250,14 @@ insert into "user" (
         'contract-buyer-refund-reject'
     ),
     (
+        'contract_hash_buyer_refund_lifecycle',
+        'buyer-refund-lifecycle.contract@example.com',
+        true,
+        'Contract Buyer Refund Lifecycle',
+        '00000000-0000-0000-0000-00000000c0ea',
+        'contract-buyer-refund-lifecycle'
+    ),
+    (
         'contract_hash_leaver',
         'leaver.contract@example.com',
         true,
@@ -936,7 +944,8 @@ insert into event_attendee (
 ) values
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e5'),
     ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e6'),
-    ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e7');
+    ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0e7'),
+    ('00000000-0000-0000-0000-00000000c0d0', '00000000-0000-0000-0000-00000000c0ea');
 
 insert into event_purchase (
     amount_minor,
@@ -1042,6 +1051,21 @@ insert into event_purchase (
         'stripe',
         'cs_contract_refund_reject',
         'pi_contract_refund_reject'
+    ),
+    (
+        2500,
+        'USD',
+        '00000000-0000-0000-0000-00000000c0d0',
+        '00000000-0000-0000-0000-00000000c0fb',
+        '00000000-0000-0000-0000-00000000c0d1',
+        'refund-requested',
+        'Contract Paid Ticket',
+        '00000000-0000-0000-0000-00000000c0ea',
+        '2024-02-01 10:00:00+00',
+        null,
+        'stripe',
+        'cs_contract_refund_lifecycle',
+        'pi_contract_refund_lifecycle'
     );
 
 insert into event_refund_request (
@@ -1071,7 +1095,43 @@ insert into event_refund_request (
         '00000000-0000-0000-0000-00000000c0e7',
         'Cannot attend anymore',
         'pending'
+    ),
+    (
+        '00000000-0000-0000-0000-00000000c0fb',
+        '00000000-0000-0000-0000-00000000c0fc',
+        '00000000-0000-0000-0000-00000000c0ea',
+        'Cannot attend anymore',
+        'approving'
     );
+
+-- Provider-succeeded refund used by approval finalization contracts
+insert into event_purchase_refund (
+    event_purchase_refund_id,
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status,
+
+    event_refund_request_id,
+    provider_refund_id,
+    provider_refunded_at
+) values (
+    '00000000-0000-0000-0000-00000000c0fa',
+    2500,
+    'USD',
+    '00000000-0000-0000-0000-00000000c0f6',
+    'event-purchase-refund-00000000-0000-0000-0000-00000000c0f6',
+    'refund-request-approval',
+    'stripe',
+    'provider-succeeded',
+
+    '00000000-0000-0000-0000-00000000c0f7',
+    're_contract_refund_approve',
+    current_timestamp
+);
 
 -- ============================================================================
 -- EVENT MUTATIONS

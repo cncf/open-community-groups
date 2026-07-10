@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(10);
 
 -- ============================================================================
 -- VARIABLES
@@ -19,6 +19,7 @@ select plan(8);
 \set groupID '79400000-0000-0000-0000-000000000008'
 \set missingUserID '79400000-0000-0000-0000-000000000009'
 \set noDiscountPurchaseID '79400000-0000-0000-0000-000000000010'
+\set noDiscountRefundID '79400000-0000-0000-0000-000000000020'
 \set noDiscountRefundRequestID '79400000-0000-0000-0000-000000000011'
 \set noDiscountUserID '79400000-0000-0000-0000-000000000012'
 \set pendingPurchaseID '79400000-0000-0000-0000-000000000013'
@@ -26,7 +27,11 @@ select plan(8);
 \set pendingUserID '79400000-0000-0000-0000-000000000015'
 \set priceWindowID '79400000-0000-0000-0000-000000000016'
 \set purchaseID '79400000-0000-0000-0000-000000000017'
+\set refundID '79400000-0000-0000-0000-000000000021'
 \set refundRequestID '79400000-0000-0000-0000-000000000018'
+\set unrecordedPurchaseID '79400000-0000-0000-0000-000000000022'
+\set unrecordedRefundRequestID '79400000-0000-0000-0000-000000000023'
+\set unrecordedUserID '79400000-0000-0000-0000-000000000024'
 \set userID '79400000-0000-0000-0000-000000000019'
 
 -- ============================================================================
@@ -85,6 +90,13 @@ values
         'pending-buyer'
     ),
     (
+        :'unrecordedUserID',
+        'hash-5',
+        'unrecorded-buyer@example.com',
+        true,
+        'unrecorded-buyer'
+    ),
+    (
         :'userID',
         'hash-2',
         'buyer@example.com',
@@ -123,7 +135,7 @@ insert into event (
     now()
 );
 
--- Ticket type and price window
+-- Ticket type
 insert into event_ticket_type (
     event_ticket_type_id,
     event_id,
@@ -138,6 +150,7 @@ insert into event_ticket_type (
     'General admission'
 );
 
+-- Price window
 insert into event_ticket_price_window (
     event_ticket_price_window_id,
     amount_minor,
@@ -207,6 +220,18 @@ insert into event_purchase (
     'General admission',
     :'pendingUserID'
 ), (
+    :'unrecordedPurchaseID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-requested',
+    'General admission',
+    :'unrecordedUserID'
+), (
     :'purchaseID',
     2000,
     'USD',
@@ -243,10 +268,57 @@ insert into event_refund_request (
     :'pendingUserID',
     'pending'
 ), (
+    :'unrecordedRefundRequestID',
+    :'unrecordedPurchaseID',
+    :'unrecordedUserID',
+    'approving'
+), (
     :'refundRequestID',
     :'purchaseID',
     :'userID',
     'approving'
+);
+
+-- Provider refund records
+insert into event_purchase_refund (
+    event_purchase_refund_id,
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status,
+
+    event_refund_request_id,
+    provider_refund_id,
+    provider_refunded_at
+) values (
+    :'noDiscountRefundID',
+    2500,
+    'USD',
+    :'noDiscountPurchaseID',
+    'event-purchase-refund-' || :'noDiscountPurchaseID',
+    'refund-request-approval',
+    'stripe',
+    'provider-succeeded',
+
+    :'noDiscountRefundRequestID',
+    're_no_discount',
+    current_timestamp
+), (
+    :'refundID',
+    2000,
+    'USD',
+    :'purchaseID',
+    'event-purchase-refund-' || :'purchaseID',
+    'refund-request-approval',
+    'stripe',
+    'provider-succeeded',
+
+    :'refundRequestID',
+    're_test_123',
+    current_timestamp
 );
 
 -- ============================================================================
@@ -266,6 +338,7 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
+        'finalized_now', true,
         'user_id', :'userID'::uuid
     ),
     'Should approve an approving refund request'
@@ -280,10 +353,12 @@ select results_eq(
             (select review_note from event_refund_request where event_refund_request_id = %L::uuid),
             (select reviewed_at is not null from event_refund_request where event_refund_request_id = %L::uuid),
             (select reviewed_by_user_id from event_refund_request where event_refund_request_id = %L::uuid),
-            (select status from event_refund_request where event_refund_request_id = %L::uuid)
-    $$, :'purchaseID', :'purchaseID', :'refundRequestID', :'refundRequestID', :'refundRequestID', :'refundRequestID'),
+            (select status from event_refund_request where event_refund_request_id = %L::uuid),
+            (select finalized_at is not null from event_purchase_refund where event_purchase_refund_id = %L::uuid),
+            (select status from event_purchase_refund where event_purchase_refund_id = %L::uuid)
+    $$, :'purchaseID', :'purchaseID', :'refundRequestID', :'refundRequestID', :'refundRequestID', :'refundRequestID', :'refundID', :'refundID'),
     format(
-        $$ values (true, 'refunded'::text, 'Looks good'::text, true, %L::uuid, 'approved'::text) $$,
+        $$ values (true, 'refunded'::text, 'Looks good'::text, true, %L::uuid, 'approved'::text, true, 'finalized'::text) $$,
         :'actorUserID'
     ),
     'Should persist the updated purchase and refund request fields'
@@ -336,9 +411,23 @@ select throws_ok(
         %L::uuid,
         're_pending',
         null
-    )$$, :'actorUserID', :'groupID', :'eventID', :'pendingUserID'),
+    )$$, :'actorUserID', :'groupID', :'eventID', :'unrecordedUserID'),
     'refund request not found',
     'Should reject refund requests that are not approving'
+);
+
+-- Should reject approving requests without a recorded provider refund
+select throws_ok(
+    format($$select approve_event_refund_request(
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        %L::uuid,
+        're_missing_local_record',
+        null
+    )$$, :'actorUserID', :'groupID', :'eventID', :'pendingUserID'),
+    'refund request not found',
+    'Should reject approving requests without a recorded provider refund'
 );
 
 -- Should approve a refund request without a discount code
@@ -354,9 +443,29 @@ select is(
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
         'event_id', :'eventID'::uuid,
+        'finalized_now', true,
         'user_id', :'noDiscountUserID'::uuid
     ),
     'Should approve a refund request without a discount code'
+);
+
+-- Should return a successful no-op when a refund was already finalized
+select is(
+    approve_event_refund_request(
+        :'actorUserID'::uuid,
+        :'groupID'::uuid,
+        :'eventID'::uuid,
+        :'noDiscountUserID'::uuid,
+        're_no_discount',
+        null
+    )::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'eventID'::uuid,
+        'finalized_now', false,
+        'user_id', :'noDiscountUserID'::uuid
+    ),
+    'Should return a successful no-op when a refund was already finalized'
 );
 
 -- Should leave discount availability unchanged for purchases without a discount code

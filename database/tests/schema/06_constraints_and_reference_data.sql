@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(58);
+select plan(63);
 
 -- ============================================================================
 -- VARIABLES
@@ -218,6 +218,50 @@ select results_eq(
         ('refunded')
     $$,
     'Event purchase statuses should match expected values'
+);
+
+-- Test: event purchase refund kinds should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'event_purchase_refund_kind_check'
+    $$,
+    $$ values
+        ('automatic-unfulfillable-checkout'),
+        ('refund-request-approval')
+    $$,
+    'Event purchase refund kinds should match expected values'
+);
+
+-- Test: event purchase refund statuses should match expected values
+select results_eq(
+    $$
+        select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
+        from pg_constraint
+        where conname = 'event_purchase_refund_status_check'
+    $$,
+    $$ values
+        ('finalized'),
+        ('provider-failed'),
+        ('provider-pending'),
+        ('provider-succeeded')
+    $$,
+    'Event purchase refund statuses should match expected values'
+);
+
+-- Test: event purchase refund lifecycle constraints should exist
+select has_check(
+    'event_purchase_refund',
+    'event_purchase_refund_finalized_at_status_chk'
+);
+select has_check(
+    'event_purchase_refund',
+    'event_purchase_refund_kind_request_chk'
+);
+select has_check(
+    'event_purchase_refund',
+    'event_purchase_refund_provider_refund_required_chk'
 );
 
 -- Test: event refund request statuses should match expected values

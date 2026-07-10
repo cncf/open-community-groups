@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(288);
+select plan(293);
 
 -- ============================================================================
 -- VARIABLES
@@ -130,6 +130,7 @@ select has_function('enqueue_due_event_reminders', array['text']::name[]);
 select has_function('enqueue_notification', array['text', 'jsonb', 'jsonb', 'uuid[]']::name[]);
 select has_function('enqueue_tracked_custom_notification', array['text', 'jsonb', 'jsonb', 'uuid[]', 'uuid', 'uuid', 'uuid', 'integer', 'text', 'text']::name[]);
 select has_function('ensure_event_is_active', array['uuid', 'uuid']::name[]);
+select has_function('ensure_event_purchase_refund_started', array['uuid', 'text', 'text']::name[]);
 select has_function('escape_ilike_pattern', array['text']::name[]);
 select has_function('expire_event_purchase_for_checkout_session', array['text', 'text']::name[]);
 select has_function('generate_slug', array['integer']::name[]);
@@ -259,6 +260,13 @@ select has_function('publish_event_series_events', array['uuid', 'uuid', 'uuid[]
 select has_function('questionnaire_answers_exist_for_event', array['uuid']::name[]);
 select has_function('reconcile_event_purchase_for_checkout_session', array['text', 'text', 'text']::name[]);
 select has_function('record_automatic_refund_for_event_purchase', array['uuid', 'text']::name[]);
+select has_function('record_event_purchase_refund_failed', array['uuid', 'text']::name[]);
+select has_function('record_event_purchase_refund_pending', array['uuid', 'text', 'text']::name[]);
+select has_function('record_event_purchase_refund_succeeded', array['uuid', 'text']::name[]);
+select has_function(
+    'record_event_purchase_refund_terminal_failed',
+    array['uuid', 'text', 'text', 'text']::name[]
+);
 select has_function('refund_free_event_purchase', array['uuid']::name[]);
 select has_function('reject_community_team_invitation', array['uuid', 'uuid']::name[]);
 select has_function('reject_event_attendee_invitation', array['uuid', 'uuid']::name[]);
