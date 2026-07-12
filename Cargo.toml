@@ -91,5 +91,6 @@ tower-sessions = { version = "0.14.0", features = ["signed"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
 unicode-segmentation = "1.13.3"
+url = "2.5.4"
 uuid = { version = "1.23.4", features = ["serde", "v4"] }
 which = "8.0.4"

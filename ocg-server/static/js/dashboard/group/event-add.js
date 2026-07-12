@@ -15,6 +15,7 @@ import {
   createSessionsDateRangeSync,
   initializeEventPageContext,
   initializeEventPagePendingChanges,
+  initializeRegistrationModeToggle,
   initializeSharedEventPageControls,
   resolveSharedEventPageControls,
 } from "/static/js/dashboard/group/event-page-shared.js";
@@ -311,6 +312,8 @@ export const initializeEventAddPage = (root = document) => {
   initializeEventPreview({
     pageRoot,
   });
+
+  initializeRegistrationModeToggle(pageRoot);
 
   if (!addEventButton) {
     return;

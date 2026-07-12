@@ -28,7 +28,7 @@ use crate::{
         },
     },
     types::{
-        event::{EventFull, EventSummary, Speaker},
+        event::{EventFull, EventSummary, RegistrationMode, Speaker},
         payments::{EventTicketType, PaymentMode},
         permissions::GroupPermission,
     },
@@ -1149,6 +1149,8 @@ async fn test_cancel_test_event_no_notification() {
     );
     let test_event = EventSummary {
         test_event: true,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
 
@@ -1228,11 +1230,15 @@ async fn test_cancel_series_success() {
     let expected_series_event_ids = series_event_ids.clone();
     let event_summary = EventSummary {
         published: false,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
     let related_event_summary = EventSummary {
         event_id: related_event_id,
         published: false,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(related_event_id, group_id)
     };
 
@@ -1326,11 +1332,15 @@ async fn test_cancel_series_sends_aggregate_notification() {
     );
     let event_summary = EventSummary {
         published: true,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
     let related_event_summary = EventSummary {
         event_id: related_event_id,
         published: true,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(related_event_id, group_id)
     };
     let event_full = EventFull {
@@ -1473,6 +1483,8 @@ async fn test_publish_success() {
     );
     let unpublished_event = EventSummary {
         published: false,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
     let event_full = EventFull {
@@ -1604,6 +1616,8 @@ async fn test_publish_test_event_no_notification() {
     let unpublished_test_event = EventSummary {
         published: false,
         test_event: true,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
 
@@ -1682,11 +1696,15 @@ async fn test_publish_series_success() {
     );
     let event_summary = EventSummary {
         published: true,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
     let related_event_summary = EventSummary {
         event_id: related_event_id,
         published: true,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(related_event_id, group_id)
     };
     let series_event_ids = vec![event_id, related_event_id];
@@ -1785,11 +1803,15 @@ async fn test_publish_series_sends_aggregate_notification() {
     );
     let event_summary = EventSummary {
         published: false,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
     let related_event_summary = EventSummary {
         event_id: related_event_id,
         published: false,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(related_event_id, group_id)
     };
     let event_full = EventFull {
@@ -1932,6 +1954,8 @@ async fn test_publish_already_published_no_notification() {
     // Event is already published, so no notification should be sent
     let already_published_event = EventSummary {
         published: true,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
 
@@ -2011,6 +2035,8 @@ async fn test_publish_speakers_only() {
     );
     let unpublished_event = EventSummary {
         published: false,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
     let event_full = EventFull {
@@ -2655,6 +2681,8 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
     let before = sample_event_summary(event_id, group_id);
     let after = EventSummary {
         starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..before.clone()
     };
     let event_full = EventFull {
@@ -3010,6 +3038,8 @@ async fn test_update_no_notification_when_shift_too_small() {
     // Shift by only 10 minutes (below MIN_RESCHEDULE_SHIFT of 15 minutes)
     let after = EventSummary {
         starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(10)),
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..before.clone()
     };
     let event_form = sample_event_form();
@@ -3107,11 +3137,15 @@ async fn test_update_no_notification_when_unpublished() {
     // Event is unpublished, so no reschedule notification should be sent
     let before = EventSummary {
         published: false,
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..sample_event_summary(event_id, group_id)
     };
     // Significant reschedule (30 minutes), but event is unpublished
     let after = EventSummary {
         starts_at: before.starts_at.map(|ts| ts + chrono::Duration::minutes(30)),
+        registration_mode: RegistrationMode::default(),
+        registration_url: None,
         ..before.clone()
     };
     let event_form = sample_event_form();
@@ -3211,6 +3245,8 @@ async fn test_update_past_event_success() {
         EventSummary {
             ends_at: Some(past_time + chrono::Duration::hours(1)),
             starts_at: Some(past_time),
+            registration_mode: RegistrationMode::default(),
+            registration_url: None,
             ..sample_event_summary(event_id, group_id)
         }
     };

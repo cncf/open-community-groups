@@ -81,7 +81,7 @@ use crate::{
     types::{
         community::{CommunityFull, CommunityRole, CommunityRoleSummary, CommunitySummary},
         event::{
-            EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, SessionKindSummary,
+            EventCategory, EventFull, EventKind, EventKindSummary, EventSummary, RegistrationMode, SessionKindSummary,
         },
         group::{
             GroupCategory, GroupFull, GroupMinimal, GroupRegion, GroupRole, GroupRoleSummary,
@@ -725,7 +725,9 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         payment_currency_code: None,
         popover_html: None,
         registration_ends_at: None,
+        registration_mode: RegistrationMode::default(),
         registration_starts_at: None,
+        registration_url: None,
         remaining_capacity: None,
         starts_at: Some(starts_at),
         ticket_types: None,

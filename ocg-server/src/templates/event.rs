@@ -14,7 +14,7 @@ use crate::{
         helpers::{self, user_initials},
     },
     types::{
-        event::{EventCfsLabel, EventFull, EventKind, EventSummary},
+        event::{EventCfsLabel, EventFull, EventKind, EventSummary, RegistrationMode},
         site::SiteSettings,
         user::UserSummary,
     },

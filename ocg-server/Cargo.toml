@@ -65,6 +65,7 @@ tower-sessions = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 unicode-segmentation = { workspace = true }
+url = { workspace = true }
 uuid = { workspace = true }
 
 [dev-dependencies]

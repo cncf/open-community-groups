@@ -339,12 +339,18 @@ pub(crate) struct Event {
     /// Whether the registration questions section was submitted.
     #[garde(skip)]
     pub registration_questions_present: Option<bool>,
+    /// Registration mode (builtin, external_url, or none).
+    #[garde(skip)]
+    pub registration_mode: Option<String>,
     /// Whether registration is required.
     #[garde(skip)]
     pub registration_required: Option<bool>,
     /// Registration start time.
     #[garde(skip)]
     pub registration_starts_at: Option<NaiveDateTime>,
+    /// External registration URL (used when mode is external_url).
+    #[garde(url, length(max = MAX_LEN_L))]
+    pub registration_url: Option<String>,
     /// Event sessions.
     #[garde(dive)]
     pub sessions: Option<Vec<Session>>,

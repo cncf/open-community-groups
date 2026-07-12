@@ -4,7 +4,7 @@ use chrono::{DateTime, Datelike, Timelike, Utc};
 use icalendar::{Calendar, Component as _, Event, EventLike as _, EventStatus, Property};
 use sha2::{Digest, Sha256};
 
-use crate::{services::notifications::Attachment, types::event::EventSummary};
+use crate::{services::notifications::Attachment, types::event::{EventSummary, RegistrationMode}};
 
 /// Build an iCalendar (ICS) attachment for the specified event.
 pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSummary) -> Attachment {
@@ -339,9 +339,11 @@ mod tests {
             meeting_provider: None,
             payment_currency_code: None,
             popover_html: None,
-            registration_ends_at: None,
-            registration_starts_at: None,
-            remaining_capacity: Some(15),
+        registration_ends_at: None,
+        registration_mode: RegistrationMode::default(),
+        registration_starts_at: None,
+        registration_url: None,
+        remaining_capacity: Some(15),
             starts_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 19, 0, 0).unwrap()),
             ticket_types: None,
             waitlist_count: 0,

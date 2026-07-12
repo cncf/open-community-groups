@@ -905,3 +905,29 @@ export const attachEventSaveAfterRequest = ({
     }
   });
 };
+
+/**
+ * Initializes the registration mode radio toggle that shows/hides
+ * the registration URL field.
+ * @param {Document|Element} [root=document] Root container
+ */
+export const initializeRegistrationModeToggle = (root = document) => {
+  const modeInputs = root.querySelectorAll("[data-registration-mode-input]");
+  const urlField = root.querySelector("#registration-url-field");
+
+  if (!modeInputs.length || !urlField) {
+    return;
+  }
+
+  const toggleUrlField = () => {
+    const selected = root.querySelector("[data-registration-mode-input]:checked");
+    const shouldShow = selected?.value === "external_url";
+    urlField.classList.toggle("hidden", !shouldShow);
+  };
+
+  modeInputs.forEach((input) => {
+    input.addEventListener("change", toggleUrlField);
+  });
+
+  toggleUrlField();
+};

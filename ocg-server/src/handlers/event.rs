@@ -232,6 +232,11 @@ pub(crate) async fn attend_event(
         return Err(anyhow::anyhow!("ticketed events must be purchased before attending").into());
     }
 
+    // Block built-in attendance when registration uses an external URL or is disabled
+    if !event.registration_mode.can_attend() {
+        return Err(anyhow::anyhow!("this event does not support built-in registration").into());
+    }
+
     // Defer waitlisted users' registration answers until promotion
     let waitlist_join_without_answers = !event.attendee_approval_required
         && event.waitlist_enabled

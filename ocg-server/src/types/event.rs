@@ -7,6 +7,7 @@ use chrono_tz::Tz;
 use garde::Validate;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use url::Url;
 use uuid::Uuid;
 
 use crate::{
@@ -116,9 +117,14 @@ pub struct EventSummary {
     /// Registration end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub registration_ends_at: Option<DateTime<Utc>>,
+    /// Registration mode (builtin, external_url, or none).
+    #[serde(default)]
+    pub registration_mode: RegistrationMode,
     /// Registration start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub registration_starts_at: Option<DateTime<Utc>>,
+    /// External registration URL (used when mode is external_url).
+    pub registration_url: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
     pub remaining_capacity: Option<i32>,
     /// UTC timestamp when the event starts.
@@ -200,11 +206,12 @@ impl EventSummary {
 
     /// Returns true when attendee registration is currently open.
     pub fn registration_window_is_open(&self) -> bool {
-        registration_window_is_open(
-            self.registration_starts_at,
-            self.registration_ends_at,
-            self.starts_at,
-        )
+        self.registration_mode.can_attend()
+            && registration_window_is_open(
+                self.registration_starts_at,
+                self.registration_ends_at,
+                self.starts_at,
+            )
     }
 
     /// Returns user-facing registration window copy.
@@ -225,6 +232,13 @@ impl EventSummary {
             self.starts_at,
             self.timezone,
         )
+    }
+
+    /// Returns the hostname from the external registration URL, if set.
+    pub fn registration_host(&self) -> Option<String> {
+        self.registration_url.as_deref().and_then(|url_str| {
+            Url::parse(url_str).ok().and_then(|parsed| parsed.host_str().map(|h| h.to_owned()))
+        })
     }
 }
 
@@ -376,11 +390,16 @@ pub struct EventFull {
     /// Registration end time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub registration_ends_at: Option<DateTime<Utc>>,
+    /// Registration mode (builtin, external_url, or none).
+    #[serde(default)]
+    pub registration_mode: RegistrationMode,
     /// Whether registration is required.
     pub registration_required: Option<bool>,
     /// Registration start time in UTC.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub registration_starts_at: Option<DateTime<Utc>>,
+    /// External registration URL (used when mode is external_url).
+    pub registration_url: Option<String>,
     /// Remaining capacity after subtracting registered attendees.
     pub remaining_capacity: Option<i32>,
     /// Event start time in UTC.
@@ -503,11 +522,12 @@ impl EventFull {
 
     /// Returns true when attendee registration is currently open.
     pub fn registration_window_is_open(&self) -> bool {
-        registration_window_is_open(
-            self.registration_starts_at,
-            self.registration_ends_at,
-            self.starts_at,
-        )
+        self.registration_mode.can_attend()
+            && registration_window_is_open(
+                self.registration_starts_at,
+                self.registration_ends_at,
+                self.starts_at,
+            )
     }
 
     /// Returns user-facing registration window copy.
@@ -581,6 +601,13 @@ impl EventFull {
             .sort_by_key(|ticket_type| ticket_type.current_amount_minor().unwrap_or_default());
         ticket_types
     }
+
+    /// Returns the hostname from the external registration URL, if set.
+    pub fn registration_host(&self) -> Option<String> {
+        self.registration_url.as_deref().and_then(|url_str| {
+            Url::parse(url_str).ok().and_then(|parsed| parsed.host_str().map(|h| h.to_owned()))
+        })
+    }
 }
 
 impl From<&EventFull> for EventSummary {
@@ -623,7 +650,9 @@ impl From<&EventFull> for EventSummary {
             payment_currency_code: event.payment_currency_code.clone(),
             popover_html: None,
             registration_ends_at: event.registration_ends_at,
+            registration_mode: event.registration_mode.clone(),
             registration_starts_at: event.registration_starts_at,
+            registration_url: event.registration_url.clone(),
             remaining_capacity: event.remaining_capacity,
             starts_at: event.starts_at,
             ticket_types: event.ticket_types.clone(),
@@ -736,6 +765,42 @@ pub enum EventInvitationRequestStatus {
     Pending,
     /// Invitation request was rejected.
     Rejected,
+}
+
+/// Controls how event registration is handled.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum RegistrationMode {
+    /// Use OCG's built-in RSVP system (default).
+    #[default]
+    Builtin,
+    /// Redirect to an external registration URL.
+    ExternalUrl,
+    /// Announcement only — no registration at all.
+    None,
+}
+
+impl RegistrationMode {
+    /// Whether users can attend through OCG's built-in flow.
+    pub fn can_attend(&self) -> bool {
+        matches!(self, Self::Builtin)
+    }
+
+    /// Returns true when the mode is Builtin.
+    pub fn is_builtin(&self) -> bool {
+        matches!(self, Self::Builtin)
+    }
+
+    /// Returns true when the mode is ExternalUrl.
+    pub fn is_external_url(&self) -> bool {
+        matches!(self, Self::ExternalUrl)
+    }
+
+    /// Returns true when the mode is None.
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
 }
 
 /// Categorization of event attendance modes.

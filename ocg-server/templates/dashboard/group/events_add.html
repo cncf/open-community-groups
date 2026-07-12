@@ -277,6 +277,59 @@
                 </div>
                 {# End Registration required -#}
 
+                {# Registration mode -#}
+                <div class="col-span-full 2xl:col-span-3">
+                  <label class="form-label">Registration Mode</label>
+                  <div class="mt-2 flex flex-wrap gap-4">
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="radio"
+                             name="registration_mode"
+                             value="builtin"
+                             checked
+                             data-registration-mode-input
+                             class="text-primary-600 focus:ring-primary-500">
+                      <span class="text-sm text-stone-900">Built-in</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="radio"
+                             name="registration_mode"
+                             value="external_url"
+                             data-registration-mode-input
+                             class="text-primary-600 focus:ring-primary-500">
+                      <span class="text-sm text-stone-900">External URL</span>
+                    </label>
+                    <label class="inline-flex items-center gap-2 cursor-pointer">
+                      <input type="radio"
+                             name="registration_mode"
+                             value="none"
+                             data-registration-mode-input
+                             class="text-primary-600 focus:ring-primary-500">
+                      <span class="text-sm text-stone-900">None (announcement only)</span>
+                    </label>
+                  </div>
+                  <p class="form-legend">
+                    Built-in uses OCG's RSVP system. External URL redirects to a third-party registration page.
+                    None turns off registration entirely and hides the attend button.
+                  </p>
+                </div>
+
+                {# Registration URL (visible when mode is external_url) -#}
+                <div id="registration-url-field"
+                     class="col-span-full 2xl:col-span-3 hidden">
+                  <label for="registration_url" class="form-label">Registration URL</label>
+                  <div class="mt-2">
+                    <input type="url"
+                           name="registration_url"
+                           id="registration_url"
+                           class="input-primary"
+                           placeholder="https://www.eventbrite.com/e/...">
+                  </div>
+                  <p class="form-legend">
+                    URL where attendees register when using External URL mode.
+                  </p>
+                </div>
+                {# End Registration mode -#}
+
                 {# Test event -#}
                 <div class="col-span-full lg:col-span-3">
                   <label class="inline-flex items-center cursor-pointer">

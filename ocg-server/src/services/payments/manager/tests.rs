@@ -23,7 +23,7 @@ use crate::{
     },
     templates::notifications::EventRefundRequested,
     types::{
-        event::{EventKind, EventSummary},
+        event::{EventKind, EventSummary, RegistrationMode},
         payments::{
             EventPurchaseStatus, EventPurchaseSummary, GroupPaymentRecipient, PaymentProvider,
             PreparedEventCheckout,
@@ -3359,7 +3359,9 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         payment_currency_code: None,
         popover_html: None,
         registration_ends_at: None,
+        registration_mode: RegistrationMode::default(),
         registration_starts_at: None,
+        registration_url: None,
         remaining_capacity: None,
         starts_at: None,
         ticket_types: None,
