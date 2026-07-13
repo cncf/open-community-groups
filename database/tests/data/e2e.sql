@@ -160,6 +160,7 @@ insert into "group" (
     community_id,
     group_category_id,
     name,
+    description,
     slug,
     active
 ) values (
@@ -167,6 +168,7 @@ insert into "group" (
     '11111111-1111-1111-1111-111111111112',
     '22222222-2222-2222-2222-222222222222',
     'E2E Second Group Delta',
+    'Secondary community group used for end-to-end dashboard coverage.',
     'second-group-delta',
     true
 ), (
@@ -174,6 +176,7 @@ insert into "group" (
     '11111111-1111-1111-1111-111111111112',
     '22222222-2222-2222-2222-222222222222',
     'E2E Second Group Epsilon',
+    null,
     'second-group-epsilon',
     true
 ), (
@@ -181,6 +184,7 @@ insert into "group" (
     '11111111-1111-1111-1111-111111111112',
     '22222222-2222-2222-2222-222222222222',
     'E2E Second Group Zeta',
+    null,
     'second-group-zeta',
     true
 );

@@ -182,82 +182,65 @@ test.describe("group dashboard settings view", () => {
     await expect(paymentRecipientInput).toHaveCount(0);
   });
 
-  test("organizer can update, clear, and restore the Stripe recipient", async ({
-    organizerGroupPage,
+  test("organizer can set and clear the Stripe recipient", async ({
+    organizerGroupWithoutPaymentsPage,
   }) => {
-    // Define the settings URL and payment fields used for restoration.
+    // Define the settings URL and payment field used by the scenario.
     const settingsPath = "/dashboard/group?tab=settings";
-    const paymentRecipientInput = organizerGroupPage.locator(
+    const paymentRecipientInput = organizerGroupWithoutPaymentsPage.locator(
       "#payment_recipient_recipient_id",
     );
-    const updatedRecipient = "  acct_e2e_alpha_updated  ";
+    const updatedRecipient = "  acct_e2e_delta  ";
 
     // Open the group settings page.
-    await navigateToPath(organizerGroupPage, settingsPath);
+    await navigateToPath(organizerGroupWithoutPaymentsPage, settingsPath);
     test.skip(
       (await paymentRecipientInput.count()) === 0,
       "Payments are disabled in this environment.",
     );
 
-    // Verify organizer can update and restore the Stripe recipient.
+    // Verify the group starts without a Stripe recipient.
     await expect(
-      organizerGroupPage.getByText("Payments", { exact: true }),
+      organizerGroupWithoutPaymentsPage.getByText("Payments", { exact: true }),
     ).toBeVisible();
-    await expect(paymentRecipientInput).toHaveValue(
-      TEST_PAYMENT_GROUP_RECIPIENT,
-    );
+    await expect(paymentRecipientInput).toHaveValue("");
 
     // Fill the form field.
     await paymentRecipientInput.fill(updatedRecipient);
 
     // Click Update Group.
     await Promise.all([
-      organizerGroupPage.waitForResponse(
+      organizerGroupWithoutPaymentsPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
           response.url().includes("/dashboard/group/settings/update") &&
           response.ok(),
       ),
-      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+      organizerGroupWithoutPaymentsPage
+        .getByRole("button", { name: "Update Group" })
+        .click(),
     ]);
 
     // Assert the field value was updated.
-    await expect(paymentRecipientInput).toHaveValue("acct_e2e_alpha_updated");
+    await expect(paymentRecipientInput).toHaveValue("acct_e2e_delta");
 
     // Clear the form field.
     await paymentRecipientInput.fill("");
 
     // Click Update Group.
     await Promise.all([
-      organizerGroupPage.waitForResponse(
+      organizerGroupWithoutPaymentsPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
           response.url().includes("/dashboard/group/settings/update") &&
           response.ok(),
       ),
-      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
+      organizerGroupWithoutPaymentsPage
+        .getByRole("button", { name: "Update Group" })
+        .click(),
     ]);
 
     // Assert the field value was cleared.
     await expect(paymentRecipientInput).toHaveValue("");
-
-    // Fill the form field.
-    await paymentRecipientInput.fill(TEST_PAYMENT_GROUP_RECIPIENT);
-
-    // Click Update Group.
-    await Promise.all([
-      organizerGroupPage.waitForResponse(
-        (response) =>
-          response.request().method() === "PUT" &&
-          response.url().includes("/dashboard/group/settings/update") &&
-          response.ok(),
-      ),
-      organizerGroupPage.getByRole("button", { name: "Update Group" }).click(),
-    ]);
-
-    // Assert the field value was updated.
-    await expect(paymentRecipientInput).toHaveValue(
-      TEST_PAYMENT_GROUP_RECIPIENT,
-    );
   });
 });

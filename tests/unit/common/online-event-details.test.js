@@ -59,8 +59,18 @@ describe("online-event-details", () => {
   });
 
   it("renders the shared rollover on selectable meeting mode cards", async () => {
+    // Create the capacity fixture required by automatic meeting validation.
+    const capacity = document.createElement("input");
+    capacity.id = "capacity";
+    capacity.value = "75";
+    document.body.append(capacity);
+
     // Render the default manual meeting mode.
-    const element = await mountLitComponent("online-event-details");
+    const element = await mountLitComponent("online-event-details", {
+      endsAt: "2030-05-10T12:00",
+      meetingMaxParticipants: { zoom: 100 },
+      startsAt: "2030-05-10T10:00",
+    });
     const automaticModeInput = element.renderRoot.querySelector(
       'input[type="radio"][value="automatic"]',
     );

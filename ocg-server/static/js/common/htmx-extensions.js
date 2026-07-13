@@ -14,7 +14,7 @@ const htmxResponseSelector = "[data-htmx-response]";
 const REFRESH_BODY_TRIGGER = "refresh-body";
 const BODY_REFRESH_SUCCESS_TIMEOUT_MS = 10000;
 const HTMX_EXCLUDE_SELECTOR = "[hx-exclude], [data-hx-exclude]";
-const HTMX_EXCLUDE_IF_EMPTY_SELECTOR = "[data-hx-exclude-if-empty]";
+const HTMX_KEEP_EMPTY_SELECTOR = "[data-hx-keep-empty]";
 
 /**
  * Finds the closest response owner from whichever element HTMX exposes.
@@ -49,15 +49,17 @@ export const getDeclarativeHtmxResponseElement = (event) => {
  * Filters HTMX parameters by trimming strings and dropping selected empty values.
  * @param {FormData|URLSearchParams} source Source entries collection.
  * @param {boolean} dropZero Whether the string "0" should be treated as empty.
+ * @param {Set<string>} keepEmptyNames Parameter names whose empty values must remain.
  * @returns {Array<[string, FormDataEntryValue|string]>} Filtered entries.
  */
-const filterHtmxEntries = (source, dropZero) => {
+const filterHtmxEntries = (source, dropZero, keepEmptyNames = new Set()) => {
   const filteredEntries = [];
 
   for (const [key, rawValue] of source.entries()) {
     const normalizedValue = typeof rawValue === "string" ? rawValue.trim() : String(rawValue);
+    const isEmptyValue = normalizedValue === "" || (dropZero && normalizedValue === "0");
 
-    if (normalizedValue === "" || (dropZero && normalizedValue === "0")) {
+    if (isEmptyValue && !keepEmptyNames.has(key)) {
       continue;
     }
 
@@ -65,6 +67,20 @@ const filterHtmxEntries = (source, dropZero) => {
   }
 
   return filteredEntries;
+};
+
+/**
+ * Reads parameter names exempted from empty-value filtering for a request.
+ * @param {Element|undefined|null} requestElement HTMX request element.
+ * @returns {Set<string>} Parameter names whose empty values must remain.
+ */
+const getHtmxKeepEmptyNames = (requestElement) => {
+  if (!(requestElement instanceof Element)) {
+    return new Set();
+  }
+
+  const keepEmptyOwner = requestElement.closest(HTMX_KEEP_EMPTY_SELECTOR);
+  return new Set((keepEmptyOwner?.dataset.hxKeepEmpty || "").split(/\s+/).filter(Boolean));
 };
 
 /**
@@ -99,14 +115,6 @@ const deleteHtmxParameter = (parameters, name) => {
 };
 
 /**
- * Checks whether a form control carries an empty string value.
- * @param {Element|null} control Possible form control.
- * @returns {boolean} True when the control value is empty.
- */
-const isEmptyFormControl = (control) =>
-  "value" in (control || {}) && String(control.value || "").trim().length === 0;
-
-/**
  * Builds an HTMX extension that removes empty values before request encoding.
  * @param {boolean} dropZero Whether the string "0" should be treated as empty.
  * @returns {object} HTMX extension definition.
@@ -122,8 +130,9 @@ export const createNoEmptyValuesExtension = (dropZero) => ({
       return true;
     }
 
+    const keepEmptyNames = getHtmxKeepEmptyNames(request.elt);
     const filteredParameters = new FormData();
-    for (const [key, value] of filterHtmxEntries(request.formData, dropZero)) {
+    for (const [key, value] of filterHtmxEntries(request.formData, dropZero, keepEmptyNames)) {
       filteredParameters.append(key, value);
     }
 
@@ -132,8 +141,9 @@ export const createNoEmptyValuesExtension = (dropZero) => ({
 
     return true;
   },
-  encodeParameters: (_xhr, parameters) => {
-    replaceHtmxEntries(parameters, filterHtmxEntries(parameters, dropZero));
+  encodeParameters: (_xhr, parameters, requestElement) => {
+    const keepEmptyNames = getHtmxKeepEmptyNames(requestElement);
+    replaceHtmxEntries(parameters, filterHtmxEntries(parameters, dropZero, keepEmptyNames));
     return null;
   },
 });
@@ -187,30 +197,6 @@ export const handleHtmxExcludeConfigRequest = (event) => {
   if (!(triggerElement instanceof Element) || !parameters) {
     return;
   }
-
-  const requestRoot = triggerElement.closest("form") || triggerElement.ownerDocument;
-  requestRoot.querySelectorAll(HTMX_EXCLUDE_IF_EMPTY_SELECTOR).forEach((control) => {
-    const controlName = control.getAttribute("name");
-    const dependencySelector = control.dataset.hxExcludeIfEmpty;
-    if (!controlName || !dependencySelector) {
-      return;
-    }
-
-    let dependency;
-    try {
-      dependency = requestRoot.querySelector(dependencySelector);
-    } catch (error) {
-      console.warn("Invalid data-hx-exclude-if-empty selector ignored.", {
-        selector: dependencySelector,
-        error,
-      });
-      return;
-    }
-
-    if (isEmptyFormControl(dependency)) {
-      deleteHtmxParameter(parameters, controlName);
-    }
-  });
 
   const excludeElement = triggerElement.closest(HTMX_EXCLUDE_SELECTOR);
   const excludeSelector = excludeElement?.getAttribute("hx-exclude") || excludeElement?.dataset.hxExclude;

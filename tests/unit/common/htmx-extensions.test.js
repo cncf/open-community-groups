@@ -75,6 +75,28 @@ describe("htmx extensions", () => {
     expect(formDataToEntries(parameters)).to.deep.equal([["name", "Spring meetup"]]);
   });
 
+  it("keeps empty values explicitly required by a form contract", () => {
+    // Build a form that must submit an empty nested field to clear its value.
+    document.body.innerHTML = `
+      <form data-hx-keep-empty="payment_recipient[recipient_id]">
+        <input name="payment_recipient[provider]" value="stripe">
+        <input name="payment_recipient[recipient_id]" value="   ">
+      </form>
+    `;
+    const form = document.querySelector("form");
+    const parameters = new FormData(form);
+    const extension = createNoEmptyValuesExtension(true);
+
+    // Encode parameters through the form's empty-value filtering contract.
+    extension.encodeParameters(null, parameters, form);
+
+    // The marked blank remains while normal string normalization still applies.
+    expect(formDataToEntries(parameters)).to.deep.equal([
+      ["payment_recipient[provider]", "stripe"],
+      ["payment_recipient[recipient_id]", ""],
+    ]);
+  });
+
   it('keeps "0" while still trimming and removing blank values for the keep-zero extension', () => {
     // Build parameters where zero is meaningful and blanks are not.
     const extension = createNoEmptyValuesExtension(false);
@@ -262,75 +284,6 @@ describe("htmx extensions", () => {
     });
 
     expect(formDataToEntries(parameters)).to.deep.equal([["test_event", "true"]]);
-  });
-
-  it("excludes dependent parameters when a related form control is empty", () => {
-    document.body.innerHTML = `
-      <form id="groups-form">
-        <input
-          type="hidden"
-          name="payment_recipient[provider]"
-          value="stripe"
-          data-hx-exclude-if-empty="#payment_recipient_recipient_id"
-        >
-        <input
-          id="payment_recipient_recipient_id"
-          name="payment_recipient[recipient_id]"
-          value="   "
-        >
-        <button id="save-button" type="submit">Save</button>
-      </form>
-    `;
-    const parameters = new FormData();
-    parameters.append("payment_recipient[provider]", "stripe");
-    parameters.append("payment_recipient[recipient_id]", "   ");
-    parameters.append("name", "Group name");
-
-    handleHtmxExcludeConfigRequest({
-      detail: {
-        elt: document.getElementById("save-button"),
-        parameters,
-      },
-    });
-
-    expect(formDataToEntries(parameters)).to.deep.equal([
-      ["payment_recipient[recipient_id]", "   "],
-      ["name", "Group name"],
-    ]);
-  });
-
-  it("keeps dependent parameters when the related form control has a value", () => {
-    document.body.innerHTML = `
-      <form id="groups-form">
-        <input
-          type="hidden"
-          name="payment_recipient[provider]"
-          value="stripe"
-          data-hx-exclude-if-empty="#payment_recipient_recipient_id"
-        >
-        <input
-          id="payment_recipient_recipient_id"
-          name="payment_recipient[recipient_id]"
-          value="acct_test"
-        >
-        <button id="save-button" type="submit">Save</button>
-      </form>
-    `;
-    const parameters = new FormData();
-    parameters.append("payment_recipient[provider]", "stripe");
-    parameters.append("payment_recipient[recipient_id]", "acct_test");
-
-    handleHtmxExcludeConfigRequest({
-      detail: {
-        elt: document.getElementById("save-button"),
-        parameters,
-      },
-    });
-
-    expect(formDataToEntries(parameters)).to.deep.equal([
-      ["payment_recipient[provider]", "stripe"],
-      ["payment_recipient[recipient_id]", "acct_test"],
-    ]);
   });
 
   it("warns and ignores invalid custom hx-exclude selectors", () => {
