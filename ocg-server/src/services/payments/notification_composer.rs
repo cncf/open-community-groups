@@ -9,13 +9,14 @@ use crate::{
     config::HttpServerConfig,
     db::{DynDB, payments::CompletedEventPurchase},
     services::notifications::{
-        DynNotificationsManager, NewNotification,
+        DynNotificationsManager, NewNotification, load_event_notification_context,
         payloads::{
             build_event_refund_approved_notification, build_event_refund_rejected_notification,
             build_event_welcome_notification,
         },
     },
     templates::notifications::EventRefundRequested,
+    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -53,17 +54,11 @@ impl PaymentsNotificationComposer {
         event_id: Uuid,
     ) -> Result<Value> {
         // Load the event summary and site theme used by the refund request template
-        let (event, site_settings) = tokio::try_join!(
-            self.db.get_event_summary_by_id(community_id, event_id),
-            self.db.get_site_settings(),
-        )?;
+        let (event, site_settings) =
+            load_event_notification_context(self.db.as_ref(), community_id, event_id).await?;
 
         // Point organizers to the full group dashboard events tab
-        let base_url = self
-            .server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&self.server_cfg.base_url);
+        let base_url = base_url_without_trailing_slash(&self.server_cfg.base_url);
         let link = format!("{base_url}/dashboard/group?tab=events");
 
         serde_json::to_value(&EventRefundRequested {
@@ -223,10 +218,7 @@ impl PaymentsNotificationComposer {
         crate::types::site::SiteSettings,
     )> {
         // Load the shared event and site context required by payments notifications
-        match tokio::try_join!(
-            self.db.get_event_summary_by_id(community_id, event_id),
-            self.db.get_site_settings(),
-        ) {
+        match load_event_notification_context(self.db.as_ref(), community_id, event_id).await {
             Ok(context) => Some(context),
             Err(err) => {
                 warn!(error = %err, "failed to load {notification_kind} notification context");

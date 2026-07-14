@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,12 +18,13 @@ select plan(5);
 -- SEED DATA
 -- ============================================================================
 
--- User
+-- User who owns the manual-requeue notifications
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'hash', 'user@example.com', true, 'user');
 
--- Notifications
+-- Terminal and processed notifications used by the manual-requeue scenarios
 insert into notification (
+    created_at,
     delivery_attempts,
     delivery_claimed_at,
     delivery_status,
@@ -34,6 +35,7 @@ insert into notification (
     user_id
 ) values
     (
+        '2025-01-01 00:00:01',
         4,
         current_timestamp - interval '10 minutes',
         'failed',
@@ -44,6 +46,7 @@ insert into notification (
         :'userID'
     ),
     (
+        '2025-01-01 00:00:03',
         1,
         current_timestamp - interval '10 minutes',
         'processed',
@@ -54,6 +57,7 @@ insert into notification (
         :'userID'
     ),
     (
+        '2025-01-01 00:00:02',
         2,
         current_timestamp - interval '20 minutes',
         'delivery-unknown',
@@ -134,6 +138,53 @@ select results_eq(
     'Should reset terminal notifications for immediate delivery'
 );
 
+-- Should preserve manual requeue history for every changed notification
+select results_eq(
+    $$
+        select
+            action,
+            resource_id,
+            resource_type,
+            actor_user_id,
+            details
+        from audit_log
+        where action = 'notification_manually_requeued'
+        order by resource_id
+    $$,
+    format(
+        $$
+        values
+            (
+                'notification_manually_requeued'::text,
+                %L::uuid,
+                'notification'::text,
+                null::uuid,
+                jsonb_build_object(
+                    'database_user', current_user,
+                    'previous_delivery_status', 'failed',
+                    'previous_error', 'smtp timeout',
+                    'reason', 'smtp recovered'
+                )
+            ),
+            (
+                'notification_manually_requeued'::text,
+                %L::uuid,
+                'notification'::text,
+                null::uuid,
+                jsonb_build_object(
+                    'database_user', current_user,
+                    'previous_delivery_status', 'delivery-unknown',
+                    'previous_error', 'delivery outcome unknown after processing timeout',
+                    'reason', 'smtp recovered'
+                )
+            )
+        $$,
+        :'notificationFailedID',
+        :'notificationUnknownID'
+    ),
+    'Should preserve manual requeue history for every changed notification'
+);
+
 -- Should leave non-terminal notifications unchanged
 select results_eq(
     format(
@@ -149,6 +200,31 @@ select results_eq(
     ),
     $$ values (1, 'processed'::text, true) $$,
     'Should leave non-terminal notifications unchanged'
+);
+
+-- Should claim the oldest manually requeued notification
+select is(
+    (select notification_id from claim_pending_notification()),
+    :'notificationFailedID'::uuid,
+    'Should claim the oldest manually requeued notification'
+);
+
+-- Should retain the audit reason after a new delivery claim clears the transient error
+select results_eq(
+    format(
+        $$
+        select
+            n.error,
+            al.details->>'reason'
+        from notification n
+        join audit_log al on al.resource_id = n.notification_id
+        where n.notification_id = %L::uuid
+        and al.action = 'notification_manually_requeued'
+        $$,
+        :'notificationFailedID'
+    ),
+    $$ values (null::text, 'smtp recovered'::text) $$,
+    'Should retain the audit reason after a new delivery claim clears the transient error'
 );
 
 -- ============================================================================

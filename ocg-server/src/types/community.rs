@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -21,8 +22,9 @@ pub struct CommunityFull {
     pub community_id: Uuid,
     /// Layout identifier for the community site.
     pub community_site_layout_id: String,
-    /// Creation timestamp in milliseconds since epoch.
-    pub created_at: i64,
+    /// When the community was created.
+    #[serde(with = "chrono::serde::ts_milliseconds")]
+    pub created_at: DateTime<Utc>,
     /// Brief description of the community's purpose or focus.
     pub description: String,
     /// Human-readable name shown in the UI (e.g., "CNCF").

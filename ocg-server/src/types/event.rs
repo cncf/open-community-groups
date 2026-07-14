@@ -855,20 +855,6 @@ pub struct Session {
     pub meeting_requested: Option<bool>,
 }
 
-impl Session {
-    /// Check if the session is currently live.
-    #[allow(dead_code)]
-    pub fn is_live(&self) -> bool {
-        match self.ends_at {
-            Some(ends_at) => {
-                let now = Utc::now();
-                now >= self.starts_at && now <= ends_at
-            }
-            None => false,
-        }
-    }
-}
-
 /// Categorization of session attendance modes.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "kebab-case")]

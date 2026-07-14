@@ -38,6 +38,13 @@ pub(crate) trait DBNotifications {
     /// Retrieves a notification attachment by its ID.
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment>;
 
+    /// Marks a claimed notification with an unknown delivery outcome.
+    async fn mark_notification_delivery_unknown(
+        &self,
+        notification: &Notification,
+        error: &str,
+    ) -> Result<()>;
+
     /// Marks stale claimed notifications with an unknown delivery outcome.
     async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration)
     -> Result<usize>;
@@ -65,6 +72,7 @@ impl<T> DBNotifications for T
 where
     T: PgExecutor + Send + Sync,
 {
+    /// [`DBNotifications::claim_pending_notification`].
     #[instrument(skip(self), err)]
     async fn claim_pending_notification(&self) -> Result<Option<Notification>> {
         // Claim pending notification (if any)
@@ -78,6 +86,8 @@ where
 
         // Fetch notification attachments
         let notification_id: Uuid = row.get("notification_id");
+        let delivery_claimed_at =
+            row.get::<_, chrono::DateTime<chrono::Utc>>("delivery_claimed_at");
         let attachment_ids = row.get::<_, Option<Vec<Uuid>>>("attachment_ids").unwrap_or_default();
         let mut attachments = Vec::with_capacity(attachment_ids.len());
         for attachment_id in attachment_ids {
@@ -88,9 +98,9 @@ where
                     let error = err.to_string();
                     db.execute(
                         "
-                        select update_notification($1::uuid, $2::text);
+                        select update_notification($1::uuid, $2::text, $3::timestamptz);
                         ",
-                        &[&notification_id, &error],
+                        &[&notification_id, &error, &delivery_claimed_at],
                     )
                     .await?;
                     return Err(err);
@@ -101,6 +111,8 @@ where
 
         // Prepare notification and return it
         let notification = Notification {
+            attachments,
+            delivery_claimed_at,
             email: row.get("email"),
             kind: row
                 .get::<_, String>("kind")
@@ -109,12 +121,12 @@ where
                 .expect("kind to be valid"),
             notification_id,
             template_data: row.get("template_data"),
-            attachments,
         };
 
         Ok(Some(notification))
     }
 
+    /// [`DBNotifications::enqueue_due_event_reminders`].
     #[instrument(skip(self), err)]
     async fn enqueue_due_event_reminders(&self, base_url: &str) -> Result<usize> {
         let db = self.client().await?;
@@ -133,6 +145,7 @@ where
         Ok(count)
     }
 
+    /// [`DBNotifications::enqueue_notification`].
     #[instrument(skip(self, notification), err)]
     async fn enqueue_notification(&self, notification: &NewNotification) -> Result<()> {
         // Nothing to enqueue
@@ -176,6 +189,7 @@ where
         Ok(())
     }
 
+    /// [`DBNotifications::enqueue_tracked_custom_notification`].
     #[instrument(skip(self, notification, tracking), err)]
     async fn enqueue_tracked_custom_notification(
         &self,
@@ -236,7 +250,7 @@ where
         .await
     }
 
-    /// Retrieves a notification attachment by its ID.
+    /// [`DBNotifications::get_notification_attachment`].
     #[instrument(skip(self), err)]
     async fn get_notification_attachment(&self, attachment_id: Uuid) -> Result<Attachment> {
         #[cached(
@@ -268,6 +282,31 @@ where
         inner(db, attachment_id).await
     }
 
+    /// [`DBNotifications::mark_notification_delivery_unknown`].
+    #[instrument(skip(self, notification), err)]
+    async fn mark_notification_delivery_unknown(
+        &self,
+        notification: &Notification,
+        error: &str,
+    ) -> Result<()> {
+        // Mark the claimed notification for manual delivery review
+        let db = self.client().await?;
+        db.execute(
+            "
+            select mark_notification_delivery_unknown($1::uuid, $2::text, $3::timestamptz);
+            ",
+            &[
+                &notification.notification_id,
+                &error,
+                &notification.delivery_claimed_at,
+            ],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    /// [`DBNotifications::mark_stale_processing_notifications_unknown`].
     #[instrument(skip(self), err)]
     async fn mark_stale_processing_notifications_unknown(
         &self,
@@ -289,6 +328,7 @@ where
         Ok(count as usize)
     }
 
+    /// [`DBNotifications::requeue_notification`].
     #[instrument(skip(self, notification), err)]
     async fn requeue_notification(
         &self,
@@ -319,7 +359,8 @@ where
                 $2::text,
                 $3::bigint,
                 $4::bigint,
-                $5::integer
+                $5::integer,
+                $6::timestamptz
             );
             ",
             &[
@@ -328,6 +369,7 @@ where
                 &base_retry_after_seconds,
                 &max_retry_after_seconds,
                 &max_delivery_attempts,
+                &notification.delivery_claimed_at,
             ],
         )
         .await?;
@@ -335,8 +377,7 @@ where
         Ok(())
     }
 
-    /// Updates the notification record after processing, marking it as processed and
-    /// recording any error.
+    /// [`DBNotifications::update_notification`].
     #[instrument(skip(self, notification), err)]
     async fn update_notification(
         &self,
@@ -347,9 +388,13 @@ where
         let db = self.client().await?;
         db.execute(
             "
-            select update_notification($1::uuid, $2::text);
+            select update_notification($1::uuid, $2::text, $3::timestamptz);
             ",
-            &[&notification.notification_id, &error],
+            &[
+                &notification.notification_id,
+                &error,
+                &notification.delivery_claimed_at,
+            ],
         )
         .await?;
 

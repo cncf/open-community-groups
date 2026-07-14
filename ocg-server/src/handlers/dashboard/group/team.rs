@@ -30,6 +30,7 @@ use crate::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
+    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -100,7 +101,7 @@ pub(crate) async fn add(
             group,
             link: format!(
                 "{}/dashboard/user?tab=invitations",
-                server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
+                base_url_without_trailing_slash(&server_cfg.base_url)
             ),
             theme: site_settings.theme,
         };

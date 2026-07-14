@@ -5,6 +5,7 @@ use std::{sync::Arc, time::Duration};
 use anyhow::{Result, anyhow};
 use askama::Template;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use lettre::{
     AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
     message::{
@@ -26,7 +27,7 @@ use uuid::Uuid;
 
 use crate::{
     config::EmailConfig,
-    db::DynDB,
+    db::{DBOperations, DynDB},
     templates::notifications::{
         CfsSubmissionUpdated, CommunityTeamInvitation, EmailVerification, EventAttendanceCanceled,
         EventCanceled, EventCustom, EventInvitation, EventPublished, EventRefundApproved,
@@ -35,6 +36,7 @@ use crate::{
         EventWaitlistPromoted, EventWelcome, GroupCustom, GroupTeamInvitation, GroupWelcome,
         SessionProposalCoSpeakerInvitation, SpeakerSeriesWelcome, SpeakerWelcome,
     },
+    types::{event::EventSummary, site::SiteSettings},
 };
 
 pub(crate) mod enqueue;
@@ -487,25 +489,32 @@ impl DeliveryWorker {
         Ok((subject, body))
     }
 
-    /// Record a failed delivery attempt, requeueing retryable errors.
+    /// Records a delivery error according to its safe recovery action.
     async fn record_delivery_error(
         &self,
         notification: &Notification,
-        err: anyhow::Error,
+        err: EmailDeliveryError,
     ) -> Result<()> {
+        // Persist the safest recovery action for the classified delivery failure
         let error = err.to_string();
-        if is_retryable_delivery_error(&err) {
-            self.db
-                .requeue_notification(
-                    notification,
-                    &error,
-                    DELIVERY_REQUEUE_BASE_DELAY,
-                    DELIVERY_REQUEUE_MAX_DELAY,
-                    DELIVERY_MAX_CLAIMS,
-                )
-                .await
-        } else {
-            self.db.update_notification(notification, Some(error)).await
+        match err {
+            EmailDeliveryError::Retryable(_) => {
+                self.db
+                    .requeue_notification(
+                        notification,
+                        &error,
+                        DELIVERY_REQUEUE_BASE_DELAY,
+                        DELIVERY_REQUEUE_MAX_DELAY,
+                        DELIVERY_MAX_CLAIMS,
+                    )
+                    .await
+            }
+            EmailDeliveryError::Terminal(_) => {
+                self.db.update_notification(notification, Some(error)).await
+            }
+            EmailDeliveryError::Unknown(_) => {
+                self.db.mark_notification_delivery_unknown(notification, &error).await
+            }
         }
     }
 
@@ -516,28 +525,31 @@ impl DeliveryWorker {
         subject: &str,
         body: String,
         attachments: &[Attachment],
-    ) -> Result<()> {
+    ) -> std::result::Result<(), EmailDeliveryError> {
         // Prepare email message
         let body_part = SinglePart::builder().header(ContentType::TEXT_HTML).body(body);
         let builder = MessageBuilder::new()
             .from(Mailbox::new(
                 Some(self.cfg.from_name.clone()),
-                self.cfg.from_address.parse()?,
+                self.cfg.from_address.parse().map_err(EmailDeliveryError::terminal)?,
             ))
-            .to(to_address.parse()?)
+            .to(to_address.parse().map_err(EmailDeliveryError::terminal)?)
             .subject(subject);
         let message = if attachments.is_empty() {
-            builder.singlepart(body_part)?
+            builder.singlepart(body_part).map_err(EmailDeliveryError::terminal)?
         } else {
             let mut multipart = MultiPart::mixed().singlepart(body_part);
             for attachment in attachments {
                 let attachment_part = SinglePart::builder()
-                    .header(ContentType::parse(&attachment.content_type)?)
+                    .header(
+                        ContentType::parse(&attachment.content_type)
+                            .map_err(EmailDeliveryError::terminal)?,
+                    )
                     .header(ContentDisposition::attachment(&attachment.file_name))
                     .body(attachment.data.clone());
                 multipart = multipart.singlepart(attachment_part);
             }
-            builder.multipart(multipart)?
+            builder.multipart(multipart).map_err(EmailDeliveryError::terminal)?
         };
 
         // Send email
@@ -561,15 +573,12 @@ impl DeliveryWorker {
         subject: &str,
         body: String,
         attachments: &[Attachment],
-    ) -> Result<()> {
+    ) -> std::result::Result<(), EmailDeliveryError> {
         let mut attempt = 1;
         loop {
             match self.send_email(to_address, subject, body.clone(), attachments).await {
                 Ok(()) => return Ok(()),
-                Err(err)
-                    if attempt < DELIVERY_SEND_MAX_ATTEMPTS
-                        && is_retryable_delivery_error(&err) =>
-                {
+                Err(err) if attempt < DELIVERY_SEND_MAX_ATTEMPTS && err.is_retryable() => {
                     warn!(
                         %to_address,
                         attempt,
@@ -587,26 +596,12 @@ impl DeliveryWorker {
     }
 }
 
-/// Return whether a delivery error may succeed on a later attempt.
-fn is_retryable_delivery_error(err: &anyhow::Error) -> bool {
-    err.chain().any(|source| {
-        // Prefer typed Lettre SMTP error classification when available
-        if let Some(smtp_err) = source.downcast_ref::<SmtpError>() {
-            return smtp_err.is_transient() || smtp_err.to_string().starts_with("Connection error");
-        }
-
-        // Fall back to persisted transport messages from wrapped errors
-        let message = source.to_string();
-        message.starts_with("Connection error")
-    })
-}
-
 /// Trait representing an async email sender used by the notifications workers.
 #[async_trait]
 #[cfg_attr(test, automock)]
 pub(crate) trait EmailSender {
     /// Send an email represented by the provided message.
-    async fn send(&self, message: Message) -> Result<()>;
+    async fn send(&self, message: Message) -> std::result::Result<(), EmailDeliveryError>;
 }
 
 /// Shared trait object for an email sender.
@@ -646,8 +641,12 @@ impl LettreEmailSender {
 
 #[async_trait]
 impl EmailSender for LettreEmailSender {
-    async fn send(&self, message: Message) -> Result<()> {
-        self.transport.send(message).await?;
+    /// [`EmailSender::send`].
+    async fn send(&self, message: Message) -> std::result::Result<(), EmailDeliveryError> {
+        self.transport
+            .send(message)
+            .await
+            .map_err(EmailDeliveryError::from_smtp)?;
         Ok(())
     }
 }
@@ -661,6 +660,84 @@ pub(crate) struct Attachment {
     pub data: Vec<u8>,
     /// File name shown to recipients.
     pub file_name: String,
+}
+
+/// Error returned while sending an email, classified by its safe recovery action.
+#[derive(Debug)]
+pub(crate) enum EmailDeliveryError {
+    /// Failure that can be retried without risking duplicate delivery.
+    Retryable(anyhow::Error),
+    /// Failure that cannot succeed without changing the message or configuration.
+    Terminal(anyhow::Error),
+    /// Failure whose delivery outcome cannot be determined safely.
+    Unknown(anyhow::Error),
+}
+
+impl EmailDeliveryError {
+    /// Classifies a Lettre SMTP error by the safest recovery action.
+    fn from_smtp(err: SmtpError) -> Self {
+        // Extract transport metadata before preserving the original error source
+        let kind = if err.is_client() {
+            SmtpErrorKind::Client
+        } else if err.to_string().starts_with("Connection error") {
+            SmtpErrorKind::Connection
+        } else if err.is_permanent() {
+            SmtpErrorKind::Permanent
+        } else if err.is_tls() {
+            SmtpErrorKind::Tls
+        } else if err.is_transient() {
+            SmtpErrorKind::Transient
+        } else if err.is_transport_shutdown() {
+            SmtpErrorKind::TransportShutdown
+        } else {
+            SmtpErrorKind::Unknown
+        };
+
+        // Preserve the error source in the classified delivery failure
+        Self::from_smtp_kind(kind, err.into())
+    }
+
+    /// Classifies an SMTP category while preserving its error source.
+    fn from_smtp_kind(kind: SmtpErrorKind, err: anyhow::Error) -> Self {
+        match kind {
+            // Message or configuration failures require an external correction
+            SmtpErrorKind::Client | SmtpErrorKind::Permanent | SmtpErrorKind::Tls => {
+                Self::Terminal(err)
+            }
+            // Treat pre-submission failures as safe to retry
+            SmtpErrorKind::Connection
+            | SmtpErrorKind::Transient
+            | SmtpErrorKind::TransportShutdown => Self::Retryable(err),
+            // Network, timeout, and malformed response errors may follow submission
+            SmtpErrorKind::Unknown => Self::Unknown(err),
+        }
+    }
+
+    /// Returns whether retrying cannot duplicate a potentially delivered email.
+    fn is_retryable(&self) -> bool {
+        matches!(self, Self::Retryable(_))
+    }
+
+    /// Wraps a message preparation error as terminal.
+    fn terminal(err: impl Into<anyhow::Error>) -> Self {
+        Self::Terminal(err.into())
+    }
+}
+
+impl std::fmt::Display for EmailDeliveryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Retryable(err) | Self::Terminal(err) | Self::Unknown(err) => write!(f, "{err}"),
+        }
+    }
+}
+
+impl std::error::Error for EmailDeliveryError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Retryable(err) | Self::Terminal(err) | Self::Unknown(err) => Some(err.as_ref()),
+        }
+    }
 }
 
 /// Data required to create a new notification.
@@ -682,6 +759,8 @@ pub(crate) struct NewNotification {
 pub(crate) struct Notification {
     /// Files included with the notification.
     pub attachments: Vec<Attachment>,
+    /// Timestamp identifying the active delivery claim.
+    pub delivery_claimed_at: DateTime<Utc>,
     /// Email address to send the notification to.
     pub email: String,
     /// The type of notification.
@@ -748,4 +827,38 @@ pub(crate) enum NotificationKind {
     SpeakerSeriesWelcome,
     /// Notification welcoming a speaker to an event.
     SpeakerWelcome,
+}
+
+/// SMTP failure category relevant to notification recovery.
+#[derive(Debug, Clone, Copy)]
+enum SmtpErrorKind {
+    /// Internal Lettre client failure.
+    Client,
+    /// Failure while establishing the SMTP connection.
+    Connection,
+    /// Permanent SMTP server response.
+    Permanent,
+    /// TLS negotiation or validation failure.
+    Tls,
+    /// Transient SMTP server response.
+    Transient,
+    /// Attempt to use a transport that was already shut down.
+    TransportShutdown,
+    /// Failure without a safe automatic recovery action.
+    Unknown,
+}
+
+/// Loads the shared event and site context used to compose event notifications.
+pub(crate) async fn load_event_notification_context(
+    db: &dyn DBOperations,
+    community_id: Uuid,
+    event_id: Uuid,
+) -> Result<(EventSummary, SiteSettings)> {
+    // Load site settings first to preserve existing short-circuit behavior
+    let (site_settings, event) = tokio::try_join!(
+        db.get_site_settings(),
+        db.get_event_summary_by_id(community_id, event_id),
+    )?;
+
+    Ok((event, site_settings))
 }

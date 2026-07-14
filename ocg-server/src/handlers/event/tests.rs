@@ -462,6 +462,32 @@ async fn test_check_in_page_success() {
 }
 
 #[tokio::test]
+async fn test_cfs_modal_rejects_invalid_event_id_before_community_lookup() {
+    // Prevent community resolution for an invalid event identifier
+    let mut db = MockDB::new();
+    db.expect_get_community_id_by_name().never();
+
+    // Request the modal with a malformed event identifier
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/event/not-a-uuid/cfs-modal")
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check path validation rejects the request before community lookup
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert!(body.contains("Invalid URL:"));
+    assert!(body.contains("not-a-uuid"));
+}
+
+#[tokio::test]
 async fn test_cfs_modal_success_anonymous() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

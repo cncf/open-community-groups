@@ -536,45 +536,6 @@ fn event_summary_formatted_ticket_price_badge_returns_free_and_up_when_mixed() {
     );
 }
 
-#[test]
-fn session_is_live_returns_false_when_ends_at_is_none() {
-    let session = Session {
-        starts_at: Utc::now() - Duration::hours(1),
-        ..Default::default()
-    };
-    assert!(!session.is_live());
-}
-
-#[test]
-fn session_is_live_returns_false_when_session_ended() {
-    let session = Session {
-        ends_at: Some(Utc::now() - Duration::hours(1)),
-        starts_at: Utc::now() - Duration::hours(2),
-        ..Default::default()
-    };
-    assert!(!session.is_live());
-}
-
-#[test]
-fn session_is_live_returns_false_when_session_not_started() {
-    let session = Session {
-        ends_at: Some(Utc::now() + Duration::hours(2)),
-        starts_at: Utc::now() + Duration::hours(1),
-        ..Default::default()
-    };
-    assert!(!session.is_live());
-}
-
-#[test]
-fn session_is_live_returns_true_when_session_is_live() {
-    let session = Session {
-        ends_at: Some(Utc::now() + Duration::hours(1)),
-        starts_at: Utc::now() - Duration::hours(1),
-        ..Default::default()
-    };
-    assert!(session.is_live());
-}
-
 // Helpers.
 
 /// Build a sample ticket type with specified properties for testing.

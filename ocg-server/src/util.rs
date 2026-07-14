@@ -6,6 +6,11 @@ use sha2::{Digest, Sha256};
 
 use crate::{services::notifications::Attachment, types::event::EventSummary};
 
+/// Returns a base URL without trailing slashes.
+pub(crate) fn base_url_without_trailing_slash(base_url: &str) -> &str {
+    base_url.trim_end_matches('/')
+}
+
 /// Build an iCalendar (ICS) attachment for the specified event.
 pub(crate) fn build_event_calendar_attachment(base_url: &str, event: &EventSummary) -> Attachment {
     // Prepare some event data
@@ -125,7 +130,7 @@ fn build_event_calendar_description(event: &EventSummary) -> String {
 
 /// Build the event page link based on the base URL and event and group slugs.
 pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> String {
-    let base = base_url.strip_suffix('/').unwrap_or(base_url);
+    let base = base_url_without_trailing_slash(base_url);
     format!(
         "{}/{}/group/{}/event/{}",
         base,
@@ -137,7 +142,7 @@ pub(crate) fn build_event_page_link(base_url: &str, event: &EventSummary) -> Str
 
 /// Build the user dashboard events link.
 pub(crate) fn build_user_dashboard_events_link(base_url: &str) -> String {
-    let base = base_url.strip_suffix('/').unwrap_or(base_url);
+    let base = base_url_without_trailing_slash(base_url);
     format!("{base}/dashboard/user?tab=events")
 }
 
@@ -185,6 +190,14 @@ mod tests {
     use super::*;
 
     const BASE_URL: &str = "https://example.test";
+
+    #[test]
+    fn test_base_url_without_trailing_slash_removes_all_trailing_slashes() {
+        assert_eq!(
+            base_url_without_trailing_slash("https://example.test///"),
+            BASE_URL
+        );
+    }
 
     #[test]
     fn test_build_event_calendar_attachment_confirmed() {

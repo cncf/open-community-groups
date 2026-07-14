@@ -456,6 +456,47 @@ async fn test_leave_group_success() {
 }
 
 #[tokio::test]
+async fn test_membership_status_rejects_invalid_group_id_before_community_lookup() {
+    // Setup an authenticated session
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+
+    // Resolve authentication without looking up the community
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_community_id_by_name().never();
+
+    // Request membership with a malformed group identifier
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-community/group/not-a-uuid/membership")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    // Check path validation rejects the request before community lookup
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert!(body.contains("Invalid URL:"));
+    assert!(body.contains("not-a-uuid"));
+}
+
+#[tokio::test]
 async fn test_membership_status_success() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();

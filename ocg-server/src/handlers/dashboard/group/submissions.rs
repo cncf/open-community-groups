@@ -29,6 +29,7 @@ use crate::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
+    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -116,7 +117,7 @@ pub(crate) async fn update(
                 db.get_cfs_submission_notification_data(event_id, cfs_submission_id),
                 db.get_site_settings(),
             )?;
-            let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+            let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
             let link = format!("{base_url}/dashboard/user?tab=submissions");
             let template_data = CfsSubmissionUpdated {
                 action_required_message: notification_data.action_required_message,

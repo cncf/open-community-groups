@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -11,6 +11,7 @@ select plan(5);
 
 \set notificationID1 '8a060000-0000-0000-0000-000000000001'
 \set notificationID2 '8a060000-0000-0000-0000-000000000002'
+\set notificationStaleClaimID '8a060000-0000-0000-0000-000000000004'
 \set userID '8a060000-0000-0000-0000-000000000003'
 
 -- ============================================================================
@@ -21,10 +22,19 @@ select plan(5);
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'hash', 'user@example.com', true, 'user');
 
--- Notifications
-insert into notification (delivery_status, kind, notification_id, user_id) values
-    ('processing', 'group-welcome', :'notificationID1', :'userID'),
-    ('processing', 'event-welcome', :'notificationID2', :'userID');
+-- Processing notifications used by current and stale claim scenarios
+insert into notification (
+    notification_id,
+    delivery_status,
+    kind,
+    user_id,
+
+    delivery_claimed_at
+) values
+    (:'notificationID1', 'processing', 'group-welcome', :'userID', '2025-01-01 00:00:01+00'),
+    (:'notificationID2', 'processing', 'event-welcome', :'userID', '2025-01-01 00:00:02+00'),
+    (:'notificationStaleClaimID', 'processing', 'event-welcome', :'userID',
+        '2025-01-01 00:00:04+00');
 
 -- ============================================================================
 -- TESTS
@@ -35,7 +45,8 @@ select lives_ok(
     format(
         $$select update_notification(
         %L::uuid,
-        'smtp timeout'
+        'smtp timeout',
+        '2025-01-01 00:00:01+00'::timestamptz
         )$$,
         :'notificationID1'
     ),
@@ -64,7 +75,8 @@ select lives_ok(
     format(
         $$select update_notification(
         %L::uuid,
-        null::text
+        null::text,
+        '2025-01-01 00:00:02+00'::timestamptz
         )$$,
         :'notificationID2'
     ),
@@ -93,13 +105,46 @@ select throws_ok(
     format(
         $$select update_notification(
         %L::uuid,
-        null::text
+        null::text,
+        '2025-01-01 00:00:02+00'::timestamptz
         )$$,
         :'notificationID2'
     ),
     'P0001',
-    'claimed notification not found or already finalized',
+    'notification delivery claim not found or no longer active',
     'Should reject updating a notification that is not being processed'
+);
+
+-- Should stop a stale worker from finalizing a newer delivery claim
+select throws_ok(
+    format(
+        $$select update_notification(
+        %L::uuid,
+        null::text,
+        '2025-01-01 00:00:03+00'::timestamptz
+        )$$,
+        :'notificationStaleClaimID'
+    ),
+    'P0001',
+    'notification delivery claim not found or no longer active',
+    'Should stop a stale worker from finalizing a newer delivery claim'
+);
+
+-- Should preserve the newer claim after a stale finalization attempt
+select results_eq(
+    format(
+        $$
+        select
+            delivery_claimed_at,
+            delivery_status,
+            processed_at
+        from notification
+        where notification_id = %L::uuid
+        $$,
+        :'notificationStaleClaimID'
+    ),
+    $$ values ('2025-01-01 00:00:04+00'::timestamptz, 'processing'::text, null::timestamptz) $$,
+    'Should preserve the newer claim after a stale finalization attempt'
 );
 
 -- ============================================================================

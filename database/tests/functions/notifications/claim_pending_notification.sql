@@ -283,6 +283,7 @@ select is(
     (select row_to_json(r)::jsonb from claim_pending_notification(1, 60) r),
     jsonb_build_object(
         'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
         'email', 'verified@example.com',
         'kind', 'email-verification',
         'notification_id', :'notificationEmailVerificationID',
@@ -314,6 +315,7 @@ select is(
     (select row_to_json(r)::jsonb from claim_pending_notification() r),
     jsonb_build_object(
         'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
         'email', 'verified@example.com',
         'kind', 'group-welcome',
         'notification_id', :'notificationGroupWelcomeID',
@@ -328,6 +330,7 @@ select is(
     (select row_to_json(r)::jsonb from claim_pending_notification() r),
     jsonb_build_object(
         'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
         'email', 'verified@example.com',
         'kind', 'event-published',
         'notification_id', :'notificationEventPublishedID',
@@ -342,6 +345,7 @@ select is(
     (select row_to_json(r)::jsonb from claim_pending_notification() r),
     jsonb_build_object(
         'attachment_ids', array[:'attachmentID1', :'attachmentID2']::uuid[],
+        'delivery_claimed_at', current_timestamp,
         'email', 'verified@example.com',
         'kind', 'event-welcome',
         'notification_id', :'notificationAttachmentID',
@@ -388,6 +392,7 @@ select is(
     (select row_to_json(r)::jsonb from claim_pending_notification() r),
     jsonb_build_object(
         'attachment_ids', null,
+        'delivery_claimed_at', current_timestamp,
         'email', 'invited@example.com',
         'kind', 'event-invitation',
         'notification_id', :'notificationPreRegisteredEventInvitationID',

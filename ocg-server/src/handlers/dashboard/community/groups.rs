@@ -145,8 +145,8 @@ pub(crate) async fn activate(
 /// Adds a new group to the database.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
-    session: Session,
     CurrentUser(user): CurrentUser,
+    session: Session,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     ValidatedFormQs(group): ValidatedFormQs<Group>,
@@ -186,8 +186,8 @@ pub(crate) async fn deactivate(
 /// Deletes a group from the database (soft delete).
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
-    session: Session,
     CurrentUser(user): CurrentUser,
+    session: Session,
     SelectedCommunityId(community_id): SelectedCommunityId,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,

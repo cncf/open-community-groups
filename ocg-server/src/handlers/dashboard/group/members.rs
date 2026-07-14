@@ -29,6 +29,7 @@ use crate::{
         pagination::{self, NavigationLinks},
         permissions::GroupPermission,
     },
+    util::base_url_without_trailing_slash,
     validation::{MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty},
 };
 
@@ -99,7 +100,7 @@ pub(crate) async fn send_group_custom_notification(
     }
 
     // Build and enqueue the custom notification with its audit entry
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let link = format!(
         "{}/{}/group/{}",
         base_url,

@@ -17,6 +17,7 @@ use uuid::Uuid;
 use crate::{
     config::PaymentsStripeConfig,
     types::payments::{PaymentMode, PaymentProvider},
+    util::base_url_without_trailing_slash,
 };
 
 use super::{
@@ -166,7 +167,7 @@ impl StripeProvider {
 
     /// Formats a checkout return URL.
     fn event_return_url(input: &CreateCheckoutSessionInput, outcome: &str) -> String {
-        let base_url = input.base_url.trim_end_matches('/');
+        let base_url = base_url_without_trailing_slash(&input.base_url);
         format!(
             "{base_url}/{}/group/{}/event/{}?payment={outcome}",
             input.community_name,

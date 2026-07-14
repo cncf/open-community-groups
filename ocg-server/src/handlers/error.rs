@@ -87,7 +87,7 @@ impl From<anyhow::Error> for HandlerError {
 impl From<FilterError> for HandlerError {
     fn from(err: FilterError) -> Self {
         match err {
-            FilterError::Parse(e) => HandlerError::Other(anyhow::anyhow!(e)),
+            FilterError::Parse(e) => HandlerError::Deserialization(e.to_string()),
             FilterError::Validation(report) => HandlerError::Validation(report),
         }
     }

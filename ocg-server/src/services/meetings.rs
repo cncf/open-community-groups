@@ -15,7 +15,7 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::{error, instrument};
 use uuid::Uuid;
 
-use crate::{config::MeetingsZoomConfig, db::DynDB};
+use crate::{config::MeetingsZoomConfig, db::meetings::DynDBMeetings};
 
 #[cfg(test)]
 mod tests;
@@ -171,7 +171,7 @@ impl MeetingsManager {
     #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn new(
         providers: DynMeetingsProviders,
-        db: DynDB,
+        db: DynDBMeetings,
         zoom_cfg: Option<MeetingsZoomConfig>,
         task_tracker: &TaskTracker,
         cancellation_token: &CancellationToken,
@@ -221,7 +221,7 @@ struct MeetingsAutoEndWorker {
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
     /// Database handle for meeting queries.
-    db: DynDB,
+    db: DynDBMeetings,
     /// Providers map for meeting operations.
     providers: DynMeetingsProviders,
 }
@@ -323,7 +323,7 @@ struct MeetingsClaimRecoveryWorker {
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
     /// Database handle for meeting queries.
-    db: DynDB,
+    db: DynDBMeetings,
 }
 
 impl MeetingsClaimRecoveryWorker {
@@ -368,7 +368,7 @@ struct MeetingsSyncWorker {
     /// Token to signal worker shutdown.
     cancellation_token: CancellationToken,
     /// Database handle for meeting queries.
-    db: DynDB,
+    db: DynDBMeetings,
     /// Providers map for meeting operations.
     providers: DynMeetingsProviders,
     /// Zoom configuration.

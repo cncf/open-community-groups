@@ -2,12 +2,6 @@
 create or replace function get_site_home_stats()
 returns json as $$
     select json_build_object(
-        -- Count active communities
-        'communities', (
-            select count(*)
-            from community
-            where active = true
-        ),
         -- Count published events
         'events', (
             select count(*)

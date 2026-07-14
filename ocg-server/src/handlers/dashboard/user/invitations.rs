@@ -45,9 +45,9 @@ pub(crate) async fn list_page(
 /// Accepts a pending community team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_community_team_invitation(
+    CurrentUser(user): CurrentUser,
     messages: Messages,
     session: Session,
-    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -67,8 +67,8 @@ pub(crate) async fn accept_community_team_invitation(
 /// Accepts a pending event invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_event_attendee_invitation(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     State(server_cfg): State<HttpServerConfig>,
     Path(event_id): Path<Uuid>,
@@ -104,9 +104,9 @@ pub(crate) async fn accept_event_attendee_invitation(
 /// Accepts a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_group_team_invitation(
+    CurrentUser(user): CurrentUser,
     messages: Messages,
     session: Session,
-    CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -125,8 +125,8 @@ pub(crate) async fn accept_group_team_invitation(
 /// Rejects a pending community team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_community_team_invitation(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(community_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -141,8 +141,8 @@ pub(crate) async fn reject_community_team_invitation(
 /// Rejects a pending event invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_event_attendee_invitation(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(event_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -156,8 +156,8 @@ pub(crate) async fn reject_event_attendee_invitation(
 /// Rejects a pending group team invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_group_team_invitation(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(group_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {

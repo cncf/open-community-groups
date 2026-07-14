@@ -16,7 +16,7 @@ use super::{events, invitations, logs, session_proposals, submissions};
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::error::HandlerError,
+    handlers::{error::HandlerError, extractors::CurrentUser},
     templates::{
         PageId,
         auth::{self, User, UserDetails},
@@ -33,15 +33,13 @@ mod tests;
 /// and preparing the content for each dashboard section.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
+    CurrentUser(user): CurrentUser,
     auth_session: AuthSession,
     messages: Messages,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
-
     // Get selected tab from query
     let raw_query = raw_query.as_deref().unwrap_or_default();
     let tab: Tab = query

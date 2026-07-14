@@ -20,7 +20,6 @@ use crate::{
 
 /// Trait for database operations related to site.
 #[async_trait]
-#[allow(dead_code)]
 pub(crate) trait DBSite {
     /// Retrieves filters options for the explore page. When a `community_name` is
     /// provided, community-specific filters are included. When `entity` is 'Events`

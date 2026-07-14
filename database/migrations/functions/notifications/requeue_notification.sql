@@ -4,7 +4,8 @@ create or replace function requeue_notification(
     p_error text,
     p_base_retry_after_seconds bigint,
     p_max_retry_after_seconds bigint,
-    p_max_delivery_attempts integer
+    p_max_delivery_attempts integer,
+    p_delivery_claimed_at timestamptz
 )
 returns void as $$
 begin
@@ -12,16 +13,16 @@ begin
     if p_error is null or btrim(p_error) = '' then
         raise exception 'delivery error is required';
     end if;
-    if p_base_retry_after_seconds <= 0 then
+    if p_base_retry_after_seconds is null or p_base_retry_after_seconds <= 0 then
         raise exception 'base retry delay must be positive';
     end if;
-    if p_max_retry_after_seconds <= 0 then
+    if p_max_retry_after_seconds is null or p_max_retry_after_seconds <= 0 then
         raise exception 'maximum retry delay must be positive';
     end if;
     if p_max_retry_after_seconds < p_base_retry_after_seconds then
         raise exception 'maximum retry delay cannot be less than base retry delay';
     end if;
-    if p_max_delivery_attempts <= 0 then
+    if p_max_delivery_attempts is null or p_max_delivery_attempts <= 0 then
         raise exception 'maximum delivery attempts must be positive';
     end if;
 
@@ -50,10 +51,11 @@ begin
             else null
         end
     where notification_id = p_notification_id
-    and delivery_status = 'processing';
+    and delivery_status = 'processing'
+    and delivery_claimed_at = p_delivery_claimed_at;
 
     if not found then
-        raise exception 'claimed notification not found or already finalized';
+        raise exception 'notification delivery claim not found or no longer active';
     end if;
 end;
 $$ language plpgsql;

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, env, time::Duration};
 
 use anyhow::{Context, Result};
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use deadpool_postgres::{Config as DbConfig, Runtime};
 use tokio_postgres::NoTls;
 use uuid::Uuid;
@@ -20,6 +20,7 @@ use crate::{
         event::DBEvent,
         group::DBGroup,
         meetings::DBMeetings,
+        notifications::DBNotifications,
         payments::{
             DBPayments, EventPurchaseRefundKind, EventPurchaseRefundStatus,
             PrepareEventCheckoutPurchaseInput, ReconcileEventPurchaseResult,
@@ -190,6 +191,34 @@ async fn db_contracts_claim_meeting_out_of_sync_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_claim_pending_notification_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+
+    // Claim the seeded notification through the production wrapper
+    let claim_started_at = Utc::now();
+    let notification = db
+        .claim_pending_notification()
+        .await?
+        .context("pending contract notification should be claimable")?;
+    let claim_finished_at = Utc::now();
+
+    // Check the complete delivery contract and claim identity were decoded
+    assert!(notification.attachments.is_empty());
+    assert!(notification.delivery_claimed_at >= claim_started_at);
+    assert!(notification.delivery_claimed_at <= claim_finished_at);
+    assert_eq!(notification.email, "organizer.contract@example.com");
+    assert_eq!(notification.kind.to_string(), "event-welcome");
+    assert_eq!(notification.notification_id, notification_id());
+    assert!(notification.template_data.is_none());
+
+    // Finalize through the production wrapper to verify the claim identity round trip
+    db.update_notification(&notification, None).await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let purchase = db.complete_free_event_purchase(free_purchase_id()).await?;
@@ -302,13 +331,17 @@ async fn db_contracts_get_community_full_deserializes() -> Result<()> {
     let community = db.get_community_full(community_id()).await?;
 
     assert!(community.active);
+    assert_eq!(community.community_id, community_id());
+    assert_eq!(
+        community.created_at,
+        DateTime::from_timestamp(1_704_067_200, 0).unwrap()
+    );
+    assert_eq!(community.display_name, "Contract Community");
+    assert_eq!(community.name, "contract-community");
     assert_eq!(
         community.ad_banner_link_url.as_deref(),
         Some("https://example.com/community-ad")
     );
-    assert_eq!(community.community_id, community_id());
-    assert_eq!(community.display_name, "Contract Community");
-    assert_eq!(community.name, "contract-community");
 
     Ok(())
 }
@@ -754,7 +787,6 @@ async fn db_contracts_get_site_home_stats_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let stats = db.get_site_home_stats().await?;
 
-    assert_eq!(stats.communities, 1);
     assert_eq!(stats.events, 2);
     assert_eq!(stats.events_attendees, 1);
     assert_eq!(stats.groups, 2);
@@ -1943,6 +1975,11 @@ fn leaver_id() -> Uuid {
 
 fn mutation_event_id() -> Uuid {
     parse_uuid(MUTATION_EVENT_ID)
+}
+
+/// Returns the notification identifier used by the contract fixture.
+fn notification_id() -> Uuid {
+    parse_uuid("00000000-0000-0000-0000-00000000c0f1")
 }
 
 fn organizer_id() -> Uuid {

@@ -195,11 +195,10 @@ values
 --   community group (should be excluded)
 -- - 8 event attendees: 2 confirmed in published event, 1 non-confirmed in
 --   published event (should be excluded), 5 in excluded events (should be excluded)
--- Expected: communities=2, groups=2, events=1, groups_members=3, events_attendees=2
+-- Expected: groups=2, events=1, groups_members=3, events_attendees=2
 select is(
     get_site_home_stats()::jsonb,
     '{
-        "communities": 2,
         "events": 1,
         "events_attendees": 2,
         "groups": 2,

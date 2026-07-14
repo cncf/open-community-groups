@@ -1,10 +1,12 @@
 //! This module defines database functionality used to manage meeting synchronization.
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+#[cfg(test)]
+use mockall::automock;
 use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
@@ -15,6 +17,7 @@ use crate::{
 };
 
 /// Trait that defines database operations used to manage meetings.
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub(crate) trait DBMeetings {
     /// Adds a new meeting and completes the sync claim.
@@ -75,6 +78,9 @@ pub(crate) trait DBMeetings {
     /// Updates meeting details and completes the sync claim.
     async fn update_meeting(&self, meeting: &Meeting) -> Result<()>;
 }
+
+/// Shared database handle for meeting operations.
+pub(crate) type DynDBMeetings = Arc<dyn DBMeetings + Send + Sync>;
 
 #[async_trait]
 impl<T> DBMeetings for T

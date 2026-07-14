@@ -33,6 +33,7 @@ use crate::{
                 enqueue_event_attendance_cancellation_notifications,
                 enqueue_event_welcome_notification,
             },
+            load_event_notification_context,
             payloads::build_event_invitation_notification,
         },
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
@@ -46,6 +47,7 @@ use crate::{
         permissions::GroupPermission,
         questionnaire::QuestionnaireQuestion,
     },
+    util::base_url_without_trailing_slash,
     validation::{
         MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_M, MAX_LEN_NOTIFICATION_BODY, trimmed_non_empty,
         trimmed_non_empty_opt,
@@ -276,7 +278,7 @@ pub(crate) async fn generate_check_in_qr_code(
     };
 
     // Get base URL from configuration
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
 
     // Construct check-in URL
     let check_in_url = format!("{base_url}/{community_name}/check-in/{event_id}");
@@ -333,23 +335,21 @@ pub(crate) async fn invite_event_attendee(
         .await?;
 
     // Load context and enqueue the invitation notification
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
-    ) {
-        Ok(context) => context,
-        Err(err) => {
-            warn!(error = %err, "failed to load event invitation notification context");
-            return Ok((
-                StatusCode::CREATED,
-                [(
-                    "HX-Trigger",
-                    "refresh-event-attendees, refresh-event-waitlist",
-                )],
-            )
-                .into_response());
-        }
-    };
+    let (event, site_settings) =
+        match load_event_notification_context(db.as_ref(), community_id, event_id).await {
+            Ok(context) => context,
+            Err(err) => {
+                warn!(error = %err, "failed to load event invitation notification context");
+                return Ok((
+                    StatusCode::CREATED,
+                    [(
+                        "HX-Trigger",
+                        "refresh-event-attendees, refresh-event-waitlist",
+                    )],
+                )
+                    .into_response());
+            }
+        };
     match build_event_invitation_notification(&event, invited_user_id, &server_cfg, &site_settings)
     {
         Ok(notification) => {
@@ -465,9 +465,8 @@ pub(crate) async fn send_event_custom_notification(
     };
 
     // Get event data and site settings
-    let (site_settings, event, event_attendees_ids) = tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id),
+    let ((event, site_settings), event_attendees_ids) = tokio::try_join!(
+        load_event_notification_context(db.as_ref(), community_id, event_id),
         db.resolve_event_custom_notification_recipient_ids(
             group_id,
             event_id,
@@ -490,7 +489,7 @@ pub(crate) async fn send_event_custom_notification(
     }
 
     // Build and enqueue the custom notification with its audit entry
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let link = format!(
         "{}/{}/group/{}/event/{}",
         base_url,
