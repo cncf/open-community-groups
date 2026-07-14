@@ -3,189 +3,196 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(1);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set community1ID '9a070000-0000-0000-0000-000000000001'
-\set community2ID '9a070000-0000-0000-0000-000000000002'
-\set community3ID '9a070000-0000-0000-0000-000000000003'
-\set community4ID '9a070000-0000-0000-0000-000000000004'
-\set event1ID '9a070000-0000-0000-0000-000000000005'
-\set event2ID '9a070000-0000-0000-0000-000000000006'
-\set eventCategory1ID '9a070000-0000-0000-0000-000000000007'
-\set eventCategory2ID '9a070000-0000-0000-0000-000000000008'
-\set group1ID '9a070000-0000-0000-0000-000000000009'
-\set group2ID '9a070000-0000-0000-0000-000000000010'
-\set groupCategory1ID '9a070000-0000-0000-0000-000000000011'
-\set groupCategory2ID '9a070000-0000-0000-0000-000000000012'
+\set communityActiveAlphaID '9a070000-0000-0000-0000-000000000001'
+\set communityActiveBetaID '9a070000-0000-0000-0000-000000000002'
+\set communityInactiveID '9a070000-0000-0000-0000-000000000003'
+\set communityNoGroupsID '9a070000-0000-0000-0000-000000000004'
+\set communityOnlyDeletedGroupID '9a070000-0000-0000-0000-000000000005'
+\set communityOnlyInactiveGroupID '9a070000-0000-0000-0000-000000000006'
+\set groupActiveAlphaID '9a070000-0000-0000-0000-000000000007'
+\set groupActiveBetaID '9a070000-0000-0000-0000-000000000008'
+\set groupCategoryActiveAlphaID '9a070000-0000-0000-0000-000000000009'
+\set groupCategoryActiveBetaID '9a070000-0000-0000-0000-000000000010'
+\set groupCategoryInactiveCommunityID '9a070000-0000-0000-0000-000000000011'
+\set groupCategoryOnlyDeletedID '9a070000-0000-0000-0000-000000000012'
+\set groupCategoryOnlyInactiveID '9a070000-0000-0000-0000-000000000013'
+\set groupInactiveCommunityID '9a070000-0000-0000-0000-000000000014'
+\set groupOnlyDeletedID '9a070000-0000-0000-0000-000000000015'
+\set groupOnlyInactiveID '9a070000-0000-0000-0000-000000000016'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Communities
--- community1: Alpha Community - will have group and published event (should be included)
--- community2: Beta Community - will have group but no events (should be excluded)
--- community3: Gamma Community - will have no groups (should be excluded)
--- community4: Delta Community - inactive (should be excluded)
+-- Communities covering active, inactive, and group eligibility scenarios
 insert into community (
     community_id,
-    name,
-    display_name,
-    description,
     active,
     banner_mobile_url,
     banner_url,
-    logo_url
+    description,
+    display_name,
+    logo_url,
+    name
 ) values
     (
-        :'community1ID',
-        'alpha-community',
-        'Alpha Community',
-        'First community',
+        :'communityActiveAlphaID',
         true,
-        'https://example.com/alpha-banner_mobile.png',
+        'https://example.com/alpha-banner-mobile.png',
         'https://example.com/alpha-banner.png',
-        'https://example.com/alpha-logo.png'
+        'Active community with an active group and no events',
+        'Alpha Community',
+        'https://example.com/alpha-logo.png',
+        'alpha-community'
     ),
     (
-        :'community2ID',
-        'beta-community',
-        'Beta Community',
-        'Second community',
+        :'communityActiveBetaID',
         true,
-        'https://example.com/beta-banner_mobile.png',
+        'https://example.com/beta-banner-mobile.png',
         'https://example.com/beta-banner.png',
-        'https://example.com/beta-logo.png'
+        'Second active community with an active group and no events',
+        'Beta Community',
+        'https://example.com/beta-logo.png',
+        'beta-community'
     ),
     (
-        :'community3ID',
-        'gamma-community',
-        'Gamma Community',
-        'Third community',
-        true,
-        'https://example.com/gamma-banner_mobile.png',
-        'https://example.com/gamma-banner.png',
-        'https://example.com/gamma-logo.png'
-    ),
-    (
-        :'community4ID',
-        'delta-community',
-        'Delta Community',
-        'Fourth community',
+        :'communityInactiveID',
         false,
-        'https://example.com/delta-banner_mobile.png',
-        'https://example.com/delta-banner.png',
-        'https://example.com/delta-logo.png'
+        'https://example.com/inactive-banner-mobile.png',
+        'https://example.com/inactive-banner.png',
+        'Inactive community with an active group',
+        'Inactive Community',
+        'https://example.com/inactive-logo.png',
+        'inactive-community'
+    ),
+    (
+        :'communityNoGroupsID',
+        true,
+        'https://example.com/no-groups-banner-mobile.png',
+        'https://example.com/no-groups-banner.png',
+        'Active community without groups',
+        'No Groups Community',
+        'https://example.com/no-groups-logo.png',
+        'no-groups-community'
+    ),
+    (
+        :'communityOnlyDeletedGroupID',
+        true,
+        'https://example.com/deleted-group-banner-mobile.png',
+        'https://example.com/deleted-group-banner.png',
+        'Active community with only a deleted group',
+        'Only Deleted Group Community',
+        'https://example.com/deleted-group-logo.png',
+        'only-deleted-group-community'
+    ),
+    (
+        :'communityOnlyInactiveGroupID',
+        true,
+        'https://example.com/inactive-group-banner-mobile.png',
+        'https://example.com/inactive-group-banner.png',
+        'Active community with only an inactive group',
+        'Only Inactive Group Community',
+        'https://example.com/inactive-group-logo.png',
+        'only-inactive-group-community'
     );
 
--- Group category
+-- Group categories for communities with group fixtures
 insert into group_category (group_category_id, community_id, name)
 values
-    (:'groupCategory1ID', :'community1ID', 'Technology'),
-    (:'groupCategory2ID', :'community2ID', 'Technology');
+    (:'groupCategoryActiveAlphaID', :'communityActiveAlphaID', 'Technology'),
+    (:'groupCategoryActiveBetaID', :'communityActiveBetaID', 'Technology'),
+    (:'groupCategoryInactiveCommunityID', :'communityInactiveID', 'Technology'),
+    (:'groupCategoryOnlyDeletedID', :'communityOnlyDeletedGroupID', 'Technology'),
+    (:'groupCategoryOnlyInactiveID', :'communityOnlyInactiveGroupID', 'Technology');
 
--- Event category
-insert into event_category (event_category_id, community_id, name)
-values
-    (:'eventCategory1ID', :'community1ID', 'Meetups'),
-    (:'eventCategory2ID', :'community2ID', 'Meetups');
-
--- Group
-insert into "group" (group_id, community_id, group_category_id, name, slug, active, deleted)
-values
-    (:'group1ID', :'community1ID', :'groupCategory1ID', 'Alpha Group', 'alpha-group', true, false),
-    (:'group2ID', :'community2ID', :'groupCategory2ID', 'Beta Group', 'beta-group', true, false);
-
--- Events (only community1's group has a published event)
-insert into event (
-    event_id,
-    canceled,
-    deleted,
-    description,
-    event_category_id,
-    event_kind_id,
+-- Groups covering active, inactive, and deleted eligibility scenarios
+insert into "group" (
     group_id,
+    active,
+    community_id,
+    deleted,
+    group_category_id,
     name,
-    published,
-    slug,
-    timezone
+    slug
 ) values
-    (:'event1ID', false, false, 'A published event', :'eventCategory1ID',
-        'in-person', :'group1ID', 'Alpha Event', true, 'alpha-event', 'America/Los_Angeles'),
-    (:'event2ID', false, false, 'An unpublished event', :'eventCategory2ID',
-        'in-person', :'group2ID', 'Beta Event', false, 'beta-event', 'America/Los_Angeles');
+    (
+        :'groupActiveAlphaID',
+        true,
+        :'communityActiveAlphaID',
+        false,
+        :'groupCategoryActiveAlphaID',
+        'Alpha Group',
+        'alpha-group'
+    ),
+    (
+        :'groupActiveBetaID',
+        true,
+        :'communityActiveBetaID',
+        false,
+        :'groupCategoryActiveBetaID',
+        'Beta Group',
+        'beta-group'
+    ),
+    (
+        :'groupInactiveCommunityID',
+        true,
+        :'communityInactiveID',
+        false,
+        :'groupCategoryInactiveCommunityID',
+        'Inactive Community Group',
+        'inactive-community-group'
+    ),
+    (
+        :'groupOnlyDeletedID',
+        false,
+        :'communityOnlyDeletedGroupID',
+        true,
+        :'groupCategoryOnlyDeletedID',
+        'Deleted Group',
+        'deleted-group'
+    ),
+    (
+        :'groupOnlyInactiveID',
+        false,
+        :'communityOnlyInactiveGroupID',
+        false,
+        :'groupCategoryOnlyInactiveID',
+        'Inactive Group',
+        'inactive-group'
+    );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return only communities with at least one group and one published event
+-- Should return active communities with active groups without requiring events
 select is(
     list_communities()::jsonb,
     jsonb_build_array(
         jsonb_build_object(
-            'banner_mobile_url', 'https://example.com/alpha-banner_mobile.png',
+            'banner_mobile_url', 'https://example.com/alpha-banner-mobile.png',
             'banner_url', 'https://example.com/alpha-banner.png',
-            'community_id', :'community1ID',
+            'community_id', :'communityActiveAlphaID',
             'display_name', 'Alpha Community',
             'logo_url', 'https://example.com/alpha-logo.png',
             'name', 'alpha-community'
+        ),
+        jsonb_build_object(
+            'banner_mobile_url', 'https://example.com/beta-banner-mobile.png',
+            'banner_url', 'https://example.com/beta-banner.png',
+            'community_id', :'communityActiveBetaID',
+            'display_name', 'Beta Community',
+            'logo_url', 'https://example.com/beta-logo.png',
+            'name', 'beta-community'
         )
     ),
-    'Should return only communities with at least one group and one published event'
-);
-
--- Should exclude communities with only test events
-update event set test_event = true where event_id = :'event1ID';
-select is(
-    list_communities()::jsonb,
-    '[]'::jsonb,
-    'Should exclude communities with only test events'
-);
-
--- Restore the event before evaluating group-based exclusions
-update event set test_event = false where event_id = :'event1ID';
-
--- Should exclude communities with only deleted groups
-update "group" set deleted = true, active = false where group_id = :'group1ID';
-select is(
-    list_communities()::jsonb,
-    '[]'::jsonb,
-    'Should exclude communities with only deleted groups'
-);
-
--- Should exclude communities with only inactive groups
-update "group" set deleted = false, active = false where group_id = :'group1ID';
-select is(
-    list_communities()::jsonb,
-    '[]'::jsonb,
-    'Should exclude communities with only inactive groups'
-);
-
--- Should exclude communities with only canceled events
-update "group" set active = true where group_id = :'group1ID';
-
--- Cancel the remaining public event for this exclusion scenario
-update event set canceled = true, published = false where event_id = :'event1ID';
-select is(
-    list_communities()::jsonb,
-    '[]'::jsonb,
-    'Should exclude communities with only canceled events'
-);
-
--- Should return empty array when no communities meet criteria
-delete from event;
-
--- Remove the remaining groups after their dependent events
-delete from "group";
-select is(
-    list_communities()::jsonb,
-    '[]'::jsonb,
-    'Should return empty array when no communities meet criteria'
+    'Should return active communities with active groups without requiring events'
 );
 
 -- ============================================================================
