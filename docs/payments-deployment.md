@@ -129,7 +129,7 @@ Configure the Stripe webhook endpoint to send only these events:
 
 The checkout events complete purchases and expire seat holds. The refund events
 let OCG reconcile asynchronous provider refunds, finalize automatic refunds,
-and record terminal failures for explicit recovery.
+and record terminal failures for manual recovery.
 
 Subscribing extra Stripe events is not recommended here because unsupported
 events are currently rejected by the webhook handler.
@@ -203,6 +203,52 @@ payment methods that require async completion events.
 Reference:
 [Create a Checkout Session](https://docs.stripe.com/api/checkout/sessions/create).
 
+### Refund Recovery
+
+OCG validates refund webhook amounts, currencies, and PaymentIntent identifiers
+against the durable purchase before accepting provider state changes. A refund
+event with copied or mismatched purchase metadata cannot finalize the purchase.
+
+Stripe can report a refund as succeeded and later transition it to failed. When
+that happens after OCG has finalized the refund locally, OCG preserves the
+released seat, marks the purchase as `refund-recovery-pending`, blocks another
+checkout for the same event, and records the failed provider refund for manual
+recovery.
+
+If the attendee already completed a replacement purchase before the delayed
+failure arrived, that newer purchase remains valid while OCG recovers the
+original refund.
+
+OCG acknowledges `refund.failed` after persisting the terminal state and emits
+a structured warning for operators. It does not submit another refund because
+permanent destination failures could otherwise create an unbounded replacement
+loop. Operators must arrange an alternative way to refund the attendee.
+
+After confirming that alternative refund, an operator completes recovery with
+the durable refund ID, their OCG user ID, a reference to the external payment,
+and a note describing the evidence reviewed:
+
+```sql
+select complete_event_purchase_refund_recovery(
+    '<operator-user-id>'::uuid,
+    '<event-purchase-refund-id>'::uuid,
+    '<external-payment-reference>',
+    '<recovery-note>'
+);
+```
+
+The function preserves the failed Stripe attempt, records the recovery evidence,
+restores the purchase to `refunded`, and appends an event audit entry. If the
+provider failed before OCG finalized the refund, the function also completes the
+pending local refund workflow. Repeating the same call is safe; conflicting
+evidence is rejected.
+
+Provider requests that fail without returning a Stripe refund ID remain
+retryable with their original idempotency key. When an unpinned refund receives
+an out-of-order success event, OCG checks the named refund's current Stripe
+state before accepting it. Confirmed terminal refunds remain pinned so delayed
+pending or successful events cannot revive them.
+
 ### Delayed Payment Methods
 
 Based on the current OCG implementation, the webhook handler accepts checkout
@@ -259,6 +305,19 @@ Check that:
 
 Reference:
 [Resolve webhook signature verification errors](https://docs.stripe.com/webhooks/signature).
+
+### Refund Requires Manual Recovery
+
+Check that:
+
+- The `refund.failed` delivery reached OCG and the purchase is marked
+  `refund-recovery-pending` when local finalization had already completed.
+- OCG logs contain the `provider refund requires manual recovery` warning.
+- The failed refund amount, currency, and PaymentIntent match the OCG purchase.
+
+Do not resend the event to trigger another refund. Arrange an alternative refund
+method for the attendee, retain its reference and review evidence, then call
+`complete_event_purchase_refund_recovery` as shown above.
 
 ### Paid Events Are Still Unavailable For A Group
 

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,7 +22,10 @@ select plan(6);
 \set audit9ID '3a1f0000-0000-0000-0000-000000000110'
 \set audit10ID '3a1f0000-0000-0000-0000-000000000111'
 \set audit11ID '3a1f0000-0000-0000-0000-000000000112'
+\set audit12ID '3a1f0000-0000-0000-0000-000000000113'
 \set communityID '3a1f0000-0000-0000-0000-000000000001'
+\set eventCategoryID '3a1f0000-0000-0000-0000-000000000022'
+\set eventID '3a1f0000-0000-0000-0000-000000000051'
 \set groupCategoryID '3a1f0000-0000-0000-0000-000000000021'
 \set groupID '3a1f0000-0000-0000-0000-000000000031'
 \set otherGroupID '3a1f0000-0000-0000-0000-000000000032'
@@ -65,11 +68,36 @@ insert into community (
 insert into group_category (group_category_id, community_id, name)
 values (:'groupCategoryID', :'communityID', 'Technology');
 
+-- Event category
+insert into event_category (event_category_id, community_id, name)
+values (:'eventCategoryID', :'communityID', 'General');
+
 -- Groups
 insert into "group" (group_id, community_id, group_category_id, name, slug)
 values
     (:'groupID', :'communityID', :'groupCategoryID', 'Platform', 'platform'),
     (:'otherGroupID', :'communityID', :'groupCategoryID', 'Infra', 'infra');
+
+-- Event
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    timezone
+) values (
+    'Test event',
+    :'eventCategoryID',
+    :'eventID',
+    'in-person',
+    :'groupID',
+    'Recovery Event',
+    'recovery-event',
+    'UTC'
+);
 
 -- Audit log rows
 insert into audit_log (
@@ -217,6 +245,18 @@ insert into audit_log (
         'community'
     ),
     (
+        :'audit12ID',
+        'event_refund_recovery_completed',
+        :'actor1ID',
+        'alice',
+        :'communityID',
+        '2024-03-06 10:00:00+00',
+        '{"recovery_reference": "bank-transfer-123"}',
+        :'groupID',
+        :'eventID',
+        'event'
+    ),
+    (
         :'wildcardAuditID',
         'group_updated',
         :'wildcardActorID',
@@ -242,6 +282,16 @@ select is(
     jsonb_build_object(
         'logs',
         '[
+            {
+                "action": "event_refund_recovery_completed",
+                "actor_username": "alice",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000113",
+                "created_at": 1709719200,
+                "details": {"recovery_reference": "bank-transfer-123"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000051",
+                "resource_name": "Recovery Event",
+                "resource_type": "event"
+            },
             {
                 "action": "group_updated",
                 "actor_username": "userx1",
@@ -344,9 +394,35 @@ select is(
             }
         ]'::jsonb,
         'total',
-        10
+        11
     ),
     'Should return only group dashboard actions for the selected group'
+);
+
+-- Should filter group audit logs by refund recovery completion
+select is(
+    list_group_audit_logs(
+        :'groupID'::uuid,
+        '{"action": "event_refund_recovery_completed", "limit": 50, "offset": 0, "sort": "created-desc"}'::jsonb
+    )::jsonb,
+    jsonb_build_object(
+        'logs',
+        '[
+            {
+                "action": "event_refund_recovery_completed",
+                "actor_username": "alice",
+                "audit_log_id": "3a1f0000-0000-0000-0000-000000000113",
+                "created_at": 1709719200,
+                "details": {"recovery_reference": "bank-transfer-123"},
+                "resource_id": "3a1f0000-0000-0000-0000-000000000051",
+                "resource_name": "Recovery Event",
+                "resource_type": "event"
+            }
+        ]'::jsonb,
+        'total',
+        1
+    ),
+    'Should filter group audit logs by refund recovery completion'
 );
 
 -- Should filter group audit logs by actor and action
@@ -448,7 +524,7 @@ select is(
         :'groupID'::uuid,
         '{"limit": 1, "offset": 0, "sort": "resource-asc"}'::jsonb
     )::jsonb#>>'{logs,0,action}',
-    'group_updated',
+    'event_refund_recovery_completed',
     'Should default unsupported group audit sort values to created descending'
 );
 

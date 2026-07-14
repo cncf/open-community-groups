@@ -39,6 +39,7 @@ returns json as $$
                 'event_invitation_request_rejected',
                 'event_published',
                 'event_refund_approved',
+                'event_refund_recovery_completed',
                 'event_refund_rejected',
                 'event_refund_requested',
                 'event_refunded',

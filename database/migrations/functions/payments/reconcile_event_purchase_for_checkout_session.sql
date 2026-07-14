@@ -13,10 +13,27 @@ declare
     v_hold_expired boolean;
     v_provider_payment_reference text;
     v_purchase_id uuid;
+    v_recovery_pending boolean;
     v_status text;
     v_unfulfillable boolean;
     v_user_id uuid;
 begin
+    -- Resolve and lock the event before its checkout purchase
+    select ep.event_id
+    into v_event_id
+    from event_purchase ep
+    where ep.payment_provider_id = p_provider
+    and ep.provider_checkout_session_id = p_provider_session_id;
+
+    if not found then
+        return jsonb_build_object('outcome', 'noop');
+    end if;
+
+    perform 1
+    from event
+    where event_id = v_event_id
+    for update;
+
     -- Lock the purchase before deciding how to reconcile the provider checkout
     select
         ep.amount_minor,
@@ -27,6 +44,14 @@ begin
             and ep.hold_expires_at <= current_timestamp,
         coalesce(p_provider_payment_reference, ep.provider_payment_reference),
         ep.event_purchase_id,
+        exists (
+            select 1
+            from event_purchase recovery_ep
+            where recovery_ep.event_id = ep.event_id
+            and recovery_ep.event_purchase_id <> ep.event_purchase_id
+            and recovery_ep.status = 'refund-recovery-pending'
+            and recovery_ep.user_id = ep.user_id
+        ),
         ep.status,
         e.canceled
             or e.deleted
@@ -45,6 +70,7 @@ begin
         v_hold_expired,
         v_provider_payment_reference,
         v_purchase_id,
+        v_recovery_pending,
         v_status,
         v_unfulfillable,
         v_user_id
@@ -74,6 +100,7 @@ begin
     -- Complete active holds even if public registration has closed since checkout started
     if v_status <> 'refund-pending'
        and not v_hold_expired
+       and not v_recovery_pending
        and not v_unfulfillable then
         -- Add the attendee, reviving only checkout-compatible states
         insert into event_attendee (event_id, user_id)

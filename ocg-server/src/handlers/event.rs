@@ -840,6 +840,9 @@ fn get_checkout_status_response(
     match purchase_status {
         EventPurchaseStatus::Completed => Ok(Some(EventAttendanceStatus::Attendee)),
         EventPurchaseStatus::Pending => Ok(None),
+        EventPurchaseStatus::RefundRecoveryPending => Err(HandlerError::Database(
+            "checkout is unavailable while refund recovery is in progress".to_string(),
+        )),
         EventPurchaseStatus::RefundRequested => Err(HandlerError::Database(
             "checkout is unavailable while a refund is in progress".to_string(),
         )),

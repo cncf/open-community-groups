@@ -43,6 +43,8 @@ pub enum EventPurchaseStatus {
     Refunded,
     /// Provider refund is still pending.
     RefundPending,
+    /// A locally finalized refund is being recovered after provider failure.
+    RefundRecoveryPending,
     /// Attendee requested a refund.
     RefundRequested,
 }

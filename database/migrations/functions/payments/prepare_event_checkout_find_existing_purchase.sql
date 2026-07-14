@@ -19,11 +19,16 @@ returns table (
     where ep.event_id = p_event_id
     and ep.user_id = p_user_id
     and (
-        ep.status in ('completed', 'refund-requested')
+        -- Block checkout during recovery without invalidating a completed replacement purchase
+        ep.status in ('completed', 'refund-recovery-pending', 'refund-requested')
         or (ep.status = 'pending' and ep.hold_expires_at > current_timestamp)
     )
     order by
-        case when ep.status = 'pending' then 0 else 1 end,
+        case
+            when ep.status = 'completed' then 0
+            when ep.status in ('refund-recovery-pending', 'refund-requested') then 1
+            else 2
+        end,
         ep.created_at desc,
         ep.event_purchase_id desc
     limit 1;

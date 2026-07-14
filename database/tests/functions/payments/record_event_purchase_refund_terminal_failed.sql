@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(10);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,10 +16,20 @@ select plan(10);
 \set failedPurchaseID '79520000-0000-0000-0000-000000000005'
 \set failedRefundID '79520000-0000-0000-0000-000000000006'
 \set failedUserID '79520000-0000-0000-0000-000000000007'
+\set finalizedPurchaseID '79520000-0000-0000-0000-000000000015'
+\set finalizedRefundID '79520000-0000-0000-0000-000000000016'
+\set finalizedUserID '79520000-0000-0000-0000-000000000017'
 \set groupCategoryID '79520000-0000-0000-0000-000000000008'
 \set groupID '79520000-0000-0000-0000-000000000009'
+\set invalidPurchaseID '79520000-0000-0000-0000-000000000019'
+\set invalidRefundID '79520000-0000-0000-0000-000000000020'
+\set invalidUserID '79520000-0000-0000-0000-000000000021'
 \set missingRefundID '79520000-0000-0000-0000-000000000014'
 \set priceWindowID '79520000-0000-0000-0000-000000000010'
+\set recoveryPurchaseID '79520000-0000-0000-0000-000000000022'
+\set recoveryRefundID '79520000-0000-0000-0000-000000000023'
+\set recoveryUserID '79520000-0000-0000-0000-000000000024'
+\set replacementPurchaseID '79520000-0000-0000-0000-000000000018'
 \set succeededPurchaseID '79520000-0000-0000-0000-000000000011'
 \set succeededRefundID '79520000-0000-0000-0000-000000000012'
 \set succeededUserID '79520000-0000-0000-0000-000000000013'
@@ -64,6 +74,27 @@ values
         'terminal-failed-buyer@example.com',
         true,
         'terminal-failed-buyer'
+    ),
+    (
+        :'finalizedUserID',
+        'hash-3',
+        'terminal-finalized-buyer@example.com',
+        true,
+        'terminal-finalized-buyer'
+    ),
+    (
+        :'invalidUserID',
+        'hash-4',
+        'terminal-invalid-buyer@example.com',
+        true,
+        'terminal-invalid-buyer'
+    ),
+    (
+        :'recoveryUserID',
+        'hash-5',
+        'terminal-recovery-buyer@example.com',
+        true,
+        'terminal-recovery-buyer'
     ),
     (
         :'succeededUserID',
@@ -145,7 +176,9 @@ insert into event_purchase (
     event_ticket_type_id,
     status,
     ticket_title,
-    user_id
+    user_id,
+
+    refunded_at
 ) values (
     :'failedPurchaseID',
     2500,
@@ -154,7 +187,53 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'refund-pending',
     'General admission',
-    :'failedUserID'
+    :'failedUserID',
+
+    null
+), (
+    :'finalizedPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refunded',
+    'General admission',
+    :'finalizedUserID',
+
+    current_timestamp
+), (
+    :'invalidPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'completed',
+    'General admission',
+    :'invalidUserID',
+
+    null
+), (
+    :'recoveryPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-recovery-pending',
+    'General admission',
+    :'recoveryUserID',
+
+    current_timestamp
+), (
+    :'replacementPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'completed',
+    'General admission',
+    :'finalizedUserID',
+
+    null
 ), (
     :'succeededPurchaseID',
     2500,
@@ -163,7 +242,9 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'refund-pending',
     'General admission',
-    :'succeededUserID'
+    :'succeededUserID',
+
+    null
 );
 
 -- Provider refund records
@@ -177,6 +258,7 @@ insert into event_purchase_refund (
     payment_provider_id,
     status,
 
+    finalized_at,
     provider_refund_id,
     provider_refunded_at
 ) values (
@@ -189,7 +271,47 @@ insert into event_purchase_refund (
     'stripe',
     'provider-pending',
 
+    null,
     're_failed_123',
+    null
+), (
+    :'finalizedRefundID',
+    2500,
+    'USD',
+    :'finalizedPurchaseID',
+    'event-purchase-refund-' || :'finalizedPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'finalized',
+
+    current_timestamp,
+    're_finalized_123',
+    current_timestamp
+), (
+    :'invalidRefundID',
+    2500,
+    'USD',
+    :'invalidPurchaseID',
+    'event-purchase-refund-' || :'invalidPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'finalized',
+
+    current_timestamp,
+    're_invalid_123',
+    current_timestamp
+), (
+    :'recoveryRefundID',
+    2500,
+    'USD',
+    :'recoveryPurchaseID',
+    'event-purchase-refund-' || :'recoveryPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'provider-failed',
+
+    current_timestamp,
+    null,
     null
 ), (
     :'succeededRefundID',
@@ -201,6 +323,7 @@ insert into event_purchase_refund (
     'stripe',
     'provider-succeeded',
 
+    null,
     're_success_123',
     current_timestamp
 );
@@ -256,26 +379,55 @@ select lives_ok(
     'Should record terminal provider refund failure'
 );
 
--- Should unpin the dead provider refund and rotate the idempotency key
+-- Should pin the terminal provider refund without rotating its idempotency key
 select results_eq(
     format($$
         select
             status,
             failure_message,
             provider_refund_id,
-            idempotency_key <> 'event-purchase-refund-' || %L,
-            idempotency_key like 'event-purchase-refund-' || %L || '-%%'
+            idempotency_key = 'event-purchase-refund-' || %L
         from event_purchase_refund
         where event_purchase_refund_id = %L::uuid
-    $$, :'failedPurchaseID', :'failedPurchaseID', :'failedRefundID'),
+    $$, :'failedPurchaseID', :'failedRefundID'),
     $$ values (
         'provider-failed'::text,
         'provider refund failed: re_failed_123'::text,
-        null::text,
-        true,
+        're_failed_123'::text,
         true
     ) $$,
-    'Should unpin the dead provider refund and rotate the idempotency key'
+    'Should pin the terminal provider refund without rotating its idempotency key'
+);
+
+-- Should accept a duplicate terminal provider failure as an idempotent replay
+select lives_ok(
+    format($$select record_event_purchase_refund_terminal_failed(
+        %L::uuid,
+        %L,
+        're_failed_123',
+        'duplicate provider refund failed'
+    )$$, :'failedRefundID', 'event-purchase-refund-' || :'failedPurchaseID'),
+    'Should accept a duplicate terminal provider failure as an idempotent replay'
+);
+
+-- Should preserve the first terminal provider failure on replay
+select results_eq(
+    format($$
+        select
+            status,
+
+            failure_message,
+            provider_refund_id
+        from event_purchase_refund
+        where event_purchase_refund_id = %L::uuid
+    $$, :'failedRefundID'),
+    $$ values (
+        'provider-failed'::text,
+
+        'provider refund failed: re_failed_123'::text,
+        're_failed_123'::text
+    ) $$,
+    'Should preserve the first terminal provider failure on replay'
 );
 
 -- Should ignore a delayed failure from the superseded attempt
@@ -285,7 +437,7 @@ select lives_ok(
         %L,
         're_failed_456',
         'stale provider refund failed'
-    )$$, :'failedRefundID', 'event-purchase-refund-' || :'failedPurchaseID'),
+    )$$, :'failedRefundID', 'event-purchase-refund-stale'),
     'Should ignore a delayed failure from the superseded attempt'
 );
 
@@ -296,11 +448,15 @@ select results_eq(
         from event_purchase_refund
         where event_purchase_refund_id = %L::uuid
     $$, :'failedRefundID'),
-    $$ values ('provider-failed'::text, 'provider refund failed: re_failed_123'::text, null::text) $$,
+    $$ values (
+        'provider-failed'::text,
+        'provider refund failed: re_failed_123'::text,
+        're_failed_123'::text
+    ) $$,
     'Should keep the current attempt state after a delayed failure'
 );
 
--- Should not downgrade a refund row after provider success is recorded
+-- Should record a delayed failure after provider success
 select lives_ok(
     format($$select record_event_purchase_refund_terminal_failed(
         %L::uuid,
@@ -308,18 +464,115 @@ select lives_ok(
         're_success_123',
         'provider refund failed'
     )$$, :'succeededRefundID', 'event-purchase-refund-' || :'succeededPurchaseID'),
-    'Should not downgrade a refund row after provider success is recorded'
+    'Should record a delayed failure after provider success'
 );
 
--- Should keep the successful provider refund state
+-- Should pin the provider-succeeded attempt after its delayed failure
 select results_eq(
     format($$
-        select status, provider_refund_id, failure_message
+        select status, failure_message, provider_refund_id, provider_refunded_at
         from event_purchase_refund
         where event_purchase_refund_id = %L::uuid
     $$, :'succeededRefundID'),
-    $$ values ('provider-succeeded'::text, 're_success_123'::text, null::text) $$,
-    'Should keep the successful provider refund state'
+    $$ values (
+        'provider-failed'::text,
+        'provider refund failed: re_success_123'::text,
+        're_success_123'::text,
+        null::timestamptz
+    ) $$,
+    'Should pin the provider-succeeded attempt after its delayed failure'
+);
+
+-- Should record a delayed failure after local finalization
+select lives_ok(
+    format($$select record_event_purchase_refund_terminal_failed(
+        %L::uuid,
+        %L,
+        're_finalized_123',
+        'provider refund failed'
+    )$$, :'finalizedRefundID', 'event-purchase-refund-' || :'finalizedPurchaseID'),
+    'Should record a delayed failure after local finalization'
+);
+
+-- Should preserve local finalization and expose purchase recovery
+select results_eq(
+    format($$
+        select
+            epr.status,
+            epr.finalized_at is not null,
+            epr.provider_refund_id,
+            epr.provider_refunded_at,
+            ep.status,
+            (
+                select status
+                from event_purchase
+                where event_purchase_id = %L::uuid
+            )
+        from event_purchase_refund epr
+        join event_purchase ep using (event_purchase_id)
+        where epr.event_purchase_refund_id = %L::uuid
+    $$, :'replacementPurchaseID', :'finalizedRefundID'),
+    $$ values (
+        'provider-failed'::text,
+        true,
+        're_finalized_123'::text,
+        null::timestamptz,
+        'refund-recovery-pending'::text,
+        'completed'::text
+    ) $$,
+    'Should preserve local finalization and expose purchase recovery'
+);
+
+-- Should preserve recovery state after another terminal failure
+select lives_ok(
+    format($$select record_event_purchase_refund_terminal_failed(
+        %L::uuid,
+        %L,
+        're_recovery_again_123',
+        'provider refund failed again'
+    )$$, :'recoveryRefundID', 'event-purchase-refund-' || :'recoveryPurchaseID'),
+    'Should preserve recovery state after another terminal failure'
+);
+
+-- Should pin the repeated failed attempt without clearing finalization
+select results_eq(
+    format($$
+        select epr.finalized_at is not null, epr.provider_refund_id, epr.status, ep.status
+        from event_purchase_refund epr
+        join event_purchase ep using (event_purchase_id)
+        where epr.event_purchase_refund_id = %L::uuid
+    $$, :'recoveryRefundID'),
+    $$ values (
+        true,
+        're_recovery_again_123'::text,
+        'provider-failed'::text,
+        'refund-recovery-pending'::text
+    ) $$,
+    'Should pin the repeated failed attempt without clearing finalization'
+);
+
+-- Should reject finalized refunds whose purchase is not recoverable
+select throws_ok(
+    format($$select record_event_purchase_refund_terminal_failed(
+        %L::uuid,
+        %L,
+        're_invalid_123',
+        'provider refund failed'
+    )$$, :'invalidRefundID', 'event-purchase-refund-' || :'invalidPurchaseID'),
+    'finalized event purchase not found',
+    'Should reject finalized refunds whose purchase is not recoverable'
+);
+
+-- Should preserve invalid refund and purchase state after rejection
+select results_eq(
+    format($$
+        select epr.provider_refund_id, epr.status, ep.status
+        from event_purchase_refund epr
+        join event_purchase ep using (event_purchase_id)
+        where epr.event_purchase_refund_id = %L::uuid
+    $$, :'invalidRefundID'),
+    $$ values ('re_invalid_123'::text, 'finalized'::text, 'completed'::text) $$,
+    'Should preserve invalid refund and purchase state after rejection'
 );
 
 -- Should reject missing refund rows

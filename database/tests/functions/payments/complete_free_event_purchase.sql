@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -27,6 +27,8 @@ select plan(9);
 \set openUntilStartPurchaseID '79430000-0000-0000-0000-000000000024'
 \set paidPurchaseID '79430000-0000-0000-0000-000000000014'
 \set priceWindowID '79430000-0000-0000-0000-000000000015'
+\set recoveryPurchaseID '79430000-0000-0000-0000-000000000026'
+\set recoveryReplacementPurchaseID '79430000-0000-0000-0000-000000000027'
 \set registrationQuestionID '79430000-0000-0000-0000-000000000016'
 \set user1ID '79430000-0000-0000-0000-000000000017'
 \set user2ID '79430000-0000-0000-0000-000000000018'
@@ -34,6 +36,7 @@ select plan(9);
 \set user4ID '79430000-0000-0000-0000-000000000020'
 \set user5ID '79430000-0000-0000-0000-000000000021'
 \set user6ID '79430000-0000-0000-0000-000000000025'
+\set user7ID '79430000-0000-0000-0000-000000000028'
 
 -- ============================================================================
 -- SEED DATA
@@ -110,6 +113,13 @@ values
         'user6@example.com',
         true,
         'user-6'
+    ),
+    (
+        :'user7ID',
+        'hash-7',
+        'user7@example.com',
+        true,
+        'user-7'
     );
 
 -- Group
@@ -311,6 +321,50 @@ insert into event_purchase (
     :'user6ID'
 );
 
+-- Refunded paid purchase whose terminal provider failure requires recovery
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'recoveryPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-recovery-pending',
+    'General admission',
+    :'user7ID'
+);
+
+-- Pending free replacement created before the original refund failed
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    currency_code,
+    event_id,
+    event_ticket_type_id,
+    hold_expires_at,
+    status,
+    ticket_title,
+    user_id
+) values (
+    :'recoveryReplacementPurchaseID',
+    0,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    now() + interval '10 minutes',
+    'pending',
+    'General admission',
+    :'user7ID'
+);
+
 -- Pending attendee row with registration answers created during checkout
 insert into event_attendee (event_id, user_id, registration_answers, status)
 values (
@@ -431,6 +485,47 @@ select throws_ok(
     format($$select complete_free_event_purchase(%L::uuid)$$, :'inactivePurchaseID'),
     'event not found or inactive',
     'Should reject free purchases when the event becomes inactive'
+);
+
+-- Should reject a free replacement while refund recovery is unresolved
+select throws_ok(
+    format(
+        $$select complete_free_event_purchase(%L::uuid)$$,
+        :'recoveryReplacementPurchaseID'
+    ),
+    'checkout is unavailable while refund recovery is in progress',
+    'Should reject a free replacement while refund recovery is unresolved'
+);
+
+-- Should preserve the recovery and pending replacement without an attendee
+select results_eq(
+    format($$
+        select
+            recovery.status,
+            replacement.completed_at is null,
+            replacement.hold_expires_at is not null,
+            replacement.status,
+            (
+                select count(*)::int
+                from event_attendee
+                where event_id = replacement.event_id
+                and user_id = replacement.user_id
+            )
+        from event_purchase recovery
+        join event_purchase replacement
+            on replacement.event_id = recovery.event_id
+            and replacement.user_id = recovery.user_id
+        where recovery.event_purchase_id = %L::uuid
+        and replacement.event_purchase_id = %L::uuid
+    $$, :'recoveryPurchaseID', :'recoveryReplacementPurchaseID'),
+    $$ values (
+        'refund-recovery-pending'::text,
+        true,
+        true,
+        'pending'::text,
+        0::int
+    ) $$,
+    'Should preserve the recovery and pending replacement without an attendee'
 );
 
 -- Should complete active free holds after an open-only registration window reaches the event start

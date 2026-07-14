@@ -131,10 +131,16 @@ pub(crate) enum PaymentsWebhookEvent {
     Noop,
     /// A provider refund lifecycle state changed.
     RefundUpdated {
-        /// Platform purchase identifier from provider metadata.
-        purchase_id: Uuid,
+        /// Refunded amount in minor units.
+        amount_minor: i64,
+        /// Refund currency code.
+        currency_code: String,
+        /// Provider payment reference owning the refund.
+        provider_payment_reference: String,
         /// Provider-specific refund identifier.
         provider_refund_id: String,
+        /// Platform purchase identifier from provider metadata.
+        purchase_id: Uuid,
         /// Current provider refund lifecycle status.
         status: RefundPaymentStatus,
     },

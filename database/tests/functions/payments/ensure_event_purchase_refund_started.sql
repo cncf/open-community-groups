@@ -24,6 +24,10 @@ select plan(10);
 \set manualUserID '79460000-0000-0000-0000-000000000015'
 \set missingPurchaseID '79460000-0000-0000-0000-000000000016'
 \set priceWindowID '79460000-0000-0000-0000-000000000011'
+\set terminalPurchaseID '79460000-0000-0000-0000-000000000017'
+\set terminalRefundID '79460000-0000-0000-0000-000000000018'
+\set terminalRefundRequestID '79460000-0000-0000-0000-000000000019'
+\set terminalUserID '79460000-0000-0000-0000-000000000020'
 
 -- ============================================================================
 -- SEED DATA
@@ -61,7 +65,8 @@ insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
     (:'automaticUserID', 'hash-1', 'automatic@example.com', true, 'automatic-buyer'),
     (:'completedUserID', 'hash-2', 'completed@example.com', true, 'completed-buyer'),
-    (:'manualUserID', 'hash-3', 'manual@example.com', true, 'manual-buyer');
+    (:'manualUserID', 'hash-3', 'manual@example.com', true, 'manual-buyer'),
+    (:'terminalUserID', 'hash-4', 'terminal@example.com', true, 'terminal-buyer');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
@@ -157,6 +162,15 @@ insert into event_purchase (
     'refund-requested',
     'General admission',
     :'manualUserID'
+), (
+    :'terminalPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-requested',
+    'General admission',
+    :'terminalUserID'
 );
 
 -- Refund request
@@ -170,6 +184,40 @@ insert into event_refund_request (
     :'manualPurchaseID',
     :'manualUserID',
     'approving'
+), (
+    :'terminalRefundRequestID',
+    :'terminalPurchaseID',
+    :'terminalUserID',
+    'approving'
+);
+
+-- Pinned terminal refund used by the retry scenario
+insert into event_purchase_refund (
+    event_purchase_refund_id,
+    amount_minor,
+    currency_code,
+    event_purchase_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status,
+
+    event_refund_request_id,
+    failure_message,
+    provider_refund_id
+) values (
+    :'terminalRefundID',
+    2500,
+    'USD',
+    :'terminalPurchaseID',
+    'event-purchase-refund-' || :'terminalPurchaseID',
+    'refund-request-approval',
+    'stripe',
+    'provider-failed',
+
+    :'terminalRefundRequestID',
+    'provider refund failed: re_failed_manual_123',
+    're_failed_manual_123'
 );
 
 -- ============================================================================
@@ -238,24 +286,12 @@ select throws_ok(
     'Should reject retries with a different payments provider'
 );
 
--- Rotate the provider attempt to verify ensure returns the current durable state
-select record_event_purchase_refund_terminal_failed(
-    (
-        select event_purchase_refund_id
-        from event_purchase_refund
-        where event_purchase_id = :'manualPurchaseID'::uuid
-    ),
-    'event-purchase-refund-' || :'manualPurchaseID',
-    're_failed_manual_123',
-    'provider refund failed'
-);
-
--- Should return a rotated idempotency key after terminal provider failure
+-- Should return the pinned terminal refund after provider failure
 select ok(
     (
         with refund as (
             select ensure_event_purchase_refund_started(
-                :'manualPurchaseID'::uuid,
+                :'terminalPurchaseID'::uuid,
                 'stripe',
                 'refund-request-approval'
             ) as data
@@ -263,19 +299,19 @@ select ok(
         select data @> jsonb_build_object(
             'amount_minor', 2500,
             'currency_code', 'USD',
-            'event_purchase_id', :'manualPurchaseID'::uuid,
+            'event_purchase_id', :'terminalPurchaseID'::uuid,
             'kind', 'refund-request-approval',
             'payment_provider', 'stripe',
-            'started_now', false,
-            'status', 'provider-failed'
+            'status', 'provider-failed',
+
+            'started_now', false
         )
-        and data->>'idempotency_key' <> 'event-purchase-refund-' || :'manualPurchaseID'
-        and data->>'idempotency_key' like 'event-purchase-refund-' || :'manualPurchaseID' || '-%'
+        and data->>'idempotency_key' = 'event-purchase-refund-' || :'terminalPurchaseID'
         and data ? 'failure_message'
-        and not data ? 'provider_refund_id'
+        and data->>'provider_refund_id' = 're_failed_manual_123'
         from refund
     ),
-    'Should return a rotated idempotency key after terminal provider failure'
+    'Should return the pinned terminal refund after provider failure'
 );
 
 -- Should create an automatic refund record before the provider call

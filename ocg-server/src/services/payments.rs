@@ -8,6 +8,7 @@
 mod manager;
 mod notification_composer;
 mod provider;
+mod refund_recorder;
 mod webhook_reconciler;
 
 pub(crate) use manager::{

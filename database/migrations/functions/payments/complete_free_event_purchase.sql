@@ -14,6 +14,7 @@ declare
     v_event_published boolean;
     v_event_starts_at timestamptz;
     v_group_active boolean;
+    v_recovery_pending boolean;
     v_status text;
     v_user_id uuid;
 begin
@@ -58,11 +59,20 @@ begin
     select
         ep.amount_minor,
         ep.hold_expires_at,
+        exists (
+            select 1
+            from event_purchase recovery_ep
+            where recovery_ep.event_id = ep.event_id
+            and recovery_ep.event_purchase_id <> ep.event_purchase_id
+            and recovery_ep.status = 'refund-recovery-pending'
+            and recovery_ep.user_id = ep.user_id
+        ),
         ep.status,
         ep.user_id
     into
         v_amount_minor,
         v_hold_expires_at,
+        v_recovery_pending,
         v_status,
         v_user_id
     from event_purchase ep
@@ -84,6 +94,10 @@ begin
 
     if v_hold_expires_at is not null and v_hold_expires_at <= current_timestamp then
         raise exception 'purchase hold has expired';
+    end if;
+
+    if v_recovery_pending then
+        raise exception 'checkout is unavailable while refund recovery is in progress';
     end if;
 
     -- Ensure the event is still active before completing the free purchase

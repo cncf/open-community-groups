@@ -258,6 +258,14 @@ insert into "user" (
         'contract-buyer-refund-lifecycle'
     ),
     (
+        'contract_hash_buyer_refund_recovery',
+        'buyer-refund-recovery.contract@example.com',
+        true,
+        'Contract Buyer Refund Recovery',
+        '00000000-0000-0000-0000-00000000c0eb',
+        'contract-buyer-refund-recovery'
+    ),
+    (
         'contract_hash_leaver',
         'leaver.contract@example.com',
         true,
@@ -1066,6 +1074,21 @@ insert into event_purchase (
         'stripe',
         'cs_contract_refund_lifecycle',
         'pi_contract_refund_lifecycle'
+    ),
+    (
+        2500,
+        'USD',
+        '00000000-0000-0000-0000-00000000c0d0',
+        '00000000-0000-0000-0000-00000000c0fd',
+        '00000000-0000-0000-0000-00000000c0d1',
+        'refund-recovery-pending',
+        'Contract Paid Ticket',
+        '00000000-0000-0000-0000-00000000c0eb',
+        '2024-02-01 10:00:00+00',
+        null,
+        'stripe',
+        'cs_contract_refund_recovery',
+        'pi_contract_refund_recovery'
     );
 
 insert into event_refund_request (
@@ -1104,7 +1127,7 @@ insert into event_refund_request (
         'approving'
     );
 
--- Provider-succeeded refund used by approval finalization contracts
+-- Provider refund records used by approval and recovery contracts
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
@@ -1116,22 +1139,43 @@ insert into event_purchase_refund (
     status,
 
     event_refund_request_id,
+    failure_message,
+    finalized_at,
     provider_refund_id,
     provider_refunded_at
-) values (
-    '00000000-0000-0000-0000-00000000c0fa',
-    2500,
-    'USD',
-    '00000000-0000-0000-0000-00000000c0f6',
-    'event-purchase-refund-00000000-0000-0000-0000-00000000c0f6',
-    'refund-request-approval',
-    'stripe',
-    'provider-succeeded',
+) values
+    (
+        '00000000-0000-0000-0000-00000000c0fa',
+        2500,
+        'USD',
+        '00000000-0000-0000-0000-00000000c0f6',
+        'event-purchase-refund-00000000-0000-0000-0000-00000000c0f6',
+        'refund-request-approval',
+        'stripe',
+        'provider-succeeded',
 
-    '00000000-0000-0000-0000-00000000c0f7',
-    're_contract_refund_approve',
-    current_timestamp
-);
+        '00000000-0000-0000-0000-00000000c0f7',
+        null,
+        null,
+        're_contract_refund_approve',
+        current_timestamp
+    ),
+    (
+        '00000000-0000-0000-0000-00000000c0fe',
+        2500,
+        'USD',
+        '00000000-0000-0000-0000-00000000c0fd',
+        'event-purchase-refund-00000000-0000-0000-0000-00000000c0fd-recovery',
+        'automatic-unfulfillable-checkout',
+        'stripe',
+        'provider-failed',
+
+        null,
+        'provider refund failed: re_contract_refund_failed',
+        current_timestamp,
+        null,
+        null
+    );
 
 -- ============================================================================
 -- EVENT MUTATIONS

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -18,6 +18,12 @@ select plan(4);
 \set priceWindowAID '79230000-0000-0000-0000-000000000008'
 \set priceWindowBID '79230000-0000-0000-0000-000000000009'
 \set primaryUserID '79230000-0000-0000-0000-000000000012'
+\set recoveryOnlyPurchaseID '79230000-0000-0000-0000-000000000016'
+\set recoveryOnlyPendingPurchaseID '79230000-0000-0000-0000-000000000019'
+\set recoveryOnlyUserID '79230000-0000-0000-0000-000000000017'
+\set recoveryPurchaseID '79230000-0000-0000-0000-000000000014'
+\set recoveryReplacementPurchaseID '79230000-0000-0000-0000-000000000018'
+\set recoveryUserID '79230000-0000-0000-0000-000000000015'
 \set refundPurchaseID '79230000-0000-0000-0000-000000000011'
 \set secondaryUserID '79230000-0000-0000-0000-000000000013'
 \set ticketTypeAID '79230000-0000-0000-0000-000000000004'
@@ -70,6 +76,20 @@ values
         'secondary@example.com',
         true,
         'secondary-user'
+    ),
+    (
+        :'recoveryUserID',
+        'hash-3',
+        'recovery@example.com',
+        true,
+        'recovery-user'
+    ),
+    (
+        :'recoveryOnlyUserID',
+        'hash-4',
+        'recovery-only@example.com',
+        true,
+        'recovery-only-user'
     );
 
 -- Group
@@ -192,26 +212,63 @@ insert into event_purchase (
     'refund-requested',
     'VIP',
     :'secondaryUserID'
+), (
+    :'recoveryOnlyPurchaseID',
+    4000,
+    now() - interval '15 minutes',
+    'USD',
+    0,
+    null,
+    :'eventID',
+    :'ticketTypeBID',
+    null,
+    'refund-recovery-pending',
+    'VIP',
+    :'recoveryOnlyUserID'
+), (
+    :'recoveryOnlyPendingPurchaseID',
+    4000,
+    now() - interval '5 minutes',
+    'USD',
+    0,
+    null,
+    :'eventID',
+    :'ticketTypeBID',
+    now() + interval '10 minutes',
+    'pending',
+    'VIP',
+    :'recoveryOnlyUserID'
+), (
+    :'recoveryPurchaseID',
+    4000,
+    now() - interval '20 minutes',
+    'USD',
+    0,
+    null,
+    :'eventID',
+    :'ticketTypeBID',
+    null,
+    'refund-recovery-pending',
+    'VIP',
+    :'recoveryUserID'
+), (
+    :'recoveryReplacementPurchaseID',
+    4000,
+    now() - interval '10 minutes',
+    'USD',
+    0,
+    null,
+    :'eventID',
+    :'ticketTypeBID',
+    null,
+    'completed',
+    'VIP',
+    :'recoveryUserID'
 );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
-
--- Should return the active pending purchase for the requested user and event
-select results_eq(
-    format($$
-        select event_purchase_id::text, status
-        from prepare_event_checkout_find_existing_purchase(
-            %L::uuid,
-            %L::uuid,
-            %L::uuid,
-            'SAVE5'
-        )
-    $$, :'eventID', :'ticketTypeAID', :'primaryUserID'),
-    format($$ values (%L::text, 'pending'::text) $$, :'pendingPurchaseID'),
-    'Should return the active pending purchase for the requested user and event'
-);
 
 -- Should mark the pending purchase as matching when ticket and discount align
 select results_eq(
@@ -241,6 +298,57 @@ select results_eq(
     $$, :'eventID', :'ticketTypeAID', :'primaryUserID'),
     $$ values ('false'::text) $$,
     'Should mark the pending purchase as mismatched when the requested discount changes'
+);
+
+-- Should return the active pending purchase for the requested user and event
+select results_eq(
+    format($$
+        select event_purchase_id::text, status
+        from prepare_event_checkout_find_existing_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            'SAVE5'
+        )
+    $$, :'eventID', :'ticketTypeAID', :'primaryUserID'),
+    format($$ values (%L::text, 'pending'::text) $$, :'pendingPurchaseID'),
+    'Should return the active pending purchase for the requested user and event'
+);
+
+-- Should return the newer completed replacement before an older recovery purchase
+select results_eq(
+    format($$
+        select event_purchase_id::text, matches_selection::text, status
+        from prepare_event_checkout_find_existing_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null
+        )
+    $$, :'eventID', :'ticketTypeBID', :'recoveryUserID'),
+    format(
+        $$ values (%L::text, 'true'::text, 'completed'::text) $$,
+        :'recoveryReplacementPurchaseID'
+    ),
+    'Should return the newer completed replacement before an older recovery purchase'
+);
+
+-- Should return recovery before a newer pending replacement purchase
+select results_eq(
+    format($$
+        select event_purchase_id::text, matches_selection::text, status
+        from prepare_event_checkout_find_existing_purchase(
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            null
+        )
+    $$, :'eventID', :'ticketTypeBID', :'recoveryOnlyUserID'),
+    format(
+        $$ values (%L::text, 'true'::text, 'refund-recovery-pending'::text) $$,
+        :'recoveryOnlyPurchaseID'
+    ),
+    'Should return recovery before a newer pending replacement purchase'
 );
 
 -- Should return refund-requested purchases when no active pending purchase exists

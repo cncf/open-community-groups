@@ -298,7 +298,7 @@ fn verify_and_parse_webhook_maps_refund_lifecycle_events() {
 
     for (event_type, status, expected_status) in scenarios {
         let body = format!(
-            r#"{{"type":"{event_type}","data":{{"object":{{"id":"re_test_123","metadata":{{"event_purchase_id":"{purchase_id}"}},"status":"{status}"}}}}}}"#
+            r#"{{"type":"{event_type}","data":{{"object":{{"id":"re_test_123","amount":2500,"currency":"usd","metadata":{{"event_purchase_id":"{purchase_id}"}},"payment_intent":"pi_test_123","status":"{status}"}}}}}}"#
         );
         let signature_header = sample_signature_header(&body, Utc::now().timestamp());
 
@@ -311,8 +311,11 @@ fn verify_and_parse_webhook_maps_refund_lifecycle_events() {
         assert_eq!(
             webhook_event,
             PaymentsWebhookEvent::RefundUpdated {
-                purchase_id,
+                amount_minor: 2_500,
+                currency_code: "usd".to_string(),
+                provider_payment_reference: "pi_test_123".to_string(),
                 provider_refund_id: "re_test_123".to_string(),
+                purchase_id,
                 status: expected_status,
             }
         );
@@ -334,6 +337,44 @@ fn verify_and_parse_webhook_ignores_refunds_without_purchase_metadata() {
 
     // Check the unrelated refund is acknowledged without reconciliation
     assert_eq!(webhook_event, PaymentsWebhookEvent::Noop);
+}
+
+#[test]
+fn verify_and_parse_webhook_rejects_incomplete_refund_events() {
+    // Setup provider and incomplete OCG refund payloads
+    let provider = sample_stripe_provider();
+    let purchase_id = Uuid::new_v4();
+    let scenarios = [
+        (
+            format!(
+                r#"{{"type":"refund.updated","data":{{"object":{{"id":"re_test_123","currency":"usd","metadata":{{"event_purchase_id":"{purchase_id}"}},"payment_intent":"pi_test_123","status":"succeeded"}}}}}}"#
+            ),
+            "Stripe refund webhook is missing amount",
+        ),
+        (
+            format!(
+                r#"{{"type":"refund.updated","data":{{"object":{{"id":"re_test_123","amount":2500,"metadata":{{"event_purchase_id":"{purchase_id}"}},"payment_intent":"pi_test_123","status":"succeeded"}}}}}}"#
+            ),
+            "Stripe refund webhook is missing currency",
+        ),
+        (
+            format!(
+                r#"{{"type":"refund.updated","data":{{"object":{{"id":"re_test_123","amount":2500,"currency":"usd","metadata":{{"event_purchase_id":"{purchase_id}"}},"status":"succeeded"}}}}}}"#
+            ),
+            "Stripe refund webhook is missing payment intent",
+        ),
+    ];
+
+    for (body, expected_error) in scenarios {
+        // Sign and parse each incomplete provider payload
+        let signature_header = sample_signature_header(&body, Utc::now().timestamp());
+        let err = provider
+            .verify_and_parse_webhook(&sample_webhook_headers(&signature_header), &body)
+            .expect_err("incomplete refund webhook to fail");
+
+        // Check the missing financial field is identified
+        assert_eq!(err.to_string(), expected_error);
+    }
 }
 
 #[test]

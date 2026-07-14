@@ -37,6 +37,8 @@ use crate::{
     },
 };
 
+use super::{HandlerError, get_checkout_status_response};
+
 #[tokio::test]
 async fn test_availability_success() {
     // Setup identifiers and data structures
@@ -1740,6 +1742,20 @@ async fn test_request_refund_returns_internal_server_error_when_payments_manager
     // Check response matches expectations
     assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
     assert!(bytes.is_empty());
+}
+
+#[test]
+fn test_get_checkout_status_response_rejects_refund_recovery_pending() {
+    // Resolve the attendee-facing checkout state during refund recovery
+    let err = get_checkout_status_response(EventPurchaseStatus::RefundRecoveryPending)
+        .expect_err("refund recovery to block checkout");
+
+    // Check the UI receives the specific recovery state error
+    assert!(matches!(
+        err,
+        HandlerError::Database(message)
+            if message == "checkout is unavailable while refund recovery is in progress"
+    ));
 }
 
 #[tokio::test]

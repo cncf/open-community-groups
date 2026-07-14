@@ -16,9 +16,13 @@ use crate::{
         DynPaymentsProvider, FindRefundInput, PaymentsWebhookEvent, RefundPaymentInput,
         RefundPaymentResult, RefundPaymentStatus,
         notification_composer::PaymentsNotificationComposer,
+        refund_recorder::{RecordedProviderRefund, persist_provider_refund_result},
     },
-    types::payments::EventPurchaseStatus,
+    types::payments::{EventPurchaseStatus, EventPurchaseSummary, PaymentProvider},
 };
+
+#[cfg(test)]
+mod tests;
 
 /// Reconciles verified payments webhook events with local purchase state.
 #[derive(Clone)]
@@ -63,12 +67,22 @@ impl PaymentsWebhookReconciler {
             } => self.expire_checkout_session(&provider_session_id).await,
             PaymentsWebhookEvent::Noop => Ok(()),
             PaymentsWebhookEvent::RefundUpdated {
-                purchase_id,
+                amount_minor,
+                currency_code,
+                provider_payment_reference,
                 provider_refund_id,
+                purchase_id,
                 status,
             } => {
-                self.handle_refund_updated(purchase_id, provider_refund_id, status)
-                    .await
+                self.handle_refund_updated(
+                    amount_minor,
+                    &currency_code,
+                    &provider_payment_reference,
+                    &provider_refund_id,
+                    purchase_id,
+                    status,
+                )
+                .await
             }
         }
     }
@@ -153,36 +167,65 @@ impl PaymentsWebhookReconciler {
     /// Reconciles a provider refund lifecycle event with its durable local record.
     async fn handle_refund_updated(
         &self,
+        amount_minor: i64,
+        currency_code: &str,
+        provider_payment_reference: &str,
+        provider_refund_id: &str,
         purchase_id: Uuid,
-        provider_refund_id: String,
         status: RefundPaymentStatus,
     ) -> Result<()> {
-        // Load the purchase to identify the refund workflow owning this event
+        // Load the purchase and validated durable refund owning this provider event
         let purchase = self.db.get_event_purchase_summary(purchase_id).await?;
-        let kind = match purchase.status {
-            EventPurchaseStatus::RefundPending => {
-                EventPurchaseRefundKind::AutomaticUnfulfillableCheckout
-            }
-            EventPurchaseStatus::RefundRequested => EventPurchaseRefundKind::RefundRequestApproval,
-            EventPurchaseStatus::Refunded => return Ok(()),
-            _ => return Err(anyhow::anyhow!("event purchase is not awaiting a refund")),
-        };
-
-        // Ensure legacy in-flight refunds gain a durable record during rollout
         let refund = self
-            .db
-            .ensure_event_purchase_refund_started(
-                purchase_id,
-                self.payments_provider.provider(),
-                kind,
+            .load_validated_refund_for_event(
+                &purchase,
+                amount_minor,
+                currency_code,
+                provider_payment_reference,
             )
             .await?;
+        let kind = refund.kind;
 
-        // Handle provider-complete refunds without downgrading local state
-        if matches!(
-            refund.status,
-            EventPurchaseRefundStatus::Finalized | EventPurchaseRefundStatus::ProviderSucceeded
-        ) {
+        // Validate the signed refund belongs to the expected provider operation
+        let is_current_attempt = Self::validate_refund_event(
+            &purchase,
+            &refund,
+            self.payments_provider.provider(),
+            amount_minor,
+            currency_code,
+            provider_payment_reference,
+            provider_refund_id,
+        )?;
+        if !is_current_attempt {
+            return Ok(());
+        }
+
+        // Confirm an unpinned success against current provider state before accepting it
+        let status = if status == RefundPaymentStatus::Succeeded
+            && refund.status == EventPurchaseRefundStatus::ProviderFailed
+            && refund.provider_refund_id.is_none()
+        {
+            self.reconcile_unpinned_refund_status(&purchase, provider_refund_id)
+                .await?
+        } else {
+            status
+        };
+
+        // Ignore non-terminal updates after the provider attempt is pinned as failed
+        if status != RefundPaymentStatus::Failed
+            && refund.status == EventPurchaseRefundStatus::ProviderFailed
+            && refund.provider_refund_id.is_some()
+        {
+            return Ok(());
+        }
+
+        // Preserve completed outcomes unless Stripe explicitly reports a later failure
+        if status != RefundPaymentStatus::Failed
+            && matches!(
+                refund.status,
+                EventPurchaseRefundStatus::Finalized | EventPurchaseRefundStatus::ProviderSucceeded
+            )
+        {
             return if kind == EventPurchaseRefundKind::AutomaticUnfulfillableCheckout {
                 self.finalize_automatic_refund(refund).await
             } else {
@@ -190,76 +233,126 @@ impl PaymentsWebhookReconciler {
             };
         }
 
-        // Do not let delayed pending events revive a terminal provider attempt
-        if status == RefundPaymentStatus::Pending
-            && refund.status == EventPurchaseRefundStatus::ProviderFailed
-            && refund.provider_refund_id.is_none()
-        {
-            return Ok(());
-        }
+        // Persist and reconcile the validated provider lifecycle transition
+        self.reconcile_refund_status(refund, provider_refund_id, status).await
+    }
 
-        // Ignore stale non-success events after a newer provider attempt starts
-        if status != RefundPaymentStatus::Succeeded
-            && refund
-                .provider_refund_id
-                .as_deref()
-                .is_some_and(|current_id| current_id != provider_refund_id.as_str())
-        {
-            return Ok(());
-        }
-
-        // Persist and reconcile the provider lifecycle transition
-        match status {
-            RefundPaymentStatus::Pending => {
-                let refund = self
-                    .db
-                    .record_event_purchase_refund_pending(
-                        refund.event_purchase_refund_id,
-                        refund.idempotency_key.clone(),
-                        provider_refund_id,
+    /// Loads or creates the durable refund record for a webhook purchase.
+    async fn load_refund_for_purchase(
+        &self,
+        purchase: &EventPurchaseSummary,
+    ) -> Result<EventPurchaseRefund> {
+        match purchase.status {
+            EventPurchaseStatus::RefundPending => {
+                self.db
+                    .ensure_event_purchase_refund_started(
+                        purchase.event_purchase_id,
+                        self.payments_provider.provider(),
+                        EventPurchaseRefundKind::AutomaticUnfulfillableCheckout,
                     )
-                    .await?;
-
-                if kind == EventPurchaseRefundKind::AutomaticUnfulfillableCheckout {
-                    self.finalize_automatic_refund(refund).await
-                } else {
-                    Ok(())
-                }
+                    .await
             }
-            RefundPaymentStatus::Succeeded => {
-                let refund = self
-                    .db
-                    .record_event_purchase_refund_succeeded(
-                        refund.event_purchase_refund_id,
-                        provider_refund_id,
+            EventPurchaseStatus::RefundRequested => {
+                self.db
+                    .ensure_event_purchase_refund_started(
+                        purchase.event_purchase_id,
+                        self.payments_provider.provider(),
+                        EventPurchaseRefundKind::RefundRequestApproval,
                     )
-                    .await?;
-
-                if kind == EventPurchaseRefundKind::AutomaticUnfulfillableCheckout {
-                    self.finalize_automatic_refund(refund).await
-                } else {
-                    Ok(())
-                }
+                    .await
             }
-            RefundPaymentStatus::Failed => {
-                // Rotate only the current non-terminal provider attempt
-                if refund.provider_refund_id.is_some()
-                    || refund.status != EventPurchaseRefundStatus::ProviderFailed
-                {
-                    self.db
-                        .record_event_purchase_refund_terminal_failed(
-                            refund.event_purchase_refund_id,
-                            refund.idempotency_key.clone(),
-                            provider_refund_id,
-                            "provider refund failed".to_string(),
-                        )
-                        .await?;
-                }
-
-                // Leave terminal failures durable for an explicit retry outside the webhook
-                Ok(())
+            EventPurchaseStatus::Refunded | EventPurchaseStatus::RefundRecoveryPending => {
+                self.db.get_event_purchase_refund(purchase.event_purchase_id).await
             }
+            _ => Err(anyhow::anyhow!("event purchase is not awaiting a refund")),
         }
+    }
+
+    /// Validates a provider event before loading its durable refund.
+    async fn load_validated_refund_for_event(
+        &self,
+        purchase: &EventPurchaseSummary,
+        amount_minor: i64,
+        currency_code: &str,
+        provider_payment_reference: &str,
+    ) -> Result<EventPurchaseRefund> {
+        // Validate financial ownership before loading durable refund state
+        Self::validate_refund_purchase_event(
+            purchase,
+            amount_minor,
+            currency_code,
+            provider_payment_reference,
+        )?;
+
+        // Load the durable refund owning the validated event
+        self.load_refund_for_purchase(purchase).await
+    }
+
+    /// Persists a validated provider refund status and applies webhook policy.
+    async fn reconcile_refund_status(
+        &self,
+        refund: EventPurchaseRefund,
+        provider_refund_id: &str,
+        status: RefundPaymentStatus,
+    ) -> Result<()> {
+        let kind = refund.kind;
+
+        // Persist the provider lifecycle transition
+        let recorded_refund = persist_provider_refund_result(
+            &self.db,
+            &refund,
+            RefundPaymentResult {
+                provider_refund_id: provider_refund_id.to_string(),
+                status,
+            },
+        )
+        .await?;
+
+        // Apply webhook acknowledgement and automatic finalization policy
+        match recorded_refund {
+            RecordedProviderRefund::Pending(refund) | RecordedProviderRefund::Succeeded(refund)
+                if kind == EventPurchaseRefundKind::AutomaticUnfulfillableCheckout =>
+            {
+                self.finalize_automatic_refund(refund).await
+            }
+            RecordedProviderRefund::Failed
+            | RecordedProviderRefund::Pending(_)
+            | RecordedProviderRefund::Succeeded(_) => Ok(()),
+        }
+    }
+
+    /// Reconciles an unpinned success event with the provider's current refund state.
+    async fn reconcile_unpinned_refund_status(
+        &self,
+        purchase: &EventPurchaseSummary,
+        provider_refund_id: &str,
+    ) -> Result<RefundPaymentStatus> {
+        // Require the payment reference used to scope the provider lookup
+        let provider_payment_reference = purchase
+            .provider_payment_reference
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("provider payment reference is missing"))?;
+
+        // Load the named refund so an out-of-order success cannot revive a failed attempt
+        let provider_refund = self
+            .payments_provider
+            .find_refund(&FindRefundInput {
+                amount_minor: purchase.amount_minor,
+                provider_payment_reference,
+                purchase_id: purchase.event_purchase_id,
+
+                provider_refund_id: Some(provider_refund_id.to_string()),
+            })
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("provider refund not found"))?;
+
+        if provider_refund.provider_refund_id != provider_refund_id {
+            return Err(anyhow::anyhow!(
+                "provider refund lookup returned a different refund"
+            ));
+        }
+
+        Ok(provider_refund.status)
     }
 
     /// Records a provider refund failure without hiding the original error.
@@ -273,7 +366,7 @@ impl PaymentsWebhookReconciler {
             .record_event_purchase_refund_failed(refund.event_purchase_refund_id, err.to_string())
             .await
         {
-            warn!(error = %record_err, "failed to record automatic provider refund failure");
+            warn!(error = %record_err, "failed to record provider refund failure");
         }
     }
 
@@ -283,45 +376,11 @@ impl PaymentsWebhookReconciler {
         refund: &EventPurchaseRefund,
         provider_refund: RefundPaymentResult,
     ) -> Result<EventPurchaseRefund> {
-        // Persist the provider lifecycle outcome
-        match provider_refund.status {
-            RefundPaymentStatus::Succeeded => self
-                .db
-                .record_event_purchase_refund_succeeded(
-                    refund.event_purchase_refund_id,
-                    provider_refund.provider_refund_id,
-                )
-                .await
-                .map_err(|err| {
-                    warn!(error = %err, "failed to record automatic provider refund");
-                    err
-                }),
-            RefundPaymentStatus::Pending => self
-                .db
-                .record_event_purchase_refund_pending(
-                    refund.event_purchase_refund_id,
-                    refund.idempotency_key.clone(),
-                    provider_refund.provider_refund_id,
-                )
-                .await
-                .map_err(|err| {
-                    warn!(error = %err, "failed to record pending automatic provider refund");
-                    err
-                }),
-            RefundPaymentStatus::Failed => {
-                self.db
-                    .record_event_purchase_refund_terminal_failed(
-                        refund.event_purchase_refund_id,
-                        refund.idempotency_key.clone(),
-                        provider_refund.provider_refund_id,
-                        "provider refund failed".to_string(),
-                    )
-                    .await
-                    .map_err(|err| {
-                        warn!(error = %err, "failed to record terminal automatic provider refund failure");
-                        err
-                    })?;
-                Err(anyhow::anyhow!("provider refund failed"))
+        // Persist the normalized result before applying automatic-refund policy
+        match persist_provider_refund_result(&self.db, refund, provider_refund).await? {
+            RecordedProviderRefund::Failed => Err(anyhow::anyhow!("provider refund failed")),
+            RecordedProviderRefund::Pending(refund) | RecordedProviderRefund::Succeeded(refund) => {
+                Ok(refund)
             }
         }
     }
@@ -352,7 +411,7 @@ impl PaymentsWebhookReconciler {
         self.finalize_automatic_refund(refund).await
     }
 
-    /// Records or reuses the provider refund for an unfulfillable checkout.
+    /// Records or reuses the provider refund for a durable purchase refund.
     async fn resolve_provider_refund(
         &self,
         refund_purchase: &RefundRequiredEventPurchase,
@@ -387,7 +446,7 @@ impl PaymentsWebhookReconciler {
             }
             Ok(None) => {}
             Err(err) => {
-                warn!(error = %err, "failed to find existing automatic provider refund");
+                warn!(error = %err, "failed to find existing provider refund");
                 return Err(err);
             }
         }
@@ -403,7 +462,7 @@ impl PaymentsWebhookReconciler {
             })
             .await
             .map_err(|err| {
-                warn!(error = %err, "failed to refund unfulfillable purchase");
+                warn!(error = %err, "failed to refund purchase");
                 err
             });
 
@@ -417,5 +476,69 @@ impl PaymentsWebhookReconciler {
                 Err(err)
             }
         }
+    }
+
+    /// Validates a refund webhook against its purchase and durable provider attempt.
+    fn validate_refund_event(
+        purchase: &EventPurchaseSummary,
+        refund: &EventPurchaseRefund,
+        provider: PaymentProvider,
+        amount_minor: i64,
+        currency_code: &str,
+        provider_payment_reference: &str,
+        provider_refund_id: &str,
+    ) -> Result<bool> {
+        // Validate the signed financial contract before checking the durable attempt
+        Self::validate_refund_purchase_event(
+            purchase,
+            amount_minor,
+            currency_code,
+            provider_payment_reference,
+        )?;
+
+        // Validate the durable provider and amount contract
+        if refund.payment_provider != provider {
+            return Err(anyhow::anyhow!(
+                "refund webhook provider does not match purchase"
+            ));
+        }
+        if refund.amount_minor != amount_minor {
+            return Err(anyhow::anyhow!(
+                "refund webhook amount does not match purchase"
+            ));
+        }
+
+        // A different pinned refund belongs to a stale or unrelated provider attempt
+        Ok(refund
+            .provider_refund_id
+            .as_deref()
+            .is_none_or(|current_id| current_id == provider_refund_id))
+    }
+
+    /// Validates a signed refund's financial ownership before local state changes.
+    fn validate_refund_purchase_event(
+        purchase: &EventPurchaseSummary,
+        amount_minor: i64,
+        currency_code: &str,
+        provider_payment_reference: &str,
+    ) -> Result<()> {
+        // Validate the signed financial fields against the persisted purchase
+        if purchase.amount_minor != amount_minor {
+            return Err(anyhow::anyhow!(
+                "refund webhook amount does not match purchase"
+            ));
+        }
+        if !purchase.currency_code.eq_ignore_ascii_case(currency_code) {
+            return Err(anyhow::anyhow!(
+                "refund webhook currency does not match purchase"
+            ));
+        }
+        if purchase.provider_payment_reference.as_deref() != Some(provider_payment_reference) {
+            return Err(anyhow::anyhow!(
+                "refund webhook payment reference does not match purchase"
+            ));
+        }
+
+        Ok(())
     }
 }

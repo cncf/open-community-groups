@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(293);
+select plan(295);
 
 -- ============================================================================
 -- VARIABLES
@@ -113,6 +113,10 @@ select has_function('check_in_event', array['uuid', 'uuid', 'uuid', 'boolean']::
 select has_function('claim_meeting_for_auto_end', '{}'::name[]);
 select has_function('claim_meeting_out_of_sync', '{}'::name[]);
 select has_function('claim_pending_notification', array['integer', 'integer']::name[]);
+select has_function(
+    'complete_event_purchase_refund_recovery',
+    array['uuid', 'uuid', 'text', 'text']::name[]
+);
 select has_function('complete_free_event_purchase', array['uuid']::name[]);
 select has_function('deactivate_group', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('delete_community_team_member', array['uuid', 'uuid', 'uuid']::name[]);
@@ -149,6 +153,7 @@ select has_function('get_event_full', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_full_by_slug', array['uuid', 'text', 'text']::name[]);
 select has_function('get_event_meeting_sync_state_hash', array['uuid']::name[]);
 select has_function('get_event_occupied_seat_count', array['uuid']::name[]);
+select has_function('get_event_purchase_refund', array['uuid']::name[]);
 select has_function('get_event_registration_questions', array['uuid', 'uuid']::name[]);
 select has_function('get_event_summary', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('get_event_summary_by_id', array['uuid', 'uuid']::name[]);
@@ -262,7 +267,10 @@ select has_function('reconcile_event_purchase_for_checkout_session', array['text
 select has_function('record_automatic_refund_for_event_purchase', array['uuid', 'text']::name[]);
 select has_function('record_event_purchase_refund_failed', array['uuid', 'text']::name[]);
 select has_function('record_event_purchase_refund_pending', array['uuid', 'text', 'text']::name[]);
-select has_function('record_event_purchase_refund_succeeded', array['uuid', 'text']::name[]);
+select has_function(
+    'record_event_purchase_refund_succeeded',
+    array['uuid', 'text', 'text']::name[]
+);
 select has_function(
     'record_event_purchase_refund_terminal_failed',
     array['uuid', 'text', 'text', 'text']::name[]

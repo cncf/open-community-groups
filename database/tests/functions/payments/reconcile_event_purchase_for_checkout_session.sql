@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(19);
+select plan(21);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,6 +29,8 @@ select plan(19);
 \set purchaseInvitedID '79000000-0000-0000-0000-000000000027'
 \set purchaseMissingRefID '79000000-0000-0000-0000-000000000015'
 \set purchaseOpenUntilStartID '79000000-0000-0000-0000-000000000031'
+\set purchaseRecoveryID '79000000-0000-0000-0000-000000000035'
+\set purchaseRecoveryReplacementID '79000000-0000-0000-0000-000000000036'
 \set purchaseStartedID '79000000-0000-0000-0000-000000000022'
 \set registrationQuestionID '79000000-0000-0000-0000-000000000101'
 \set openUntilStartEventID '79000000-0000-0000-0000-000000000032'
@@ -44,6 +46,7 @@ select plan(19);
 \set user7ID '79000000-0000-0000-0000-000000000029'
 \set user8ID '79000000-0000-0000-0000-000000000030'
 \set user9ID '79000000-0000-0000-0000-000000000034'
+\set user10ID '79000000-0000-0000-0000-000000000037'
 
 -- ============================================================================
 -- SEED DATA
@@ -87,7 +90,8 @@ values
     (:'user6ID', 'hash-6', 'user6@example.com', true, 'buyer-6'),
     (:'user7ID', 'hash-7', 'user7@example.com', true, 'buyer-7'),
     (:'user8ID', 'hash-8', 'user8@example.com', true, 'buyer-8'),
-    (:'user9ID', 'hash-9', 'user9@example.com', true, 'buyer-9');
+    (:'user9ID', 'hash-9', 'user9@example.com', true, 'buyer-9'),
+    (:'user10ID', 'hash-10', 'user10@example.com', true, 'buyer-10');
 
 -- Group
 insert into "group" (group_id, community_id, group_category_id, name, slug)
@@ -351,6 +355,38 @@ insert into event_purchase (
     'General admission',
     :'user9ID'
 ), (
+    :'purchaseRecoveryID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'activeEventID',
+    :'activeTicketTypeID',
+    null,
+    'stripe',
+    null,
+    'pi_recovery_original',
+    'refund-recovery-pending',
+    'General admission',
+    :'user10ID'
+), (
+    :'purchaseRecoveryReplacementID',
+    2500,
+    'USD',
+    0,
+    null,
+    null,
+    :'activeEventID',
+    :'activeTicketTypeID',
+    now() + interval '15 minutes',
+    'stripe',
+    'cs_recovery_replacement',
+    null,
+    'pending',
+    'General admission',
+    :'user10ID'
+), (
     :'purchaseInvitedID',
     2500,
     'USD',
@@ -604,6 +640,46 @@ select is(
         'provider_payment_reference', 'pi_canceled'
     ),
     'Should require refund when the event can no longer be fulfilled'
+);
+
+-- Should require refund when recovery won before a replacement checkout payment
+select is(
+    reconcile_event_purchase_for_checkout_session(
+        'stripe',
+        'cs_recovery_replacement',
+        'pi_recovery_replacement'
+    )::jsonb,
+    jsonb_build_object(
+        'amount_minor', 2500,
+        'event_purchase_id', :'purchaseRecoveryReplacementID'::uuid,
+        'outcome', 'refund_required',
+        'provider_payment_reference', 'pi_recovery_replacement'
+    ),
+    'Should require refund when recovery won before a replacement checkout payment'
+);
+
+-- Should preserve recovery and hand the paid replacement to refund processing
+select results_eq(
+    format($$
+        select
+            recovery.status,
+            replacement.hold_expires_at is null,
+            replacement.provider_payment_reference,
+            replacement.status
+        from event_purchase recovery
+        join event_purchase replacement
+            on replacement.event_id = recovery.event_id
+            and replacement.user_id = recovery.user_id
+        where recovery.event_purchase_id = %L::uuid
+        and replacement.event_purchase_id = %L::uuid
+    $$, :'purchaseRecoveryID', :'purchaseRecoveryReplacementID'),
+    $$ values (
+        'refund-recovery-pending'::text,
+        true,
+        'pi_recovery_replacement'::text,
+        'refund-pending'::text
+    ) $$,
+    'Should preserve recovery and hand the paid replacement to refund processing'
 );
 
 -- Should require refund when the event has already started
