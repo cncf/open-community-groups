@@ -118,7 +118,7 @@ pub(crate) async fn page(
         user: User::default(),
     };
 
-    Ok(Html(template.render()?).into_response())
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
 /// Handler that renders the public group accelerator page.

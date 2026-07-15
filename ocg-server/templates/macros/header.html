@@ -9,9 +9,9 @@
        target="{{ target }}" rel="noopener noreferrer"
      {% endif -%}
      data-header-nav-link
-     class="header-nav-link mx-3 pb-1 border-0 border-stone-950 text-base font-bold tracking-widest text-stone-700 uppercase border-b-2 transition-colors hover:text-stone-950
+     class="header-nav-link border-0 text-[15px] font-medium text-[#3a2f25]/75 transition-colors hover:text-[#1A1510]
             {% if current_path == href || current_path == path -%}
-              border-stone-950 text-stone-950{%- else -%}border-transparent hover:border-stone-300{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
+              text-[#1A1510]{%- endif -%} {{ extra_styles_ }}">{{ content }}</a>
 {% endmacro link -%}
 {# End link -#}
 
@@ -20,7 +20,7 @@
   {% let extra_styles_ = extra_styles.unwrap_or("") -%}
 
   <button id="{{ id }}"
-          class="mx-3 pb-1 border-0 border-stone-950 text-base font-bold tracking-widest text-stone-700 uppercase border-b-2 border-transparent hover:border-stone-300 hover:text-stone-950 transition-colors {{ extra_styles_ }}">
+          class="border-0 text-[15px] font-medium text-[#3a2f25]/75 transition-colors hover:text-[#1A1510] {{ extra_styles_ }}">
     {{ content }}
   </button>
 {% endmacro button -%}

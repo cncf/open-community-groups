@@ -91,3 +91,77 @@ begin
   )
   on conflict do nothing;
 end $$;
+
+insert into event_category (event_category_id, alliance_id, name)
+values (
+  '55555555-5555-5555-5555-555555555555',
+  '11111111-1111-1111-1111-111111111111',
+  'General'
+)
+on conflict do nothing;
+
+insert into event (
+  event_id,
+  group_id,
+  event_category_id,
+  event_kind_id,
+  name,
+  slug,
+  description,
+  timezone,
+  published,
+  published_at,
+  starts_at,
+  ends_at,
+  venue_name,
+  venue_city,
+  venue_country_name
+) values (
+  '66666666-6666-6666-6666-666666666666',
+  '33333333-3333-3333-3333-333333333333',
+  '55555555-5555-5555-5555-555555555555',
+  'in-person',
+  'GOUP Baku Founders Meetup',
+  'goup-baku-founders-meetup',
+  'A local meetup for founders and builders in the GOUP Baku chapter.',
+  'Asia/Baku',
+  true,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP + interval '14 days',
+  CURRENT_TIMESTAMP + interval '14 days' + interval '2 hours',
+  'GOUP Hub',
+  'Baku',
+  'Azerbaijan'
+)
+on conflict do nothing;
+
+insert into event (
+  event_id,
+  group_id,
+  event_category_id,
+  event_kind_id,
+  name,
+  slug,
+  description,
+  timezone,
+  published,
+  published_at,
+  starts_at,
+  ends_at,
+  meeting_join_url
+) values (
+  '77777777-7777-7777-7777-777777777777',
+  '33333333-3333-3333-3333-333333333333',
+  '55555555-5555-5555-5555-555555555555',
+  'virtual',
+  'GOUP Virtual Office Hours',
+  'goup-virtual-office-hours',
+  'A remote office-hours session open to all GOUP members.',
+  'UTC',
+  true,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP + interval '7 days',
+  CURRENT_TIMESTAMP + interval '7 days' + interval '1 hour',
+  'https://example.com/goup-office-hours'
+)
+on conflict do nothing;

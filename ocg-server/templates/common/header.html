@@ -1,129 +1,70 @@
 {% import "macros/ui.html" as ui -%}
-{% import "macros/header.html" as header -%}
 
 {# Header -#}
-<header id="header" class="w-full" role="banner">
-  {# Navigation bar -#}
-  <nav class="flex items-center justify-between border-b border-transparent h-20 min-h-20"
+<header id="header" class="relative z-50 w-full" role="banner">
+  {# Frosted navbar -#}
+  <nav class="relative z-50 flex h-[68px] items-center justify-between border-b border-[#eadcc9]/70 bg-white/60 px-4 shadow-sm shadow-[#eadcc9]/40 backdrop-blur-xl sm:px-6 lg:px-11"
        role="navigation"
        aria-label="Main navigation">
-    <div class="flex items-center gap-x-6">
-      {# Logo -#}
-      {% if path != "/" %}<a href="/" aria-label="Go to homepage" class="inline-flex">{% endif %}
-        <div class="inline-flex items-top gap-x-3 me-5">
-          {% if let Some(url) = &site_settings.header_logo_url -%}
-            <img class="w-auto max-w-44 sm:max-w-52 h-10 sm:h-[42px] z-1"
-                 height="42"
-                 width="auto"
-                 data-ocg-broken-image-bg-class="bg-transparent"
-                 src="{{ url }}"
-                 alt="{{ site_settings.title }} logo" />
-          {% endif -%}
-        </div>
-        {% if path != "/" %}</a>{% endif %}
-      {# End logo -#}
-
-      {# Desktop links -#}
-      <div class="hidden lg:flex lg:gap-x-8 relative mt-1.5">
-        {{ header::link(content = "Home", href = "/", current_path = path) -}}
-        {{ header::link(content = "Events & Groups", href = explore_events, current_path = path, path = "/explore") -}}
-        <div class="group relative">
-          {{ header::link(content = "Jobs", href = "/jobs", current_path = path, path = "/jobs") -}}
-          <div class="absolute left-1/2 top-full z-[100] hidden w-64 -translate-x-1/2 pt-4 group-hover:block group-focus-within:block">
-            <div class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl shadow-stone-200/70">
-              <a href="/jobs"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="block px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
-                Browse roles
-                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Open roles from GOUP members.</span>
-              </a>
-              {% if user.logged_in -%}
-                <a href="/dashboard/jobs"
-                   hx-boost="true"
-                   hx-target="body"
-                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
-                  Post a role
-                  <span class="mt-1 block text-xs/5 font-medium text-stone-500">Share a job with the builder network.</span>
-                </a>
-              {% else -%}
-                <a href="/log-in?next_url=/dashboard/jobs"
-                   hx-boost="true"
-                   hx-target="body"
-                   class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
-                  Post a role
-                  <span class="mt-1 block text-xs/5 font-medium text-stone-500">Log in to share a hiring need.</span>
-                </a>
-              {% endif -%}
-            </div>
-          </div>
-        </div>
-        {{ header::link(content = "Landscape", href = "/landscape", current_path = path, path = "/landscape") -}}
-        <div class="group relative">
-          {{ header::link(content = "Resources", href = "/wiki", current_path = path, path = "/wiki") -}}
-          <div class="absolute left-1/2 top-full z-[100] hidden w-64 -translate-x-1/2 pt-4 group-hover:block group-focus-within:block">
-            <div class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xl shadow-stone-200/70">
-              <a href="/wiki"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="block px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
-                Tech News
-                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Browse GOUP community resources.</span>
-              </a>
-              <a href="/docs"
-                 hx-boost="true"
-                 hx-target="body"
-                 class="block border-t border-stone-100 px-4 py-3 text-sm font-bold text-stone-900 transition hover:bg-stone-50">
-                Docs
-                <span class="mt-1 block text-xs/5 font-medium text-stone-500">Guides and runbooks for members, leads, and contributors.</span>
-              </a>
-            </div>
-          </div>
-        </div>
-        {{ header::link(content = "Stats", href = "/stats", current_path = path, path = "/stats") -}}
-        {{ header::link(content = "Sponsor", href = "/sponsor", current_path = path, path = "/sponsor") -}}
-      </div>
-      {# End desktop links -#}
+    <div class="hidden items-center gap-7 lg:flex">
+      <a href="/"
+         hx-boost="true"
+         hx-target="body"
+         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Home</a>
+      <a href="{{ explore_events }}"
+         hx-boost="true"
+         hx-target="body"
+         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Events &amp; Groups</a>
+      <a href="/jobs"
+         hx-boost="true"
+         hx-target="body"
+         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Jobs</a>
+      <a href="/landscape"
+         hx-boost="true"
+         hx-target="body"
+         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Landscape</a>
+      <a href="/wiki"
+         hx-boost="true"
+         hx-target="body"
+         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Resources</a>
+      <a href="/stats"
+         hx-boost="true"
+         hx-target="body"
+         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Stats</a>
+      <a href="/sponsor"
+         hx-boost="true"
+         hx-target="body"
+         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Sponsor</a>
     </div>
 
-    {# Desktop user menu -#}
-    <div class="flex flex-1 justify-end items-center gap-3">
-      <form action="/search"
-            method="get"
-            role="search"
-            class="relative hidden xl:block">
-        <label class="sr-only" for="header-site-search">Search GOUP</label>
-        <input id="header-site-search"
-               name="query"
-               type="search"
-               autocomplete="off"
-               placeholder="Search GOUP"
-               class="w-44 rounded-full border border-stone-200 bg-white/80 px-4 py-2 pr-9 text-sm font-medium text-stone-900 placeholder-stone-400 shadow-sm transition focus:w-56 focus:border-stone-950 focus:bg-white focus:outline-none focus:ring-0" />
-        <button type="submit"
-                class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
-                aria-label="Search GOUP">
-          <span class="svg-icon block size-4 bg-current icon-magnifying-glass"></span>
-        </button>
-      </form>
-      {% if page_id == PageId::SiteHome || page_id == PageId::SiteAbout || page_id == PageId::SiteDocs || page_id == PageId::SiteExplore || page_id == PageId::SiteJobs || page_id == PageId::SiteLandscape || page_id == PageId::SitePrivacy || page_id == PageId::SiteSearch || page_id == PageId::SiteSponsor || page_id == PageId::SiteStats || page_id == PageId::SiteWiki || page_id == PageId::SiteNotFound || page_id == PageId::Alliance || page_id == PageId::Group || page_id == PageId::Event -%}
-        <div hx-get="/section/user-menu"
-             hx-trigger="load"
-             hx-target="this"
-             hx-boost="true"
-             class="relative">
-          <button class="relative group rounded-full cursor-pointer bg-white border text-xl border-stone-200 text-stone-700 size-[38px] p-0.5 overflow-hidden shadow-sm"
-                  disabled>
-            {{ ui::btn_spinner(id = "user-spinner", size = "size-[2.35rem]", spinner_type = "6", htmx = false) -}}
-            <div class="svg-icon size-4 mx-auto bg-stone-700 icon-user"></div>
-          </button>
+    <div class="ms-auto flex items-center gap-2.5">
+      <a href="/search"
+         hx-boost="true"
+         hx-target="body"
+         class="hidden h-[34px] w-44 items-center rounded-full border border-[#eadcc9] bg-white/70 px-3.5 text-sm text-[#9A9088] shadow-sm sm:inline-flex">
+        Search...
+      </a>
+      {% if user.logged_in -%}
+        <a href="/dashboard/user?tab=invitations"
+           hx-boost="true"
+           hx-target="body"
+           class="flex size-[34px] items-center justify-center rounded-full border border-[#eadcc9] bg-white/70 shadow-sm"
+           aria-label="Notifications">
+          <div class="svg-icon size-4 icon-pending-invitation bg-[#3a2f25]"></div>
+        </a>
+        <div class="flex size-[34px] items-center justify-center rounded-full bg-[#3D5A8A] text-[13px] font-semibold text-white uppercase shadow-sm">
+          {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
         </div>
       {% else -%}
-        {{ user_menu(user, 0) -}}
+        <a href="/log-in/oidc/linkedin"
+           hx-boost="false"
+           class="inline-flex h-[34px] items-center rounded-full bg-[#1A1510] px-4 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#3a2f25] hover:shadow-md">
+          Join GOUP
+        </a>
       {% endif -%}
     </div>
-    {# End desktop user menu -#}
   </nav>
-  {# End navigation bar -#}
+  {# End frosted navbar -#}
 </header>
 {# End header -#}
 

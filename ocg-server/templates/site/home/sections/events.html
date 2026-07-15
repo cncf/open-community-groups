@@ -1,0 +1,164 @@
+{# Events section -#}
+<section class="relative overflow-hidden px-6 py-14 sm:px-10 lg:px-[250px] lg:py-20">
+  <div class="absolute inset-0 -z-10"
+       style="background: radial-gradient( 160% 160% at 15% 12%, #d8e0ec33 0%, #f6f4f033 70% )"></div>
+  <div class="pointer-events-none absolute inset-x-[60px] inset-y-0 border-x border-[#E2DDD8]"></div>
+
+  <div class="flex flex-col gap-12">
+    {# Header -#}
+    <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between lg:gap-20">
+      <div class="flex flex-col gap-4">
+        <div class="w-fit rounded-full border border-[#C8BDB3] px-[14px] py-[6px] text-[11px] font-semibold tracking-[2px] text-[#8A7A6E]">
+          EVENTS
+        </div>
+        <h2 class="font-amethysta text-5xl font-bold leading-[1.15] text-[#1A1510]">Meet builders in motion</h2>
+        <p class="font-metrophobic text-[17px] leading-[1.65] text-[#6B6058]">
+          Join meetups, workshops, and gatherings across GOUP chapters.
+        </p>
+      </div>
+      <a href="{{ explore_events }}"
+         hx-boost="true"
+         hx-target="body"
+         class="hidden w-fit rounded-full border border-[#2461D1] bg-[#3D7EFF] px-[26px] py-[13px] text-[15px] font-medium text-white shadow-[0_0_0_2px_#90BBFF80,0_7px_18px_-2px_#3D7EFF45] [text-shadow:0_4px_4px_#00000040] sm:inline-flex">
+        Explore all events
+      </a>
+    </div>
+    {# End header -#} {# Upcoming in-person events -#}
+    {% if
+      upcoming_in_person_events.len() > 0 -%}
+      <div class="flex flex-col gap-6">
+        <div class="text-sm font-bold tracking-[2px] text-[#1A1510]">UPCOMING IN-PERSON</div>
+
+        <div class="grid grid-cols-1 gap-7 lg:grid-cols-2">
+          {% for event_card in upcoming_in_person_events -%}
+            <a href="/{{ event_card.event.alliance_name }}/group/{{ event_card.event.public_group_slug() }}/event/{{ event_card.event.slug }}"
+               hx-boost="true"
+               hx-target="body"
+               class="flex flex-col gap-5 rounded-2xl border border-[#E2DDD8] bg-white p-7 transition hover:-translate-y-1 hover:shadow-lg">
+              {# Top row -#}
+              <div class="flex items-center gap-4">
+                <div class="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[10px] bg-[#D4CFC9]">
+                  <img src="{{ event_card.event.logo_url }}"
+                       class="h-[72px] w-[72px] rounded-[10px] object-cover"
+                       alt="" />
+                </div>
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <div class="text-xs font-semibold tracking-[1px] text-[#3D5A8A] uppercase">
+                    {{ event_card.event.alliance_display_name }} · {{
+                    event_card.event.group_name }}
+                  </div>
+                  <div class="font-metrophobic text-lg font-semibold text-[#1A1510]">{{ event_card.event.name }}</div>
+                </div>
+              </div>
+              {# End top row -#} {# Bottom row -#}
+              <div class="flex items-center gap-5">
+                {% if let Some(starts_at) = &event_card.event.starts_at -%}
+                  <div class="flex shrink-0 flex-col items-center rounded-[10px] bg-[#F0EDE9] px-4 py-2.5">
+                    <div class="text-[10px] font-semibold tracking-[1.5px] text-[#8A7A6E]">
+                      {{ starts_at.with_timezone(event_card.event.timezone).format("%b") 
+                      }}
+                    </div>
+                    <div class="font-amethysta text-[32px] leading-none font-bold text-[#1A1510]">
+                      {{ starts_at.with_timezone(event_card.event.timezone).format("%e")|trim 
+                      }}
+                    </div>
+                  </div>
+                {% endif -%}
+
+                <div class="flex min-w-0 flex-col gap-1">
+                  {% if let Some(venue_address) = &event_card.event.venue_address
+                    -%}
+                    <div class="font-metrophobic text-sm text-[#6B6058]">{{ venue_address }}</div>
+                  {% else if let Some(venue_city) = &event_card.event.venue_city -%}
+                    <div class="font-metrophobic text-sm text-[#6B6058]">{{ venue_city }}</div>
+                  {% else if let Some(venue_country_name) =
+                    &event_card.event.venue_country_name -%}
+                    <div class="font-metrophobic text-sm text-[#6B6058]">{{ venue_country_name }}</div>
+                  {% endif -%}
+
+                  {% if let Some(starts_at) =
+                    &event_card.event.starts_at -%}
+                    <div class="text-[13px] text-[#8A7A6E]">
+                      {{ starts_at.with_timezone(event_card.event.timezone).format("%b 
+                      %-e, %Y · %-I:%M %p %Z") }}
+                    </div>
+                  {% endif -%}
+                </div>
+              </div>
+              {# End bottom row -#}
+            </a>
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+    {# End upcoming in-person events -#} {# Upcoming virtual events
+-#}
+    {% if upcoming_virtual_events.len() > 0 -%}
+      <div class="flex flex-col gap-6">
+        <div class="text-sm font-bold tracking-[2px] text-[#1A1510]">UPCOMING VIRTUAL</div>
+
+        <div class="grid grid-cols-1 gap-7 lg:grid-cols-2">
+          {% for event_card in upcoming_virtual_events -%}
+            <a href="/{{ event_card.event.alliance_name }}/group/{{ event_card.event.public_group_slug() }}/event/{{ event_card.event.slug }}"
+               hx-boost="true"
+               hx-target="body"
+               class="flex flex-col gap-5 rounded-2xl border border-[#E2DDD8] bg-white p-7 transition hover:-translate-y-1 hover:shadow-lg">
+              {# Top row -#}
+              <div class="flex items-center gap-4">
+                <div class="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[10px] bg-[#D4CFC9]">
+                  <img src="{{ event_card.event.logo_url }}"
+                       class="h-[72px] w-[72px] rounded-[10px] object-cover"
+                       alt="" />
+                </div>
+                <div class="flex min-w-0 flex-col gap-1.5">
+                  <div class="text-xs font-semibold tracking-[1px] text-[#3D5A8A] uppercase">
+                    {{ event_card.event.alliance_display_name }} · {{
+                    event_card.event.group_name }}
+                  </div>
+                  <div class="font-metrophobic text-lg font-semibold text-[#1A1510]">{{ event_card.event.name }}</div>
+                </div>
+              </div>
+              {# End top row -#} {# Bottom row -#}
+              <div class="flex items-center gap-5">
+                {% if let Some(starts_at) = &event_card.event.starts_at -%}
+                  <div class="flex shrink-0 flex-col items-center rounded-[10px] bg-[#F0EDE9] px-4 py-2.5">
+                    <div class="text-[10px] font-semibold tracking-[1.5px] text-[#8A7A6E]">
+                      {{ starts_at.with_timezone(event_card.event.timezone).format("%b") 
+                      }}
+                    </div>
+                    <div class="font-amethysta text-[32px] leading-none font-bold text-[#1A1510]">
+                      {{ starts_at.with_timezone(event_card.event.timezone).format("%e")|trim 
+                      }}
+                    </div>
+                  </div>
+                {% endif -%}
+
+                <div class="flex min-w-0 flex-col gap-1">
+                  {% if let Some(venue_address) = &event_card.event.venue_address
+                    -%}
+                    <div class="font-metrophobic text-sm text-[#6B6058]">{{ venue_address }}</div>
+                  {% else if let Some(venue_city) = &event_card.event.venue_city -%}
+                    <div class="font-metrophobic text-sm text-[#6B6058]">{{ venue_city }}</div>
+                  {% else if let Some(venue_country_name) =
+                    &event_card.event.venue_country_name -%}
+                    <div class="font-metrophobic text-sm text-[#6B6058]">{{ venue_country_name }}</div>
+                  {% endif -%}
+
+                  {% if let Some(starts_at) =
+                    &event_card.event.starts_at -%}
+                    <div class="text-[13px] text-[#8A7A6E]">
+                      {{ starts_at.with_timezone(event_card.event.timezone).format("%b 
+                      %-e, %Y · %-I:%M %p %Z") }}
+                    </div>
+                  {% endif -%}
+                </div>
+              </div>
+              {# End bottom row -#}
+            </a>
+          {% endfor -%}
+        </div>
+      </div>
+    {% endif -%}
+    {# End upcoming virtual events -#}
+  </div>
+</section>

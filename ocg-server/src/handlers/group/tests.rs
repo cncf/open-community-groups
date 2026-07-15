@@ -17,6 +17,7 @@ use crate::{
     handlers::tests::*,
     router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::{MockNotificationsManager, NotificationKind},
+    templates::dashboard::group::accelerator::AcceleratorDashboard,
     templates::dashboard::group::members::GroupMembersOutput,
     templates::notifications::GroupWelcome,
     types::event::EventKind,
@@ -336,6 +337,10 @@ async fn test_page_success() {
 }
 
 fn expect_empty_group_home_previews(db: &mut MockDB, group_id: Uuid) {
+    db.expect_get_group_accelerator_dashboard()
+        .times(1)
+        .withf(move |id| *id == group_id)
+        .returning(|_| Ok(AcceleratorDashboard::default()));
     db.expect_list_group_member_spotlights()
         .times(1)
         .withf(move |id, include_unpublished| *id == group_id && !*include_unpublished)

@@ -1,58 +1,53 @@
 {# Footer -#}
-<footer class="relative flex-none overflow-hidden bg-[#f5efe7] text-stone-900"
+<footer class="relative flex-none bg-[#141210] text-[#C8C0B8]"
         role="contentinfo"
         aria-label="Site footer">
-  <div class="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-[#d8c7b2] to-transparent">
-  </div>
-  <div class="absolute -top-32 right-0 h-72 w-72 rounded-full bg-white/50 blur-3xl"></div>
-  <div class="absolute -bottom-40 left-8 h-80 w-80 rounded-full bg-[#eadcc9]/70 blur-3xl"></div>
-
-  <div class="relative mx-auto max-w-7xl px-6 py-12 sm:px-8 lg:px-16 lg:py-16">
-    <div class="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:gap-16">
+  <div class="relative px-6 py-12 sm:px-10 lg:px-20 lg:py-20">
+    <div class="flex flex-col gap-10 lg:flex-row lg:justify-between lg:gap-20">
       {# Brand section -#}
-      <div class="max-w-xl">
+      <div class="flex max-w-[380px] flex-col gap-7">
         {% if let Some(footer_logo_url) = &self.site_settings.footer_logo_url -%}
           <a href="/"
-             class="inline-flex rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-300"
+             class="inline-flex rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40"
              aria-label="{{ site_settings.title }} home">
             <img class="h-12 w-auto max-w-[260px] object-contain sm:max-w-[360px]"
                  width="auto"
                  height="48"
-                 data-ocg-broken-image-bg-class="bg-[#f5efe7]"
+                 data-ocg-broken-image-bg-class="bg-[#141210]"
                  src="{{ footer_logo_url }}"
                  alt="{{ site_settings.title }} footer logo" />
           </a>
         {% else -%}
           <a href="/"
-             class="inline-flex items-center rounded-2xl text-2xl font-black tracking-tight text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]">
+             class="inline-flex items-center rounded-2xl font-amethysta text-[32px] font-bold leading-[1.1] text-[#F0EBE4] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40">
             {{ site_settings.title }}
           </a>
         {% endif -%}
 
-        <p class="mt-5 max-w-lg text-sm leading-6 text-stone-700 sm:text-base">
+        <p class="font-metrophobic text-base leading-[1.7] text-[#9A9088]">
           A warm builder community for people who dream, connect, achieve, and help each
           other move forward.
         </p>
 
-        <div class="mt-7 flex flex-col gap-3 sm:flex-row">
+        <div class="flex flex-col gap-3 sm:flex-row">
           <a href="/explore?alliance[0]=goup&entity=events"
              hx-boost="true"
              hx-target="body"
-             class="inline-flex items-center justify-center rounded-full border border-[#d8c7b2] bg-white px-5 py-3 text-sm font-bold text-stone-950 shadow-lg shadow-[#d8c7b2]/30 transition hover:-translate-y-0.5 hover:bg-[#fffaf5] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]">
+             class="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/[.059] px-5 py-3 text-sm font-bold text-[#F0EBE4] backdrop-blur transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40">
             Explore events & groups
           </a>
           {% if user.logged_in -%}
             <a href="/dashboard/jobs"
                hx-boost="true"
                hx-target="body"
-               class="inline-flex items-center justify-center rounded-full border border-[#d8c7b2] bg-[#fffaf5]/70 px-5 py-3 text-sm font-bold text-stone-800 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]">
+               class="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/[.059] px-5 py-3 text-sm font-bold text-[#F0EBE4] backdrop-blur transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40">
               Post a role
             </a>
           {% else -%}
             <a href="/log-in?next_url=/dashboard/jobs"
                hx-boost="true"
                hx-target="body"
-               class="inline-flex items-center justify-center rounded-full border border-[#d8c7b2] bg-[#fffaf5]/70 px-5 py-3 text-sm font-bold text-stone-800 backdrop-blur transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]">
+               class="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/[.059] px-5 py-3 text-sm font-bold text-[#F0EBE4] backdrop-blur transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40">
               Post a role
             </a>
           {% endif -%}
@@ -61,39 +56,39 @@
       {# End brand section -#}
 
       {# Navigation section -#}
-      <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
+      <div class="flex flex-col gap-8 sm:flex-row sm:justify-between sm:gap-16">
         <div>
-          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-500">Community</h2>
-          <ul class="mt-4 space-y-3 text-sm">
+          <h2 class="text-[11px] font-semibold uppercase tracking-[2.5px] text-[#6B6058]">Community</h2>
+          <ul class="mt-5 flex flex-col gap-5 text-[15px]">
             <li>
               <a href="/explore?alliance[0]=goup&entity=events"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Events & Groups</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Events & Groups</a>
             </li>
             <li>
               <a href="/landscape"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Ecosystem</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Ecosystem</a>
             </li>
             <li>
               <a href="/stats"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Stats</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Stats</a>
             </li>
             <li>
               <a href="/about"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">About GOUP</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">About GOUP</a>
             </li>
             <li>
               <a href="/privacy"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Privacy Policy</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Privacy Policy</a>
             </li>
             {% let alliance_brand_path = path|alliance_brand_path -%}
             {% if !alliance_brand_path.is_empty() -%}
@@ -101,98 +96,98 @@
                 <a href="{{ alliance_brand_path }}"
                    hx-boost="true"
                    hx-target="body"
-                   class="text-stone-700 transition hover:text-stone-950">Brand</a>
+                   class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Brand</a>
               </li>
             {% endif -%}
             <li>
               <a href="/search"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Search GOUP</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Search GOUP</a>
             </li>
           </ul>
         </div>
 
         <div>
-          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-500">Jobs</h2>
-          <ul class="mt-4 space-y-3 text-sm">
+          <h2 class="text-[11px] font-semibold uppercase tracking-[2.5px] text-[#6B6058]">Jobs</h2>
+          <ul class="mt-5 flex flex-col gap-5 text-[15px]">
             <li>
               <a href="/jobs"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Browse roles</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Browse roles</a>
             </li>
             <li>
               <a href="/jobs?remote=true"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Remote roles</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Remote roles</a>
             </li>
             <li>
               {% if user.logged_in -%}
                 <a href="/dashboard/jobs"
                    hx-boost="true"
                    hx-target="body"
-                   class="text-stone-700 transition hover:text-stone-950">Post a role</a>
+                   class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Post a role</a>
               {% else -%}
                 <a href="/log-in?next_url=/dashboard/jobs"
                    hx-boost="true"
                    hx-target="body"
-                   class="text-stone-700 transition hover:text-stone-950">Post a role</a>
+                   class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Post a role</a>
               {% endif -%}
             </li>
             <li>
               <a href="/wiki"
                  hx-boost="true"
                  hx-target="body"
-                 class="text-stone-700 transition hover:text-stone-950">Tech News</a>
+                 class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Tech News</a>
             </li>
           </ul>
         </div>
 
-        <div class="col-span-2 sm:col-span-1">
-          <h2 class="text-xs font-bold uppercase tracking-[0.22em] text-stone-500">Connect</h2>
-          <div class="mt-4 flex items-center gap-3">
+        <div>
+          <h2 class="text-[11px] font-semibold uppercase tracking-[2.5px] text-[#6B6058]">Connect</h2>
+          <div class="mt-5 flex items-center gap-3">
             <a href="https://github.com/sakomws/goup.vc"
                target="_blank"
                rel="noopener noreferrer"
-               class="group inline-flex size-11 items-center justify-center rounded-full border border-[#d8c7b2] bg-white/60 transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]"
+               class="group flex h-9 w-9 items-center justify-center rounded-full border border-white/[.145] bg-white/[.078] transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40"
                title="GOUP on GitHub"
                aria-label="GOUP on GitHub">
-              <div class="svg-icon size-5 bg-stone-700 icon-github transition group-hover:bg-[#6f6253]"></div>
+              <div class="svg-icon size-5 bg-[#C8C0B8] icon-github transition group-hover:bg-white"></div>
             </a>
             <a href="https://www.linkedin.com/company/goupaz"
                target="_blank"
                rel="noopener noreferrer"
-               class="group inline-flex size-11 items-center justify-center rounded-full border border-[#d8c7b2] bg-white/60 transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]"
+               class="group flex h-9 w-9 items-center justify-center rounded-full border border-white/[.145] bg-white/[.078] transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40"
                title="GOUP on LinkedIn"
                aria-label="GOUP on LinkedIn">
-              <div class="svg-icon size-5 bg-stone-700 icon-linkedin transition group-hover:bg-[#6f6253]"></div>
+              <div class="svg-icon size-5 bg-[#C8C0B8] icon-linkedin transition group-hover:bg-white"></div>
             </a>
             <a href="https://www.instagram.com/goupaz/"
                target="_blank"
                rel="noopener noreferrer"
-               class="group inline-flex size-11 items-center justify-center rounded-full border border-[#d8c7b2] bg-white/60 transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]"
+               class="group flex h-9 w-9 items-center justify-center rounded-full border border-white/[.145] bg-white/[.078] transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40"
                title="GOUP on Instagram"
                aria-label="GOUP on Instagram">
-              <div class="svg-icon size-5 bg-stone-700 icon-instagram transition group-hover:bg-[#6f6253]"></div>
+              <div class="svg-icon size-5 bg-[#C8C0B8] icon-instagram transition group-hover:bg-white"></div>
             </a>
             <a href="https://youtube.com/goupaz"
                target="_blank"
                rel="noopener noreferrer"
-               class="group inline-flex size-11 items-center justify-center rounded-full border border-[#d8c7b2] bg-white/60 transition hover:-translate-y-0.5 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#d8c7b2]"
+               class="group flex h-9 w-9 items-center justify-center rounded-full border border-white/[.145] bg-white/[.078] transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40"
                title="GOUP on YouTube"
                aria-label="GOUP on YouTube">
-              <div class="svg-icon size-5 bg-stone-700 icon-youtube transition group-hover:bg-[#6f6253]"></div>
+              <div class="svg-icon size-5 bg-[#C8C0B8] icon-youtube transition group-hover:bg-white"></div>
             </a>
           </div>
-          <p class="mt-4 text-sm leading-6 text-stone-600">
+          <p class="mt-4 font-metrophobic text-sm leading-[1.65] text-[#9A9088]">
             Open source, community-led, and built for people who ship.
           </p>
           <a href="https://github.com/sakomws/goup.vc/blob/main/docs/development.md"
              target="_blank"
              rel="noopener noreferrer"
-             class="mt-4 inline-flex text-sm font-semibold text-stone-700 underline decoration-[#d8c7b2] underline-offset-4 transition hover:text-stone-950 hover:decoration-stone-950">
+             class="mt-4 inline-flex text-sm font-semibold text-[#F0EBE4] transition hover:text-white">
             Developer Guide
           </a>
         </div>
@@ -200,8 +195,10 @@
       {# End navigation section -#}
     </div>
 
+    <div class="mt-10 h-px w-full bg-white/[.094]"></div>
+
     {# Copyright section -#}
-    <div class="mt-12 flex flex-col gap-4 border-0 border-t border-solid border-[#d8c7b2] pt-6 text-sm text-stone-600 md:flex-row md:items-center md:justify-between">
+    <div class="flex flex-col gap-4 pt-6 text-[13px] text-[#6B6058] md:flex-row md:items-center md:justify-between">
       <div>
         {% if let Some(copyright_notice) = &self.site_settings.copyright_notice -%}
           <div class="copyright">{{ copyright_notice|md_to_html|safe }}</div>
@@ -211,7 +208,7 @@
       </div>
       <p>
         Powered by <a href="https://github.com/sakomws/goup.vc"
-    class="font-bold text-stone-950 underline decoration-[#d8c7b2] underline-offset-4 transition hover:decoration-stone-950"
+    class="font-bold text-[#F0EBE4] decoration-white/20 transition hover:decoration-white/40"
     target="_blank"
     rel="noopener noreferrer">GOUP</a>.
       </p>

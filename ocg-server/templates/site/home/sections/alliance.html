@@ -1,0 +1,68 @@
+{# Alliance section -#}
+<section class="relative overflow-hidden border-t border-[#E2DDD8] px-6 py-14 sm:px-10 lg:px-[250px] lg:py-20">
+  <div class="absolute inset-0 -z-10"
+       style="background: radial-gradient(170% 170% at 12% 88%, #E5D8C580 0%, #FAFAF780 70%)"></div>
+
+  <div class="flex flex-col gap-[60px]">
+    {# Header -#}
+    <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between lg:gap-20">
+      <div class="flex flex-col gap-4">
+        <div class="w-fit rounded-full border border-[#C8BDB3] px-[14px] py-[6px] text-[11px] font-semibold tracking-[2px] text-[#8A7A6E]">
+          ALLIANCE
+        </div>
+        <h2 class="font-amethysta text-5xl font-bold leading-[1.15] text-[#1A1510]">
+          Active communities, one alliance
+        </h2>
+        <p class="font-metrophobic text-[17px] leading-[1.65] text-[#6B6058]">
+          Chapters, members, events, jobs, and projects in one trusted network.
+        </p>
+      </div>
+      <a href="{{ explore_groups }}"
+         hx-boost="true"
+         hx-target="body"
+         class="w-fit rounded-full border border-[#2461D1] bg-[#3D7EFF] px-[26px] py-[13px] text-[15px] font-medium text-white shadow-[0_0_0_2px_#90BBFF80,0_7px_18px_-2px_#3D7EFF45] [text-shadow:0_4px_4px_#00000040]">
+        Explore groups
+      </a>
+    </div>
+    {# End header -#}
+
+    {# Decorative banner -#}
+    <div class="rounded-[20px] bg-[#1A1510] px-6 py-10">
+      <p class="font-amethysta text-center text-4xl font-bold tracking-[6px] text-white sm:text-5xl">
+        DREAM&nbsp;&nbsp;|&nbsp;&nbsp;CONNECT&nbsp;&nbsp;|&nbsp;&nbsp;ACHIEVE
+      </p>
+    </div>
+    {# End decorative banner -#}
+
+    {# Alliances list -#}
+    {% if alliances.len() > 0 -%}
+      <div class="flex flex-col gap-8">
+        {% for alliance in alliances -%}
+          <a href="/{{ alliance.name }}"
+             hx-boost="true"
+             hx-target="body"
+             class="block overflow-hidden rounded-3xl border border-[#E2DDD8] shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+            {# Mobile banner -#}
+            <div class="aspect-[61/12] sm:hidden">
+              <img src="{{ alliance.banner_mobile_url }}"
+                   alt="{{ alliance.display_name }} banner"
+                   class="h-full w-full object-cover" />
+            </div>
+            {# End mobile banner -#}
+
+            {# Desktop banner -#}
+            <div class="aspect-[607/48] hidden sm:block">
+              <img src="{{ alliance.banner_url }}"
+                   alt="{{ alliance.display_name }} banner"
+                   class="h-full w-full object-cover" />
+            </div>
+            {# End desktop banner -#}
+          </a>
+        {% endfor -%}
+      </div>
+    {% else -%}
+      {{ feedback::placeholder(title = "No alliances yet", content = "Alliances are being set up, check back soon.") }}
+    {% endif -%}
+    {# End alliances list -#}
+  </div>
+</section>
