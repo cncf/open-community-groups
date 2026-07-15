@@ -44,6 +44,7 @@ pub(crate) struct Page {
     /// Alliance information.
     pub alliance: AllianceFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
@@ -90,6 +91,7 @@ pub(crate) struct BrandPage {
     /// Alliance information.
     pub alliance: AllianceFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
@@ -114,6 +116,7 @@ pub(crate) struct MembersPage {
     /// Number of results per page.
     pub offset: Option<usize>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
@@ -136,6 +139,7 @@ pub(crate) struct ReportPage {
     /// Alliance information.
     pub alliance: AllianceFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,

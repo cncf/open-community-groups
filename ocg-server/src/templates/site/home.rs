@@ -22,6 +22,7 @@ pub struct Page {
     /// List of alliances to display.
     pub alliances: Vec<AllianceSummary>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,

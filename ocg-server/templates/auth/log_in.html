@@ -123,13 +123,11 @@
           {% endif -%}
           {# End email login -#}
 
-          {# Sign up link -#}
+          {# Account creation note -#}
           <div class="mt-7 rounded-3xl border border-stone-200 bg-stone-50 p-4 text-center text-sm text-stone-600">
-            Don't have an account?
-            <a href="/sign-up{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-               class="font-bold text-stone-950 underline decoration-[#d8c7b2] underline-offset-4 transition-colors hover:text-stone-700">Create one</a>
+            New to GOUP? Continue with LinkedIn above to join or sign in.
           </div>
-          {# End sign up link -#}
+          {# End account creation note -#}
 
           {# Messages -#}
           {% if !messages.is_empty() -%}

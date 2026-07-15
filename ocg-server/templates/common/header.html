@@ -37,6 +37,73 @@
          class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Sponsor</a>
     </div>
 
+    <button id="user-dropdown-button"
+            type="button"
+            class="inline-flex size-[34px] items-center justify-center rounded-full border border-[#eadcc9] bg-white/70 shadow-sm transition hover:bg-white lg:hidden"
+            aria-label="Open navigation menu"
+            aria-haspopup="menu">
+      <div class="svg-icon size-4 icon-list bg-[#3a2f25]"></div>
+    </button>
+
+    <div id="user-dropdown"
+         class="dropdown absolute left-4 right-4 top-[76px] z-[1200] hidden overflow-hidden rounded-2xl border border-[#eadcc9] bg-white shadow-2xl shadow-[#3a2f25]/10 sm:left-auto sm:w-72"
+         role="menu">
+      <div class="py-2 text-sm text-[#3a2f25]">
+        {% if user.logged_in -%}
+          <a href="/dashboard/user"
+             hx-boost="true"
+             hx-target="body"
+             class="block border-b border-[#eadcc9] px-4 py-3 font-semibold"
+             role="menuitem">Open dashboard</a>
+        {% else -%}
+          <a href="/log-in/oidc/linkedin"
+             hx-boost="false"
+             class="block border-b border-[#eadcc9] px-4 py-3 font-semibold"
+             role="menuitem">Join GOUP with LinkedIn</a>
+        {% endif -%}
+        <a href="/"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Home</a>
+        <a href="/search"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Search GOUP</a>
+        <a href="{{ explore_events }}"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Events &amp; Groups</a>
+        <a href="/jobs"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Jobs</a>
+        <a href="/landscape"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Landscape</a>
+        <a href="/wiki"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Resources</a>
+        <a href="/stats"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Stats</a>
+        <a href="/sponsor"
+           hx-boost="true"
+           hx-target="body"
+           class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+           role="menuitem">Sponsor</a>
+      </div>
+    </div>
+
     <div class="ms-auto flex items-center gap-2.5">
       <a href="/search"
          hx-boost="true"
@@ -60,8 +127,8 @@
           {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
         </a>
       {% else -%}
-        <a href="/log-in"
-           hx-boost="true"
+        <a href="/log-in/oidc/linkedin"
+           hx-boost="false"
            class="inline-flex h-[34px] items-center rounded-full bg-[#1A1510] px-4 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#3a2f25] hover:shadow-md">
           Join GOUP
         </a>
@@ -489,9 +556,8 @@
             </a>
           </li>
           <li class="lg:hidden border-b border-stone-200 mb-2 pb-2" role="none">
-            <a href="/log-in?next_url=/dashboard/jobs"
-               hx-boost="true"
-               hx-target="body"
+            <a href="/log-in/oidc/linkedin?next_url=/dashboard/jobs"
+               hx-boost="false"
                class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
                role="menuitem">
               <div class="flex items-center">
@@ -530,35 +596,6 @@
             </a>
           </li>
 
-          {# Sign up -#}
-          <li role="none">
-            <a href="/sign-up"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-user-plus bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Sign up</div>
-              </div>
-            </a>
-          </li>
-          {# End sign up -#}
-
-          {# Log in -#}
-          <li role="none">
-            <a href="/log-in"
-               hx-boost="true"
-               hx-target="body"
-               class="inline-block w-full text-start px-4 py-2 hover:bg-stone-100"
-               role="menuitem">
-              <div class="flex items-center">
-                <div class="svg-icon size-4 icon-login bg-stone-600"></div>
-                <div class="ms-2 text-xs/6">Log in</div>
-              </div>
-            </a>
-          </li>
-          {# End log in -#}
         </ul>
       </div>
       {# End user dropdown menu for non-logged users -#}

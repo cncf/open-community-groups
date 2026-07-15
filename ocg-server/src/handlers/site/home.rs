@@ -3,15 +3,16 @@
 use askama::Template;
 use axum::{
     extract::State,
-    http::Uri,
+    http::{Uri, header::CACHE_CONTROL},
     response::{Html, IntoResponse},
 };
 use tracing::{instrument, warn};
 
 use crate::{
+    auth::AuthSession,
     db::DynDB,
     handlers::error::HandlerError,
-    router::PUBLIC_SHARED_CACHE_HEADERS,
+    router::CACHE_CONTROL_PRIVATE_NO_STORE,
     templates::{PageId, auth::User, site::home},
     types::{
         event::{EventKind, EventSummary},
@@ -26,6 +27,7 @@ mod tests;
 /// Handler that renders the global site home page.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
+    auth_session: AuthSession,
     State(db): State<DynDB>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -66,10 +68,13 @@ pub(crate) async fn page(
             .into_iter()
             .map(|event| home::EventCard { event })
             .collect(),
-        user: User::default(),
+        user: User::from_session(auth_session).await?,
     };
 
-    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))
+    Ok((
+        [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
+        Html(template.render()?),
+    ))
 }
 
 async fn load_latest_feed(

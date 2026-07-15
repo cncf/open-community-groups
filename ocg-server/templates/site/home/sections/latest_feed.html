@@ -1,6 +1,6 @@
 {# Latest feed -#}
 {% if latest_feed.len() > 0 -%}
-  <section class="relative overflow-hidden border-t border-[#E2DDD8] px-6 py-14 sm:px-10 lg:px-[250px] lg:py-20">
+  <section class="relative overflow-hidden border-t border-[#E2DDD8] px-4 py-12 sm:px-10 lg:px-[250px] lg:py-20">
     <div class="absolute inset-0 -z-10 bg-[#F6F4F0]"></div>
     <div class="absolute inset-0 -z-10 opacity-[0.05]"
          style="background-image: linear-gradient(#1A1510 1px, transparent 1px), linear-gradient(90deg, #1A1510 1px, transparent 1px);
@@ -11,7 +11,9 @@
           <div class="inline-flex w-fit rounded-full border border-[#C8BDB3] px-[14px] py-[6px] text-[11px] font-semibold tracking-[2px] text-[#8A7A6E]">
             LATEST FROM GOUP
           </div>
-          <h2 class="font-amethysta text-5xl font-bold leading-[1.15] text-[#1A1510]">What is moving now</h2>
+          <h2 class="font-amethysta text-[40px] font-bold leading-[1.12] text-[#1A1510] sm:text-5xl">
+            What is moving now
+          </h2>
           <p class="font-metrophobic text-[17px] leading-[1.65] text-[#6B6058]">
             Fresh events, roles, ecosystem updates, and reading links from across the community.
           </p>
@@ -19,7 +21,7 @@
         <a href="/search"
            hx-boost="true"
            hx-target="body"
-           class="hidden sm:inline-flex rounded-full border border-[#2461D1] bg-[#3D7EFF] px-[26px] py-[13px] text-[15px] font-medium text-white shadow-[0_0_0_2px_#90BBFF80,0_7px_18px_-2px_#3D7EFF45] [text-shadow:0_4px_4px_#00000040]">
+           class="inline-flex w-fit rounded-full border border-[#2461D1] bg-[#3D7EFF] px-[26px] py-[13px] text-[15px] font-medium text-white shadow-[0_0_0_2px_#90BBFF80,0_7px_18px_-2px_#3D7EFF45] [text-shadow:0_4px_4px_#00000040]">
           Search all
         </a>
       </div>
@@ -31,7 +33,7 @@
              {% else %}
                hx-boost="false" target="_blank" rel="noopener noreferrer"
              {% endif %}
-             class="flex h-full flex-col gap-4 rounded-2xl border border-[#E2DDD8] bg-white p-7 transition hover:-translate-y-1 hover:shadow-lg">
+             class="flex h-full min-w-0 flex-col gap-4 rounded-2xl border border-[#E2DDD8] bg-white p-5 transition hover:-translate-y-1 hover:shadow-lg sm:p-7">
             <div class="flex items-center justify-between">
               <span class="rounded-full border border-[#C5D3E8] px-3 py-1 text-[10px] font-semibold uppercase tracking-[2px] text-[#3D5A8A]">{{ item.label }}</span>
               <span class="truncate max-w-[45%] text-xs text-[#8A7A6E]">{{ item.meta }}</span>

@@ -255,7 +255,9 @@
                           </form>
                         {% else -%}
                           <p class="mt-3 text-sm/6 text-stone-600">Log in to apply to this cohort.</p>
-                          <a href="/log-in?next_url={{ path }}" class="btn-primary-anchor mt-4">Log in to apply</a>
+                          <a href="/log-in/oidc/linkedin?next_url={{ path }}"
+                             hx-boost="false"
+                             class="btn-primary-anchor mt-4">Log in to apply</a>
                         {% endif -%}
                       {% else -%}
                         <p class="mt-3 text-sm/6 text-stone-600">Applications are not open for this cohort right now.</p>

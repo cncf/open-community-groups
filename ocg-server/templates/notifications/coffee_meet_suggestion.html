@@ -32,11 +32,15 @@
     </p>
     {% if suggested_title.is_some() || suggested_company.is_some() -%}
       <p class="default" style="margin-bottom: 8px; color: #57534e">
-        {% if let Some(title) = &suggested_title -%}{{ title }}{% endif -%}
+        {% if let Some(title) = &suggested_title -%}
+          {{ title }}
+        {% endif -%}
         {% if suggested_title.is_some() && suggested_company.is_some() -%}
           at
         {% endif -%}
-        {% if let Some(company) = &suggested_company -%}{{ company }}{% endif -%}
+        {% if let Some(company) = &suggested_company -%}
+          {{ company }}
+        {% endif -%}
       </p>
     {% endif -%}
     {% if let Some(bio) = &suggested_bio -%}

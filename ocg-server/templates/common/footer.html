@@ -44,9 +44,8 @@
               Post a role
             </a>
           {% else -%}
-            <a href="/log-in?next_url=/dashboard/jobs"
-               hx-boost="true"
-               hx-target="body"
+            <a href="/log-in/oidc/linkedin?next_url=/dashboard/jobs"
+               hx-boost="false"
                class="inline-flex items-center justify-center rounded-full border border-white/25 bg-white/[.059] px-5 py-3 text-sm font-bold text-[#F0EBE4] backdrop-blur transition hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/40">
               Post a role
             </a>
@@ -130,9 +129,8 @@
                    hx-target="body"
                    class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Post a role</a>
               {% else -%}
-                <a href="/log-in?next_url=/dashboard/jobs"
-                   hx-boost="true"
-                   hx-target="body"
+                <a href="/log-in/oidc/linkedin?next_url=/dashboard/jobs"
+                   hx-boost="false"
                    class="text-[#C8C0B8] transition hover:text-[#F0EBE4]">Post a role</a>
               {% endif -%}
             </li>

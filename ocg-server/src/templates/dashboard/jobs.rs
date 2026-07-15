@@ -25,6 +25,7 @@ pub(crate) struct Page {
     /// Flash messages.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -49,6 +50,7 @@ pub(crate) struct MockInterviewsPage {
     /// Flash messages.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,

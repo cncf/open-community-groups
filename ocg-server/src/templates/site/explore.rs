@@ -39,6 +39,7 @@ pub(crate) struct Page {
     /// Page title tailored to the selected explore filters.
     pub title: String,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,

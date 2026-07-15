@@ -79,7 +79,9 @@
                 <p class="mt-4 whitespace-pre-line text-base leading-7 text-stone-700">{{ spotlight.story }}</p>
                 <div class="mt-6 flex items-center gap-3 border-t border-stone-100 pt-5">
                   <logo-image
-                  {% if let Some(photo_url) = &spotlight.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                  {% if let Some(photo_url) = &spotlight.photo_url -%}
+                    image-url="{{ photo_url }}"
+                  {% endif -%}
                   size="size-12" placeholder="{{ self::user_initials(spotlight.name.as_deref() , spotlight.username.as_str()) }}">
                   </logo-image>
                   <div class="min-w-0 flex-1">

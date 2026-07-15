@@ -23,6 +23,7 @@ pub(crate) struct Page {
     /// Whether the sponsorship inquiry was submitted.
     pub submitted: bool,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,

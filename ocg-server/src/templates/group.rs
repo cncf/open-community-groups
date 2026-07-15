@@ -36,6 +36,7 @@ pub(crate) struct Page {
     /// Whether this group has accelerator content to show publicly.
     pub has_accelerator: bool,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// List of past events for this group.
     pub past_events: Vec<PastEventCard>,
@@ -64,6 +65,7 @@ pub(crate) struct AcceleratorPage {
     /// Detailed information about the group.
     pub group: GroupFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -82,6 +84,7 @@ pub(crate) struct SpotlightsPage {
     /// Detailed information about the group.
     pub group: GroupFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -108,6 +111,7 @@ pub(crate) struct MembersPage {
     /// Pagination offset for results.
     pub offset: Option<usize>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -130,6 +134,7 @@ pub(crate) struct ReportPage {
     /// Detailed information about the group.
     pub group: GroupFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -150,6 +155,7 @@ pub(crate) struct StorePage {
     /// Detailed information about the group.
     pub group: GroupFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,

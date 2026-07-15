@@ -1,183 +1,193 @@
 {% extends "common/base.html" -%}
 
 {% block content -%}
-  <div class="flex items-center justify-center w-full">
-    <div class="container max-w-md m-auto px-4 py-10 md:px-6 md:py-16">
-      <div class="bg-white p-8 md:p-10 border border-stone-200 rounded-[2rem] shadow-xl shadow-stone-200/50">
+  <div class="relative flex w-full items-center justify-center overflow-hidden bg-stone-50">
+    <div class="absolute inset-x-0 top-0 h-72 bg-linear-to-b from-[#f5efe7] to-transparent"></div>
+    <div class="absolute -top-32 left-1/2 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-[#eadcc9]/70 blur-3xl">
+    </div>
+
+    <div class="container relative m-auto max-w-lg px-4 py-12 md:px-6 md:py-20">
+      <div class="overflow-hidden rounded-[2.25rem] border border-[#d8c7b2] bg-white shadow-2xl shadow-[#d8c7b2]/30">
         {# Header -#}
-        <div class="mb-8">
-          <p class="mb-3 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">
+        <div class="border-0 border-b border-solid border-[#eadcc9] bg-[#f5efe7] px-8 py-8 md:px-10">
+          <p class="mb-4 inline-flex rounded-full border border-[#d8c7b2] bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">
             Join GOUP
           </p>
-          <h1 class="text-4xl font-black tracking-[-0.045em] text-stone-950 mb-2">Sign Up</h1>
+          <h1 class="text-4xl font-black tracking-[-0.045em] text-stone-950 md:text-5xl">Create your account.</h1>
+          <p class="mt-3 text-sm/6 font-medium text-stone-700">Continue with LinkedIn to join the GOUP community.</p>
         </div>
         {# End header -#}
 
-        <div class="flex flex-col items-center space-y-4 mb-6">
-          {# GitHub signup -#}
-          {% if login.github -%}
-            <div class="w-full">
-              <a href="/log-in/oauth2/github{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                 class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-                <div class="svg-icon size-4 icon-github group-hover:bg-white transition-colors"></div>
-                <span>GitHub</span>
-              </a>
-            </div>
-          {% endif -%}
-          {# End GitHub signup -#}
-
-          {# LinkedIn signup -#}
-          {% if login.linkedin -%}
-            <div class="w-full">
-              <a href="/log-in/oidc/linkedin{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                 class="group btn-primary-outline-anchor flex justify-center items-center space-x-3 w-full">
-                <div class="svg-icon size-4 icon-linkedin group-hover:bg-white transition-colors"></div>
-                <span>LinkedIn</span>
-              </a>
-            </div>
-          {% endif -%}
-          {# End LinkedIn signup -#}
-        </div>
-
-        {# Email signup -#}
-        {% if login.email -%}
-          {% if login.linkedin || login.github -%}
-            <div class="inline-flex items-center justify-center w-full relative mb-6">
-              <hr class="w-full h-px bg-stone-200 border-0">
-              <div class="absolute px-3 bg-white text-xs text-stone-500 uppercase tracking-wide">OR</div>
-            </div>
-          {% endif -%}
-
-          <form id="sign-up-form"
-                action="/sign-up{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-                method="post">
-            <div class="space-y-5">
-              {# Name field -#}
-              <div>
-                <label for="name" class="form-label">
-                  Full Name <span class="asterisk" aria-label="required">*</span>
-                </label>
-                <div class="mt-2">
-                  <input id="name"
-                         name="name"
-                         type="text"
-                         maxlength="{{ crate::validation::MAX_LEN_DISPLAY_NAME }}"
-                         class="input-primary"
-                         autocomplete="name"
-                         autocorrect="off"
-                         autocapitalize="words"
-                         spellcheck="false"
-                         required>
-                </div>
+        <div class="p-8 md:p-10">
+          <div class="mb-6 flex flex-col items-center space-y-4">
+            {# GitHub signup -#}
+            {% if login.github -%}
+              <div class="w-full">
+                <a href="/log-in/oauth2/github{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                   class="group flex w-full items-center justify-center gap-3 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-bold text-stone-800 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">
+                  <div class="svg-icon size-4 icon-github bg-stone-700 transition-colors group-hover:bg-[#6f6253]"></div>
+                  <span>Continue with GitHub</span>
+                </a>
               </div>
-              {# End name field -#}
+            {% endif -%}
+            {# End GitHub signup -#}
 
-              {# Email field -#}
-              <div>
-                <label for="email" class="form-label">
-                  Email Address <span class="asterisk" aria-label="required">*</span>
-                </label>
-                <div class="mt-2">
-                  <input id="email"
-                         name="email"
-                         type="email"
-                         maxlength="{{ crate::validation::MAX_LEN_S }}"
-                         class="input-primary"
-                         autocomplete="email"
-                         required>
-                </div>
+            {# LinkedIn signup -#}
+            {% if login.linkedin -%}
+              <div class="w-full">
+                <a href="/log-in/oidc/linkedin{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                   class="group flex w-full items-center justify-center gap-3 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm font-bold text-stone-800 shadow-sm transition hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950">
+                  <div class="svg-icon size-4 icon-linkedin bg-stone-700 transition-colors group-hover:bg-[#6f6253]"></div>
+                  <span>Continue with LinkedIn</span>
+                </a>
               </div>
-              {# End email field -#}
-
-              {# Username field -#}
-              <div>
-                <label for="username" class="form-label">
-                  Username <span class="asterisk" aria-label="required">*</span>
-                </label>
-                <div class="mt-2">
-                  <input id="username"
-                         name="username"
-                         type="text"
-                         maxlength="{{ crate::validation::MAX_LEN_M }}"
-                         class="input-primary"
-                         autocomplete="username"
-                         autocorrect="off"
-                         autocapitalize="off"
-                         spellcheck="false"
-                         required>
-                </div>
-              </div>
-              {# End username field -#}
-
-              {# Password fields -#}
-              <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                {# Password field -#}
-                <div>
-                  <label for="password" class="form-label">
-                    Password <span class="asterisk" aria-label="required">*</span>
-                  </label>
-                  <div class="mt-2">
-                    <input type="password"
-                           id="password"
-                           name="password"
-                           class="input-primary"
-                           autocomplete="new-password"
-                           minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
-                           maxlength="{{ crate::validation::MAX_LEN_S }}"
-                           data-password
-                           required>
-                  </div>
-                </div>
-                {# End password field -#}
-
-                {# Confirm password field -#}
-                <div>
-                  <label for="password_confirmation" class="form-label">
-                    Confirm Password <span class="asterisk" aria-label="required">*</span>
-                  </label>
-                  <div class="mt-2">
-                    <input type="password"
-                           id="password_confirmation"
-                           name="password_confirmation"
-                           class="input-primary"
-                           autocomplete="new-password"
-                           minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
-                           maxlength="{{ crate::validation::MAX_LEN_S }}"
-                           data-password-confirmation
-                           required>
-                  </div>
-                </div>
-                {# End confirm password field -#}
-              </div>
-              {# End password fields -#}
-
-              {# Submit button -#}
-              <button type="submit" class="btn-primary w-full">Create Account</button>
-              {# End submit button -#}
-            </div>
-          </form>
-        {% endif -%}
-        {# End email signup -#}
-
-        {# Log in link -#}
-        <div class="mt-6 text-center text-sm text-stone-600">
-          Already have an account?
-          <a href="/log-in{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
-             class="font-bold text-stone-950 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-700">Sign in</a>
-        </div>
-        {# End log in link -#}
-
-        {# Messages -#}
-        {% if !messages.is_empty() -%}
-          <div class="mt-6">
-            {% for message in messages -%}
-              <div class="flex items-center p-4 mb-3 text-yellow-800 border border-yellow-600 rounded-lg bg-yellow-50">
-                <div class="text-sm">{{ message }}</div>
-              </div>
-            {% endfor -%}
+            {% endif -%}
+            {# End LinkedIn signup -#}
           </div>
-        {% endif -%}
-        {# End messages -#}
+
+          {# Email signup -#}
+          {% if login.email -%}
+            {% if login.linkedin || login.github -%}
+              <div class="relative mb-6 inline-flex w-full items-center justify-center">
+                <hr class="w-full h-px bg-stone-200 border-0">
+                <div class="absolute bg-white px-3 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">OR</div>
+              </div>
+            {% endif -%}
+
+            <form id="sign-up-form"
+                  action="/sign-up{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+                  method="post">
+              <div class="space-y-5">
+                {# Name field -#}
+                <div>
+                  <label for="name" class="form-label">
+                    Full Name <span class="asterisk" aria-label="required">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input id="name"
+                           name="name"
+                           type="text"
+                           maxlength="{{ crate::validation::MAX_LEN_DISPLAY_NAME }}"
+                           class="input-primary"
+                           autocomplete="name"
+                           autocorrect="off"
+                           autocapitalize="words"
+                           spellcheck="false"
+                           required>
+                  </div>
+                </div>
+                {# End name field -#}
+
+                {# Email field -#}
+                <div>
+                  <label for="email" class="form-label">
+                    Email Address <span class="asterisk" aria-label="required">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input id="email"
+                           name="email"
+                           type="email"
+                           maxlength="{{ crate::validation::MAX_LEN_S }}"
+                           class="input-primary"
+                           autocomplete="email"
+                           required>
+                  </div>
+                </div>
+                {# End email field -#}
+
+                {# Username field -#}
+                <div>
+                  <label for="username" class="form-label">
+                    Username <span class="asterisk" aria-label="required">*</span>
+                  </label>
+                  <div class="mt-2">
+                    <input id="username"
+                           name="username"
+                           type="text"
+                           maxlength="{{ crate::validation::MAX_LEN_M }}"
+                           class="input-primary"
+                           autocomplete="username"
+                           autocorrect="off"
+                           autocapitalize="off"
+                           spellcheck="false"
+                           required>
+                  </div>
+                </div>
+                {# End username field -#}
+
+                {# Password fields -#}
+                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  {# Password field -#}
+                  <div>
+                    <label for="password" class="form-label">
+                      Password <span class="asterisk" aria-label="required">*</span>
+                    </label>
+                    <div class="mt-2">
+                      <input type="password"
+                             id="password"
+                             name="password"
+                             class="input-primary"
+                             autocomplete="new-password"
+                             minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                             maxlength="{{ crate::validation::MAX_LEN_S }}"
+                             data-password
+                             required>
+                    </div>
+                  </div>
+                  {# End password field -#}
+
+                  {# Confirm password field -#}
+                  <div>
+                    <label for="password_confirmation" class="form-label">
+                      Confirm Password <span class="asterisk" aria-label="required">*</span>
+                    </label>
+                    <div class="mt-2">
+                      <input type="password"
+                             id="password_confirmation"
+                             name="password_confirmation"
+                             class="input-primary"
+                             autocomplete="new-password"
+                             minlength="{{ crate::validation::MIN_PASSWORD_LEN }}"
+                             maxlength="{{ crate::validation::MAX_LEN_S }}"
+                             data-password-confirmation
+                             required>
+                    </div>
+                  </div>
+                  {# End confirm password field -#}
+                </div>
+                {# End password fields -#}
+
+                {# Submit button -#}
+                <button type="submit"
+                        class="w-full rounded-full border border-[#d8c7b2] bg-[#f5efe7] px-5 py-3 text-sm font-black text-stone-950 shadow-sm transition hover:bg-[#eadcc9] focus:ring-4 focus:ring-[#eadcc9]">
+                  Create account
+                </button>
+                {# End submit button -#}
+              </div>
+            </form>
+          {% endif -%}
+          {# End email signup -#}
+
+          {# Log in link -#}
+          <div class="mt-7 rounded-3xl border border-stone-200 bg-stone-50 p-4 text-center text-sm text-stone-600">
+            Already have an account?
+            <a href="/log-in{%- if let Some(next_url) = &next_url -%}?next_url={{ next_url }}{%- endif -%}"
+               class="font-bold text-stone-950 underline decoration-[#d8c7b2] underline-offset-4 transition-colors hover:text-stone-700">Sign in</a>
+          </div>
+          {# End log in link -#}
+
+          {# Messages -#}
+          {% if !messages.is_empty() -%}
+            <div class="mt-6">
+              {% for message in messages -%}
+                <div class="mb-3 flex items-center rounded-3xl border border-[#d8c7b2] bg-[#fffaf5] p-4 text-stone-800">
+                  <div class="text-sm">{{ message }}</div>
+                </div>
+              {% endfor -%}
+            </div>
+          {% endif -%}
+          {# End messages -#}
+        </div>
       </div>
     </div>
   </div>

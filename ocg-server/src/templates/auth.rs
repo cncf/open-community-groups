@@ -32,6 +32,7 @@ pub(crate) struct LogInPage {
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
@@ -53,6 +54,7 @@ pub(crate) struct SignUpPage {
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,

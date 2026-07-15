@@ -59,7 +59,7 @@
               type="submit">Search</button>
     </form>
 
-    <div class="mb-5 flex items-center justify-between gap-3">
+    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div class="text-sm text-stone-600">
         {{ pagination::range_display(offset = filters.offset.unwrap_or(0) , count = jobs.len(), total = total, label = "job") }}
       </div>
@@ -71,7 +71,8 @@
              href="/dashboard/jobs">Post a job</a>
         {% else -%}
           <a class="inline-flex h-10 items-center justify-center rounded-full border border-stone-200 bg-white px-5 text-sm font-bold text-stone-700 shadow-sm transition hover:border-stone-950 hover:bg-stone-950 hover:text-white"
-             href="/log-in?next_url=/dashboard/jobs">Post a job</a>
+             href="/log-in/oidc/linkedin?next_url=/dashboard/jobs"
+             hx-boost="false">Post a job</a>
         {% endif -%}
       </div>
     </div>

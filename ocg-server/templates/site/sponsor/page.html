@@ -72,9 +72,8 @@
             <p class="mt-3 text-base/7 text-stone-600">
               Please log in first so the GOUP team can follow up with a trusted account.
             </p>
-            <a href="/log-in?next_url=/sponsor"
-               hx-boost="true"
-               hx-target="body"
+            <a href="/log-in/oidc/linkedin?next_url=/sponsor"
+               hx-boost="false"
                class="mt-6 inline-flex rounded-full border border-[#d8c7b2] bg-[#f5efe7] px-5 py-2.5 text-sm font-bold text-stone-950 transition hover:bg-[#eadcc9]">Log in to continue</a>
           </div>
         {% else -%}

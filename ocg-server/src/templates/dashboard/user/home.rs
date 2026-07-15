@@ -32,6 +32,7 @@ pub(crate) struct Page {
     /// Pending invitations the user can review and accept or reject.
     pub pending_invitation_count: i64,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,

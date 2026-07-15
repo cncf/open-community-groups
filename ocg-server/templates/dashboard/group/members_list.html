@@ -19,7 +19,9 @@
         <article class="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
           <div class="flex items-start gap-4">
             <logo-image
-            {% if let Some(photo_url) = &request.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+            {% if let Some(photo_url) = &request.photo_url -%}
+              image-url="{{ photo_url }}"
+            {% endif -%}
             size="size-12" placeholder="{{ self::user_initials(request.name.as_deref() , request.username.as_str()) }}">
             </logo-image>
             <div class="min-w-0 flex-1">
@@ -130,7 +132,9 @@
             <div class="relative shrink-0">
               <div class="rounded-2xl bg-stone-50 p-1 ring-1 ring-stone-200/80 transition-colors group-hover:ring-primary-200">
                 <logo-image
-                {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                {% if let Some(photo_url) = &member.photo_url -%}
+                  image-url="{{ photo_url }}"
+                {% endif -%}
                 size="size-16" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
                 </logo-image>
               </div>

@@ -11,6 +11,7 @@
           hx-trigger="click"
           hx-target="#entity-section"
           hx-indicator="#loading-filters, #loading-filters-mobile"
+
           {# djlint:off #}
                 {# TODO: Hardcoded alliance until we add more #}
                 hx-vals='{"alliance[0]":"goup"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
@@ -43,6 +44,7 @@
           hx-trigger="click"
           hx-target="#entity-section"
           hx-indicator="#loading-filters, #loading-filters-mobile"
+
           {# djlint:off #}
           {# TODO: Hardcoded alliance until we add more #}
           hx-vals='{"alliance[0]":"goup"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'

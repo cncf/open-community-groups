@@ -4,15 +4,16 @@ use anyhow::Result;
 use askama::Template;
 use axum::{
     extract::State,
-    http::Uri,
+    http::{Uri, header::CACHE_CONTROL},
     response::{Html, IntoResponse},
 };
 use tracing::instrument;
 
 use crate::{
+    auth::AuthSession,
     db::{DynDB, common::SearchGroupsOutput},
     handlers::error::HandlerError,
-    router::PUBLIC_SHARED_CACHE_HEADERS,
+    router::CACHE_CONTROL_PRIVATE_NO_STORE,
     templates::{
         PageId,
         auth::User,
@@ -32,6 +33,7 @@ mod tests;
 /// Handler that renders the global site stats page.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
+    auth_session: AuthSession,
     State(db): State<DynDB>,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -48,10 +50,13 @@ pub(crate) async fn page(
         stats,
         group_map_groups: group_map.0,
         group_map_bbox: group_map.1,
-        user: User::default(),
+        user: User::from_session(auth_session).await?,
     };
 
-    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)))
+    Ok((
+        [(CACHE_CONTROL, CACHE_CONTROL_PRIVATE_NO_STORE)],
+        Html(template.render()?),
+    ))
 }
 
 async fn prepare_group_map(

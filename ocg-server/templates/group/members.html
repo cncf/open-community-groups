@@ -77,7 +77,9 @@
               <div class="flex w-full flex-col gap-5 p-5">
                 <div class="flex items-start gap-4">
                   <logo-image
-                  {% if let Some(photo_url) = &member.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                  {% if let Some(photo_url) = &member.photo_url -%}
+                    image-url="{{ photo_url }}"
+                  {% endif -%}
                   size="size-16" placeholder="{{ self::user_initials(member.name.as_deref() , member.username.as_str()) }}">
                   </logo-image>
                   <div class="min-w-0 flex-1">

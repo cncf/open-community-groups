@@ -15,6 +15,7 @@ use crate::{
 #[template(path = "site/not_found/page.html")]
 pub(crate) struct Page {
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Stable path used by the shared base and header templates.
     pub path: String,

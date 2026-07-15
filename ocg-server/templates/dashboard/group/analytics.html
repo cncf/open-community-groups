@@ -138,7 +138,9 @@ description = "Group statistics and growth trends. Analytics are cached for a fe
                       #{{ entry.rank }}
                     </div>
                     <logo-image
-                    {% if let Some(photo_url) = &entry.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+                    {% if let Some(photo_url) = &entry.photo_url -%}
+                      image-url="{{ photo_url }}"
+                    {% endif -%}
                     size="size-12" placeholder="{{ crate::templates::helpers::user_initials(entry.name.as_deref() , entry.username.as_str()) }}">
                     </logo-image>
                   </div>

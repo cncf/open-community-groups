@@ -32,6 +32,7 @@ pub(crate) struct Page {
     /// Detailed information about the event.
     pub event: EventFull,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -106,6 +107,7 @@ pub(crate) struct CheckInPage {
     /// Event summary being checked into.
     pub event: EventSummary,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,

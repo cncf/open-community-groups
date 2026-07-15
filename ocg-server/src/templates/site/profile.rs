@@ -25,6 +25,7 @@ pub(crate) struct Page {
     /// Current path.
     pub path: String,
     /// Page identifier.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Public user profile.
     pub profile: PublicUserProfile,

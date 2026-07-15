@@ -16,12 +16,13 @@ use axum::{
 use tracing::instrument;
 
 use crate::{
+    auth::AuthSession,
     db::{
         DynDB,
         common::{SearchEventsOutput, SearchGroupsOutput},
     },
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
-    router::CACHE_CONTROL_NO_STORE,
+    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE},
     templates::{
         PageId,
         auth::User,
@@ -43,6 +44,7 @@ mod tests;
 /// Handler that renders the global explore page with either events or groups section.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
+    auth_session: AuthSession,
     State(db): State<DynDB>,
     Query(query): Query<HashMap<String, String>>,
     RawQuery(raw_query): RawQuery,
@@ -58,7 +60,7 @@ pub(crate) async fn page(
         page_id: PageId::SiteExplore,
         path: uri.path().to_string(),
         site_settings,
-        user: User::default(),
+        user: User::from_session(auth_session).await?,
         events_section: None,
         groups_section: None,
     };
@@ -80,7 +82,7 @@ pub(crate) async fn page(
     }
 
     // Prepare response headers after the active section has resolved its filters
-    let headers = search_response_headers(match &entity {
+    let mut headers = search_response_headers(match &entity {
         explore::Entity::Events => template
             .events_section
             .as_ref()
@@ -90,6 +92,10 @@ pub(crate) async fn page(
             .as_ref()
             .is_some_and(|section| section.filters.uses_viewer_location()),
     })?;
+    headers.insert(
+        CACHE_CONTROL,
+        HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE),
+    );
 
     Ok((headers, Html(template.render()?)))
 }

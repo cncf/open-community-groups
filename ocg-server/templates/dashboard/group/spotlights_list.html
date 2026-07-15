@@ -136,7 +136,9 @@
                 {% endif -%}>
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
               <logo-image
-              {% if let Some(photo_url) = &spotlight.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+              {% if let Some(photo_url) = &spotlight.photo_url -%}
+                image-url="{{ photo_url }}"
+              {% endif -%}
               size="size-12" placeholder="{{ self::user_initials(spotlight.name.as_deref() , spotlight.username.as_str()) }}">
               </logo-image>
               <div class="min-w-0 flex-1">

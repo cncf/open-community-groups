@@ -17,7 +17,8 @@
     {% let next_url = "/".to_owned() + &event.alliance_name + "/group/" + event.public_group_slug() + "/event/" + &event.slug -%}
     <div class="flex justify-center mt-9">
       <a class="btn-primary-outline-anchor inline-flex items-center"
-         href="/log-in?next_url={{ next_url }}">
+         href="/log-in/oidc/linkedin?next_url={{ next_url }}"
+         hx-boost="false">
         <div class="svg-icon size-3 me-2 icon-user-plus"></div>
         Sign in
       </a>

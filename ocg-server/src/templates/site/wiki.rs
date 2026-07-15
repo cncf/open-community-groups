@@ -14,6 +14,7 @@ use crate::{
 #[template(path = "site/wiki/page.html")]
 pub(crate) struct Page {
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,

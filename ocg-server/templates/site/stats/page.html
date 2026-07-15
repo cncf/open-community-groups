@@ -51,7 +51,7 @@
               </div>
             </div>
 
-            <div class="mt-6 grid grid-cols-2 gap-3">
+            <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 p-4 backdrop-blur">
                 <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-600">Active members</div>
                 <div class="mt-2 text-3xl font-black">{{ stats.summary.active_members|num_fmt }}</div>
@@ -84,7 +84,7 @@
       </div>
 
       {# Summary cards #}
-      <div class="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div class="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div class="group rounded-3xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-stone-200/60 backdrop-blur transition hover:-translate-y-1 hover:border-primary-200 hover:shadow-2xl hover:shadow-primary-100/70">
           <div class="flex items-center justify-between gap-3">
             <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Groups</div>
@@ -292,7 +292,7 @@
                   Groups, members, events, and attendee growth across active GOUP alliances.
                 </p>
               </div>
-              <div class="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-4">
                 <div class="rounded-2xl border border-[#d8c7b2] bg-white/60 px-4 py-3 backdrop-blur">
                   <div class="text-stone-600">Groups</div>
                   <div class="text-xl font-black">{{ stats.groups.total|num_fmt }}</div>
@@ -450,7 +450,7 @@
             </div>
           </div>
           {% if stats.jobs.total > 0 -%}
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div class="rounded-2xl border border-stone-200 bg-white px-4 py-3">
                 <div class="text-sm text-stone-500">Active</div>
                 <div class="text-2xl font-black text-stone-950">{{ stats.jobs_overview.active|num_fmt }}</div>
@@ -507,7 +507,7 @@
                 Startups and open-source projects added by alliance admins.
               </p>
             </div>
-            <div class="grid grid-cols-2 gap-2 text-sm">
+            <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <div class="rounded-2xl border border-stone-200 bg-white px-4 py-3">
                 <div class="text-stone-500">Startups</div>
                 <div class="text-xl font-black text-stone-950">{{ stats.landscape_startups.total|num_fmt }}</div>

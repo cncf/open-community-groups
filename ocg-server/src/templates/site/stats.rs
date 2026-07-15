@@ -15,6 +15,7 @@ use crate::{
 #[template(path = "site/stats/page.html")]
 pub struct Page {
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,

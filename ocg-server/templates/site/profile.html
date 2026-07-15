@@ -41,7 +41,9 @@
           <div class="flex flex-col gap-5 sm:flex-row sm:items-end">
             <div class="rounded-3xl bg-white p-2 shadow-sm ring-1 ring-stone-200">
               <logo-image
-              {% if let Some(photo_url) = &profile.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+              {% if let Some(photo_url) = &profile.photo_url -%}
+                image-url="{{ photo_url }}"
+              {% endif -%}
               size="size-28" placeholder="{{ crate::templates::helpers::user_initials(profile.name.as_deref() , profile.username.as_str()) }}">
               </logo-image>
             </div>

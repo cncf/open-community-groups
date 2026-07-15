@@ -21,6 +21,7 @@ use crate::{
 #[template(path = "site/jobs/page.html")]
 pub(crate) struct Page {
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -43,6 +44,7 @@ pub(crate) struct Page {
 #[template(path = "site/jobs/details.html")]
 pub(crate) struct DetailsPage {
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,
@@ -59,6 +61,7 @@ pub(crate) struct DetailsPage {
 #[template(path = "site/jobs/mock_interviews.html")]
 pub(crate) struct MockInterviewsPage {
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current URL path.
     pub path: String,

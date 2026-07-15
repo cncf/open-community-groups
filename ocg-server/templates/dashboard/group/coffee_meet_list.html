@@ -33,7 +33,9 @@
         <article class="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div class="flex min-w-0 items-start gap-4">
             <logo-image
-            {% if let Some(photo_url) = &subscriber.photo_url -%} image-url="{{ photo_url }}" {% endif -%}
+            {% if let Some(photo_url) = &subscriber.photo_url -%}
+              image-url="{{ photo_url }}"
+            {% endif -%}
             size="size-12" placeholder="{{ self::user_initials(subscriber.name.as_deref() , subscriber.username.as_str()) }}">
             </logo-image>
             <div class="min-w-0">

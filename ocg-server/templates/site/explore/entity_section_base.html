@@ -6,7 +6,7 @@
 
 {# Mobile filters -#}
 <div id="drawer-filters"
-     class="fixed top-0 left-0 z-[1100] h-screen overflow-y-auto transition-transform -translate-x-full bg-white w-80 border-r border-stone-200 shadow-2xl shadow-stone-400/20"
+     class="fixed top-0 left-0 z-[1100] h-screen max-w-[calc(100vw-2rem)] overflow-y-auto transition-transform -translate-x-full bg-white w-80 border-r border-stone-200 shadow-2xl shadow-stone-400/20"
      tabindex="-1"
      aria-labelledby="drawer-label">
   {# Close button -#}
@@ -107,12 +107,12 @@
           {# End searchbar -#}
         </div>
       </div>
-      <div class="flex flex-row items-center justify-between px-5 md:px-7 h-[30px]">
+      <div class="flex flex-wrap items-center justify-between gap-3 px-5 md:flex-nowrap md:px-7">
         {# Current page results -#}
-        <div class="flex-1">
+        <div class="min-w-0 flex-1">
           {% if view_mode == ViewMode::List -%}
             <div id="results"
-                 class="flex font-bold text-xs md:text-sm text-stone-950 w-[175px]">
+                 class="flex max-w-[8.5rem] text-xs font-bold text-stone-950 sm:max-w-none sm:w-[175px] md:text-sm">
               {% block current_page -%}
               {% endblock current_page -%}
             </div>
@@ -122,7 +122,7 @@
 
         {# View mode -#}
         <div id="view-mode-controls"
-             class="hidden flex-row flex-1 items-center md:flex">
+             class="order-3 flex w-full flex-row items-center justify-center md:order-none md:w-auto md:flex-1">
           <ul class="flex items-center justify-center">
             {# List view -#}
             <li class="group">
@@ -133,7 +133,7 @@
                      class="hidden peer"
                      {% if view_mode == ViewMode::List %}checked{% endif %}>
               <label for="list"
-                     class="w-[90px] xl:w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-[#d8c7b2] peer-checked:bg-[#f5efe7] hover:peer-unchecked:text-stone-600 peer-checked:text-stone-950 hover:bg-stone-50 transition-colors">
+                     class="w-[86px] sm:w-[90px] xl:w-[115px] relative inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-s-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-[#d8c7b2] peer-checked:bg-[#f5efe7] hover:peer-unchecked:text-stone-600 peer-checked:text-stone-950 hover:bg-stone-50 transition-colors">
                 <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-stone-700 icon-list"></div>
                 <div class="text-[0.775rem] text-center text-nowrap ms-1">List</div>
               </label>
@@ -150,7 +150,7 @@
                        class="hidden peer"
                        {% if view_mode == ViewMode::Calendar %}checked{% endif %}>
                 <label for="calendar"
-                       class="w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-[#d8c7b2] peer-checked:bg-[#f5efe7] hover:peer-unchecked:text-stone-600 peer-checked:text-stone-950 hover:bg-stone-50 transition-colors">
+                       class="w-[86px] sm:w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:z-10 peer-checked:border-[#d8c7b2] peer-checked:bg-[#f5efe7] hover:peer-unchecked:text-stone-600 peer-checked:text-stone-950 hover:bg-stone-50 transition-colors">
                   <div class="svg-icon h-3 w-3 bg-stone-500 group-has-[input:checked]:bg-stone-700 icon-calendar"></div>
                   <div class="text-[0.775rem] text-center text-nowrap ms-1">Calendar</div>
                 </label>
@@ -164,7 +164,7 @@
                        class="hidden peer"
                        {% if view_mode == ViewMode::Map %}checked{% endif %}>
                 <label for="map"
-                       class="w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:border-[#d8c7b2] peer-checked:bg-[#f5efe7] hover:peer-unchecked:text-stone-600 peer-checked:z-10 peer-checked:text-stone-950 hover:bg-stone-50 transition-colors">
+                       class="w-[86px] sm:w-[90px] xl:w-[115px] relative -ms-px inline-flex items-center justify-center px-2 py-1 text-[0.775rem] text-stone-500 bg-white border border-stone-200 rounded-e-full cursor-pointer select-none peer-checked:border-[#d8c7b2] peer-checked:bg-[#f5efe7] hover:peer-unchecked:text-stone-600 peer-checked:z-10 peer-checked:text-stone-950 hover:bg-stone-50 transition-colors">
                   <div class="svg-icon h-3.5 w-3.5 bg-stone-500 group-has-[input:checked]:bg-stone-700 icon-map"></div>
                   <div class="text-[0.775rem] text-center text-nowrap ms-1">Map</div>
                 </label>
@@ -182,7 +182,7 @@
         {# End view mode -#}
 
         {# Sort by -#}
-        <div class="flex flex-1 flex-row items-center justify-end mb-3 mt-3 sm:mb-0 sm:mt-0">
+        <div class="flex min-w-0 flex-1 flex-row items-center justify-end">
           {% if view_mode == ViewMode::List -%}
             <label for="sort_selector"
                    class="font-semibold text-[0.775rem] text-nowrap text-black leading-6 me-2 xl:me-3">

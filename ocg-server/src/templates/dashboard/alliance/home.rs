@@ -33,6 +33,7 @@ pub(crate) struct Page {
     /// Flash or status messages to display.
     pub messages: Vec<Message>,
     /// Identifier for the current page.
+    #[allow(dead_code)]
     pub page_id: PageId,
     /// Current request path.
     pub path: String,
