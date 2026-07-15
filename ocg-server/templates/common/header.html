@@ -52,12 +52,16 @@
            aria-label="Notifications">
           <div class="svg-icon size-4 icon-pending-invitation bg-[#3a2f25]"></div>
         </a>
-        <div class="flex size-[34px] items-center justify-center rounded-full bg-[#3D5A8A] text-[13px] font-semibold text-white uppercase shadow-sm">
+        <a href="/dashboard/user"
+           hx-boost="true"
+           hx-target="body"
+           class="flex size-[34px] items-center justify-center rounded-full bg-[#3D5A8A] text-[13px] font-semibold text-white uppercase shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+           aria-label="Open user dashboard">
           {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
-        </div>
+        </a>
       {% else -%}
-        <a href="/log-in/oidc/linkedin"
-           hx-boost="false"
+        <a href="/log-in"
+           hx-boost="true"
            class="inline-flex h-[34px] items-center rounded-full bg-[#1A1510] px-4 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-[#3a2f25] hover:shadow-md">
           Join GOUP
         </a>
