@@ -15,18 +15,49 @@
          hx-boost="true"
          hx-target="body"
          class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Events &amp; Groups</a>
-      <a href="/jobs"
-         hx-boost="true"
-         hx-target="body"
-         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Jobs</a>
+      <div class="group relative">
+        <a href="/jobs"
+           hx-boost="true"
+           hx-target="body"
+           class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Jobs</a>
+        <div class="dropdown absolute left-1/2 top-7 z-[1200] hidden w-52 -translate-x-1/2 rounded-2xl border border-[#eadcc9] bg-white p-2 text-sm shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
+          <a href="/jobs"
+             hx-boost="true"
+             hx-target="body"
+             class="block rounded-xl px-3 py-2.5 font-semibold text-[#3a2f25] hover:bg-[#f8f3ec]">Browse roles</a>
+          <a href="/jobs?remote=true"
+             hx-boost="true"
+             hx-target="body"
+             class="block rounded-xl px-3 py-2.5 text-[#3a2f25] hover:bg-[#f8f3ec]">Remote roles</a>
+          <a href="{% if user.logged_in -%}/dashboard/jobs{%- else -%}/log-in?next_url=/dashboard/jobs{%- endif %}"
+             hx-boost="{% if user.logged_in -%}true{%- else -%}false{%- endif %}"
+             class="block rounded-xl px-3 py-2.5 text-[#3a2f25] hover:bg-[#f8f3ec]">Post a role</a>
+        </div>
+      </div>
       <a href="/landscape"
          hx-boost="true"
          hx-target="body"
          class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Landscape</a>
-      <a href="/wiki"
-         hx-boost="true"
-         hx-target="body"
-         class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Resources</a>
+      <div class="group relative">
+        <a href="/wiki"
+           hx-boost="true"
+           hx-target="body"
+           class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Resources</a>
+        <div class="dropdown absolute left-1/2 top-7 z-[1200] hidden w-52 -translate-x-1/2 rounded-2xl border border-[#eadcc9] bg-white p-2 text-sm shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
+          <a href="/wiki"
+             hx-boost="true"
+             hx-target="body"
+             class="block rounded-xl px-3 py-2.5 font-semibold text-[#3a2f25] hover:bg-[#f8f3ec]">Wiki</a>
+          <a href="/docs"
+             hx-boost="true"
+             hx-target="body"
+             class="block rounded-xl px-3 py-2.5 text-[#3a2f25] hover:bg-[#f8f3ec]">Docs</a>
+          <a href="/search"
+             hx-boost="true"
+             hx-target="body"
+             class="block rounded-xl px-3 py-2.5 text-[#3a2f25] hover:bg-[#f8f3ec]">Search GOUP</a>
+        </div>
+      </div>
       <a href="/stats"
          hx-boost="true"
          hx-target="body"
@@ -55,6 +86,20 @@
              hx-target="body"
              class="block border-b border-[#eadcc9] px-4 py-3 font-semibold"
              role="menuitem">Open dashboard</a>
+          {% if user.belongs_to_alliance_team.unwrap_or(false) -%}
+            <a href="/dashboard/alliance"
+               hx-boost="true"
+               hx-target="body"
+               class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+               role="menuitem">Alliance Dashboard</a>
+          {% endif -%}
+          {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
+            <a href="/dashboard/group"
+               hx-boost="true"
+               hx-target="body"
+               class="block px-4 py-2.5 hover:bg-[#f8f3ec]"
+               role="menuitem">Group Dashboard</a>
+          {% endif -%}
         {% else -%}
           <a href="/log-in/oidc/linkedin"
              hx-boost="false"
@@ -119,13 +164,40 @@
            aria-label="Notifications">
           <div class="svg-icon size-4 icon-pending-invitation bg-[#3a2f25]"></div>
         </a>
-        <a href="/dashboard/user"
-           hx-boost="true"
-           hx-target="body"
-           class="flex size-[34px] items-center justify-center rounded-full bg-[#3D5A8A] text-[13px] font-semibold text-white uppercase shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-           aria-label="Open user dashboard">
-          {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
-        </a>
+        <div class="group relative">
+          <a href="/dashboard/user"
+             hx-boost="true"
+             hx-target="body"
+             class="flex size-[34px] items-center justify-center rounded-full bg-[#3D5A8A] text-[13px] font-semibold text-white uppercase shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+             aria-label="Open account menu">
+            {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
+          </a>
+          <div class="dropdown absolute right-0 top-11 z-[1200] hidden w-64 overflow-hidden rounded-2xl border border-[#eadcc9] bg-white py-2 text-sm text-[#3a2f25] shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
+            <a href="/dashboard/user"
+               hx-boost="true"
+               hx-target="body"
+               class="block px-4 py-2.5 font-semibold hover:bg-[#f8f3ec]">User Dashboard</a>
+            {% if user.belongs_to_alliance_team.unwrap_or(false) -%}
+              <a href="/dashboard/alliance"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="block px-4 py-2.5 hover:bg-[#f8f3ec]">Alliance Dashboard</a>
+            {% endif -%}
+            {% if user.belongs_to_any_group_team.unwrap_or(false) -%}
+              <a href="/dashboard/group"
+                 hx-boost="true"
+                 hx-target="body"
+                 class="block px-4 py-2.5 hover:bg-[#f8f3ec]">Group Dashboard</a>
+            {% endif -%}
+            <a href="/dashboard/jobs"
+               hx-boost="true"
+               hx-target="body"
+               class="block px-4 py-2.5 hover:bg-[#f8f3ec]">Jobs Dashboard</a>
+            <a href="/log-out"
+               hx-boost="false"
+               class="block border-t border-[#eadcc9] px-4 py-2.5 hover:bg-[#f8f3ec]">Log out</a>
+          </div>
+        </div>
       {% else -%}
         <a href="/log-in/oidc/linkedin"
            hx-boost="false"
