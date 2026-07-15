@@ -15,12 +15,12 @@
          hx-boost="true"
          hx-target="body"
          class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Events &amp; Groups</a>
-      <div class="group relative">
+      <div class="group relative flex h-[68px] items-center">
         <a href="/jobs"
            hx-boost="true"
            hx-target="body"
            class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Jobs</a>
-        <div class="dropdown absolute left-1/2 top-7 z-[1200] hidden w-52 -translate-x-1/2 rounded-2xl border border-[#eadcc9] bg-white p-2 text-sm shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
+        <div class="dropdown absolute left-1/2 top-full z-[1200] hidden w-52 -translate-x-1/2 rounded-2xl border border-[#eadcc9] bg-white p-2 text-sm shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
           <a href="/jobs"
              hx-boost="true"
              hx-target="body"
@@ -38,12 +38,12 @@
          hx-boost="true"
          hx-target="body"
          class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Landscape</a>
-      <div class="group relative">
+      <div class="group relative flex h-[68px] items-center">
         <a href="/wiki"
            hx-boost="true"
            hx-target="body"
            class="text-[15px] text-[#3a2f25]/75 transition hover:text-[#1A1510]">Resources</a>
-        <div class="dropdown absolute left-1/2 top-7 z-[1200] hidden w-52 -translate-x-1/2 rounded-2xl border border-[#eadcc9] bg-white p-2 text-sm shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
+        <div class="dropdown absolute left-1/2 top-full z-[1200] hidden w-52 -translate-x-1/2 rounded-2xl border border-[#eadcc9] bg-white p-2 text-sm shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
           <a href="/wiki"
              hx-boost="true"
              hx-target="body"
@@ -164,7 +164,7 @@
            aria-label="Notifications">
           <div class="svg-icon size-4 icon-pending-invitation bg-[#3a2f25]"></div>
         </a>
-        <div class="group relative">
+        <div class="group relative flex h-[34px] items-center">
           <a href="/dashboard/user"
              hx-boost="true"
              hx-target="body"
@@ -172,7 +172,7 @@
              aria-label="Open account menu">
             {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}
           </a>
-          <div class="dropdown absolute right-0 top-11 z-[1200] hidden w-64 overflow-hidden rounded-2xl border border-[#eadcc9] bg-white py-2 text-sm text-[#3a2f25] shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
+          <div class="dropdown absolute right-0 top-full z-[1200] hidden w-64 overflow-hidden rounded-2xl border border-[#eadcc9] bg-white py-2 text-sm text-[#3a2f25] shadow-2xl shadow-[#3a2f25]/10 group-hover:block group-focus-within:block">
             <a href="/dashboard/user"
                hx-boost="true"
                hx-target="body"
