@@ -18,7 +18,8 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBAccelerator {
     /// Lists the full accelerator dashboard payload for one group.
-    async fn get_group_accelerator_dashboard(&self, group_id: Uuid) -> Result<AcceleratorDashboard>;
+    async fn get_group_accelerator_dashboard(&self, group_id: Uuid)
+    -> Result<AcceleratorDashboard>;
 
     /// Adds an accelerator program.
     async fn add_group_accelerator_program(
@@ -95,7 +96,10 @@ where
     T: PgExecutor + Send + Sync,
 {
     #[instrument(skip(self), err)]
-    async fn get_group_accelerator_dashboard(&self, group_id: Uuid) -> Result<AcceleratorDashboard> {
+    async fn get_group_accelerator_dashboard(
+        &self,
+        group_id: Uuid,
+    ) -> Result<AcceleratorDashboard> {
         self.fetch_json_one(
             r#"
             with programs as (

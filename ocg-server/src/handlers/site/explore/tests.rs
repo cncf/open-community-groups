@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
+    router::{CACHE_CONTROL_NO_STORE, CACHE_CONTROL_PRIVATE_NO_STORE, CACHE_CONTROL_PUBLIC_SHARED},
     services::notifications::MockNotificationsManager,
     templates::site::explore::{self},
     types::{
@@ -393,7 +393,7 @@ async fn test_page_success_events() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+        &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
     );
     assert!(!bytes.is_empty());
 }
@@ -438,7 +438,7 @@ async fn test_page_success_groups() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+        &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
     );
     assert!(!bytes.is_empty());
 }

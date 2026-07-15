@@ -272,10 +272,7 @@ fn valid_landscape_kind(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
     }
 }
 
-fn valid_accelerator_cohort_status_opt(
-    value: &Option<String>,
-    _ctx: &(),
-) -> garde::Result {
+fn valid_accelerator_cohort_status_opt(value: &Option<String>, _ctx: &()) -> garde::Result {
     let Some(value) = value.as_deref().map(str::trim) else {
         return Ok(());
     };
@@ -343,9 +340,10 @@ mod tests {
         assert!(valid_date_opt(&Some("2026-07-08".to_string()), &()).is_ok());
         assert!(valid_date_opt(&Some("07/08/2026".to_string()), &()).is_err());
         assert!(
-            valid_json_opt(&Some(
-                r#"[{"week":1,"focus":"AI Distribution"}]"#.to_string()
-            ), &())
+            valid_json_opt(
+                &Some(r#"[{"week":1,"focus":"AI Distribution"}]"#.to_string()),
+                &()
+            )
             .is_ok()
         );
         assert!(valid_json_opt(&Some("not-json".to_string()), &()).is_err());

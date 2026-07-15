@@ -141,8 +141,8 @@ async fn test_sign_up_page_success() {
     );
     assert!(!bytes.is_empty());
     let body = String::from_utf8(bytes.to_vec()).unwrap();
-    assert!(body.contains("Sign Up"));
-    assert!(body.contains("Already have an account?"));
+    assert!(body.contains("Create your account."));
+    assert!(body.contains("Continue with LinkedIn"));
 }
 
 #[tokio::test]

@@ -603,11 +603,19 @@ pub(crate) fn option_label(value: &str) -> &str {
 }
 
 fn valid_practice_role(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
-    valid_option(value.as_ref(), PRACTICE_ROLE_OPTIONS, "invalid practice role")
+    valid_option(
+        value.as_ref(),
+        PRACTICE_ROLE_OPTIONS,
+        "invalid practice role",
+    )
 }
 
 fn valid_interview_type(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {
-    valid_option(value.as_ref(), INTERVIEW_TYPE_OPTIONS, "invalid interview type")
+    valid_option(
+        value.as_ref(),
+        INTERVIEW_TYPE_OPTIONS,
+        "invalid interview type",
+    )
 }
 
 fn valid_target_company(value: &impl AsRef<str>, _ctx: &()) -> garde::Result {

@@ -18,7 +18,9 @@ use crate::{
     db::DynDB,
     handlers::{
         extractors::{CurrentUser, ValidatedForm},
-        request_matches_site, site::not_found, trim_public_gallery_images,
+        request_matches_site,
+        site::not_found,
+        trim_public_gallery_images,
     },
     router::{CACHE_CONTROL_PRIVATE_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS, serde_qs_config},
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
@@ -400,7 +402,12 @@ pub(crate) async fn request_member_mock_interview(
     }
 
     let match_id = db
-        .request_group_mock_interviewer(user.user_id, alliance_id, group.group_id, interviewer_user_id)
+        .request_group_mock_interviewer(
+            user.user_id,
+            alliance_id,
+            group.group_id,
+            interviewer_user_id,
+        )
         .await?;
 
     let Some(match_id) = match_id else {
@@ -446,10 +453,7 @@ async fn enqueue_mock_interview_match_notifications(
 
     let dashboard_link = format!(
         "{}/dashboard/user?tab=mock-interviews",
-        server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&server_cfg.base_url)
+        server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
     );
     let interview_type = option_label(&context.interview_type).to_string();
     let notifications = [

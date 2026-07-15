@@ -351,7 +351,10 @@ pub(crate) async fn setup(
         .route("/docs", get(site::docs::index))
         .route("/docs/{*doc_path}", get(site::docs::page))
         .route("/jobs", get(site::jobs::page))
-        .route("/jobs/mock-interviews", get(site::jobs::mock_interviews_page))
+        .route(
+            "/jobs/mock-interviews",
+            get(site::jobs::mock_interviews_page),
+        )
         .route("/jobs/{slug}", get(site::jobs::details))
         .route("/landscape", get(site::landscape::page))
         .route("/privacy", get(site::privacy::page))

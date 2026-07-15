@@ -35,9 +35,7 @@
              hx-target="body"
              class="block min-w-0 rounded-2xl border border-[#E2DDD8] bg-white p-5 transition hover:-translate-y-1 hover:shadow-lg sm:p-6">
             <div class="flex min-w-0 items-center gap-3 border-b border-[#E2DDD8] pb-5">
-              <div class="flex h-14 w-14 items-center justify-center rounded-[10px] bg-[#1A1510]">
-                <div class="svg-icon size-[22px] icon-location bg-white"></div>
-              </div>
+              {{ ui::logo(logo_url = group.logo_url, classes = "h-14 w-14 min-w-14", size = 56) -}}
               <div class="flex min-w-0 flex-col gap-1">
                 <span class="text-[11px] font-semibold tracking-[1px] text-[#3D5A8A] uppercase">
                   {{ group.alliance_display_name }} · {{ group.category.name }}

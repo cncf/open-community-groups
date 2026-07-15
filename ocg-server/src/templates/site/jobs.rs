@@ -8,8 +8,8 @@ use crate::{
     types::{
         jobs::{JobFull, JobSummary, JobsFilters},
         mock_interviews::{
-            INTERVIEW_TYPE_OPTIONS, LOCATION_OPTIONS, MockInterviewDashboard,
-            MockInterviewOption, PRACTICE_ROLE_OPTIONS, SENIORITY_OPTIONS, TARGET_COMPANY_OPTIONS,
+            INTERVIEW_TYPE_OPTIONS, LOCATION_OPTIONS, MockInterviewDashboard, MockInterviewOption,
+            PRACTICE_ROLE_OPTIONS, SENIORITY_OPTIONS, TARGET_COMPANY_OPTIONS,
         },
         pagination::NavigationLinks,
         site::SiteSettings,
@@ -111,10 +111,7 @@ impl MockInterviewsPage {
 
     /// Returns the total number of interview type poll votes represented.
     pub(crate) fn interview_type_vote_total(&self) -> i32 {
-        self.interview_type_options
-            .iter()
-            .map(|option| option.votes)
-            .sum()
+        self.interview_type_options.iter().map(|option| option.votes).sum()
     }
 
     /// Returns the most requested interview type label.

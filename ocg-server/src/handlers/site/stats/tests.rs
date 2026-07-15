@@ -10,7 +10,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_PUBLIC_SHARED,
+    db::mock::MockDB, handlers::tests::*, router::CACHE_CONTROL_PRIVATE_NO_STORE,
     services::notifications::MockNotificationsManager,
 };
 
@@ -76,7 +76,7 @@ async fn test_page_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
+        &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
     );
     assert!(!bytes.is_empty());
 }

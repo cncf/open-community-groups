@@ -12,8 +12,8 @@ use tracing::{instrument, warn};
 use uuid::Uuid;
 
 use crate::{
-    db::DynDB,
     config::HttpServerConfig,
+    db::DynDB,
     handlers::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm},
@@ -251,10 +251,7 @@ async fn enqueue_mock_interview_match_notifications(
 
     let dashboard_link = format!(
         "{}/dashboard/user?tab=mock-interviews",
-        server_cfg
-            .base_url
-            .strip_suffix('/')
-            .unwrap_or(&server_cfg.base_url)
+        server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
     );
     let interview_type = option_label(&context.interview_type).to_string();
     let notifications = [

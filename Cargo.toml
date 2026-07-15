@@ -12,7 +12,7 @@ edition = "2024"
 rust-version = "1.96.0"
 
 [workspace.dependencies]
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 base64 = "0.22"
 askama = { version = "0.16.0", features = ["serde_json"] }
 async-trait = "0.1.89"
@@ -52,7 +52,7 @@ openssl = { version = "0.10.81", features = ["vendored"] }
 password-auth = "1.0.0"
 percent-encoding = "2.3.2"
 postgres-openssl = "0.5.3"
-quick-xml = "0.40.1"
+quick-xml = "0.41.0"
 qrcode = { version = "0.14.1", features = ["svg"] }
 reqwest = { version = "0.13.4", features = ["json"] }
 # Keep this exact pin so the workspace resolves to patched rkyv 0.7.46.

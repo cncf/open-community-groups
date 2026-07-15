@@ -9,9 +9,9 @@ use crate::{
     types::{
         jobs::{DashboardJobsFilters, JobSummary},
         mock_interviews::{
-            INTERVIEW_TYPE_OPTIONS, LOCATION_OPTIONS, MockInterviewDashboard,
-            MockInterviewFilters, MockInterviewOption, PRACTICE_ROLE_OPTIONS, SENIORITY_OPTIONS,
-            TARGET_COMPANY_OPTIONS, option_label,
+            INTERVIEW_TYPE_OPTIONS, LOCATION_OPTIONS, MockInterviewDashboard, MockInterviewFilters,
+            MockInterviewOption, PRACTICE_ROLE_OPTIONS, SENIORITY_OPTIONS, TARGET_COMPANY_OPTIONS,
+            option_label,
         },
         pagination::NavigationLinks,
         site::SiteSettings,

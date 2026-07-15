@@ -3,7 +3,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{
         HeaderValue, Request, StatusCode,
-        header::{CACHE_CONTROL, CONTENT_TYPE, VARY},
+        header::{CACHE_CONTROL, CONTENT_TYPE},
     },
 };
 use tower::ServiceExt;
@@ -11,7 +11,7 @@ use tower::ServiceExt;
 use crate::{
     db::mock::MockDB,
     handlers::tests::*,
-    router::{CACHE_CONTROL_PUBLIC_SHARED, PUBLIC_SHARED_CACHE_VARY},
+    router::CACHE_CONTROL_PRIVATE_NO_STORE,
     services::notifications::MockNotificationsManager,
     types::{jobs::JobsOutput, landscape::LandscapeOutput},
 };
@@ -84,11 +84,7 @@ async fn test_page_success() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        &HeaderValue::from_static(CACHE_CONTROL_PUBLIC_SHARED)
-    );
-    assert_eq!(
-        parts.headers.get(VARY).unwrap(),
-        &HeaderValue::from_static(PUBLIC_SHARED_CACHE_VARY)
+        &HeaderValue::from_static(CACHE_CONTROL_PRIVATE_NO_STORE)
     );
     assert!(!bytes.is_empty());
 }

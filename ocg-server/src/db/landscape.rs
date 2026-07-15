@@ -18,10 +18,8 @@ use crate::{
 #[async_trait]
 pub(crate) trait DBLandscape {
     /// Search published landscape entries.
-    async fn search_landscape_entries(
-        &self,
-        filters: &LandscapeFilters,
-    ) -> Result<LandscapeOutput>;
+    async fn search_landscape_entries(&self, filters: &LandscapeFilters)
+    -> Result<LandscapeOutput>;
 
     /// List entries for one alliance dashboard.
     async fn list_alliance_landscape_entries(
