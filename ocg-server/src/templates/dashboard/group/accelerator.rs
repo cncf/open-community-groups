@@ -33,6 +33,154 @@ pub(crate) struct Page {
     pub weekly_updates: Vec<AcceleratorWeeklyUpdate>,
 }
 
+impl Page {
+    /// Returns the title for the recommended next operator action.
+    pub(crate) fn next_action_title(&self) -> &'static str {
+        if self.programs.is_empty() {
+            "Create the program offer"
+        } else if self.cohorts.is_empty() {
+            "Open the first cohort"
+        } else if self.applications_needing_review_count() > 0 {
+            "Review applicant pipeline"
+        } else if self.weeks.is_empty() {
+            "Publish weekly curriculum"
+        } else if self.cohort_status_count("running") > 0
+            && self.weekly_updates_needing_review_count() > 0
+        {
+            "Review founder updates"
+        } else if self.cohort_status_count("open") > 0 {
+            "Keep promoting applications"
+        } else {
+            "Keep the accelerator current"
+        }
+    }
+
+    /// Returns explanatory copy for the recommended next operator action.
+    pub(crate) fn next_action_description(&self) -> &'static str {
+        if self.programs.is_empty() {
+            "Start with a clear promise: who this is for, what builders get, and where applicants can learn more."
+        } else if self.cohorts.is_empty() {
+            "Turn the program into a dated cohort with capacity, application deadline, and status."
+        } else if self.applications_needing_review_count() > 0 {
+            "Move submitted, reviewing, and waitlisted applications toward accept, reject, or waitlist decisions."
+        } else if self.weeks.is_empty() {
+            "Give members a concrete path by adding weekly goals, resources, deliverables, and due dates."
+        } else if self.cohort_status_count("running") > 0
+            && self.weekly_updates_needing_review_count() > 0
+        {
+            "Close the loop with reviewer notes so members know what to improve before the next milestone."
+        } else if self.cohort_status_count("open") > 0 {
+            "Applications are open. Share the public accelerator page and monitor new submissions."
+        } else {
+            "Review cohort status, member progress, and weekly updates so the public page stays trustworthy."
+        }
+    }
+
+    /// Returns the anchor target for the recommended next operator action.
+    pub(crate) fn next_action_href(&self) -> &'static str {
+        if self.programs.is_empty() {
+            "#accelerator-program-setup"
+        } else if self.cohorts.is_empty() {
+            "#accelerator-cohort-setup"
+        } else if self.applications_needing_review_count() > 0 {
+            "#accelerator-applications"
+        } else if self.weeks.is_empty() {
+            "#accelerator-curriculum"
+        } else if self.weekly_updates_needing_review_count() > 0 {
+            "#accelerator-updates"
+        } else if self.cohort_status_count("open") > 0 {
+            "#accelerator-applications"
+        } else {
+            "#accelerator-curriculum"
+        }
+    }
+
+    /// Returns the button label for the recommended next operator action.
+    pub(crate) fn next_action_label(&self) -> &'static str {
+        if self.programs.is_empty() {
+            "Add program"
+        } else if self.cohorts.is_empty() {
+            "Create cohort"
+        } else if self.applications_needing_review_count() > 0 {
+            "Review applications"
+        } else if self.weeks.is_empty() {
+            "Add curriculum"
+        } else if self.weekly_updates_needing_review_count() > 0 {
+            "Review updates"
+        } else if self.cohort_status_count("open") > 0 {
+            "Check applications"
+        } else {
+            "Review curriculum"
+        }
+    }
+
+    /// Count cohorts by status.
+    pub(crate) fn cohort_status_count(&self, status: &str) -> usize {
+        self.cohorts
+            .iter()
+            .filter(|cohort| cohort.status == status)
+            .count()
+    }
+
+    /// Count applications that still need organizer attention.
+    pub(crate) fn applications_needing_review_count(&self) -> usize {
+        self.applications
+            .iter()
+            .filter(|application| {
+                matches!(application.status.as_str(), "submitted" | "reviewing" | "waitlisted")
+            })
+            .count()
+    }
+
+    /// Count accepted applications.
+    pub(crate) fn accepted_application_count(&self) -> usize {
+        self.applications
+            .iter()
+            .filter(|application| application.status == "accepted")
+            .count()
+    }
+
+    /// Count active cohort members.
+    pub(crate) fn active_member_count(&self) -> usize {
+        self.members
+            .iter()
+            .filter(|member| member.status == "active")
+            .count()
+    }
+
+    /// Count submitted weekly updates waiting for review.
+    pub(crate) fn weekly_updates_needing_review_count(&self) -> usize {
+        self.weekly_updates
+            .iter()
+            .filter(|update| update.status == "submitted")
+            .count()
+    }
+
+    /// Count curriculum weeks for one cohort.
+    pub(crate) fn cohort_weeks_count(&self, cohort_id: &Uuid) -> usize {
+        self.weeks
+            .iter()
+            .filter(|week| week.group_accelerator_cohort_id == *cohort_id)
+            .count()
+    }
+
+    /// Count applications for one cohort.
+    pub(crate) fn cohort_applications_count(&self, cohort_id: &Uuid) -> usize {
+        self.applications
+            .iter()
+            .filter(|application| application.group_accelerator_cohort_id == *cohort_id)
+            .count()
+    }
+
+    /// Count members for one cohort.
+    pub(crate) fn cohort_members_count(&self, cohort_id: &Uuid) -> usize {
+        self.members
+            .iter()
+            .filter(|member| member.group_accelerator_cohort_id == *cohort_id)
+            .count()
+    }
+}
+
 /// Full accelerator dashboard payload.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub(crate) struct AcceleratorDashboard {

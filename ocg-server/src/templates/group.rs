@@ -204,6 +204,24 @@ impl Page {
 }
 
 impl AcceleratorPage {
+    /// Counts cohorts by public workflow status.
+    pub(crate) fn cohort_status_count(&self, status: &str) -> usize {
+        self.accelerator
+            .cohorts
+            .iter()
+            .filter(|cohort| cohort.status == status)
+            .count()
+    }
+
+    /// Counts active public programs.
+    pub(crate) fn active_program_count(&self) -> usize {
+        self.accelerator
+            .programs
+            .iter()
+            .filter(|program| program.active)
+            .count()
+    }
+
     /// Counts published weeks for a cohort.
     pub(crate) fn cohort_weeks_count(&self, cohort_id: &uuid::Uuid) -> usize {
         self.accelerator
