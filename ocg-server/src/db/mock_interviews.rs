@@ -12,7 +12,7 @@ use crate::{
         MockInterviewDashboard, MockInterviewFeedbackInput, MockInterviewFilters,
         MockInterviewMatchInput, MockInterviewMatchNotificationContext,
         MockInterviewParticipantFeedbackInput, MockInterviewParticipantScheduleInput,
-        MockInterviewRequestInput, UserMockInterviewMatch,
+        MockInterviewRequest, MockInterviewRequestInput, UserMockInterviewMatch,
     },
 };
 
@@ -30,6 +30,12 @@ pub(crate) trait DBMockInterviews {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<UserMockInterviewMatch>>;
+
+    /// List requests submitted by the user.
+    async fn list_user_mock_interview_requests(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<MockInterviewRequest>>;
 
     /// Submit a mock interview request.
     async fn add_mock_interview_request(
@@ -274,6 +280,39 @@ where
             left join "user" interviewee on interviewee.user_id = mim.interviewee_user_id
             where mim.interviewer_user_id = $1::uuid
             or mim.interviewee_user_id = $1::uuid
+            "#,
+            &[&user_id],
+        )
+        .await
+    }
+
+    #[instrument(skip(self), err)]
+    async fn list_user_mock_interview_requests(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<MockInterviewRequest>> {
+        self.fetch_json_one(
+            r#"
+            select coalesce(jsonb_agg(jsonb_build_object(
+                'mock_interview_request_id', mir.mock_interview_request_id,
+                'requester_user_id', mir.requester_user_id,
+                'requester_username', u.username,
+                'requester_name', u.name,
+                'requester_email', u.email,
+                'practice_role', mir.practice_role,
+                'interview_type', mir.interview_type,
+                'target_company', mir.target_company,
+                'seniority', mir.seniority,
+                'location', mir.location,
+                'availability', mir.availability,
+                'notes', mir.notes,
+                'status', mir.status,
+                'created_at', extract(epoch from mir.created_at)::bigint,
+                'updated_at', extract(epoch from mir.updated_at)::bigint
+            ) order by mir.created_at desc), '[]'::jsonb)
+            from mock_interview_request mir
+            join "user" u on u.user_id = mir.requester_user_id
+            where mir.requester_user_id = $1::uuid
             "#,
             &[&user_id],
         )

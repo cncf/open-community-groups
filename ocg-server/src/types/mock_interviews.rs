@@ -434,6 +434,16 @@ impl MockInterviewRequest {
             name: Some(self.display_name().to_string()),
         }]
     }
+
+    /// Returns whether the request is still waiting for a match.
+    pub(crate) fn is_waiting(&self) -> bool {
+        self.status == "requested"
+    }
+
+    /// Returns whether the request reached a terminal state.
+    pub(crate) fn is_closed(&self) -> bool {
+        matches!(self.status.as_str(), "completed" | "canceled")
+    }
 }
 
 /// User selection payload for dashboard search components.
@@ -576,6 +586,24 @@ impl UserMockInterviewMatch {
     /// Returns whether the current interviewee rating equals the given value.
     pub(crate) fn current_user_interviewer_rating_is(&self, value: i32) -> bool {
         self.current_user_interviewer_rating() == Some(value)
+    }
+
+    /// Returns whether this match still needs time or meeting details.
+    pub(crate) fn needs_schedule(&self) -> bool {
+        matches!(self.match_.status.as_str(), "matched" | "scheduled")
+            && (self.match_.scheduled_at.is_none() || self.match_.meeting_url.is_none())
+    }
+
+    /// Returns whether the current user has submitted role-specific feedback.
+    pub(crate) fn current_user_feedback_submitted(&self) -> bool {
+        match self.role.as_str() {
+            "interviewer" => self.match_.interviewer_feedback.is_some(),
+            "interviewee" => {
+                self.match_.interviewee_feedback.is_some()
+                    || self.match_.interviewer_rating.is_some()
+            }
+            _ => false,
+        }
     }
 }
 

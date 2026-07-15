@@ -1,153 +1,326 @@
 {% import "macros/dashboard.html" as dashboard -%}
 
-{{ dashboard::page_title(title = "My Mock Interviews", description = "Review assigned mock interviews, coordinate logistics, and submit role-specific feedback.") -}}
+{% let request_button -%}
+<a class="btn-primary-anchor w-full sm:w-auto" href="/jobs/mock-interviews">New request</a>
+{%- endlet %}
+{{ dashboard::page_title(title = "Mock Interview Workflow", description = "Track your request, coordinate the session, prepare intentionally, and close the loop with feedback.", button = request_button) -}}
 
-<div class="mt-8 grid gap-4 sm:grid-cols-3">
-  <div class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
-    <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Assigned</div>
-    <div class="mt-3 text-4xl font-black tracking-tight text-stone-950">{{ matches.len() }}</div>
-    <p class="mt-2 text-sm/6 text-stone-600">
-      Mock interview matches where you are the interviewer or interviewee.
-    </p>
+<section class="mt-8 overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
+  <div class="grid gap-px bg-stone-200 sm:grid-cols-4">
+    <div class="bg-white p-5">
+      <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Requests</div>
+      <div class="mt-3 text-3xl font-black tracking-tight text-stone-950">{{ requests.len() }}</div>
+      <p class="mt-1 text-sm text-stone-600">{{ self.waiting_request_count() }} waiting for match</p>
+    </div>
+    <div class="bg-white p-5">
+      <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Active</div>
+      <div class="mt-3 text-3xl font-black tracking-tight text-stone-950">{{ self.active_match_count() }}</div>
+      <p class="mt-1 text-sm text-stone-600">Matched or scheduled</p>
+    </div>
+    <div class="bg-white p-5">
+      <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Need logistics</div>
+      <div class="mt-3 text-3xl font-black tracking-tight text-stone-950">{{ self.scheduling_needed_count() }}</div>
+      <p class="mt-1 text-sm text-stone-600">Time or meeting link missing</p>
+    </div>
+    <div class="bg-white p-5">
+      <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Completed</div>
+      <div class="mt-3 text-3xl font-black tracking-tight text-stone-950">{{ self.completed_match_count() }}</div>
+      <p class="mt-1 text-sm text-stone-600">Feedback archive</p>
+    </div>
   </div>
-  <div class="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-5 sm:col-span-2">
-    <div class="text-sm font-black text-stone-950">Feedback</div>
-    <p class="mt-2 text-sm/6 text-stone-600">
-      Interviewers send feedback for interviewees. Interviewees rate the interviewer and can add comments.
-    </p>
-  </div>
-</div>
+</section>
 
-{% if matches.is_empty() -%}
-  <div class="mt-8 rounded-[2rem] border border-dashed border-stone-300 bg-white px-6 py-12 text-center shadow-sm">
+<section class="mt-6 rounded-[2rem] border border-primary-100 bg-primary-50/70 p-5 sm:p-6">
+  <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div>
+      <p class="text-xs font-black uppercase tracking-[0.2em] text-primary-700">How this works</p>
+      <h2 class="mt-2 text-2xl font-black tracking-tight text-stone-950">Request -> Match -> Schedule -> Prepare -> Interview -> Feedback</h2>
+      <p class="mt-2 max-w-3xl text-sm/6 text-stone-700">
+        Use this page as your operating checklist. If you are waiting, confirm your request details. If you are matched, lock the time and meeting link. After the interview, submit role-specific feedback.
+      </p>
+    </div>
+    <a class="btn-secondary-anchor shrink-0" href="/jobs/mock-interviews">Update preferences</a>
+  </div>
+</section>
+
+{% if requests.is_empty() && matches.is_empty() -%}
+  <section class="mt-8 rounded-[2rem] border border-dashed border-stone-300 bg-white px-6 py-14 text-center shadow-sm">
     <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-stone-100">
       <div class="svg-icon size-5 icon-user-small bg-stone-700"></div>
     </div>
-    <h2 class="mt-4 text-xl font-black tracking-tight text-stone-950">No mock interviews assigned yet</h2>
+    <h2 class="mt-4 text-xl font-black tracking-tight text-stone-950">Start your first mock interview</h2>
     <p class="mx-auto mt-2 max-w-xl text-sm/6 text-stone-600">
-      When an organizer schedules you as an interviewer or interviewee, the match will appear here.
+      Tell organizers what you want to practice, your target level, and your availability. Your request will appear here while it waits for a match.
     </p>
-  </div>
-{% else -%}
-  <div class="mt-8 grid gap-4">
-    {% for session in matches -%}
-      <article class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-medium text-white">{{ session.match_.status }}</span>
-              <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700">{{ session.role_label() }}</span>
-              {% if let Some(scheduled_at) = &session.match_.scheduled_at -%}
-                <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">{{ scheduled_at }}</span>
+    <a class="btn-primary-anchor mt-5" href="/jobs/mock-interviews">Join the practice queue</a>
+  </section>
+{% endif -%}
+
+{% if !requests.is_empty() -%}
+  <section class="mt-8">
+    <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h2 class="text-xl font-black tracking-tight text-stone-950">Your Requests</h2>
+        <p class="mt-1 text-sm text-stone-600">Queue status, preferences, availability, and what organizers use to match you.</p>
+      </div>
+      <a class="btn-tertiary text-sm" href="/jobs/mock-interviews">Add another request</a>
+    </div>
+
+    <div class="grid gap-4">
+      {% for request in requests -%}
+        <article class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-medium text-white">{{ request.status }}</span>
+                {% if request.is_waiting() -%}
+                  <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Waiting for match</span>
+                {% elif request.is_closed() -%}
+                  <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-bold text-stone-700">Closed</span>
+                {% else -%}
+                  <span class="rounded-full bg-primary-100 px-2.5 py-1 text-xs font-bold text-primary-700">In progress</span>
+                {% endif -%}
+                <span class="rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">Submitted {{ request.created_at.format("%b %d") }}</span>
+              </div>
+              <h3 class="mt-4 text-lg font-black tracking-tight text-stone-950">
+                {{ self.option_label(request.interview_type.as_str()) }} for {{ self.option_label(request.target_company.as_str()) }}
+              </h3>
+              <p class="mt-1 text-sm/6 text-stone-600">
+                Practicing as <span class="font-semibold text-stone-900">{{ self.option_label(request.practice_role.as_str()) }}</span>,
+                level <span class="font-semibold text-stone-900">{{ self.option_label(request.seniority.as_str()) }}</span>,
+                location <span class="font-semibold text-stone-900">{{ self.option_label(request.location.as_str()) }}</span>.
+              </p>
+            </div>
+            {% if request.is_waiting() -%}
+              <a class="btn-secondary-anchor shrink-0 text-sm" href="/jobs/mock-interviews#request">Refine request</a>
+            {% endif -%}
+          </div>
+
+          <div class="mt-5 grid gap-3 lg:grid-cols-2">
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Availability</div>
+              <p class="mt-2 whitespace-pre-line text-sm/6 text-stone-700">{{ request.availability.as_deref().unwrap_or("Add times that work for you so organizers can schedule faster.") }}</p>
+            </div>
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Prep notes</div>
+              <p class="mt-2 whitespace-pre-line text-sm/6 text-stone-700">{{ request.notes.as_deref().unwrap_or("Add target role, company, topics, or feedback style you want.") }}</p>
+            </div>
+          </div>
+        </article>
+      {% endfor -%}
+    </div>
+  </section>
+{% endif -%}
+
+{% if !matches.is_empty() -%}
+  <section class="mt-10" data-mock-interview-swipe>
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h2 class="text-xl font-black tracking-tight text-stone-950">Assigned Sessions</h2>
+        <p class="mt-1 text-sm text-stone-600">Swipe through each session, coordinate the interview, then submit feedback.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="btn-secondary btn-mini"
+                type="button"
+                data-mock-interview-swipe-prev
+                aria-label="Show previous mock interview">
+          Previous
+        </button>
+        <div class="min-w-16 rounded-full bg-stone-100 px-3 py-1 text-center text-xs font-bold text-stone-700"
+             aria-live="polite">
+          <span data-mock-interview-swipe-current>1</span>/<span data-mock-interview-swipe-total>{{ matches.len() }}</span>
+        </div>
+        <button class="btn-secondary btn-mini"
+                type="button"
+                data-mock-interview-swipe-next
+                aria-label="Show next mock interview">
+          Next
+        </button>
+      </div>
+    </div>
+
+    <div class="grid gap-5 touch-pan-y"
+         data-mock-interview-swipe-track
+         aria-roledescription="carousel">
+      {% for session in matches -%}
+        <article class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm transition duration-200 ease-out"
+                 data-mock-interview-swipe-card
+                 aria-roledescription="slide">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="rounded-full bg-stone-950 px-2.5 py-1 text-xs font-medium text-white">{{ session.match_.status }}</span>
+                <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700">{{ session.role_label() }}</span>
+                {% if session.needs_schedule() -%}
+                  <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800">Needs schedule</span>
+                {% elif session.current_user_feedback_submitted() -%}
+                  <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-bold text-green-800">Your feedback saved</span>
+                {% endif -%}
+              </div>
+              <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3">
+                  <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Interviewer</div>
+                  <div class="mt-2 text-sm font-semibold text-stone-950">
+                    {{ session.match_.interviewer_label.as_deref().unwrap_or("TBD") }}
+                  </div>
+                </div>
+                <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3">
+                  <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Interviewee</div>
+                  <div class="mt-2 text-sm font-semibold text-stone-950">
+                    {{ session.match_.interviewee_label.as_deref().unwrap_or("TBD") }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% if let Some(meeting_url) = &session.match_.meeting_url -%}
+              <a class="btn-primary-anchor shrink-0 text-sm"
+                 href="{{ meeting_url }}"
+                 target="_blank"
+                 rel="noopener noreferrer">Join meeting</a>
+            {% else -%}
+              <a class="btn-secondary-anchor shrink-0 text-sm" href="#schedule-{{ session.match_.mock_interview_match_id }}">Add meeting link</a>
+            {% endif -%}
+          </div>
+
+          <div class="mt-5 grid gap-3 lg:grid-cols-3">
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">1. Schedule</div>
+              <p class="mt-2 text-sm/6 text-stone-700">
+                {% if let Some(scheduled_at) = &session.match_.scheduled_at -%}
+                  {{ scheduled_at }}
+                {% else -%}
+                  Agree on a time and save it below.
+                {% endif -%}
+              </p>
+            </div>
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">2. Prepare</div>
+              <p class="mt-2 text-sm/6 text-stone-700">
+                Interviewee brings goals and resume context. Interviewer prepares questions and a scoring rubric.
+              </p>
+            </div>
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">3. Close loop</div>
+              <p class="mt-2 text-sm/6 text-stone-700">
+                Submit strengths, gaps, next steps, and interviewer rating after the session.
+              </p>
+            </div>
+          </div>
+
+          {% if let Some(internal_notes) = &session.match_.internal_notes -%}
+            <div class="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Organizer notes</div>
+              <p class="mt-2 whitespace-pre-line text-sm/6 text-stone-700">{{ internal_notes }}</p>
+            </div>
+          {% endif -%}
+
+          <form id="schedule-{{ session.match_.mock_interview_match_id }}"
+                class="mt-5 grid gap-4 rounded-2xl border border-stone-200 bg-stone-50 p-4 lg:grid-cols-12"
+                method="post"
+                action="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/schedule"
+                hx-post="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/schedule"
+                hx-target="body">
+            <label class="block lg:col-span-5">
+              <span class="form-label">Confirmed time</span>
+              <input name="scheduled_at"
+                     class="input-primary mt-2"
+                     value="{{ session.match_.scheduled_at.as_deref().unwrap_or("") }}"
+                     placeholder="2026-07-15 19:00 +04"
+                     required />
+            </label>
+            <label class="block lg:col-span-5">
+              <span class="form-label">Meeting URL</span>
+              <input name="meeting_url"
+                     class="input-primary mt-2"
+                     value="{{ session.match_.meeting_url.as_deref().unwrap_or("") }}"
+                     placeholder="https://meet.google.com/..." />
+            </label>
+            <div class="flex items-end justify-end lg:col-span-2">
+              <button class="btn-secondary w-full" type="submit">Save logistics</button>
+            </div>
+          </form>
+
+          <div class="mt-5 rounded-2xl border border-stone-200 bg-white p-4">
+            <div class="text-sm font-black text-stone-950">Preparation checklist</div>
+            <div class="mt-3 grid gap-3 md:grid-cols-2">
+              {% if session.role == "interviewer" -%}
+                <ul class="list-disc space-y-2 pl-5 text-sm/6 text-stone-700">
+                  <li>Ask for the interviewee's target role and success criteria.</li>
+                  <li>Prepare 3-5 questions with one stretch question.</li>
+                  <li>Reserve the last 10 minutes for direct feedback.</li>
+                </ul>
+                <ul class="list-disc space-y-2 pl-5 text-sm/6 text-stone-700">
+                  <li>Score communication, depth, tradeoffs, and next-step clarity.</li>
+                  <li>Write feedback as strengths, gaps, and practical next actions.</li>
+                </ul>
+              {% else -%}
+                <ul class="list-disc space-y-2 pl-5 text-sm/6 text-stone-700">
+                  <li>Send your target role, resume/profile, and topics to practice.</li>
+                  <li>Prepare one short intro and examples you can discuss deeply.</li>
+                  <li>Ask for direct feedback on gaps and next actions.</li>
+                </ul>
+                <ul class="list-disc space-y-2 pl-5 text-sm/6 text-stone-700">
+                  <li>Join on time with camera, notes, and a quiet environment.</li>
+                  <li>Rate the interviewer afterward so organizers can improve matches.</li>
+                </ul>
               {% endif -%}
             </div>
-            <div class="mt-4 grid gap-3 sm:grid-cols-2">
-              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3">
-                <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Interviewer</div>
-                <div class="mt-2 text-sm font-semibold text-stone-950">
-                  {{ session.match_.interviewer_label.as_deref().unwrap_or("TBD") }}
-                </div>
+          </div>
+
+          {% if session.role == "interviewee" -%}
+            {% if let Some(interviewer_feedback) = &session.match_.interviewer_feedback -%}
+              <div class="mt-5 rounded-2xl border border-primary-200 bg-primary-50 p-4">
+                <div class="text-xs font-bold uppercase tracking-[0.16em] text-primary-700">Feedback from interviewer</div>
+                <p class="mt-2 whitespace-pre-line text-sm/6 text-stone-800">{{ interviewer_feedback }}</p>
               </div>
-              <div class="rounded-2xl border border-stone-200 bg-stone-50 p-3">
-                <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Interviewee</div>
-                <div class="mt-2 text-sm font-semibold text-stone-950">
-                  {{ session.match_.interviewee_label.as_deref().unwrap_or("TBD") }}
-                </div>
-              </div>
+            {% endif -%}
+          {% endif -%}
+
+          <form class="mt-5 grid gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4"
+                method="post"
+                action="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/feedback"
+                hx-post="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/feedback"
+                hx-target="body">
+            {% if session.role == "interviewer" -%}
+              <label class="block">
+                <span class="form-label">Feedback for interviewee</span>
+                <textarea name="feedback"
+                          rows="4"
+                          class="input-primary mt-2 min-h-28 resize-y"
+                          placeholder="Strengths, gaps, recommended prep, and next steps. Visible to the interviewee and admins.">{{ session.current_user_feedback().unwrap_or("") }}</textarea>
+              </label>
+            {% elif session.role == "interviewee" -%}
+              <label class="block">
+                <span class="form-label">Rate the interviewer</span>
+                <select name="interviewer_rating" class="input-primary mt-2" required>
+                  <option value="">Choose a rating</option>
+                  <option value="5"
+                          {% if session.current_user_interviewer_rating_is(5) %}selected{% endif %}>5 - Excellent</option>
+                  <option value="4"
+                          {% if session.current_user_interviewer_rating_is(4) %}selected{% endif %}>4 - Good</option>
+                  <option value="3"
+                          {% if session.current_user_interviewer_rating_is(3) %}selected{% endif %}>3 - Okay</option>
+                  <option value="2"
+                          {% if session.current_user_interviewer_rating_is(2) %}selected{% endif %}>2 - Needs work</option>
+                  <option value="1"
+                          {% if session.current_user_interviewer_rating_is(1) %}selected{% endif %}>1 - Poor</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="form-label">Comments about the interviewer</span>
+                <textarea name="feedback"
+                          rows="4"
+                          class="input-primary mt-2 min-h-28 resize-y"
+                          placeholder="What helped, what could improve, and whether you would recommend this interviewer">{{ session.current_user_feedback().unwrap_or("") }}</textarea>
+              </label>
+            {% endif -%}
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p class="text-xs text-stone-500">Feedback is saved to this match and visible to organizers.</p>
+              <button class="btn-primary" type="submit">Save feedback</button>
             </div>
-          </div>
-          {% if let Some(meeting_url) = &session.match_.meeting_url -%}
-            <a class="btn-tertiary shrink-0 text-sm"
-               href="{{ meeting_url }}"
-               target="_blank"
-               rel="noopener noreferrer">Open meeting</a>
-          {% endif -%}
-        </div>
-
-        {% if let Some(internal_notes) = &session.match_.internal_notes -%}
-          <div class="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4">
-            <div class="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Organizer notes</div>
-            <p class="mt-2 whitespace-pre-line text-sm/6 text-stone-700">{{ internal_notes }}</p>
-          </div>
-        {% endif -%}
-
-        <form class="mt-5 grid gap-4 rounded-2xl border border-stone-200 bg-stone-50 p-4 lg:grid-cols-12"
-              method="post"
-              action="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/schedule"
-              hx-post="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/schedule"
-              hx-target="body">
-          <label class="block lg:col-span-5">
-            <span class="form-label">Scheduled time</span>
-            <input name="scheduled_at"
-                   class="input-primary mt-2"
-                   value="{{ session.match_.scheduled_at.as_deref().unwrap_or("") }}"
-                   placeholder="2026-07-15 19:00 +04"
-                   required />
-          </label>
-          <label class="block lg:col-span-5">
-            <span class="form-label">Meeting URL</span>
-            <input name="meeting_url"
-                   class="input-primary mt-2"
-                   value="{{ session.match_.meeting_url.as_deref().unwrap_or("") }}"
-                   placeholder="https://meet.google.com/..." />
-          </label>
-          <div class="flex items-end justify-end lg:col-span-2">
-            <button class="btn-secondary w-full" type="submit">Save schedule</button>
-          </div>
-        </form>
-
-        {% if session.role == "interviewee" -%}
-          {% if let Some(interviewer_feedback) = &session.match_.interviewer_feedback -%}
-            <div class="mt-5 rounded-2xl border border-primary-200 bg-primary-50 p-4">
-              <div class="text-xs font-bold uppercase tracking-[0.16em] text-primary-700">Feedback from interviewer</div>
-              <p class="mt-2 whitespace-pre-line text-sm/6 text-stone-800">{{ interviewer_feedback }}</p>
-            </div>
-          {% endif -%}
-        {% endif -%}
-
-        <form class="mt-5 grid gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4"
-              method="post"
-              action="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/feedback"
-              hx-post="/dashboard/user/mock-interviews/{{ session.match_.mock_interview_match_id }}/feedback"
-              hx-target="body">
-          {% if session.role == "interviewer" -%}
-            <label class="block">
-              <span class="form-label">Feedback for interviewee</span>
-              <textarea name="feedback"
-                        rows="4"
-                        class="input-primary mt-2 min-h-28 resize-y"
-                        placeholder="Strengths, gaps, recommended prep, and next steps. Visible to the interviewee and admins.">{{ session.current_user_feedback().unwrap_or("") }}</textarea>
-            </label>
-          {% elif session.role == "interviewee" -%}
-            <label class="block">
-              <span class="form-label">Rate the interviewer</span>
-              <select name="interviewer_rating" class="input-primary mt-2" required>
-                <option value="">Choose a rating</option>
-                <option value="5"
-                        {% if session.current_user_interviewer_rating_is(5) %}selected{% endif %}>5 - Excellent</option>
-                <option value="4"
-                        {% if session.current_user_interviewer_rating_is(4) %}selected{% endif %}>4 - Good</option>
-                <option value="3"
-                        {% if session.current_user_interviewer_rating_is(3) %}selected{% endif %}>3 - Okay</option>
-                <option value="2"
-                        {% if session.current_user_interviewer_rating_is(2) %}selected{% endif %}>2 - Needs work</option>
-                <option value="1"
-                        {% if session.current_user_interviewer_rating_is(1) %}selected{% endif %}>1 - Poor</option>
-              </select>
-            </label>
-            <label class="block">
-              <span class="form-label">Comments about the interviewer</span>
-              <textarea name="feedback"
-                        rows="4"
-                        class="input-primary mt-2 min-h-28 resize-y"
-                        placeholder="What helped, what could improve, and whether you would recommend this interviewer">{{ session.current_user_feedback().unwrap_or("") }}</textarea>
-            </label>
-          {% endif -%}
-          <div class="flex justify-end">
-            <button class="btn-primary" type="submit">Save feedback</button>
-          </div>
-        </form>
-      </article>
-    {% endfor -%}
-  </div>
+          </form>
+        </article>
+      {% endfor -%}
+    </div>
+  </section>
 {% endif -%}

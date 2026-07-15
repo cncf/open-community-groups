@@ -93,7 +93,13 @@ pub(crate) async fn prepare_list_page(
     db: &DynDB,
     user_id: Uuid,
 ) -> Result<mock_interviews::ListPage, HandlerError> {
+    let (requests, matches) = tokio::try_join!(
+        db.list_user_mock_interview_requests(user_id),
+        db.list_user_mock_interview_matches(user_id),
+    )?;
+
     Ok(mock_interviews::ListPage {
-        matches: db.list_user_mock_interview_matches(user_id).await?,
+        requests,
+        matches,
     })
 }
