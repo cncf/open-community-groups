@@ -3,13 +3,14 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(23);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set actorID '3a130000-0000-0000-0000-000000000001'
+\set canceledAttendeeUserID '3a130000-0000-0000-0000-000000000019'
 \set canceledEventID '3a130000-0000-0000-0000-000000000002'
 \set communityID '3a130000-0000-0000-0000-000000000003'
 \set confirmedAttendeeUserID '3a130000-0000-0000-0000-000000000004'
@@ -67,6 +68,7 @@ values (:'groupID', :'communityID', :'groupCategoryID', 'Test Group', 'test-grou
 insert into "user" (auth_hash, email, email_verified, name, user_id, username)
 values
     ('hash-actor', 'actor@example.com', true, 'Actor', :'actorID', 'actor'),
+    ('hash-canceled-attendee', 'canceled-attendee@example.com', true, 'Canceled', :'canceledAttendeeUserID', 'canceled-attendee'),
     ('hash-confirmed', 'confirmed@example.com', true, 'Confirmed', :'confirmedAttendeeUserID', 'confirmed'),
     ('hash-registered', 'registered@example.com', true, 'Registered', :'registeredUserID', 'registered'),
     ('hash-rejected', 'rejected@example.com', true, 'Rejected', :'rejectedUserID', 'rejected'),
@@ -186,6 +188,23 @@ insert into event_attendee (event_id, user_id, status)
 values
     (:'eventID', :'confirmedAttendeeUserID', 'confirmed'),
     (:'eventID', :'rejectedUserID', 'invitation-rejected');
+
+-- Canceled attendee row reused by a new organizer invitation
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    registration_answers,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'actorID',
+    :'eventID',
+    '{"answers": [{"value": "Stale"}]}'::jsonb,
+    'attendance-canceled',
+    :'canceledAttendeeUserID'
+);
 
 -- Existing waitlist entries
 insert into event_waitlist (event_id, user_id)
@@ -392,6 +411,32 @@ select lives_ok(
         :'actorID', :'groupID', :'eventID', :'registeredUserID'
     ),
     'Should allow re-inviting after cancellation'
+);
+
+-- Should reuse a canceled attendance row when inviting the attendee again.
+select is(
+    invite_event_attendee(:'actorID', :'groupID', :'eventID', :'canceledAttendeeUserID', null),
+    :'canceledAttendeeUserID'::uuid,
+    'Should allow inviting a canceled attendee again'
+);
+
+select results_eq(
+    format(
+        $$
+        select
+            attendance_canceled_at is null,
+            attendance_canceled_by_user_id is null,
+            manually_invited,
+            registration_answers is null,
+            status
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+        $$,
+        :'eventID', :'canceledAttendeeUserID'
+    ),
+    $$ values (true, true, true, true, 'invitation-pending'::text) $$,
+    'Should clear canceled attendance state when creating the invitation'
 );
 
 -- Should reject re-inviting users that rejected an organizer invitation.

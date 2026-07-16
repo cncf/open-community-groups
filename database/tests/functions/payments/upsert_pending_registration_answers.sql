@@ -3,13 +3,14 @@
 -- ============================================================================
 
 begin;
-select plan(9);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '79300000-0000-0000-0000-000000000001'
+\set canceledUserID '79300000-0000-0000-0000-000000000009'
 \set confirmedUserID '79300000-0000-0000-0000-000000000008'
 \set eventCategoryID '79300000-0000-0000-0000-000000000003'
 \set eventID '79300000-0000-0000-0000-000000000005'
@@ -53,6 +54,13 @@ values (:'eventCategoryID', :'communityID', 'General');
 -- Users
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
+    (
+        :'canceledUserID',
+        'hash-4',
+        'canceled@example.com',
+        true,
+        'canceled-user'
+    ),
     (
         :'confirmedUserID',
         'hash-3',
@@ -125,6 +133,29 @@ values (
         ))
     ),
     'confirmed'
+);
+
+-- Existing canceled attendee whose answers must be replaced on repurchase
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    registration_answers,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'confirmedUserID',
+    :'eventID',
+    jsonb_build_object(
+        'answers',
+        jsonb_build_array(jsonb_build_object(
+            'question_id', :'registrationQuestionID',
+            'value', 'Stale'
+        ))
+    ),
+    'attendance-canceled',
+    :'canceledUserID'
 );
 
 -- ============================================================================
@@ -221,6 +252,39 @@ select is(
         :'registrationQuestionID'
     )::jsonb,
     'Should update the existing pending attendee answers'
+);
+
+-- Should revive canceled attendance with the new pending answers
+select lives_ok(
+    format($$
+        select upsert_pending_registration_answers(
+            %L::uuid,
+            %L::uuid,
+            '[{"id": "%s", "kind": "free-text", "prompt": "Note", "required": true, "options": []}]'::jsonb,
+            '{"answers": [{"question_id": "%s", "value": "Repurchase"}]}'::jsonb
+        )
+    $$, :'eventID', :'canceledUserID', :'registrationQuestionID', :'registrationQuestionID'),
+    'Should revive canceled attendance for a new pending checkout'
+);
+
+select results_eq(
+    format($$
+        select
+            attendance_canceled_at is null,
+            attendance_canceled_by_user_id is null,
+            registration_answers,
+            status
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'canceledUserID'),
+    format($$ values (
+        true,
+        true,
+        '{"answers": [{"question_id": "%s", "value": "Repurchase"}]}'::jsonb,
+        'registration-questions-pending'::text
+    ) $$, :'registrationQuestionID'),
+    'Should replace canceled attendance metadata and stale answers'
 );
 
 -- Should leave confirmed attendees untouched on conflict

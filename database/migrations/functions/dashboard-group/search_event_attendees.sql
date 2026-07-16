@@ -5,6 +5,11 @@ returns json as $$
         -- Parse filters for pagination
         filters as (
             select
+                case
+                    when lower(p_filters->>'attendance') in ('active', 'all', 'canceled')
+                        then lower(p_filters->>'attendance')
+                    else null
+                end as attendance_value,
                 (p_filters->>'checked_in')::boolean as checked_in_value,
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value,
@@ -62,6 +67,7 @@ returns json as $$
                 ea.manually_invited,
                 ea.registration_answers,
                 ea.status,
+                e.canceled as event_canceled,
                 u.user_id,
                 u.username,
 
@@ -81,6 +87,27 @@ returns json as $$
                 u.linkedin_url,
                 u.photo_url,
                 get_public_user_provider(u.provider) as provider,
+                case
+                    when ep.purchase_status = 'pending'
+                        and e.canceled
+                        and (
+                            ep.hold_expires_at > current_timestamp
+                            or ep.provider_checkout_session_id is not null
+                        ) then 'awaiting-checkout'
+                    when epr.status = 'finalized' or ep.purchase_status = 'refunded' then 'refunded'
+                    when epr.status in ('processing', 'provider-succeeded') then 'processing'
+                    when epr.status = 'provider-pending'
+                        and epr.attempt_count >= 10 then 'retryable-failure'
+                    when epr.status = 'provider-pending'
+                        and epr.provider_refund_id is not null then 'processing'
+                    when epr.status = 'provider-pending' then 'queued'
+                    when epr.status = 'provider-failed'
+                        and epr.terminal_failure then 'recovery-required'
+                    when epr.status = 'provider-failed'
+                        and epr.attempt_count >= 10 then 'retryable-failure'
+                    when epr.status = 'provider-failed' then 'queued'
+                    else null
+                end as refund_progress,
                 err.status as refund_request_status,
                 u.twitter_url,
                 u.tsdoc,
@@ -101,13 +128,24 @@ returns json as $$
                     event_purchase_id,
                     amount_minor,
                     currency_code,
-                    discount_code,
                     event_ticket_type_id,
-                    ticket_title
+                    status as purchase_status,
+                    ticket_title,
+
+                    discount_code,
+                    hold_expires_at,
+                    provider_checkout_session_id
                 from event_purchase
                 where event_id = ea.event_id
                 and user_id = ea.user_id
-                and status in ('completed', 'refund-requested')
+                and status in (
+                    'completed',
+                    'pending',
+                    'refund-pending',
+                    'refund-recovery-pending',
+                    'refund-requested',
+                    'refunded'
+                )
                 order by created_at desc, event_purchase_id desc
                 limit 1
             ) ep on true
@@ -118,6 +156,7 @@ returns json as $$
                 order by created_at desc, event_refund_request_id desc
                 limit 1
             ) err on true
+            left join event_purchase_refund epr on epr.event_purchase_id = ep.event_purchase_id
             left join lateral (
                 select event_purchase_id
                 from event_purchase
@@ -131,6 +170,7 @@ returns json as $$
             where e.group_id = p_group_id
             and ea.event_id = p_event_id
             and ea.status in (
+                'attendance-canceled',
                 'confirmed',
                 'invitation-pending',
                 'invitation-rejected',
@@ -147,6 +187,23 @@ returns json as $$
                     select 1
                     from search_filter
                     where search_filter.ts_query @@ base_attendees.tsdoc
+                )
+            )
+            and (
+                coalesce(
+                    (select attendance_value from filters),
+                    case when event_canceled then 'all' else 'active' end
+                ) = 'all'
+                or (
+                    coalesce(
+                        (select attendance_value from filters),
+                        case when event_canceled then 'all' else 'active' end
+                    ) = 'active'
+                    and status <> 'attendance-canceled'
+                )
+                or (
+                    (select attendance_value from filters) = 'canceled'
+                    and status = 'attendance-canceled'
                 )
             )
             and (
@@ -198,6 +255,7 @@ returns json as $$
                 currency_code,
                 discount_code,
                 event_purchase_id,
+                refund_progress,
                 refund_request_status,
                 ticket_title,
 
@@ -234,7 +292,16 @@ returns json as $$
         ),
         -- Render attendees as JSON
         attendees_json as (
-            select coalesce(json_agg(row_to_json(attendees)), '[]'::json) as attendees
+            select coalesce(
+                jsonb_agg(
+                    case
+                        when refund_progress is null
+                            then row_to_json(attendees)::jsonb - 'refund_progress'
+                        else row_to_json(attendees)::jsonb
+                    end
+                ),
+                '[]'::jsonb
+            ) as attendees
             from attendees
         )
     -- Build final payload

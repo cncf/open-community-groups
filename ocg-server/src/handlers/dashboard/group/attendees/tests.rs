@@ -145,9 +145,8 @@ async fn test_accept_invitation_request_returns_no_content_and_sends_welcome() {
 async fn test_approve_refund_request_returns_no_content_when_payments_manager_succeeds() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let target_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -186,11 +185,9 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
-                && input.community_id == community_id
-                && input.event_id == event_id
+                && input.event_purchase_id == event_purchase_id
                 && input.group_id == group_id
                 && input.review_note.is_none()
-                && input.user_id == target_user_id
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -205,7 +202,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/refund/approve"
+            "/dashboard/group/refunds/{event_purchase_id}/approve"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -220,7 +217,7 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees",
+        "refresh-event-attendees, refresh-group-refunds",
     );
 }
 
@@ -228,9 +225,8 @@ async fn test_approve_refund_request_returns_no_content_when_payments_manager_su
 async fn test_approve_refund_request_returns_internal_server_error_when_payments_manager_fails() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let target_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -269,11 +265,9 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
-                && input.community_id == community_id
-                && input.event_id == event_id
+                && input.event_purchase_id == event_purchase_id
                 && input.group_id == group_id
                 && input.review_note.is_none()
-                && input.user_id == target_user_id
         })
         .returning(|_| Box::pin(async { Err(anyhow!("payments error")) }));
 
@@ -288,7 +282,7 @@ async fn test_approve_refund_request_returns_internal_server_error_when_payments
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/refund/approve"
+            "/dashboard/group/refunds/{event_purchase_id}/approve"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -1963,8 +1957,8 @@ async fn test_manual_check_in_success() {
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let target_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
+    let target_user_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
@@ -2104,9 +2098,8 @@ async fn test_reject_invitation_request_returns_no_content() {
 async fn test_reject_refund_request_returns_no_content_when_payments_manager_succeeds() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
-    let target_user_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
@@ -2145,11 +2138,9 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
         .times(1)
         .withf(move |input| {
             input.actor_user_id == user_id
-                && input.community_id == community_id
-                && input.event_id == event_id
+                && input.event_purchase_id == event_purchase_id
                 && input.group_id == group_id
                 && input.review_note.is_none()
-                && input.user_id == target_user_id
         })
         .returning(|_| Box::pin(async { Ok(()) }));
 
@@ -2164,7 +2155,7 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
     let request = Request::builder()
         .method("PUT")
         .uri(format!(
-            "/dashboard/group/events/{event_id}/attendees/{target_user_id}/refund/reject"
+            "/dashboard/group/refunds/{event_purchase_id}/reject"
         ))
         .header(COOKIE, format!("id={session_id}"))
         .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
@@ -2179,7 +2170,134 @@ async fn test_reject_refund_request_returns_no_content_when_payments_manager_suc
         &parts,
         &bytes,
         StatusCode::NO_CONTENT,
-        "refresh-event-attendees",
+        "refresh-event-attendees, refresh-group-refunds",
+    );
+}
+
+#[tokio::test]
+async fn test_retry_refund_returns_internal_server_error_when_database_fails() {
+    // Setup identifiers and authenticated group context
+    let community_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication, authorization, and failed refund requeue
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_requeue_event_purchase_refund()
+        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
+        .times(1)
+        .returning(|_, _| Err(anyhow!("database error")));
+
+    // Send the retry request through the dashboard router
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/refunds/{event_purchase_id}/retry"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check persistence failures are exposed as handler failures
+    assert_empty_response(&parts, &bytes, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn test_retry_refund_returns_no_content_when_requeue_succeeds() {
+    // Setup identifiers and authenticated group context
+    let community_id = Uuid::new_v4();
+    let event_purchase_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup authentication, authorization, and successful refund requeue
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_requeue_event_purchase_refund()
+        .withf(move |group, purchase| *group == group_id && *purchase == event_purchase_id)
+        .times(1)
+        .returning(|_, _| Ok(()));
+
+    // Send the retry request through the dashboard router
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("PUT")
+        .uri(format!(
+            "/dashboard/group/refunds/{event_purchase_id}/retry"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the client receives the expected attendee-list refresh trigger
+    assert_empty_hx_trigger_response(
+        &parts,
+        &bytes,
+        StatusCode::NO_CONTENT,
+        "refresh-event-attendees, refresh-group-refunds",
     );
 }
 

@@ -61,8 +61,14 @@ begin
         raise exception 'paid attendees cannot be canceled from attendee actions';
     end if;
 
-    -- Remove only confirmed attendees
-    delete from event_attendee
+    -- Preserve the attendee row while removing active attendance
+    update event_attendee
+    set
+        attendance_canceled_at = current_timestamp,
+        attendance_canceled_by_user_id = p_actor_user_id,
+        checked_in = false,
+        checked_in_at = null,
+        status = 'attendance-canceled'
     where event_id = p_event_id
     and user_id = p_user_id
     and status = 'confirmed';

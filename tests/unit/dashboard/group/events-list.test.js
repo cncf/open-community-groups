@@ -38,12 +38,51 @@ const mountEventsList = ({ hasRelatedEvents = false } = {}) => {
   return document.getElementById("events-list-root");
 };
 
+const loadTemplate = async () => {
+  const response = await fetch(
+    "/ocg-server/templates/dashboard/group/events_list.html",
+  );
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
 describe("events list page", () => {
   const env = useDashboardTestEnv({
     path: "/dashboard/group?tab=events",
     withHtmx: true,
     withScroll: true,
     withSwal: true,
+  });
+
+  it("warns admins about cancellation refunds and unpublish retention", async () => {
+    const template = await loadTemplate();
+
+    expect(template).to.include(
+      "Unpublish this event? Existing attendees and ticket purchases will be retained.",
+    );
+    expect(template).to.include(
+      "All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
+    );
+    expect(template).to.include(
+      'data-series-scope-text="Non-completed events in series"',
+    );
+  });
+
+  it("disables deletion when the event is not eligible", async () => {
+    const template = await loadTemplate();
+
+    expect(template).to.include(
+      'action == "delete" && !event.can_delete()',
+    );
+    expect(template).to.include("event.delete_unavailable_title()");
+    expect(template).to.include(
+      'aria-describedby="{{ action }}-event-{{ event.event_id }}-disabled-reason"',
+    );
+    expect(template).to.include(
+      'id="{{ action }}-event-{{ event.event_id }}-disabled-reason"',
+    );
   });
 
   it("toggles event action dropdowns with delegated handlers", () => {

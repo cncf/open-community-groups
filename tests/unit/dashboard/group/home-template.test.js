@@ -34,6 +34,20 @@ describe("dashboard group home template", () => {
     );
   });
 
+  it("exposes the refunds tab without globally refreshing its partial", async () => {
+    // Load the group dashboard shell template before checking refund navigation.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify the menu includes refunds without intercepting refund action events globally.
+    expect(template).to.include(
+      'dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds")',
+    );
+    expect(template).to.include(
+      "else if content.is_refunds() -%}refunds",
+    );
+    expect(template).not.to.include("refresh-group-refunds");
+  });
+
   it("loads the shared user profile modal wiring", async () => {
     // Load the group dashboard shell template before checking profile modal wiring.
     const template = normalizeWhitespace(await loadTemplate());

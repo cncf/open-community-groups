@@ -27,13 +27,14 @@ begin
             'kind', v_refund.kind,
             'payment_provider', v_refund.payment_provider_id,
             'status', v_refund.status,
+            'terminal_failure', v_refund.terminal_failure,
 
+            'attempt_count', v_refund.attempt_count,
+            'claim_id', v_refund.claim_id,
             'failure_message', v_refund.failure_message,
             'finalized_at', extract(epoch from v_refund.finalized_at)::bigint,
             'provider_refund_id', v_refund.provider_refund_id,
-            'provider_refunded_at', extract(epoch from v_refund.provider_refunded_at)::bigint,
-
-            'started_now', false
+            'provider_refunded_at', extract(epoch from v_refund.provider_refunded_at)::bigint
         )
     );
 end;

@@ -8,6 +8,7 @@ returns jsonb as $$
 declare
     v_amount_minor bigint;
     v_community_id uuid;
+    v_currency_code text;
     v_event_discount_code_id uuid;
     v_event_id uuid;
     v_hold_expired boolean;
@@ -38,6 +39,7 @@ begin
     select
         ep.amount_minor,
         g.community_id,
+        ep.currency_code,
         ep.event_discount_code_id,
         ep.event_id,
         ep.hold_expires_at is not null
@@ -65,6 +67,7 @@ begin
     into
         v_amount_minor,
         v_community_id,
+        v_currency_code,
         v_event_discount_code_id,
         v_event_id,
         v_hold_expired,
@@ -106,8 +109,16 @@ begin
         insert into event_attendee (event_id, user_id)
         values (v_event_id, v_user_id)
         on conflict (event_id, user_id) do update
-        set status = 'confirmed'
-        where event_attendee.status in ('confirmed', 'invitation-canceled', 'registration-questions-pending');
+        set
+            attendance_canceled_at = null,
+            attendance_canceled_by_user_id = null,
+            status = 'confirmed'
+        where event_attendee.status in (
+            'attendance-canceled',
+            'confirmed',
+            'invitation-canceled',
+            'registration-questions-pending'
+        );
 
         if found then
             -- Persist the completed purchase state after the attendee is recorded
@@ -155,11 +166,26 @@ begin
         perform release_event_checkout_attendee_hold(v_event_id, v_user_id);
     end if;
 
-    return jsonb_build_object(
-        'amount_minor', v_amount_minor,
-        'event_purchase_id', v_purchase_id,
-        'outcome', 'refund_required',
-        'provider_payment_reference', v_provider_payment_reference
-    );
+    -- Queue the provider refund for workers before acknowledging the webhook
+    insert into event_purchase_refund (
+        amount_minor,
+        currency_code,
+        event_purchase_id,
+        idempotency_key,
+        kind,
+        payment_provider_id,
+        status
+    ) values (
+        v_amount_minor,
+        v_currency_code,
+        v_purchase_id,
+        format('event-purchase-refund-%s', v_purchase_id),
+        'automatic-unfulfillable-checkout',
+        p_provider,
+        'provider-pending'
+    )
+    on conflict (event_purchase_id) do nothing;
+
+    return jsonb_build_object('outcome', 'refund_queued');
 end;
 $$ language plpgsql;

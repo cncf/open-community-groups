@@ -594,6 +594,7 @@ fn sample_event_summary(ticket_types: Vec<EventTicketType>) -> EventSummary {
         created_by_display_name: None,
         created_by_username: None,
         description_short: None,
+        delete_eligibility: None,
         ends_at: None,
         event_series_id: None,
         group_slug_pretty: None,

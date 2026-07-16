@@ -13,25 +13,33 @@ declare
     v_purchase_status text;
     v_recipients uuid[];
 begin
+    -- Lock the event before its purchases to serialize requests with cancellation
+    select g.group_id
+    into v_group_id
+    from event e
+    join "group" g on g.group_id = e.group_id
+    where e.event_id = p_event_id
+    and g.community_id = p_community_id
+    and e.deleted = false
+    and (e.starts_at is null or e.starts_at > current_timestamp)
+    for update of e;
+
+    if not found then
+        raise exception 'purchase not found or not refundable';
+    end if;
+
     -- Lock the attendee's current active paid purchase before validating the request
     select
         ep.event_purchase_id,
-        g.group_id,
         ep.status
     into
         v_event_purchase_id,
-        v_group_id,
         v_purchase_status
     from event_purchase ep
-    join event e on e.event_id = ep.event_id
-    join "group" g on g.group_id = e.group_id
     where ep.event_id = p_event_id
     and ep.user_id = p_user_id
-    and g.community_id = p_community_id
     and ep.amount_minor > 0
     and ep.status in ('completed', 'refund-requested')
-    and e.deleted = false
-    and (e.starts_at is null or e.starts_at > current_timestamp)
     order by
         ep.created_at desc,
         ep.event_purchase_id desc
@@ -65,7 +73,7 @@ begin
     ) values (
         v_event_purchase_id,
         p_user_id,
-        nullif(p_requested_reason, ''),
+        nullif(btrim(p_requested_reason), ''),
         'pending'
     );
 

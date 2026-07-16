@@ -88,6 +88,8 @@ pub struct EventSummary {
     pub created_by_display_name: Option<String>,
     /// Username for the user who created the event, in dashboard views.
     pub created_by_username: Option<String>,
+    /// Dashboard deletion eligibility for this event.
+    pub delete_eligibility: Option<EventDeleteEligibility>,
     /// Brief event description for listings.
     pub description_short: Option<String>,
     /// Event end time in UTC.
@@ -143,6 +145,12 @@ pub struct EventSummary {
 }
 
 impl EventSummary {
+    /// Returns whether the event can currently be deleted.
+    pub fn can_delete(&self) -> bool {
+        self.delete_eligibility
+            .is_none_or(|eligibility| eligibility == EventDeleteEligibility::Allowed)
+    }
+
     /// Returns dashboard tooltip text for the user who created the event.
     pub fn created_by_tooltip(&self) -> Option<String> {
         match (
@@ -155,6 +163,19 @@ impl EventSummary {
             (Some(display_name), _) => Some(format!("Created by {display_name}")),
             (None, Some(username)) => Some(format!("Created by @{username}")),
             (None, None) => None,
+        }
+    }
+
+    /// Returns the dashboard explanation when deletion is unavailable.
+    pub fn delete_unavailable_title(&self) -> Option<&'static str> {
+        match self.delete_eligibility {
+            Some(EventDeleteEligibility::CancelFirst) => {
+                Some("Cancel this event before deleting it.")
+            }
+            Some(EventDeleteEligibility::RefundsPending) => {
+                Some("Resolve pending checkouts and refunds before deleting this event.")
+            }
+            Some(EventDeleteEligibility::Allowed) | None => None,
         }
     }
 
@@ -610,6 +631,7 @@ impl From<&EventFull> for EventSummary {
             capacity: event.capacity,
             created_by_display_name: None,
             created_by_username: None,
+            delete_eligibility: None,
             description_short: event.description_short.clone(),
             ends_at: event.ends_at,
             event_series_id: event.event_series_id,
@@ -723,6 +745,18 @@ pub struct EventCfsLabel {
     #[serde(default)]
     #[garde(skip)]
     pub event_cfs_label_id: Option<Uuid>,
+}
+
+/// Dashboard eligibility for deleting an event.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EventDeleteEligibility {
+    /// The event can be deleted now.
+    Allowed,
+    /// The event must be canceled before deletion.
+    CancelFirst,
+    /// Checkout or refund work must settle before deletion.
+    RefundsPending,
 }
 
 /// Status of an event invitation request.

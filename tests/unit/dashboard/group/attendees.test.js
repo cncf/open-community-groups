@@ -218,7 +218,7 @@ describe("dashboard group attendees", () => {
     // Render an attendees row with pending invitation actions.
     document.body.innerHTML = `
       <div id="attendees-content">
-        <details data-attendee-row-actions-menu>
+        <details data-actions-menu>
           <summary>
             More
           </summary>
@@ -239,7 +239,7 @@ describe("dashboard group attendees", () => {
     initializeAttendeesUi();
 
     // Set up menu.
-    const menu = document.querySelector("[data-attendee-row-actions-menu]");
+    const menu = document.querySelector("[data-actions-menu]");
     const trigger = menu.querySelector("summary");
     const cancelButton = document.getElementById("cancel-invitation-user-1");
 
@@ -773,8 +773,8 @@ describe("dashboard group attendees", () => {
         data-refund-ticket-title="General"
         data-refund-amount="EUR 30.00"
         data-refund-status="pending"
-        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
-        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+        data-refund-approve-url="/dashboard/group/refunds/purchase-1/approve"
+        data-refund-reject-url="/dashboard/group/refunds/purchase-1/reject"
       >
         Review
       </button>
@@ -807,13 +807,9 @@ describe("dashboard group attendees", () => {
     expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal("General");
     expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 30.00");
     expect(approveButton.classList.contains("hidden")).to.equal(false);
-    expect(approveButton.getAttribute("hx-put")).to.equal(
-      "/dashboard/group/events/event-1/attendees/user-1/refund/approve",
-    );
+    expect(approveButton.getAttribute("hx-put")).to.equal("/dashboard/group/refunds/purchase-1/approve");
     expect(rejectButton.classList.contains("hidden")).to.equal(false);
-    expect(rejectButton.getAttribute("hx-put")).to.equal(
-      "/dashboard/group/events/event-1/attendees/user-1/refund/reject",
-    );
+    expect(rejectButton.getAttribute("hx-put")).to.equal("/dashboard/group/refunds/purchase-1/reject");
     expect(processCalls).to.deep.equal(["attendee-refund-approve", "attendee-refund-reject"]);
 
     // Verify opens the refund review modal with attendee payment.
@@ -830,7 +826,7 @@ describe("dashboard group attendees", () => {
         data-refund-ticket-title="General"
         data-refund-amount="EUR 30.00"
         data-refund-status="approving"
-        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
+        data-refund-approve-url="/dashboard/group/refunds/purchase-1/approve"
       >
         Review
       </button>
@@ -872,8 +868,8 @@ describe("dashboard group attendees", () => {
         data-refund-ticket-title="General"
         data-refund-amount="EUR 30.00"
         data-refund-status="pending"
-        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
-        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+        data-refund-approve-url="/dashboard/group/refunds/purchase-1/approve"
+        data-refund-reject-url="/dashboard/group/refunds/purchase-1/reject"
       >
         Review
       </button>
@@ -926,8 +922,8 @@ describe("dashboard group attendees", () => {
         data-refund-ticket-title="General"
         data-refund-amount="EUR 30.00"
         data-refund-status="pending"
-        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
-        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+        data-refund-approve-url="/dashboard/group/refunds/purchase-1/approve"
+        data-refund-reject-url="/dashboard/group/refunds/purchase-1/reject"
       >
         Review
       </button>
@@ -980,8 +976,8 @@ describe("dashboard group attendees", () => {
         data-refund-ticket-title="Initial Ticket"
         data-refund-amount="EUR 10.00"
         data-refund-status="pending"
-        data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
-        data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+        data-refund-approve-url="/dashboard/group/refunds/purchase-1/approve"
+        data-refund-reject-url="/dashboard/group/refunds/purchase-1/reject"
       >
         Review
       </button>
@@ -1009,8 +1005,8 @@ describe("dashboard group attendees", () => {
         data-refund-ticket-title="Swapped Ticket"
         data-refund-amount="EUR 25.00"
         data-refund-status="pending"
-        data-refund-approve-url="/dashboard/group/events/event-2/attendees/user-2/refund/approve"
-        data-refund-reject-url="/dashboard/group/events/event-2/attendees/user-2/refund/reject"
+        data-refund-approve-url="/dashboard/group/refunds/purchase-2/approve"
+        data-refund-reject-url="/dashboard/group/refunds/purchase-2/reject"
       >
         Review
       </button>
@@ -1042,12 +1038,8 @@ describe("dashboard group attendees", () => {
     expect(document.getElementById("attendee-refund-name")?.textContent).to.equal("Swapped Attendee");
     expect(document.getElementById("attendee-refund-ticket")?.textContent).to.equal("Swapped Ticket");
     expect(document.getElementById("attendee-refund-amount")?.textContent).to.equal("EUR 25.00");
-    expect(approveButton.getAttribute("hx-put")).to.equal(
-      "/dashboard/group/events/event-2/attendees/user-2/refund/approve",
-    );
-    expect(rejectButton.getAttribute("hx-put")).to.equal(
-      "/dashboard/group/events/event-2/attendees/user-2/refund/reject",
-    );
+    expect(approveButton.getAttribute("hx-put")).to.equal("/dashboard/group/refunds/purchase-2/approve");
+    expect(rejectButton.getAttribute("hx-put")).to.equal("/dashboard/group/refunds/purchase-2/reject");
   });
 
   it("handles invitation modal controls after attendee content refreshes", () => {
@@ -1343,8 +1335,8 @@ describe("dashboard group attendees", () => {
           data-refund-ticket-title="General"
           data-refund-amount="EUR 30.00"
           data-refund-status="pending"
-          data-refund-approve-url="/dashboard/group/events/event-1/attendees/user-1/refund/approve"
-          data-refund-reject-url="/dashboard/group/events/event-1/attendees/user-1/refund/reject"
+          data-refund-approve-url="/dashboard/group/refunds/purchase-1/approve"
+          data-refund-reject-url="/dashboard/group/refunds/purchase-1/reject"
         >
           Review
         </button>

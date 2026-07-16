@@ -20,8 +20,13 @@ begin
     values (p_event_id, p_user_id, p_registration_answers, 'registration-questions-pending')
     on conflict (event_id, user_id) do update
     set
+        attendance_canceled_at = null,
+        attendance_canceled_by_user_id = null,
         registration_answers = p_registration_answers,
         status = 'registration-questions-pending'
-    where event_attendee.status = 'registration-questions-pending';
+    where event_attendee.status in (
+        'attendance-canceled',
+        'registration-questions-pending'
+    );
 end;
 $$ language plpgsql;

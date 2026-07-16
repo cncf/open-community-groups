@@ -114,13 +114,12 @@ pub(crate) fn build_event_published_notification(
     })
 }
 
-/// Builds an event refund approval notification.
-pub(crate) fn build_event_refund_approved_notification(
+/// Builds template data for an event refund approval notification.
+pub(crate) fn build_event_refund_approved_template_data(
     event: &EventSummary,
-    recipient_user_id: Uuid,
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
-) -> Result<NewNotification> {
+) -> Result<serde_json::Value> {
     let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventRefundApproved {
         event: event.clone(),
@@ -128,12 +127,7 @@ pub(crate) fn build_event_refund_approved_notification(
         theme: site_settings.theme.clone(),
     };
 
-    Ok(NewNotification {
-        attachments: vec![],
-        kind: NotificationKind::EventRefundApproved,
-        recipients: vec![recipient_user_id],
-        template_data: Some(serde_json::to_value(&template_data)?),
-    })
+    serde_json::to_value(&template_data).map_err(Into::into)
 }
 
 /// Builds an event refund rejection notification.
@@ -496,13 +490,9 @@ mod tests {
         let server_cfg = sample_server_cfg();
 
         // Build notifications
-        let approved = build_event_refund_approved_notification(
-            &event,
-            recipient_user_id,
-            &server_cfg,
-            &site_settings,
-        )
-        .expect("notification to be built");
+        let approved =
+            build_event_refund_approved_template_data(&event, &server_cfg, &site_settings)
+                .expect("template data to be built");
         let rejected = build_event_refund_rejected_notification(
             &event,
             recipient_user_id,
@@ -512,15 +502,8 @@ mod tests {
         .expect("notification to be built");
 
         // Check notifications match expectations
-        assert!(approved.attachments.is_empty());
-        assert!(matches!(
-            approved.kind,
-            NotificationKind::EventRefundApproved
-        ));
-        assert_eq!(approved.recipients, vec![recipient_user_id]);
         let approved_template: EventRefundApproved =
-            serde_json::from_value(approved.template_data.expect("template data to exist"))
-                .expect("template data to deserialize");
+            serde_json::from_value(approved).expect("template data to deserialize");
         assert_eq!(approved_template.event.event_id, event_id);
 
         assert!(rejected.attachments.is_empty());

@@ -3,13 +3,16 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '79530000-0000-0000-0000-000000000001'
+\set claimedClaimID '79530000-0000-0000-0000-000000000011'
+\set claimedPurchaseID '79530000-0000-0000-0000-000000000012'
+\set claimedRefundID '79530000-0000-0000-0000-000000000013'
 \set eventCategoryID '79530000-0000-0000-0000-000000000002'
 \set eventID '79530000-0000-0000-0000-000000000003'
 \set groupCategoryID '79530000-0000-0000-0000-000000000004'
@@ -138,6 +141,33 @@ insert into event_purchase (
     current_timestamp
 );
 
+-- Purchase currently owned by a refund worker claim
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+
+    payment_provider_id,
+    provider_payment_reference
+) values (
+    2500,
+    'USD',
+    :'eventID',
+    :'claimedPurchaseID',
+    :'ticketTypeID',
+    'refund-pending',
+    'General admission',
+    :'userID',
+
+    'stripe',
+    'pi_claimed_123'
+);
+
 -- Durable refund preserving the completed local finalization
 insert into event_purchase_refund (
     event_purchase_refund_id,
@@ -165,15 +195,62 @@ insert into event_purchase_refund (
     '2024-02-01 10:00:00+00'
 );
 
+-- Durable refund currently claimed for provider processing
+insert into event_purchase_refund (
+    amount_minor,
+    attempt_count,
+    claim_id,
+    claimed_at,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status
+) values (
+    2500,
+    2,
+    :'claimedClaimID',
+    current_timestamp,
+    'USD',
+    :'claimedPurchaseID',
+    :'claimedRefundID',
+    'event-purchase-refund-claimed',
+    'event-cancellation',
+    'stripe',
+    'processing'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should load an active worker claim
+select is(
+    get_event_purchase_refund(:'claimedPurchaseID'::uuid),
+    jsonb_build_object(
+        'amount_minor', 2500,
+        'attempt_count', 2,
+        'claim_id', :'claimedClaimID'::uuid,
+        'currency_code', 'USD',
+        'event_purchase_id', :'claimedPurchaseID'::uuid,
+        'event_purchase_refund_id', :'claimedRefundID'::uuid,
+        'idempotency_key', 'event-purchase-refund-claimed',
+        'kind', 'event-cancellation',
+        'payment_provider', 'stripe',
+        'status', 'processing',
+        'terminal_failure', false
+    ),
+    'Should load an active worker claim'
+);
 
 -- Should load a durable post-finalization recovery refund
 select is(
     get_event_purchase_refund(:'purchaseID'::uuid),
     jsonb_build_object(
         'amount_minor', 2500,
+        'attempt_count', 0,
         'currency_code', 'USD',
         'event_purchase_id', :'purchaseID'::uuid,
         'event_purchase_refund_id', :'refundID'::uuid,
@@ -181,11 +258,10 @@ select is(
         'kind', 'automatic-unfulfillable-checkout',
         'payment_provider', 'stripe',
         'status', 'provider-failed',
+        'terminal_failure', false,
 
         'failure_message', 'provider refund failed: re_failed_123',
-        'finalized_at', 1706781600,
-
-        'started_now', false
+        'finalized_at', 1706781600
     ),
     'Should load a durable post-finalization recovery refund'
 );

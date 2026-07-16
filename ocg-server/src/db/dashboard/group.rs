@@ -23,6 +23,7 @@ use crate::{
             home::UserGroupsByCommunity,
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
             members::{GroupMembersFilters, GroupMembersOutput},
+            refunds::{RefundsFilters, RefundsOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
             submissions::{
                 CfsSubmissionNotificationData, CfsSubmissionUpdate, CfsSubmissionsFilters,
@@ -212,6 +213,13 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all available event kinds.
     async fn list_event_kinds(&self) -> Result<Vec<EventKind>>;
 
+    /// Lists non-completed event identifiers from the same event series.
+    async fn list_event_series_cancelable_event_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<Uuid>>;
+
     /// Lists active event identifiers from the same event series.
     async fn list_event_series_event_ids(
         &self,
@@ -253,6 +261,13 @@ pub(crate) trait DBDashboardGroup {
     /// Lists all group member user ids.
     async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>>;
 
+    /// Lists purchase refund workflows for a group.
+    async fn list_group_refunds(
+        &self,
+        group_id: Uuid,
+        filters: &RefundsFilters,
+    ) -> Result<RefundsOutput>;
+
     /// Lists all available group roles.
     async fn list_group_roles(&self) -> Result<Vec<GroupRoleSummary>>;
 
@@ -283,6 +298,9 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all groups where the user is a team member, grouped by community.
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>>;
+
+    /// Locks active event cancellation targets for the current transaction.
+    async fn lock_events_for_cancellation(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()>;
 
     /// Manually checks in an attendee for an event.
     async fn manual_check_in_event(
@@ -807,6 +825,20 @@ where
         inner(db).await
     }
 
+    /// [`DBDashboardGroup::list_event_series_cancelable_event_ids`].
+    #[instrument(skip(self), err)]
+    async fn list_event_series_cancelable_event_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select list_event_series_cancelable_event_ids($1::uuid, $2::uuid)",
+            &[&group_id, &event_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::list_event_series_event_ids`]
     #[instrument(skip(self), err)]
     async fn list_event_series_event_ids(
@@ -892,6 +924,20 @@ where
     async fn list_group_members_ids(&self, group_id: Uuid) -> Result<Vec<Uuid>> {
         self.fetch_scalar_one("select list_group_members_ids($1::uuid)", &[&group_id])
             .await
+    }
+
+    /// [`DBDashboardGroup::list_group_refunds`].
+    #[instrument(skip(self, filters), err)]
+    async fn list_group_refunds(
+        &self,
+        group_id: Uuid,
+        filters: &RefundsFilters,
+    ) -> Result<RefundsOutput> {
+        self.fetch_json_one(
+            "select list_group_refunds($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::list_group_roles`]
@@ -995,6 +1041,16 @@ where
     async fn list_user_groups(&self, user_id: &Uuid) -> Result<Vec<UserGroupsByCommunity>> {
         self.fetch_json_one("select list_user_groups($1::uuid)", &[&user_id])
             .await
+    }
+
+    /// [`DBDashboardGroup::lock_events_for_cancellation`].
+    #[instrument(skip(self), err)]
+    async fn lock_events_for_cancellation(&self, group_id: Uuid, event_ids: &[Uuid]) -> Result<()> {
+        self.execute(
+            "select lock_events_for_cancellation($1::uuid, $2::uuid[])",
+            &[&group_id, &event_ids],
+        )
+        .await
     }
 
     /// [`DBDashboardGroup::manual_check_in_event`]

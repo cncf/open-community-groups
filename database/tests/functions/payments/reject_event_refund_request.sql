@@ -16,7 +16,7 @@ select plan(4);
 \set eventTicketTypeID '79460000-0000-0000-0000-000000000005'
 \set groupCategoryID '79460000-0000-0000-0000-000000000006'
 \set groupID '79460000-0000-0000-0000-000000000007'
-\set missingUserID '79460000-0000-0000-0000-000000000008'
+\set missingPurchaseID '79460000-0000-0000-0000-000000000008'
 \set priceWindowID '79460000-0000-0000-0000-000000000009'
 \set purchaseID '79460000-0000-0000-0000-000000000010'
 \set refundRequestID '79460000-0000-0000-0000-000000000011'
@@ -171,9 +171,8 @@ select is(
     reject_event_refund_request(
         :'actorUserID'::uuid,
         :'groupID'::uuid,
-        :'eventID'::uuid,
-        :'userID'::uuid,
-        'Not eligible'
+        :'purchaseID'::uuid,
+        '  Not eligible  '
     )::jsonb,
     jsonb_build_object(
         'community_id', :'communityID'::uuid,
@@ -231,9 +230,8 @@ select throws_ok(
         %L::uuid,
         %L::uuid,
         %L::uuid,
-        %L::uuid,
         null
-    )$$, :'actorUserID', :'groupID', :'eventID', :'missingUserID'),
+    )$$, :'actorUserID', :'groupID', :'missingPurchaseID'),
     'refund request not found',
     'Should reject missing pending refund requests'
 );

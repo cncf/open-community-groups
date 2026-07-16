@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(8);
+select plan(11);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +17,9 @@ select plan(8);
 \set groupID '79510000-0000-0000-0000-000000000006'
 \set missingRefundID '79510000-0000-0000-0000-000000000012'
 \set priceWindowID '79510000-0000-0000-0000-000000000007'
+\set processingClaimID '79510000-0000-0000-0000-000000000017'
+\set processingPurchaseID '79510000-0000-0000-0000-000000000018'
+\set processingRefundID '79510000-0000-0000-0000-000000000019'
 \set purchaseID '79510000-0000-0000-0000-000000000008'
 \set refundID '79510000-0000-0000-0000-000000000009'
 \set refundRequestID '79510000-0000-0000-0000-000000000010'
@@ -144,6 +147,15 @@ insert into event_purchase (
     'General admission',
     :'userID'
 ), (
+    :'processingPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-pending',
+    'General admission',
+    :'userID'
+), (
     :'succeededPurchaseID',
     2500,
     'USD',
@@ -186,6 +198,7 @@ insert into event_purchase_refund (
     kind,
     payment_provider_id,
     status,
+    terminal_failure,
 
     event_refund_request_id,
     failure_message,
@@ -201,6 +214,7 @@ insert into event_purchase_refund (
     'refund-request-approval',
     'stripe',
     'provider-pending',
+    false,
 
     :'refundRequestID',
     null,
@@ -216,6 +230,7 @@ insert into event_purchase_refund (
     'automatic-unfulfillable-checkout',
     'stripe',
     'provider-succeeded',
+    false,
 
     null,
     null,
@@ -231,6 +246,7 @@ insert into event_purchase_refund (
     'automatic-unfulfillable-checkout',
     'stripe',
     'provider-failed',
+    true,
 
     null,
     'provider refund failed: re_terminal_123',
@@ -239,9 +255,94 @@ insert into event_purchase_refund (
     null
 );
 
+-- Claimed provider refund whose pending webhook releases worker ownership
+insert into event_purchase_refund (
+    amount_minor,
+    attempt_count,
+    claim_id,
+    claimed_at,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status
+) values (
+    2500,
+    3,
+    :'processingClaimID',
+    current_timestamp,
+    'USD',
+    :'processingPurchaseID',
+    :'processingRefundID',
+    'event-purchase-refund-' || :'processingPurchaseID',
+    'event-cancellation',
+    'stripe',
+    'processing'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reject a provider result from a stale worker claim
+select throws_ok(
+    format($$select record_event_purchase_refund_pending(
+        %L::uuid,
+        %L,
+        're_processing_pending',
+        %L::uuid
+    )$$,
+        :'processingRefundID',
+        'event-purchase-refund-' || :'processingPurchaseID',
+        :'refundRequestID'
+    ),
+    'event purchase refund claim is stale',
+    'Should reject a provider result from a stale worker claim'
+);
+
+-- Should release an active claim when the provider reports pending
+select results_eq(
+    format($$
+        select
+            (result->>'attempt_count')::int,
+            not result ? 'claim_id',
+            result->>'provider_refund_id',
+            result->>'status',
+            (result->>'terminal_failure')::boolean
+        from (
+            select record_event_purchase_refund_pending(
+                %L::uuid,
+                %L::text,
+                're_processing_pending',
+                %L::uuid
+            )::jsonb as result
+        ) recorded
+    $$,
+        :'processingRefundID',
+        'event-purchase-refund-' || :'processingPurchaseID',
+        :'processingClaimID'
+    ),
+    $$ values (3, true, 're_processing_pending'::text, 'provider-pending'::text, false) $$,
+    'Should release an active claim when the provider reports pending'
+);
+
+-- Should persist claim release and exponential retry backoff
+select results_eq(
+    format($$
+        select
+            claim_id,
+            claimed_at,
+            next_attempt_at = current_timestamp + interval '4 minutes',
+            status,
+            terminal_failure
+        from event_purchase_refund
+        where event_purchase_refund_id = %L::uuid
+    $$, :'processingRefundID'),
+    $$ values (null::uuid, null::timestamptz, true, 'provider-pending'::text, false) $$,
+    'Should persist claim release and exponential retry backoff'
+);
 
 -- Should reject empty expected idempotency keys
 select throws_ok(
@@ -274,14 +375,15 @@ select is(
     ) - 'event_purchase_refund_id',
     jsonb_build_object(
         'amount_minor', 2500,
+        'attempt_count', 0,
         'currency_code', 'USD',
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
         'payment_provider', 'stripe',
         'provider_refund_id', 're_pending_123',
-        'started_now', false,
-        'status', 'provider-pending'
+        'status', 'provider-pending',
+        'terminal_failure', false
     ),
     'Should record provider refund progress on a pending refund row'
 );
@@ -295,14 +397,15 @@ select is(
     ) - 'event_purchase_refund_id',
     jsonb_build_object(
         'amount_minor', 2500,
+        'attempt_count', 0,
         'currency_code', 'USD',
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
         'payment_provider', 'stripe',
         'provider_refund_id', 're_pending_123',
-        'started_now', false,
-        'status', 'provider-pending'
+        'status', 'provider-pending',
+        'terminal_failure', false
     ),
     'Should allow retry with the same provider refund id'
 );

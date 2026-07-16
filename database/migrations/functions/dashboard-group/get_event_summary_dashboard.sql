@@ -9,7 +9,8 @@ returns json as $$
         get_event_summary(p_community_id, p_group_id, p_event_id)::jsonb
         || jsonb_strip_nulls(jsonb_build_object(
             'created_by_display_name', coalesce(u.name, u.username),
-            'created_by_username', u.username
+            'created_by_username', u.username,
+            'delete_eligibility', get_event_delete_eligibility(p_group_id, p_event_id)
         ))::jsonb
     )::json
     from event e

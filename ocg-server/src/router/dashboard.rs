@@ -257,6 +257,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         )
         .route("/logs", get(dashboard::group::logs::list_page))
         .route("/members", get(dashboard::group::members::list_page))
+        .route("/refunds", get(dashboard::group::refunds::list_page))
         .route(
             "/settings/update",
             get(dashboard::group::settings::update_page),
@@ -299,14 +300,6 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::group::attendees::reject_invitation_request),
         )
         .route(
-            "/events/{event_id}/attendees/{user_id}/refund/approve",
-            put(dashboard::group::attendees::approve_refund_request),
-        )
-        .route(
-            "/events/{event_id}/attendees/{user_id}/refund/reject",
-            put(dashboard::group::attendees::reject_refund_request),
-        )
-        .route(
             "/events/{event_id}/cancel",
             put(dashboard::group::events::cancel),
         )
@@ -333,6 +326,22 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/notifications/{event_id}",
             post(dashboard::group::attendees::send_event_custom_notification),
+        )
+        .route(
+            "/refunds/{event_purchase_id}/approve",
+            put(dashboard::group::attendees::approve_refund_request),
+        )
+        .route(
+            "/refunds/{event_purchase_id}/reject",
+            put(dashboard::group::attendees::reject_refund_request),
+        )
+        .route(
+            "/refunds/{event_purchase_id}/retry",
+            put(dashboard::group::attendees::retry_refund),
+        )
+        .route(
+            "/refunds/recovery",
+            put(dashboard::group::refunds::complete_refund_recovery),
         )
         .route("/users/search", get(common::search_user))
         .route_layer(check_selected_group_permission(

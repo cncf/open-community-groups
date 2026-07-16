@@ -1,3 +1,4 @@
+import "/static/js/common/actions-menu.js";
 import { initializeOnReadyAndHtmxLoad } from "/static/js/common/dom.js";
 import "/static/js/common/modals/user-info-modal.js";
 import "/static/js/common/users/user-profile-modal-triggers.js";

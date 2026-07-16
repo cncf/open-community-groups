@@ -8,6 +8,7 @@ pub(crate) mod events;
 pub(crate) mod home;
 pub(crate) mod invitation_requests;
 pub(crate) mod members;
+pub(crate) mod refunds;
 pub(crate) mod settings;
 pub(crate) mod sponsors;
 pub(crate) mod submissions;

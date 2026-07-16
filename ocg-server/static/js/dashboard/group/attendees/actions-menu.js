@@ -1,3 +1,4 @@
+import { closeActionsMenus } from "/static/js/common/actions-menu.js";
 import {
   closestElementWithinRoot,
   getElementById,
@@ -12,7 +13,6 @@ const attendeeActionsDropdownId = "attendee-actions-menu";
 const attendeeEmailActionsDropdownId = "attendee-email-actions-menu";
 const attendeeActionsDropdownSelector = "[data-attendee-actions-dropdown]";
 const attendeeEmailActionsDropdownSelector = "[data-attendee-email-actions-dropdown]";
-const attendeeRowActionsMenuSelector = "[data-attendee-row-actions-menu]";
 
 /**
  * Close the attendee actions dropdown.
@@ -39,11 +39,7 @@ export const closeAttendeeEmailActionsDropdown = (root = document) => {
  * @returns {void}
  */
 export const closeAttendeeRowActionMenus = (root = document, exceptMenu = null) => {
-  root.querySelectorAll?.(`${attendeeRowActionsMenuSelector}[open]`).forEach((menu) => {
-    if (menu instanceof HTMLDetailsElement && menu !== exceptMenu) {
-      menu.open = false;
-    }
-  });
+  closeActionsMenus(root, exceptMenu);
 };
 
 /**
@@ -77,29 +73,6 @@ export const initializeAttendeeActionsMenu = (root = document) => {
   }
 
   root.addEventListener("click", (event) => {
-    const rowSummary = closestElementWithinRoot(
-      event.target,
-      `${attendeeRowActionsMenuSelector} summary`,
-      root,
-    );
-    const rowMenu = rowSummary?.closest(attendeeRowActionsMenuSelector);
-    if (rowMenu instanceof HTMLDetailsElement) {
-      closeAttendeeActionsDropdown(root);
-      closeAttendeeEmailActionsDropdown(root);
-      closeAttendeeRowActionMenus(root, rowMenu);
-      return;
-    }
-
-    const rowMenuItem = closestElementWithinRoot(
-      event.target,
-      `${attendeeRowActionsMenuSelector} button, ${attendeeRowActionsMenuSelector} a`,
-      root,
-    );
-    if (rowMenuItem instanceof HTMLElement) {
-      closeAttendeeRowActionMenus(root);
-      return;
-    }
-
     const trigger = closestElementWithinRoot(event.target, "#attendee-actions-button", root);
     if (trigger instanceof HTMLElement) {
       event.stopPropagation();
@@ -145,23 +118,12 @@ export const initializeAttendeeActionsMenu = (root = document) => {
     if (!closestElementWithinRoot(event.target, attendeeEmailActionsDropdownSelector, root)) {
       closeAttendeeEmailActionsDropdown(root);
     }
-
-    if (!closestElementWithinRoot(event.target, attendeeRowActionsMenuSelector, root)) {
-      closeAttendeeRowActionMenus(root);
-    }
   });
 
   root.addEventListener("keydown", (event) => {
     if (isEscapeEvent(event)) {
-      const openRowMenu = root.querySelector(`${attendeeRowActionsMenuSelector}[open]`);
-      const rowSummary = openRowMenu?.querySelector("summary");
       closeAttendeeActionsDropdown(root);
       closeAttendeeEmailActionsDropdown(root);
-      closeAttendeeRowActionMenus(root);
-      if (rowSummary instanceof HTMLElement) {
-        rowSummary.focus();
-        return;
-      }
       getElementById(root, "attendee-actions-button")?.focus();
     }
   });
@@ -186,7 +148,6 @@ export const initializeAttendeeOutsideClickListener = () => {
       if (!root.contains(target)) {
         closeAttendeeActionsDropdown(root);
         closeAttendeeEmailActionsDropdown(root);
-        closeAttendeeRowActionMenus(root);
       }
     });
   });

@@ -299,6 +299,7 @@ pub(crate) fn sample_attendee() -> Attendee {
         currency_code: None,
         discount_code: None,
         event_purchase_id: None,
+        refund_progress: None,
         refund_request_status: None,
         ticket_title: None,
     }
@@ -712,6 +713,7 @@ pub(crate) fn sample_event_summary(event_id: Uuid, _group_id: Uuid) -> EventSumm
         capacity: None,
         created_by_display_name: None,
         created_by_username: None,
+        delete_eligibility: None,
         description_short: Some("A brief summary of the sample event".to_string()),
         ends_at: Some(starts_at + chrono::Duration::hours(2)),
         event_series_id: None,

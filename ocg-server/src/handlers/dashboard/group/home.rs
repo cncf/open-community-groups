@@ -11,8 +11,6 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{events, logs, members, sponsors, team};
-
 use crate::{
     auth::AuthSession,
     config::PaymentsConfig,
@@ -32,6 +30,8 @@ use crate::{
     },
     types::permissions::GroupPermission,
 };
+
+use super::{events, logs, members, refunds, sponsors, team};
 
 #[cfg(test)]
 mod tests;
@@ -87,6 +87,12 @@ pub(crate) async fn page(
             .await?;
             Content::Events(Box::new(template))
         }
+        Tab::Logs => {
+            let (_, template) =
+                logs::prepare_list_page(&db, group_id, raw_query.as_deref().unwrap_or_default())
+                    .await?;
+            Content::Logs(template)
+        }
         Tab::Members => {
             let (_, template) = members::prepare_list_page(
                 &db,
@@ -98,11 +104,16 @@ pub(crate) async fn page(
             .await?;
             Content::Members(template)
         }
-        Tab::Logs => {
-            let (_, template) =
-                logs::prepare_list_page(&db, group_id, raw_query.as_deref().unwrap_or_default())
-                    .await?;
-            Content::Logs(template)
+        Tab::Refunds => {
+            let (_, template) = refunds::prepare_list_page(
+                &db,
+                community_id,
+                group_id,
+                user.user_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Refunds(template)
         }
         Tab::Settings => {
             let (can_manage_settings, group, has_child_links, categories, parent_options, regions) =

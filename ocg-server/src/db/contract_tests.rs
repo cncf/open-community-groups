@@ -2,14 +2,17 @@ use std::{collections::HashMap, env, time::Duration};
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
-use deadpool_postgres::{Config as DbConfig, Runtime};
-use tokio_postgres::NoTls;
+use deadpool_postgres::{Config as DbConfig, Pool, Runtime};
+use tokio_postgres::{
+    NoTls,
+    error::{DbError, SqlState},
+};
 use uuid::Uuid;
 
 use crate::{
     auth::UserSummary,
     db::{
-        PgDB,
+        DB, PgDB,
         auth::DBAuth,
         common::DBCommon,
         community::DBCommunity,
@@ -37,6 +40,7 @@ use crate::{
                 events::{Event as EventUpdate, EventsListFilters},
                 invitation_requests::{InvitationRequestsFilters, InvitationRequestsStatusFilter},
                 members::GroupMembersFilters,
+                refunds::{GroupRefundStatus, RefundsFilters, RefundsView},
                 sponsors::GroupSponsorsFilters,
                 submissions::CfsSubmissionsFilters as GroupCfsSubmissionsFilters,
                 team::GroupTeamFilters,
@@ -90,50 +94,6 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
-async fn db_contracts_approve_event_refund_request_deserializes() -> Result<()> {
-    let db = contract_tests_db()?;
-    let purchase = db
-        .approve_event_refund_request(
-            organizer_id(),
-            group_id(),
-            ticketed_event_id(),
-            refund_approve_buyer_id(),
-            "re_contract_refund_approve".to_string(),
-            Some("Approved by contract test".to_string()),
-        )
-        .await?;
-
-    assert_eq!(purchase.community_id, community_id());
-    assert_eq!(purchase.event_id, ticketed_event_id());
-    assert!(purchase.finalized_now);
-    assert_eq!(purchase.user_id, refund_approve_buyer_id());
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_begin_event_refund_approval_deserializes() -> Result<()> {
-    let db = contract_tests_db()?;
-    let summary = db
-        .begin_event_refund_approval(group_id(), ticketed_event_id(), refund_begin_buyer_id())
-        .await?;
-
-    assert_eq!(summary.amount_minor, 2500);
-    assert_eq!(summary.currency_code, "USD");
-    assert_eq!(summary.event_purchase_id, refund_begin_purchase_id());
-    assert_eq!(
-        summary.provider_payment_reference.as_deref(),
-        Some("pi_contract_refund_begin")
-    );
-    assert_eq!(summary.status, EventPurchaseStatus::RefundRequested);
-    assert_eq!(summary.ticket_title, "Contract Paid Ticket");
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
 async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let outcome = db
@@ -147,6 +107,34 @@ async fn db_contracts_cancel_event_attendee_attendance_deserializes() -> Result<
 
     assert_eq!(outcome.left_status, EventAttendanceStatus::Attendee);
     assert!(outcome.promoted_user_ids.is_empty());
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_claim_and_finalize_event_refund_deserializes() -> Result<()> {
+    // Claim the provider-complete durable refund from contract fixtures
+    let db = contract_tests_db()?;
+    let refund = db
+        .claim_event_purchase_refund(PaymentProvider::Stripe)
+        .await?
+        .context("provider-complete contract refund should be claimable")?;
+
+    // Check the claimed JSON contract and persisted provider outcome
+    assert_eq!(refund.community_id, community_id());
+    assert_eq!(refund.event_id, ticketed_event_id());
+    assert_eq!(refund.event_purchase_id, refund_approve_purchase_id());
+    assert_eq!(refund.status, EventPurchaseRefundStatus::Processing);
+    assert!(refund.provider_refunded_at.is_some());
+
+    // Finalize local state with the current worker claim
+    db.finalize_event_purchase_refund(
+        refund.event_purchase_refund_id,
+        refund.claim_id.context("refund claim id should be present")?,
+        serde_json::json!({"scenario": "contract"}),
+    )
+    .await?;
 
     Ok(())
 }
@@ -233,15 +221,16 @@ async fn db_contracts_complete_free_event_purchase_deserializes() -> Result<()> 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
 async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<()> {
-    // Start a durable manual refund from deterministic contract data
+    // Queue a durable manual refund from deterministic contract data
     let db = contract_tests_db()?;
-    let refund = db
-        .ensure_event_purchase_refund_started(
-            refund_lifecycle_purchase_id(),
-            PaymentProvider::Stripe,
-            EventPurchaseRefundKind::RefundRequestApproval,
-        )
-        .await?;
+    db.queue_event_refund_request_approval(
+        organizer_id(),
+        group_id(),
+        refund_lifecycle_purchase_id(),
+        Some("Approved for lifecycle contract".to_string()),
+    )
+    .await?;
+    let refund = db.get_event_purchase_refund(refund_lifecycle_purchase_id()).await?;
 
     // Check required fields and initial workflow metadata
     assert_eq!(refund.amount_minor, 2500);
@@ -254,7 +243,6 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
     );
     assert_eq!(refund.kind, EventPurchaseRefundKind::RefundRequestApproval);
     assert_eq!(refund.payment_provider, PaymentProvider::Stripe);
-    assert!(refund.started_now);
     assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
 
     // Check optional provider outcome fields are absent initially
@@ -269,6 +257,7 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
             refund.event_purchase_refund_id,
             refund.idempotency_key.clone(),
             "re_contract_refund_lifecycle".to_string(),
+            refund.claim_id,
         )
         .await?;
 
@@ -290,6 +279,7 @@ async fn db_contracts_event_purchase_refund_lifecycle_deserializes() -> Result<(
             refund.event_purchase_refund_id,
             refund.idempotency_key.clone(),
             "re_contract_refund_lifecycle".to_string(),
+            refund.claim_id,
         )
         .await?;
 
@@ -536,8 +526,26 @@ async fn db_contracts_get_event_purchase_refund_deserializes() -> Result<()> {
     assert!(refund.provider_refund_id.is_none());
     assert!(refund.provider_refunded_at.is_none());
 
-    // Check the computed durable refund metadata
-    assert!(!refund.started_now);
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_get_event_purchase_refund_recovery_context_deserializes() -> Result<()> {
+    // Load group-scoped recovery context for the deterministic refund
+    let db = contract_tests_db()?;
+    let context = db
+        .get_event_purchase_refund_recovery_context(group_id(), refund_recovery_purchase_id())
+        .await?;
+
+    // Check the app receives authoritative notification composition context
+    assert_eq!(context.community_id, community_id());
+    assert_eq!(context.event_id, refund_event_id());
+    assert_eq!(
+        context.event_purchase_refund_id,
+        refund_recovery_refund_id()
+    );
+    assert!(!context.notification_required);
 
     Ok(())
 }
@@ -1174,6 +1182,52 @@ async fn db_contracts_list_group_members_deserializes() -> Result<()> {
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_list_group_refunds_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let filters = RefundsFilters {
+        view: RefundsView::All,
+        event_id: Some(ticketed_event_id()),
+        limit: Some(10),
+        offset: Some(0),
+        ts_query: Some("buyer-refund-reject.contract@example.com".to_string()),
+    };
+    let output = db.list_group_refunds(group_id(), &filters).await?;
+
+    assert_eq!(output.events.len(), 1);
+    assert_eq!(output.events[0].event_id, ticketed_event_id());
+    assert_eq!(output.events[0].name, "Contract Ticketed Event");
+    assert_eq!(output.refunds.len(), 1);
+    assert_eq!(output.total, 1);
+
+    let refund = &output.refunds[0];
+    assert_eq!(refund.amount_minor, 2500);
+    assert!(refund.created_at <= refund.updated_at);
+    assert_eq!(refund.currency_code, "USD");
+    assert_eq!(refund.email, "buyer-refund-reject.contract@example.com");
+    assert_eq!(refund.event_id, ticketed_event_id());
+    assert_eq!(refund.event_name, "Contract Ticketed Event");
+    assert_eq!(refund.event_purchase_id, refund_reject_purchase_id());
+    assert_eq!(refund.status, GroupRefundStatus::NeedsReview);
+    assert_eq!(refund.ticket_title, "Contract Paid Ticket");
+    assert_eq!(refund.user_id, refund_reject_buyer_id());
+    assert_eq!(refund.username, "contract-buyer-refund-reject");
+    assert_eq!(refund.attempt_count, None);
+    assert_eq!(refund.failure_message, None);
+    assert_eq!(refund.kind.as_deref(), Some("refund-request-approval"));
+    assert_eq!(refund.name.as_deref(), Some("Contract Buyer Refund Reject"));
+    assert_eq!(refund.photo_url, None);
+    assert_eq!(refund.provider_refund_id, None);
+    assert_eq!(
+        refund.requested_reason.as_deref(),
+        Some("Cannot attend anymore")
+    );
+    assert_eq!(refund.review_note, None);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_list_group_parent_options_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let options = db
@@ -1503,6 +1557,59 @@ async fn db_contracts_list_user_session_proposals_for_cfs_event_deserializes() -
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_lock_events_for_cancellation_serializes_rsvp() -> Result<()> {
+    // Setup independent cancellation and RSVP connections
+    let db = contract_tests_db()?;
+    let racing_pool = contract_tests_pool()?;
+    let racing_client = racing_pool.get().await?;
+    racing_client.batch_execute("set lock_timeout = '250ms'").await?;
+
+    // Lock the event in the cancellation transaction
+    let uow = db.begin().await?;
+    uow.lock_events_for_cancellation(subgroup_id(), &[cancellation_lock_event_id()])
+        .await?;
+
+    // Check a competing RSVP cannot pass the cancellation lock
+    let lock_err = racing_client
+        .query_one(
+            "select attend_event($1::uuid, $2::uuid, $3::uuid, null::jsonb)",
+            &[
+                &community_id(),
+                &cancellation_lock_event_id(),
+                &cancellation_lock_attendee_id(),
+            ],
+        )
+        .await
+        .expect_err("competing RSVP should wait for the cancellation lock");
+    assert_eq!(lock_err.code(), Some(&SqlState::LOCK_NOT_AVAILABLE));
+
+    // Cancel and commit while retaining ownership of the event lock
+    uow.cancel_event(organizer_id(), subgroup_id(), cancellation_lock_event_id())
+        .await?;
+    uow.commit().await?;
+
+    // Check the serialized RSVP observes the terminal canceled state
+    let canceled_err = racing_client
+        .query_one(
+            "select attend_event($1::uuid, $2::uuid, $3::uuid, null::jsonb)",
+            &[
+                &community_id(),
+                &cancellation_lock_event_id(),
+                &cancellation_lock_attendee_id(),
+            ],
+        )
+        .await
+        .expect_err("RSVP should fail after cancellation commits");
+    assert_eq!(
+        canceled_err.as_db_error().map(DbError::message),
+        Some("event not found or inactive")
+    );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let input = PrepareEventCheckoutPurchaseInput {
@@ -1526,6 +1633,33 @@ async fn db_contracts_prepare_event_checkout_purchase_deserializes() -> Result<(
     assert_eq!(checkout.purchase.ticket_title, "Contract Paid Ticket");
     assert_eq!(checkout.recipient.provider, PaymentProvider::Stripe);
     assert_eq!(checkout.recipient.recipient_id, "acct_contract_group");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_queue_event_refund_request_approval_deserializes() -> Result<()> {
+    // Queue organizer approval using deterministic request fixtures
+    let db = contract_tests_db()?;
+    db.queue_event_refund_request_approval(
+        organizer_id(),
+        group_id(),
+        refund_begin_purchase_id(),
+        Some("Approved by contract test".to_string()),
+    )
+    .await?;
+
+    // Load the queued durable refund through the Rust database contract
+    let refund = db.get_event_purchase_refund(refund_begin_purchase_id()).await?;
+
+    // Check required durable refund fields deserialize as expected
+    assert_eq!(refund.amount_minor, 2500);
+    assert_eq!(refund.currency_code, "USD");
+    assert_eq!(refund.event_purchase_id, refund_begin_purchase_id());
+    assert_eq!(refund.kind, EventPurchaseRefundKind::RefundRequestApproval);
+    assert_eq!(refund.payment_provider, PaymentProvider::Stripe);
+    assert_eq!(refund.status, EventPurchaseRefundStatus::ProviderPending);
 
     Ok(())
 }
@@ -1560,8 +1694,7 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
         .reject_event_refund_request(
             organizer_id(),
             group_id(),
-            ticketed_event_id(),
-            refund_reject_buyer_id(),
+            refund_reject_purchase_id(),
             Some("Rejected by contract test".to_string()),
         )
         .await?;
@@ -1578,6 +1711,7 @@ async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
 async fn db_contracts_search_event_attendees_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let filters = AttendeesFilters {
+        attendance: None,
         checked_in: None,
         event_ticket_type_ids: None,
         limit: Some(10),
@@ -1836,6 +1970,10 @@ const ACTIVATION_ID: &str = "00000000-0000-0000-0000-00000000c045";
 const ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c042";
 const AUTO_END_MEETING_ID: &str = "00000000-0000-0000-0000-00000000c0a3";
 const CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c0e9";
+/// User fixture that races an RSVP against event cancellation.
+const CANCELLATION_LOCK_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c0ec";
+/// Event fixture used to verify cancellation lock ownership.
+const CANCELLATION_LOCK_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d6";
 const CFS_SUBMISSION_ID: &str = "00000000-0000-0000-0000-00000000c0c5";
 const CHECKOUT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e1";
 const CLAIM_GROUP_ID: &str = "00000000-0000-0000-0000-00000000c0a0";
@@ -1856,15 +1994,19 @@ const PAID_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c0d1";
 const PAST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c032";
 const PRE_REGISTERED_ID: &str = "00000000-0000-0000-0000-00000000c044";
 const RECONCILE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e3";
-const REFUND_APPROVE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e6";
-const REFUND_BEGIN_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e5";
+/// Purchase fixture whose provider refund is ready for local finalization.
+const REFUND_APPROVE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f6";
 const REFUND_BEGIN_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f4";
 const REFUND_LIFECYCLE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fb";
+/// Ticketed event containing the refund contract fixtures.
+const REFUND_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c0d0";
 /// Purchase fixture whose locally finalized refund requires recovery.
 const REFUND_RECOVERY_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0fd";
 /// Durable refund fixture preserving post-finalization recovery state.
 const REFUND_RECOVERY_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c0fe";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
+/// Purchase fixture whose refund request is ready for rejection.
+const REFUND_REJECT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f8";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
 const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
@@ -1889,6 +2031,16 @@ fn cancelee_id() -> Uuid {
     parse_uuid(CANCELEE_ID)
 }
 
+/// Returns the attendee fixture that races event cancellation.
+fn cancellation_lock_attendee_id() -> Uuid {
+    parse_uuid(CANCELLATION_LOCK_ATTENDEE_ID)
+}
+
+/// Returns the event fixture used to verify cancellation locking.
+fn cancellation_lock_event_id() -> Uuid {
+    parse_uuid(CANCELLATION_LOCK_EVENT_ID)
+}
+
 fn cfs_submission_id() -> Uuid {
     parse_uuid(CFS_SUBMISSION_ID)
 }
@@ -1909,7 +2061,8 @@ fn community_id() -> Uuid {
     parse_uuid(COMMUNITY_ID)
 }
 
-fn contract_tests_db() -> Result<PgDB> {
+/// Builds the shared `PostgreSQL` configuration for contract tests.
+fn contract_tests_config() -> Result<DbConfig> {
     let port = env_or_default("OCG_DB_PORT", "5432")
         .parse()
         .context("OCG_DB_PORT must be a valid port number")?;
@@ -1929,8 +2082,17 @@ fn contract_tests_db() -> Result<PgDB> {
         cfg.password = Some(password);
     }
 
-    let pool = cfg.create_pool(Some(Runtime::Tokio1), NoTls)?;
-    Ok(PgDB::new(pool))
+    Ok(cfg)
+}
+
+/// Creates the typed database wrapper used by contract tests.
+fn contract_tests_db() -> Result<PgDB> {
+    Ok(PgDB::new(contract_tests_pool()?))
+}
+
+/// Creates an independent `PostgreSQL` connection pool for concurrency tests.
+fn contract_tests_pool() -> Result<Pool> {
+    Ok(contract_tests_config()?.create_pool(Some(Runtime::Tokio1), NoTls)?)
 }
 
 fn env_or_default(name: &str, default: &str) -> String {
@@ -2002,16 +2164,17 @@ fn reconcile_buyer_id() -> Uuid {
     parse_uuid(RECONCILE_BUYER_ID)
 }
 
-fn refund_approve_buyer_id() -> Uuid {
-    parse_uuid(REFUND_APPROVE_BUYER_ID)
-}
-
-fn refund_begin_buyer_id() -> Uuid {
-    parse_uuid(REFUND_BEGIN_BUYER_ID)
+/// Returns the purchase fixture ready for local refund finalization.
+fn refund_approve_purchase_id() -> Uuid {
+    parse_uuid(REFUND_APPROVE_PURCHASE_ID)
 }
 
 fn refund_begin_purchase_id() -> Uuid {
     parse_uuid(REFUND_BEGIN_PURCHASE_ID)
+}
+
+fn refund_event_id() -> Uuid {
+    parse_uuid(REFUND_EVENT_ID)
 }
 
 fn refund_lifecycle_purchase_id() -> Uuid {
@@ -2030,6 +2193,11 @@ fn refund_recovery_refund_id() -> Uuid {
 
 fn refund_reject_buyer_id() -> Uuid {
     parse_uuid(REFUND_REJECT_BUYER_ID)
+}
+
+/// Returns the purchase fixture ready for refund rejection.
+fn refund_reject_purchase_id() -> Uuid {
+    parse_uuid(REFUND_REJECT_PURCHASE_ID)
 }
 
 fn session_proposal_id() -> Uuid {

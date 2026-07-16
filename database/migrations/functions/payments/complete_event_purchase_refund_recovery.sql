@@ -1,15 +1,19 @@
 -- Completes an externally resolved terminal provider refund.
 create or replace function complete_event_purchase_refund_recovery(
     p_actor_user_id uuid,
+    p_group_id uuid,
     p_event_purchase_refund_id uuid,
     p_recovery_reference text,
-    p_recovery_note text
+    p_recovery_note text,
+    p_notification_template_data jsonb
 )
 returns jsonb as $$
 declare
     v_community_id uuid;
+    v_event_canceled boolean;
     v_event_discount_code_id uuid;
     v_event_id uuid;
+    v_event_refund_request_id uuid;
     v_finalized_at timestamptz;
     v_group_id uuid;
     v_kind text;
@@ -21,11 +25,16 @@ declare
     v_recovery_note text;
     v_recovery_reference text;
     v_refund_status text;
+    v_terminal_failure boolean;
     v_user_id uuid;
 begin
     -- Validate the operator and required recovery evidence
     if p_actor_user_id is null then
         raise exception 'actor user id is required';
+    end if;
+
+    if p_group_id is null then
+        raise exception 'group id is required';
     end if;
 
     if nullif(btrim(p_recovery_reference), '') is null then
@@ -41,7 +50,9 @@ begin
     into v_event_id
     from event_purchase_refund epr
     join event_purchase ep on ep.event_purchase_id = epr.event_purchase_id
-    where epr.event_purchase_refund_id = p_event_purchase_refund_id;
+    join event e on e.event_id = ep.event_id
+    where epr.event_purchase_refund_id = p_event_purchase_refund_id
+      and e.group_id = p_group_id;
 
     if not found then
         raise exception 'event purchase refund not found';
@@ -54,8 +65,10 @@ begin
 
     select
         g.community_id,
+        e.canceled,
         ep.event_discount_code_id,
         e.group_id,
+        epr.event_refund_request_id,
         epr.finalized_at,
         epr.kind,
         epr.provider_refund_id,
@@ -66,11 +79,14 @@ begin
         epr.recovery_note,
         epr.recovery_reference,
         epr.status,
+        epr.terminal_failure,
         ep.user_id
     into
         v_community_id,
+        v_event_canceled,
         v_event_discount_code_id,
         v_group_id,
+        v_event_refund_request_id,
         v_finalized_at,
         v_kind,
         v_provider_refund_id,
@@ -81,16 +97,28 @@ begin
         v_recovery_note,
         v_recovery_reference,
         v_refund_status,
+        v_terminal_failure,
         v_user_id
     from event_purchase_refund epr
     join event_purchase ep on ep.event_purchase_id = epr.event_purchase_id
     join event e on e.event_id = ep.event_id
     join "group" g on g.group_id = e.group_id
     where epr.event_purchase_refund_id = p_event_purchase_refund_id
+      and e.group_id = p_group_id
     for update of ep, epr;
 
     if not found then
         raise exception 'recoverable event purchase refund not found';
+    end if;
+
+    -- Require event management access at execution time
+    if not user_has_group_permission(
+        v_community_id,
+        v_group_id,
+        p_actor_user_id,
+        'group.events.write'
+    ) then
+        raise exception 'events write access is required';
     end if;
 
     -- Treat an exact repeated completion as an idempotent operator retry
@@ -108,57 +136,84 @@ begin
         );
     end if;
 
-    if v_refund_status <> 'provider-failed' or v_provider_refund_id is null then
+    if v_refund_status <> 'provider-failed'
+       or not v_terminal_failure
+       or v_provider_refund_id is null then
         raise exception 'recoverable event purchase refund not found';
     end if;
 
     -- Validate the local lifecycle that the external recovery will complete
     if v_finalized_at is null then
-        if v_kind = 'automatic-unfulfillable-checkout' then
+        if v_kind in ('automatic-unfulfillable-checkout', 'event-cancellation') then
             if v_purchase_status <> 'refund-pending' then
                 raise exception 'recoverable event purchase refund not found';
             end if;
         elsif v_kind = 'refund-request-approval' then
-            if v_purchase_status <> 'refund-requested' then
+            if v_purchase_status <> 'refund-requested'
+               and not (
+                   v_purchase_status = 'refund-pending'
+                   and v_event_canceled
+            ) then
                 raise exception 'recoverable event purchase refund not found';
             end if;
+        else
+            raise exception 'recoverable event purchase refund not found';
+        end if;
 
+        if v_event_refund_request_id is not null then
             perform 1
             from event_refund_request
-            where event_purchase_id = v_purchase_id
+            where event_refund_request_id = v_event_refund_request_id
+            and event_purchase_id = v_purchase_id
             and status = 'approving'
             for update;
 
             if not found then
                 raise exception 'recoverable event purchase refund not found';
             end if;
-        else
-            raise exception 'recoverable event purchase refund not found';
         end if;
     elsif v_purchase_status not in ('refund-recovery-pending', 'refunded') then
         raise exception 'recoverable event purchase refund not found';
     end if;
 
+    -- Require app-composed notification data before first-time finalization
+    if v_finalized_at is null and p_notification_template_data is null then
+        raise exception 'refund notification template data is required';
+    end if;
+
     -- Apply local finalization that did not happen before the terminal failure
     if v_finalized_at is null then
         if v_kind = 'refund-request-approval' then
-            delete from event_attendee
+            update event_attendee
+            set
+                attendance_canceled_at = current_timestamp,
+                attendance_canceled_by_user_id = p_actor_user_id,
+                checked_in = false,
+                checked_in_at = null,
+                status = 'attendance-canceled'
             where event_id = v_event_id
             and user_id = v_user_id
-            and status = 'confirmed';
+            and status in ('confirmed', 'registration-questions-pending');
 
-            if v_event_discount_code_id is not null then
-                perform release_event_discount_code_availability(v_event_discount_code_id);
-            end if;
+        end if;
 
+        if v_kind in ('event-cancellation', 'refund-request-approval')
+           and v_event_discount_code_id is not null then
+            perform release_event_discount_code_availability(v_event_discount_code_id);
+        end if;
+
+        if v_event_refund_request_id is not null then
             update event_refund_request
             set
-                review_note = btrim(p_recovery_note),
-                reviewed_at = current_timestamp,
-                reviewed_by_user_id = p_actor_user_id,
+                review_note = case
+                    when v_kind = 'refund-request-approval' then btrim(p_recovery_note)
+                    else review_note
+                end,
+                reviewed_at = coalesce(reviewed_at, current_timestamp),
+                reviewed_by_user_id = coalesce(reviewed_by_user_id, p_actor_user_id),
                 status = 'approved',
                 updated_at = current_timestamp
-            where event_purchase_id = v_purchase_id
+            where event_refund_request_id = v_event_refund_request_id
             and status = 'approving';
         end if;
     end if;
@@ -199,6 +254,16 @@ begin
             'user_id', v_user_id
         )
     );
+
+    -- Enqueue completion atomically when recovery performs local finalization
+    if v_finalized_at is null then
+        perform enqueue_notification(
+            'event-refund-approved',
+            p_notification_template_data,
+            '[]'::jsonb,
+            array[v_user_id]
+        );
+    end if;
 
     return jsonb_build_object(
         'event_id', v_event_id,

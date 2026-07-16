@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(52);
+select plan(58);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,6 +22,7 @@ select plan(52);
 \set eventQuestionsApprovalID '5e020000-0000-0000-0000-00000000000b'
 \set eventQuestionsFullWaitlistID '5e020000-0000-0000-0000-00000000000c'
 \set eventQuestionsID '5e020000-0000-0000-0000-00000000000d'
+\set eventReactivationID '5e020000-0000-0000-0000-00000000002b'
 \set eventRegistrationClosedID '5e020000-0000-0000-0000-000000000025'
 \set eventRegistrationOpenUntilStartID '5e020000-0000-0000-0000-000000000029'
 \set eventRegistrationUpcomingID '5e020000-0000-0000-0000-000000000026'
@@ -51,6 +52,7 @@ select plan(52);
 \set user7ID '5e020000-0000-0000-0000-000000000027'
 \set user8ID '5e020000-0000-0000-0000-000000000028'
 \set user9ID '5e020000-0000-0000-0000-00000000002a'
+\set user10ID '5e020000-0000-0000-0000-00000000002c'
 
 -- ============================================================================
 -- SEED DATA
@@ -175,6 +177,14 @@ insert into "user" (
     true,
     'user-9',
     'User Nine',
+    'registered'
+), (
+    :'user10ID',
+    'user-10-hash',
+    'user-10@example.com',
+    true,
+    'user-10',
+    'User Ten',
     'registered'
 ), (
     :'questionsAttendeeUserID',
@@ -530,6 +540,26 @@ values
         current_timestamp - interval '1 hour',
         'UTC',
         false
+    ),
+    (
+        :'eventReactivationID',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        'Reactivation',
+        'reactivation',
+        false,
+        false,
+        null,
+        false,
+        'Canceled attendance reactivation event',
+        null,
+        true,
+        null,
+        null,
+        null,
+        'UTC',
+        false
     );
 
 -- Events requiring registration answers during attendance
@@ -612,6 +642,32 @@ values
     (:'eventQuestionsFullWaitlistID', :'questionsSeatUserID', 'confirmed'),
     (:'eventQuestionsID', :'questionsPendingUserID', 'registration-questions-pending');
 
+-- Canceled attendees exercising capacity checks during a new RSVP
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values
+    (current_timestamp, :'user1ID', :'eventFullNoWaitlistID', 'attendance-canceled', :'user7ID'),
+    (current_timestamp, :'user1ID', :'eventFullWaitlistID', 'attendance-canceled', :'user4ID');
+
+-- Canceled attendee row reactivated by a new RSVP
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'user10ID',
+    :'eventReactivationID',
+    'attendance-canceled',
+    :'user10ID'
+);
+
 -- Stale canceled attendee row for accepted approval-request rejoin tests
 insert into event_attendee (event_id, user_id, registration_answers, status)
 values (
@@ -680,6 +736,28 @@ values
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reactivate canceled attendance through a new RSVP
+select is(
+    attend_event(:'communityID'::uuid, :'eventReactivationID'::uuid, :'user10ID'::uuid),
+    'attendee',
+    'Should reactivate canceled attendance through a new RSVP'
+);
+
+-- Should clear canceled attendance metadata after the new RSVP
+select results_eq(
+    format($$
+        select
+            attendance_canceled_at,
+            attendance_canceled_by_user_id,
+            status
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventReactivationID', :'user10ID'),
+    $$ values (null::timestamptz, null::uuid, 'confirmed'::text) $$,
+    'Should clear canceled attendance metadata after the new RSVP'
+);
 
 -- Should register a normal attendee when capacity allows
 select is(
@@ -784,6 +862,27 @@ select throws_ok(
     ),
     'event has reached capacity',
     'Rejects new RSVP when the event is sold out and waitlist is disabled'
+);
+
+-- Should apply capacity checks when a canceled attendee rejoins
+select throws_ok(
+    format(
+        'select attend_event(%L::uuid,%L::uuid,%L::uuid)',
+        :'communityID', :'eventFullNoWaitlistID', :'user7ID'
+    ),
+    'event has reached capacity',
+    'Rejects a canceled attendee rejoin when the event is sold out'
+);
+
+select is(
+    (
+        select status
+        from event_attendee
+        where event_id = :'eventFullNoWaitlistID'::uuid
+        and user_id = :'user7ID'::uuid
+    ),
+    'attendance-canceled',
+    'Preserves canceled attendance after a sold-out rejoin is rejected'
 );
 
 -- Should reject duplicate RSVP for a confirmed attendee
@@ -912,6 +1011,33 @@ select ok(
         and user_id = :'user3ID'::uuid
     ),
     'Creates waitlist row after a canceled organizer invitation'
+);
+
+-- Should move a canceled attendee to the waitlist when the event is full
+select is(
+    attend_event(:'communityID'::uuid, :'eventFullWaitlistID'::uuid, :'user4ID'::uuid),
+    'waitlisted',
+    'Returns waitlisted when a canceled attendee rejoins a full event'
+);
+
+select results_eq(
+    format($$
+        select
+            exists(
+                select 1
+                from event_attendee
+                where event_id = %L::uuid
+                and user_id = %L::uuid
+            ),
+            exists(
+                select 1
+                from event_waitlist
+                where event_id = %L::uuid
+                and user_id = %L::uuid
+            )
+    $$, :'eventFullWaitlistID', :'user4ID', :'eventFullWaitlistID', :'user4ID'),
+    $$ values (false, true) $$,
+    'Moves canceled attendance into the waitlist without a cross-table duplicate'
 );
 
 -- Should allow waitlist joins without registration answers when questions exist

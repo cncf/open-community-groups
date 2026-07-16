@@ -998,8 +998,8 @@ test.describe("group dashboard attendees tab", () => {
       organizerGroupPage,
     }) => {
       // Return successful refund responses without changing seeded payment state.
-      await organizerGroupPage.route("**/refund/approve", (route) => route.fulfill({ status: 204 }));
-      await organizerGroupPage.route("**/refund/reject", (route) => route.fulfill({ status: 204 }));
+      await organizerGroupPage.route("**/refunds/*/approve", (route) => route.fulfill({ status: 204 }));
+      await organizerGroupPage.route("**/refunds/*/reject", (route) => route.fulfill({ status: 204 }));
 
       // Load the pending refund actions.
       const attendeesContent = await openAttendeesTab(
@@ -1027,8 +1027,8 @@ test.describe("group dashboard attendees tab", () => {
 
     test("organizer sees error alerts when refund actions fail", async ({ organizerGroupPage }) => {
       // Return failed refund responses without changing seeded payment state.
-      await organizerGroupPage.route("**/refund/approve", (route) => route.fulfill({ status: 500 }));
-      await organizerGroupPage.route("**/refund/reject", (route) => route.fulfill({ status: 500 }));
+      await organizerGroupPage.route("**/refunds/*/approve", (route) => route.fulfill({ status: 500 }));
+      await organizerGroupPage.route("**/refunds/*/reject", (route) => route.fulfill({ status: 500 }));
 
       // Load the pending refund actions.
       const attendeesContent = await openAttendeesTab(

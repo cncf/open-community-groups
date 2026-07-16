@@ -192,12 +192,12 @@ values (
     :'paidAttendeeID'
 );
 
--- Attendees
-insert into event_attendee (event_id, user_id, status)
+-- Attendees including a checked-in row whose active state must be cleared
+insert into event_attendee (checked_in, checked_in_at, event_id, status, user_id)
 values
-    (:'eventID', :'attendeeID', 'confirmed'),
-    (:'eventLimitedID', :'limitedAttendeeID', 'confirmed'),
-    (:'eventPaidID', :'paidAttendeeID', 'confirmed');
+    (true, current_timestamp, :'eventID', 'confirmed', :'attendeeID'),
+    (false, null, :'eventLimitedID', 'confirmed', :'limitedAttendeeID'),
+    (false, null, :'eventPaidID', 'confirmed', :'paidAttendeeID');
 
 -- Waitlist entries
 insert into event_waitlist (event_id, user_id, created_at)
@@ -217,10 +217,20 @@ select results_eq(
     'Should cancel a confirmed attendance'
 );
 
-select is(
-    (select count(*)::int from event_attendee where event_id = :'eventID' and user_id = :'attendeeID'),
-    0,
-    'Should remove the attendee row'
+select results_eq(
+    format($$
+        select
+            attendance_canceled_at is not null,
+            attendance_canceled_by_user_id,
+            checked_in,
+            checked_in_at,
+            status
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'attendeeID'),
+    format($$ values (true, %L::uuid, false, null::timestamptz, 'attendance-canceled'::text) $$, :'actorID'),
+    'Should preserve inactive attendee history'
 );
 
 -- Should create the expected audit row.

@@ -3,12 +3,15 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(26);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set abandonedCheckoutPurchaseID '3a2e0000-0000-0000-0000-000000000061'
+\set abandonedCheckoutUserID '3a2e0000-0000-0000-0000-000000000062'
+\set attendanceFilterEventID '3a2e0000-0000-0000-0000-000000000030'
 \set communityID '3a2e0000-0000-0000-0000-000000000001'
 \set event1ID '3a2e0000-0000-0000-0000-000000000002'
 \set event2ID '3a2e0000-0000-0000-0000-000000000003'
@@ -30,7 +33,32 @@ select plan(18);
 \set missingEventID '3a2e0000-0000-0000-0000-000000000015'
 \set pendingCheckoutUserID '3a2e0000-0000-0000-0000-000000000024'
 \set questionsAttendeeUserID '3a2e0000-0000-0000-0000-000000000016'
+\set progressClaimID '3a2e0000-0000-0000-0000-000000000060'
+\set progressPurchase1ID '3a2e0000-0000-0000-0000-000000000040'
+\set progressPurchase2ID '3a2e0000-0000-0000-0000-000000000041'
+\set progressPurchase3ID '3a2e0000-0000-0000-0000-000000000042'
+\set progressPurchase4ID '3a2e0000-0000-0000-0000-000000000043'
+\set progressPurchase5ID '3a2e0000-0000-0000-0000-000000000044'
+\set progressPurchase6ID '3a2e0000-0000-0000-0000-000000000045'
+\set progressPurchase7ID '3a2e0000-0000-0000-0000-000000000046'
+\set progressPurchase8ID '3a2e0000-0000-0000-0000-000000000047'
+\set progressPurchase9ID '3a2e0000-0000-0000-0000-000000000048'
+\set progressPurchase10ID '3a2e0000-0000-0000-0000-000000000049'
+\set progressPurchase11ID '3a2e0000-0000-0000-0000-000000000050'
+\set progressRefund1ID '3a2e0000-0000-0000-0000-000000000051'
+\set progressRefund2ID '3a2e0000-0000-0000-0000-000000000052'
+\set progressRefund3ID '3a2e0000-0000-0000-0000-000000000053'
+\set progressRefund4ID '3a2e0000-0000-0000-0000-000000000054'
+\set progressRefund5ID '3a2e0000-0000-0000-0000-000000000055'
+\set progressRefund6ID '3a2e0000-0000-0000-0000-000000000056'
+\set progressRefund7ID '3a2e0000-0000-0000-0000-000000000057'
+\set progressRefund8ID '3a2e0000-0000-0000-0000-000000000058'
+\set progressRefund9ID '3a2e0000-0000-0000-0000-000000000059'
+\set progressUser7ID '3a2e0000-0000-0000-0000-000000000033'
+\set progressUser8ID '3a2e0000-0000-0000-0000-000000000034'
 \set registrationQuestionID '3a2e0000-0000-0000-0000-000000000017'
+\set refundProgressEventID '3a2e0000-0000-0000-0000-000000000031'
+\set refundProgressTicketTypeID '3a2e0000-0000-0000-0000-000000000032'
 \set user1ID '3a2e0000-0000-0000-0000-000000000018'
 \set user2ID '3a2e0000-0000-0000-0000-000000000019'
 \set user3ID '3a2e0000-0000-0000-0000-000000000020'
@@ -241,6 +269,12 @@ values (
     null
 );
 
+-- Users completing the refund progress and abandoned checkout scenarios
+insert into "user" (auth_hash, email, user_id, username) values
+    (gen_random_bytes(32), 'abandoned-checkout@example.test', :'abandonedCheckoutUserID', 'abandoned-checkout'),
+    (gen_random_bytes(32), 'progress-7@example.test', :'progressUser7ID', 'progress-7'),
+    (gen_random_bytes(32), 'progress-8@example.test', :'progressUser8ID', 'progress-8');
+
 -- Events
 insert into event (
     event_id,
@@ -308,6 +342,32 @@ values (
     true,
     false,
     false
+), (
+    :'attendanceFilterEventID',
+    'Attendance Filter Event',
+    'attendance-filter-event',
+    'An event for attendance state filters',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'USD',
+    true,
+    false,
+    false
+), (
+    :'refundProgressEventID',
+    'Refund Progress Event',
+    'refund-progress-event',
+    'A canceled event with every refund progress state',
+    'UTC',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'USD',
+    true,
+    true,
+    false
 );
 
 -- Event with registration questions used to return attendee answers
@@ -354,7 +414,8 @@ insert into event_ticket_type (
 values
     (:'eventTicketType1ID', :'event1ID', 1, 100, 'General admission'),
     (:'eventTicketType2ID', :'event2ID', 1, 100, 'VIP'),
-    (:'eventTicketTypePendingCheckoutID', :'eventPendingCheckoutID', 1, 100, 'General admission');
+    (:'eventTicketTypePendingCheckoutID', :'eventPendingCheckoutID', 1, 100, 'General admission'),
+    (:'refundProgressTicketTypeID', :'refundProgressEventID', 1, 100, 'Refund progress');
 
 -- Discount codes
 insert into event_discount_code (
@@ -472,6 +533,38 @@ values (
     )
 );
 
+-- Active and canceled attendees used to verify attendance filters
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values
+    (null, null, :'attendanceFilterEventID', 'confirmed', :'user1ID'),
+    (current_timestamp, :'user2ID', :'attendanceFilterEventID', 'attendance-canceled', :'user2ID');
+
+-- Canceled attendees exposing refund progress and abandoned checkout states
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values
+    (current_timestamp, :'abandonedCheckoutUserID', :'refundProgressEventID', 'attendance-canceled', :'abandonedCheckoutUserID'),
+    (current_timestamp, :'user1ID', :'refundProgressEventID', 'attendance-canceled', :'user1ID'),
+    (current_timestamp, :'user2ID', :'refundProgressEventID', 'attendance-canceled', :'user2ID'),
+    (current_timestamp, :'user3ID', :'refundProgressEventID', 'attendance-canceled', :'user3ID'),
+    (current_timestamp, :'user4ID', :'refundProgressEventID', 'attendance-canceled', :'user4ID'),
+    (current_timestamp, :'user5ID', :'refundProgressEventID', 'attendance-canceled', :'user5ID'),
+    (current_timestamp, :'user6ID', :'refundProgressEventID', 'attendance-canceled', :'user6ID'),
+    (current_timestamp, :'pendingCheckoutUserID', :'refundProgressEventID', 'attendance-canceled', :'pendingCheckoutUserID'),
+    (current_timestamp, :'questionsAttendeeUserID', :'refundProgressEventID', 'attendance-canceled', :'questionsAttendeeUserID'),
+    (current_timestamp, :'userStopwordSearchID', :'refundProgressEventID', 'attendance-canceled', :'userStopwordSearchID'),
+    (current_timestamp, :'progressUser7ID', :'refundProgressEventID', 'attendance-canceled', :'progressUser7ID'),
+    (current_timestamp, :'progressUser8ID', :'refundProgressEventID', 'attendance-canceled', :'progressUser8ID');
+
 -- Purchases
 insert into event_purchase (
     event_purchase_id,
@@ -545,9 +638,197 @@ values (
     'pending'
 );
 
+-- Purchases representing abandoned checkout, active checkout, and worker-controlled progress
+insert into event_purchase (
+    amount_minor,
+    currency_code,
+    event_id,
+    event_purchase_id,
+    event_ticket_type_id,
+    status,
+    ticket_title,
+    user_id,
+
+    hold_expires_at,
+    payment_provider_id,
+    provider_payment_reference,
+    refunded_at
+) values
+    (2500, 'USD', :'refundProgressEventID', :'abandonedCheckoutPurchaseID', :'refundProgressTicketTypeID', 'pending', 'Refund progress', :'abandonedCheckoutUserID', current_timestamp - interval '10 minutes', 'stripe', null, null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase1ID', :'refundProgressTicketTypeID', 'pending', 'Refund progress', :'user1ID', current_timestamp + interval '10 minutes', 'stripe', null, null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase2ID', :'refundProgressTicketTypeID', 'refunded', 'Refund progress', :'user2ID', null, 'stripe', 'pi_progress_2', current_timestamp),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase3ID', :'refundProgressTicketTypeID', 'refunded', 'Refund progress', :'user3ID', null, 'stripe', 'pi_progress_3', current_timestamp),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase4ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'user4ID', null, 'stripe', 'pi_progress_4', null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase5ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'user5ID', null, 'stripe', 'pi_progress_5', null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase6ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'user6ID', null, 'stripe', 'pi_progress_6', null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase7ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'pendingCheckoutUserID', null, 'stripe', 'pi_progress_7', null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase8ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'questionsAttendeeUserID', null, 'stripe', 'pi_progress_8', null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase9ID', :'refundProgressTicketTypeID', 'refund-recovery-pending', 'Refund progress', :'userStopwordSearchID', null, 'stripe', 'pi_progress_9', null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase10ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'progressUser7ID', null, 'stripe', 'pi_progress_10', null),
+    (2500, 'USD', :'refundProgressEventID', :'progressPurchase11ID', :'refundProgressTicketTypeID', 'refund-pending', 'Refund progress', :'progressUser8ID', null, 'stripe', 'pi_progress_11', null);
+
+-- Durable refunds representing every provider progress branch
+insert into event_purchase_refund (
+    amount_minor,
+    attempt_count,
+    currency_code,
+    event_purchase_id,
+    event_purchase_refund_id,
+    idempotency_key,
+    kind,
+    payment_provider_id,
+    status,
+    terminal_failure,
+
+    claim_id,
+    claimed_at,
+    finalized_at,
+    provider_refund_id,
+    provider_refunded_at
+) values
+    (2500, 0, 'USD', :'progressPurchase3ID', :'progressRefund1ID', 'progress-refund-1', 'event-cancellation', 'stripe', 'finalized', false, null, null, current_timestamp, 're_progress_1', current_timestamp),
+    (2500, 1, 'USD', :'progressPurchase4ID', :'progressRefund2ID', 'progress-refund-2', 'event-cancellation', 'stripe', 'processing', false, :'progressClaimID', current_timestamp, null, null, null),
+    (2500, 1, 'USD', :'progressPurchase5ID', :'progressRefund3ID', 'progress-refund-3', 'event-cancellation', 'stripe', 'provider-succeeded', false, null, null, null, 're_progress_3', current_timestamp),
+    (2500, 10, 'USD', :'progressPurchase6ID', :'progressRefund4ID', 'progress-refund-4', 'event-cancellation', 'stripe', 'provider-pending', false, null, null, null, null, null),
+    (2500, 1, 'USD', :'progressPurchase7ID', :'progressRefund5ID', 'progress-refund-5', 'event-cancellation', 'stripe', 'provider-pending', false, null, null, null, 're_progress_5', null),
+    (2500, 1, 'USD', :'progressPurchase8ID', :'progressRefund6ID', 'progress-refund-6', 'event-cancellation', 'stripe', 'provider-pending', false, null, null, null, null, null),
+    (2500, 1, 'USD', :'progressPurchase9ID', :'progressRefund7ID', 'progress-refund-7', 'event-cancellation', 'stripe', 'provider-failed', true, null, null, null, 're_progress_7', null),
+    (2500, 10, 'USD', :'progressPurchase10ID', :'progressRefund8ID', 'progress-refund-8', 'event-cancellation', 'stripe', 'provider-failed', false, null, null, null, null, null),
+    (2500, 1, 'USD', :'progressPurchase11ID', :'progressRefund9ID', 'progress-refund-9', 'event-cancellation', 'stripe', 'provider-failed', false, null, null, null, null, null);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should default to active attendance for an active event
+select results_eq(
+    format($$
+        with payload as (
+            select search_event_attendees(
+                %L::uuid,
+                %L::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb as value
+        )
+        select
+            value#>>'{attendees,0,user,user_id}',
+            (value->>'total')::int
+        from payload
+    $$, :'groupID', :'attendanceFilterEventID'),
+    format($$ values (%L::text, 1) $$, :'user1ID'),
+    'Should default to active attendance for an active event'
+);
+
+-- Should default to all attendance for a canceled event
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        :'refundProgressEventID'::uuid,
+        '{"limit": 50, "offset": 0}'::jsonb
+    )::jsonb->>'total',
+    '12',
+    'Should default to all attendance for a canceled event'
+);
+
+-- Should expose every refund progress state
+select is(
+    (
+        select jsonb_object_agg(
+            attendee#>>'{user,user_id}',
+            attendee->>'refund_progress'
+        )
+        from jsonb_array_elements(
+            search_event_attendees(
+                :'groupID'::uuid,
+                :'refundProgressEventID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb->'attendees'
+        ) attendee
+    ),
+    jsonb_build_object(
+        :'abandonedCheckoutUserID', null,
+        :'pendingCheckoutUserID', 'processing',
+        :'progressUser7ID', 'retryable-failure',
+        :'progressUser8ID', 'queued',
+        :'questionsAttendeeUserID', 'queued',
+        :'user1ID', 'awaiting-checkout',
+        :'user2ID', 'refunded',
+        :'user3ID', 'refunded',
+        :'user4ID', 'processing',
+        :'user5ID', 'processing',
+        :'user6ID', 'retryable-failure',
+        :'userStopwordSearchID', 'recovery-required'
+    ),
+    'Should expose every refund progress state'
+);
+
+-- Should omit refund progress for an abandoned pending checkout
+select ok(
+    (
+        select not (attendee ? 'refund_progress')
+        from jsonb_array_elements(
+            search_event_attendees(
+                :'groupID'::uuid,
+                :'refundProgressEventID'::uuid,
+                '{"limit": 50, "offset": 0}'::jsonb
+            )::jsonb->'attendees'
+        ) attendee
+        where attendee#>>'{user,user_id}' = :'abandonedCheckoutUserID'
+    ),
+    'Should omit refund progress for an abandoned pending checkout'
+);
+
+-- Should filter explicitly for active attendance
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        :'refundProgressEventID'::uuid,
+        '{"attendance": "active", "limit": 50, "offset": 0}'::jsonb
+    )::jsonb->>'total',
+    '0',
+    'Should filter explicitly for active attendance'
+);
+
+-- Should filter explicitly for all attendance
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        :'attendanceFilterEventID'::uuid,
+        '{"attendance": "all", "limit": 50, "offset": 0}'::jsonb
+    )::jsonb->>'total',
+    '2',
+    'Should filter explicitly for all attendance'
+);
+
+-- Should filter explicitly for canceled attendance
+select results_eq(
+    format($$
+        with payload as (
+            select search_event_attendees(
+                %L::uuid,
+                %L::uuid,
+                '{"attendance": "canceled", "limit": 50, "offset": 0}'::jsonb
+            )::jsonb as value
+        )
+        select
+            value#>>'{attendees,0,user,user_id}',
+            (value->>'total')::int
+        from payload
+    $$, :'groupID', :'attendanceFilterEventID'),
+    format($$ values (%L::text, 1) $$, :'user2ID'),
+    'Should filter explicitly for canceled attendance'
+);
+
+-- Should ignore an invalid attendance filter and use the event default
+select is(
+    search_event_attendees(
+        :'groupID'::uuid,
+        :'refundProgressEventID'::uuid,
+        '{"attendance": "unknown", "limit": 50, "offset": 0}'::jsonb
+    )::jsonb->>'total',
+    '12',
+    'Should ignore an invalid attendance filter and use the event default'
+);
 
 -- Should return attendees for event1 with expected fields and order
 select is(

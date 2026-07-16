@@ -11,18 +11,18 @@ describe("dashboard user events", () => {
   it("closes the open actions dropdown when another row action menu opens", () => {
     // Render two user event action dropdowns.
     document.body.innerHTML = `
-      <details data-user-event-actions-dropdown>
+      <details data-actions-menu>
         <summary>First actions</summary>
         <button type="button">First action</button>
       </details>
-      <details data-user-event-actions-dropdown>
+      <details data-actions-menu>
         <summary>Second actions</summary>
         <button type="button">Second action</button>
       </details>
     `;
 
     // Set up dropdowns.
-    const dropdowns = document.querySelectorAll("[data-user-event-actions-dropdown]");
+    const dropdowns = document.querySelectorAll("[data-actions-menu]");
 
     dropdowns[0].open = true;
     dropdowns[1].querySelector("summary").click();
@@ -35,7 +35,7 @@ describe("dashboard user events", () => {
   it("closes open action dropdowns when clicking outside", () => {
     // Render an open user event action dropdown.
     document.body.innerHTML = `
-      <details data-user-event-actions-dropdown open>
+      <details data-actions-menu open>
         <summary>Actions</summary>
         <button type="button">Action</button>
       </details>
@@ -43,7 +43,7 @@ describe("dashboard user events", () => {
     `;
 
     // Set up dropdown.
-    const dropdown = document.querySelector("[data-user-event-actions-dropdown]");
+    const dropdown = document.querySelector("[data-actions-menu]");
 
     // Click the outside button button.
     document.getElementById("outside-button").click();

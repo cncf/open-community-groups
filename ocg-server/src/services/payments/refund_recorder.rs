@@ -3,21 +3,21 @@
 use anyhow::{Context, Result};
 use tracing::warn;
 
-use crate::db::{
-    DynDB,
-    payments::{EventPurchaseRefund, EventPurchaseRefundStatus},
-};
+use crate::db::{DynDB, payments::EventPurchaseRefund};
 
 use super::{RefundPaymentResult, RefundPaymentStatus};
+
+#[cfg(test)]
+mod tests;
 
 /// Durable outcome after recording a normalized provider refund result.
 pub(super) enum RecordedProviderRefund {
     /// The provider-confirmed terminal failure is durable.
     Failed,
-    /// The provider reported progress and the durable refund state was returned.
-    Pending(EventPurchaseRefund),
-    /// The provider reported success and the durable refund state was returned.
-    Succeeded(EventPurchaseRefund),
+    /// The provider reported progress and the durable state was updated.
+    Pending,
+    /// The provider reported success and the durable refund state was updated.
+    Succeeded,
 }
 
 /// Reconciles a normalized provider refund result with durable state.
@@ -32,7 +32,7 @@ pub(super) async fn persist_provider_refund_result(
             let provider_refund_id = provider_refund.provider_refund_id;
 
             // Acknowledge an already pinned terminal result without rewriting or re-alerting
-            if refund.status == EventPurchaseRefundStatus::ProviderFailed
+            if refund.terminal_failure
                 && refund.provider_refund_id.as_deref() == Some(provider_refund_id.as_str())
             {
                 return Ok(RecordedProviderRefund::Failed);
@@ -43,6 +43,7 @@ pub(super) async fn persist_provider_refund_result(
                 refund.idempotency_key.clone(),
                 provider_refund_id.clone(),
                 "provider refund failed".to_string(),
+                refund.claim_id,
             )
             .await
             .context("failed to record terminal provider refund failure")?;
@@ -58,28 +59,28 @@ pub(super) async fn persist_provider_refund_result(
             Ok(RecordedProviderRefund::Failed)
         }
         RefundPaymentStatus::Pending => {
-            let refund = db
-                .record_event_purchase_refund_pending(
-                    refund.event_purchase_refund_id,
-                    refund.idempotency_key.clone(),
-                    provider_refund.provider_refund_id,
-                )
-                .await
-                .context("failed to record pending provider refund")?;
+            db.record_event_purchase_refund_pending(
+                refund.event_purchase_refund_id,
+                refund.idempotency_key.clone(),
+                provider_refund.provider_refund_id,
+                refund.claim_id,
+            )
+            .await
+            .context("failed to record pending provider refund")?;
 
-            Ok(RecordedProviderRefund::Pending(refund))
+            Ok(RecordedProviderRefund::Pending)
         }
         RefundPaymentStatus::Succeeded => {
-            let refund = db
-                .record_event_purchase_refund_succeeded(
-                    refund.event_purchase_refund_id,
-                    refund.idempotency_key.clone(),
-                    provider_refund.provider_refund_id,
-                )
-                .await
-                .context("failed to record successful provider refund")?;
+            db.record_event_purchase_refund_succeeded(
+                refund.event_purchase_refund_id,
+                refund.idempotency_key.clone(),
+                provider_refund.provider_refund_id,
+                refund.claim_id,
+            )
+            .await
+            .context("failed to record successful provider refund")?;
 
-            Ok(RecordedProviderRefund::Succeeded(refund))
+            Ok(RecordedProviderRefund::Succeeded)
         }
     }
 }

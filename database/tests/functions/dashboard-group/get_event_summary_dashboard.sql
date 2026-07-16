@@ -115,7 +115,8 @@ select is(
     get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event1ID'::uuid)::jsonb
         || jsonb_build_object(
             'created_by_display_name', 'Creator User',
-            'created_by_username', 'creator'
+            'created_by_username', 'creator',
+            'delete_eligibility', 'allowed'
         ),
     'Should extend the shared event summary with dashboard information'
 );
@@ -123,7 +124,8 @@ select is(
 -- Should match the shared event summary when dashboard information is unavailable
 select is(
     get_event_summary_dashboard(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
-    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb,
+    get_event_summary(:'communityID'::uuid, :'groupID'::uuid, :'event2ID'::uuid)::jsonb
+        || jsonb_build_object('delete_eligibility', 'allowed'),
     'Should match the shared event summary when dashboard information is unavailable'
 );
 
