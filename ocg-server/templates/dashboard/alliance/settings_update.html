@@ -172,6 +172,7 @@
                      name="toggle_intentional_dating_enabled"
                      value="enabled"
                      type="checkbox"
+                     onchange="document.getElementById('intentional_dating_enabled').value = String(this.checked)"
                      class="sr-only peer"
                      {% if alliance.intentional_dating_enabled -%}
                        checked

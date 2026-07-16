@@ -8,6 +8,8 @@ const MENTORSHIP_TOGGLE_ID = "toggle_mentorship_enabled";
 const MENTORSHIP_INPUT_ID = "mentorship_enabled";
 const MOCK_INTERVIEWS_TOGGLE_ID = "toggle_mock_interviews_enabled";
 const MOCK_INTERVIEWS_INPUT_ID = "mock_interviews_enabled";
+const INTENTIONAL_DATING_TOGGLE_ID = "toggle_intentional_dating_enabled";
+const INTENTIONAL_DATING_INPUT_ID = "intentional_dating_enabled";
 const GROUP_TEAM_RESTRICTION_TOGGLE_ID = "toggle_group_team_management_restricted";
 const GROUP_TEAM_RESTRICTION_INPUT_ID = "group_team_management_restricted";
 const SETTINGS_BOUND_KEY = "allianceSettingsBound";
@@ -31,6 +33,8 @@ export const initializeAllianceSettings = (root = document) => {
   const mentorshipInput = getElementById(root, MENTORSHIP_INPUT_ID);
   const mockInterviewsToggle = getElementById(root, MOCK_INTERVIEWS_TOGGLE_ID);
   const mockInterviewsInput = getElementById(root, MOCK_INTERVIEWS_INPUT_ID);
+  const intentionalDatingToggle = getElementById(root, INTENTIONAL_DATING_TOGGLE_ID);
+  const intentionalDatingInput = getElementById(root, INTENTIONAL_DATING_INPUT_ID);
 
   bindBooleanToggle({
     toggle: groupTeamRestrictionToggle,
@@ -53,6 +57,12 @@ export const initializeAllianceSettings = (root = document) => {
   bindBooleanToggle({
     toggle: mockInterviewsToggle,
     hiddenInput: mockInterviewsInput,
+    syncOnInit: true,
+  });
+
+  bindBooleanToggle({
+    toggle: intentionalDatingToggle,
+    hiddenInput: intentionalDatingInput,
     syncOnInit: true,
   });
 };

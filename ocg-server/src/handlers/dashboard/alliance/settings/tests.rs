@@ -149,7 +149,8 @@ async fn test_update_success() {
     let auth_hash = "hash".to_string();
     let session_record =
         sample_session_record(session_id, user_id, &auth_hash, Some(alliance_id), None);
-    let update = sample_alliance_update();
+    let mut update = sample_alliance_update();
+    update.intentional_dating_enabled = true;
     let expected_display_name = update.display_name.clone();
     let body = serde_qs::to_string(&update).unwrap();
 
@@ -174,7 +175,10 @@ async fn test_update_success() {
     db.expect_update_alliance()
         .times(1)
         .withf(move |uid, cid, update| {
-            *uid == user_id && *cid == alliance_id && update.display_name == expected_display_name
+            *uid == user_id
+                && *cid == alliance_id
+                && update.display_name == expected_display_name
+                && update.intentional_dating_enabled
         })
         .returning(|_, _, _| Ok(()));
 
