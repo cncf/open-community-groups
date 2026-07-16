@@ -26,6 +26,7 @@ use crate::{
         notifications::SessionProposalCoSpeakerInvitation,
     },
     types::pagination::{self, NavigationLinks},
+    util::base_url_without_trailing_slash,
 };
 
 #[cfg(test)]
@@ -60,8 +61,8 @@ pub(crate) async fn list_page(
 /// Accepts a pending co-speaker invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn accept_co_speaker_invitation(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(session_proposal_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -79,8 +80,8 @@ pub(crate) async fn accept_co_speaker_invitation(
 /// Adds a session proposal for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn add(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
@@ -120,8 +121,8 @@ pub(crate) async fn add(
 /// Deletes a session proposal for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(session_proposal_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -138,8 +139,8 @@ pub(crate) async fn delete(
 /// Rejects a pending co-speaker invitation.
 #[instrument(skip_all, err)]
 pub(crate) async fn reject_co_speaker_invitation(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(session_proposal_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -158,8 +159,8 @@ pub(crate) async fn reject_co_speaker_invitation(
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn update(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
@@ -233,7 +234,7 @@ async fn send_co_speaker_invitation_notification(
 ) -> Result<(), HandlerError> {
     // Build invitation link and template data
     let site_settings = db.get_site_settings().await?;
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let link = format!("{base_url}/dashboard/user?tab=session-proposals");
     let template_data = SessionProposalCoSpeakerInvitation {
         link,

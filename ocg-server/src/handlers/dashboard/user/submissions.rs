@@ -51,8 +51,8 @@ pub(crate) async fn list_page(
 /// Resubmits a CFS submission for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn resubmit(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(cfs_submission_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -69,8 +69,8 @@ pub(crate) async fn resubmit(
 /// Withdraws a CFS submission for the authenticated user.
 #[instrument(skip_all, err)]
 pub(crate) async fn withdraw(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     Path(cfs_submission_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, HandlerError> {

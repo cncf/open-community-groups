@@ -37,6 +37,7 @@ insert into community (
     banner_mobile_url,
     banner_url,
     community_id,
+    created_at,
     description,
     display_name,
     logo_url,
@@ -47,6 +48,7 @@ insert into community (
     'https://example.com/community-banner-mobile.png',
     'https://example.com/community-banner.png',
     '00000000-0000-0000-0000-00000000c001',
+    '2024-01-01 00:00:00+00',
     'A community used by Rust database contract tests',
     'Contract Community',
     'https://example.com/community-logo.png',
@@ -281,6 +283,23 @@ insert into "user" (
         '00000000-0000-0000-0000-00000000c0e9',
         'contract-cancelee'
     );
+
+-- ============================================================================
+-- NOTIFICATIONS
+-- ============================================================================
+
+-- Pending notification used to verify claim metadata and finalization contracts
+insert into notification (
+    notification_id,
+    delivery_status,
+    kind,
+    user_id
+) values (
+    '00000000-0000-0000-0000-00000000c0f1',
+    'pending',
+    'event-welcome',
+    '00000000-0000-0000-0000-00000000c041'
+);
 
 -- ============================================================================
 -- REGIONS

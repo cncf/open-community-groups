@@ -19,7 +19,7 @@ use crate::{
     db::DynDB,
     handlers::{
         error::HandlerError,
-        extractors::{SelectedCommunityId, SelectedGroupId},
+        extractors::{CurrentUser, SelectedCommunityId, SelectedGroupId},
     },
     templates::{
         PageId,
@@ -44,6 +44,7 @@ mod tests;
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn page(
+    CurrentUser(user): CurrentUser,
     auth_session: AuthSession,
     messages: Messages,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -53,9 +54,6 @@ pub(crate) async fn page(
     Query(query): Query<HashMap<String, String>>,
     RawQuery(raw_query): RawQuery,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
-
     // Get selected tab from query
     let tab: Tab = query
         .get("tab")

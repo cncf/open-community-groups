@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+#[cfg(test)]
+use mockall::automock;
 use tokio_postgres::types::Json;
 use tracing::instrument;
 use uuid::Uuid;
@@ -15,6 +17,7 @@ type Day = String;
 type Total = u32;
 
 /// Database interface required by the activity tracker.
+#[cfg_attr(test, automock)]
 #[async_trait]
 pub(crate) trait DBActivityTracker {
     /// Updates community page views counters.

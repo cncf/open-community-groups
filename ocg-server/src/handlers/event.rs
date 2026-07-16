@@ -29,6 +29,7 @@ use crate::{
         notifications::{
             DynNotificationsManager,
             enqueue::enqueue_event_attendance_cancellation_notifications,
+            load_event_notification_context,
             payloads::{
                 build_event_waitlist_joined_notification, build_event_waitlist_left_notification,
                 build_event_welcome_notification,
@@ -49,7 +50,7 @@ use crate::{
         },
     },
     validation::{
-        MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_S,
+        MAX_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_DESCRIPTION_SHORT, MAX_LEN_S,
         trimmed_non_empty_opt,
     },
 };
@@ -118,8 +119,8 @@ pub(crate) async fn page(
 pub(crate) async fn cfs_modal(
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Get user from session (endpoint is behind login_required)
     let user_id = auth_session.user.as_ref().map(|user| user.user_id);
@@ -153,19 +154,16 @@ pub(crate) async fn cfs_modal(
 /// Handler that renders the check-in page.
 #[instrument(skip_all, err)]
 pub(crate) async fn check_in_page(
+    CurrentUser(user): CurrentUser,
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
     uri: Uri,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user = auth_session.user.as_ref().expect("user to be logged in").clone();
-
     // Get site settings and event details
-    let (event, site_settings, attendance, check_in_window_open) = tokio::try_join!(
-        db.get_event_summary_by_id(community_id, event_id),
-        db.get_site_settings(),
+    let ((event, site_settings), attendance, check_in_window_open) = tokio::try_join!(
+        load_event_notification_context(db.as_ref(), community_id, event_id),
         db.get_event_attendance(community_id, event_id, user.user_id),
         db.is_event_check_in_window_open(community_id, event_id),
     )?;
@@ -219,8 +217,8 @@ pub(crate) async fn attend_event(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
     ValidatedForm(input): ValidatedForm<OptionalQuestionnaireAnswersForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate that the event is still attendee-visible before checking ticketing
@@ -265,10 +263,13 @@ pub(crate) async fn attend_event(
     // Enqueue attendee or waitlist notification best-effort after the RSVP succeeds
 
     // Get site settings and event details for notifications
-    let (site_settings, event) = match tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
-    ) {
+    let (event, site_settings) = match load_event_notification_context(
+        db.as_ref(),
+        community_id,
+        event_id,
+    )
+    .await
+    {
         Ok(context) => context,
         Err(err) => {
             warn!(error = %err, "failed to load event notification context after attendance change");
@@ -331,8 +332,8 @@ pub(crate) async fn attend_event(
 pub(crate) async fn attendance_status(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load attendance status without failing when the event is stale or inactive
     let attendance = db.get_event_attendance(community_id, event_id, user.user_id).await?;
@@ -364,8 +365,8 @@ pub(crate) async fn attendance_status(
 pub(crate) async fn cancel_checkout(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     db.cancel_event_checkout(community_id, event_id, user.user_id).await?;
 
@@ -382,8 +383,8 @@ pub(crate) async fn cancel_checkout(
 pub(crate) async fn check_in(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check in event (bypass_window = false for user self check-in)
     db.check_in_event(community_id, event_id, user.user_id, false).await?;
@@ -398,8 +399,8 @@ pub(crate) async fn leave_event(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Leave event and enqueue required attendee cancellation notifications
     let required_notification_server_cfg = server_cfg.clone();
@@ -438,10 +439,13 @@ pub(crate) async fn leave_event(
     match leave_result.left_status {
         EventAttendanceStatus::Waitlisted => {
             // Get site settings and event details for notifications
-            let (site_settings, event) = match tokio::try_join!(
-                db.get_site_settings(),
-                db.get_event_summary_by_id(community_id, event_id)
-            ) {
+            let (event, site_settings) = match load_event_notification_context(
+                db.as_ref(),
+                community_id,
+                event_id,
+            )
+            .await
+            {
                 Ok(context) => context,
                 Err(err) => {
                     warn!(error = %err, "failed to load event notification context after waitlist change");
@@ -478,8 +482,8 @@ pub(crate) async fn leave_event(
 pub(crate) async fn request_refund(
     CurrentUser(user): CurrentUser,
     State(payments_manager): State<DynPaymentsManager>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
     ValidatedForm(input): ValidatedForm<RefundRequestInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     payments_manager
@@ -509,8 +513,8 @@ pub(crate) async fn start_checkout(
     State(db): State<DynDB>,
     State(payments_cfg): State<Option<PaymentsConfig>>,
     State(payments_manager): State<DynPaymentsManager>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
     ValidatedForm(input): ValidatedForm<CheckoutInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Load the event
@@ -583,18 +587,15 @@ pub(crate) async fn start_checkout(
 /// Handler for submitting a CFS proposal to an event.
 #[instrument(skip_all, err)]
 pub(crate) async fn submit_cfs_submission(
+    CurrentUser(user): CurrentUser,
     auth_session: AuthSession,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, event_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
     ValidatedFormQs(input): ValidatedFormQs<CfsSubmissionInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Get user from session (endpoint is behind login_required)
-    let user_id = auth_session
-        .user
-        .as_ref()
-        .map(|user| user.user_id)
-        .expect("user to be logged in");
+    // Prepare the authenticated user context
+    let user_id = user.user_id;
     let user = User::from_session(auth_session).await?;
 
     // Add CFS submission to database
@@ -646,7 +647,7 @@ pub(crate) async fn track_view(
 pub(crate) struct CfsSubmissionInput {
     /// Labels selected by the submitter for this proposal.
     #[serde(default)]
-    #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_SUBMISSION))]
+    #[garde(length(max = MAX_EVENT_LABELS_PER_SUBMISSION))]
     label_ids: Vec<Uuid>,
     /// Session proposal being submitted to the event CFS.
     #[garde(skip)]

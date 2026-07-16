@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use chrono::{DateTime, Utc};
 use mockall::Sequence;
 use serde_json::json;
 use tokio_util::sync::CancellationToken;
@@ -14,8 +15,9 @@ use crate::{
 use super::{
     Attachment, DELIVERY_MAX_CLAIMS, DELIVERY_PROCESSING_TIMEOUT, DELIVERY_REQUEUE_BASE_DELAY,
     DELIVERY_REQUEUE_MAX_DELAY, DELIVERY_SEND_MAX_ATTEMPTS, DeliveryRecoveryWorker, DeliveryWorker,
-    DynEmailSender, EnqueueWorker, LettreEmailSender, MockEmailSender, NewNotification,
-    Notification, NotificationKind, NotificationsManager, PgNotificationsManager,
+    DynEmailSender, EmailDeliveryError, EnqueueWorker, LettreEmailSender, MockEmailSender,
+    NewNotification, Notification, NotificationKind, NotificationsManager, PgNotificationsManager,
+    SmtpErrorKind,
 };
 
 #[tokio::test]
@@ -204,6 +206,7 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification() 
     // Setup identifiers and data structures
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "notify@example.test".to_string(),
         kind: NotificationKind::EmailVerification,
         notification_id: Uuid::new_v4(),
@@ -234,7 +237,7 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification() 
                 .iter()
                 .any(|rcpt| rcpt.to_string() == recipient)
         })
-        .returning(|_| Box::pin(async { Ok::<(), anyhow::Error>(()) }));
+        .returning(|_| Box::pin(async { Ok::<(), EmailDeliveryError>(()) }));
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
@@ -260,6 +263,7 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification_wi
     }];
     let notification = Notification {
         attachments: attachments.clone(),
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "notify@example.test".to_string(),
         kind: NotificationKind::EmailVerification,
         notification_id: Uuid::new_v4(),
@@ -290,7 +294,7 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification_wi
                 .iter()
                 .any(|rcpt| rcpt.to_string() == recipient)
         })
-        .returning(|_| Box::pin(async { Ok::<(), anyhow::Error>(()) }));
+        .returning(|_| Box::pin(async { Ok::<(), EmailDeliveryError>(()) }));
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
@@ -336,6 +340,7 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
     // Setup identifiers and data structures
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "notify@example.test".to_string(),
         kind: NotificationKind::EmailVerification,
         notification_id: Uuid::new_v4(),
@@ -358,9 +363,9 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
 
     // Setup email sender mock
     let mut es = MockEmailSender::new();
-    es.expect_send()
-        .times(1)
-        .returning(|_| Box::pin(async { Err(anyhow!("delivery error")) }));
+    es.expect_send().times(1).returning(|_| {
+        Box::pin(async { Err(EmailDeliveryError::Terminal(anyhow!("delivery error"))) })
+    });
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
@@ -376,11 +381,65 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
     assert!(delivered);
 }
 
+#[tokio::test]
+async fn test_delivery_worker_deliver_notification_records_unknown_send_error() {
+    // Setup identifiers and data structures
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "notify@example.test".to_string(),
+        kind: NotificationKind::EmailVerification,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_email_verification_template_data()),
+    };
+    let notification_id = notification.notification_id;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_claim_pending_notification()
+        .times(1)
+        .returning(move || Ok(Some(notification.clone())));
+    db.expect_mark_notification_delivery_unknown()
+        .times(1)
+        .withf(move |notif, err| {
+            notif.notification_id == notification_id
+                && err == "network error: connection reset by peer"
+        })
+        .returning(|_, _| Ok(()));
+    db.expect_requeue_notification().never();
+    db.expect_update_notification().never();
+    let db: DynDB = Arc::new(db);
+
+    // Setup email sender mock
+    let mut es = MockEmailSender::new();
+    es.expect_send().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EmailDeliveryError::Unknown(anyhow!(
+                "network error: connection reset by peer"
+            )))
+        })
+    });
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker and deliver notification
+    let mut worker = DeliveryWorker {
+        cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
+        email_sender: es,
+    };
+    let delivered = worker.deliver_notification().await.unwrap();
+
+    // Check result matches expectations
+    assert!(delivered);
+}
+
 #[tokio::test(start_paused = true)]
 async fn test_delivery_worker_deliver_notification_requeues_retryable_send_error() {
     // Setup identifiers and data structures
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "notify@example.test".to_string(),
         kind: NotificationKind::EmailVerification,
         notification_id: Uuid::new_v4(),
@@ -410,9 +469,13 @@ async fn test_delivery_worker_deliver_notification_requeues_retryable_send_error
 
     // Setup email sender mock
     let mut es = MockEmailSender::new();
-    es.expect_send()
-        .times(DELIVERY_SEND_MAX_ATTEMPTS)
-        .returning(|_| Box::pin(async { Err(anyhow!("Connection error: smtp unavailable")) }));
+    es.expect_send().times(DELIVERY_SEND_MAX_ATTEMPTS).returning(|_| {
+        Box::pin(async {
+            Err(EmailDeliveryError::Retryable(anyhow!(
+                "Connection error: smtp unavailable"
+            )))
+        })
+    });
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
@@ -429,10 +492,64 @@ async fn test_delivery_worker_deliver_notification_requeues_retryable_send_error
 }
 
 #[tokio::test]
+async fn test_delivery_worker_deliver_notification_returns_unknown_update_error() {
+    // Setup identifiers and data structures
+    let notification = Notification {
+        attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
+        email: "notify@example.test".to_string(),
+        kind: NotificationKind::EmailVerification,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_email_verification_template_data()),
+    };
+    let notification_id = notification.notification_id;
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_claim_pending_notification()
+        .times(1)
+        .returning(move || Ok(Some(notification.clone())));
+    db.expect_mark_notification_delivery_unknown()
+        .times(1)
+        .withf(move |notif, err| {
+            notif.notification_id == notification_id
+                && err == "network error: connection reset by peer"
+        })
+        .returning(|_, _| Err(anyhow!("unknown update error")));
+    db.expect_requeue_notification().never();
+    db.expect_update_notification().never();
+    let db: DynDB = Arc::new(db);
+
+    // Setup email sender mock
+    let mut es = MockEmailSender::new();
+    es.expect_send().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EmailDeliveryError::Unknown(anyhow!(
+                "network error: connection reset by peer"
+            )))
+        })
+    });
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker and deliver notification
+    let mut worker = DeliveryWorker {
+        cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
+        email_sender: es,
+    };
+    let err = worker.deliver_notification().await.unwrap_err();
+
+    // Check the persistence error is propagated
+    assert!(err.to_string().contains("unknown update error"));
+}
+
+#[tokio::test]
 async fn test_delivery_worker_deliver_notification_returns_update_error() {
     // Setup identifiers and data structures
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "notify@example.test".to_string(),
         kind: NotificationKind::EmailVerification,
         notification_id: Uuid::new_v4(),
@@ -455,7 +572,7 @@ async fn test_delivery_worker_deliver_notification_returns_update_error() {
     let mut es = MockEmailSender::new();
     es.expect_send()
         .times(1)
-        .returning(|_| Box::pin(async { Ok::<(), anyhow::Error>(()) }));
+        .returning(|_| Box::pin(async { Ok::<(), EmailDeliveryError>(()) }));
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and deliver notification
@@ -476,6 +593,7 @@ fn test_delivery_worker_prepare_content_email_verification() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EmailVerification,
         notification_id: Uuid::new_v4(),
@@ -496,6 +614,7 @@ fn test_delivery_worker_prepare_content_event_attendance_canceled() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventAttendanceCanceled,
         notification_id: Uuid::new_v4(),
@@ -518,6 +637,7 @@ fn test_delivery_worker_prepare_content_event_custom() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventCustom,
         notification_id: Uuid::new_v4(),
@@ -541,6 +661,7 @@ fn test_delivery_worker_prepare_content_event_custom_legacy_template_data() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventCustom,
         notification_id: Uuid::new_v4(),
@@ -561,6 +682,7 @@ fn test_delivery_worker_prepare_content_event_invitation() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventInvitation,
         notification_id: Uuid::new_v4(),
@@ -584,6 +706,7 @@ fn test_delivery_worker_prepare_content_event_published() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventPublished,
         notification_id: Uuid::new_v4(),
@@ -605,6 +728,7 @@ fn test_delivery_worker_prepare_content_event_reminder() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventReminder,
         notification_id: Uuid::new_v4(),
@@ -638,6 +762,7 @@ fn test_delivery_worker_prepare_content_event_reminder_legacy_template_data() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventReminder,
         notification_id: Uuid::new_v4(),
@@ -662,6 +787,7 @@ fn test_delivery_worker_prepare_content_event_reminder_speaker_only() {
     template_data["show_attendance_cancellation_copy"] = json!(false);
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventReminder,
         notification_id: Uuid::new_v4(),
@@ -683,6 +809,7 @@ fn test_delivery_worker_prepare_content_event_series_canceled() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventSeriesCanceled,
         notification_id: Uuid::new_v4(),
@@ -704,6 +831,7 @@ fn test_delivery_worker_prepare_content_event_series_published() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventSeriesPublished,
         notification_id: Uuid::new_v4(),
@@ -728,6 +856,7 @@ fn test_delivery_worker_prepare_content_speaker_series_welcome() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::SpeakerSeriesWelcome,
         notification_id: Uuid::new_v4(),
@@ -750,6 +879,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_joined() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventWaitlistJoined,
         notification_id: Uuid::new_v4(),
@@ -770,6 +900,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_left() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventWaitlistLeft,
         notification_id: Uuid::new_v4(),
@@ -790,6 +921,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventWaitlistPromoted,
         notification_id: Uuid::new_v4(),
@@ -814,6 +946,7 @@ fn test_delivery_worker_prepare_content_event_waitlist_promoted_with_registratio
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventWaitlistPromoted,
         notification_id: Uuid::new_v4(),
@@ -841,6 +974,7 @@ fn test_delivery_worker_prepare_content_event_welcome_omits_dashboard_cancellati
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventWelcome,
         notification_id: Uuid::new_v4(),
@@ -861,6 +995,7 @@ fn test_delivery_worker_prepare_content_event_welcome_renders_dashboard_cancella
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EventWelcome,
         notification_id: Uuid::new_v4(),
@@ -884,6 +1019,7 @@ fn test_delivery_worker_prepare_content_group_custom() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::GroupCustom,
         notification_id: Uuid::new_v4(),
@@ -907,6 +1043,7 @@ fn test_delivery_worker_prepare_content_group_custom_legacy_template_data() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::GroupCustom,
         notification_id: Uuid::new_v4(),
@@ -927,6 +1064,7 @@ fn test_delivery_worker_prepare_content_missing_data() {
     // Setup notification
     let notification = Notification {
         attachments: vec![],
+        delivery_claimed_at: sample_delivery_claimed_at(),
         email: "user@example.test".to_string(),
         kind: NotificationKind::EmailVerification,
         notification_id: Uuid::new_v4(),
@@ -954,7 +1092,7 @@ async fn test_delivery_worker_send_email_allows_whitelisted_recipient() {
                 .iter()
                 .any(|rcpt| rcpt.to_string() == "notify@example.test")
         })
-        .returning(|_| Box::pin(async { Ok::<(), anyhow::Error>(()) }));
+        .returning(|_| Box::pin(async { Ok::<(), EmailDeliveryError>(()) }));
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and send email
@@ -991,6 +1129,30 @@ async fn test_delivery_worker_send_email_blocks_non_whitelisted_recipient() {
         .unwrap();
 }
 
+#[tokio::test]
+async fn test_delivery_worker_send_email_rejects_invalid_recipient_as_terminal() {
+    // Setup email config and sender mock
+    let cfg = sample_email_config(None);
+    let mut es = MockEmailSender::new();
+    es.expect_send().never();
+    let es: DynEmailSender = Arc::new(es);
+
+    // Setup worker and send an invalid message
+    let worker = sample_delivery_worker(cfg, es);
+    let err = worker
+        .send_email(
+            "invalid recipient",
+            "Subject line",
+            "<p>Body content</p>".to_string(),
+            &[],
+        )
+        .await
+        .unwrap_err();
+
+    // Check message construction failures are terminal
+    assert!(matches!(err, EmailDeliveryError::Terminal(_)));
+}
+
 #[tokio::test(start_paused = true)]
 async fn test_delivery_worker_send_email_retries_transient_send_error() {
     // Setup email config and sender mock
@@ -999,9 +1161,9 @@ async fn test_delivery_worker_send_email_retries_transient_send_error() {
     let mut seq = Sequence::new();
     es.expect_send().times(1).in_sequence(&mut seq).returning(|_| {
         Box::pin(async {
-            Err(anyhow!(
-                "Connection error: Connection error: received fatal alert: UnexpectedMessage"
-            ))
+            Err(EmailDeliveryError::Retryable(anyhow!(
+                "Connection error: received fatal alert: UnexpectedMessage"
+            )))
         })
     });
     es.expect_send()
@@ -1028,9 +1190,13 @@ async fn test_delivery_worker_send_email_does_not_retry_unknown_network_error() 
     // Setup email config and sender mock
     let cfg = sample_email_config(None);
     let mut es = MockEmailSender::new();
-    es.expect_send()
-        .times(1)
-        .returning(|_| Box::pin(async { Err(anyhow!("network error: connection reset by peer")) }));
+    es.expect_send().times(1).returning(|_| {
+        Box::pin(async {
+            Err(EmailDeliveryError::Unknown(anyhow!(
+                "network error: connection reset by peer"
+            )))
+        })
+    });
     let es: DynEmailSender = Arc::new(es);
 
     // Setup worker and send email
@@ -1046,6 +1212,54 @@ async fn test_delivery_worker_send_email_does_not_retry_unknown_network_error() 
         .unwrap_err();
 
     // Check the unknown network outcome is not retried
+    assert!(matches!(&err, EmailDeliveryError::Unknown(_)));
+    assert_eq!(err.to_string(), "network error: connection reset by peer");
+}
+
+#[test]
+fn test_email_delivery_error_classifies_pre_submission_failures_as_retryable() {
+    // Setup representative transient, shutdown, and connection failures
+    let kinds = [
+        SmtpErrorKind::Connection,
+        SmtpErrorKind::Transient,
+        SmtpErrorKind::TransportShutdown,
+    ];
+
+    // Classify every failure before submission
+    for kind in kinds {
+        let err = EmailDeliveryError::from_smtp_kind(kind, anyhow!("smtp failure"));
+        assert!(matches!(&err, EmailDeliveryError::Retryable(_)));
+        assert_eq!(err.to_string(), "smtp failure");
+    }
+}
+
+#[test]
+fn test_email_delivery_error_classifies_provider_failures_as_terminal() {
+    // Setup representative client, permanent, and TLS failures
+    let kinds = [
+        SmtpErrorKind::Client,
+        SmtpErrorKind::Permanent,
+        SmtpErrorKind::Tls,
+    ];
+
+    // Classify failures requiring external correction
+    for kind in kinds {
+        let err = EmailDeliveryError::from_smtp_kind(kind, anyhow!("smtp failure"));
+        assert!(matches!(&err, EmailDeliveryError::Terminal(_)));
+        assert_eq!(err.to_string(), "smtp failure");
+    }
+}
+
+#[test]
+fn test_email_delivery_error_classifies_uncertain_failures_as_unknown() {
+    // Classify the uncertain delivery outcome for manual review
+    let err = EmailDeliveryError::from_smtp_kind(
+        SmtpErrorKind::Unknown,
+        anyhow!("network error: connection reset by peer"),
+    );
+
+    // Check the uncertain failure requires manual review
+    assert!(matches!(&err, EmailDeliveryError::Unknown(_)));
     assert_eq!(err.to_string(), "network error: connection reset by peer");
 }
 
@@ -1079,6 +1293,11 @@ fn test_lettre_email_sender_uses_wrapper_tls_for_submissions_port() {
 }
 
 // Helpers.
+
+/// Create a deterministic delivery claim timestamp.
+fn sample_delivery_claimed_at() -> DateTime<Utc> {
+    DateTime::from_timestamp(1_735_689_600, 0).unwrap()
+}
 
 /// Create a sample email configuration with an optional recipients whitelist.
 fn sample_email_config(rcpts_whitelist: Option<Vec<String>>) -> EmailConfig {

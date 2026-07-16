@@ -16,7 +16,7 @@ use crate::{
         user::UserSummary,
     },
     validation::{
-        MAX_LEN_DESCRIPTION, MAX_LEN_EVENT_LABELS_PER_EVENT, MAX_LEN_EVENT_LABELS_PER_SUBMISSION,
+        MAX_EVENT_LABELS_PER_EVENT, MAX_EVENT_LABELS_PER_SUBMISSION, MAX_LEN_DESCRIPTION,
         MAX_PAGINATION_LIMIT, trimmed_non_empty,
     },
 };
@@ -149,7 +149,7 @@ pub(crate) struct CfsSubmissionRating {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct CfsSubmissionsFilters {
     /// Labels to filter by.
-    #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_EVENT))]
+    #[garde(length(max = MAX_EVENT_LABELS_PER_EVENT))]
     pub label_ids: Option<Vec<Uuid>>,
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
@@ -200,7 +200,7 @@ pub(crate) enum CfsSubmissionsSort {
 pub(crate) struct CfsSubmissionUpdate {
     /// Labels assigned to the submission.
     #[serde(default)]
-    #[garde(length(max = MAX_LEN_EVENT_LABELS_PER_SUBMISSION))]
+    #[garde(length(max = MAX_EVENT_LABELS_PER_SUBMISSION))]
     pub label_ids: Vec<Uuid>,
     /// Submission status identifier.
     #[garde(custom(trimmed_non_empty))]

@@ -2,6 +2,8 @@
 //!
 //! This module provides utility functions used by templates for common tasks.
 
+use crate::util::base_url_without_trailing_slash;
+
 /// Format for date-time inputs used by templates (YYYY-MM-DDTHH:MM).
 pub(crate) const DATE_FORMAT: &str = "%Y-%m-%dT%H:%M";
 
@@ -10,7 +12,7 @@ pub(crate) const DATE_FORMAT_2: &str = "%Y-%m-%d";
 
 /// Builds an absolute URL from a configured base URL and path.
 pub(crate) fn absolute_url(base_url: &str, path: &str) -> String {
-    let base_url = base_url.strip_suffix('/').unwrap_or(base_url);
+    let base_url = base_url_without_trailing_slash(base_url);
     if path.starts_with('/') {
         format!("{base_url}{path}")
     } else {

@@ -944,6 +944,9 @@ mock! {
 
     #[async_trait]
     impl crate::db::notifications::DBNotifications for DB {
+        async fn claim_pending_notification(
+            &self,
+        ) -> Result<Option<crate::services::notifications::Notification>>;
         async fn enqueue_due_event_reminders(
             &self,
             base_url: &str,
@@ -961,9 +964,11 @@ mock! {
             &self,
             attachment_id: Uuid
         ) -> Result<crate::services::notifications::Attachment>;
-        async fn claim_pending_notification(
+        async fn mark_notification_delivery_unknown(
             &self,
-        ) -> Result<Option<crate::services::notifications::Notification>>;
+            notification: &crate::services::notifications::Notification,
+            error: &str,
+        ) -> Result<()>;
         async fn mark_stale_processing_notifications_unknown(
             &self,
             timeout: std::time::Duration,

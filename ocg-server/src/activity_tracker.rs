@@ -270,7 +270,7 @@ mod tests {
     use mockall::predicate::eq;
     use tokio::time::sleep;
 
-    use crate::db::mock::MockDB;
+    use crate::db::activity_tracker::MockDBActivityTracker;
 
     use super::*;
 
@@ -293,7 +293,7 @@ mod tests {
     async fn test_flushes_activities_on_stop() {
         // Setup mock database
         let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
-        let mut mock_db = MockDB::new();
+        let mut mock_db = MockDBActivityTracker::new();
         mock_db
             .expect_update_community_views()
             .with(eq(vec![
@@ -387,7 +387,7 @@ mod tests {
     async fn test_flushes_activities_periodically() {
         // Setup mock database
         let day = OffsetDateTime::now_utc().format(&DATE_FORMAT).unwrap();
-        let mut mock_db = MockDB::new();
+        let mut mock_db = MockDBActivityTracker::new();
         mock_db
             .expect_update_community_views()
             .with(eq(vec![(*COMMUNITY1_ID, day.clone(), 1)]))
@@ -441,7 +441,7 @@ mod tests {
     #[tokio::test]
     async fn test_skips_flush_when_no_activities_are_tracked() {
         // Setup tracker with no activities tracked
-        let mock_db = Arc::new(MockDB::new());
+        let mock_db = Arc::new(MockDBActivityTracker::new());
 
         let task_tracker = TaskTracker::new();
         let cancellation_token = CancellationToken::new();

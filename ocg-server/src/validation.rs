@@ -36,6 +36,12 @@ pub const MAX_LEN_S: usize = 100;
 
 // Purpose-specific limits
 
+/// Maximum number of labels allowed per event.
+pub const MAX_EVENT_LABELS_PER_EVENT: usize = 200;
+
+/// Maximum number of labels allowed per submission.
+pub const MAX_EVENT_LABELS_PER_SUBMISSION: usize = 10;
+
 /// Maximum number of elements in a collection (filters, tags, etc.).
 pub const MAX_ITEMS: usize = 25;
 
@@ -62,12 +68,6 @@ pub const MAX_LEN_ENTITY_NAME: usize = 120;
 
 /// Maximum length for CFS label names.
 pub const MAX_LEN_EVENT_LABEL_NAME: usize = 80;
-
-/// Maximum number of labels allowed per event.
-pub const MAX_LEN_EVENT_LABELS_PER_EVENT: usize = 200;
-
-/// Maximum number of labels allowed per submission.
-pub const MAX_LEN_EVENT_LABELS_PER_SUBMISSION: usize = 10;
 
 /// Maximum length for group pretty slugs.
 pub const MAX_LEN_GROUP_PRETTY_SLUG: usize = 50;

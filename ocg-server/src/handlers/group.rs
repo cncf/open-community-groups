@@ -27,6 +27,7 @@ use crate::{
         notifications::GroupWelcome,
     },
     types::{event::EventKind, group::GroupFull},
+    util::base_url_without_trailing_slash,
 };
 
 use super::{error::HandlerError, extractors::CommunityId};
@@ -124,8 +125,8 @@ pub(crate) async fn join_group(
     State(db): State<DynDB>,
     State(notifications_manager): State<DynNotificationsManager>,
     State(server_cfg): State<HttpServerConfig>,
-    CommunityId(community_id): CommunityId,
     Path((_, group_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Join the group
     db.join_group(community_id, group_id, user.user_id).await?;
@@ -136,7 +137,7 @@ pub(crate) async fn join_group(
             db.get_site_settings(),
             db.get_group_summary(community_id, group_id)
         )?;
-        let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+        let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
         let template_data = GroupWelcome {
             link: format!(
                 "{}/{}/group/{}",
@@ -174,8 +175,8 @@ pub(crate) async fn join_group(
 pub(crate) async fn leave_group(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, group_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Leave the group
     db.leave_group(community_id, group_id, user.user_id).await?;
@@ -188,8 +189,8 @@ pub(crate) async fn leave_group(
 pub(crate) async fn membership_status(
     CurrentUser(user): CurrentUser,
     State(db): State<DynDB>,
-    CommunityId(community_id): CommunityId,
     Path((_, group_id)): Path<(String, Uuid)>,
+    CommunityId(community_id): CommunityId,
 ) -> Result<impl IntoResponse, HandlerError> {
     // Check membership
     let is_member = db.is_group_member(community_id, group_id, user.user_id).await?;

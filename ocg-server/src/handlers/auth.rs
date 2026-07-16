@@ -40,6 +40,7 @@ use crate::{
         notifications::EmailVerification,
     },
     types::permissions::{CommunityPermission, GroupPermission},
+    util::base_url_without_trailing_slash,
     validation::{MAX_LEN_S, trimmed_non_empty},
 };
 
@@ -410,8 +411,8 @@ pub(crate) async fn sign_up(
 /// Handler that updates the user's details.
 #[instrument(skip_all, err)]
 pub(crate) async fn update_user_details(
-    messages: Messages,
     CurrentUser(user): CurrentUser,
+    messages: Messages,
     State(db): State<DynDB>,
     ValidatedFormQs(user_data): ValidatedFormQs<UserDetails>,
 ) -> Result<impl IntoResponse, HandlerError> {
@@ -956,7 +957,7 @@ async fn build_email_verification_notification(
 ) -> Result<EmailVerificationNotification, HandlerError> {
     // Prepare verification link inputs before loading template context
     let code = Uuid::new_v4();
-    let base_url = server_cfg.base_url.trim_end_matches('/');
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     if base_url.is_empty() {
         return Err(HandlerError::Database(
             "base URL is required to send verification email".to_string(),

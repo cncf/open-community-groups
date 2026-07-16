@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     config::MeetingsZoomConfig,
-    db::{DynDB, mock::MockDB},
+    db::meetings::{DynDBMeetings, MockDBMeetings},
 };
 
 use super::{
@@ -145,7 +145,7 @@ async fn test_worker_auto_end_meeting_auto_ended() {
     let provider_meeting_id = "987654321".to_string();
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
             auto_end_check_claimed_at: claimed_at,
@@ -162,7 +162,7 @@ async fn test_worker_auto_end_meeting_auto_ended() {
                 && *outcome == MeetingAutoEndCheckOutcome::AutoEnded
         })
         .returning(|_, _| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -187,7 +187,7 @@ async fn test_worker_auto_end_meeting_not_found_records_not_found_outcome() {
     let provider_meeting_id = "404404404".to_string();
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
             auto_end_check_claimed_at: claimed_at,
@@ -204,7 +204,7 @@ async fn test_worker_auto_end_meeting_not_found_records_not_found_outcome() {
                 && *outcome == MeetingAutoEndCheckOutcome::NotFound
         })
         .returning(|_, _| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -224,9 +224,9 @@ async fn test_worker_auto_end_meeting_not_found_records_not_found_outcome() {
 #[tokio::test]
 async fn test_worker_auto_end_meeting_no_pending_meeting() {
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(|| Ok(None));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -249,7 +249,7 @@ async fn test_worker_auto_end_meeting_provider_not_configured_records_error_outc
     let provider_meeting_id = "777777777".to_string();
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
             auto_end_check_claimed_at: claimed_at,
@@ -266,7 +266,7 @@ async fn test_worker_auto_end_meeting_provider_not_configured_records_error_outc
                 && *outcome == MeetingAutoEndCheckOutcome::Error
         })
         .returning(|_, _| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup worker with no providers configured
     let worker = sample_auto_end_worker_no_providers(db);
@@ -284,7 +284,7 @@ async fn test_worker_auto_end_meeting_retryable_error_releases_claim() {
     let provider_meeting_id = "502502502".to_string();
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_for_auto_end().times(1).returning(move || {
         Ok(Some(crate::db::meetings::MeetingAutoEndCandidate {
             auto_end_check_claimed_at: claimed_at,
@@ -300,7 +300,7 @@ async fn test_worker_auto_end_meeting_retryable_error_releases_claim() {
             candidate.auto_end_check_claimed_at == claimed_at && candidate.meeting_id == meeting_id
         })
         .returning(|_| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -323,7 +323,7 @@ async fn test_worker_auto_end_meeting_retryable_error_releases_claim() {
 #[tokio::test]
 async fn test_worker_claim_recovery_marks_stale_claims_unknown() {
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_mark_stale_meeting_auto_end_checks_unknown()
         .times(1)
         .withf(|timeout| *timeout == Duration::from_mins(15))
@@ -332,7 +332,7 @@ async fn test_worker_claim_recovery_marks_stale_claims_unknown() {
         .times(1)
         .withf(|timeout| *timeout == Duration::from_mins(15))
         .returning(|_| Ok(3));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup worker and recover stale claims
     let worker = sample_claim_recovery_worker(db);
@@ -345,12 +345,12 @@ async fn test_worker_claim_recovery_marks_stale_claims_unknown() {
 #[tokio::test]
 async fn test_worker_claim_recovery_returns_auto_end_error() {
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_mark_stale_meeting_auto_end_checks_unknown()
         .times(1)
         .returning(|_| Err(anyhow!("auto-end claim recovery failed")));
     db.expect_mark_stale_meeting_syncs_unknown().never();
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup worker and recover stale claims
     let worker = sample_claim_recovery_worker(db);
@@ -363,14 +363,14 @@ async fn test_worker_claim_recovery_returns_auto_end_error() {
 #[tokio::test]
 async fn test_worker_claim_recovery_returns_sync_error() {
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_mark_stale_meeting_auto_end_checks_unknown()
         .times(1)
         .returning(|_| Ok(2));
     db.expect_mark_stale_meeting_syncs_unknown()
         .times(1)
         .returning(|_| Err(anyhow!("sync claim recovery failed")));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup worker and recover stale claims
     let worker = sample_claim_recovery_worker(db);
@@ -397,7 +397,7 @@ async fn test_worker_sync_meeting_creates_new_meeting() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -422,7 +422,7 @@ async fn test_worker_sync_meeting_creates_new_meeting() {
                 && m.join_url == Some("https://zoom.us/j/123".to_string())
         })
         .returning(|_| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -458,7 +458,7 @@ async fn test_worker_sync_meeting_updates_existing_meeting() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -469,7 +469,7 @@ async fn test_worker_sync_meeting_updates_existing_meeting() {
                 && m.join_url == Some("https://zoom.us/j/456".to_string())
         })
         .returning(|_| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -513,7 +513,7 @@ async fn test_worker_sync_meeting_deletes_meeting() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -521,7 +521,7 @@ async fn test_worker_sync_meeting_deletes_meeting() {
         .times(1)
         .withf(move |m| m.meeting_id == Some(meeting_id))
         .returning(|_| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -552,7 +552,7 @@ async fn test_worker_sync_meeting_delete_not_found_succeeds() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -560,7 +560,7 @@ async fn test_worker_sync_meeting_delete_not_found_succeeds() {
         .times(1)
         .withf(move |m| m.meeting_id == Some(meeting_id))
         .returning(|_| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -581,9 +581,9 @@ async fn test_worker_sync_meeting_delete_not_found_succeeds() {
 #[tokio::test]
 async fn test_worker_sync_meeting_no_pending_meeting() {
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync().times(1).returning(|| Ok(None));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -613,7 +613,7 @@ async fn test_worker_sync_meeting_retryable_error_releases_claim() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -621,7 +621,7 @@ async fn test_worker_sync_meeting_retryable_error_releases_claim() {
         .times(1)
         .returning(|_, _, _, _, _| Ok(Some("host@example.com".to_string())));
     db.expect_release_meeting_sync_claim().times(1).returning(|_| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -655,7 +655,7 @@ async fn test_worker_sync_meeting_non_retryable_error_records_error() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -668,7 +668,7 @@ async fn test_worker_sync_meeting_non_retryable_error_records_error() {
             m.meeting_id == Some(meeting_id) && err.contains("invalid meeting data")
         })
         .returning(|_, _| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -703,7 +703,7 @@ async fn test_worker_sync_meeting_no_slots_available_records_error() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -716,7 +716,7 @@ async fn test_worker_sync_meeting_no_slots_available_records_error() {
             m.meeting_id == Some(meeting_id) && err.contains("no meeting slots available")
         })
         .returning(|_, _| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -743,7 +743,7 @@ async fn test_worker_sync_meeting_delete_without_provider_id() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -751,7 +751,7 @@ async fn test_worker_sync_meeting_delete_without_provider_id() {
         .times(1)
         .withf(move |m| m.meeting_id == Some(meeting_id))
         .returning(|_| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup meetings provider mock
     let mut mp = MockMeetingsProvider::new();
@@ -777,7 +777,7 @@ async fn test_worker_sync_meeting_provider_not_configured_records_error() {
     };
 
     // Setup database mock
-    let mut db = MockDB::new();
+    let mut db = MockDBMeetings::new();
     db.expect_claim_meeting_out_of_sync()
         .times(1)
         .returning(move || Ok(Some(meeting.clone())));
@@ -787,7 +787,7 @@ async fn test_worker_sync_meeting_provider_not_configured_records_error() {
             m.meeting_id == Some(meeting_id) && err.contains("provider not configured")
         })
         .returning(|_, _| Ok(()));
-    let db: DynDB = Arc::new(db);
+    let db: DynDBMeetings = Arc::new(db);
 
     // Setup worker with no providers configured
     let mut worker = sample_sync_worker_no_providers(db);
@@ -800,7 +800,7 @@ async fn test_worker_sync_meeting_provider_not_configured_records_error() {
 // Helpers.
 
 /// Create a sample auto-end worker with mock dependencies.
-fn sample_auto_end_worker(db: DynDB, mp: DynMeetingsProvider) -> MeetingsAutoEndWorker {
+fn sample_auto_end_worker(db: DynDBMeetings, mp: DynMeetingsProvider) -> MeetingsAutoEndWorker {
     let mut providers = HashMap::new();
     providers.insert(MeetingProvider::Zoom, mp);
     MeetingsAutoEndWorker {
@@ -811,7 +811,7 @@ fn sample_auto_end_worker(db: DynDB, mp: DynMeetingsProvider) -> MeetingsAutoEnd
 }
 
 /// Create a sample auto-end worker with no providers configured.
-fn sample_auto_end_worker_no_providers(db: DynDB) -> MeetingsAutoEndWorker {
+fn sample_auto_end_worker_no_providers(db: DynDBMeetings) -> MeetingsAutoEndWorker {
     MeetingsAutoEndWorker {
         cancellation_token: CancellationToken::new(),
         db,
@@ -820,7 +820,7 @@ fn sample_auto_end_worker_no_providers(db: DynDB) -> MeetingsAutoEndWorker {
 }
 
 /// Create a sample claim recovery worker with mock dependencies.
-fn sample_claim_recovery_worker(db: DynDB) -> MeetingsClaimRecoveryWorker {
+fn sample_claim_recovery_worker(db: DynDBMeetings) -> MeetingsClaimRecoveryWorker {
     MeetingsClaimRecoveryWorker {
         cancellation_token: CancellationToken::new(),
         db,
@@ -828,7 +828,7 @@ fn sample_claim_recovery_worker(db: DynDB) -> MeetingsClaimRecoveryWorker {
 }
 
 /// Create a sample sync worker with mock dependencies.
-fn sample_sync_worker(db: DynDB, mp: DynMeetingsProvider) -> MeetingsSyncWorker {
+fn sample_sync_worker(db: DynDBMeetings, mp: DynMeetingsProvider) -> MeetingsSyncWorker {
     let mut providers = HashMap::new();
     providers.insert(MeetingProvider::Zoom, mp);
     MeetingsSyncWorker {
@@ -840,7 +840,7 @@ fn sample_sync_worker(db: DynDB, mp: DynMeetingsProvider) -> MeetingsSyncWorker 
 }
 
 /// Create a sample sync worker with no providers configured.
-fn sample_sync_worker_no_providers(db: DynDB) -> MeetingsSyncWorker {
+fn sample_sync_worker_no_providers(db: DynDBMeetings) -> MeetingsSyncWorker {
     MeetingsSyncWorker {
         cancellation_token: CancellationToken::new(),
         db,

@@ -320,10 +320,11 @@ async fn test_page_events_invalid_filters() {
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "invalid type: string \"invalid\", expected usize");
 }
 
 #[tokio::test]
@@ -347,10 +348,11 @@ async fn test_page_groups_invalid_filters() {
     let response = router.oneshot(request).await.unwrap();
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
 
     // Check response matches expectations
-    assert_eq!(parts.status, StatusCode::INTERNAL_SERVER_ERROR);
-    assert!(bytes.is_empty());
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "invalid type: string \"invalid\", expected usize");
 }
 
 #[tokio::test]

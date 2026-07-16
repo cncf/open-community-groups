@@ -10,7 +10,7 @@ use crate::{
     config::HttpServerConfig,
     db::DBOperations,
     services::notifications::{
-        NewNotification, NotificationKind,
+        NewNotification, NotificationKind, load_event_notification_context,
         payloads::{
             build_event_attendance_canceled_notification, build_event_canceled_notification,
             build_event_published_notification, build_event_rescheduled_notification,
@@ -23,7 +23,7 @@ use crate::{
         SpeakerSeriesWelcome,
     },
     types::event::{EventFull, EventSummary},
-    util::build_event_page_link,
+    util::{base_url_without_trailing_slash, build_event_page_link},
 };
 
 /// Minimum shift required to notify a reschedule.
@@ -39,10 +39,8 @@ pub(crate) async fn enqueue_event_attendance_cancellation_notifications(
     promoted_user_ids: Vec<Uuid>,
 ) -> Result<()> {
     // Fetch notification context after the attendance mutation
-    let (site_settings, event) = tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
-    )?;
+    let (event, site_settings) =
+        load_event_notification_context(db, community_id, event_id).await?;
 
     // Confirm the canceled attendance to the attendee
     let notification = build_event_attendance_canceled_notification(
@@ -252,7 +250,7 @@ pub(crate) async fn enqueue_event_series_canceled_notifications(
     group_id: Uuid,
     event_ids: &[Uuid],
 ) -> Result<()> {
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let mut recipient_events: HashMap<Uuid, Vec<EventSeriesNotificationItem>> = HashMap::new();
 
     // Build recipient event lists for each canceled occurrence
@@ -321,7 +319,7 @@ pub(crate) async fn enqueue_event_series_published_notifications(
     group_id: Uuid,
     event_ids: &[Uuid],
 ) -> Result<()> {
-    let base_url = server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
 
     // Fetch member recipients shared by all published occurrences
     let (group_member_ids, team_member_ids) = tokio::try_join!(
@@ -463,10 +461,8 @@ pub(crate) async fn enqueue_event_welcome_notification(
     include_dashboard_link: bool,
 ) -> Result<()> {
     // Fetch notification context after the attendance mutation
-    let (site_settings, event) = tokio::try_join!(
-        db.get_site_settings(),
-        db.get_event_summary_by_id(community_id, event_id)
-    )?;
+    let (event, site_settings) =
+        load_event_notification_context(db, community_id, event_id).await?;
 
     // Build and enqueue the attendee welcome notification
     let notification = build_event_welcome_notification(

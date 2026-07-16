@@ -3711,10 +3711,7 @@ async fn request_refund_returns_error_when_notification_context_load_fails() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(sample_event_summary(event_id)));
+    db.expect_get_event_summary_by_id().never();
     db.expect_get_site_settings()
         .times(1)
         .returning(|| Err(anyhow::anyhow!("db error")));

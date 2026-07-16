@@ -16,7 +16,10 @@ use super::{groups, logs, team};
 use crate::{
     auth::AuthSession,
     db::DynDB,
-    handlers::{error::HandlerError, extractors::SelectedCommunityId},
+    handlers::{
+        error::HandlerError,
+        extractors::{CurrentUser, SelectedCommunityId},
+    },
     templates::{
         PageId,
         auth::User,
@@ -39,6 +42,7 @@ mod tests;
 #[instrument(skip_all, err)]
 #[allow(clippy::too_many_lines)]
 pub(crate) async fn page(
+    CurrentUser(user): CurrentUser,
     auth_session: AuthSession,
     messages: Messages,
     SelectedCommunityId(community_id): SelectedCommunityId,
@@ -51,10 +55,8 @@ pub(crate) async fn page(
         .get("tab")
         .map_or(Tab::default(), |tab| tab.parse().unwrap_or_default());
 
-    // Get user_id from session
-    let user_id = auth_session.user.as_ref().expect("user to be logged in").user_id;
-
     // Get selected community, user communities and site settings
+    let user_id = user.user_id;
     let (community, communities, site_settings) = tokio::try_join!(
         db.get_community_full(community_id),
         db.list_user_communities(&user_id),

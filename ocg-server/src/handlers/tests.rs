@@ -10,7 +10,7 @@ use axum::{
     http::{HeaderValue, StatusCode, header::CONTENT_TYPE, response::Parts},
 };
 use axum_login::tower_sessions::session;
-use chrono::{TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::UTC;
 use serde_json::json;
 use time::{Duration as TimeDuration, OffsetDateTime};
@@ -357,7 +357,7 @@ pub(crate) fn sample_community_full(community_id: Uuid) -> CommunityFull {
         banner_url: "https://example.test/banner.png".to_string(),
         community_id,
         community_site_layout_id: "default".to_string(),
-        created_at: 0,
+        created_at: DateTime::UNIX_EPOCH,
         description: "Test community".to_string(),
         display_name: "Test".to_string(),
         group_team_management_restricted: false,

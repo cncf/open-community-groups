@@ -118,9 +118,9 @@ fn community_name_from_headers(headers: &HeaderMap, redirect_host_suffix: &str) 
 /// Extracts the community name from a redirector host.
 fn community_name_from_host(host: &str, redirect_host_suffix: &str) -> Option<String> {
     let host = normalize_host(host);
-    let suffix = format!(".{redirect_host_suffix}");
 
-    host.strip_suffix(&suffix)
+    host.strip_suffix(redirect_host_suffix)
+        .and_then(|community_name| community_name.strip_suffix('.'))
         .filter(|community_name| !community_name.is_empty() && !community_name.contains('.'))
         .map(ToString::to_string)
 }

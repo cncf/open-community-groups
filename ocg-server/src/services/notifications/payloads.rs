@@ -12,7 +12,8 @@ use crate::{
     },
     types::{event::EventSummary, site::SiteSettings},
     util::{
-        build_event_calendar_attachment, build_event_page_link, build_user_dashboard_events_link,
+        base_url_without_trailing_slash, build_event_calendar_attachment, build_event_page_link,
+        build_user_dashboard_events_link,
     },
 };
 
@@ -25,7 +26,7 @@ pub(crate) fn build_event_attendance_canceled_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventAttendanceCanceled {
         dashboard_link: build_user_dashboard_events_link(base_url),
         event: event.clone(),
@@ -48,7 +49,7 @@ pub(crate) fn build_event_canceled_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventCanceled {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -70,7 +71,7 @@ pub(crate) fn build_event_invitation_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let link = if event.has_registration_questions {
         build_user_dashboard_events_link(base_url)
     } else {
@@ -98,7 +99,7 @@ pub(crate) fn build_event_published_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventPublished {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -120,7 +121,7 @@ pub(crate) fn build_event_refund_approved_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventRefundApproved {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -142,7 +143,7 @@ pub(crate) fn build_event_refund_rejected_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventRefundRejected {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -164,7 +165,7 @@ pub(crate) fn build_event_rescheduled_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventRescheduled {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -186,7 +187,7 @@ pub(crate) fn build_event_waitlist_joined_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventWaitlistJoined {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -208,7 +209,7 @@ pub(crate) fn build_event_waitlist_left_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = EventWaitlistLeft {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -230,7 +231,7 @@ pub(crate) fn build_event_waitlist_promoted_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let attachments = if event.has_registration_questions {
         vec![]
     } else {
@@ -261,7 +262,7 @@ pub(crate) fn build_event_welcome_notification(
     site_settings: &SiteSettings,
     include_dashboard_link: bool,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let dashboard_link = include_dashboard_link.then(|| build_user_dashboard_events_link(base_url));
     let template_data = EventWelcome {
         event: event.clone(),
@@ -286,7 +287,7 @@ pub(crate) fn build_speaker_welcome_notification(
     server_cfg: &HttpServerConfig,
     site_settings: &SiteSettings,
 ) -> Result<NewNotification> {
-    let base_url = notification_base_url(server_cfg);
+    let base_url = base_url_without_trailing_slash(&server_cfg.base_url);
     let template_data = SpeakerWelcome {
         event: event.clone(),
         link: build_event_page_link(base_url, event),
@@ -302,11 +303,6 @@ pub(crate) fn build_speaker_welcome_notification(
 }
 
 // Helpers.
-
-/// Returns the configured base URL without a trailing slash.
-fn notification_base_url(server_cfg: &HttpServerConfig) -> &str {
-    server_cfg.base_url.strip_suffix('/').unwrap_or(&server_cfg.base_url)
-}
 
 /// Returns whether waitlist promotion notifications should be sent.
 pub(crate) fn should_send_waitlist_promoted_notification(

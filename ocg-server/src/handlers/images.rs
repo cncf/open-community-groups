@@ -74,8 +74,8 @@ pub(crate) async fn serve_open_graph(
 #[instrument(skip_all, err)]
 pub(crate) async fn upload(
     CurrentUser(user): CurrentUser,
-    State(server_cfg): State<HttpServerConfig>,
     State(image_storage): State<DynImageStorage>,
+    State(server_cfg): State<HttpServerConfig>,
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, HandlerError> {

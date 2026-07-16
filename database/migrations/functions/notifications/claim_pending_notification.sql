@@ -5,6 +5,7 @@ create or replace function claim_pending_notification(
 )
 returns table (
     attachment_ids uuid[],
+    delivery_claimed_at timestamptz,
     email text,
     kind text,
     notification_id uuid,
@@ -67,6 +68,7 @@ begin
         from next_notification nn
         where n.notification_id = nn.notification_id
         returning
+            n.delivery_claimed_at,
             n.kind,
             n.notification_id,
             n.notification_template_data_id,
@@ -79,6 +81,7 @@ begin
             from notification_attachment na
             where na.notification_id = cn.notification_id
         ) as attachment_ids,
+        cn.delivery_claimed_at,
         u.email,
         cn.kind,
         cn.notification_id,
