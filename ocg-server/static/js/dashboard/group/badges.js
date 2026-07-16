@@ -202,9 +202,12 @@ export const initializeGroupBadges = (root) => {
     if (pane) {
       setRefreshPane(pane);
     }
-    if (event.target.matches("[data-artwork-form]") && !prepareArtworkForm(event.target)) {
-      event.preventDefault();
-      event.stopPropagation();
+    if (event.target.matches("[data-artwork-form]")) {
+      syncArtworkFileName(event.target);
+      if (!prepareArtworkForm(event.target)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
     }
   });
 };

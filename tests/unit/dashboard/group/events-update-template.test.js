@@ -165,4 +165,21 @@ describe("dashboard group event update template", () => {
     expect(template).to.not.include("lg:border-b-0");
     expect(template).to.include('<div class="min-w-0"> <div class="inert-form"');
   });
+
+  it("wires event and session contributor tables to shared badge awards", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include(
+      '<user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}"',
+    );
+    expect(template).to.include(
+      '<speakers-selector id="event-speakers-selector" selected-speakers="{{ event.speakers|json }}" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}"',
+    );
+    expect(template).to.include("can-award-badges show-award-all");
+    expect(template).to.include("Session-level speakers");
+    expect(template).to.include(
+      '<session-speakers-table id="session-speakers-table" sessions="{{ event.sessions|json }}" event-id="{{ event.event_id }}"',
+    );
+    expect(template).to.include("can-award-badges{% endif %}");
+  });
 });

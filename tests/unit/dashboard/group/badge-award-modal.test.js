@@ -1,10 +1,7 @@
 import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/badge-award-modal.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 const badge = {
   badge_id: "00000000-0000-0000-0000-000000000001",
@@ -36,13 +33,10 @@ describe("badge-award-modal", () => {
     window.fetch = async (url, options = {}) => {
       calls.push({ url: String(url), options });
       if (options.method === "POST") {
-        return new Response(
-          JSON.stringify({ awarded_count: 1, skipped_count: 0 }),
-          {
-            status: 201,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
+        return new Response(JSON.stringify({ awarded_count: 1, skipped_count: 0 }), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        });
       }
       return new Response(JSON.stringify({ badges: [badge], total: 1 }), {
         status: 200,
@@ -55,15 +49,11 @@ describe("badge-award-modal", () => {
 
     element.open({
       eventId: "00000000-0000-0000-0000-000000000002",
-      scope: "single",
       trigger,
-      userId: "00000000-0000-0000-0000-000000000003",
+      userIds: ["00000000-0000-0000-0000-000000000003"],
     });
     expect(element._state).to.equal("loading");
-    await waitUntil(
-      () => element._state === "ready",
-      "badge options should load",
-    );
+    await waitUntil(() => element._state === "ready", "badge options should load");
     await element.updateComplete;
 
     expect(element._state).to.equal("ready");
@@ -81,19 +71,13 @@ describe("badge-award-modal", () => {
 
     expect(element._state).to.equal("success");
     expect(element.textContent).to.include("1 new credential issued");
-    expect(document.activeElement).to.equal(
-      element.querySelector("[data-badge-award-close]"),
-    );
-    expect(
-      calls.filter((call) => call.options.method === "POST"),
-    ).to.have.length(1);
-    const body = JSON.parse(
-      calls.find((call) => call.options.method === "POST").options.body,
-    );
+    expect(document.activeElement).to.equal(element.querySelector("[data-badge-award-close]"));
+    expect(calls.filter((call) => call.options.method === "POST")).to.have.length(1);
+    const body = JSON.parse(calls.find((call) => call.options.method === "POST").options.body);
     expect(body).to.deep.equal({
       badge_id: badge.badge_id,
-      scope: "single",
-      user_id: "00000000-0000-0000-0000-000000000003",
+      event_id: "00000000-0000-0000-0000-000000000002",
+      user_ids: ["00000000-0000-0000-0000-000000000003"],
     });
     trigger.remove();
   });
@@ -104,20 +88,14 @@ describe("badge-award-modal", () => {
       if (options.method === "POST") {
         return new Response("Try again", { status: 500 });
       }
-      return new Response(
-        JSON.stringify({ badges: mode === "empty" ? [] : [badge], total: 1 }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      return new Response(JSON.stringify({ badges: mode === "empty" ? [] : [badge], total: 1 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     };
     const element = await mountLitComponent("badge-award-modal");
-    element.open({ eventId: "event", scope: "bulk", trigger: document.body });
-    await waitUntil(
-      () => element._state === "empty",
-      "the empty badge state should render",
-    );
+    element.open({ eventId: "event", trigger: document.body, userIds: ["user"] });
+    await waitUntil(() => element._state === "empty", "the empty badge state should render");
     await element.updateComplete;
 
     expect(element._state).to.equal("empty");
@@ -154,11 +132,8 @@ describe("badge-award-modal", () => {
       });
     };
     const element = await mountLitComponent("badge-award-modal");
-    element.open({ eventId: "event", scope: "bulk", trigger: document.body });
-    await waitUntil(
-      () => element._state === "ready",
-      "badge options should load",
-    );
+    element.open({ eventId: "event", trigger: document.body, userIds: ["user"] });
+    await waitUntil(() => element._state === "ready", "badge options should load");
     element._selectedBadgeId = badge.badge_id;
     holdSearch = true;
 
@@ -169,9 +144,7 @@ describe("badge-award-modal", () => {
     expect(element._state).to.equal("loading");
     expect(element._selectedBadgeId).to.equal("");
     expect(element.querySelector('[type="search"]').disabled).to.equal(true);
-    expect(
-      element.querySelectorAll('input[name="award-scope"]')[0].disabled,
-    ).to.equal(true);
+    expect(element.querySelectorAll('input[name="award-scope"]')).to.have.length(0);
     expect(element.querySelector(".btn-primary").disabled).to.equal(true);
     expect(postCount).to.equal(0);
 
@@ -198,26 +171,20 @@ describe("badge-award-modal", () => {
     const element = await mountLitComponent("badge-award-modal");
     element.open({
       eventId: "old-event",
-      scope: "bulk",
       trigger: document.body,
+      userIds: ["old-user"],
     });
-    await waitUntil(
-      () => element._state === "ready",
-      "old badge options should load",
-    );
+    await waitUntil(() => element._state === "ready", "old badge options should load");
     element._selectedBadgeId = badge.badge_id;
     const oldAward = element._award();
     await waitUntil(() => Boolean(pendingAward), "old award should start");
 
     element.open({
       eventId: "new-event",
-      scope: "bulk",
       trigger: document.body,
+      userIds: ["new-user"],
     });
-    await waitUntil(
-      () => element._state === "ready",
-      "new badge options should load",
-    );
+    await waitUntil(() => element._state === "ready", "new badge options should load");
     pendingAward(
       new Response(JSON.stringify({ awarded_count: 1, skipped_count: 0 }), {
         headers: { "Content-Type": "application/json" },
@@ -240,11 +207,9 @@ describe("badge-award-modal", () => {
     const trigger = document.createElement("button");
     document.body.append(trigger);
     trigger.focus();
-    element.open({ eventId: "event", scope: "bulk", trigger });
+    element.open({ eventId: "event", trigger, userIds: ["user"] });
     await element.updateComplete;
-    expect(document.activeElement).to.equal(
-      element.querySelector("[data-badge-award-dialog]"),
-    );
+    expect(document.activeElement).to.equal(element.querySelector("[data-badge-award-dialog]"));
     element._query = "new";
     const newerRequest = element._loadBadges();
 
@@ -289,28 +254,17 @@ describe("badge-award-modal", () => {
       });
     };
     const element = await mountLitComponent("badge-award-modal");
-    element.open({ eventId: "event", scope: "bulk", trigger: document.body });
-    await waitUntil(
-      () => element._state === "error",
-      "the badge load should fail",
-    );
-    expect(document.activeElement).to.equal(
-      element.querySelector("[data-badge-award-dialog]"),
-    );
+    element.open({ eventId: "event", trigger: document.body, userIds: ["user"] });
+    await waitUntil(() => element._state === "error", "the badge load should fail");
+    expect(document.activeElement).to.equal(element.querySelector("[data-badge-award-dialog]"));
 
     loadFails = false;
     await element._loadBadges();
-    await waitUntil(
-      () => element._state === "ready",
-      "badge options should load",
-    );
+    await waitUntil(() => element._state === "ready", "badge options should load");
     element._selectedBadgeId = badge.badge_id;
 
     const pendingAward = element._award();
-    await waitUntil(
-      () => Boolean(awardRequest),
-      "the award request should start",
-    );
+    await waitUntil(() => Boolean(awardRequest), "the award request should start");
     element.remove();
 
     expect(awardRequest.options.signal.aborted).to.equal(true);

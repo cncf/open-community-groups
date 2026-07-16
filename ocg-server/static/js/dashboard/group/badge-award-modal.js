@@ -12,7 +12,7 @@ const STATE = Object.freeze({
   ERROR: "error",
 });
 
-/** Shared light-DOM dialog for event attendee and contributor badge awards. */
+/** Shared light-DOM dialog for badge awards to explicit recipients. */
 export class BadgeAwardModal extends LitWrapper {
   static properties = {
     _badges: { type: Array },
@@ -20,7 +20,6 @@ export class BadgeAwardModal extends LitWrapper {
     _isOpen: { type: Boolean },
     _query: { type: String },
     _selectedBadgeId: { type: String },
-    _scope: { type: String },
     _state: { type: String },
     _success: { type: Object },
   };
@@ -32,18 +31,15 @@ export class BadgeAwardModal extends LitWrapper {
     this._isOpen = false;
     this._query = "";
     this._selectedBadgeId = "";
-    this._scope = "registered";
     this._state = STATE.IDLE;
     this._success = null;
     this._abortController = null;
     this._awardAbortController = null;
     this._awardRequestId = 0;
     this._eventId = "";
-    this._recipientLabel = "";
     this._requestId = 0;
     this._returnFocus = null;
-    this._singleUserId = "";
-    this._triggerScope = "bulk";
+    this._userIds = [];
     this._handleDocumentClick = this._handleDocumentClick.bind(this);
   }
 
@@ -70,29 +66,28 @@ export class BadgeAwardModal extends LitWrapper {
     trigger.closest("details[open]")?.removeAttribute("open");
     this.open({
       eventId: trigger.dataset.eventId,
-      recipientLabel: trigger.dataset.recipientLabel,
-      scope: trigger.dataset.awardScope,
       trigger,
-      userId: trigger.dataset.userId,
+      userIds: (trigger.dataset.userIds || "")
+        .split(",")
+        .map((userId) => userId.trim())
+        .filter(Boolean),
     });
   }
 
-  open({ eventId, recipientLabel = "", scope = "bulk", trigger, userId = "" }) {
-    if (!eventId || (scope === "single" && !userId)) {
+  open({ eventId = "", trigger, userIds = [] }) {
+    const normalizedUserIds = [...new Set(userIds.filter(Boolean))];
+    if (normalizedUserIds.length === 0) {
       return;
     }
     this._abortController?.abort();
     this._awardAbortController?.abort();
     this._awardRequestId += 1;
     this._eventId = eventId;
-    this._recipientLabel = recipientLabel;
-    this._singleUserId = userId;
-    this._triggerScope = scope;
+    this._userIds = normalizedUserIds;
     this._returnFocus = trigger;
     this._badges = [];
     this._error = "";
     this._query = "";
-    this._scope = "registered";
     this._selectedBadgeId = "";
     this._success = null;
     this._isOpen = true;
@@ -187,21 +182,18 @@ export class BadgeAwardModal extends LitWrapper {
     this._error = "";
     const input = {
       badge_id: this._selectedBadgeId,
-      scope: this._triggerScope === "single" ? "single" : this._scope,
+      user_ids: this._userIds,
     };
-    if (this._triggerScope === "single") {
-      input.user_id = this._singleUserId;
+    if (this._eventId) {
+      input.event_id = this._eventId;
     }
     try {
-      const response = await ocgFetch(
-        `/dashboard/group/events/${encodeURIComponent(this._eventId)}/badges/award`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-          signal: this._awardAbortController.signal,
-        },
-      );
+      const response = await ocgFetch("/dashboard/group/badges/award", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+        signal: this._awardAbortController.signal,
+      });
       if (!response.ok) {
         throw new Error((await response.text()).trim() || "The badge could not be awarded.");
       }
@@ -301,9 +293,7 @@ export class BadgeAwardModal extends LitWrapper {
         <div class="modal-panel w-full max-w-2xl">
           <div class="modal-card rounded-lg">
             <div class="flex items-center justify-between border-b border-stone-200 p-5">
-              <h3 id="badge-award-modal-title" class="text-xl font-semibold text-stone-900">
-                Award badge${this._recipientLabel ? ` to ${this._recipientLabel}` : ""}
-              </h3>
+              <h3 id="badge-award-modal-title" class="text-xl font-semibold text-stone-900">Award badge</h3>
               <button
                 type="button"
                 class="btn-tertiary p-2"
@@ -319,41 +309,6 @@ export class BadgeAwardModal extends LitWrapper {
                 this._state === STATE.SUCCESS
                   ? this._renderSuccess()
                   : html`
-                      ${
-                        this._triggerScope === "bulk"
-                          ? html`
-                              <fieldset>
-                                <legend class="form-label">Recipients</legend>
-                                <div class="mt-2 flex flex-wrap gap-4">
-                                  <label class="flex items-center gap-2"
-                                    ><input
-                                      type="radio"
-                                      name="award-scope"
-                                      value="registered"
-                                      ?disabled=${busy}
-                                      .checked=${this._scope === "registered"}
-                                      @change=${() => {
-                                        this._scope = "registered";
-                                      }}
-                                    />All registered attendees</label
-                                  >
-                                  <label class="flex items-center gap-2"
-                                    ><input
-                                      type="radio"
-                                      name="award-scope"
-                                      value="checked_in"
-                                      ?disabled=${busy}
-                                      .checked=${this._scope === "checked_in"}
-                                      @change=${() => {
-                                        this._scope = "checked_in";
-                                      }}
-                                    />Checked-in attendees only</label
-                                  >
-                                </div>
-                              </fieldset>
-                            `
-                          : ""
-                      }
                       <form class="flex gap-2" @submit=${(event) => this._search(event)}>
                         <label class="grow">
                           <span class="sr-only">Search badges</span>

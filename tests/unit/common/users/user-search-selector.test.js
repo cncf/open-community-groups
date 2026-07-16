@@ -62,4 +62,28 @@ describe("user-search-selector", () => {
     // Added and removes selected users while honoring maxUsers.
     expect(element.selectedUsers).to.deep.equal([]);
   });
+
+  it("renders host award and delete actions in table mode", async () => {
+    const element = await mountLitComponent("user-search-selector", {
+      canAwardBadges: true,
+      displayMode: "table",
+      eventId: "event-1",
+      selectedUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
+      showAwardAll: true,
+    });
+
+    expect(element.querySelector('table[aria-label="Event hosts"]')).to.not.equal(null);
+    expect(element.querySelectorAll("[data-badge-award-open]")).to.have.length(2);
+    expect(element.querySelector("[data-badge-award-open]").dataset.userIds).to.equal("7");
+
+    element.awardsDisabled = true;
+    await element.updateComplete;
+    expect(
+      [...element.querySelectorAll("[data-badge-award-open]")].every((button) => button.disabled),
+    ).to.equal(true);
+
+    element.querySelector(".icon-trash")?.closest("button")?.click();
+    await element.updateComplete;
+    expect(element.selectedUsers).to.deep.equal([]);
+  });
 });

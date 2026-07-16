@@ -65,4 +65,23 @@ describe("speakers-selector", () => {
     expect(element.querySelector('input[name="speakers[0][user_id]"]').value).to.equal("21");
     expect(element.querySelector('input[name="speakers[0][featured]"]').value).to.equal("true");
   });
+
+  it("renders event speakers as a table and deduplicates bulk award recipients", async () => {
+    const element = await mountLitComponent("speakers-selector", {
+      additionalAwardUserIds: ["21", "22"],
+      canAwardBadges: true,
+      displayMode: "table",
+      eventId: "event-1",
+      selectedSpeakers: [{ user_id: "21", username: "grace", featured: true }],
+      showAwardAll: true,
+    });
+
+    expect(element.querySelector('table[aria-label="Event speakers"]')).to.not.equal(null);
+    expect(element.querySelector("[data-badge-award-open]").dataset.userIds).to.equal("21,22");
+    expect(element.querySelectorAll("[data-badge-award-open]")).to.have.length(2);
+
+    element.querySelector(".icon-trash")?.closest("button")?.click();
+    await element.updateComplete;
+    expect(element.selectedSpeakers).to.deep.equal([]);
+  });
 });

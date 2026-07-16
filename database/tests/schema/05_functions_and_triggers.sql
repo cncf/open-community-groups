@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(323);
+select plan(324);
 
 -- ============================================================================
 -- VARIABLES
@@ -108,7 +108,7 @@ select has_function('attach_checkout_session_to_event_purchase', array['uuid', '
 select has_function('attend_event', array['uuid', 'uuid', 'uuid', 'jsonb']::name[]);
 select has_function(
     'award_badge',
-    array['uuid', 'uuid', 'uuid', 'uuid', 'uuid', 'text', 'uuid']::name[]
+    array['uuid', 'uuid', 'uuid', 'uuid', 'uuid[]', 'uuid']::name[]
 );
 select has_function('cancel_event', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('cancel_event_attendee_attendance', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
@@ -227,6 +227,10 @@ select has_function('list_community_roles', '{}'::name[]);
 select has_function('list_community_team_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_event_approved_cfs_submissions', array['uuid']::name[]);
 select has_function('list_event_attendees_ids', array['uuid', 'uuid']::name[]);
+select has_function(
+    'list_event_badge_recipient_ids',
+    array['uuid', 'uuid', 'boolean']::name[]
+);
 select has_function('list_event_categories', array['uuid']::name[]);
 select has_function('list_event_cfs_labels', array['uuid']::name[]);
 select has_function('list_event_cfs_submissions', array['uuid', 'jsonb']::name[]);

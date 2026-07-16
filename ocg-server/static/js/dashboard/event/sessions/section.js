@@ -166,6 +166,7 @@ export class SessionsSection extends LitWrapper {
       this.sessions = this.sessions.map((s) => (s.id === session.id ? session : s));
     }
     this.requestUpdate();
+    this._emitSessionsChanged();
   }
 
   /**
@@ -177,6 +178,18 @@ export class SessionsSection extends LitWrapper {
     if (this.disabled) return;
     this.sessions = this.sessions.filter((s) => s.id !== session.id);
     this.requestUpdate();
+    this._emitSessionsChanged();
+  }
+
+  /** Emits the current sessions after an organizer change. */
+  _emitSessionsChanged() {
+    this.dispatchEvent(
+      new CustomEvent("sessions-changed", {
+        detail: { sessions: this.sessions },
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   /**

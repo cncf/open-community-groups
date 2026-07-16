@@ -75,41 +75,16 @@ pub(crate) struct BadgeAwardDefinition {
     pub name: String,
 }
 
-/// Database input for one event-scoped badge award operation.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Database input for one badge award operation.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct BadgeAwardInput {
     /// Badge definition to award.
     pub badge_id: Uuid,
-    /// Event that defines recipient eligibility.
-    pub event_id: Uuid,
-    /// Server-resolved recipient scope.
-    pub scope: BadgeAwardScope,
+    /// Explicit recipients to validate and award atomically.
+    pub user_ids: Vec<Uuid>,
 
-    /// Recipient for a single-user award.
-    pub user_id: Option<Uuid>,
-}
-
-/// Server-owned event recipient scopes for badge awards.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum BadgeAwardScope {
-    /// All verified checked-in attendees.
-    CheckedIn,
-    /// All verified registered attendees.
-    Registered,
-    /// One verified attendee, host, or speaker.
-    Single,
-}
-
-impl BadgeAwardScope {
-    /// Returns the stable database representation.
-    pub(crate) const fn as_str(self) -> &'static str {
-        match self {
-            Self::CheckedIn => "checked_in",
-            Self::Registered => "registered",
-            Self::Single => "single",
-        }
-    }
+    /// Event that defines recipient eligibility, when applicable.
+    pub event_id: Option<Uuid>,
 }
 
 /// Event source represented in group award history.

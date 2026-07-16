@@ -546,7 +546,7 @@ async fn test_page_team_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 1);
+    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 2);
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)

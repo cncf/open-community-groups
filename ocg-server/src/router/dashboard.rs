@@ -290,13 +290,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             post(dashboard::group::badges::revoke),
         )
         .route("/badges/options", get(dashboard::group::badges::options))
+        .route("/badges/award", post(dashboard::group::badges::award))
         .route(
             "/badges/{badge_id}",
             put(dashboard::group::badges::update).delete(dashboard::group::badges::delete),
         )
         .route(
-            "/events/{event_id}/badges/award",
-            post(dashboard::group::badges::award_event),
+            "/events/{event_id}/badges/recipients",
+            get(dashboard::group::badges::recipients),
         )
         .route_layer(check_selected_group_permission(
             GroupPermission::EventsWrite,

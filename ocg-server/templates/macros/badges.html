@@ -21,14 +21,12 @@
 
 {# Badge award button -#}
 {# Used by event management surfaces for one eligible recipient. -#}
-{% macro recipient_award_button(event_id, user_id, recipient_name, recipient_username, extra_styles, menu_item = false) -%}
+{% macro recipient_award_button(event_id, user_id, extra_styles, menu_item = false) -%}
   <button type="button"
           class="{{ extra_styles }}"
           data-badge-award-open
-          data-award-scope="single"
           data-event-id="{{ event_id }}"
-          data-user-id="{{ user_id }}"
-          data-recipient-label="{{ recipient_name.as_deref() |assigned_or(recipient_username) }}"
+          data-user-ids="{{ user_id }}"
           {% if menu_item %}role="menuitem"{% endif %}>
     {% if menu_item -%}
       <div class="svg-icon size-4 icon-certificate shrink-0 bg-stone-500"></div>

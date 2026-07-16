@@ -1,5 +1,8 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import "/static/js/common/actions-menu.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import "/static/js/common/media/logo-image.js";
+import { computeUserInitials } from "/static/js/common/users/initials.js";
 import "/static/js/common/users/selected-user-pill.js";
 import "/static/js/dashboard/event/sessions/speaker-modal.js";
 import {
@@ -24,6 +27,9 @@ export class SpeakersSelector extends LitWrapper {
    * @property {string} helpText - Optional helper text
    */
   static properties = {
+    additionalAwardUserIds: { type: Array, attribute: false },
+    awardsDisabled: { type: Boolean, attribute: "awards-disabled" },
+    canAwardBadges: { type: Boolean, attribute: "can-award-badges" },
     selectedSpeakers: { type: Array, attribute: "selected-speakers" },
     dashboardType: { type: String, attribute: "dashboard-type" },
     fieldNamePrefix: { type: String, attribute: "field-name-prefix" },
@@ -31,17 +37,26 @@ export class SpeakersSelector extends LitWrapper {
     label: { type: String },
     helpText: { type: String, attribute: "help-text" },
     disabled: { type: Boolean },
+    displayMode: { type: String, attribute: "display-mode" },
+    eventId: { type: String, attribute: "event-id" },
+    showAwardAll: { type: Boolean, attribute: "show-award-all" },
   };
 
   constructor() {
     super();
     this.selectedSpeakers = [];
+    this.additionalAwardUserIds = [];
+    this.awardsDisabled = false;
+    this.canAwardBadges = false;
     this.dashboardType = "group";
     this.fieldNamePrefix = "speakers";
     this.showAddButton = false;
     this.label = "Speakers";
     this.helpText = "Add speakers or presenters.";
     this.disabled = false;
+    this.displayMode = "chips";
+    this.eventId = "";
+    this.showAwardAll = false;
     this._openSpeakerModal = this._openSpeakerModal.bind(this);
     this._handleSpeakerSelected = this._handleSpeakerSelected.bind(this);
   }
@@ -159,6 +174,115 @@ export class SpeakersSelector extends LitWrapper {
     `;
   }
 
+  /** Renders event-level speakers as a simple editable table. */
+  _renderSpeakerTable(speakers) {
+    if (!speakers.length) {
+      return html`<p class="mt-3 text-sm text-stone-500">No event speakers added yet.</p>`;
+    }
+
+    return html`
+      <div class="mt-4 overflow-visible">
+        <table class="w-full text-left text-sm text-stone-600" aria-label="Event speakers">
+          <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
+            <tr>
+              <th scope="col" class="px-4 py-3">Speaker</th>
+              <th scope="col" class="w-[72px] px-4 py-3"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${repeat(
+              speakers,
+              (speaker, index) => `${speakerKey(speaker) || index}`,
+              (speaker) => {
+                const displayName = speaker.name || speaker.username || "";
+                return html`
+                  <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+                    <td class="px-4 py-3">
+                      <div class="flex min-w-0 items-center gap-3">
+                        <logo-image
+                          image-url=${speaker.photo_url || ""}
+                          placeholder=${computeUserInitials(speaker.name, speaker.username, 2)}
+                          size="size-8"
+                          font-size="text-xs"
+                          hide-border="true"
+                        ></logo-image>
+                        <div class="min-w-0">
+                          <div class="flex items-center gap-2 truncate font-medium text-stone-900">
+                            ${displayName}
+                            ${
+                              speaker.featured
+                                ? html`<span
+                                    class="svg-icon size-3 shrink-0 icon-star bg-amber-500"
+                                    title="Featured speaker"
+                                  ></span>`
+                                : ""
+                            }
+                          </div>
+                          <div class="truncate text-xs text-stone-500">@${speaker.username || ""}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                      <details data-actions-menu class="group relative inline-block text-left">
+                        <summary
+                          class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                          aria-label=${`Open speaker actions for ${displayName}`}
+                        >
+                          <span class="svg-icon size-4 icon-vertical-dots"></span>
+                        </summary>
+                        <div
+                          class="dropdown absolute z-20 end-0 top-8 w-48 rounded-lg border border-stone-200 bg-white shadow"
+                        >
+                          <ul class="py-2 text-sm text-stone-700" role="menu">
+                            ${
+                              this.canAwardBadges && this.eventId
+                                ? html`<li>
+                                    <button
+                                      type="button"
+                                      class="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                      data-badge-award-open
+                                      data-event-id=${this.eventId}
+                                      data-user-ids=${speaker.user_id}
+                                      role="menuitem"
+                                      title=${
+                                        this.awardsDisabled
+                                          ? "Save contributor changes before awarding badges."
+                                          : ""
+                                      }
+                                      ?disabled=${this.awardsDisabled}
+                                    >
+                                      <span class="svg-icon size-4 icon-certificate bg-stone-500"></span>
+                                      <span>Award badge</span>
+                                    </button>
+                                  </li>`
+                                : ""
+                            }
+                            <li>
+                              <button
+                                type="button"
+                                class="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                role="menuitem"
+                                ?disabled=${this.disabled}
+                                @click=${() => this._removeSpeaker(speaker)}
+                              >
+                                <span class="svg-icon size-4 icon-trash bg-stone-500"></span>
+                                <span>Delete</span>
+                              </button>
+                            </li>
+                          </ul>
+                        </div>
+                      </details>
+                    </td>
+                  </tr>
+                `;
+              },
+            )}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   /**
    * Renders hidden inputs for form submission.
    * @param {Array} speakers
@@ -183,6 +307,11 @@ export class SpeakersSelector extends LitWrapper {
 
   render() {
     const speakers = this._getSpeakers();
+    const awardUserIds = [
+      ...new Set(
+        [...speakers.map((speaker) => speaker.user_id), ...this.additionalAwardUserIds].filter(Boolean),
+      ),
+    ];
     return html`
       <div class="w-full">
         <div class="flex items-center justify-between gap-4 flex-wrap w-full">
@@ -199,10 +328,30 @@ export class SpeakersSelector extends LitWrapper {
                 </button>`
               : ""
           }
+          ${
+            this.showAwardAll && this.canAwardBadges && this.eventId
+              ? html`<button
+                  type="button"
+                  class="btn-primary-outline btn-mini"
+                  data-badge-award-open
+                  data-event-id=${this.eventId}
+                  data-user-ids=${awardUserIds.join(",")}
+                  title=${this.awardsDisabled ? "Save contributor changes before awarding badges." : ""}
+                  ?disabled=${this.awardsDisabled || awardUserIds.length === 0}
+                >
+                  Award badge to all speakers
+                </button>`
+              : ""
+          }
         </div>
 
         ${this.helpText ? html`<p class="text-sm text-stone-500 mt-1">${this.helpText}</p>` : ""}
-        ${this._renderSpeakerChips(speakers)} ${this._renderHiddenInputs(speakers)}
+        ${
+          this.displayMode === "table"
+            ? this._renderSpeakerTable(speakers)
+            : this._renderSpeakerChips(speakers)
+        }
+        ${this._renderHiddenInputs(speakers)}
 
         <session-speaker-modal
           dashboard-type=${this.dashboardType}

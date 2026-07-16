@@ -514,6 +514,12 @@ mock! {
             group_id: Uuid,
             event_id: Uuid,
         ) -> Result<Vec<Uuid>>;
+        async fn list_event_badge_recipient_ids(
+            &self,
+            group_id: Uuid,
+            event_id: Uuid,
+            checked_in_only: bool,
+        ) -> Result<Vec<Uuid>>;
         async fn list_event_categories(
             &self,
             community_id: Uuid,

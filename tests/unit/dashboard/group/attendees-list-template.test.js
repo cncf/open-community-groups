@@ -362,6 +362,20 @@ describe("dashboard group attendees list template", () => {
     expect(template).not.to.include("data-recipients-url");
   });
 
+  it("offers all, checked-in, and chosen attendee badge recipients", async () => {
+    const template = normalizeWhitespace(await loadTemplate());
+
+    expect(template).to.include('id="attendee-badge-actions-button"');
+    expect(template).to.include("data-attendee-badge-actions-dropdown");
+    expect(template).to.include('data-recipient-scope="all-attendees"');
+    expect(template).to.include("<span>All attendees</span>");
+    expect(template).to.include('data-recipient-scope="checked-in-attendees"');
+    expect(template).to.include("<span>Checked-in attendees</span>");
+    expect(template).to.include('data-selection-action="badge"');
+    expect(template).to.include("data-badge-eligible");
+    expect(template).not.to.include('data-award-scope="bulk"');
+  });
+
   it("renders registration answers in the review modal layout", async () => {
     // Load the attendees list template before checking answers markup.
     const template = normalizeWhitespace(await loadTemplate());

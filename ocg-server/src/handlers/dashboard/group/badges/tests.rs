@@ -20,10 +20,7 @@ use crate::{
         notifications::MockNotificationsManager,
     },
     types::{
-        badges::{
-            AwardBadgeOutcome, BadgeAwardInput, BadgeAwardScope, BadgeInput, GroupAwardedBadges,
-            GroupBadges,
-        },
+        badges::{AwardBadgeOutcome, BadgeAwardInput, BadgeInput, GroupAwardedBadges, GroupBadges},
         permissions::GroupPermission,
     },
 };
@@ -258,111 +255,8 @@ async fn test_add_success() {
 }
 
 #[tokio::test]
-async fn test_award_event_checked_in_success() {
-    // Setup an authorized group session and one checked-in recipient
-    let badge_id = Uuid::new_v4();
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    db.expect_award_badge()
-        .times(1)
-        .withf(move |actor, community, group, input| {
-            *actor == user_id
-                && *community == community_id
-                && *group == group_id
-                && *input
-                    == BadgeAwardInput {
-                        badge_id,
-                        event_id,
-                        scope: BadgeAwardScope::CheckedIn,
-                        user_id: None,
-                    }
-        })
-        .return_once(|_, _, _, _| {
-            Ok(AwardBadgeOutcome {
-                awarded_count: 1,
-                skipped_count: 0,
-            })
-        });
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-
-    // Submit the checked-in recipient award
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri(format!("/dashboard/group/events/{event_id}/badges/award"))
-                .header(COOKIE, format!("id={session_id}"))
-                .header(CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    json!({"badge_id": badge_id, "scope": "checked_in"}).to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    // Check the complete server-resolved set reaches the award mutation
-    assert_eq!(response.status(), StatusCode::CREATED);
-}
-
-#[tokio::test]
-async fn test_award_event_single_requires_recipient() {
-    // Setup an authorized group session
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let group_id = Uuid::new_v4();
-    let session_id = session::Id::default();
-    let user_id = Uuid::new_v4();
-    let mut db = MockDB::new();
-    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
-    expect_group_permission(
-        &mut db,
-        community_id,
-        group_id,
-        user_id,
-        GroupPermission::EventsWrite,
-    );
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .build()
-        .await;
-
-    // Submit a single-recipient award without the recipient identifier
-    let response = router
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri(format!("/dashboard/group/events/{event_id}/badges/award"))
-                .header(COOKIE, format!("id={session_id}"))
-                .header(CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    json!({"badge_id": Uuid::new_v4(), "scope": "single"}).to_string(),
-                ))
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    // Check the handler rejects an unresolved scope before mutation
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-}
-
-#[tokio::test]
-async fn test_award_event_single_success() {
-    // Setup an authorized group session and one recipient
+async fn test_award_success() {
+    // Setup an authorized group session and one explicit recipient
     let badge_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
@@ -388,9 +282,8 @@ async fn test_award_event_single_success() {
                 && *input
                     == BadgeAwardInput {
                         badge_id,
-                        event_id,
-                        scope: BadgeAwardScope::Single,
-                        user_id: Some(recipient_id),
+                        user_ids: vec![recipient_id],
+                        event_id: Some(event_id),
                     }
         })
         .return_once(|_, _, _, _| {
@@ -403,19 +296,124 @@ async fn test_award_event_single_success() {
         .build()
         .await;
 
-    // Submit the single-recipient award
+    // Submit the explicit recipient award
     let response = router
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/dashboard/group/events/{event_id}/badges/award"))
+                .uri("/dashboard/group/badges/award")
                 .header(COOKIE, format!("id={session_id}"))
                 .header(CONTENT_TYPE, "application/json")
                 .body(Body::from(
                     json!({
                         "badge_id": badge_id,
-                        "scope": "single",
-                        "user_id": recipient_id,
+                        "event_id": event_id,
+                        "user_ids": [recipient_id],
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check the complete explicit set reaches the award mutation
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn test_award_requires_recipient() {
+    // Setup an authorized group session
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Submit an award without recipient identifiers
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/dashboard/group/badges/award")
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({"badge_id": Uuid::new_v4(), "user_ids": []}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check the handler rejects an empty set before mutation
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn test_group_scoped_award_success() {
+    // Setup an authorized group session and one recipient
+    let badge_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let recipient_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_award_badge()
+        .times(1)
+        .withf(move |actor, community, group, input| {
+            *actor == user_id
+                && *community == community_id
+                && *group == group_id
+                && *input
+                    == BadgeAwardInput {
+                        badge_id,
+                        user_ids: vec![recipient_id],
+                        event_id: None,
+                    }
+        })
+        .return_once(|_, _, _, _| {
+            Ok(AwardBadgeOutcome {
+                awarded_count: 1,
+                skipped_count: 0,
+            })
+        });
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Submit the group-scoped recipient award
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/dashboard/group/badges/award")
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "badge_id": badge_id,
+                        "user_ids": [recipient_id],
                     })
                     .to_string(),
                 ))
@@ -431,6 +429,57 @@ async fn test_award_event_single_success() {
     assert_eq!(parts.status, StatusCode::CREATED);
     assert_eq!(body.awarded_count, 1);
     assert_eq!(body.skipped_count, 0);
+}
+
+#[tokio::test]
+async fn test_resolve_checked_in_attendee_recipients() {
+    // Setup an authorized event session and its current checked-in recipients
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let recipient_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_list_event_badge_recipient_ids()
+        .times(1)
+        .withf(move |group, event, checked_in_only| {
+            *group == group_id && *event == event_id && *checked_in_only
+        })
+        .return_once(move |_, _, _| Ok(vec![recipient_id]));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Resolve the checked-in bypass option
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!(
+                    "/dashboard/group/events/{event_id}/badges/recipients?scope=checked-in-attendees"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body: serde_json::Value =
+        serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+
+    // Check the explicit recipient list crosses the HTTP boundary
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(body, json!({ "user_ids": [recipient_id] }));
 }
 
 #[test]

@@ -29,7 +29,7 @@ use crate::{
     types::{
         badges::{
             AwardedBadgesFilters, BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS,
-            BADGE_NAME_MAX_CHARS, BadgeAwardInput, BadgeAwardScope, BadgeFilters, BadgeInput,
+            BADGE_NAME_MAX_CHARS, BadgeAwardInput, BadgeFilters, BadgeInput,
         },
         pagination::{self, NavigationLinks},
     },
@@ -149,24 +149,23 @@ pub(crate) async fn add_artwork(
     ))
 }
 
-/// Award one badge to a server-resolved event recipient scope.
+/// Award one badge to an explicit recipient list.
 #[instrument(skip_all, err)]
-pub(crate) async fn award_event(
+pub(crate) async fn award(
     CurrentUser(user): CurrentUser,
     SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(db): State<DynDB>,
-    Path(event_id): Path<Uuid>,
     Json(input): Json<AwardInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
-    // Validate that only single-recipient awards include a user identifier
-    if (input.scope == BadgeAwardScope::Single) != input.user_id.is_some() {
+    // Reject empty recipient sets before entering the audited database mutation
+    if input.user_ids.is_empty() {
         return Err(HandlerError::Deserialization(
-            "single badge awards require exactly one recipient".to_string(),
+            "badge recipients cannot be empty".to_string(),
         ));
     }
 
-    // Resolve and persist the complete validated award set atomically
+    // Validate and persist the complete award set atomically
     let outcome = db
         .award_badge(
             user.user_id,
@@ -174,13 +173,32 @@ pub(crate) async fn award_event(
             group_id,
             &BadgeAwardInput {
                 badge_id: input.badge_id,
-                event_id,
-                scope: input.scope,
-                user_id: input.user_id,
+                user_ids: input.user_ids,
+                event_id: input.event_id,
             },
         )
         .await?;
     Ok((StatusCode::CREATED, Json(outcome)))
+}
+
+/// Resolve attendee badge recipients for one event-owned bypass option.
+#[instrument(skip_all, err)]
+pub(crate) async fn recipients(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+    Query(query): Query<RecipientsQuery>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Resolve the exact current attendee set before opening the generic modal
+    let user_ids = db
+        .list_event_badge_recipient_ids(
+            group_id,
+            event_id,
+            query.scope == RecipientScope::CheckedInAttendees,
+        )
+        .await?;
+
+    Ok(Json(RecipientsOutput { user_ids }))
 }
 
 /// Delete one definition while retaining historical credential snapshots.
@@ -273,16 +291,16 @@ pub(crate) struct ArtworkInput {
     file_name: String,
 }
 
-/// Constrained event award request.
+/// Constrained badge award request.
 #[derive(Debug, Deserialize)]
 pub(crate) struct AwardInput {
     /// Badge definition to award.
     badge_id: Uuid,
-    /// Server-resolved recipient scope.
-    scope: BadgeAwardScope,
+    /// Explicit recipients to validate and award atomically.
+    user_ids: Vec<Uuid>,
 
-    /// Single recipient for the single scope.
-    user_id: Option<Uuid>,
+    /// Event that defines recipient eligibility, when applicable.
+    event_id: Option<Uuid>,
 }
 
 /// Search fields accepted by the shared award modal.
@@ -290,6 +308,30 @@ pub(crate) struct AwardInput {
 pub(crate) struct OptionsQuery {
     /// Badge definition search text.
     query: Option<String>,
+}
+
+/// Attendee bypass option query fields.
+#[derive(Debug, Deserialize)]
+pub(crate) struct RecipientsQuery {
+    /// Attendee set to resolve.
+    scope: RecipientScope,
+}
+
+/// Resolved attendee identifiers returned to the browser.
+#[derive(Debug, serde::Serialize)]
+pub(crate) struct RecipientsOutput {
+    /// Explicit current recipient identifiers.
+    user_ids: Vec<Uuid>,
+}
+
+/// Supported attendee bypass options.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum RecipientScope {
+    /// All verified confirmed attendees.
+    AllAttendees,
+    /// Verified confirmed attendees who are checked in.
+    CheckedInAttendees,
 }
 
 /// Permanent group revocation form fields.

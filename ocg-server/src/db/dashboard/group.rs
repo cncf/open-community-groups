@@ -113,7 +113,7 @@ pub(crate) trait DBDashboardGroup {
         role: &GroupRole,
     ) -> Result<()>;
 
-    /// Awards a badge to a server-resolved event recipient scope.
+    /// Awards a badge to an explicit, atomically validated recipient list.
     async fn award_badge(
         &self,
         actor_user_id: Uuid,
@@ -261,6 +261,14 @@ pub(crate) trait DBDashboardGroup {
 
     /// Lists all verified attendees user ids for an event.
     async fn list_event_attendees_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
+
+    /// Lists verified confirmed attendees eligible for an event badge award.
+    async fn list_event_badge_recipient_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        checked_in_only: bool,
+    ) -> Result<Vec<Uuid>>;
 
     /// Lists all event categories for a community.
     async fn list_event_categories(&self, community_id: Uuid) -> Result<Vec<EventCategory>>;
@@ -655,15 +663,14 @@ where
         input: &BadgeAwardInput,
     ) -> Result<AwardBadgeOutcome> {
         self.fetch_json_one(
-            "select award_badge($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::text, $7::uuid)",
+            "select award_badge($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid[], $6::uuid)",
             &[
                 &actor_user_id,
                 &community_id,
                 &group_id,
                 &input.badge_id,
+                &input.user_ids,
                 &input.event_id,
-                &input.scope.as_str(),
-                &input.user_id,
             ],
         )
         .await
@@ -981,6 +988,21 @@ where
         self.fetch_scalar_one(
             "select list_event_attendees_ids($1::uuid, $2::uuid)",
             &[&group_id, &event_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_event_badge_recipient_ids`]
+    #[instrument(skip(self), err)]
+    async fn list_event_badge_recipient_ids(
+        &self,
+        group_id: Uuid,
+        event_id: Uuid,
+        checked_in_only: bool,
+    ) -> Result<Vec<Uuid>> {
+        self.fetch_scalar_one(
+            "select list_event_badge_recipient_ids($1::uuid, $2::uuid, $3::boolean)",
+            &[&group_id, &event_id, &checked_in_only],
         )
         .await
     }

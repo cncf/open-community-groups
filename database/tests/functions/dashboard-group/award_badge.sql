@@ -1,11 +1,11 @@
--- Tests atomic event badge awards and notification enqueueing.
+-- Tests atomic explicit-recipient badge awards and notification enqueueing.
 
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(28);
+select plan(30);
 
 -- ============================================================================
 -- VARIABLES
@@ -86,10 +86,12 @@ values (:'communityID', :'groupCategoryID', 'Technology');
 insert into "group" (community_id, group_category_id, group_id, name, slug)
 values (:'communityID', :'groupCategoryID', :'groupID', 'Award Group', 'award-group');
 
--- Badge manager and unauthorized viewer roles
+-- Badge manager, accepted team recipient, pending recipient, and unauthorized viewer roles
 insert into group_team (accepted, group_id, role, user_id)
 values
     (true, :'groupID', 'events-manager', :'actorID'),
+    (true, :'groupID', 'viewer', :'eventOrganizerID'),
+    (false, :'groupID', 'viewer', :'outsiderID'),
     (true, :'groupID', 'viewer', :'viewerID');
 
 -- Active event providing the recipient context
@@ -196,23 +198,44 @@ values (:'badgeID', 'Check in', 'Attended Award Event', :'groupID', 'attendee.pn
 -- TESTS
 -- ============================================================================
 
--- Should award only verified checked-in attendees
+-- Should award an explicit attendee list
 select is(
-    award_badge(:'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', 'checked_in', null)::jsonb,
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'checkedInID'::uuid],
+        :'eventID'
+    )::jsonb,
     '{"awarded_count":1,"skipped_count":0}'::jsonb,
-    'Should award only verified checked-in attendees'
+    'Should award an explicit attendee list'
 );
 
--- Should award registered attendees and skip active holders
+-- Should award multiple recipients and skip active holders
 select is(
-    award_badge(:'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', 'registered', null)::jsonb,
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'attendeeID'::uuid, :'checkedInID'::uuid],
+        :'eventID'
+    )::jsonb,
     '{"awarded_count":1,"skipped_count":1}'::jsonb,
-    'Should award registered attendees and skip active holders'
+    'Should award multiple recipients and skip active holders'
 );
 
 -- Should award an event host
 select is(
-    award_badge(:'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', 'single', :'eventHostID')::jsonb,
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'eventHostID'::uuid],
+        :'eventID'
+    )::jsonb,
     '{"awarded_count":1,"skipped_count":0}'::jsonb,
     'Should award an event host'
 );
@@ -220,79 +243,115 @@ select is(
 -- Should reject an event organizer
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', :'eventOrganizerID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventOrganizerID', :'eventID'
     ),
-    'badge recipients cannot be empty',
+    'badge recipient is not eligible',
     'Should reject an event organizer'
 );
 
 -- Should award an event speaker
 select is(
-    award_badge(:'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', 'single', :'eventSpeakerID')::jsonb,
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'eventSpeakerID'::uuid],
+        :'eventID'
+    )::jsonb,
     '{"awarded_count":1,"skipped_count":0}'::jsonb,
     'Should award an event speaker'
 );
 
 -- Should award a session speaker
 select is(
-    award_badge(:'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', 'single', :'sessionSpeakerID')::jsonb,
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'sessionSpeakerID'::uuid],
+        :'eventID'
+    )::jsonb,
     '{"awarded_count":1,"skipped_count":0}'::jsonb,
     'Should award a session speaker'
 );
 
 -- Should skip an active single attendee
 select is(
-    award_badge(:'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', 'single', :'attendeeID')::jsonb,
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'attendeeID'::uuid, :'attendeeID'::uuid],
+        :'eventID'
+    )::jsonb,
     '{"awarded_count":0,"skipped_count":1}'::jsonb,
-    'Should skip an active single attendee'
+    'Should deduplicate recipients before skipping an active attendee'
 );
 
--- Should reject an invalid scope
+-- Should award an accepted group team member without an event
+select is(
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'eventOrganizerID'::uuid],
+        null
+    )::jsonb,
+    '{"awarded_count":1,"skipped_count":0}'::jsonb,
+    'Should award an accepted group team member without an event'
+);
+
+-- Should require at least one recipient
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'other', null)$$,
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, '{}'::uuid[], %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID'
     ),
-    'badge award scope is invalid',
-    'Should reject an invalid scope'
+    'badge recipients cannot be empty',
+    'Should require at least one recipient'
 );
 
--- Should require a single recipient
+-- Should reject a mixed list atomically when one recipient is ineligible
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', null)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid, %L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'attendeeID', :'outsiderID', :'eventID'
     ),
-    'single badge recipient is required',
-    'Should require a single recipient'
+    'badge recipient is not eligible',
+    'Should reject a mixed list atomically when one recipient is ineligible'
 );
 
--- Should reject a user for a bulk scope
-select throws_ok(
-    format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'registered', %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', :'attendeeID'
+-- Should retain no outsider award after atomic validation fails
+select is(
+    (
+        select count(*)::integer
+        from user_badge
+        where user_id = :'outsiderID'
     ),
-    'bulk badge recipient must be empty',
-    'Should reject a user for a bulk scope'
+    0,
+    'Should retain no outsider award after atomic validation fails'
 );
 
--- Should reject a bulk scope without recipients
+-- Should reject a null recipient array
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'registered', null)$$,
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, null, %L::uuid)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'emptyEventID'
     ),
     'badge recipients cannot be empty',
-    'Should reject a bulk scope without recipients'
+    'Should reject a null recipient array'
 );
 
 -- Should reject a canceled event
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'canceledEventID', :'attendeeID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'attendeeID', :'canceledEventID'
     ),
     'event not found',
     'Should reject a canceled event'
@@ -301,8 +360,8 @@ select throws_ok(
 -- Should reject an unknown badge definition
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'unknownBadgeID', :'eventID', :'attendeeID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'unknownBadgeID', :'attendeeID', :'eventID'
     ),
     'badge not found',
     'Should reject an unknown badge definition'
@@ -311,8 +370,8 @@ select throws_ok(
 -- Should reject an unknown group boundary
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'actorID', :'communityID', gen_random_uuid(), :'badgeID', :'eventID', :'attendeeID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', gen_random_uuid(), :'badgeID', :'attendeeID', :'eventID'
     ),
     'group not found',
     'Should reject an unknown group boundary'
@@ -321,48 +380,58 @@ select throws_ok(
 -- Should reject an unknown recipient
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', gen_random_uuid()
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[gen_random_uuid()], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID'
     ),
-    'badge recipients cannot be empty',
+    'badge recipient is not eligible',
     'Should reject an unknown recipient'
 );
 
 -- Should reject an unverified recipient
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', :'unverifiedID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'unverifiedID', :'eventID'
     ),
-    'badge recipients cannot be empty',
+    'badge recipient is not eligible',
     'Should reject an unverified recipient'
 );
 
 -- Should reject a recipient outside the event
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', :'outsiderID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'outsiderID', :'eventID'
     ),
-    'badge recipients cannot be empty',
+    'badge recipient is not eligible',
     'Should reject a recipient outside the event'
 );
 
 -- Should reject a group member without an event
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, null, 'single', %L::uuid)$$,
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], null)$$,
         :'actorID', :'communityID', :'groupID', :'badgeID', :'groupMemberID'
     ),
-    'event not found',
-    'Should reject a group member without an event'
+    'badge recipient is not eligible',
+    'Should reject a non-team group member without an event'
+);
+
+-- Should reject a pending group team member without an event
+select throws_ok(
+    format(
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], null)$$,
+        :'actorID', :'communityID', :'groupID', :'badgeID', :'outsiderID'
+    ),
+    'badge recipient is not eligible',
+    'Should reject a pending group team member without an event'
 );
 
 -- Should reject a viewer before mutation
 select throws_ok(
     format(
-        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, %L::uuid, 'single', %L::uuid)$$,
-        :'viewerID', :'communityID', :'groupID', :'badgeID', :'eventID', :'attendeeID'
+        $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], %L::uuid)$$,
+        :'viewerID', :'communityID', :'groupID', :'badgeID', :'attendeeID', :'eventID'
     ),
     '42501',
     'badge permission denied',
@@ -401,7 +470,7 @@ select is(
 -- Should write issuance audit history after insertion
 select is(
     (select count(*)::integer from audit_log where action = 'badge_awarded' and actor_user_id = :'actorID'),
-    5,
+    6,
     'Should write issuance audit history after insertion'
 );
 
@@ -430,7 +499,14 @@ select lives_ok(
 
 -- Should allow a new credential after permanent revocation
 select is(
-    award_badge(:'actorID', :'communityID', :'groupID', :'badgeID', :'eventID', 'single', :'attendeeID')::jsonb,
+    award_badge(
+        :'actorID',
+        :'communityID',
+        :'groupID',
+        :'badgeID',
+        array[:'attendeeID'::uuid],
+        :'eventID'
+    )::jsonb,
     '{"awarded_count":1,"skipped_count":0}'::jsonb,
     'Should allow a new credential after permanent revocation'
 );

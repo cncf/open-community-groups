@@ -146,6 +146,7 @@
 {{ template "dashboard-group/list_cfs_submission_statuses_for_review.sql" }}
 {{ template "dashboard-group/list_event_approved_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_attendees_ids.sql" }}
+{{ template "dashboard-group/list_event_badge_recipient_ids.sql" }}
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}

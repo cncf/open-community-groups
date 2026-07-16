@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(6);
 
 -- ============================================================================
 -- VARIABLES
@@ -151,6 +151,27 @@ select is(
     list_event_attendees_ids(:'otherGroupID'::uuid, :'eventID'::uuid),
     array[]::uuid[],
     'Returns empty list when wrong group_id is provided'
+);
+
+-- Should resolve all verified confirmed badge recipients
+select is(
+    list_event_badge_recipient_ids(:'groupID'::uuid, :'eventID'::uuid, false),
+    array[:'user0ID'::uuid, :'user1ID'::uuid],
+    'Returns all verified confirmed badge recipients'
+);
+
+-- Should resolve only checked-in badge recipients
+select is(
+    list_event_badge_recipient_ids(:'groupID'::uuid, :'eventID'::uuid, true),
+    array[:'user1ID'::uuid],
+    'Returns only checked-in badge recipients'
+);
+
+-- Should return no badge recipients outside the group boundary
+select is(
+    list_event_badge_recipient_ids(:'otherGroupID'::uuid, :'eventID'::uuid, false),
+    array[]::uuid[],
+    'Returns no badge recipients outside the group boundary'
 );
 
 -- ============================================================================

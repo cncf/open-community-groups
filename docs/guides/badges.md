@@ -33,19 +33,47 @@ snapshotted name, description, criteria, image, and issuer.
 
 ## Award Badges
 
-Use `Award badge to attendees` from an event attendee page to award all registered attendees or
-only checked-in attendees. Use an attendee row action to award one registered attendee. Existing
-event hosts, event speakers, and session speakers have equivalent actions in the event contributor
-controls.
+The attendee page has a dedicated `Award badge` menu with three choices:
 
-Awards are event-scoped. Group membership or team membership alone does not make someone an award
-recipient, and an event organizer is eligible only when they are also a registered attendee, host,
-event speaker, or session speaker.
+- `All attendees` resolves every confirmed attendee with a verified email address and opens the
+  badge picker immediately.
+- `Checked-in attendees` does the same for confirmed attendees who are checked in.
+- `Choose attendees` enables checkboxes in the attendee table. Filters, sorting, and pagination can
+  be changed while choosing; selections remain until they are cleared or canceled. `Continue`
+  opens the badge picker for exactly those selected attendees.
 
-OCG resolves every recipient on the server. The browser never submits an arbitrary recipient
-list. One active award is allowed for each badge and user; bulk awards silently skip current
-holders and report both awarded and skipped totals. If a revoked badge is awarded again, OCG
-creates a new credential URL, opaque subject, and status-list entry.
+An attendee row's three-dot menu awards a badge to that individual attendee. The checkbox workflow
+does not add a separate "select all matching" operation; the two event-wide choices cover all and
+checked-in recipients directly.
+
+The event's Hosts & Speakers tab uses simple tables for hosts and event-level speakers. Their row
+menus can award a badge to one contributor or delete that host or event-level speaker. Adding a
+speaker from this tab adds them at the event level. A second table lists each session-level speaker
+once and shows all of their associated sessions; its row menu can award a badge but session speaker
+assignments are still edited from the Sessions tab.
+
+`Award badge to all hosts` awards every current host. `Award badge to all speakers` combines and
+deduplicates event-level and session-level speakers. Contributor award actions are disabled after
+an unsaved host, speaker, or session change; save the event before awarding so eligibility matches
+the stored event. New-event forms use the same tables for editing but do not offer award actions
+until the event exists.
+
+Accepted members on the Group Team page also have `Award badge` in their row menu when the current
+administrator has event-management permission. Team awards are group-scoped and do not need an
+event. Pending team invitations are not eligible. Team deletion and role controls continue to use
+the separate team-management permission and retain the last-admin safeguard.
+
+For an event-scoped award, every verified recipient must currently be a confirmed attendee, event
+host, event-level speaker, or session-level speaker. An event organizer qualifies only when they
+also hold one of those roles. For an award without an event, every verified recipient must be an
+accepted member of that group's team. Canceled events cannot issue awards.
+
+Every award entry point passes an explicit recipient list to the same badge picker and mutation.
+The server deduplicates the list and validates every recipient atomically; if any recipient is
+ineligible, nobody in that request receives the badge. One active award is allowed for each badge
+and user. Current holders are skipped and the result reports both awarded and skipped totals. If a
+revoked badge is awarded again, OCG creates a new credential URL, opaque subject, and status-list
+entry.
 
 Award insertion and the `badge-awarded` email enqueue happen in one database transaction. Newly
 awarded users receive the badge image, description, criteria, issuing group, and a link to their

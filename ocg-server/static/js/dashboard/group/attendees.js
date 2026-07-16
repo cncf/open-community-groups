@@ -8,6 +8,7 @@ import {
   initializeAttendeeOutsideClickListener,
 } from "/static/js/dashboard/group/attendees/actions-menu.js";
 import { initializeAnswersModal } from "/static/js/dashboard/group/attendees/answers.js";
+import { initializeAttendeeBadgeAwards } from "/static/js/dashboard/group/attendees/badge-awards.js";
 import { initCheckInToggles } from "/static/js/dashboard/group/attendees/check-in.js";
 import {
   initializeAttendeeEmailSelection,
@@ -25,6 +26,7 @@ const initializeAttendeesFeatures = (root = document) => {
   }
 
   initializeAttendeeActionsMenu(attendeesRoot);
+  initializeAttendeeBadgeAwards(attendeesRoot);
   initializeAttendeeEmailSelection(attendeesRoot);
   initializeAnswersModal(attendeesRoot);
   initializeInvitationModal(attendeesRoot);

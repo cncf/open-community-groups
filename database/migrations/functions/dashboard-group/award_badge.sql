@@ -1,12 +1,11 @@
--- Awards a badge atomically to an event recipient scope.
+-- Awards a badge atomically to an explicit eligible recipient list.
 create or replace function award_badge(
     p_actor_user_id uuid,
     p_community_id uuid,
     p_group_id uuid,
     p_badge_id uuid,
-    p_event_id uuid,
-    p_scope text,
-    p_user_id uuid
+    p_user_ids uuid[],
+    p_event_id uuid
 )
 returns json as $$
 declare
@@ -15,6 +14,7 @@ declare
     v_badge_status_list_id uuid;
     v_community_name text;
     v_display_order integer;
+    v_eligible_recipient_ids uuid[];
     v_group_name text;
     v_index_attempts integer;
     v_notification_recipient_ids uuid[] := '{}';
@@ -60,54 +60,36 @@ begin
         raise exception 'badge not found';
     end if;
 
-    -- Lock the active event before resolving its current recipients
-    perform 1
-    from event
-    where event_id = p_event_id
-    and group_id = p_group_id
-    and canceled = false
-    and deleted = false
-    for share;
+    -- Normalize duplicates before validating the complete requested set
+    if p_user_ids is null
+       or cardinality(p_user_ids) = 0
+       or array_position(p_user_ids, null) is not null then
+        raise exception 'badge recipients cannot be empty';
+    end if;
+    select array_agg(distinct recipients.user_id order by recipients.user_id)
+    into v_recipient_user_ids
+    from unnest(p_user_ids) as recipients(user_id);
 
-    if not found then
-        raise exception 'event not found';
-    end if;
+    if p_event_id is not null then
+        -- Lock the active event that defines contributor and attendee eligibility
+        perform 1
+        from event
+        where event_id = p_event_id
+        and group_id = p_group_id
+        and canceled = false
+        and deleted = false
+        for share;
 
-    -- Validate the scope-specific input contract
-    if p_scope not in ('checked_in', 'registered', 'single') then
-        raise exception 'badge award scope is invalid';
-    end if;
-    if p_scope = 'single' and p_user_id is null then
-        raise exception 'single badge recipient is required';
-    end if;
-    if p_scope <> 'single' and p_user_id is not null then
-        raise exception 'bulk badge recipient must be empty';
-    end if;
+        if not found then
+            raise exception 'event not found';
+        end if;
 
-    -- Resolve the complete eligible recipient set from current event state
-    if p_scope = 'checked_in' then
+        -- Validate every recipient as a verified event participant
         select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
-        into v_recipient_user_ids
-        from event_attendee ea
-        join "user" u using (user_id)
-        where ea.checked_in = true
-        and ea.event_id = p_event_id
-        and ea.status = 'confirmed'
-        and u.email_verified = true;
-    elsif p_scope = 'registered' then
-        select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
-        into v_recipient_user_ids
-        from event_attendee ea
-        join "user" u using (user_id)
-        where ea.event_id = p_event_id
-        and ea.status = 'confirmed'
-        and u.email_verified = true;
-    else
-        select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
-        into v_recipient_user_ids
+        into v_eligible_recipient_ids
         from "user" u
         where u.email_verified = true
-        and u.user_id = p_user_id
+        and u.user_id = any(v_recipient_user_ids)
         and (
             exists (
                 select 1
@@ -136,10 +118,20 @@ begin
                 and ss.user_id = u.user_id
             )
         );
+    else
+        -- Validate every recipient as a verified accepted group team member
+        select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
+        into v_eligible_recipient_ids
+        from group_team gt
+        join "user" u using (user_id)
+        where gt.accepted = true
+        and gt.group_id = p_group_id
+        and u.email_verified = true
+        and u.user_id = any(v_recipient_user_ids);
     end if;
 
-    if cardinality(v_recipient_user_ids) = 0 then
-        raise exception 'badge recipients cannot be empty';
+    if cardinality(v_eligible_recipient_ids) <> cardinality(v_recipient_user_ids) then
+        raise exception 'badge recipient is not eligible';
     end if;
 
     -- Serialize recipient badge order and duplicate checks in canonical order
