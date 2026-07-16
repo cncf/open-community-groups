@@ -1,4 +1,4 @@
-import { toggleModalVisibility } from "/static/js/common/common.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import {
   isDatasetReady,
   isElementHidden,
@@ -777,11 +777,25 @@ const syncTicketModalState = (container) => {
 
   ticketTypeOptions.forEach((ticketTypeOption) => {
     if (ticketTypeOption instanceof HTMLInputElement) {
-      ticketTypeOption.disabled =
+      const ticketTypeDisabled =
         meta.canceled ||
         !meta.registrationWindowOpen ||
         !meta.ticketPurchaseAvailable ||
         ticketTypeOption.dataset.ticketPurchasable !== "true";
+      const ticketTypeCardBody = ticketTypeOption
+        .closest('[data-attendance-role="ticket-type-card"]')
+        ?.querySelector('[data-attendance-role="ticket-type-card-body"]');
+
+      ticketTypeOption.disabled = ticketTypeDisabled;
+      if (ticketTypeCardBody instanceof HTMLElement) {
+        ticketTypeCardBody.classList.toggle("bg-white", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("cursor-pointer", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("hover:border-primary-300", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("hover:shadow-sm", !ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("bg-stone-50", ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("cursor-not-allowed", ticketTypeDisabled);
+        ticketTypeCardBody.classList.toggle("opacity-60", ticketTypeDisabled);
+      }
     }
   });
 

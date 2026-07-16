@@ -1,3 +1,5 @@
+const allowedUrlProtocols = new Set(["http:", "https:"]);
+
 /**
  * Resolves a relative or absolute URL against the current origin. Returns an empty
  * string if the URL is invalid to avoid displaying potentially dangerous URLs.
@@ -7,7 +9,11 @@ export const resolveUrl = (url) => {
     return "";
   }
   try {
-    return new URL(url, window.location.origin).toString();
+    const resolvedUrl = new URL(url, window.location.origin);
+    if (!allowedUrlProtocols.has(resolvedUrl.protocol)) {
+      return "";
+    }
+    return resolvedUrl.toString();
   } catch {
     return "";
   }

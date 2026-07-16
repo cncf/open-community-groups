@@ -43,6 +43,23 @@ describe("session-card", () => {
     expect(element.textContent).to.include("Opening Keynote");
     expect(element.textContent).to.include("Talk · Main Hall");
     expect(element.textContent).to.include("+1");
+    expect(element.firstElementChild.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(element.firstElementChild.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(events).to.deep.equal(["edit", "delete"]);
+  });
+
+  it("does not render rollover styles when disabled", async () => {
+    // Render a disabled session card.
+    const element = await mountLitComponent("session-card", {
+      disabled: true,
+      session: { name: "Past session" },
+    });
+
+    // Disabled cards and actions do not expose interactive rollover styles.
+    expect(element.firstElementChild.classList.contains("hover:border-primary-300")).to.equal(false);
+    expect(element.firstElementChild.classList.contains("hover:shadow-sm")).to.equal(false);
+    expect(Array.from(element.querySelectorAll("button")).every((button) => button.disabled)).to.equal(
+      true,
+    );
   });
 });

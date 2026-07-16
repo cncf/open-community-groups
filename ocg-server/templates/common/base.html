@@ -1,3 +1,4 @@
+{% import "macros/meta.html" as meta -%}
 {# Variables for explore URLs #}
 {# TODO: Hardcoded community until we add more #}
 {% let explore_events = "/explore?community[0]=cncf&entity=events" %}
@@ -22,23 +23,19 @@
 
     {#- OG tags #}
     {% block open_graph_meta -%}
-      <meta property="og:type" content="website">
-      <meta property="og:title" content="Open Community Groups">
-      <meta property="og:description" content="{{ site_settings.title }}">
-      {% if let Some(og_image_url) = &site_settings.og_image_url -%}
-        <meta property="og:image" content="{{ og_image_url }}">
-      {% endif -%}
+      {{ meta::open_graph(title = "Open Community Groups" ,
+            description = &site_settings.title,
+            url = "",
+            image_url = &site_settings.og_image_url,
+            image_alt = "Open Community Groups") -}}
     {% endblock open_graph_meta -%}
     {#- End OG tags  #}
 
     {#- Twitter tags #}
     {% block twitter_meta -%}
-      <meta name="twitter:card" content="summary_large_image">
-      <meta name="twitter:title" content="Open Community Groups">
-      <meta name="twitter:description" content="{{ site_settings.title }}">
-      {% if let Some(og_image_url) = &site_settings.og_image_url -%}
-        <meta name="twitter:image" content="{{ og_image_url }}">
-      {% endif -%}
+      {{ meta::twitter(title = "Open Community Groups" ,
+            description = &site_settings.title,
+            image_url = &site_settings.og_image_url) -}}
     {% endblock twitter_meta -%}
     {#- End Twitter tags #}
 

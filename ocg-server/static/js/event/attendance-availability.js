@@ -281,6 +281,7 @@ const renderTicketAvailability = (option, ticket, meta) => {
     cardBody.classList.toggle("bg-white", isSelectable);
     cardBody.classList.toggle("cursor-pointer", isSelectable);
     cardBody.classList.toggle("hover:border-primary-300", isSelectable);
+    cardBody.classList.toggle("hover:shadow-sm", isSelectable);
     cardBody.classList.toggle("bg-stone-50", !isSelectable);
     cardBody.classList.toggle("cursor-not-allowed", !isSelectable);
     cardBody.classList.toggle("opacity-60", !isSelectable);

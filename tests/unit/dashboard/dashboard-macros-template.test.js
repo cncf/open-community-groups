@@ -11,6 +11,20 @@ const loadTemplate = async () => {
 const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard macros template", () => {
+  it("renders the shared dashboard menu shell", async () => {
+    // Load the dashboard macros template before checking the shared shell.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify dashboard shells share the menu title, spinner, and caller wrapper.
+    expect(template).to.include(
+      'macro dashboard_menu_shell(title, spinner_classes = "group hx-spinner -mt-0.5 relative")',
+    );
+    expect(template).to.include('id="dashboard-spinner"');
+    expect(template).to.include('{{ ui::spinner(size = "size-5") -}}');
+    expect(template).to.include("max-h-full w-full flex flex-col flex-1");
+    expect(template).to.include("{{ caller() }}");
+  });
+
   it("passes the curated dashboard user payload to profile modal triggers", async () => {
     // Load the dashboard macros template before checking profile trigger data.
     const template = normalizeWhitespace(await loadTemplate());

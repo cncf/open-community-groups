@@ -1,8 +1,9 @@
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
-import { isSuccessfulXHRStatus, toggleModalVisibility } from "/static/js/common/common.js";
 import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js/common/question-answers.js";
+import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 
 const DATA_KEY = "userEventQuestionsReady";
 const ACTIONS_DROPDOWN_SELECTOR = "[data-user-event-actions-dropdown]";

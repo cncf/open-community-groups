@@ -4,8 +4,14 @@
  * @module form-validation
  */
 
-import { isDashboardPath, isElementInView, toDateTimeLocalInTimezone } from "/static/js/common/common.js";
-import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
+import { isDashboardPath } from "/static/js/common/dashboard-path.js";
+import { toDateTimeLocalInTimezone } from "/static/js/common/datetime.js";
+import {
+  getElementById,
+  initializeOnReadyAndHtmxLoad,
+  isElementInView,
+  markDatasetReady,
+} from "/static/js/common/dom.js";
 import { trimmedNonEmpty, passwordsMatch } from "/static/js/common/validators.js";
 
 // -----------------------------------------------------------------------------

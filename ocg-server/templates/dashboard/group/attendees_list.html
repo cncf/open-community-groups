@@ -269,15 +269,17 @@
               <span>Attendees list CSV</span>
             </a>
           </li>
-          <li>
-            <a href="/dashboard/group/events/{{ event.event_id }}/attendees-with-answers.csv"
-               download
-               role="menuitem"
-               class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap">
-              <div class="svg-icon size-4 icon-csv shrink-0 bg-stone-500"></div>
-              <span>Attendees list CSV (including answers)</span>
-            </a>
-          </li>
+          {% if !registration_questions.is_empty() -%}
+            <li>
+              <a href="/dashboard/group/events/{{ event.event_id }}/attendees-with-answers.csv"
+                 download
+                 role="menuitem"
+                 class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap">
+                <div class="svg-icon size-4 icon-csv shrink-0 bg-stone-500"></div>
+                <span>Attendees list CSV (including answers)</span>
+              </a>
+            </li>
+          {% endif -%}
         </ul>
       </div>
     </div>
@@ -693,6 +695,9 @@
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/refund/approve"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
+                                    data-htmx-response
+                                    data-success-message="Refund approved."
+                                    data-error-message="Something went wrong approving this refund request. Please try again later."
                                     role="menuitem"
                                     class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
                                     type="button">
@@ -709,6 +714,7 @@
                                     data-confirm-action
                                     data-confirm-message="Are you sure you want to reject this refund request?"
                                     data-confirm-text="Yes"
+                                    data-success-message="Refund request rejected."
                                     data-error-message="Something went wrong rejecting this refund request. Please try again later."
                                     role="menuitem"
                                     class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
@@ -724,6 +730,9 @@
                                     hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ attendee.user.user_id }}/refund/approve"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
+                                    data-htmx-response
+                                    data-success-message="Refund approved."
+                                    data-error-message="Something went wrong approving this refund request. Please try again later."
                                     role="menuitem"
                                     class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left"
                                     type="button">
@@ -822,6 +831,7 @@
                 data-confirm-action
                 data-confirm-message="Are you sure you want to reject this refund request?"
                 data-confirm-text="Yes"
+                data-success-message="Refund request rejected."
                 data-error-message="Something went wrong rejecting this refund request. Please try again later."
                 class="btn-primary-outline hidden">
           <span data-refund-action-label>Reject refund</span>
@@ -830,6 +840,9 @@
                 type="button"
                 hx-indicator="#dashboard-spinner"
                 hx-disabled-elt="this"
+                data-htmx-response
+                data-success-message="Refund approved."
+                data-error-message="Something went wrong approving this refund request. Please try again later."
                 class="btn-primary hidden">
           <span data-refund-action-label>Approve refund</span>
         </button>

@@ -74,6 +74,8 @@ export const applyCopiedEventDetails = async (details) => {
   setCategoryValue(details);
   setSelectValue("kind_id", details.kind);
   setImageFieldValue("logo_url", details.logo_url);
+  setImageFieldValue("banner_url", details.banner_url);
+  setImageFieldValue("banner_mobile_url", details.banner_mobile_url);
   setTextValue("description_short", details.description_short);
   updateMarkdownContent(details.description);
   setTextValue("capacity", details.capacity);

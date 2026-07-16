@@ -1,8 +1,7 @@
 import "/static/js/common/svg-spinner.js";
 import { clearChartElement, initChart, showChartEmptyState } from "/static/js/common/charts/charts.js";
-import { debounce } from "/static/js/common/common.js";
 import { isDatasetReady, markDatasetReady } from "/static/js/common/dom.js";
-import { parseJsonText } from "/static/js/common/utils.js";
+import { debounce, parseJsonText } from "/static/js/common/utils.js";
 
 /**
  * Render a chart or show an empty state based on data availability.

@@ -1,5 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
-import { computeUserInitials } from "/static/js/common/common.js";
+import { computeUserInitials } from "/static/js/common/users/initials.js";
 import { renderTrustedHtml } from "/static/js/common/trusted-lit-html.js";
 
 /**

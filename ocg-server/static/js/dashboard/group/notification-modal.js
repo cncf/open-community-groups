@@ -1,4 +1,4 @@
-import { toggleModalVisibility } from "/static/js/common/common.js";
+import { toggleModalVisibility } from "/static/js/common/modals/modal-lifecycle.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { bindModalControlClicks } from "/static/js/common/modals/modal-lifecycle.js";

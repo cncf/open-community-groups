@@ -249,7 +249,7 @@
                         <li>
                           <form hx-post="/dashboard/group/events/{{ event.event_id }}/attendees/invite"
                                 hx-indicator="#dashboard-spinner"
-                                hx-disabled-elt="button[type=submit]"
+                                hx-disabled-elt="find button[type=submit]"
                                 data-htmx-response
                                 data-success-message="Invitation sent."
                                 data-error-message="Something went wrong sending this invitation. Please try again later.">

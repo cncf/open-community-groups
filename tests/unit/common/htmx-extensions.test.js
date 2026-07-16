@@ -24,8 +24,7 @@ import {
 
 // Convert form data into comparable entries.
 const formDataToEntries = (formData) => Array.from(formData.entries());
-const waitForDelay = (delay = 0) =>
-  new Promise((resolve) => setTimeout(resolve, delay));
+const waitForDelay = (delay = 0) => new Promise((resolve) => setTimeout(resolve, delay));
 
 // Set the loaded commit SHA meta tag for deployment header checks.
 const setLoadedCommitSha = (commitSha) => {
@@ -74,6 +73,28 @@ describe("htmx extensions", () => {
 
     // Blank strings and zero values are removed while text is trimmed.
     expect(formDataToEntries(parameters)).to.deep.equal([["name", "Spring meetup"]]);
+  });
+
+  it("keeps empty values explicitly required by a form contract", () => {
+    // Build a form that must submit an empty nested field to clear its value.
+    document.body.innerHTML = `
+      <form data-hx-keep-empty="payment_recipient[recipient_id]">
+        <input name="payment_recipient[provider]" value="stripe">
+        <input name="payment_recipient[recipient_id]" value="   ">
+      </form>
+    `;
+    const form = document.querySelector("form");
+    const parameters = new FormData(form);
+    const extension = createNoEmptyValuesExtension(true);
+
+    // Encode parameters through the form's empty-value filtering contract.
+    extension.encodeParameters(null, parameters, form);
+
+    // The marked blank remains while normal string normalization still applies.
+    expect(formDataToEntries(parameters)).to.deep.equal([
+      ["payment_recipient[provider]", "stripe"],
+      ["payment_recipient[recipient_id]", ""],
+    ]);
   });
 
   it('keeps "0" while still trimming and removing blank values for the keep-zero extension', () => {
@@ -501,8 +522,7 @@ describe("htmx extensions", () => {
     };
     const successfulOtherRefresh = {
       status: 204,
-      getResponseHeader: (name) =>
-        name === "HX-Trigger" ? "refresh-sidebar, refresh-body" : null,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-sidebar, refresh-body" : null),
     };
     const failedRefresh = {
       status: 500,
@@ -613,8 +633,7 @@ describe("htmx extensions", () => {
         xhr: {
           status: 201,
           responseText: "",
-          getResponseHeader: (name) =>
-            name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+          getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-community-dashboard-table" : null),
         },
       },
     });
@@ -635,8 +654,7 @@ describe("htmx extensions", () => {
     const xhr = {
       status: 201,
       responseText: "",
-      getResponseHeader: (name) =>
-        name === "HX-Trigger" ? "refresh-community-dashboard-table" : null,
+      getResponseHeader: (name) => (name === "HX-Trigger" ? "refresh-community-dashboard-table" : null),
     };
 
     // Handle the response before HTMX removes the source element.

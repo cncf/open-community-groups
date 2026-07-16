@@ -197,6 +197,9 @@ describe("event-selector", () => {
         <option value="">Select</option>
         <option value="workshop">Workshop</option>
       </select>
+      <image-field name="logo_url"></image-field>
+      <image-field name="banner_url"></image-field>
+      <image-field name="banner_mobile_url"></image-field>
       <input id="description_short" />
       <textarea id="description-textarea"></textarea>
       <input id="capacity" />
@@ -261,6 +264,14 @@ describe("event-selector", () => {
     const ticketTypesEditor = document.getElementById("ticket-types-ui");
     const discountCodesEditor = document.getElementById("discount-codes-ui");
 
+    // Track copied image values through the image field public API.
+    const imageFields = document.querySelectorAll("image-field");
+    imageFields.forEach((field) => {
+      field.setValue = (value) => {
+        field.value = value;
+      };
+    });
+
     // Stub timezone dispatch while copied timezone data is applied.
     const timezoneSelector = document.querySelector(
       "timezone-selector[name='timezone']",
@@ -291,6 +302,8 @@ describe("event-selector", () => {
       category_name: "Conference",
       kind: "workshop",
       logo_url: "https://example.com/logo.png",
+      banner_url: "https://example.com/banner.png",
+      banner_mobile_url: "https://example.com/banner-mobile.png",
       description_short: "Short description",
       description: "Long description",
       capacity: 300,
@@ -350,6 +363,15 @@ describe("event-selector", () => {
     );
     expect(document.getElementById("category_id")?.value).to.equal("10");
     expect(document.getElementById("kind_id")?.value).to.equal("workshop");
+    expect(
+      document.querySelector('image-field[name="logo_url"]')?.value,
+    ).to.equal("https://example.com/logo.png");
+    expect(
+      document.querySelector('image-field[name="banner_url"]')?.value,
+    ).to.equal("https://example.com/banner.png");
+    expect(
+      document.querySelector('image-field[name="banner_mobile_url"]')?.value,
+    ).to.equal("https://example.com/banner-mobile.png");
     expect(document.getElementById("description_short")?.value).to.equal(
       "Short description",
     );

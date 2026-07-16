@@ -1,6 +1,6 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import { computeUserInitials } from "/static/js/common/common.js";
+import { computeUserInitials } from "/static/js/common/users/initials.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
 import { dispatchUserModalOpenEvent } from "/static/js/common/users/user-modal-event.js";
 import "/static/js/common/media/logo-image.js";
@@ -74,9 +74,7 @@ export class UserChip extends LitWrapper {
     const isClickable = this.displayModal;
     const initials = computeUserInitials(name, username, 2);
     const cardSize = this.featured ? "px-5 py-4 md:py-5" : "px-4 py-3";
-    const borderState = this.featured
-      ? "border-amber-200 bg-amber-50/50 shadow-sm"
-      : "border-stone-200 bg-white";
+    const borderState = this.featured ? "border-amber-200 bg-amber-50/50" : "border-stone-200 bg-white";
     const avatarSize = this.featured ? "size-18 md:size-22" : "size-15 md:size-18";
     const nameSize = this.featured ? "text-lg md:text-xl" : "text-base";
     const jobSize = this.featured ? "text-sm md:text-base" : "text-[0.8rem]";
@@ -87,10 +85,12 @@ export class UserChip extends LitWrapper {
           class="inline-flex items-center gap-2 rounded-full ps-1 pe-2 py-1 ${
             this.featured
               ? "bg-amber-50/50 border border-amber-200 text-amber-800"
-              : "bg-stone-100 text-stone-700"
+              : "bg-stone-100 border border-stone-200 text-stone-700"
           } ${
             isClickable
-              ? `cursor-pointer ${this.featured ? "hover:border-amber-400 hover:bg-amber-100/70" : "hover:bg-stone-200"} transition-colors`
+              ? `cursor-pointer ${
+                  this.featured ? "hover:border-amber-400" : "hover:border-primary-300"
+                } hover:shadow-sm transition-all`
               : ""
           }"
           @click=${isClickable ? this._handleClick : null}

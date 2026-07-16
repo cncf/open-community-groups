@@ -1,28 +1,30 @@
 import { expect } from "@open-wc/testing";
 
 import {
-  computeUserInitials,
   convertDateTimeLocalToISO,
   convertDateToDateTimeLocalInTz,
   convertTimestampToDateTimeLocal,
   convertTimestampToDateTimeLocalInTz,
+  resolveEventTimezone,
+  toDateTimeLocalInTimezone,
+  toUtcIsoInTimezone,
+} from "/static/js/common/datetime.js";
+import { isDashboardPath, scrollToDashboardTop } from "/static/js/common/dashboard-path.js";
+import {
   applyBrokenImagePlaceholder,
   applyBrokenImagePlaceholders,
   BROKEN_IMAGE_PLACEHOLDER_URL,
   clearBrokenImagePlaceholder,
-  hideLoadingSpinner,
-  isDashboardPath,
-  isObjectEmpty,
+} from "/static/js/common/media/broken-images.js";
+import { hideLoadingSpinner, showLoadingSpinner } from "/static/js/common/loading-spinner.js";
+import {
   lockBodyScroll,
   resetBodyScrollLock,
-  resolveEventTimezone,
-  scrollToDashboardTop,
-  showLoadingSpinner,
-  toDateTimeLocalInTimezone,
-  toUtcIsoInTimezone,
   toggleModalVisibility,
   unlockBodyScroll,
-} from "/static/js/common/common.js";
+} from "/static/js/common/modals/modal-lifecycle.js";
+import { computeUserInitials } from "/static/js/common/users/initials.js";
+import { isObjectEmpty } from "/static/js/common/utils.js";
 import { resetDom, setLocationPath, mockScrollTo } from "/tests/unit/test-utils/dom.js";
 
 describe("common utilities", () => {

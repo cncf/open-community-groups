@@ -135,6 +135,7 @@ describe("dashboard group attendees list template", () => {
     expect(actionsMenu).to.include("Invite attendee");
     expect(actionsMenu).to.include("border-t border-stone-100");
     expect(actionsMenu).to.include("Attendees list CSV");
+    expect(actionsMenu).to.include("{% if !registration_questions.is_empty() -%}");
     expect(actionsMenu).to.include("Attendees list CSV (including answers)");
     expect(actionsMenu).not.to.include("> Actions <");
     expect(actionsMenu).not.to.include("> Exports <");

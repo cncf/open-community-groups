@@ -104,6 +104,11 @@ describe("attendance availability", () => {
     expect(
       document.querySelector('[data-attendance-role="ticket-type-option"]')?.disabled,
     ).to.equal(false);
+    const ticketCardBody = document.querySelector(
+      '[data-attendance-role="ticket-type-card-body"]',
+    );
+    expect(ticketCardBody.classList.contains("hover:border-primary-300")).to.equal(true);
+    expect(ticketCardBody.classList.contains("hover:shadow-sm")).to.equal(true);
     expect(
       document.querySelector('[data-attendance-role="ticket-type-status-label"]')?.textContent,
     ).to.equal("Available now");
@@ -128,7 +133,7 @@ describe("attendance availability", () => {
               class="sr-only"
               checked
             />
-            <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer"></div>
+            <div data-attendance-role="ticket-type-card-body" class="bg-white cursor-pointer hover:border-primary-300 hover:shadow-sm"></div>
             <div data-attendance-role="ticket-type-summary"></div>
             <span data-attendance-role="ticket-type-status-dot" class="bg-green-500"></span>
             <span data-attendance-role="ticket-type-status-label">Available now</span>
@@ -142,6 +147,9 @@ describe("attendance availability", () => {
     const ticketOption = container.querySelector('[data-attendance-role="ticket-type-option"]');
     const ticketStatusLabel = container.querySelector(
       '[data-attendance-role="ticket-type-status-label"]',
+    );
+    const ticketCardBody = container.querySelector(
+      '[data-attendance-role="ticket-type-card-body"]',
     );
     renderAttendanceAvailability(container, {
       attendee_approval_required: false,
@@ -177,6 +185,8 @@ describe("attendance availability", () => {
     expect(message.classList.contains("hidden")).to.equal(false);
     expect(ticketOption.disabled).to.equal(true);
     expect(ticketOption.checked).to.equal(false);
+    expect(ticketCardBody.classList.contains("hover:border-primary-300")).to.equal(false);
+    expect(ticketCardBody.classList.contains("hover:shadow-sm")).to.equal(false);
     expect(ticketStatusLabel.textContent).to.equal("Registration not open");
   });
 

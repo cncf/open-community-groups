@@ -3,7 +3,6 @@ import {
   toCategorySeries,
   createAreaChart,
   createMonthlyBarChart,
-  createDailyBarChart,
   createHorizontalBarChart,
   createPieChart,
   buildStackedMonthlySeries,
@@ -15,44 +14,75 @@ import {
   hasTimeSeriesData,
   hasStackedTimeSeriesData,
 } from "/static/js/common/charts/charts.js";
+import { initializePageViewCharts } from "/static/js/dashboard/analytics-page-views.js";
 import { deferUntilHtmxSettled } from "/static/js/dashboard/common.js";
 import { initializeOnReadyAndHtmxLoad, setElementHidden } from "/static/js/common/dom.js";
 import {
   addRenderedChart,
   initializeChartsFromJsonMarker,
   registerChartResizeHandler,
-  renderChart,
 } from "/static/js/common/charts/stats.js";
 
 const COMMUNITY_ANALYTICS_DATA_SELECTOR = "[data-community-analytics]";
 const COMMUNITY_ANALYTICS_READY_KEY = "communityAnalyticsReady";
-
-/**
- * Builds a page-view chart from a small local chart spec.
- * @param {Object} config - Page-view chart configuration.
- * @param {Object} config.stats - Page views stats payload.
- * @param {Object} config.palette - Theme palette.
- * @param {string} config.elementId - Chart container ID.
- * @param {string} config.title - Chart title.
- * @param {string} config.description - Chart description.
- * @param {Array<string>} config.path - Payload path for chart data.
- * @param {"monthly"|"daily"} config.kind - Chart kind.
- * @returns {echarts.ECharts|null} Initialized chart.
- */
-const buildPageViewChart = ({ stats, palette, elementId, title, description, path, kind }) => {
-  const data = path.reduce((value, key) => value?.[key], stats) || [];
-  const createOptions =
-    kind === "monthly"
-      ? () =>
-          createMonthlyBarChart(title, "Page views", data, palette, {
-            description,
-            useTimeAxis: true,
-            reservePeriodStart: true,
-          })
-      : () => createDailyBarChart(title, "Page views", data, palette, { description });
-
-  return renderChart(elementId, createOptions(), hasChartData(data));
-};
+const COMMUNITY_PAGE_VIEW_CHARTS = [
+  {
+    elementId: "total-views-monthly-chart",
+    title: "Monthly total page views",
+    description: "All tracked views grouped by month",
+    path: ["total", "per_month_views"],
+    kind: "monthly",
+  },
+  {
+    elementId: "total-views-daily-chart",
+    title: "Daily total page views",
+    description: "All tracked views over the last 30 days",
+    path: ["total", "per_day_views"],
+    kind: "daily",
+  },
+  {
+    elementId: "community-views-monthly-chart",
+    title: "Monthly community page views",
+    description: "Community page views grouped by month",
+    path: ["community", "per_month_views"],
+    kind: "monthly",
+  },
+  {
+    elementId: "community-views-daily-chart",
+    title: "Daily community page views during the last month",
+    description: "Community page views over the last 30 days",
+    path: ["community", "per_day_views"],
+    kind: "daily",
+  },
+  {
+    elementId: "groups-views-monthly-chart",
+    title: "Monthly group page views",
+    description: "Group page views grouped by month",
+    path: ["groups", "per_month_views"],
+    kind: "monthly",
+  },
+  {
+    elementId: "groups-views-daily-chart",
+    title: "Daily group page views during the last month",
+    description: "Group page views over the last 30 days",
+    path: ["groups", "per_day_views"],
+    kind: "daily",
+  },
+  {
+    elementId: "events-views-monthly-chart",
+    title: "Monthly event page views",
+    description: "Event page views grouped by month",
+    path: ["events", "per_month_views"],
+    kind: "monthly",
+  },
+  {
+    elementId: "events-views-daily-chart",
+    title: "Daily event page views during the last month",
+    description: "Event page views over the last 30 days",
+    path: ["events", "per_day_views"],
+    kind: "daily",
+  },
+];
 
 /**
  * Render page view charts.
@@ -60,70 +90,8 @@ const buildPageViewChart = ({ stats, palette, elementId, title, description, pat
  * @param {Object} palette - Theme palette.
  * @returns {Array<echarts.ECharts>} Initialized charts.
  */
-const initPageViewsCharts = async (pageViews = {}, palette) => {
-  await loadEChartsScript();
-
-  return [
-    {
-      elementId: "total-views-monthly-chart",
-      title: "Monthly total page views",
-      description: "All tracked views grouped by month",
-      path: ["total", "per_month_views"],
-      kind: "monthly",
-    },
-    {
-      elementId: "total-views-daily-chart",
-      title: "Daily total page views",
-      description: "All tracked views over the last 30 days",
-      path: ["total", "per_day_views"],
-      kind: "daily",
-    },
-    {
-      elementId: "community-views-monthly-chart",
-      title: "Monthly community page views",
-      description: "Community page views grouped by month",
-      path: ["community", "per_month_views"],
-      kind: "monthly",
-    },
-    {
-      elementId: "community-views-daily-chart",
-      title: "Daily community page views during the last month",
-      description: "Community page views over the last 30 days",
-      path: ["community", "per_day_views"],
-      kind: "daily",
-    },
-    {
-      elementId: "groups-views-monthly-chart",
-      title: "Monthly group page views",
-      description: "Group page views grouped by month",
-      path: ["groups", "per_month_views"],
-      kind: "monthly",
-    },
-    {
-      elementId: "groups-views-daily-chart",
-      title: "Daily group page views during the last month",
-      description: "Group page views over the last 30 days",
-      path: ["groups", "per_day_views"],
-      kind: "daily",
-    },
-    {
-      elementId: "events-views-monthly-chart",
-      title: "Monthly event page views",
-      description: "Event page views grouped by month",
-      path: ["events", "per_month_views"],
-      kind: "monthly",
-    },
-    {
-      elementId: "events-views-daily-chart",
-      title: "Daily event page views during the last month",
-      description: "Event page views over the last 30 days",
-      path: ["events", "per_day_views"],
-      kind: "daily",
-    },
-  ]
-    .map((config) => buildPageViewChart({ ...config, stats: pageViews, palette }))
-    .filter(Boolean);
-};
+const initPageViewsCharts = (pageViews = {}, palette) =>
+  initializePageViewCharts(pageViews, palette, COMMUNITY_PAGE_VIEW_CHARTS);
 
 /**
  * Render groups charts.

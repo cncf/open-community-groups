@@ -980,9 +980,81 @@ test.describe("group dashboard attendees tab", () => {
         "hx-put",
         /\/refund\/approve$/,
       );
+      await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
+        "data-success-message",
+        "Refund approved.",
+      );
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
         "hx-put",
         /\/refund\/reject$/,
+      );
+      await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
+        "data-success-message",
+        "Refund request rejected.",
+      );
+    });
+
+    test("organizer sees success alerts after approving and rejecting refunds", async ({
+      organizerGroupPage,
+    }) => {
+      // Return successful refund responses without changing seeded payment state.
+      await organizerGroupPage.route("**/refund/approve", (route) => route.fulfill({ status: 204 }));
+      await organizerGroupPage.route("**/refund/reject", (route) => route.fulfill({ status: 204 }));
+
+      // Load the pending refund actions.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Member One",
+      });
+      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+
+      // Approve the refund and verify success feedback.
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu.getByRole("menuitem", { name: "Approve refund" }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund approved.");
+      await organizerGroupPage.locator(".swal2-confirm").click();
+
+      // Reject the refund and verify success feedback.
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
+      await organizerGroupPage.getByRole("button", { name: "Yes" }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund request rejected.");
+    });
+
+    test("organizer sees error alerts when refund actions fail", async ({ organizerGroupPage }) => {
+      // Return failed refund responses without changing seeded payment state.
+      await organizerGroupPage.route("**/refund/approve", (route) => route.fulfill({ status: 500 }));
+      await organizerGroupPage.route("**/refund/reject", (route) => route.fulfill({ status: 500 }));
+
+      // Load the pending refund actions.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
+      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Member One",
+      });
+      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+
+      // Fail refund approval and verify error feedback.
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu.getByRole("menuitem", { name: "Approve refund" }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Something went wrong approving this refund request. Please try again later.",
+      );
+      await organizerGroupPage.locator(".swal2-confirm").click();
+
+      // Fail refund rejection and verify error feedback.
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
+      await organizerGroupPage.getByRole("button", { name: "Yes" }).click();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+        "Something went wrong rejecting this refund request. Please try again later.",
       );
     });
 
