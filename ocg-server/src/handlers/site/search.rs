@@ -33,6 +33,9 @@ use crate::{
 
 const SEARCH_LIMIT: usize = 4;
 
+#[cfg(test)]
+mod tests;
+
 /// Handler that renders the public search page.
 #[instrument(skip_all, err)]
 pub(crate) async fn page(
