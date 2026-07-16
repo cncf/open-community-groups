@@ -32,6 +32,9 @@ pub struct AllianceFull {
     pub display_name: String,
     /// Whether group team management is restricted to alliance roles.
     pub group_team_management_restricted: bool,
+    /// Whether private intentional dating introductions are enabled across this alliance.
+    #[serde(default)]
+    pub intentional_dating_enabled: bool,
     /// URL to the logo image shown in the page header.
     pub logo_url: String,
     /// Whether mentorship requests are enabled across this alliance.
@@ -120,6 +123,9 @@ pub struct AllianceSummary {
     /// Whether group `CoffeeMeet` features are enabled across this alliance.
     #[serde(default = "default_true")]
     pub coffee_meet_enabled: bool,
+    /// Whether private intentional dating introductions are enabled across this alliance.
+    #[serde(default)]
+    pub intentional_dating_enabled: bool,
     /// URL to the logo image.
     pub logo_url: String,
     /// Whether mentorship requests are enabled across this alliance.

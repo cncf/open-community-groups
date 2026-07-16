@@ -81,6 +81,7 @@ begin
         google_photos_url = nullif(p_group->>'google_photos_url', ''),
         github_url = nullif(p_group->>'github_url', ''),
         instagram_url = nullif(p_group->>'instagram_url', ''),
+        intentional_dating_enabled = coalesce((p_group->>'intentional_dating_enabled')::boolean, false),
         linkedin_url = nullif(p_group->>'linkedin_url', ''),
         location = jsonb_geography_point(p_group),
         logo_url = nullif(p_group->>'logo_url', ''),

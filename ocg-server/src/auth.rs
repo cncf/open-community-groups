@@ -605,6 +605,13 @@ pub(crate) struct User {
     pub has_password: Option<bool>,
     /// User's interests.
     pub interests: Option<Vec<String>>,
+    /// Whether the user privately opts into intentional dating introductions.
+    #[serde(default)]
+    pub intentional_dating_enabled: bool,
+    /// Private dating goals visible only to eligible community admins.
+    pub intentional_dating_goals: Option<String>,
+    /// Private dating preferences visible only to eligible community admins.
+    pub intentional_dating_preferences: Option<String>,
     /// User's `LinkedIn` URL.
     pub linkedin_url: Option<String>,
     /// Whether the user offers mentorship services for businesses.

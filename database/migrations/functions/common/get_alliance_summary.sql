@@ -7,6 +7,7 @@ returns json as $$
         'alliance_id', alliance_id,
         'coffee_meet_enabled', coffee_meet_enabled,
         'display_name', display_name,
+        'intentional_dating_enabled', intentional_dating_enabled,
         'logo_url', logo_url,
         'mentorship_enabled', mentorship_enabled,
         'mock_interviews_enabled', mock_interviews_enabled,

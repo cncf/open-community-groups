@@ -168,6 +168,16 @@ pub(crate) struct UserDetails {
     /// User's interests.
     #[garde(custom(trimmed_non_empty_tag_vec))]
     pub interests: Option<Vec<String>>,
+    /// Whether the user privately opts into intentional dating introductions.
+    #[serde(default)]
+    #[garde(skip)]
+    pub intentional_dating_enabled: bool,
+    /// Private dating goals visible only to eligible community admins.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub intentional_dating_goals: Option<String>,
+    /// Private dating preferences visible only to eligible community admins.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub intentional_dating_preferences: Option<String>,
     /// User's `LinkedIn` URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,
@@ -236,6 +246,9 @@ impl From<crate::auth::User> for UserDetails {
             facebook_url: user.facebook_url,
             github_url: user.github_url,
             interests: user.interests,
+            intentional_dating_enabled: user.intentional_dating_enabled,
+            intentional_dating_goals: user.intentional_dating_goals,
+            intentional_dating_preferences: user.intentional_dating_preferences,
             linkedin_connected: user
                 .provider
                 .as_ref()

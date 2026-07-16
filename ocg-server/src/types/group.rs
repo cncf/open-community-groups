@@ -159,6 +159,9 @@ pub struct GroupFull {
     /// Whether `CoffeeMeet` is enabled for this group.
     #[serde(default = "default_true")]
     pub coffee_meet_enabled: bool,
+    /// Whether private intentional dating introductions are enabled for this group.
+    #[serde(default)]
+    pub intentional_dating_enabled: bool,
     /// ISO country code of the group.
     pub country_code: Option<String>,
     /// Full country name of the group.
@@ -235,6 +238,11 @@ impl GroupFull {
     /// Returns true when mentorship requests are available for this group and alliance.
     pub fn mentorship_available(&self) -> bool {
         self.mentorship_enabled && self.alliance.mentorship_enabled
+    }
+
+    /// Returns true when private intentional dating introductions are available.
+    pub fn intentional_dating_available(&self) -> bool {
+        self.intentional_dating_enabled && self.alliance.intentional_dating_enabled
     }
 
     /// Returns true when mock interview requests are available for this group and alliance.
@@ -407,5 +415,22 @@ mod tests {
         group.mock_interviews_enabled = true;
         group.alliance.mock_interviews_enabled = false;
         assert!(!group.mock_interviews_available());
+    }
+
+    #[test]
+    fn intentional_dating_available_requires_group_and_alliance_enabled() {
+        let mut group = GroupFull {
+            intentional_dating_enabled: true,
+            ..Default::default()
+        };
+        group.alliance.intentional_dating_enabled = true;
+        assert!(group.intentional_dating_available());
+
+        group.intentional_dating_enabled = false;
+        assert!(!group.intentional_dating_available());
+
+        group.intentional_dating_enabled = true;
+        group.alliance.intentional_dating_enabled = false;
+        assert!(!group.intentional_dating_available());
     }
 }

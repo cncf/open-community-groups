@@ -20,6 +20,10 @@ begin
             (p_data->>'group_team_management_restricted')::boolean,
             group_team_management_restricted
         ),
+        intentional_dating_enabled = coalesce(
+            (p_data->>'intentional_dating_enabled')::boolean,
+            intentional_dating_enabled
+        ),
         logo_url = coalesce(p_data->>'logo_url', logo_url),
         mentorship_enabled = coalesce(
             (p_data->>'mentorship_enabled')::boolean,

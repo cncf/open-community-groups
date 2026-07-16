@@ -290,6 +290,20 @@ mock! {
             &self,
             query: &str,
         ) -> Result<Vec<crate::db::dashboard::common::User>>;
+        async fn add_intentional_dating_intro(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            group_id: Uuid,
+            first_user_id: Uuid,
+            second_user_id: Uuid,
+            admin_notes: Option<String>,
+        ) -> Result<Uuid>;
+        async fn list_intentional_dating_opt_ins(
+            &self,
+            alliance_id: Uuid,
+            group_id: Option<Uuid>,
+        ) -> Result<Vec<crate::db::dashboard::common::IntentionalDatingOptIn>>;
         async fn update_group(
             &self,
             actor_user_id: Uuid,
@@ -1168,6 +1182,10 @@ mock! {
             &self,
             user_id: Uuid,
         ) -> Result<Vec<crate::types::mock_interviews::UserMockInterviewMatch>>;
+        async fn list_user_mock_interview_requests(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<crate::types::mock_interviews::MockInterviewRequest>>;
         async fn add_mock_interview_request(
             &self,
             user_id: Uuid,

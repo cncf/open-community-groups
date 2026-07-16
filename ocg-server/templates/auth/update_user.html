@@ -245,6 +245,53 @@
   </div>
   {# End CoffeeMeet section -#}
 
+  {# Intentional dating section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "Intentional dating", description = "Privately opt into admin-curated introductions inside closed communities.") -}}
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      <div class="col-span-full rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <label class="flex cursor-pointer items-start gap-3">
+          <input type="checkbox"
+                 name="intentional_dating_enabled"
+                 value="true"
+                 {% if user.intentional_dating_enabled %}checked{% endif %}
+                 class="mt-1 rounded border-stone-300 text-primary-600 focus:ring-primary-500">
+          <span>
+            <span class="block text-sm font-semibold text-stone-900">Privately opt into intentional dating introductions</span>
+            <span class="mt-1 block text-sm text-stone-600">
+              Only eligible community admins can see this for curated introductions when your alliance and group enable the feature. This will not appear on your public profile.
+            </span>
+          </span>
+        </label>
+      </div>
+      <div class="col-span-full lg:col-span-3">
+        <label for="intentional_dating_goals" class="form-label">Dating goals</label>
+        <div class="mt-2">
+          <textarea id="intentional_dating_goals"
+                    name="intentional_dating_goals"
+                    rows="4"
+                    maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                    class="input-primary"
+                    placeholder="Share what kind of intentional connection you are open to.">{% if let Some(intentional_dating_goals) = &user.intentional_dating_goals -%}{{ intentional_dating_goals }}{% endif %}</textarea>
+        </div>
+        <p class="form-legend">Private. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.</p>
+      </div>
+      <div class="col-span-full lg:col-span-3">
+        <label for="intentional_dating_preferences" class="form-label">Intro preferences</label>
+        <div class="mt-2">
+          <textarea id="intentional_dating_preferences"
+                    name="intentional_dating_preferences"
+                    rows="4"
+                    maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                    class="input-primary"
+                    placeholder="Share preferences, boundaries, or helpful context for admins.">{% if let Some(intentional_dating_preferences) = &user.intentional_dating_preferences -%}{{ intentional_dating_preferences }}{% endif %}</textarea>
+        </div>
+        <p class="form-legend">Private. Keep this concise and respectful.</p>
+      </div>
+    </div>
+  </div>
+  {# End intentional dating section -#}
+
   {# Location section -#}
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Location", description = "Optional location information.") -}}

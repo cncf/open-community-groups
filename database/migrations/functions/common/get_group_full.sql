@@ -43,6 +43,7 @@ returns json as $$
         'google_photos_url', g.google_photos_url,
         'github_url', g.github_url,
         'instagram_url', g.instagram_url,
+        'intentional_dating_enabled', g.intentional_dating_enabled,
         'latitude', st_y(g.location::geometry),
         'linkedin_url', g.linkedin_url,
         'logo_url', coalesce(g.logo_url, c.logo_url),

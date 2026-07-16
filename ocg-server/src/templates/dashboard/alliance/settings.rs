@@ -53,6 +53,10 @@ pub(crate) struct AllianceUpdate {
     /// Whether group team management is restricted to alliance roles.
     #[garde(skip)]
     pub group_team_management_restricted: bool,
+    /// Whether private intentional dating introductions are enabled across this alliance.
+    #[serde(default)]
+    #[garde(skip)]
+    pub intentional_dating_enabled: bool,
     /// URL to the logo image.
     #[garde(custom(image_url))]
     pub logo_url: String,

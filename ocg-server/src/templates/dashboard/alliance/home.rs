@@ -12,7 +12,7 @@ use crate::{
         dashboard::{
             alliance::{
                 analytics, create, email_templates, event_categories, group_categories, groups,
-                landscape, members, regions, settings, team,
+                intentional_dating, landscape, members, regions, settings, team,
             },
             audit,
         },
@@ -60,6 +60,8 @@ pub(crate) enum Content {
     GroupCategories(group_categories::ListPage),
     /// Groups management page.
     Groups(groups::ListPage),
+    /// Private intentional dating curation page.
+    IntentionalDating(intentional_dating::ListPage),
     /// Landscape management page.
     Landscape(landscape::ListPage),
     /// Members page across all alliance groups.
@@ -105,6 +107,11 @@ impl Content {
         matches!(self, Content::Groups(_))
     }
 
+    /// Check if the content is the intentional dating page.
+    fn is_intentional_dating(&self) -> bool {
+        matches!(self, Content::IntentionalDating(_))
+    }
+
     /// Check if the content is the landscape page.
     fn is_landscape(&self) -> bool {
         matches!(self, Content::Landscape(_))
@@ -145,6 +152,7 @@ impl std::fmt::Display for Content {
             Content::EventCategories(template) => write!(f, "{}", template.render()?),
             Content::GroupCategories(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
+            Content::IntentionalDating(template) => write!(f, "{}", template.render()?),
             Content::Landscape(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
@@ -175,6 +183,8 @@ pub(crate) enum Tab {
     GroupCategories,
     /// Groups management tab.
     Groups,
+    /// Private intentional dating curation tab.
+    IntentionalDating,
     /// Landscape management tab.
     Landscape,
     /// Members tab across all alliance groups.

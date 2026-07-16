@@ -27,7 +27,7 @@ use crate::{
         dashboard::group::{
             analytics,
             home::{Content, Page, Tab},
-            settings,
+            intentional_dating as intentional_dating_template, settings,
         },
     },
     types::permissions::GroupPermission,
@@ -94,6 +94,26 @@ pub(crate) async fn page(
             let template =
                 coffee_meet::prepare_list_page(&db, alliance_id, group_id, user.user_id).await?;
             Content::CoffeeMeet(template)
+        }
+        Tab::IntentionalDating => {
+            let can_manage_introductions = db
+                .user_has_group_permission(
+                    &alliance_id,
+                    &group_id,
+                    &user.user_id,
+                    GroupPermission::SettingsWrite,
+                )
+                .await?;
+            if !can_manage_introductions {
+                return Err(HandlerError::Forbidden);
+            }
+            let opt_ins = db
+                .list_intentional_dating_opt_ins(alliance_id, Some(group_id))
+                .await?;
+            Content::IntentionalDating(intentional_dating_template::ListPage {
+                can_manage_introductions,
+                opt_ins,
+            })
         }
         Tab::Members => {
             let (_, template) = members::prepare_list_page(

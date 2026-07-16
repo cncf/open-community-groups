@@ -154,6 +154,14 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::alliance::email_templates::update),
         )
         .route(
+            "/intentional-dating",
+            get(dashboard::alliance::intentional_dating::list_page),
+        )
+        .route(
+            "/intentional-dating/introductions",
+            post(dashboard::alliance::intentional_dating::add_intro),
+        )
+        .route(
             "/settings/update",
             put(dashboard::alliance::settings::update),
         )
@@ -461,6 +469,14 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/analytics/report/public",
             put(dashboard::group::analytics::publish_report)
                 .delete(dashboard::group::analytics::unpublish_report),
+        )
+        .route(
+            "/intentional-dating",
+            get(dashboard::group::intentional_dating::list_page),
+        )
+        .route(
+            "/intentional-dating/introductions",
+            post(dashboard::group::intentional_dating::add_intro),
         )
         .route("/settings/update", put(dashboard::group::settings::update))
         .route_layer(check_selected_group_permission(

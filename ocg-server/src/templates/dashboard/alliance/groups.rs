@@ -154,6 +154,10 @@ pub(crate) struct Group {
     /// Latitude coordinate of the group location.
     #[garde(custom(valid_latitude))]
     pub latitude: Option<f64>,
+    /// Whether private intentional dating introductions are enabled for this group.
+    #[serde(default)]
+    #[garde(skip)]
+    pub intentional_dating_enabled: bool,
     /// `LinkedIn` profile URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub linkedin_url: Option<String>,

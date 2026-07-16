@@ -14,6 +14,7 @@ returns json as $$
         'description', description,
         'display_name', display_name,
         'group_team_management_restricted', group_team_management_restricted,
+        'intentional_dating_enabled', intentional_dating_enabled,
         'logo_url', logo_url,
         'mentorship_enabled', mentorship_enabled,
         'mock_interviews_enabled', mock_interviews_enabled,

@@ -1,0 +1,86 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{{ dashboard::page_title(title = "Intentional Dating", description = "Privately review opted-in group members and record admin-curated introductions.") -}}
+
+{% if !can_manage_introductions -%}
+  {{ dashboard::permission_warning(message = "Your role cannot curate intentional dating introductions.") -}}
+{% endif -%}
+
+<section class="mt-8 rounded-[1.75rem] border border-primary-100 bg-primary-50/70 p-5 sm:p-6">
+  <div class="text-xs font-black uppercase tracking-[0.2em] text-primary-700">Private opt-in</div>
+  <h2 class="mt-2 text-xl font-black tracking-tight text-stone-950">Closed-community introductions only</h2>
+  <p class="mt-2 max-w-3xl text-sm/6 text-stone-700">
+    Members appear here only when the alliance, this group, and their own account opt-in are all enabled. This information is not shown on public profiles or public group pages.
+  </p>
+</section>
+
+{% if opt_ins.is_empty() -%}
+  <div class="mt-8 rounded-[2rem] border border-dashed border-stone-300 bg-white px-6 py-12 text-center shadow-sm">
+    <h2 class="text-xl font-black tracking-tight text-stone-950">No eligible opt-ins yet</h2>
+    <p class="mx-auto mt-2 max-w-xl text-sm/6 text-stone-600">
+      Enable intentional dating for the alliance and this group, then members can privately opt in from account settings.
+    </p>
+  </div>
+{% else -%}
+  <section class="mt-8 rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm sm:p-6">
+    <h2 class="text-lg font-black tracking-tight text-stone-950">Record an introduction</h2>
+    <form class="inert-form mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]"
+          hx-post="/dashboard/group/intentional-dating/introductions"
+          hx-swap="none"
+          hx-indicator="#dashboard-spinner"
+          {% if !can_manage_introductions -%}
+            inert
+          {% endif -%}>
+      <label class="block">
+        <span class="form-label">First member</span>
+        <select name="first_user_id" class="select-primary mt-2" required>
+          {% for opt_in in opt_ins -%}
+            <option value="{{ opt_in.user_id }}">{{ opt_in.name.as_deref().unwrap_or(opt_in.username.as_str()) }}</option>
+          {% endfor -%}
+        </select>
+      </label>
+      <label class="block">
+        <span class="form-label">Second member</span>
+        <select name="second_user_id" class="select-primary mt-2" required>
+          {% for opt_in in opt_ins -%}
+            <option value="{{ opt_in.user_id }}">{{ opt_in.name.as_deref().unwrap_or(opt_in.username.as_str()) }}</option>
+          {% endfor -%}
+        </select>
+      </label>
+      <label class="block">
+        <span class="form-label">Private admin notes</span>
+        <input name="admin_notes"
+               class="input-primary mt-2"
+               placeholder="Why this introduction makes sense">
+      </label>
+      <div class="flex items-end lg:col-start-3">
+        <button type="submit"
+                class="btn-primary w-full"
+                {% if !can_manage_introductions %}disabled{% endif %}>Record introduction</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="mt-8 grid gap-4 lg:grid-cols-2">
+    {% for opt_in in opt_ins -%}
+      <article class="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="font-black text-stone-950">{{ opt_in.name.as_deref().unwrap_or(opt_in.username.as_str()) }}</h2>
+            <p class="mt-1 text-sm text-stone-600">{{ opt_in.email.as_deref().unwrap_or("No email") }}</p>
+          </div>
+          <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700">Private opt-in</span>
+        </div>
+        <div class="mt-4 grid gap-3 text-sm/6 text-stone-700">
+          {% if let Some(goals) = &opt_in.intentional_dating_goals -%}
+            <p><span class="font-semibold text-stone-950">Goals:</span> {{ goals }}</p>
+          {% endif -%}
+          {% if let Some(preferences) = &opt_in.intentional_dating_preferences -%}
+            <p><span class="font-semibold text-stone-950">Preferences:</span> {{ preferences }}</p>
+          {% endif -%}
+          <p class="text-stone-500">{{ opt_in.title.as_deref().unwrap_or("") }}{% if opt_in.company.is_some() %} · {{ opt_in.company.as_deref().unwrap_or("") }}{% endif %}{% if opt_in.city.is_some() %} · {{ opt_in.city.as_deref().unwrap_or("") }}{% endif %}</p>
+        </div>
+      </article>
+    {% endfor -%}
+  </div>
+{% endif -%}

@@ -23,7 +23,7 @@ use crate::{
         dashboard::alliance::{
             analytics, email_templates, event_categories, group_categories,
             home::{Content, Page, Tab},
-            regions, settings,
+            intentional_dating as intentional_dating_template, regions, settings,
         },
     },
     types::permissions::AlliancePermission,
@@ -128,6 +128,23 @@ pub(crate) async fn page(
             )
             .await?;
             Content::Groups(template)
+        }
+        Tab::IntentionalDating => {
+            let can_manage_introductions = db
+                .user_has_alliance_permission(
+                    &alliance_id,
+                    &user_id,
+                    AlliancePermission::SettingsWrite,
+                )
+                .await?;
+            if !can_manage_introductions {
+                return Err(HandlerError::Forbidden);
+            }
+            let opt_ins = db.list_intentional_dating_opt_ins(alliance_id, None).await?;
+            Content::IntentionalDating(intentional_dating_template::ListPage {
+                can_manage_introductions,
+                opt_ins,
+            })
         }
         Tab::Landscape => {
             let (_, template) = landscape::prepare_list_page(
