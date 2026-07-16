@@ -349,6 +349,28 @@ pub(crate) struct GroupWelcome {
     pub theme: Theme,
 }
 
+/// Template for intentional dating introduction notifications.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/intentional_dating_introduction.html")]
+pub(crate) struct IntentionalDatingIntroduction {
+    /// Alliance display name for the introduction.
+    pub alliance_display_name: String,
+    /// Admin-written message shown to both matched members.
+    pub message: String,
+    /// Matched partner display name.
+    pub partner_name: String,
+    /// Matched partner public profile link.
+    pub partner_profile_url: String,
+    /// Matched partner username.
+    pub partner_username: String,
+    /// Group name where the introduction was curated.
+    pub group_name: String,
+    /// Link to the user's dashboard.
+    pub dashboard_link: String,
+    /// Theme configuration for the site.
+    pub theme: Theme,
+}
+
 /// Template for mock interview match notifications.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/mock_interview_matched.html")]

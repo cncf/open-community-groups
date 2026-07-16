@@ -28,6 +28,9 @@
           hx-post="/dashboard/alliance/intentional-dating/introductions"
           hx-swap="none"
           hx-indicator="#dashboard-spinner"
+          data-htmx-response
+          data-success-message="Introduction recorded."
+          data-error-message="Something went wrong recording the introduction. Please try again later."
           {% if !can_manage_introductions -%}
             inert
           {% endif -%}>
@@ -60,6 +63,13 @@
         <input name="admin_notes"
                class="input-primary mt-2"
                placeholder="Why this introduction makes sense">
+      </label>
+      <label class="block lg:col-span-2">
+        <span class="form-label">Optional message to both members</span>
+        <textarea name="notification_message"
+                  class="input-primary mt-2 min-h-28"
+                  placeholder="Write the message both introduced members should receive. Leave blank to record only."></textarea>
+        <span class="form-legend">Private admin notes are not sent. This message is emailed to both selected members.</span>
       </label>
       <div class="flex items-end">
         <button type="submit"

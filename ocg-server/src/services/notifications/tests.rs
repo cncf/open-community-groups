@@ -909,6 +909,28 @@ fn test_delivery_worker_prepare_content_group_custom_legacy_template_data() {
 }
 
 #[test]
+fn test_delivery_worker_prepare_content_intentional_dating_introduction() {
+    // Setup notification
+    let notification = Notification {
+        attachments: vec![],
+        email: "user@example.test".to_string(),
+        kind: NotificationKind::IntentionalDatingIntroduction,
+        notification_id: Uuid::new_v4(),
+        template_data: Some(sample_intentional_dating_introduction_template_data()),
+    };
+
+    // Prepare content
+    let (subject, body) = DeliveryWorker::prepare_content(&notification).unwrap();
+
+    // Check content matches expectations
+    assert_eq!(subject, "You have an intentional dating introduction");
+    assert!(body.contains("Test Alliance"));
+    assert!(body.contains("Pat Partner"));
+    assert!(body.contains("You both mentioned founder life and long-term relationship goals."));
+    assert!(body.contains("https://example.test/profiles/pat"));
+}
+
+#[test]
 fn test_delivery_worker_prepare_content_missing_data() {
     // Setup notification
     let notification = Notification {
@@ -1444,4 +1466,20 @@ fn sample_group_custom_legacy_template_data() -> serde_json::Value {
     object.remove("subject");
     object.insert("title".to_string(), json!("Custom group title"));
     payload
+}
+
+/// Sample template payload for intentional dating introduction notifications.
+fn sample_intentional_dating_introduction_template_data() -> serde_json::Value {
+    json!({
+        "alliance_display_name": "Test Alliance",
+        "dashboard_link": "https://example.test/dashboard/user",
+        "group_name": "Founders Circle",
+        "message": "You both mentioned founder life and long-term relationship goals.",
+        "partner_name": "Pat Partner",
+        "partner_profile_url": "https://example.test/profiles/pat",
+        "partner_username": "pat",
+        "theme": {
+            "primary_color": "#000000"
+        }
+    })
 }

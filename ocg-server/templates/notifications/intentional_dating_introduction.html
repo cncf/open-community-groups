@@ -1,0 +1,41 @@
+{% extends "notifications/base.html" -%}
+{% import "macros/email.html" as email -%}
+
+{% block subject -%}
+  You have an intentional dating introduction
+{% endblock subject -%}
+
+{% block preheader -%}
+  An organizer from {{ alliance_display_name }} introduced you to {{ partner_name }}.
+{% endblock preheader -%}
+
+{% block content -%}
+  <p class="group mb-15" style="margin-bottom: 15px">Intentional Dating</p>
+  <p class="default big mb-15" style="margin-bottom: 15px">
+    An organizer from <strong>{{ alliance_display_name }}</strong> introduced you to
+    <strong>{{ partner_name }}</strong> from <strong>{{ group_name }}</strong>.
+  </p>
+
+  <div class="default mb-30"
+       style="margin-bottom: 30px;
+              padding: 16px;
+              border: 1px solid #e7e5e4;
+              border-radius: 16px;
+              background: #fafaf9">
+    <p class="default" style="margin-bottom: 8px">
+      <strong>{{ partner_name }}</strong>
+      <span style="color: #78716c">@{{ partner_username }}</span>
+    </p>
+    <p class="default preline" style="color: #57534e">{{ message }}</p>
+  </div>
+
+  {{ email::button(link = partner_profile_url, text = "View profile", color = theme.primary_color) }}
+  <p class="default mt-30" style="margin-top: 30px">
+    You can update your intentional dating opt-in from your dashboard profile settings.
+  </p>
+  {{ email::button(link = dashboard_link, text = "Open dashboard", color = theme.primary_color) }}
+{% endblock content -%}
+
+{% block footer -%}
+  You received this email because you opted in to private intentional dating introductions.
+{% endblock footer -%}

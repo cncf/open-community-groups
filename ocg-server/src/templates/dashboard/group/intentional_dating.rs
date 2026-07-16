@@ -35,4 +35,8 @@ pub(crate) struct IntroForm {
     #[serde(default, deserialize_with = "optional_trimmed_string")]
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
     pub admin_notes: Option<String>,
+    /// Optional message sent to both introduced members.
+    #[serde(default, deserialize_with = "optional_trimmed_string")]
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub notification_message: Option<String>,
 }

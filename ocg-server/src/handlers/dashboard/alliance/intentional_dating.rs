@@ -9,11 +9,14 @@ use axum::{
 use tracing::instrument;
 
 use crate::{
+    config::HttpServerConfig,
     db::DynDB,
     handlers::{
+        dashboard::common::enqueue_intentional_dating_intro_notifications,
         error::HandlerError,
         extractors::{CurrentUser, SelectedAllianceId, ValidatedForm},
     },
+    services::notifications::DynNotificationsManager,
     templates::dashboard::alliance::intentional_dating::{self, IntroForm},
 };
 
@@ -38,6 +41,8 @@ pub(crate) async fn add_intro(
     CurrentUser(user): CurrentUser,
     SelectedAllianceId(alliance_id): SelectedAllianceId,
     State(db): State<DynDB>,
+    State(notifications_manager): State<DynNotificationsManager>,
+    State(server_cfg): State<HttpServerConfig>,
     ValidatedForm(input): ValidatedForm<IntroForm>,
 ) -> Result<impl IntoResponse, HandlerError> {
     db.add_intentional_dating_intro(
@@ -46,9 +51,20 @@ pub(crate) async fn add_intro(
         input.group_id,
         input.first_user_id,
         input.second_user_id,
-        input.admin_notes,
+        input.admin_notes.clone(),
     )
     .await?;
+    enqueue_intentional_dating_intro_notifications(
+        &db,
+        &notifications_manager,
+        &server_cfg,
+        alliance_id,
+        input.group_id,
+        input.first_user_id,
+        input.second_user_id,
+        input.notification_message.as_deref(),
+    )
+    .await;
 
     Ok((
         StatusCode::NO_CONTENT,
