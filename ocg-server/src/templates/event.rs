@@ -1,7 +1,8 @@
 //! This module defines the templates for the event page.
 
 use askama::Template;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use uuid::Uuid;
@@ -52,6 +53,47 @@ impl Page {
                 self.event.slug
             ),
         )
+    }
+
+    /// Returns the download URL for the event's iCalendar (ICS) file.
+    pub(crate) fn calendar_ics_url(&self) -> String {
+        format!(
+            "/{}/event/{}/calendar.ics",
+            self.event.community.name, self.event.event_id
+        )
+    }
+
+    /// Returns a Google Calendar "add event" link for the event.
+    pub(crate) fn google_calendar_link(&self) -> Option<String> {
+        let start = self.event.starts_at?;
+        let end = self.event.ends_at.unwrap_or(start + Duration::hours(1));
+
+        let mut details = String::new();
+        if let Some(description_short) = self
+            .event
+            .description_short
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+        {
+            details.push_str(description_short.trim());
+            details.push_str("\n\n");
+        }
+        details.push_str(&self.canonical_url());
+
+        let mut url = format!(
+            "https://calendar.google.com/calendar/render?action=TEMPLATE&text={}&dates={}/{}&details={}&ctz={}",
+            encode_for_url(&self.event.name),
+            format_datetime_for_google_calendar(&start),
+            format_datetime_for_google_calendar(&end),
+            encode_for_url(&details),
+            encode_for_url(&self.event.timezone.to_string()),
+        );
+        if let Some(location) = self.event.location(512) {
+            url.push_str("&location=");
+            url.push_str(&encode_for_url(&location));
+        }
+
+        Some(url)
     }
 
     /// Returns the Open Graph image URL for the event page.
@@ -157,6 +199,24 @@ pub(crate) struct SessionProposal {
     /// Proposal last update time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub updated_at: Option<DateTime<Utc>>,
+}
+
+/// Percent-encodes a value for use in a URL query string.
+fn encode_for_url(value: &str) -> String {
+    utf8_percent_encode(value, NON_ALPHANUMERIC).to_string()
+}
+
+/// Formats a UTC datetime for the Google Calendar `dates` query parameter (YYYYMMDDTHHMMSSZ).
+fn format_datetime_for_google_calendar(dt: &DateTime<Utc>) -> String {
+    format!(
+        "{:04}{:02}{:02}T{:02}{:02}{:02}Z",
+        dt.year(),
+        dt.month(),
+        dt.day(),
+        dt.hour(),
+        dt.minute(),
+        dt.second()
+    )
 }
 
 #[cfg(test)]

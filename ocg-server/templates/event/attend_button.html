@@ -432,6 +432,23 @@
       <div class="absolute left-4 z-20 mt-2 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-stone-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0 sm:w-max sm:min-w-48">
         <share-modal trigger-variant="menu-item" title="{{ event.group.name }} · {{ event.name }}" url="/{{ event.community.name }}/group/{{ event.group.public_slug() }}/event/{{ event.slug }}">
         </share-modal>
+        {% if let Some(google_calendar_link) = self.google_calendar_link() -%}
+          <a id="add-to-google-calendar-btn-{{ attendance_instance }}"
+             href="{{ google_calendar_link }}"
+             target="_blank"
+             rel="noopener noreferrer"
+             class="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
+            <div class="svg-icon size-4 bg-stone-600 icon-calendar"></div>
+            <span>Add to Google Calendar</span>
+          </a>
+        {% endif -%}
+        <a id="download-ics-btn-{{ attendance_instance }}"
+           href="{{ self.calendar_ics_url() }}"
+           download
+           class="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50">
+          <div class="svg-icon size-4 bg-stone-600 icon-calendar"></div>
+          <span>Download .ics file</span>
+        </a>
         {% if let Some(meeting_join_url) = &event.meeting_join_url %}
           <a id="join-meeting-menu-btn-{{ attendance_instance }}"
              data-attendance-role="join-meeting-menu-btn"

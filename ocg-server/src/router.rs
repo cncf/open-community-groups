@@ -278,6 +278,10 @@ pub(crate) async fn setup(
             get(event::cfs_modal),
         )
         .route(
+            "/{community}/event/{event_id}/calendar.ics",
+            get(event::calendar_ics),
+        )
+        .route(
             "/{community}/group/{group_slug}/event/{event_slug}/availability",
             get(event::availability),
         )

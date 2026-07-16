@@ -100,6 +100,8 @@ A few details shape how RSVP behaves:
   ticket hold, you can complete payment and required registration questions until the hold expires.
 - Canceling RSVP is immediate through `Cancel attendance`.
 - After RSVP, OCG sends a confirmation message with a calendar file attached.
+- The event page's actions menu (`⋮`) offers `Add to Google Calendar` and
+  `Download .ics file` at any time, independent of RSVP status.
 - If organizers configured registration questions, clicking `Attend event` or `Buy ticket` opens
   a question form first. Required answers must be completed before registration can continue.
 - Some events use invitation review. In that case, `Attend event` becomes

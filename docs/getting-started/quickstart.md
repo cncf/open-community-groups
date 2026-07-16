@@ -57,7 +57,9 @@ membership cleanly.
 From the group page or explore results, open an event and click `Attend event`.
 This records your attendance intent and is the basis for event-day check-in.
 After you RSVP, OCG sends a confirmation message with a calendar attachment.
-For live virtual/hybrid events that have meeting information configured,
+You can also add the event to your own calendar any time from the event
+page's actions menu (`⋮`), via `Add to Google Calendar` or `Download .ics
+file`. For live virtual/hybrid events that have meeting information configured,
 attendees can also get `Join meeting` access at the right time window.
 
 If the event is already full, you may instead see `Join waiting list` when

@@ -185,6 +185,34 @@ pub(crate) async fn check_in_page(
     Ok(Html(template.render()?))
 }
 
+/// Handler that returns the event's iCalendar (ICS) file for download.
+#[instrument(skip_all, err)]
+pub(crate) async fn calendar_ics(
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    CommunityId(community_id): CommunityId,
+    Path((_, event_id)): Path<(String, Uuid)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Get event summary and build the calendar attachment
+    let event = db.get_event_summary_by_id(community_id, event_id).await?;
+    let attachment = crate::util::build_event_calendar_attachment(&server_cfg.base_url, &event);
+
+    // Serve the attachment as a file download
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        axum::http::header::CONTENT_TYPE,
+        HeaderValue::from_str(&attachment.content_type).map_err(anyhow::Error::from)?,
+    );
+    headers.insert(
+        axum::http::header::CONTENT_DISPOSITION,
+        HeaderValue::from_str(&format!("attachment; filename=\"{}\"", attachment.file_name))
+            .map_err(anyhow::Error::from)?,
+    );
+    headers.insert(CACHE_CONTROL, HeaderValue::from_static(CACHE_CONTROL_NO_STORE));
+
+    Ok((headers, attachment.data).into_response())
+}
+
 // JSON handlers.
 
 /// Handler that returns fresh public availability for the event page.
