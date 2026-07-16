@@ -588,6 +588,11 @@ pub(crate) struct User {
     pub bio: Option<String>,
     /// User's Bluesky URL.
     pub bluesky_url: Option<String>,
+    /// Whether the user privately opts into book exchange.
+    #[serde(default)]
+    pub book_exchange_enabled: bool,
+    /// Private book list visible only to eligible community admins.
+    pub book_exchange_books: Option<String>,
     /// User's city.
     pub city: Option<String>,
     /// Whether this user accepts direct `CoffeeMeet` requests.

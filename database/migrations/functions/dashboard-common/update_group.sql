@@ -64,6 +64,7 @@ begin
         banner_mobile_url = nullif(p_group->>'banner_mobile_url', ''),
         banner_url = nullif(p_group->>'banner_url', ''),
         bluesky_url = nullif(p_group->>'bluesky_url', ''),
+        book_exchange_enabled = coalesce((p_group->>'book_exchange_enabled')::boolean, false),
         city = nullif(p_group->>'city', ''),
         coffee_meet_enabled = coalesce((p_group->>'coffee_meet_enabled')::boolean, false),
         country_code = nullif(p_group->>'country_code', ''),

@@ -12,7 +12,7 @@
 {% block header -%}
   {# Header -#}
   <div id="dashboard-header"
-       class="bg-white fixed w-full z-20 top-0 start-0 border-b border-stone-200 h-20 drop-shadow-sm flex items-center justify-between px-3 lg:px-5">
+       class="fixed w-full z-20 top-0 start-0 border-b border-[#eadcc9]/70 bg-white/60 shadow-sm shadow-[#eadcc9]/40 backdrop-blur-xl min-h-[68px] flex items-center justify-between px-3 lg:px-5">
     {% include "common/header.html" -%}
   </div>
   {# End Header -#}
@@ -20,26 +20,26 @@
 
 {% block main -%}
   {# Main Content -#}
-  <div class="flex min-h-dvh flex-col bg-stone-100 pt-20 md:flex-row md:bg-transparent md:pt-0">
+  <div class="flex min-h-dvh flex-col pt-[68px] md:flex-row md:pt-0">
     {# Dashboard menu -#}
-    <aside class="w-full shrink-0 border-b border-stone-200 bg-stone-100 md:h-dvh md:sticky md:top-0 md:w-[225px] md:border-b-0 lg:w-[300px]"
+    <aside class="w-full shrink-0 border-b border-[#eadcc9]/70 bg-white/45 backdrop-blur-xl md:h-dvh md:sticky md:top-0 md:w-[225px] md:border-b-0 md:border-e lg:w-[300px]"
            role="navigation"
            aria-label="Dashboard navigation">
       <input id="dashboard-mobile-menu-toggle"
              type="checkbox"
              class="peer sr-only"
              aria-label="Toggle dashboard navigation" />
-      <div class="sticky top-20 z-10 border-b border-stone-200 bg-stone-100 px-3 py-3 md:hidden">
+      <div class="sticky top-[68px] z-10 border-b border-[#eadcc9]/70 bg-white/55 px-3 py-3 backdrop-blur-xl md:hidden">
         <label for="dashboard-mobile-menu-toggle"
-               class="flex min-h-11 cursor-pointer items-center justify-between rounded-2xl border border-stone-200 bg-white px-4 text-sm font-bold text-stone-900 shadow-sm">
+               class="flex min-h-11 cursor-pointer items-center justify-between rounded-2xl border border-[#eadcc9] bg-white/75 px-4 text-sm font-bold text-[#1A1510] shadow-sm shadow-[#eadcc9]/30 backdrop-blur">
           <span>Dashboard menu</span>
           <span class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
             <span>Menu</span>
-            <span class="svg-icon size-3 icon-caret-down bg-stone-500"></span>
+            <span class="svg-icon size-3 icon-caret-down bg-[#6B6058]"></span>
           </span>
         </label>
       </div>
-      <div class="hidden max-h-[calc(100dvh-8.5rem)] overflow-y-auto border-b border-stone-200 bg-stone-100 peer-checked:block md:flex md:h-full md:max-h-none md:flex-col md:justify-between md:gap-0 md:overflow-visible md:border-b-0 md:py-5 md:pt-24">
+      <div class="hidden max-h-[calc(100dvh-8.5rem)] overflow-y-auto border-b border-[#eadcc9]/70 bg-white/45 peer-checked:block md:flex md:h-full md:max-h-none md:flex-col md:justify-between md:gap-0 md:overflow-visible md:border-b-0 md:bg-transparent md:py-5 md:pt-24">
         <div class="flex min-h-0 grow flex-col py-4 md:w-full md:py-0">
           {% block menu -%}
           {% endblock menu -%}
@@ -61,7 +61,7 @@
     {# End dashboard menu -#}
 
     <main id="dashboard-main-content"
-          class="min-w-0 w-full bg-white border-y border-stone-200 md:w-[calc(100%-225px)] md:border md:rounded-lg md:m-5 md:ms-0 md:mt-[6.25rem] lg:w-[calc(100%-300px)] relative"
+          class="relative min-w-0 w-full border-y border-[#eadcc9]/70 bg-white/72 shadow-xl shadow-[#3a2f25]/5 backdrop-blur-sm md:m-5 md:ms-0 md:mt-[5.75rem] md:w-[calc(100%-225px)] md:rounded-[1.75rem] md:border lg:w-[calc(100%-300px)]"
           role="main">
       {% block dashboard_main -%}
       {% endblock dashboard_main -%}

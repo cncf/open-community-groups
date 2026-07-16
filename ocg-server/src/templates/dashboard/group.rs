@@ -3,6 +3,7 @@
 pub(crate) mod accelerator;
 pub(crate) mod analytics;
 pub(crate) mod attendees;
+pub(crate) mod book_exchange;
 pub(crate) mod coffee_meet;
 pub(crate) mod events;
 pub(crate) mod home;

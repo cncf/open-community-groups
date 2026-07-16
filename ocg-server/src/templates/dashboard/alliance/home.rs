@@ -11,8 +11,9 @@ use crate::{
         auth::User,
         dashboard::{
             alliance::{
-                analytics, create, email_templates, event_categories, group_categories, groups,
-                intentional_dating, landscape, members, regions, settings, team,
+                analytics, book_exchange, create, email_templates, event_categories,
+                group_categories, groups, intentional_dating, landscape, members, regions,
+                settings, team,
             },
             audit,
         },
@@ -60,6 +61,8 @@ pub(crate) enum Content {
     GroupCategories(group_categories::ListPage),
     /// Groups management page.
     Groups(groups::ListPage),
+    /// Private book exchange page.
+    BookExchange(book_exchange::ListPage),
     /// Private intentional dating curation page.
     IntentionalDating(intentional_dating::ListPage),
     /// Landscape management page.
@@ -107,6 +110,11 @@ impl Content {
         matches!(self, Content::Groups(_))
     }
 
+    /// Check if the content is the book exchange page.
+    fn is_book_exchange(&self) -> bool {
+        matches!(self, Content::BookExchange(_))
+    }
+
     /// Check if the content is the intentional dating page.
     fn is_intentional_dating(&self) -> bool {
         matches!(self, Content::IntentionalDating(_))
@@ -152,6 +160,7 @@ impl std::fmt::Display for Content {
             Content::EventCategories(template) => write!(f, "{}", template.render()?),
             Content::GroupCategories(template) => write!(f, "{}", template.render()?),
             Content::Groups(template) => write!(f, "{}", template.render()?),
+            Content::BookExchange(template) => write!(f, "{}", template.render()?),
             Content::IntentionalDating(template) => write!(f, "{}", template.render()?),
             Content::Landscape(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
@@ -183,6 +192,8 @@ pub(crate) enum Tab {
     GroupCategories,
     /// Groups management tab.
     Groups,
+    /// Private book exchange tab.
+    BookExchange,
     /// Private intentional dating curation tab.
     IntentionalDating,
     /// Landscape management tab.

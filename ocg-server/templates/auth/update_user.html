@@ -245,6 +245,41 @@
   </div>
   {# End CoffeeMeet section -#}
 
+  {# Book exchange section -#}
+  <div class="border-b border-stone-900/10 pb-12">
+    {{ dashboard::form_title(title = "Book exchange", description = "Privately share books you are open to lending, trading, or giving to members.") -}}
+    <div class="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-6 max-w-5xl">
+      <div class="col-span-full rounded-2xl border border-stone-200 bg-stone-50 p-4">
+        <label class="flex cursor-pointer items-start gap-3">
+          <input type="checkbox"
+                 name="book_exchange_enabled"
+                 value="true"
+                 {% if user.book_exchange_enabled %}checked{% endif %}
+                 class="mt-1 rounded border-stone-300 text-primary-600 focus:ring-primary-500">
+          <span>
+            <span class="block text-sm font-semibold text-stone-900">Privately opt into book exchange</span>
+            <span class="mt-1 block text-sm text-stone-600">
+              Eligible community admins can see this only when your alliance and group enable book exchange. This will not appear on your public profile.
+            </span>
+          </span>
+        </label>
+      </div>
+      <div class="col-span-full">
+        <label for="book_exchange_books" class="form-label">Book list</label>
+        <div class="mt-2">
+          <textarea id="book_exchange_books"
+                    name="book_exchange_books"
+                    rows="5"
+                    maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                    class="input-primary"
+                    placeholder="List books you can exchange, lend, or give away. Include notes like format, condition, or what you are looking for.">{% if let Some(book_exchange_books) = &user.book_exchange_books -%}{{ book_exchange_books }}{% endif %}</textarea>
+        </div>
+        <p class="form-legend">Private. Max {{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }} characters.</p>
+      </div>
+    </div>
+  </div>
+  {# End book exchange section -#}
+
   {# Intentional dating section -#}
   <div class="border-b border-stone-900/10 pb-12">
     {{ dashboard::form_title(title = "Intentional dating", description = "Privately opt into admin-curated introductions inside closed communities.") -}}

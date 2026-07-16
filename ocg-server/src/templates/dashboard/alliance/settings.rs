@@ -40,6 +40,10 @@ pub(crate) struct AllianceUpdate {
     /// URL to the alliance banner image.
     #[garde(custom(image_url))]
     pub banner_url: String,
+    /// Whether member book exchange is enabled across this alliance.
+    #[serde(default)]
+    #[garde(skip)]
+    pub book_exchange_enabled: bool,
     /// Whether group `CoffeeMeet` features are enabled across this alliance.
     #[serde(default = "default_true")]
     #[garde(skip)]

@@ -21,6 +21,9 @@ pub struct AllianceFull {
     pub alliance_id: Uuid,
     /// Layout identifier for the alliance site.
     pub alliance_site_layout_id: String,
+    /// Whether member book exchange is enabled across this alliance.
+    #[serde(default)]
+    pub book_exchange_enabled: bool,
     /// Creation timestamp in milliseconds since epoch.
     pub created_at: i64,
     /// Whether group `CoffeeMeet` features are enabled across this alliance.
@@ -120,6 +123,9 @@ pub struct AllianceSummary {
     pub alliance_id: Uuid,
     /// Human-readable name shown in the UI (e.g., "Goup").
     pub display_name: String,
+    /// Whether member book exchange is enabled across this alliance.
+    #[serde(default)]
+    pub book_exchange_enabled: bool,
     /// Whether group `CoffeeMeet` features are enabled across this alliance.
     #[serde(default = "default_true")]
     pub coffee_meet_enabled: bool,

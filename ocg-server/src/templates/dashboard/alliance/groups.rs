@@ -117,6 +117,10 @@ pub(crate) struct Group {
     /// Bluesky profile URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub bluesky_url: Option<String>,
+    /// Whether member book exchange is enabled for this group.
+    #[serde(default)]
+    #[garde(skip)]
+    pub book_exchange_enabled: bool,
     /// City where the group is located.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,

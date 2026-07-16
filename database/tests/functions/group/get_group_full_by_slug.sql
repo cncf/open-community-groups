@@ -237,6 +237,7 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "alliance_id": "%s",
+            "book_exchange_enabled": false,
             "coffee_meet_enabled": true,
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
@@ -273,6 +274,7 @@ select is(
             "normalized_name": "north-america"
         },
         "bluesky_url": "https://bsky.app/profile/k8snyc",
+        "book_exchange_enabled": false,
         "twitter_url": "https://twitter.com/k8snyc",
         "website_url": "https://k8s-nyc.example.com",
         "coffee_meet_enabled": true,

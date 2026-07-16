@@ -20,6 +20,8 @@ returns json as $$
         -- Include optional profile fields
         'bio', bio,
         'bluesky_url', bluesky_url,
+        'book_exchange_enabled', book_exchange_enabled,
+        'book_exchange_books', book_exchange_books,
         'city', city,
         'coffee_meet_enabled', coffee_meet_enabled,
         'company', company,

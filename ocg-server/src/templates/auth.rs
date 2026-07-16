@@ -146,6 +146,13 @@ pub(crate) struct UserDetails {
     /// User's Bluesky URL.
     #[garde(url, length(max = MAX_LEN_L))]
     pub bluesky_url: Option<String>,
+    /// Whether the user privately opts into book exchange.
+    #[serde(default)]
+    #[garde(skip)]
+    pub book_exchange_enabled: bool,
+    /// Private book list visible only to eligible community admins.
+    #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_DESCRIPTION_SHORT))]
+    pub book_exchange_books: Option<String>,
     /// User's city.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_S))]
     pub city: Option<String>,
@@ -239,6 +246,8 @@ impl From<crate::auth::User> for UserDetails {
             optional_notifications_enabled: user.optional_notifications_enabled,
             bio: user.bio,
             bluesky_url: user.bluesky_url,
+            book_exchange_enabled: user.book_exchange_enabled,
+            book_exchange_books: user.book_exchange_books,
             city: user.city,
             coffee_meet_enabled: user.coffee_meet_enabled,
             company: user.company,

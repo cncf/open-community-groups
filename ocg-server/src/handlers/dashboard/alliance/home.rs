@@ -21,7 +21,8 @@ use crate::{
         PageId,
         auth::User,
         dashboard::alliance::{
-            analytics, email_templates, event_categories, group_categories,
+            analytics, book_exchange as book_exchange_template, email_templates, event_categories,
+            group_categories,
             home::{Content, Page, Tab},
             intentional_dating as intentional_dating_template, regions, settings,
         },
@@ -128,6 +129,23 @@ pub(crate) async fn page(
             )
             .await?;
             Content::Groups(template)
+        }
+        Tab::BookExchange => {
+            let can_manage_book_exchange = db
+                .user_has_alliance_permission(
+                    &alliance_id,
+                    &user_id,
+                    AlliancePermission::SettingsWrite,
+                )
+                .await?;
+            if !can_manage_book_exchange {
+                return Err(HandlerError::Forbidden);
+            }
+            let members = db.list_book_exchange_members(alliance_id, None).await?;
+            Content::BookExchange(book_exchange_template::ListPage {
+                can_manage_book_exchange,
+                members,
+            })
         }
         Tab::IntentionalDating => {
             let can_manage_introductions = db

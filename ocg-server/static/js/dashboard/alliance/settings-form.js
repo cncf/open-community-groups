@@ -2,6 +2,8 @@ import { getElementById, initializeOnReadyAndHtmxLoad, markDatasetReady } from "
 import { bindBooleanToggle } from "/static/js/dashboard/group/page-form-state.js";
 
 const SETTINGS_FORM_ID = "settings-form";
+const BOOK_EXCHANGE_TOGGLE_ID = "toggle_book_exchange_enabled";
+const BOOK_EXCHANGE_INPUT_ID = "book_exchange_enabled";
 const COFFEE_MEET_TOGGLE_ID = "toggle_coffee_meet_enabled";
 const COFFEE_MEET_INPUT_ID = "coffee_meet_enabled";
 const MENTORSHIP_TOGGLE_ID = "toggle_mentorship_enabled";
@@ -27,6 +29,8 @@ export const initializeAllianceSettings = (root = document) => {
 
   const groupTeamRestrictionToggle = getElementById(root, GROUP_TEAM_RESTRICTION_TOGGLE_ID);
   const groupTeamRestrictionInput = getElementById(root, GROUP_TEAM_RESTRICTION_INPUT_ID);
+  const bookExchangeToggle = getElementById(root, BOOK_EXCHANGE_TOGGLE_ID);
+  const bookExchangeInput = getElementById(root, BOOK_EXCHANGE_INPUT_ID);
   const coffeeMeetToggle = getElementById(root, COFFEE_MEET_TOGGLE_ID);
   const coffeeMeetInput = getElementById(root, COFFEE_MEET_INPUT_ID);
   const mentorshipToggle = getElementById(root, MENTORSHIP_TOGGLE_ID);
@@ -39,6 +43,12 @@ export const initializeAllianceSettings = (root = document) => {
   bindBooleanToggle({
     toggle: groupTeamRestrictionToggle,
     hiddenInput: groupTeamRestrictionInput,
+    syncOnInit: true,
+  });
+
+  bindBooleanToggle({
+    toggle: bookExchangeToggle,
+    hiddenInput: bookExchangeInput,
     syncOnInit: true,
   });
 

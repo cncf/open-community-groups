@@ -12,8 +12,8 @@ use crate::{
         dashboard::{
             audit,
             group::{
-                accelerator, analytics, coffee_meet, events, intentional_dating, members, settings,
-                sponsors, spotlights, store, team,
+                accelerator, analytics, book_exchange, coffee_meet, events, intentional_dating,
+                members, settings, sponsors, spotlights, store, team,
             },
         },
         filters,
@@ -89,6 +89,8 @@ pub(crate) enum Content {
     Events(Box<events::ListPage>),
     /// `CoffeeMeet` subscriber page.
     CoffeeMeet(coffee_meet::ListPage),
+    /// Private book exchange page.
+    BookExchange(book_exchange::ListPage),
     /// Private intentional dating curation page.
     IntentionalDating(intentional_dating::ListPage),
     /// Audit logs page.
@@ -126,6 +128,11 @@ impl Content {
     /// Check if the content is the `CoffeeMeet` page.
     fn is_coffee_meet(&self) -> bool {
         matches!(self, Content::CoffeeMeet(_))
+    }
+
+    /// Check if the content is the book exchange page.
+    fn is_book_exchange(&self) -> bool {
+        matches!(self, Content::BookExchange(_))
     }
 
     /// Check if the content is the intentional dating page.
@@ -174,6 +181,7 @@ impl std::fmt::Display for Content {
         match self {
             Content::Accelerator(template) => write!(f, "{}", template.render()?),
             Content::Analytics(template) => write!(f, "{}", template.render()?),
+            Content::BookExchange(template) => write!(f, "{}", template.render()?),
             Content::CoffeeMeet(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::IntentionalDating(template) => write!(f, "{}", template.render()?),
@@ -204,6 +212,8 @@ pub(crate) enum Tab {
     Events,
     /// `CoffeeMeet` tab.
     CoffeeMeet,
+    /// Private book exchange tab.
+    BookExchange,
     /// Private intentional dating curation tab.
     IntentionalDating,
     /// Audit logs tab.

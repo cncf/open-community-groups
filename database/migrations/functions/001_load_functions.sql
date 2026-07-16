@@ -81,6 +81,7 @@
 
 {{ template "dashboard-common/search_user.sql" }}
 {{ template "dashboard-common/add_intentional_dating_intro.sql" }}
+{{ template "dashboard-common/list_book_exchange_members.sql" }}
 {{ template "dashboard-common/list_intentional_dating_opt_ins.sql" }}
 {{ template "dashboard-common/update_group.sql" }}
 

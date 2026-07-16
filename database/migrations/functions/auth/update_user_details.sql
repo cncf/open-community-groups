@@ -10,6 +10,8 @@ begin
         name = p_user->>'name',
         bio = nullif(p_user->>'bio', ''),
         bluesky_url = nullif(p_user->>'bluesky_url', ''),
+        book_exchange_enabled = coalesce((p_user->>'book_exchange_enabled')::boolean, false),
+        book_exchange_books = nullif(p_user->>'book_exchange_books', ''),
         city = nullif(p_user->>'city', ''),
         coffee_meet_enabled = coalesce((p_user->>'coffee_meet_enabled')::boolean, false),
         company = nullif(p_user->>'company', ''),

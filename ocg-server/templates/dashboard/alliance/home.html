@@ -62,6 +62,7 @@
       {{ dashboard::menu_title(text = "Groups", extra_styles = "py-1.5") -}}
       {{ dashboard::menu_item(name = "Groups", icon = "groups", is_active = content.is_groups() , href = "/dashboard/alliance?tab=groups") -}}
       {{ dashboard::menu_item(name = "Members", icon = "members", is_active = content.is_members() , href = "/dashboard/alliance?tab=members") -}}
+      {{ dashboard::menu_item(name = "Book Exchange", icon = "list", is_active = content.is_book_exchange() , href = "/dashboard/alliance?tab=book-exchange") -}}
       {{ dashboard::menu_item(name = "Intentional Dating", icon = "user-plus", is_active = content.is_intentional_dating() , href = "/dashboard/alliance?tab=intentional-dating") -}}
       {{ dashboard::menu_item(name = "Landscape", icon = "map", is_active = content.is_landscape() , href = "/dashboard/alliance?tab=landscape") -}}
     </div>
@@ -78,7 +79,7 @@
 
 {% block dashboard_main -%}
   <div id="dashboard-content"
-       hx-get="/dashboard/alliance/{%- if content.is_team() -%}team{%- elif content.is_settings() -%}settings/update{%- elif content.is_email_templates() -%}email-templates{%- elif content.is_regions() -%}regions{%- elif content.is_logs() -%}logs{%- elif content.is_group_categories() -%}group-categories{%- elif content.is_event_categories() -%}event-categories{%- elif content.is_analytics() -%}analytics{%- elif content.is_create_alliance() -%}create{%- elif content.is_intentional_dating() -%}intentional-dating{%- elif content.is_landscape() -%}landscape{%- elif content.is_members() -%}members{%- else -%}groups{%- endif -%}"
+       hx-get="/dashboard/alliance/{%- if content.is_team() -%}team{%- elif content.is_settings() -%}settings/update{%- elif content.is_email_templates() -%}email-templates{%- elif content.is_regions() -%}regions{%- elif content.is_logs() -%}logs{%- elif content.is_group_categories() -%}group-categories{%- elif content.is_event_categories() -%}event-categories{%- elif content.is_analytics() -%}analytics{%- elif content.is_create_alliance() -%}create{%- elif content.is_book_exchange() -%}book-exchange{%- elif content.is_intentional_dating() -%}intentional-dating{%- elif content.is_landscape() -%}landscape{%- elif content.is_members() -%}members{%- else -%}groups{%- endif -%}"
        hx-trigger="refresh-alliance-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"

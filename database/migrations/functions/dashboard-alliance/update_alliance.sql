@@ -10,6 +10,10 @@ begin
     set
         banner_mobile_url = coalesce(p_data->>'banner_mobile_url', banner_mobile_url),
         banner_url = coalesce(p_data->>'banner_url', banner_url),
+        book_exchange_enabled = coalesce(
+            (p_data->>'book_exchange_enabled')::boolean,
+            book_exchange_enabled
+        ),
         coffee_meet_enabled = coalesce(
             (p_data->>'coffee_meet_enabled')::boolean,
             coffee_meet_enabled

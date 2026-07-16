@@ -33,6 +33,13 @@ pub(crate) trait DBDashboardCommon {
         group_id: Option<Uuid>,
     ) -> Result<Vec<IntentionalDatingOptIn>>;
 
+    /// Lists private book exchange member lists visible to authorized admins.
+    async fn list_book_exchange_members(
+        &self,
+        alliance_id: Uuid,
+        group_id: Option<Uuid>,
+    ) -> Result<Vec<BookExchangeMember>>;
+
     /// Updates an existing group.
     async fn update_group(
         &self,
@@ -102,6 +109,20 @@ where
         .await
     }
 
+    /// [`DBDashboardCommon::list_book_exchange_members`]
+    #[instrument(skip(self), err)]
+    async fn list_book_exchange_members(
+        &self,
+        alliance_id: Uuid,
+        group_id: Option<Uuid>,
+    ) -> Result<Vec<BookExchangeMember>> {
+        self.fetch_json_one(
+            "select list_book_exchange_members($1::uuid, $2::uuid)",
+            &[&alliance_id, &group_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardCommon::update_group`]
     #[instrument(skip(self, group), err)]
     async fn update_group(
@@ -147,6 +168,26 @@ pub(crate) struct IntentionalDatingOptIn {
     pub email: Option<String>,
     pub intentional_dating_goals: Option<String>,
     pub intentional_dating_preferences: Option<String>,
+    pub name: Option<String>,
+    pub photo_url: Option<String>,
+    pub title: Option<String>,
+}
+
+/// Private book exchange member list visible only to authorized admins.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub(crate) struct BookExchangeMember {
+    pub user_id: Uuid,
+    pub username: String,
+    pub group_id: Uuid,
+    pub group_name: String,
+    pub alliance_id: Uuid,
+    pub alliance_display_name: String,
+
+    pub book_exchange_books: Option<String>,
+    pub city: Option<String>,
+    pub company: Option<String>,
+    pub country: Option<String>,
+    pub email: Option<String>,
     pub name: Option<String>,
     pub photo_url: Option<String>,
     pub title: Option<String>,

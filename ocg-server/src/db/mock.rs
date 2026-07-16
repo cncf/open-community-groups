@@ -304,6 +304,11 @@ mock! {
             alliance_id: Uuid,
             group_id: Option<Uuid>,
         ) -> Result<Vec<crate::db::dashboard::common::IntentionalDatingOptIn>>;
+        async fn list_book_exchange_members(
+            &self,
+            alliance_id: Uuid,
+            group_id: Option<Uuid>,
+        ) -> Result<Vec<crate::db::dashboard::common::BookExchangeMember>>;
         async fn update_group(
             &self,
             actor_user_id: Uuid,

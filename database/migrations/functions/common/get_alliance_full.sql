@@ -9,6 +9,7 @@ returns json as $$
         'banner_url', banner_url,
         'alliance_id', alliance_id,
         'alliance_site_layout_id', alliance_site_layout_id,
+        'book_exchange_enabled', book_exchange_enabled,
         'created_at', floor(extract(epoch from created_at)*1000),
         'coffee_meet_enabled', coffee_meet_enabled,
         'description', description,

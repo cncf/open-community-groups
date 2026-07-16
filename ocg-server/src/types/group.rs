@@ -154,6 +154,9 @@ pub struct GroupFull {
     pub banner_url: Option<String>,
     /// Bluesky profile URL.
     pub bluesky_url: Option<String>,
+    /// Whether member book exchange is enabled for this group.
+    #[serde(default)]
+    pub book_exchange_enabled: bool,
     /// City where the group is based.
     pub city: Option<String>,
     /// Whether `CoffeeMeet` is enabled for this group.
@@ -233,6 +236,11 @@ impl GroupFull {
     /// Returns true when `CoffeeMeet` is available for this group and alliance.
     pub fn coffee_meet_available(&self) -> bool {
         self.coffee_meet_enabled && self.alliance.coffee_meet_enabled
+    }
+
+    /// Returns true when book exchange is available for this group and alliance.
+    pub fn book_exchange_available(&self) -> bool {
+        self.book_exchange_enabled && self.alliance.book_exchange_enabled
     }
 
     /// Returns true when mentorship requests are available for this group and alliance.

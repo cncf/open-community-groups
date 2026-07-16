@@ -327,6 +327,7 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "alliance_id": "%s",
+            "book_exchange_enabled": false,
             "coffee_meet_enabled": true,
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",
@@ -341,6 +342,7 @@ select is(
         "state": "NY",
         "country_code": "US",
         "country_name": "United States",
+        "book_exchange_enabled": false,
         "coffee_meet_enabled": false,
         "website_url": "https://updated.example.com",
         "bluesky_url": "https://bsky.app/profile/updated",
@@ -513,6 +515,7 @@ select lives_ok(
 select is(
     (select get_group_full(:'allianceID'::uuid, :'group2ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'membership_approval_required' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
+        "book_exchange_enabled": false,
         "coffee_meet_enabled": false,
         "mentorship_enabled": false,
         "mock_interviews_enabled": false,
@@ -567,6 +570,7 @@ select lives_ok(
 select is(
     (select get_group_full(:'allianceID'::uuid, :'group3ID'::uuid)::jsonb - 'active' - 'group_id' - 'created_at' - 'members_count' - 'membership_approval_required' - 'category' - 'alliance' - 'organizers' - 'sponsors'),
     '{
+        "book_exchange_enabled": false,
         "coffee_meet_enabled": false,
         "mentorship_enabled": false,
         "mock_interviews_enabled": false,

@@ -5,6 +5,7 @@ returns json as $$
         'banner_mobile_url', banner_mobile_url,
         'banner_url', banner_url,
         'alliance_id', alliance_id,
+        'book_exchange_enabled', book_exchange_enabled,
         'coffee_meet_enabled', coffee_meet_enabled,
         'display_name', display_name,
         'intentional_dating_enabled', intentional_dating_enabled,

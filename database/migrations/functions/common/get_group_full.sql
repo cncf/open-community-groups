@@ -5,7 +5,8 @@ create or replace function get_group_full(
 )
 returns json as $$
     -- Build full group payload with related entities and computed fields
-    select json_strip_nulls(json_build_object(
+    select jsonb_strip_nulls(
+        jsonb_build_object(
         -- Include core group fields
         'active', g.active,
         'category', json_build_object(
@@ -29,10 +30,13 @@ returns json as $$
         'banner_mobile_url', g.banner_mobile_url,
         'banner_url', g.banner_url,
         'bluesky_url', g.bluesky_url,
+        'book_exchange_enabled', g.book_exchange_enabled,
         'city', g.city,
         'coffee_meet_enabled', g.coffee_meet_enabled,
         'country_code', g.country_code,
-        'country_name', g.country_name,
+        'country_name', g.country_name
+        )
+        || jsonb_build_object(
         'description', g.description,
         'description_short', g.description_short,
         'discord_url', g.discord_url,
@@ -117,7 +121,7 @@ returns json as $$
             from group_sponsor gs
             where gs.group_id = g.group_id
         )
-    )) as json_data
+    ))::json as json_data
     from "group" g
     join alliance c using (alliance_id)
     join group_category gc using (group_category_id)

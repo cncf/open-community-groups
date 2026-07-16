@@ -25,7 +25,7 @@ use crate::{
         PageId,
         auth::User,
         dashboard::group::{
-            analytics,
+            analytics, book_exchange as book_exchange_template,
             home::{Content, Page, Tab},
             intentional_dating as intentional_dating_template, settings,
         },
@@ -94,6 +94,24 @@ pub(crate) async fn page(
             let template =
                 coffee_meet::prepare_list_page(&db, alliance_id, group_id, user.user_id).await?;
             Content::CoffeeMeet(template)
+        }
+        Tab::BookExchange => {
+            let can_manage_book_exchange = db
+                .user_has_group_permission(
+                    &alliance_id,
+                    &group_id,
+                    &user.user_id,
+                    GroupPermission::SettingsWrite,
+                )
+                .await?;
+            if !can_manage_book_exchange {
+                return Err(HandlerError::Forbidden);
+            }
+            let members = db.list_book_exchange_members(alliance_id, Some(group_id)).await?;
+            Content::BookExchange(book_exchange_template::ListPage {
+                can_manage_book_exchange,
+                members,
+            })
         }
         Tab::IntentionalDating => {
             let can_manage_introductions = db

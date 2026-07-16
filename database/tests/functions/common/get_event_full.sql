@@ -1041,6 +1041,7 @@ select is(
             "banner_mobile_url": "https://example.com/banner_mobile.png",
             "banner_url": "https://example.com/banner.png",
             "alliance_id": "0c060000-0000-0000-0000-000000000002",
+            "book_exchange_enabled": false,
             "coffee_meet_enabled": true,
             "display_name": "Cloud Native Seattle",
             "logo_url": "https://example.com/logo.png",

@@ -80,7 +80,7 @@
 {# Form title #}
 {% macro form_title(title, description = "", button = "") -%}
   <div>
-    <div class="text-xl lg:text-2xl font-black tracking-tight text-stone-950">{{ title }}</div>
+    <div class="site-display text-xl lg:text-2xl font-black tracking-tight text-stone-950">{{ title }}</div>
     {% if !description.is_empty() -%}
       <div class="mt-1 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <p class="m-0 min-w-0 text-sm/6 text-stone-500">{{ description }}</p>
@@ -99,7 +99,7 @@
 {% macro page_title(title, description = "", button = "") -%}
   <div>
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div class="text-xl lg:text-2xl font-black tracking-tight text-stone-950">{{ title }}</div>
+      <div class="site-display text-xl lg:text-2xl font-black tracking-tight text-stone-950">{{ title }}</div>
     </div>
     {% if !description.is_empty() -%}
       <div class="mt-1 flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center">

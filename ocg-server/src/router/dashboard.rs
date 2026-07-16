@@ -154,6 +154,10 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             put(dashboard::alliance::email_templates::update),
         )
         .route(
+            "/book-exchange",
+            get(dashboard::alliance::book_exchange::list_page),
+        )
+        .route(
             "/intentional-dating",
             get(dashboard::alliance::intentional_dating::list_page),
         )
@@ -469,6 +473,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/analytics/report/public",
             put(dashboard::group::analytics::publish_report)
                 .delete(dashboard::group::analytics::unpublish_report),
+        )
+        .route(
+            "/book-exchange",
+            get(dashboard::group::book_exchange::list_page),
         )
         .route(
             "/intentional-dating",
