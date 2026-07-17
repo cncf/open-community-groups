@@ -1,0 +1,25 @@
+{# Common Card Row Base - used by the explore page's list view (events/groups) -#}
+<a href="{% block href %}{% endblock %}"
+   class="group relative flex w-full items-center gap-5 py-7 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-stone-400 md:gap-12 md:py-8"
+   {% block anchor_attributes %}{% endblock %}>
+  {% block corner_badge %}{% endblock %}
+
+  {% block date_col %}{% endblock %}
+
+  <div class="min-w-0 flex-1">
+    {% block preheader %}{% endblock %}
+
+    <div class="font-amethysta text-[1.45rem]/[1.75rem] font-semibold text-[#1A1510] line-clamp-2 group-hover:underline decoration-1 underline-offset-4 md:text-[2.25rem]/[2.6rem]">
+      {% block title %}{% endblock %}
+    </div>
+
+    {% block meta %}{% endblock %}
+
+    {% block description %}{% endblock %}
+
+    {% block badges %}{% endblock %}
+  </div>
+
+  {% block action %}{% endblock %}
+</a>
+{# End common card row base -#}

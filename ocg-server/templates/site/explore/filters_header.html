@@ -1,14 +1,14 @@
-<div class="flex justify-between items-center border-solid border-0 border-b border-stone-100 p-5">
-  <div class="font-black text-sm text-stone-950">Filters</div>
+<div class="flex justify-between items-center border-solid border-0 border-b border-[#E2DDD8] p-5 lg:px-0 lg:pt-0 lg:pb-4">
+  <div class="font-amethysta text-[22px] font-semibold text-[#1A1510]">Filters</div>
 
   <div class="flex items-center">
     {# Filters view mode -#}
     {# Loading spinner -#}
-    <div id="loading-filters" class="me-5 w-6 hx-spinner">{{ ui::spinner(size = "size-5") -}}</div>
+    <div id="loading-filters" class="me-4 w-6 hx-spinner">{{ ui::spinner(size = "size-5") -}}</div>
     {# End loading spinner -#}
 
     <button id="reset-filters"
-            class="hidden lg:flex reset-filters items-center rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-bold text-stone-700 shadow-sm transition-colors hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950 focus:ring-4 focus:ring-[#eadcc9]">
+            class="hidden lg:flex reset-filters items-center rounded-full border border-[#eadcc9] bg-white px-3.5 py-1.5 text-xs font-semibold text-[#6B6058] transition-colors hover:border-[#d8c7b2] hover:bg-[#f5efe7] hover:text-stone-950 focus:ring-2 focus:ring-[#eadcc9]">
       Reset
     </button>
   </div>

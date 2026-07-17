@@ -1,7 +1,5 @@
-{% extends "common/card_small_base.html" -%}
-{% import "macros/ui.html" as ui -%}
+{% extends "common/card_row_base.html" -%}
 {% import "macros/badges.html" as badges -%}
-{% import "macros/cards.html" as cards -%}
 
 {# Site Explore Events Event Card -#}
 {% block href -%}
@@ -13,57 +11,105 @@
   hx-target="body"
 {% endblock anchor_attributes %}
 
-{% block logo -%}
-  {{ ui::logo(logo_url = event.logo_url, classes = "h-[60px] w-[60px] min-w-[60px] md:h-[88px] md:w-[88px] md:min-w-[88px]", size = 88) -}}
-{% endblock logo %}
-
 {% block corner_badge -%}
-  {{ badges::sold_out_corner_ribbon(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
+  {{ badges::sold_out_corner_badge(remaining_capacity = event.remaining_capacity, capacity = event.capacity) -}}
 {% endblock corner_badge %}
 
-{% block top_row_classes -%}
-  pr-14 md:pr-20
-{% endblock top_row_classes %}
-
-{% block content_stack_classes -%}
-  md:min-h-[88px]
-{% endblock content_stack_classes %}
-
-{% block title_classes -%}
-  md:!mt-2 md:!line-clamp-1 md:text-[1.05rem]/5
-{% endblock title_classes %}
+{% block date_col -%}
+  <div class="flex w-14 shrink-0 flex-col items-center self-stretch justify-center border-r border-[#E2DDD8] pr-4 text-center sm:w-20 md:w-24 md:pr-10">
+    {% if let Some(starts_at) = &event.starts_at -%}
+      <div class="text-[10px] font-bold uppercase tracking-[2px] text-[#C8A870] md:text-[11px]">
+        {{ starts_at.with_timezone(event.timezone).format("%b") }}
+      </div>
+      <div class="font-amethysta mt-1 text-[2rem] font-bold leading-[0.9] text-[#1A1510] sm:text-[2.5rem] md:text-[3.5rem]">
+        {{ starts_at.with_timezone(event.timezone).format("%e")|trim }}
+      </div>
+    {% else -%}
+      <div class="text-[10px] font-bold uppercase tracking-[2px] text-[#C8A870] md:text-[11px]">TBD</div>
+      <div class="font-amethysta mt-1 text-[2rem] font-bold leading-[0.9] text-[#1A1510] sm:text-[2.5rem] md:text-[3.5rem]">--</div>
+    {% endif -%}
+  </div>
+{%- endblock date_col %}
 
 {% block preheader -%}
-  <span>
-    <span class="hidden text-stone-700 sm:inline">{{ event.alliance_display_name }}</span>
-    <span class="px-1 hidden sm:inline">·</span>
+  <div class="mb-1.5 truncate text-[11px] uppercase tracking-[1px] text-[#9A9088]">
+    <span>{{ event.alliance_display_name }}</span>
+    <span class="px-1">·</span>
     <span>{{- event.group_name -}}</span>
-    <span class="px-1 hidden sm:inline">·</span>
+    <span class="hidden px-1 sm:inline">·</span>
     <span class="hidden sm:inline">{{ event.group_category_name }}</span>
-  </span>
+  </div>
 {%- endblock preheader %}
 
 {% block title -%}
   {{- event.name|demoji -}}
 {%- endblock title %}
 
-{% block inline_details -%}
-  {% if let Some(description_short) = &event.description_short -%}
-    <div class="mt-2 hidden md:block">
-      <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
-    </div>
-  {% endif -%}
-{% endblock inline_details %}
+{% block meta -%}
+  <div class="mt-2.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
+    <span class="inline-flex min-w-0 items-center gap-2 text-[15px] text-[#8A7A6E] md:text-base">
+      <span class="svg-icon size-4 shrink-0 bg-[#8A7A6E] icon-location"></span>
+      {% if event.kind == EventKind::Virtual -%}
+        <span class="truncate">Virtual</span>
+      {% else -%}
+        {% if let Some(location) = &event.location(34) -%}
+          <span class="truncate">{{ location }}</span>
+        {%- else -%}
+          <span class="truncate">No location provided</span>
+        {% endif -%}
+      {% endif -%}
+    </span>
 
-{% block details -%}
-  {% if let Some(description_short) = &event.description_short -%}
-    <div class="px-3.5 pt-3 md:hidden">
-      <p class="text-[0.8rem]/[1.2rem] text-stone-500 line-clamp-2">{{ description_short|demoji }}</p>
-    </div>
-  {% endif -%}
-{% endblock details %}
+    <span class="inline-flex min-w-0 items-center gap-2 text-[15px] text-[#8A7A6E] md:text-base">
+      <span class="svg-icon size-4 shrink-0 bg-[#8A7A6E] icon-clock"></span>
+      {% if let Some(starts_at) = &event.starts_at -%}
+        <span class="truncate">{{ starts_at.with_timezone(event.timezone).format("%b %-e, %Y · %-I:%M %p %Z") }}</span>
+      {% else -%}
+        <span class="truncate">Date to be announced</span>
+      {% endif -%}
+    </span>
+  </div>
+{%- endblock meta %}
 
-{% block footer -%}
-  {{- cards::event_footer(event = event, left_width_classes = "w-[60px] min-w-[60px] md:w-[88px] md:min-w-[88px]") -}}
-{%- endblock footer %}
+{% block description -%}
+  {% if let Some(description_short) = &event.description_short -%}
+    <p class="mt-2 hidden text-[15px]/[1.5rem] text-[#9A9088] line-clamp-1 sm:block">
+      {{ description_short|demoji }}
+    </p>
+  {% endif -%}
+{%- endblock description %}
+
+{% block badges -%}
+  <div class="mt-3.5 flex flex-wrap items-center gap-2">
+    {% if event.kind == EventKind::InPerson -%}
+      <span class="inline-flex items-center rounded-full bg-[#EEF1F7] px-3 py-[5px] text-[14px] font-medium text-[#3D5A8A]">In-person</span>
+    {% else if event.kind == EventKind::Virtual -%}
+      <span class="inline-flex items-center rounded-full bg-[#EAF4EF] px-3 py-[5px] text-[14px] font-medium text-[#1F7A6C]">Virtual</span>
+    {% else -%}
+      <span class="inline-flex items-center rounded-full bg-[#F4EFF8] px-3 py-[5px] text-[14px] font-medium text-[#7A5CA0]">Hybrid</span>
+    {% endif -%}
+
+    <span class="inline-flex items-center rounded-full bg-[#F0EDE9] px-3 py-[5px] text-[14px] font-medium text-[#5A5046]">
+      {{ event.alliance_display_name }}
+    </span>
+
+    {% if !event.is_past() -%}
+      {% if let Some(ticket_price_badge) = event.formatted_ticket_price_badge() -%}
+        <span class="inline-flex items-center rounded-full bg-[#EAF6EC] px-3 py-[5px] text-[14px] font-medium text-[#2F7D42]">
+          {{ ticket_price_badge }}
+        </span>
+      {% endif -%}
+    {% endif -%}
+
+    {% if event.canceled -%}
+      <span class="inline-flex items-center rounded-full bg-red-50 px-3 py-[5px] text-[14px] font-medium text-red-600">Canceled</span>
+    {% endif -%}
+  </div>
+{%- endblock badges %}
+
+{% block action -%}
+  <div class="ml-auto hidden size-12 shrink-0 items-center justify-center rounded-full bg-[#1A1510] transition-colors group-hover:bg-[#3a2f25] sm:flex">
+    <div class="svg-icon size-[18px] bg-[#FAF5EE] icon-arrow-right"></div>
+  </div>
+{%- endblock action %}
 {# End site explore events event card -#}

@@ -3,34 +3,30 @@
   {% let value_ = value.clone().unwrap_or("".to_string()) -%}
 
   <div class="flex items-center {{ container_styles }}">
-    <div class="relative {{ input_styles }}
-                {% if with_help -%}
-                  md:-ml-[0.75rem]{%- endif -%}">
+    <div class="relative {{ input_styles }}">
+      <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2">
+        <div class="svg-icon h-3.5 w-3.5 bg-[#8A7A6E] icon-magnifying-glass"></div>
+      </div>
       <input type="text"
              id="ts_query"
              name="ts_query"
              value="{{ value_ }}"
-             class="peer w-[100%] rounded-full border border-stone-200 text-stone-900 placeholder-stone-400 focus:ring-transparent focus:border-[#d8c7b2] focus:ring block flex-1 min-w-0 w-60 text-md p-2.5 ps-4 pe-18"
+             class="peer block h-[42px] w-full min-w-0 rounded-full border border-[#eadcc9] bg-white ps-10 pe-9 text-[14px] text-[#1A1510] placeholder-[#9A9088] shadow-sm transition-colors focus:border-[#8A7A6E] focus:ring-0"
              placeholder="{{ placeholder }}"
              autocomplete="off" />
-      <div class="absolute right-[40px] top-[10px] block peer-placeholder-shown:hidden">
-        <button id="clean-search"
-                class="mr-2 mt-[2px] block peer-placeholder-shown:hidden">
-          <div class="svg-icon h-5 w-5 bg-stone-400 hover:bg-stone-700 transition-colors icon-close"></div>
-        </button>
-      </div>
-      <div class="absolute right-[6px] top-[5px]">
-        <button id="search-btn"
-                class="btn-secondary group p-1.5 h-[30px] w-[30px] mt-[3px] mr-[3px]">
-          <div class="svg-icon h-4 w-4 mx-auto bg-stone-700 group-hover:bg-white transition-colors icon-magnifying-glass">
-          </div>
+      <div class="absolute right-2.5 top-1/2 -translate-y-1/2 block peer-placeholder-shown:hidden">
+        <button id="clean-search" class="flex items-center">
+          <div class="svg-icon h-4 w-4 bg-stone-400 hover:bg-stone-700 transition-colors icon-close"></div>
         </button>
       </div>
 
       {% if with_help -%}
-        <div class="absolute hidden -right-[1.5rem] top-0 md:block">
-          <button id="open-search-tips-modal" data-modal-toggle="search-tips">
-            <div class="svg-icon w-4 h-4 bg-stone-300 hover:bg-stone-700 transition-colors icon-question-mark"></div>
+        <div class="absolute right-2.5 top-1/2 -translate-y-1/2 hidden peer-placeholder-shown:block">
+          <button id="open-search-tips-modal"
+                  data-modal-toggle="search-tips"
+                  class="flex items-center"
+                  aria-label="Search tips">
+            <div class="svg-icon w-4 h-4 bg-[#C8BDB3] hover:bg-stone-700 transition-colors icon-question-mark"></div>
           </button>
         </div>
 

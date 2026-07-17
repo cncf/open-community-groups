@@ -9,14 +9,25 @@
 {% endblock scripts -%}
 
 {% block jumbotron -%}
-  <section class="container mx-auto max-w-7xl px-4 pt-10 pb-8 sm:px-6 lg:px-8 lg:pt-16">
-    <div class="relative rounded-[2.25rem] border border-stone-200 bg-white/90 p-6 text-center shadow-xl shadow-stone-200/50 backdrop-blur sm:p-8 lg:p-10">
-      <p class="mb-4 inline-flex rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-stone-700">
-        Explore
+  <section class="relative isolate overflow-hidden bg-[#1A1510]">
+    {# Background hairlines -#}
+    <div class="pointer-events-none absolute inset-0 opacity-[0.06]"
+         style="background-image: repeating-linear-gradient(115deg, transparent 0, transparent 78px, #ffffff 78px, #ffffff 79px);">
+    </div>
+    {# End background hairlines -#}
+
+    <div class="relative mx-auto max-w-7xl px-4 pt-14 pb-16 sm:px-6 lg:px-8 lg:pt-20 lg:pb-[4.5rem]">
+      <p class="mb-6 inline-flex rounded-full border border-white/20 px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.28em] text-white/60">
+        Explore GOUP
       </p>
-      <h1 class="mx-auto max-w-4xl text-balance text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl lg:text-6xl">
+
+      <h1 class="font-amethysta max-w-3xl text-balance text-5xl font-bold leading-[0.95] text-[#FAF5EE] sm:text-6xl lg:text-[5.5rem]">
         {{ title }}
       </h1>
+
+      <p class="font-metrophobic mt-6 max-w-xl text-balance text-base leading-[1.65] text-white/65 lg:text-lg">
+        Discover builder meetups, coffeehouses and community gatherings across the GOUP network.
+      </p>
     </div>
   </section>
 {% endblock jumbotron -%}
@@ -24,7 +35,7 @@
 {% block content -%}
   {# Main content -#}
   <div id="explore-content"
-       class="relative container mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 lg:pb-16 flex grow h-full">
+       class="relative container mx-auto max-w-7xl px-4 pt-8 pb-12 sm:px-6 lg:px-8 lg:pt-0 lg:pb-16 flex grow h-full">
 
     {# Entity section -#}
     <div id="entity-section" class="relative w-full">

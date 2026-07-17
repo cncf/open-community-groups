@@ -16,7 +16,7 @@
   {% let current_sort_by = filters.sort_by.clone().unwrap_or("name".to_string()) -%}
   <select id="sort_selector"
           name="sort_by"
-          class="block w-24 py-1 px-3 text-[0.775rem] leading-none h-[32px] text-stone-900 bg-white border border-stone-200 rounded-full shadow-sm focus:outline-none focus:ring-0 focus:border-[#d8c7b2] hover:border-[#d8c7b2] transition-colors">
+          class="block w-24 py-1 ps-3 pe-7 text-[13px] font-semibold leading-none h-[38px] text-[#1A1510] bg-white border border-[#eadcc9] rounded-full focus:outline-none focus:ring-0 focus:border-[#8A7A6E] hover:border-[#8A7A6E] transition-colors">
     <option value="date" {% if current_sort_by == "date" %}selected{% endif %}>Date</option>
     {% if filters.longitude.is_some() && filters.latitude.is_some() -%}
       <option value="distance"
@@ -37,7 +37,7 @@
 
 {# Search bar -#}
 {% block search_bar -%}
-  {{ search::search_bar(placeholder = "Search groups", input_styles = "w-full md:w-3/4", container_styles = "justify-center", with_help = true, value = filters.ts_query) -}}
+  {{ search::search_bar(placeholder = "Search groups...", input_styles = "w-full", container_styles = "", with_help = true, value = filters.ts_query) -}}
 {% endblock search_bar -%}
 {# End search bar -#}
 

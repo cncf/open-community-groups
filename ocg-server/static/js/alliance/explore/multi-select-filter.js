@@ -181,14 +181,14 @@ export class MultiSelectFilter extends LitWrapper {
         : `${this.name}-filter-option-${this._combobox.activeIndex}`;
 
     return html`
-      <div class="px-6 py-7 pt-5 border-b border-stone-100">
-        <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700 mb-3">${this.title}</div>
+      <div class="px-6 py-6 border-b border-[#E2DDD8] lg:px-0">
+        <div class="text-[10px] font-bold uppercase tracking-[2px] text-[#8A7A6E] mb-3">${this.title}</div>
 
         <div class="relative">
           <div
-            class="flex items-center gap-2 min-h-[38px] px-2 py-1.5 bg-white border border-stone-200 rounded-lg"
+            class="flex items-center gap-2 min-h-[46px] px-4 py-2 bg-white border border-[#eadcc9] rounded-full"
           >
-            <div class="svg-icon size-3 icon-search bg-stone-400 shrink-0"></div>
+            <div class="svg-icon size-3.5 icon-search bg-stone-400 shrink-0"></div>
             <input
               type="text"
               role="combobox"
@@ -198,7 +198,7 @@ export class MultiSelectFilter extends LitWrapper {
               aria-haspopup="listbox"
               aria-activedescendant=${activeOptionId}
               aria-label=${`${this.title} filter`}
-              class="flex-1 text-base md:text-[0.775rem] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0"
+              class="flex-1 text-base md:text-[15px] bg-transparent border-none focus:ring-0 focus:outline-none placeholder-stone-400 p-0"
               placeholder="${this.placeholder}"
               autocomplete="off"
               .value=${this._combobox.query}
@@ -226,7 +226,7 @@ export class MultiSelectFilter extends LitWrapper {
             this._combobox.isOpen
               ? html`
                   <div
-                    class="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-lg shadow-lg border border-stone-200 max-h-48 overflow-y-auto"
+                    class="absolute top-full left-0 right-0 z-10 mt-1 bg-white rounded-lg shadow-lg border border-[#C8BDB3] max-h-48 overflow-y-auto"
                   >
                     ${
                       this._filteredOptions.length > 0
@@ -242,7 +242,7 @@ export class MultiSelectFilter extends LitWrapper {
                                   return html`
                                     <li
                                       id=${`${this.name}-filter-option-${index}`}
-                                      class="w-full px-3 py-2 text-left text-[0.775rem] flex items-center gap-2 cursor-pointer ${
+                                      class="w-full px-3.5 py-2.5 text-left text-[14px] flex items-center gap-2 cursor-pointer ${
                                         isActive ? "bg-stone-50" : "hover:bg-stone-50"
                                       }"
                                       role="option"
@@ -268,7 +268,7 @@ export class MultiSelectFilter extends LitWrapper {
                               )}
                             </ul>
                           `
-                        : html`<div class="px-3 py-2 text-[0.775rem] text-stone-500">No results found</div>`
+                        : html`<div class="px-3.5 py-2.5 text-[14px] text-stone-500">No results found</div>`
                     }
                   </div>
                 `
@@ -285,7 +285,7 @@ export class MultiSelectFilter extends LitWrapper {
                     (opt) => opt.value,
                     (opt) => html`
                       <span
-                        class="flex items-center justify-between w-full px-2 py-1 text-[0.775rem] text-stone-950 border border-[#d8c7b2] bg-[#f5efe7] rounded-lg"
+                        class="flex items-center justify-between w-full px-3.5 py-2.5 text-[15px] text-[#1A1510] border border-[#8A7A6E] bg-[#f5efe7] rounded-full"
                       >
                         <span>${opt.name}</span>
                         <button

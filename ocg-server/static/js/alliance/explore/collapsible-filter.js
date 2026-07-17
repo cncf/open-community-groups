@@ -235,9 +235,9 @@ export class CollapsibleFilter extends LitWrapper {
     const canCollapse = this.options.length > this.maxVisibleItems;
     const optionsId = `${this.name}-filter-options`;
 
-    return html`<div class="px-6 py-7 pt-5 border-b border-stone-100">
+    return html`<div class="px-6 py-6 border-b border-[#E2DDD8] lg:px-0">
       <div class="flex justify-between items-center">
-        <div class="font-semibold leading-4 md:leading-8 text-sm text-stone-700">${this.title}</div>
+        <div class="text-[10px] font-bold uppercase tracking-[2px] text-[#8A7A6E]">${this.title}</div>
         <div>
           ${
             canCollapse
@@ -247,15 +247,15 @@ export class CollapsibleFilter extends LitWrapper {
                   aria-controls=${optionsId}
                   aria-expanded=${String(!this.isCollapsed)}
                   aria-label=${this.isCollapsed ? `Expand ${this.title}` : `Collapse ${this.title}`}
-                  class="group/btn collapse-btn border border-stone-200 hover:border-[#d8c7b2] hover:bg-[#f5efe7] focus:ring-0 focus:outline-none focus:ring-[#eadcc9] font-medium rounded-full text-sm p-1 text-center inline-flex items-center"
+                  class="group/btn collapse-btn border border-[#C8BDB3] hover:border-[#8A7A6E] hover:bg-[#f5efe7] focus:ring-0 focus:outline-none focus:ring-[#eadcc9] font-medium rounded-full text-sm p-1.5 text-center inline-flex items-center"
                 >
                   ${
                     this.isCollapsed
                       ? html`<div
-                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-stone-700 icon-caret-down"
+                          class="svg-icon h-3.5 w-3.5 bg-stone-500 group-hover/btn:bg-stone-700 icon-caret-down"
                         ></div>`
                       : html`<div
-                          class="svg-icon h-3 w-3 bg-stone-500 group-hover/btn:bg-stone-700 icon-caret-up"
+                          class="svg-icon h-3.5 w-3.5 bg-stone-500 group-hover/btn:bg-stone-700 icon-caret-up"
                         ></div>`
                   }
                 </button>`
@@ -272,13 +272,13 @@ export class CollapsibleFilter extends LitWrapper {
             type="button"
             @click=${this._onSelectAny}
             aria-label=${`Any ${this.title}`}
-            class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${
+            class="inline-flex items-center justify-between w-full px-3.5 py-2.5 bg-white border rounded-full cursor-pointer select-none transition-colors ${
               this.selected.length === 0
-                ? "border-[#d8c7b2] bg-[#f5efe7] text-stone-950"
-                : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
+                ? "border-[#8A7A6E] bg-[#f5efe7] text-[#1A1510]"
+                : "text-[#6B6058] border-[#C8BDB3] hover:text-stone-700 hover:bg-[#f5efe7]/50"
             }"
           >
-            <div class="text-[0.775rem] text-center text-nowrap">Any</div>
+            <div class="text-[15px] text-center text-nowrap">Any</div>
           </button>
         </li>
         ${repeat(
@@ -287,10 +287,10 @@ export class CollapsibleFilter extends LitWrapper {
           (opt) =>
             html`<li>
               <label
-                class="inline-flex items-center justify-between w-full px-2 py-1 bg-white border rounded-lg cursor-pointer select-none ${
+                class="inline-flex items-center justify-between w-full px-3.5 py-2.5 bg-white border rounded-full cursor-pointer select-none transition-colors ${
                   this.selected.includes(opt.value)
-                    ? "border-[#d8c7b2] bg-[#f5efe7] text-stone-950"
-                    : "text-stone-500 border-stone-200 hover:text-stone-600 hover:bg-stone-50"
+                    ? "border-[#8A7A6E] bg-[#f5efe7] text-[#1A1510]"
+                    : "text-[#6B6058] border-[#C8BDB3] hover:text-stone-700 hover:bg-[#f5efe7]/50"
                 }"
               >
                 <input
@@ -301,7 +301,7 @@ export class CollapsibleFilter extends LitWrapper {
                   @change=${() => this._onSelect(opt.value)}
                   class="sr-only"
                 />
-                <div class="text-[0.775rem] text-center text-nowrap capitalize">${opt.name}</div>
+                <div class="text-[15px] text-center text-nowrap capitalize">${opt.name}</div>
               </label>
             </li>`,
         )}

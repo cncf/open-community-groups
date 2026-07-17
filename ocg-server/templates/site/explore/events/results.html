@@ -8,7 +8,7 @@
 {% match view_mode -%}
 {% when ViewMode::Calendar -%}
 {# Calendar view -#}
-<div class="mt-5 border-t border-stone-100 md:mt-7 p-5 md:p-7">
+<div class="mt-4 border-t border-[#E2DDD8] py-6">
   <div class="flex justify-between items-center mb-8">
     <div id="calendar-date"
          class="text-xl font-black tracking-tight text-stone-950 md:text-2xl lg:text-[2rem]"></div>
@@ -72,13 +72,13 @@
 
 {% when ViewMode::List -%}
 {# List view -#}
-<div class="mt-5 flex flex-col gap-4 px-5 pb-5 md:mt-7 md:gap-5 md:px-7 md:pb-7">
+<div class="mt-4 flex flex-col divide-y divide-[#E2DDD8] {% if events.len() > 0 %}border-y border-[#E2DDD8]{% else %}border-t border-[#E2DDD8]{% endif %}">
   {# Placeholder cards -#}
   {% if events.len() == 0 -%}
-    <div class="no-results-default hidden">
+    <div class="no-results-default hidden py-6">
       {{ feedback::alert(title = "No events found", content = "By default, only upcoming events are displayed. You can adjust the date range in the filters to search for past events, or try different search criteria.") -}}
     </div>
-    <div class="no-results-filtered hidden">
+    <div class="no-results-filtered hidden py-6">
       {{ feedback::alert(title = "No events found", content = "We can't seem to find any events that match your search criteria. You can reset your filters or try a different search.") -}}
     </div>
   {% endif -%}
@@ -100,7 +100,7 @@
 
 {% when ViewMode::Map -%}
 {# Map view -#}
-<div class="mt-5 border-t border-stone-100 md:mt-7 p-5 md:p-7">
+<div class="mt-4 border-t border-[#E2DDD8] py-6">
   <div class="relative w-full border border-stone-200 h-[600px] md:h-[820px] overflow-hidden rounded-[1.75rem]">
     {# Loading spinner -#}
     <div id="loading-map" class="absolute top-3 start-3 w-6 z-[450] group">{{ ui::spinner(htmx = false) -}}</div>

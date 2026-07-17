@@ -1,6 +1,6 @@
 {# Entity selector -#}
 {% macro entity_radio(selected, ts_query = None) -%}
-  <div class="px-6 py-7 border-b border-stone-100">
+  <div class="px-6 py-6 border-b border-[#E2DDD8] lg:px-0">
     <ul class="flex items-center w-full">
       {% match selected -%}
       {% when Entity::Groups -%}
@@ -16,14 +16,14 @@
                 {# TODO: Hardcoded alliance until we add more #}
                 hx-vals='{"alliance[0]":"goup"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
           {# djlint:on #}
-          class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-l-2xl cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
+          class="inline-flex items-center justify-between w-full p-3 bg-white border border-[#eadcc9] rounded-l-full cursor-pointer text-[#6B6058] select-none hover:bg-[#f5efe7]/50 transition-colors">
           {{ entity_content(kind = "events", title = "Events", icon_styles = Some("bg-stone-500") ) -}}
         </button>
         {# End events button -#}
       </li>
       <li class="w-full">
         {# Selected entity: groups -#}
-        <div class="inline-flex items-center justify-between w-full p-3 bg-[#f5efe7] border rounded-r-2xl text-stone-900 border-[#eadcc9] shadow-sm">
+        <div class="inline-flex items-center justify-between w-full p-3 bg-[#f5efe7] border rounded-r-full text-[#1A1510] border-[#d8c7b2]">
           {{ entity_content(kind = "groups", title = "Groups", styles = Some("select-none font-bold") , icon_styles = Some("bg-stone-700")) -}}
         </div>
         {# End selected entity: groups -#}
@@ -32,7 +32,7 @@
       {% when Entity::Events -%}
       <li class="w-full">
         {# Selected entity: events -#}
-        <div class="inline-flex items-center justify-between w-full p-3 bg-[#f5efe7] border rounded-l-2xl text-stone-900 border-[#eadcc9] shadow-sm">
+        <div class="inline-flex items-center justify-between w-full p-3 bg-[#f5efe7] border rounded-l-full text-[#1A1510] border-[#d8c7b2]">
           {{ entity_content(kind = "events", title = "Events", styles = Some("select-none font-bold") , icon_styles = Some("bg-stone-700")) -}}
         </div>
         {# End selected entity: events -#}
@@ -49,7 +49,7 @@
           {# TODO: Hardcoded alliance until we add more #}
           hx-vals='{"alliance[0]":"goup"{% if let Some(query) = &ts_query %},"ts_query":{{ query|json|safe }}{% endif %}}'
           {# djlint:on #}
-          class="inline-flex items-center justify-between w-full p-3 bg-white border border-stone-200 rounded-r-2xl cursor-pointer text-stone-500 select-none hover:bg-stone-50 transition-colors">
+          class="inline-flex items-center justify-between w-full p-3 bg-white border border-[#eadcc9] rounded-r-full cursor-pointer text-[#6B6058] select-none hover:bg-[#f5efe7]/50 transition-colors">
           {{ entity_content(kind = "groups", title = "Groups", icon_styles = Some("bg-stone-500") ) -}}
         </button>
         {# End groups button -#}
@@ -80,13 +80,13 @@
 {# Input date -#}
 {% macro date_input(name, label, value) -%}
   <div class="w-full">
-    <div class="text-xs/6 text-stone-500/75 capitalize mb-1">{{ label }}:</div>
-    <div class="relative w-[75%]">
+    <div class="text-xs/6 text-[#8A7A6E] capitalize mb-1">{{ label }}:</div>
+    <div class="relative w-full">
       <input name="{{ name }}"
              validate="false"
              value="{%- if let Some(date) = &value -%} {{ date }} {%- endif -%}"
              type="date"
-             class="inline-flex bg-white border border-stone-200 text-[0.775rem] leading-4 h-[32px] text-center rounded-xl focus:ring-0 focus:border-[#d8c7b2] w-full px-2 py-1.5 hover:bg-stone-50 transition-colors"
+             class="inline-flex bg-white border border-[#eadcc9] text-[15px] leading-5 h-[46px] rounded-full focus:ring-0 focus:border-[#8A7A6E] w-full px-4 py-2 hover:bg-[#f5efe7]/40 transition-colors"
              placeholder="Date {{ label }}">
     </div>
   </div>
