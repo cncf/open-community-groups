@@ -489,7 +489,7 @@ test.describe("group dashboard events view", () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this event?",
+      "Delete this event? This removes it from the dashboard and cannot be undone.",
     );
 
     // Confirm deletion and wait for the server response.
@@ -596,7 +596,7 @@ test.describe("group dashboard events view", () => {
     await expect(cancelButton).toBeVisible();
     await cancelButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to cancel this event? This action is not reversible.",
+      "Cancel this event? This cannot be undone. All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
     );
 
     // Confirm cancellation and wait for the server response.
@@ -623,7 +623,7 @@ test.describe("group dashboard events view", () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this event?",
+      "Delete this event? This removes it from the dashboard and cannot be undone.",
     );
 
     // Confirm deletion and wait for the server response.
@@ -851,8 +851,12 @@ test.describe("group dashboard events view", () => {
 
       const seriesConfirmationDialog =
         organizerGroupPage.locator(".swal2-popup");
+      const expectedConfirmationMessage =
+        action === "cancel"
+          ? "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?"
+          : `This event is part of a recurring series. What would you like to ${action}?`;
       await expect(seriesConfirmationDialog).toContainText(
-        `This event is part of a recurring series. What would you like to ${action}?`,
+        expectedConfirmationMessage,
       );
 
       await Promise.all([
@@ -861,7 +865,7 @@ test.describe("group dashboard events view", () => {
             response.request().method() === "PUT" &&
             response.url().includes("/dashboard/group/events/") &&
             response.url().includes(`/${action}`) &&
-            (scopeButtonName === "All in series"
+            (scopeButtonName !== "Only this event"
               ? response.url().includes("scope=series")
               : !response.url().includes("scope=series")) &&
             response.ok(),
@@ -902,7 +906,11 @@ test.describe("group dashboard events view", () => {
     await expect(eventRows.nth(2)).toContainText("Draft");
 
     // Cancel the full series.
-    await selectScopedAction(eventRows.first(), "cancel", "All in series");
+    await selectScopedAction(
+      eventRows.first(),
+      "cancel",
+      "Non-completed events in series",
+    );
     await expect(eventRows.first()).toContainText("Canceled");
     await expect(eventRows.nth(1)).toContainText("Canceled");
     await expect(eventRows.nth(2)).toContainText("Canceled");
@@ -1590,7 +1598,7 @@ test.describe("group dashboard events view", () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this event?",
+      "Delete this event? This removes it from the dashboard and cannot be undone.",
     );
 
     // Confirm deletion and wait for the server response.

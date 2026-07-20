@@ -197,10 +197,9 @@ test.describe("user dashboard invitations view", () => {
 
     // Find the dashboard content.
     const dashboardContent = pending2Page.locator("#dashboard-content");
-    const groupInvitationRow = dashboardContent.locator("tr", {
-      hasText: "Platform Ops Meetup",
-    });
-    const rejectGroupInvitationButton = groupInvitationRow.getByTitle("Reject");
+    const rejectGroupInvitationButton = dashboardContent.locator(
+      `#reject-group-${TEST_GROUP_IDS.community1.alpha}`,
+    );
 
     // Restore the page state after the check.
     try {
@@ -231,10 +230,8 @@ test.describe("user dashboard invitations view", () => {
       // Reload the invited user dashboard.
       await pending2Page.reload();
 
-      // Assert how many matching elements are shown.
-      await expect(
-        dashboardContent.locator("tr", { hasText: "Platform Ops Meetup" }),
-      ).toHaveCount(0);
+      // Verify the group invitation is gone while similarly named event rows may remain.
+      await expect(rejectGroupInvitationButton).toHaveCount(0);
     } finally {
       await ensureGroupInvitation(
         organizerGroupPage,

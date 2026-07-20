@@ -130,8 +130,10 @@ const createApprovalRequiredEvent = async (page, eventName) => {
   };
 };
 
-// Delete the temporary event created for invitation request coverage.
+// Cancel and delete the temporary published event created for invitation request coverage.
 const deleteEventFromList = async (page, eventId) => {
+  const cancelResponse = await page.request.put(buildE2eUrl(`/dashboard/group/events/${eventId}/cancel`));
+  expect([200, 204, 404]).toContain(cancelResponse.status());
   const deleteResponse = await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/delete`));
   expect([200, 204, 404]).toContain(deleteResponse.status());
 };
@@ -578,7 +580,7 @@ test.describe("group dashboard attendees tab", () => {
     const attendeeRow = attendeesContent.locator("tr", {
       hasText: "E2E Member One",
     });
-    const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+    const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
     // Assert the expected content is visible.
     await expect(attendeeRow).toBeVisible();
@@ -728,7 +730,7 @@ test.describe("group dashboard attendees tab", () => {
       await expect(attendeeRow).toContainText("Invitation sent");
 
       // Cancel the temporary invitation and wait for the table to refresh.
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Cancel invitation" }).click();
       await expect(organizerGroupPage.getByRole("button", { name: "Yes" })).toBeVisible();
@@ -968,7 +970,7 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund requested is visible.
       await expect(attendeeRow.getByText("Refund requested", { exact: true })).toBeVisible();
@@ -978,15 +980,15 @@ test.describe("group dashboard attendees tab", () => {
       await rowActionsMenu.locator("summary").click();
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
         "hx-put",
-        /\/refund\/approve$/,
+        /\/refunds\/[^/]+\/approve$/,
       );
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
         "data-success-message",
-        "Refund approved.",
+        "Refund queued.",
       );
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
         "hx-put",
-        /\/refund\/reject$/,
+        /\/refunds\/[^/]+\/reject$/,
       );
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
         "data-success-message",
@@ -1010,12 +1012,12 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Approve the refund and verify success feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Approve refund" }).click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund approved.");
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund queued.");
       await organizerGroupPage.locator(".swal2-confirm").click();
 
       // Reject the refund and verify success feedback.
@@ -1039,7 +1041,7 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Fail refund approval and verify error feedback.
       await rowActionsMenu.locator("summary").click();
@@ -1058,7 +1060,7 @@ test.describe("group dashboard attendees tab", () => {
       );
     });
 
-    test("organizer sees retry refund finalization for processing refunds in the row menu", async ({
+    test("organizer cannot retry a refund while provider processing is active", async ({
       organizerGroupPage,
     }) => {
       // Load the attendees tab for the seeded refund review event.
@@ -1070,19 +1072,15 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member Two",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund processing is visible.
       await expect(attendeeRow.getByText("Refund processing", { exact: true })).toBeVisible();
       await expect(rowActionsMenu).toBeVisible();
 
-      // Verify processing refunds only expose retry finalization.
+      // Verify processing refunds cannot be retried or rejected.
       await rowActionsMenu.locator("summary").click();
-      await expect(
-        rowActionsMenu.getByRole("menuitem", {
-          name: "Retry refund finalization",
-        }),
-      ).toHaveAttribute("hx-put", /\/refund\/approve$/);
+      await expect(rowActionsMenu.getByRole("menuitem", { name: "Retry refund" })).toHaveCount(0);
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveCount(0);
     });
 
@@ -1098,7 +1096,7 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Pending One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund rejected is visible.
       await expect(attendeeRow.getByText("Refund rejected", { exact: true })).toBeVisible();
@@ -1128,7 +1126,7 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Group Viewer One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund approved is visible.
       await expect(attendeeRow.getByText("Refund approved", { exact: true })).toBeVisible();
@@ -1414,7 +1412,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(attendeeRow).toBeVisible();
 
     // Open the attendee row actions and choose the row-level email action.
-    const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+    const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
     await rowActionsMenu.locator("summary").click();
     await rowActionsMenu.getByRole("menuitem", { name: "Send email" }).click();
 
