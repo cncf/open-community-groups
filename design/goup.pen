@@ -6749,6 +6749,7 @@
               "id": "So7GV",
               "name": "leftCol",
               "width": "fill_container",
+              "height": "fill_container",
               "fill": "#1A1510",
               "layout": "vertical",
               "gap": 24,
@@ -6760,57 +6761,12 @@
               ],
               "children": [
                 {
-                  "type": "frame",
-                  "id": "F3wv7",
-                  "cornerRadius": 100,
-                  "stroke": {
-                    "align": "outside",
-                    "thickness": 1,
-                    "fill": "#C8A87060"
-                  },
-                  "gap": 8,
-                  "padding": [
-                    6,
-                    14
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "ellipse",
-                      "id": "iSy6W",
-                      "fill": "#C8A870",
-                      "width": 6,
-                      "height": 6
-                    },
-                    {
-                      "type": "text",
-                      "id": "uhxMM",
-                      "fill": "#C8A870",
-                      "content": "GOUP RESOURCES",
-                      "fontFamily": "Instrument Sans",
-                      "fontSize": 10,
-                      "fontWeight": "700",
-                      "letterSpacing": 2.5
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "B2lhxL",
-                  "fill": "#FAF5EE",
-                  "content": "04",
-                  "lineHeight": 0.82,
-                  "fontFamily": "Amethysta",
-                  "fontSize": 200,
-                  "fontWeight": "700"
-                },
-                {
                   "type": "text",
                   "id": "q7uw9N",
-                  "fill": "#FAFAF7",
+                  "fill": "#faf5ee",
                   "content": "Guides and signal\nfor the GOUP\ncommunity.",
                   "fontFamily": "Amethysta",
-                  "fontSize": 38,
+                  "fontSize": 56,
                   "fontWeight": "600"
                 },
                 {
@@ -6825,30 +6781,27 @@
                   "fontWeight": "normal"
                 },
                 {
-                  "type": "frame",
-                  "id": "PPkYa",
-                  "gap": 8,
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "zzrn5",
-                      "fill": "#FAF5EE",
-                      "content": "Browse all resources",
-                      "fontFamily": "Instrument Sans",
-                      "fontSize": 14,
-                      "fontWeight": "600"
-                    },
-                    {
-                      "type": "icon_font",
-                      "id": "Hsgbk",
-                      "width": 16,
-                      "height": 16,
-                      "iconFontName": "arrow-right",
-                      "iconFontFamily": "lucide",
-                      "fill": "#C8A870"
-                    }
-                  ]
+                  "type": "path",
+                  "id": "NjWr7",
+                  "layoutPosition": "absolute",
+                  "x": 0,
+                  "y": -24,
+                  "name": "heroBgLines",
+                  "opacity": 0.09,
+                  "geometry": "M-120 552l552-552m-312 552l552-552m-312 552l552-552m-312 552l552-552m-312 552l552-552m-312 552l552-552m-312 552l552-552",
+                  "viewBox": [
+                    0,
+                    0,
+                    1440,
+                    552
+                  ],
+                  "width": 1440,
+                  "height": 552,
+                  "stroke": {
+                    "align": "center",
+                    "thickness": 1,
+                    "fill": "#FFFFFF"
+                  }
                 }
               ]
             },
@@ -6869,29 +6822,6 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "qIR10",
-                  "width": "fill_container",
-                  "padding": [
-                    0,
-                    0,
-                    28,
-                    0
-                  ],
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "QpvRt",
-                      "fill": "#8A7A6E",
-                      "content": "WHAT'S INSIDE",
-                      "fontFamily": "Instrument Sans",
-                      "fontSize": 10,
-                      "fontWeight": "700",
-                      "letterSpacing": 2.5
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
                   "id": "Ghh9N",
                   "name": "feat1",
                   "width": "fill_container",
@@ -6899,8 +6829,7 @@
                     "align": "inside",
                     "thickness": {
                       "top": 1
-                    },
-                    "fill": "#E2DDD8"
+                    }
                   },
                   "gap": 20,
                   "padding": [
@@ -6908,15 +6837,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "type": "text",
-                      "id": "G3VW9",
-                      "fill": "#C8BDB3",
-                      "content": "01",
-                      "fontFamily": "Amethysta",
-                      "fontSize": 22,
-                      "fontWeight": "normal"
-                    },
                     {
                       "type": "frame",
                       "id": "WqBiF",
@@ -6931,7 +6851,7 @@
                           "fill": "#1A1510",
                           "content": "Member onboarding",
                           "fontFamily": "Instrument Sans",
-                          "fontSize": 16,
+                          "fontSize": 20,
                           "fontWeight": "600"
                         },
                         {
@@ -6968,15 +6888,6 @@
                   ],
                   "children": [
                     {
-                      "type": "text",
-                      "id": "cbqjv",
-                      "fill": "#C8BDB3",
-                      "content": "02",
-                      "fontFamily": "Amethysta",
-                      "fontSize": 22,
-                      "fontWeight": "normal"
-                    },
-                    {
                       "type": "frame",
                       "id": "dYcWV",
                       "name": "feat2Info",
@@ -6990,7 +6901,7 @@
                           "fill": "#1A1510",
                           "content": "Curated streams",
                           "fontFamily": "Instrument Sans",
-                          "fontSize": 16,
+                          "fontSize": 20,
                           "fontWeight": "600"
                         },
                         {
@@ -7027,15 +6938,6 @@
                   ],
                   "children": [
                     {
-                      "type": "text",
-                      "id": "rPxaV",
-                      "fill": "#C8BDB3",
-                      "content": "03",
-                      "fontFamily": "Amethysta",
-                      "fontSize": 22,
-                      "fontWeight": "normal"
-                    },
-                    {
                       "type": "frame",
                       "id": "g16nk",
                       "name": "feat3Info",
@@ -7049,7 +6951,7 @@
                           "fill": "#1A1510",
                           "content": "Fresh cadence",
                           "fontFamily": "Instrument Sans",
-                          "fontSize": 16,
+                          "fontSize": 20,
                           "fontWeight": "600"
                         },
                         {
@@ -7066,67 +6968,582 @@
                       ]
                     }
                   ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WaI6o",
+          "name": "obSec",
+          "width": "fill_container",
+          "fill": "#FAF5EE",
+          "layout": "vertical",
+          "gap": 40,
+          "padding": [
+            80,
+            120
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Y9eV5",
+              "name": "card",
+              "clip": true,
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 20,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#e8e0d8"
+              },
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#00000040",
+                "offset": {
+                  "x": 0,
+                  "y": 4
+                },
+                "blur": 4
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "y9VWT",
+                  "name": "cardMid",
+                  "width": "fill_container",
+                  "gap": 48,
+                  "padding": 48,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "N7umkg",
+                      "name": "leftSide",
+                      "width": 360,
+                      "layout": "vertical",
+                      "gap": 20,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "c6rK46",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "outside",
+                            "thickness": 1,
+                            "fill": "#1a1510"
+                          },
+                          "padding": [
+                            6,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Q5XaVK",
+                              "fill": "#1a1510",
+                              "content": "ONBOARDING GUIDE",
+                              "fontFamily": "Instrument Sans",
+                              "fontSize": 10,
+                              "fontWeight": "700",
+                              "letterSpacing": 2.5
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "bW1fn",
+                          "fill": "#1A1510",
+                          "textGrowth": "fixed-width",
+                          "width": 360,
+                          "content": "Welcome new\nmembers clearly.",
+                          "lineHeight": 1.05,
+                          "fontFamily": "Amethysta",
+                          "fontSize": 50,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "M7eTue",
+                          "fill": "#8A7A6E",
+                          "textGrowth": "fixed-width",
+                          "width": 360,
+                          "content": "Use this guide when inviting someone to GOUP or requesting access to a local city group. Good introductions help members understand who is joining, why they are a fit, and how to collaborate.",
+                          "lineHeight": 1.6,
+                          "fontFamily": "Instrument Sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "m8pAC",
+                      "name": "rSide",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "gap": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Lp7Ji",
+                          "name": "row1A",
+                          "width": "fill_container",
+                          "gap": 16,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "d0A51",
+                              "name": "sCard1",
+                              "width": "fill_container",
+                              "fill": "#FAF5EE",
+                              "cornerRadius": 16,
+                              "layout": "vertical",
+                              "gap": 14,
+                              "padding": [
+                                28,
+                                24,
+                                24,
+                                24
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "Ck8Ft",
+                                  "name": "nb1",
+                                  "width": 36,
+                                  "height": 36,
+                                  "fill": "#EDE4DA",
+                                  "cornerRadius": 100,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "F7QL2p",
+                                      "fill": "#5A4A3E",
+                                      "content": "1",
+                                      "fontFamily": "Amethysta",
+                                      "fontSize": 15,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "dVNBR",
+                                  "fill": "#1A1510",
+                                  "content": "Introduce every invite",
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 16,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Y4OgP",
+                                  "fill": "#6A5A50",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Mention who referred them, add a short introduction, and include their LinkedIn profile when available.",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "u6X3J",
+                              "name": "sCard2",
+                              "width": "fill_container",
+                              "fill": "#FAF5EE",
+                              "cornerRadius": 16,
+                              "layout": "vertical",
+                              "gap": 14,
+                              "padding": [
+                                28,
+                                24,
+                                24,
+                                24
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "OL0ht",
+                                  "name": "nb2",
+                                  "width": 36,
+                                  "height": 36,
+                                  "fill": "#EDE4DA",
+                                  "cornerRadius": 100,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "b0W0t7",
+                                      "fill": "#5A4A3E",
+                                      "content": "2",
+                                      "fontFamily": "Amethysta",
+                                      "fontSize": 15,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "FnWpG",
+                                  "fill": "#1A1510",
+                                  "content": "Use your full name",
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 16,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "D3TLUy",
+                                  "fill": "#6A5A50",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Update your WhatsApp name to your full name so members can recognize you across chats and events.",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "bdiiT",
+                          "name": "row2A",
+                          "width": "fill_container",
+                          "gap": 16,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "sk2Yg",
+                              "name": "sCard3",
+                              "width": "fill_container",
+                              "fill": "#FAF5EE",
+                              "cornerRadius": 16,
+                              "layout": "vertical",
+                              "gap": 14,
+                              "padding": [
+                                28,
+                                24,
+                                24,
+                                24
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "W9HKOt",
+                                  "name": "nb3",
+                                  "width": 36,
+                                  "height": 36,
+                                  "fill": "#EDE4DA",
+                                  "cornerRadius": 100,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "inAHe",
+                                      "fill": "#5A4A3E",
+                                      "content": "3",
+                                      "fontFamily": "Amethysta",
+                                      "fontSize": 15,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "fJ1eD",
+                                  "fill": "#1A1510",
+                                  "content": "Match your profile photo",
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 16,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "yzqSj",
+                                  "fill": "#6A5A50",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "If you are comfortable, use the same photo as your LinkedIn profile to make recognition easier.",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Ak5eo",
+                              "name": "sCard4",
+                              "width": "fill_container",
+                              "fill": "#FAF5EE",
+                              "cornerRadius": 16,
+                              "layout": "vertical",
+                              "gap": 14,
+                              "padding": [
+                                28,
+                                24,
+                                24,
+                                24
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "DFaZy",
+                                  "name": "nb4",
+                                  "width": 36,
+                                  "height": 36,
+                                  "fill": "#EDE4DA",
+                                  "cornerRadius": 100,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "Z8IXFd",
+                                      "fill": "#5A4A3E",
+                                      "content": "4",
+                                      "fontFamily": "Amethysta",
+                                      "fontSize": 15,
+                                      "fontWeight": "600"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "E32a68",
+                                  "fill": "#1A1510",
+                                  "content": "Add a helpful group tag",
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 16,
+                                  "fontWeight": "700"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "sjwgk",
+                                  "fill": "#6A5A50",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "Add your LinkedIn handle and country as your group tag. Example: @johndoe - USA.",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "Instrument Sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
                 },
                 {
                   "type": "frame",
-                  "id": "x4FFC",
+                  "id": "Qgxbf",
+                  "name": "cBottom",
                   "width": "fill_container",
                   "stroke": {
                     "align": "inside",
                     "thickness": {
                       "top": 1
                     },
-                    "fill": "#E2DDD8"
+                    "fill": "#E8E0D8"
                   },
+                  "layout": "vertical",
+                  "gap": 24,
                   "padding": [
-                    28,
-                    0,
-                    0,
-                    0
+                    40,
+                    48,
+                    48,
+                    48
                   ],
-                  "justifyContent": "space_between",
-                  "alignItems": "center",
                   "children": [
                     {
                       "type": "text",
-                      "id": "LEeSm",
+                      "id": "z9sKg",
                       "fill": "#8A7A6E",
-                      "content": "All resources · Members only",
+                      "content": "ACCESS FLOW",
                       "fontFamily": "Instrument Sans",
-                      "fontSize": 12,
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "OVfWw",
-                  "fill": "#1A1510",
-                  "cornerRadius": 8,
-                  "gap": 8,
-                  "padding": [
-                    12,
-                    20
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "pAWBG",
-                      "fill": "#FAF5EE",
-                      "content": "Browse all resources",
-                      "fontFamily": "Instrument Sans",
-                      "fontSize": 13,
-                      "fontWeight": "600"
+                      "fontSize": 11,
+                      "fontWeight": "700",
+                      "letterSpacing": 2.5
                     },
                     {
-                      "type": "icon_font",
-                      "id": "b8iXg",
-                      "width": 14,
-                      "height": 14,
-                      "iconFontName": "arrow-right",
-                      "iconFontFamily": "lucide",
-                      "fill": "#FAF5EE"
+                      "type": "frame",
+                      "id": "NlJjF",
+                      "name": "flowRow",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "TQrKb",
+                          "name": "p1",
+                          "fill": "#F2EBE1",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "outside",
+                            "thickness": 1,
+                            "fill": "#DDD5C8"
+                          },
+                          "padding": [
+                            10,
+                            20
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "fyvAE",
+                              "fill": "#1A1510",
+                              "content": "Register at goup.vc",
+                              "fontFamily": "Instrument Sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon_font",
+                          "id": "bTy1y",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "arrow-right",
+                          "iconFontFamily": "lucide",
+                          "fill": "#B0A090"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "A59lok",
+                          "name": "p2",
+                          "fill": "#F2EBE1",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "outside",
+                            "thickness": 1,
+                            "fill": "#DDD5C8"
+                          },
+                          "padding": [
+                            10,
+                            20
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "OEoDv",
+                              "fill": "#1A1510",
+                              "content": "Join your city",
+                              "fontFamily": "Instrument Sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon_font",
+                          "id": "Oy8W8",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "arrow-right",
+                          "iconFontFamily": "lucide",
+                          "fill": "#B0A090"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "u0MAw",
+                          "name": "p3",
+                          "fill": "#F2EBE1",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "outside",
+                            "thickness": 1,
+                            "fill": "#DDD5C8"
+                          },
+                          "padding": [
+                            10,
+                            20
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zei9l",
+                              "fill": "#1A1510",
+                              "content": "Get approved",
+                              "fontFamily": "Instrument Sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "icon_font",
+                          "id": "iLEgk",
+                          "width": 16,
+                          "height": 16,
+                          "iconFontName": "arrow-right",
+                          "iconFontFamily": "lucide",
+                          "fill": "#B0A090"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "dFeoj",
+                          "name": "p4",
+                          "fill": "#F2EBE1",
+                          "cornerRadius": 100,
+                          "stroke": {
+                            "align": "outside",
+                            "thickness": 1,
+                            "fill": "#DDD5C8"
+                          },
+                          "padding": [
+                            10,
+                            20
+                          ],
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "pxV90",
+                              "fill": "#1A1510",
+                              "content": "Meet local peers",
+                              "fontFamily": "Instrument Sans",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "X3dEH",
+                      "fill": "#8A7A6E",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "If you have not introduced yourself yet, share a short intro so everyone can get to know you and find ways to collaborate.",
+                      "lineHeight": 1.6,
+                      "fontFamily": "Instrument Sans",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
                     }
                   ]
                 }

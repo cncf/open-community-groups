@@ -1,291 +1,451 @@
-{% extends "common/base.html" -%}
+{% extends "common/base.html" -%} {% block jumbotron -%}
+<div class="relative isolate overflow-hidden bg-[#1A1510]">
+  {# Background hairlines (dark side) -#}
+  <div
+    class="pointer-events-none absolute inset-0 opacity-[0.06]"
+    style="
+      background-image: repeating-linear-gradient(
+        115deg,
+        transparent 0,
+        transparent 78px,
+        #ffffff 78px,
+        #ffffff 79px
+      );
+    "
+  ></div>
+  {# End background hairlines -#} {# Centered container: matches the Events hero
+  and the sections below -#}
+  <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div class="lg:grid lg:grid-cols-[1fr_400px] lg:items-stretch">
+      {# Left column: intro (dark shows through) -#}
+      <div class="relative pt-14 pb-16 lg:pt-20 lg:pb-[4.5rem] lg:pr-12">
+        <h1
+          class="font-amethysta max-w-lg text-balance text-5xl font-bold leading-[0.95] text-[#FAF5EE] sm:text-6xl lg:text-[4.5rem]"
+        >
+          Guides and signal<br class="hidden lg:block" />
+          for the GOUP<br class="hidden lg:block" />
+          community.
+        </h1>
+        <p class="mt-6 max-w-[420px] text-[15px] leading-relaxed text-white/35">
+          Start with the member onboarding guide, then scan the live reading
+          desk for AI, open source, and company-building links.
+        </p>
+      </div>
+      {# End left column -#} {# Right column: feature list -#}
+      <div class="relative pt-14 pb-16 lg:pt-20 lg:pb-[4.5rem] lg:pl-12">
+        {# Cream panel, bleeds to the screen edges -#}
+        <div
+          class="pointer-events-none absolute inset-y-0 left-[-1rem] right-[-9999px] bg-[#FAFAF7] sm:left-[-1.5rem] lg:left-0"
+        ></div>
+        {# End cream panel -#}
 
-{% block jumbotron -%}
-  <div class="relative isolate overflow-hidden bg-[#f5efe7]">
-    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.85),transparent_34rem),radial-gradient(circle_at_top_right,rgba(234,220,201,0.9),transparent_28rem)]">
-    </div>
-    <div class="absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-[#d8c7b2] to-transparent">
-    </div>
-
-    <section class="relative container mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20">
-      <div class="grid items-end gap-10 lg:grid-cols-[1.2fr_0.8fr]">
-        <div>
-          <div class="inline-flex items-center gap-2 rounded-full border border-[#d8c7b2] bg-white/70 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-stone-700 shadow-sm backdrop-blur-xl">
-            <span class="size-2 rounded-full bg-[#b9a68e]"></span>
-            GOUP Resources
+        <div
+          class="relative divide-y divide-[#E2DDD8] lg:flex lg:h-full lg:flex-col lg:justify-between lg:divide-y-0"
+        >
+          <div class="py-6 first:pt-0 lg:py-6 lg:first:pt-0">
+            <div class="text-xl font-semibold text-[#1A1510]">
+              Member onboarding
+            </div>
+            <p class="mt-1.5 max-w-[340px] text-[13px] text-[#8A7A6E]">
+              Clear steps for inviting, joining, and introducing members well.
+            </p>
           </div>
-          <h1 class="mt-7 max-w-4xl text-balance text-5xl font-black tracking-[-0.055em] text-stone-950 sm:text-6xl lg:text-7xl">
-            Guides and signal for the GOUP community.
-          </h1>
-          <p class="mt-7 max-w-3xl text-lg/8 font-medium text-stone-700 lg:text-xl/9">
-            Start with the member onboarding guide, then scan the live reading desk for AI, open source, and company-building links.
-          </p>
-        </div>
-
-        <div class="rounded-[2rem] border border-[#d8c7b2] bg-white/70 p-5 shadow-2xl shadow-[#d8c7b2]/30 backdrop-blur-xl">
-          <div class="rounded-[1.5rem] border border-[#eadcc9] bg-[#fffaf5]/90 p-5">
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <div class="text-xs font-bold uppercase tracking-[0.22em] text-stone-600">Resource desk</div>
-                <div class="mt-2 text-3xl font-black text-stone-950">{{ sections.len() + 1 }}</div>
-              </div>
-              <div class="flex size-12 items-center justify-center rounded-2xl bg-[#f5efe7] ring-1 ring-[#d8c7b2]">
-                <div class="svg-icon size-5 icon-search bg-stone-700"></div>
-              </div>
+          <div class="border-t border-[#E2DDD8] py-6">
+            <div class="text-xl font-semibold text-[#1A1510]">
+              Curated streams
             </div>
-            <div class="mt-5 grid gap-3">
-              <div class="rounded-2xl border border-[#eadcc9] bg-white/70 p-4">
-                <div class="text-sm font-black text-stone-950">Member onboarding</div>
-                <p class="mt-1 text-sm/6 text-stone-600">Clear steps for inviting, joining, and introducing members well.</p>
-              </div>
-              <div class="rounded-2xl border border-[#eadcc9] bg-white/70 p-4">
-                <div class="text-sm font-black text-stone-950">Curated streams</div>
-                <p class="mt-1 text-sm/6 text-stone-600">AI, open source, and entrepreneurship in one calm digest.</p>
-              </div>
-              <div class="rounded-2xl border border-[#eadcc9] bg-white/70 p-4">
-                <div class="text-sm font-black text-stone-950">Fresh cadence</div>
-                <p class="mt-1 text-sm/6 text-stone-600">Feeds refresh about every 15 minutes.</p>
-              </div>
+            <p class="mt-1.5 max-w-[340px] text-[13px] text-[#8A7A6E]">
+              AI, open source, and entrepreneurship in one calm digest.
+            </p>
+          </div>
+          <div class="border-t border-[#E2DDD8] py-6">
+            <div class="text-xl font-semibold text-[#1A1510]">
+              Fresh cadence
             </div>
+            <p class="mt-1.5 max-w-[340px] text-[13px] text-[#8A7A6E]">
+              Feeds refresh about every 15 minutes.
+            </p>
           </div>
         </div>
       </div>
-    </section>
+      {# End right column -#}
+    </div>
   </div>
-{% endblock jumbotron -%}
-
-{% block content -%}
-  <div class="bg-stone-50">
-    <div class="container mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-      <section id="member-onboarding"
-               class="mb-10 overflow-hidden rounded-[2rem] border border-[#d8c7b2] bg-white shadow-xl shadow-[#d8c7b2]/20">
-        <div class="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-          <div class="bg-[#f5efe7] p-6 sm:p-8 lg:p-10">
-            <div class="inline-flex rounded-full border border-[#d8c7b2] bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-stone-700">
-              Onboarding guide
+</div>
+{% endblock jumbotron -%} {% block content -%} {# Member onboarding -#}
+<section
+  id="member-onboarding"
+  class="scroll-mt-32 bg-[#FAF5EE] px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+>
+  <div
+    class="mx-auto max-w-7xl overflow-hidden rounded-[20px] border border-[#e8e0d8] bg-white shadow-[0_4px_4px_rgba(0,0,0,0.25)]"
+  >
+    <div class="p-6 sm:p-8 lg:flex lg:gap-12 lg:p-12">
+      {# Left side: pitch -#}
+      <div class="lg:w-[360px] lg:shrink-0">
+        <div
+          class="inline-flex rounded-full border border-[#1a1510] px-4 py-1.5 text-[10px] font-bold uppercase tracking-[2.5px] text-[#1a1510]"
+        >
+          Onboarding guide
+        </div>
+        <h2
+          class="font-amethysta mt-5 text-[36px] font-semibold leading-[1.05] text-[#1A1510] sm:text-[44px] lg:mt-5 lg:text-[50px]"
+        >
+          Welcome new<br />
+          members clearly.
+        </h2>
+        <p class="mt-5 text-sm leading-[1.6] text-[#8A7A6E] lg:max-w-[360px]">
+          Use this guide when inviting someone to GOUP or requesting access to a
+          local city group. Good introductions help members understand who is
+          joining, why they are a fit, and how to collaborate.
+        </p>
+      </div>
+      {# End left side -#} {# Right side: steps -#}
+      <div class="mt-8 flex flex-col gap-4 lg:mt-0 lg:flex-1">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="rounded-2xl bg-[#FAF5EE] p-6 pt-7">
+            <div
+              class="font-amethysta flex size-9 items-center justify-center rounded-full bg-[#EDE4DA] text-[15px] font-semibold text-[#5A4A3E]"
+            >
+              1
             </div>
-            <h2 class="mt-5 text-4xl font-black tracking-[-0.045em] text-stone-950 sm:text-5xl">
-              Welcome new members clearly.
-            </h2>
-            <p class="mt-5 text-base/7 font-medium text-stone-700">
-              Use this guide when inviting someone to GOUP or requesting access to a local city group. Good introductions help members understand who is joining, why they are a fit, and how to collaborate.
+            <h3 class="mt-3.5 text-base font-bold text-[#1A1510]">
+              Introduce every invite
+            </h3>
+            <p class="mt-1 text-[13px] leading-[1.55] text-[#6A5A50]">
+              Mention who referred them, add a short introduction, and include
+              their LinkedIn profile when available.
             </p>
-            <div class="mt-6 rounded-3xl border border-[#d8c7b2] bg-white/70 p-4 text-sm/6 text-stone-700">
-              <span class="font-black text-stone-950">New members:</span>
-              register first, join your city, then request access. The team reviews profiles and approves requests that are a good fit.
-            </div>
           </div>
 
-          <div class="p-6 sm:p-8 lg:p-10">
-            <div class="grid gap-4 sm:grid-cols-2">
-              <article class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
-                <div class="mb-3 flex size-9 items-center justify-center rounded-2xl bg-[#f5efe7] text-sm font-black text-stone-800 ring-1 ring-[#d8c7b2]">
-                  1
-                </div>
-                <h3 class="text-lg font-black tracking-tight text-stone-950">Introduce every invite</h3>
-                <p class="mt-2 text-sm/6 text-stone-600">
-                  Mention who referred them, add a short introduction, and include their LinkedIn profile when available.
-                </p>
-              </article>
-
-              <article class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
-                <div class="mb-3 flex size-9 items-center justify-center rounded-2xl bg-[#f5efe7] text-sm font-black text-stone-800 ring-1 ring-[#d8c7b2]">
-                  2
-                </div>
-                <h3 class="text-lg font-black tracking-tight text-stone-950">Use your full name</h3>
-                <p class="mt-2 text-sm/6 text-stone-600">
-                  Update your WhatsApp name to your full name so members can recognize you across chats and events.
-                </p>
-              </article>
-
-              <article class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
-                <div class="mb-3 flex size-9 items-center justify-center rounded-2xl bg-[#f5efe7] text-sm font-black text-stone-800 ring-1 ring-[#d8c7b2]">
-                  3
-                </div>
-                <h3 class="text-lg font-black tracking-tight text-stone-950">Match your profile photo</h3>
-                <p class="mt-2 text-sm/6 text-stone-600">
-                  If you are comfortable, use the same photo as your LinkedIn profile to make recognition easier.
-                </p>
-              </article>
-
-              <article class="rounded-3xl border border-stone-200 bg-stone-50 p-5">
-                <div class="mb-3 flex size-9 items-center justify-center rounded-2xl bg-[#f5efe7] text-sm font-black text-stone-800 ring-1 ring-[#d8c7b2]">
-                  4
-                </div>
-                <h3 class="text-lg font-black tracking-tight text-stone-950">Add a helpful group tag</h3>
-                <p class="mt-2 text-sm/6 text-stone-600">
-                  Add your LinkedIn handle and country as your group tag. Example: @johndoe - USA.
-                </p>
-              </article>
+          <div class="rounded-2xl bg-[#FAF5EE] p-6 pt-7">
+            <div
+              class="font-amethysta flex size-9 items-center justify-center rounded-full bg-[#EDE4DA] text-[15px] font-semibold text-[#5A4A3E]"
+            >
+              2
             </div>
+            <h3 class="mt-3.5 text-base font-bold text-[#1A1510]">
+              Use your full name
+            </h3>
+            <p class="mt-1 text-[13px] leading-[1.55] text-[#6A5A50]">
+              Update your WhatsApp name to your full name so members can
+              recognize you across chats and events.
+            </p>
+          </div>
+        </div>
 
-            <div class="mt-6 rounded-3xl border border-stone-200 bg-white p-5">
-              <div class="text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Access flow</div>
-              <div class="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold text-stone-800">
-                <span class="rounded-full bg-[#f5efe7] px-3 py-1 ring-1 ring-[#d8c7b2]">Register at goup.vc</span>
-                <span aria-hidden="true">-&gt;</span>
-                <span class="rounded-full bg-[#f5efe7] px-3 py-1 ring-1 ring-[#d8c7b2]">Join your city</span>
-                <span aria-hidden="true">-&gt;</span>
-                <span class="rounded-full bg-[#f5efe7] px-3 py-1 ring-1 ring-[#d8c7b2]">Get approved</span>
-                <span aria-hidden="true">-&gt;</span>
-                <span class="rounded-full bg-[#f5efe7] px-3 py-1 ring-1 ring-[#d8c7b2]">Meet local peers</span>
-              </div>
-              <p class="mt-4 text-sm/6 text-stone-600">
-                If you have not introduced yourself yet, share a short intro so everyone can get to know you and find ways to collaborate.
-              </p>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="rounded-2xl bg-[#FAF5EE] p-6 pt-7">
+            <div
+              class="font-amethysta flex size-9 items-center justify-center rounded-full bg-[#EDE4DA] text-[15px] font-semibold text-[#5A4A3E]"
+            >
+              3
             </div>
+            <h3 class="mt-3.5 text-base font-bold text-[#1A1510]">
+              Match your profile photo
+            </h3>
+            <p class="mt-1 text-[13px] leading-[1.55] text-[#6A5A50]">
+              If you are comfortable, use the same photo as your LinkedIn
+              profile to make recognition easier.
+            </p>
+          </div>
+
+          <div class="rounded-2xl bg-[#FAF5EE] p-6 pt-7">
+            <div
+              class="font-amethysta flex size-9 items-center justify-center rounded-full bg-[#EDE4DA] text-[15px] font-semibold text-[#5A4A3E]"
+            >
+              4
+            </div>
+            <h3 class="mt-3.5 text-base font-bold text-[#1A1510]">
+              Add a helpful group tag
+            </h3>
+            <p class="mt-1 text-[13px] leading-[1.55] text-[#6A5A50]">
+              Add your LinkedIn handle and country as your group tag. Example:
+              @johndoe - USA.
+            </p>
+          </div>
+        </div>
+      </div>
+      {# End right side -#}
+    </div>
+
+    {# Access flow -#}
+    <div
+      class="border-t border-[#E8E0D8] px-6 py-8 sm:px-8 lg:px-12 lg:pt-10 lg:pb-12"
+    >
+      <div
+        class="text-[11px] font-bold uppercase tracking-[2.5px] text-[#8A7A6E]"
+      >
+        Access flow
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-2.5 sm:gap-2.5">
+        <span
+          class="inline-flex items-center rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-5 py-2.5 text-sm font-semibold text-[#1A1510]"
+          >Register at goup.vc</span
+        >
+        <div
+          class="svg-icon size-4 shrink-0 bg-[#B0A090] icon-arrow-right"
+        ></div>
+        <span
+          class="inline-flex items-center rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-5 py-2.5 text-sm font-semibold text-[#1A1510]"
+          >Join your city</span
+        >
+        <div
+          class="svg-icon size-4 shrink-0 bg-[#B0A090] icon-arrow-right"
+        ></div>
+        <span
+          class="inline-flex items-center rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-5 py-2.5 text-sm font-semibold text-[#1A1510]"
+          >Get approved</span
+        >
+        <div
+          class="svg-icon size-4 shrink-0 bg-[#B0A090] icon-arrow-right"
+        ></div>
+        <span
+          class="inline-flex items-center rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-5 py-2.5 text-sm font-semibold text-[#1A1510]"
+          >Meet local peers</span
+        >
+      </div>
+      <p class="mt-6 text-sm leading-[1.6] text-[#8A7A6E]">
+        If you have not introduced yourself yet, share a short intro so everyone
+        can get to know you and find ways to collaborate.
+      </p>
+    </div>
+    {# End access flow -#}
+  </div>
+</section>
+{# End member onboarding -#} {# Live digest -#}
+<section class="bg-white px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+  <div class="mx-auto max-w-7xl">
+    <div class="mb-8 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+      <div>
+        <h1 class="font-amethysta mt-2 text-3xl font-semibold text-[#1A1510]">
+          Three streams, cleanly ranked.
+        </h1>
+        <p class="mt-2 max-w-2xl text-sm/6 text-[#8A7A6E]">
+          Scan the newest links, open the source, and keep your weekly signal
+          sharp without sorting through noisy feeds.
+        </p>
+      </div>
+      <div
+        class="inline-flex w-fit items-center rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-4 py-2 text-sm font-semibold text-[#1A1510]"
+      >
+        AI &middot; Open source &middot; Entrepreneurship
+      </div>
+    </div>
+
+    <nav
+      class="mb-8 overflow-x-auto rounded-full border border-[#E2DDD8] bg-white p-2 shadow-sm"
+      aria-label="Wiki sections"
+    >
+      <div class="flex min-w-max items-center gap-2">
+        <span
+          class="px-3 text-xs font-bold uppercase tracking-[0.18em] text-[#8A7A6E]"
+          >Jump to</span
+        >
+        <a
+          href="#member-onboarding"
+          class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#1A1510] transition hover:bg-[#F2EBE1]"
+        >
+          Onboarding
+          <span
+            class="rounded-full bg-[#FAF5EE] px-2 py-0.5 text-xs text-[#8A7A6E]"
+            >Guide</span
+          >
+        </a>
+        {% for section in sections -%}
+        <a
+          href="#{{ section.id }}"
+          class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-[#1A1510] transition hover:bg-[#F2EBE1]"
+        >
+          {{ section.title }}
+          <span
+            class="rounded-full bg-[#FAF5EE] px-2 py-0.5 text-xs text-[#8A7A6E]"
+            >{{ section.links.len() }}</span
+          >
+        </a>
+        {% endfor -%}
+      </div>
+    </nav>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+      {% for section in sections -%}
+      <section
+        id="{{ section.id }}"
+        class="scroll-mt-32 flex min-h-full flex-col overflow-hidden rounded-[20px] border border-[#E2DDD8] bg-white shadow-sm"
+      >
+        <div class="border-b border-[#E2DDD8] p-6">
+          <div class="mb-5 flex items-center justify-between gap-3">
+            <div
+              class="inline-flex items-center gap-2 rounded-full border border-[#E2DDD8] bg-[#FAF5EE] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#8A7A6E]"
+            >
+              <span class="size-1.5 rounded-full bg-[#B0A090]"></span>
+              Live feed
+            </div>
+            <div
+              class="rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-3 py-1 text-xs font-bold text-[#1A1510]"
+            >
+              0{{ loop.index }}
+            </div>
+          </div>
+          <h3 class="font-amethysta text-2xl font-bold text-[#1A1510]">
+            {{ section.title }}
+          </h3>
+          <p class="mt-2 text-sm/6 text-[#8A7A6E]">{{ section.summary }}</p>
+        </div>
+
+        {% if section.links.is_empty() -%}
+        <div
+          class="m-5 rounded-2xl border border-dashed border-[#E2DDD8] bg-[#FAF5EE] p-5"
+        >
+          <p class="text-sm/6 text-[#8A7A6E]">
+            Live feed items are still refreshing. Open the source feeds below
+            for the latest links.
+          </p>
+          <div class="mt-4 grid gap-2">
+            {% for source in section.sources -%}
+            <a
+              class="rounded-xl border border-[#E2DDD8] bg-white px-3 py-2 text-sm font-semibold text-[#1A1510] transition hover:border-[#DDD5C8] hover:bg-[#F2EBE1]"
+              href="{{ source.url }}"
+              target="_blank"
+              rel="noopener noreferrer"
+              hx-boost="false"
+              >{{ source.label }}</a
+            >
+            {% endfor -%}
+          </div>
+        </div>
+        {% else -%}
+        <div
+          class="flex items-center justify-between px-5 pt-4 text-xs font-bold uppercase tracking-[0.16em] text-[#8A7A6E]"
+        >
+          <span>Newest links</span>
+          <span>{{ section.links.len() }} items</span>
+        </div>
+        <div class="grow p-5 pt-3">
+          {% for link in section.links -%} {% if loop.index <= 8 -%}
+          <a
+            href="{{ link.url }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            hx-boost="false"
+            class="group mb-3 block rounded-2xl border border-[#E2DDD8] bg-[#FAF5EE]/60 p-4 transition last:mb-0 hover:border-[#DDD5C8] hover:bg-white hover:shadow-lg hover:shadow-stone-200/50"
+          >
+            <div
+              class="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]"
+            >
+              <span
+                class="rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-2.5 py-1 text-[#1A1510]"
+                >{{ link.source }}</span
+              >
+              {% if let Some(published_at) = &link.published_at -%}
+              <span
+                class="rounded-full border border-[#E2DDD8] bg-white px-2.5 py-1 text-[#8A7A6E]"
+                >{{ published_at.format("%b %d, %Y") }}</span
+              >
+              {% else -%}
+              <span
+                class="rounded-full border border-[#E2DDD8] bg-white px-2.5 py-1 text-[#8A7A6E]"
+                >Latest</span
+              >
+              {% endif -%}
+            </div>
+            <div
+              class="text-base/7 font-bold tracking-tight text-[#1A1510] group-hover:text-[#5A4A3E]"
+            >
+              {{ link.title }}
+            </div>
+            <div
+              class="mt-4 inline-flex items-center text-sm font-bold text-[#5A4A3E] opacity-0 transition group-hover:opacity-100"
+            >
+              Read source <span class="ml-1" aria-hidden="true">&rarr;</span>
+            </div>
+          </a>
+          {% endif -%} {% endfor -%} {% if section.links.len() > 8 -%}
+          <details
+            class="group/read-more mt-2 rounded-2xl border border-dashed border-[#E2DDD8] bg-[#FAF5EE] p-3 open:border-[#E2DDD8] open:bg-white"
+          >
+            <summary
+              class="flex cursor-pointer list-none items-center justify-between rounded-2xl px-2 py-1 text-sm font-bold text-[#1A1510] marker:hidden"
+            >
+              Read more
+              <span
+                class="rounded-full border border-[#E2DDD8] bg-white px-3 py-1 text-xs font-bold text-[#8A7A6E] group-open/read-more:hidden"
+                >Show more links</span
+              >
+              <span
+                class="hidden rounded-full bg-[#FAF5EE] px-3 py-1 text-xs font-bold text-[#8A7A6E] group-open/read-more:inline-flex"
+                >Collapse</span
+              >
+            </summary>
+            <div class="mt-3">
+              {% for link in section.links -%} {% if loop.index > 8 -%}
+              <a
+                href="{{ link.url }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                hx-boost="false"
+                class="group mb-3 block rounded-2xl border border-[#E2DDD8] bg-[#FAF5EE]/60 p-4 transition last:mb-0 hover:border-[#DDD5C8] hover:bg-white hover:shadow-lg hover:shadow-stone-200/50"
+              >
+                <div
+                  class="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]"
+                >
+                  <span
+                    class="rounded-full border border-[#DDD5C8] bg-[#F2EBE1] px-2.5 py-1 text-[#1A1510]"
+                    >{{ link.source }}</span
+                  >
+                  {% if let Some(published_at) = &link.published_at -%}
+                  <span
+                    class="rounded-full border border-[#E2DDD8] bg-white px-2.5 py-1 text-[#8A7A6E]"
+                    >{{ published_at.format("%b %d, %Y") }}</span
+                  >
+                  {% else -%}
+                  <span
+                    class="rounded-full border border-[#E2DDD8] bg-white px-2.5 py-1 text-[#8A7A6E]"
+                    >Latest</span
+                  >
+                  {% endif -%}
+                </div>
+                <div
+                  class="text-base/7 font-bold tracking-tight text-[#1A1510] group-hover:text-[#5A4A3E]"
+                >
+                  {{ link.title }}
+                </div>
+                <div
+                  class="mt-4 inline-flex items-center text-sm font-bold text-[#5A4A3E] opacity-0 transition group-hover:opacity-100"
+                >
+                  Read source
+                  <span class="ml-1" aria-hidden="true">&rarr;</span>
+                </div>
+              </a>
+              {% endif -%} {% endfor -%}
+            </div>
+          </details>
+          {% endif -%}
+        </div>
+        {% endif -%}
+
+        <div class="mt-auto border-t border-[#E2DDD8] bg-[#FAF5EE]/60 p-5">
+          <div
+            class="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#8A7A6E]"
+          >
+            Sources
+          </div>
+          <div class="flex flex-wrap gap-2">
+            {% for source in section.sources -%}
+            <a
+              class="rounded-full border border-[#E2DDD8] bg-white px-3 py-1 text-xs font-semibold text-[#1A1510] transition hover:border-[#DDD5C8] hover:bg-[#F2EBE1]"
+              href="{{ source.url }}"
+              target="_blank"
+              rel="noopener noreferrer"
+              hx-boost="false"
+              >{{ source.label }}</a
+            >
+            {% endfor -%}
           </div>
         </div>
       </section>
-
-      <div class="mb-6 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div>
-          <div class="text-xs font-bold uppercase tracking-[0.22em] text-stone-600">Live digest</div>
-          <h2 class="mt-2 text-3xl font-black tracking-tight text-stone-950">Three streams, cleanly ranked.</h2>
-          <p class="mt-2 max-w-2xl text-sm/6 font-medium text-stone-600">
-            Scan the newest links, open the source, and keep your weekly signal sharp without sorting through noisy feeds.
-          </p>
-        </div>
-        <div class="inline-flex w-fit items-center rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-bold text-stone-700 shadow-sm">
-          AI / Open source / Entrepreneurship
-        </div>
-      </div>
-
-      <nav class="mb-6 overflow-x-auto rounded-full border border-stone-200 bg-white p-2 shadow-sm"
-           aria-label="Wiki sections">
-        <div class="flex min-w-max items-center gap-2">
-          <span class="px-3 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Jump to</span>
-          <a href="#member-onboarding"
-             class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-[#f5efe7] hover:text-stone-950">
-            Onboarding
-            <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">Guide</span>
-          </a>
-          {% for section in sections -%}
-            <a href="#{{ section.id }}"
-               class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-stone-700 transition hover:bg-[#f5efe7] hover:text-stone-950">
-              {{ section.title }}
-              <span class="rounded-full bg-stone-100 px-2 py-0.5 text-xs text-stone-500">{{ section.links.len() }}</span>
-            </a>
-          {% endfor -%}
-        </div>
-      </nav>
-
-      <div class="grid gap-6 lg:grid-cols-3">
-        {% for section in sections -%}
-          <section id="{{ section.id }}"
-                   class="scroll-mt-32 flex min-h-full flex-col overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
-            <div class="border-b border-stone-100 bg-white p-6">
-              <div class="mb-5 flex items-center justify-between gap-3">
-                <div class="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-stone-700">
-                  <span class="size-1.5 rounded-full bg-[#b9a68e]"></span>
-                  Tech News
-                </div>
-                <div class="rounded-full bg-[#f5efe7] px-3 py-1 text-xs font-bold text-stone-700 ring-1 ring-[#d8c7b2]">
-                  0{{ loop.index }}
-                </div>
-              </div>
-              <h2 class="text-3xl font-black tracking-tight text-stone-950">{{ section.title }}</h2>
-              <p class="mt-3 text-sm/6 font-medium text-stone-600">{{ section.summary }}</p>
-            </div>
-
-            {% if section.links.is_empty() -%}
-              <div class="m-5 rounded-3xl border border-dashed border-stone-300 bg-stone-50 p-5">
-                <p class="text-sm/6 text-stone-600">
-                  Live feed items are still refreshing. Open the source feeds below for the latest links.
-                </p>
-                <div class="mt-4 grid gap-2">
-                  {% for source in section.sources -%}
-                    <a class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition hover:border-[#d8c7b2] hover:bg-[#f5efe7]"
-                       href="{{ source.url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       hx-boost="false">{{ source.label }}</a>
-                  {% endfor -%}
-                </div>
-              </div>
-            {% else -%}
-              <div class="flex items-center justify-between px-5 pt-4 text-xs font-bold uppercase tracking-[0.16em] text-stone-500">
-                <span>Newest links</span>
-                <span>{{ section.links.len() }} items</span>
-              </div>
-              <div class="grow p-5 pt-3">
-                {% for link in section.links -%}
-                  {% if loop.index <= 8 -%}
-                    <a href="{{ link.url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       hx-boost="false"
-                       class="group mb-3 block rounded-3xl border border-stone-200 bg-stone-50/80 p-4 transition last:mb-0 hover:border-stone-300 hover:bg-white hover:shadow-lg hover:shadow-stone-200/50">
-                      <div class="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]">
-                        <span class="rounded-full bg-[#f5efe7] px-2.5 py-1 text-stone-700 ring-1 ring-[#d8c7b2]">{{ link.source }}</span>
-                        {% if let Some(published_at) = &link.published_at -%}
-                          <span class="rounded-full bg-white px-2.5 py-1 text-stone-500 ring-1 ring-inset ring-stone-200">{{ published_at.format("%b %d, %Y") }}</span>
-                        {% else -%}
-                          <span class="rounded-full bg-white px-2.5 py-1 text-stone-500 ring-1 ring-inset ring-stone-200">Latest</span>
-                        {% endif -%}
-                      </div>
-                      <div class="text-base/7 font-black tracking-tight text-stone-950 group-hover:text-stone-700">
-                        {{ link.title }}
-                      </div>
-                      <div class="mt-4 inline-flex items-center text-sm font-bold text-stone-700 opacity-0 transition group-hover:opacity-100">
-                        Read source <span class="ml-1" aria-hidden="true">&rarr;</span>
-                      </div>
-                    </a>
-                  {% endif -%}
-                {% endfor -%}
-                {% if section.links.len() > 8 -%}
-                  <details class="group/read-more mt-2 rounded-3xl border border-dashed border-stone-300 bg-stone-50 p-3 open:border-stone-200 open:bg-white">
-                    <summary class="flex cursor-pointer list-none items-center justify-between rounded-2xl px-2 py-1 text-sm font-black text-stone-900 marker:hidden">
-                      Read more
-                      <span class="rounded-full bg-white px-3 py-1 text-xs font-bold text-stone-500 ring-1 ring-inset ring-stone-200 group-open/read-more:hidden">Show more links</span>
-                      <span class="hidden rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-500 group-open/read-more:inline-flex">Collapse</span>
-                    </summary>
-                    <div class="mt-3">
-                      {% for link in section.links -%}
-                        {% if loop.index > 8 -%}
-                          <a href="{{ link.url }}"
-                             target="_blank"
-                             rel="noopener noreferrer"
-                             hx-boost="false"
-                             class="group mb-3 block rounded-3xl border border-stone-200 bg-stone-50/80 p-4 transition last:mb-0 hover:border-stone-300 hover:bg-white hover:shadow-lg hover:shadow-stone-200/50">
-                            <div class="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[0.14em]">
-                              <span class="rounded-full bg-[#f5efe7] px-2.5 py-1 text-stone-700 ring-1 ring-[#d8c7b2]">{{ link.source }}</span>
-                              {% if let Some(published_at) = &link.published_at -%}
-                                <span class="rounded-full bg-white px-2.5 py-1 text-stone-500 ring-1 ring-inset ring-stone-200">{{ published_at.format("%b %d, %Y") }}</span>
-                              {% else -%}
-                                <span class="rounded-full bg-white px-2.5 py-1 text-stone-500 ring-1 ring-inset ring-stone-200">Latest</span>
-                              {% endif -%}
-                            </div>
-                            <div class="text-base/7 font-black tracking-tight text-stone-950 group-hover:text-stone-700">
-                              {{ link.title }}
-                            </div>
-                            <div class="mt-4 inline-flex items-center text-sm font-bold text-stone-700 opacity-0 transition group-hover:opacity-100">
-                              Read source <span class="ml-1" aria-hidden="true">&rarr;</span>
-                            </div>
-                          </a>
-                        {% endif -%}
-                      {% endfor -%}
-                    </div>
-                  </details>
-                {% endif -%}
-              </div>
-            {% endif -%}
-
-            <div class="mt-auto border-t border-stone-100 bg-stone-50/80 p-5">
-              <div class="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Sources</div>
-              <div class="flex flex-wrap gap-2">
-                {% for source in section.sources -%}
-                  <a class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-stone-700 ring-1 ring-inset ring-stone-200 transition hover:bg-[#f5efe7] hover:text-stone-950 hover:ring-[#d8c7b2]"
-                     href="{{ source.url }}"
-                     target="_blank"
-                     rel="noopener noreferrer"
-                     hx-boost="false">{{ source.label }}</a>
-                {% endfor -%}
-              </div>
-            </div>
-          </section>
-        {% endfor -%}
-      </div>
+      {% endfor -%}
     </div>
   </div>
-{% endblock content -%}
+</section>
+{# End live digest -#} {% endblock content -%}
