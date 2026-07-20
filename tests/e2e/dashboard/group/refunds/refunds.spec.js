@@ -38,7 +38,7 @@ test.describe("group dashboard refunds", () => {
     // Verify the selected view is durable and retains focus after the swap.
     await expect
       .poll(() => new URL(organizerGroupPage.url()).searchParams.get("view"))
-      .toBe("needs-attention");
+      .toBe("attention");
     await expect(
       dashboardContent.getByRole("link", { name: "Needs attention" }),
     ).toBeFocused();
@@ -111,7 +111,7 @@ test.describe("group dashboard refunds", () => {
     // Open the recovery-required refund action.
     const dashboardContent = await openRefundsDashboard(
       organizerGroupPage,
-      "/dashboard/group?tab=refunds&view=needs-attention",
+      "/dashboard/group?tab=refunds&view=attention",
     );
     const recoveryRow = dashboardContent
       .locator("tr", {
