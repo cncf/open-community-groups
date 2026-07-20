@@ -22,9 +22,12 @@ const sliceTemplateSection = (template, startToken, endToken) => {
 
 describe("dashboard group attendees list template", () => {
   it("filters active and canceled attendance records", async () => {
+    // Load the attendees list template before checking attendance filters.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify the filters expose every supported attendance state.
     expect(template).to.include('aria-label="Filter attendees by attendance status"');
+    expect(template).to.include('id="attendance-filter-{{ option }}"');
     expect(template).to.include('name="attendance" value="{{ option }}"');
     expect(template).to.include('aria-pressed="{{ attendance == *option }}"');
     expect(template).to.include("AttendanceFilter::Active");
@@ -35,8 +38,10 @@ describe("dashboard group attendees list template", () => {
   });
 
   it("shows refund progress and exposes retryable work", async () => {
+    // Load the attendees list template before checking refund status markup.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify refund status labels and retry actions are available to attendees.
     expect(template).to.include('label = "Waiting for checkout"');
     expect(template).to.include('label = "Refund queued"');
     expect(template).to.include('label = "Refund processing"');

@@ -22,7 +22,8 @@
 <nav class="mt-6 border-b border-stone-200" aria-label="Refund views">
   <div class="-mb-px flex gap-6 overflow-x-auto">
     {% for option in views -%}
-      <a href="{{ option.dashboard_url }}"
+      <a id="refund-view-{{ loop.index0 }}"
+         href="{{ option.dashboard_url }}"
          hx-get="{{ option.partial_url }}"
          hx-target="#dashboard-content"
          hx-indicator="#dashboard-spinner"
@@ -39,7 +40,8 @@
 {# End operational views -#}
 
 {# Refund filters -#}
-<form class="my-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_auto]"
+<form id="refund-filters"
+      class="my-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_auto]"
       method="get"
       action="/dashboard/group"
       hx-get="/dashboard/group/refunds"
@@ -70,7 +72,7 @@
     </select>
   </div>
   <div class="flex gap-2">
-    <button type="submit" class="btn-primary">Apply</button>
+    <button id="refund-filter-apply" type="submit" class="btn-primary">Apply</button>
     {% if event_id.is_some() || ts_query.is_some() -%}
       <a class="btn-primary-outline"
          href="/dashboard/group?tab=refunds&view={{ view }}"
@@ -104,23 +106,13 @@
     </thead>
     <tbody>
       {% if refunds.is_empty() -%}
+        {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
           <td colspan="6" class="px-8 py-14 text-center">
-            <div class="mx-auto max-w-md">
-              <div class="mx-auto mb-4 svg-icon size-10 icon-refresh bg-stone-400"></div>
-              <h3 class="text-base font-semibold text-stone-900">No refunds found</h3>
-              <p class="mt-2 text-sm leading-6 text-stone-600">
-                {% if event_id.is_some() || ts_query.is_some() -%}
-                  Try clearing the event or search filters.
-                {% else if view == crate::templates::dashboard::group::refunds::RefundsView::Active -%}
-                  There is no unfinished refund work for this group.
-                {% else -%}
-                  There are no refunds in this view.
-                {% endif -%}
-              </p>
-            </div>
+            {% include "dashboard/placeholders/group_refunds_table.html" -%}
           </td>
         </tr>
+        {# End empty state -#}
       {% else -%}
         {% for refund in refunds -%}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-top">
@@ -181,7 +173,7 @@
                     <div class="svg-icon size-4 icon-vertical-dots"></div>
                   </summary>
                   <div class="dropdown absolute z-10 end-0 top-8 w-[210px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
-                    <ul class="py-2 text-sm text-stone-700" role="menu">
+                    <ul class="py-2 text-sm text-stone-700">
                       {% if refund.can_approve() -%}
                         <li>
                           <button type="button"
@@ -191,7 +183,6 @@
                                   data-htmx-response
                                   data-success-message="Refund queued."
                                   data-error-message="Something went wrong approving this refund request. Please try again later."
-                                  role="menuitem"
                                   class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                             <div class="svg-icon size-4 icon-check shrink-0 bg-stone-500"></div>
                             <span>Approve refund</span>
@@ -211,7 +202,6 @@
                                   data-confirm-text="Yes"
                                   data-success-message="Refund request rejected."
                                   data-error-message="Something went wrong rejecting this refund request. Please try again later."
-                                  role="menuitem"
                                   class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                             <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
                             <span>Reject refund</span>
@@ -227,7 +217,6 @@
                                   data-htmx-response
                                   data-success-message="Refund requeued."
                                   data-error-message="Something went wrong requeueing this refund. Please try again later."
-                                  role="menuitem"
                                   class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                             <div class="svg-icon size-4 icon-refresh shrink-0 bg-stone-500"></div>
                             <span>Retry refund</span>
@@ -242,7 +231,6 @@
                                     data-event-purchase-id="{{ refund.event_purchase_id }}"
                                     data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
                                     data-refund-event="{{ refund.event_name }}"
-                                    role="menuitem"
                                     class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                               <div class="svg-icon size-4 icon-check shrink-0 bg-stone-500"></div>
                               <span>Complete recovery</span>
@@ -255,7 +243,6 @@
                               <button type="button"
                                       disabled
                                       aria-disabled="true"
-                                      role="menuitem"
                                       class="flex items-center w-full px-4 py-2 gap-3 text-left text-stone-400 opacity-60 cursor-not-allowed">
                                 <div class="svg-icon size-4 icon-check shrink-0 bg-stone-400"></div>
                                 <span>Complete recovery</span>

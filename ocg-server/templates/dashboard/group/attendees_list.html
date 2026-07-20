@@ -29,7 +29,8 @@
           hx-indicator="#dashboard-spinner">
       {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_attendance = false) -}}
       <input type="hidden" name="attendance" value="{{ option }}">
-      <button type="submit"
+      <button id="attendance-filter-{{ option }}"
+              type="submit"
               class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors
                      {% if attendance == *option -%}
                        bg-stone-100 text-stone-900

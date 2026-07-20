@@ -527,6 +527,50 @@ test.describe("group dashboard attendees tab", () => {
     await expect(attendeesContent.locator("tr", { hasText: "E2E Organizer One" })).toBeVisible();
   });
 
+  test("organizer retains focus while filtering attendance lifecycle", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the attendees tab for the seeded event.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Upcoming In-Person Event",
+      TEST_EVENT_IDS.alpha.one,
+    );
+
+    // Select canceled attendance and verify the replacement control keeps focus.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
+          response.url().includes("attendance=canceled") &&
+          response.ok(),
+      ),
+      attendeesContent.getByRole("button", { name: "Canceled", exact: true }).click(),
+    ]);
+    await expect(
+      attendeesContent.getByRole("button", { name: "Canceled", exact: true }),
+    ).toBeFocused();
+    await expect(
+      attendeesContent.getByRole("button", { name: "Canceled", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    // Return to active attendance and preserve the same focus contract.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
+          response.url().includes("attendance=active") &&
+          response.ok(),
+      ),
+      attendeesContent.getByRole("button", { name: "Active", exact: true }).click(),
+    ]);
+    await expect(
+      attendeesContent.getByRole("button", { name: "Active", exact: true }),
+    ).toBeFocused();
+  });
+
   test("organizer can download attendees as CSV from the attendees tab", async ({ organizerGroupPage }) => {
     // Load the attendees tab for the seeded waitlist event.
     const attendeesContent = await openAttendeesTab(
