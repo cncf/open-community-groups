@@ -72,11 +72,10 @@ describe("events list page", () => {
     // Load the events list template before checking disabled delete actions.
     const template = await loadTemplate();
 
-    // Verify unavailable delete actions expose their reason.
+    // Verify unavailable delete actions expose their reason in the title.
     expect(template).to.include('action == "delete" && !event.can_delete()');
     expect(template).to.include("event.delete_unavailable_title()");
-    expect(template).to.include('aria-describedby="{{ action }}-event-{{ event.event_id }}-disabled-reason"');
-    expect(template).to.include('id="{{ action }}-event-{{ event.event_id }}-disabled-reason"');
+    expect(template).to.include('title="{{ delete_title }}"');
   });
 
   it("toggles event action dropdowns with delegated handlers", () => {

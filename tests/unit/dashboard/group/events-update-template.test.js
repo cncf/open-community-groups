@@ -56,7 +56,7 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Assert the reminder spans the form layout without sticking to the viewport.
-    expect(template).to.include('class="col-span-full min-w-0"');
+    expect(template).to.include('class="col-span-full min-w-0 space-y-4"');
     expect(template).to.not.include('style="top: 6.25rem"');
     expect(template).to.not.include("Editing event");
     expect(template).to.include(
@@ -94,6 +94,16 @@ describe("dashboard group event update template", () => {
     expect(template).to.include(
       '<div class="mt-1 text-xs text-stone-500">Date not set yet</div>',
     );
+    const eventTitleIndex = template.indexOf(
+      '<div class="truncate text-xl font-semibold text-stone-900">{{ event.name }}</div>',
+    );
+    const canceledWarningIndex = template.indexOf("This event is canceled.");
+    const eventContentIndex = template.indexOf(
+      'class="col-span-full row-start-2 grid h-full content-start',
+    );
+
+    expect(canceledWarningIndex).to.be.greaterThan(eventTitleIndex);
+    expect(eventContentIndex).to.be.greaterThan(canceledWarningIndex);
   });
 
   it("places the pending changes alert under the event title header", async () => {

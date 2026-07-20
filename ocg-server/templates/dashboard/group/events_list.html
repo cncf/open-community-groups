@@ -631,7 +631,7 @@
               disabled title="{{ disabled_title }}"
             {% else if action == "delete" && !event.can_delete() -%}
               {% if let Some(delete_title) = event.delete_unavailable_title() -%}
-                aria-describedby="{{ action }}-event-{{ event.event_id }}-disabled-reason"
+                title="{{ delete_title }}"
               {% endif -%}
             disabled
             {% endif -%}>
@@ -640,12 +640,6 @@
         <div class="ms-2">{{ label }}</div>
       </div>
     </button>
-    {% if can_manage_events && action == "delete" && !event.can_delete() -%}
-      {% if let Some(delete_title) = event.delete_unavailable_title() -%}
-        <p id="{{ action }}-event-{{ event.event_id }}-disabled-reason"
-           class="px-4 pb-2 text-xs text-stone-600">{{ delete_title }}</p>
-      {% endif -%}
-    {% endif -%}
   </li>
 {% endmacro event_scoped_action -%}
 {# End event dropdown action with optional series scope. #}

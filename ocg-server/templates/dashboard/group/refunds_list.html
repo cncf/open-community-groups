@@ -18,68 +18,83 @@
 </p>
 {# End refunds header -#}
 
-{# Operational views -#}
-<nav class="mt-6 border-b border-stone-200" aria-label="Refund views">
-  <div class="-mb-px flex gap-6 overflow-x-auto">
-    {% for option in views -%}
-      <a id="refund-view-{{ loop.index0 }}"
-         href="{{ option.dashboard_url }}"
-         hx-get="{{ option.partial_url }}"
-         hx-target="#dashboard-content"
-         hx-indicator="#dashboard-spinner"
-         class="whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition-colors
-                {% if option.is_selected -%}
-                  border-primary-500 text-primary-600
-                {% else -%}
-                  border-transparent text-stone-500 hover:border-stone-300 hover:text-stone-700
-                {% endif -%}"
-         {% if option.is_selected %}aria-current="page"{% endif %}>{{ option.label }}</a>
-    {% endfor -%}
-  </div>
-</nav>
-{# End operational views -#}
-
 {# Refund filters -#}
 <form id="refund-filters"
-      class="my-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)_auto]"
+      class="my-5 flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between"
       method="get"
       action="/dashboard/group"
       hx-get="/dashboard/group/refunds"
-      hx-disabled-elt="find button[type='submit']"
       hx-ext="no-empty-vals"
+      hx-trigger="change, submit"
       hx-target="#dashboard-content"
       hx-indicator="#dashboard-spinner">
   <input type="hidden" name="tab" value="refunds">
-  <input type="hidden" name="view" value="{{ view }}">
-  <div>
+  <div class="relative w-80 max-w-full 2xl:w-[30rem]">
     <label for="refund-search" class="sr-only">Search refunds</label>
     <input id="refund-search"
-           class="input-primary"
-           type="search"
+           class="input-primary peer pe-9"
+           type="text"
            name="ts_query"
            maxlength="{{ crate::validation::MAX_LEN_M }}"
            value="{{ ts_query.as_deref().unwrap_or_default() }}"
            placeholder="Search attendee, event, or ticket">
+    <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+      <button type="button"
+              data-refund-search-clear
+              hx-get="/dashboard/group/refunds"
+              hx-trigger="click"
+              hx-target="#dashboard-content"
+              hx-indicator="#dashboard-spinner"
+              hx-include="#refund-filters input[type='hidden'], #refund-event, #refund-view"
+              class="cursor-pointer mt-0.5"
+              aria-label="Clear refund search">
+        <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
+      </button>
+    </div>
   </div>
-  <div>
-    <label for="refund-event" class="sr-only">Filter refunds by event</label>
-    <select id="refund-event" class="input-primary" name="event_id">
-      <option value="">All events</option>
-      {% for event in events -%}
-        <option value="{{ event.event_id }}"
-                {% if self.is_event_selected(event.event_id) %}selected{% endif %}>{{ event.name }}</option>
-      {% endfor -%}
-    </select>
-  </div>
-  <div class="flex gap-2">
-    <button id="refund-filter-apply" type="submit" class="btn-primary">Apply</button>
-    {% if event_id.is_some() || ts_query.is_some() -%}
-      <a class="btn-primary-outline"
-         href="/dashboard/group?tab=refunds&view={{ view }}"
-         hx-get="/dashboard/group/refunds?view={{ view }}"
-         hx-target="#dashboard-content"
-         hx-indicator="#dashboard-spinner">Clear</a>
-    {% endif -%}
+  <div class="flex w-full shrink-0 flex-wrap items-center justify-start gap-6 self-start xl:ms-auto xl:w-auto xl:flex-nowrap xl:justify-end xl:self-end">
+    <div class="flex items-center gap-3">
+      <label for="refund-event"
+             class="text-sm font-semibold text-nowrap text-stone-900">Event</label>
+      <select id="refund-event"
+              class="block h-10 w-72 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500"
+              name="event_id">
+        <option value="">All events</option>
+        {% for event in events -%}
+          <option value="{{ event.event_id }}"
+                  {% if self.is_event_selected(event.event_id) %}selected{% endif %}>{{ event.name }}</option>
+        {% endfor -%}
+      </select>
+    </div>
+    <div class="flex items-center gap-3">
+      <label for="refund-view"
+             class="text-sm font-semibold text-nowrap text-stone-900">Refund status</label>
+      <select id="refund-view"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500"
+              name="view">
+        {% for option in [
+          crate::templates::dashboard::group::refunds::RefundsView::Active,
+          crate::templates::dashboard::group::refunds::RefundsView::Attention,
+          crate::templates::dashboard::group::refunds::RefundsView::Completed,
+          crate::templates::dashboard::group::refunds::RefundsView::All
+          ] -%}
+          <option value="{{ option }}"
+                  {% if view == *option -%}
+                    selected
+                  {% endif -%}>
+            {% if *option == crate::templates::dashboard::group::refunds::RefundsView::Active -%}
+              Active
+            {% else if *option == crate::templates::dashboard::group::refunds::RefundsView::Attention -%}
+              Needs attention
+            {% else if *option == crate::templates::dashboard::group::refunds::RefundsView::Completed -%}
+              Completed
+            {% else -%}
+              All
+            {% endif -%}
+          </option>
+        {% endfor -%}
+      </select>
+    </div>
   </div>
 </form>
 {# End refund filters -#}
@@ -89,17 +104,17 @@
 </div>
 
 {# Refunds table -#}
-<div class="relative overflow-x-auto">
-  <table class="table-auto w-full min-w-[920px] text-xs lg:text-sm text-left text-stone-500 mb-8"
+<div class="relative overflow-visible">
+  <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
          aria-label="Refunds list">
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200">
       <tr>
-        <th scope="col" class="px-3 xl:px-5 py-3">Attendee</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Event</th>
+        <th scope="col" class="w-[40%] px-3 py-3 xl:w-auto xl:px-5">Attendee</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Event</th>
         <th scope="col" class="px-3 xl:px-5 py-3">Refund</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Status</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Updated</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Status</th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated</th>
+        <th scope="col" class="px-1 sm:px-3 xl:px-5 py-3 w-12 xl:w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -108,7 +123,14 @@
       {% if refunds.is_empty() -%}
         {# Empty state -#}
         <tr class="bg-white border-b border-stone-200">
-          <td colspan="6" class="px-8 py-14 text-center">
+          <td colspan="3" class="xl:hidden px-8 py-14 text-center">
+            {% include "dashboard/placeholders/group_refunds_table.html" -%}
+          </td>
+          <td colspan="5"
+              class="hidden xl:table-cell 2xl:hidden px-8 py-14 text-center">
+            {% include "dashboard/placeholders/group_refunds_table.html" -%}
+          </td>
+          <td colspan="6" class="hidden 2xl:table-cell px-8 py-14 text-center">
             {% include "dashboard/placeholders/group_refunds_table.html" -%}
           </td>
         </tr>
@@ -116,7 +138,7 @@
       {% else -%}
         {% for refund in refunds -%}
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200 align-top">
-            <td class="px-3 xl:px-5 py-4 max-w-64">
+            <td class="w-[40%] px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5">
               <div class="flex items-center gap-3">
                 <logo-image {% if let Some(photo_url) = &refund.photo_url -%} image-url="{{ photo_url }}" {% endif -%} size="size-9" placeholder="{{ self::user_initials(refund.name.as_deref() , refund.username.as_str()) }}">
                 </logo-image>
@@ -126,16 +148,27 @@
                 </div>
               </div>
             </td>
-            <td class="px-3 xl:px-5 py-4 max-w-64">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-64">
               <div class="truncate font-medium text-stone-900"
                    title="{{ refund.event_name }}">{{ refund.event_name }}</div>
-              <a href="/dashboard/group/events/{{ refund.event_id }}/attendees"
-                 class="mt-1 inline-block text-xs text-primary-600 hover:text-primary-700 hover:underline">View attendees</a>
             </td>
             <td class="px-3 xl:px-5 py-4 max-w-72">
+              <div class="mb-2 truncate font-medium text-stone-900 xl:hidden"
+                   title="{{ refund.event_name }}">{{ refund.event_name }}</div>
               <div class="font-medium text-stone-900">{{ refund.formatted_amount() }}</div>
               <div class="mt-1 truncate text-xs text-stone-600">{{ refund.ticket_title }} · {{ refund.kind_label() }}</div>
               <div class="mt-1 text-xs text-stone-500">Started {{ refund.created_at.format("%b %d, %Y") }}</div>
+              <div class="mt-2 xl:hidden">
+                {{ badges::invitation_badge(label = refund.status.label() , tone = refund.status.tone(), with_border = true) -}}
+                {% if let Some(attempt_count) = refund.attempt_count -%}
+                  {% if *attempt_count > 0 && refund.can_retry() -%}
+                    <div class="mt-1 text-xs text-stone-600">{{ attempt_count }} attempts</div>
+                  {% endif -%}
+                {% endif -%}
+              </div>
+              <div class="mt-2 text-xs text-stone-500 2xl:hidden">
+                Updated {{ refund.updated_at.format("%b %d, %Y") }} · {{ refund.updated_at.format("%H:%M UTC") }}
+              </div>
               {% if let Some(reason) = &refund.requested_reason -%}
                 <div class="mt-2 text-xs leading-5 text-stone-600" title="{{ reason }}">Reason: {{ reason }}</div>
               {% endif -%}
@@ -152,7 +185,7 @@
                      title="Provider refund ID: {{ provider_refund_id }}">{{ provider_refund_id }}</div>
               {% endif -%}
             </td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+            <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
               {{ badges::invitation_badge(label = refund.status.label() , tone = refund.status.tone(), with_border = true) -}}
               {% if let Some(attempt_count) = refund.attempt_count -%}
                 {% if *attempt_count > 0 && refund.can_retry() -%}
@@ -160,11 +193,11 @@
                 {% endif -%}
               {% endif -%}
             </td>
-            <td class="px-3 xl:px-5 py-4 whitespace-nowrap">
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap">
               <div class="text-stone-900">{{ refund.updated_at.format("%b %d, %Y") }}</div>
               <div class="mt-1 text-xs text-stone-600">{{ refund.updated_at.format("%H:%M UTC") }}</div>
             </td>
-            <td class="px-3 xl:px-5 py-4 w-[72px] text-right">
+            <td class="px-1 sm:px-3 xl:px-5 py-4 w-12 xl:w-[72px] text-right">
               {% if (can_manage_events && (refund.can_approve() || refund.can_reject() || refund.can_retry())) || refund.can_recover() -%}
                 <details data-actions-menu class="group relative">
                   <summary class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"

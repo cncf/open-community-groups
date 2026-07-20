@@ -22,25 +22,39 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include('hx-target="#dashboard-content"');
   });
 
-  it("exposes the operational refund views and list filters", async () => {
-    // Load the refunds list template before checking view and filter markup.
+  it("exposes the refund list filters", async () => {
+    // Load the refunds list template before checking filter markup.
     const template = normalizeWhitespace(await loadTemplate());
 
-    // Verify the list exposes each operational view and supported filter.
-    expect(template).to.include('aria-label="Refund views"');
-    expect(template).to.include("option.dashboard_url");
-    expect(template).to.include("option.partial_url");
-    expect(template).to.include("option.label");
-    expect(template).to.include('id="refund-view-{{ loop.index0 }}"');
-    expect(template).to.include('aria-current="page"');
+    // Verify the list exposes each supported filter.
     expect(template).to.include('id="refund-filters"');
-    expect(template).to.include('id="refund-filter-apply"');
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('name="event_id"');
+    expect(template).to.include('for="refund-event"');
+    expect(template).to.include('text-sm font-semibold text-nowrap text-stone-900">Event');
+    expect(template).to.include('id="refund-view"');
+    expect(template).to.include('name="view"');
+    expect(template).to.include('class="block h-10 w-40 rounded-md');
+    expect(template).to.include('for="refund-view"');
+    expect(template).to.include('text-sm font-semibold text-nowrap text-stone-900">Refund status');
+    expect(template).to.include("RefundsView::Attention");
+    expect(template).to.include("RefundsView::Active -%} Active");
+    expect(template).to.include("RefundsView::Completed -%} Completed");
+    expect(template).to.include("Needs attention");
+    expect(template).to.include("data-refund-search-clear");
+    expect(template).to.include('aria-label="Clear refund search"');
+    expect(template).to.include("icon-close");
     expect(template).to.include('hx-get="/dashboard/group/refunds"');
-    expect(template).to.include(`hx-disabled-elt="find button[type='submit']"`);
     expect(template).to.include('hx-ext="no-empty-vals"');
+    expect(template).to.include('hx-trigger="change, submit"');
+    expect(template).to.include(
+      "flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between",
+    );
+    expect(template).to.include("flex-wrap items-center justify-start gap-6");
+    expect(template).to.include("xl:justify-end");
     expect(template).to.include("dashboard/placeholders/group_refunds_table.html");
+    expect(template).not.to.include(">Clear</a>");
+    expect(template).not.to.include("View attendees");
   });
 
   it("shows checkout, provider, recovery, and completion status contracts", async () => {
@@ -55,6 +69,39 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include("refund.created_at");
     expect(template).to.include("refund.provider_refund_id");
     expect(template).to.include("refund.review_note");
+  });
+
+  it("keeps refund details visible without a narrow-table scrollbar", async () => {
+    // Load the refunds list template before checking responsive table markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify narrow layouts combine details while wider layouts restore columns.
+    expect(template).to.include('class="relative overflow-visible"');
+    expect(template).to.not.include("min-w-[920px]");
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-3">Event',
+    );
+    expect(template).to.include(
+      'class="hidden xl:table-cell px-3 xl:px-5 py-3">Status',
+    );
+    expect(template).to.include(
+      'class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated',
+    );
+    expect(template).to.include(
+      'class="w-[40%] px-3 py-3 xl:w-auto xl:px-5">Attendee',
+    );
+    expect(template).to.include(
+      'class="w-[40%] px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5"',
+    );
+    expect(template).to.include(
+      'class="mb-2 truncate font-medium text-stone-900 xl:hidden"',
+    );
+    expect(template).to.include(
+      'class="mt-2 text-xs text-stone-500 2xl:hidden"',
+    );
+    expect(template).to.include('colspan="3" class="xl:hidden');
+    expect(template).to.include('colspan="5" class="hidden xl:table-cell 2xl:hidden');
+    expect(template).to.include('colspan="6" class="hidden 2xl:table-cell');
   });
 
   it("addresses review and retry actions by purchase identifier", async () => {

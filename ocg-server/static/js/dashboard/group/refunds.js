@@ -15,6 +15,7 @@ import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 const MODAL_ID = "refund-recovery-modal";
 const REFUND_FILTER_FORM_SELECTOR = "#refund-filters";
 const REFUND_FOCUS_TARGET_DATA_KEY = "refundFocusAfterSwap";
+const REFUND_SEARCH_CLEAR_SELECTOR = "[data-refund-search-clear]";
 const REFUND_SEARCH_ID = "refund-search";
 const ROOT_SELECTOR = "#dashboard-content";
 
@@ -76,12 +77,13 @@ export const initializeRefundRecovery = (root) => {
 /**
  * Builds the full dashboard URL represented by the refund filter form.
  * @param {HTMLFormElement} form Refund filter form.
+ * @param {ReadonlySet<string>} [excludedNames] Form fields to omit.
  * @returns {string} Dashboard URL with non-empty filter values.
  */
-const buildRefundDashboardUrl = (form) => {
+const buildRefundDashboardUrl = (form, excludedNames = new Set()) => {
   const dashboardUrl = new URL(form.action, window.location.origin);
   new FormData(form).forEach((value, name) => {
-    if (typeof value === "string" && value.length > 0) {
+    if (!excludedNames.has(name) && typeof value === "string" && value.length > 0) {
       dashboardUrl.searchParams.append(name, value);
     }
   });
@@ -96,6 +98,21 @@ const buildRefundDashboardUrl = (form) => {
  * @returns {void}
  */
 const configureRefundNavigation = (root, requestTarget) => {
+  if (
+    requestTarget instanceof HTMLButtonElement &&
+    requestTarget.matches(REFUND_SEARCH_CLEAR_SELECTOR)
+  ) {
+    const form = requestTarget.closest(REFUND_FILTER_FORM_SELECTOR);
+    if (form instanceof HTMLFormElement) {
+      requestTarget.setAttribute(
+        "hx-push-url",
+        buildRefundDashboardUrl(form, new Set(["ts_query"])),
+      );
+    }
+    root.dataset[REFUND_FOCUS_TARGET_DATA_KEY] = REFUND_SEARCH_ID;
+    return;
+  }
+
   if (requestTarget instanceof HTMLAnchorElement && requestTarget.hasAttribute("hx-get")) {
     const dashboardUrl = requestTarget.getAttribute("href");
     if (dashboardUrl) {

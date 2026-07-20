@@ -26,10 +26,11 @@ describe("dashboard group attendees list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify the filters expose every supported attendance state.
-    expect(template).to.include('aria-label="Filter attendees by attendance status"');
-    expect(template).to.include('id="attendance-filter-{{ option }}"');
-    expect(template).to.include('name="attendance" value="{{ option }}"');
-    expect(template).to.include('aria-pressed="{{ attendance == *option }}"');
+    expect(template).to.include('for="attendees-attendance"');
+    expect(template).to.include('id="attendees-attendance"');
+    expect(template).to.include('name="attendance"');
+    expect(template).to.include('value="{{ option }}"');
+    expect(template).to.include('attendance == *option');
     expect(template).to.include("AttendanceFilter::Active");
     expect(template).to.include("AttendanceFilter::Canceled");
     expect(template).to.include("AttendanceFilter::All");
@@ -171,6 +172,10 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('placeholder="Search attendees"');
     expect(template).to.include('aria-label="Clear attendee search"');
+    expect(template).to.include(
+      "flex flex-col gap-6 2xl:flex-row 2xl:items-start 2xl:justify-between",
+    );
+    expect(template).to.include("flex-wrap items-center justify-start gap-6");
     expect(template).to.include("dashboard/placeholders/group_attendees_no_results.html");
   });
 

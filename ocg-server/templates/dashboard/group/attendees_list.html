@@ -14,46 +14,9 @@
 
 {{ dashboard::form_title(title = "Attendees", description = "Review registrations and manage attendee check-in.") -}}
 
-{# Attendance lifecycle filter -#}
-<div class="mt-5 inline-flex rounded-lg border border-stone-200 bg-white p-1"
-     role="group"
-     aria-label="Filter attendees by attendance status">
-  {% for option in [
-    crate::templates::dashboard::group::attendees::AttendanceFilter::Active,
-    crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled,
-    crate::templates::dashboard::group::attendees::AttendanceFilter::All
-    ] -%}
-    <form hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
-          hx-target="#attendees-content"
-          hx-swap="innerHTML"
-          hx-indicator="#dashboard-spinner">
-      {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_attendance = false) -}}
-      <input type="hidden" name="attendance" value="{{ option }}">
-      <button id="attendance-filter-{{ option }}"
-              type="submit"
-              class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors
-                     {% if attendance == *option -%}
-                       bg-stone-100 text-stone-900
-                     {% else -%}
-                       text-stone-500 hover:text-stone-900
-                     {% endif -%}"
-              aria-pressed="{{ attendance == *option }}">
-        {% if *option == crate::templates::dashboard::group::attendees::AttendanceFilter::Active -%}
-          Active
-        {% else if *option == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled -%}
-          Canceled
-        {% else -%}
-          All
-        {% endif -%}
-      </button>
-    </form>
-  {% endfor -%}
-</div>
-{# End attendance lifecycle filter -#}
-
 {# Filters -#}
-<div class="my-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-  <div class="relative w-full max-w-full sm:w-[36rem]">
+<div class="my-5 flex flex-col gap-6 2xl:flex-row 2xl:items-start 2xl:justify-between">
+  <div class="relative w-80 max-w-full 2xl:w-[30rem]">
     <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
       <div class="svg-icon size-4 icon-search bg-stone-300"></div>
     </div>
@@ -90,38 +53,66 @@
       </div>
     </form>
   </div>
-  <form class="flex shrink-0 items-center gap-3 self-end sm:ms-auto"
+  <form class="flex w-full shrink-0 flex-wrap items-center justify-start gap-6 self-start 2xl:ms-auto 2xl:w-auto 2xl:justify-end 2xl:self-end"
         hx-get="/dashboard/group/events/{{ event.event_id }}/attendees"
         hx-trigger="change"
         hx-target="#attendees-content"
         hx-swap="innerHTML"
         hx-indicator="#dashboard-spinner">
-    {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_sort = false) -}}
-    <label for="attendees-sort"
-           class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
-    <select id="attendees-sort"
-            name="sort"
-            class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
-            {% if attendees.is_empty() -%}
-              disabled
-            {% endif -%}>
-      <option value="name-asc"
-              {% if sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc) -%}
-                selected
-              {% endif -%}>Attendee ↑</option>
-      <option value="name-desc"
-              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc) -%}
-                selected
-              {% endif -%}>Attendee ↓</option>
-      <option value="created-at-asc"
-              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) -%}
-                selected
-              {% endif -%}>RSVP Date ↑</option>
-      <option value="created-at-desc"
-              {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc) -%}
-                selected
-              {% endif -%}>RSVP Date ↓</option>
-    </select>
+    {{ attendee_table_state_inputs(attendance, checked_in, event_ticket_type_ids, limit, sort, title, ts_query, include_attendance = false, include_sort = false) -}}
+    <div class="flex items-center gap-3">
+      <label for="attendees-attendance"
+             class="text-sm font-semibold text-nowrap text-stone-900">Attendance</label>
+      <select id="attendees-attendance"
+              name="attendance"
+              class="block h-10 w-32 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500">
+        {% for option in [
+          crate::templates::dashboard::group::attendees::AttendanceFilter::Active,
+          crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled,
+          crate::templates::dashboard::group::attendees::AttendanceFilter::All
+          ] -%}
+          <option value="{{ option }}"
+                  {% if attendance == *option -%}
+                    selected
+                  {% endif -%}>
+            {% if *option == crate::templates::dashboard::group::attendees::AttendanceFilter::Active -%}
+              Active
+            {% else if *option == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled -%}
+              Canceled
+            {% else -%}
+              All
+            {% endif -%}
+          </option>
+        {% endfor -%}
+      </select>
+    </div>
+    <div class="flex items-center gap-3">
+      <label for="attendees-sort"
+             class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
+      <select id="attendees-sort"
+              name="sort"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+              {% if attendees.is_empty() -%}
+                disabled
+              {% endif -%}>
+        <option value="name-asc"
+                {% if sort.is_none() || sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameAsc) -%}
+                  selected
+                {% endif -%}>Attendee ↑</option>
+        <option value="name-desc"
+                {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::NameDesc) -%}
+                  selected
+                {% endif -%}>Attendee ↓</option>
+        <option value="created-at-asc"
+                {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtAsc) -%}
+                  selected
+                {% endif -%}>RSVP Date ↑</option>
+        <option value="created-at-desc"
+                {% if sort == Some(crate::templates::dashboard::group::attendees::AttendeesSort::CreatedAtDesc) -%}
+                  selected
+                {% endif -%}>RSVP Date ↓</option>
+      </select>
+    </div>
   </form>
 </div>
 {# End filters -#}

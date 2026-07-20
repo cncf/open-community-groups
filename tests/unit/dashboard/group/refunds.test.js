@@ -13,28 +13,14 @@ describe("dashboard group refund recovery", () => {
   const renderRecoveryFixture = () => {
     document.body.innerHTML = `
       <div id="dashboard-content">
-        <nav>
-          <a
-            id="refund-view-0"
-            href="/dashboard/group?tab=refunds&view=needs-attention"
-            hx-get="/dashboard/group/refunds?view=needs-attention"
-          >
-            Needs attention
-          </a>
-          <a
-            data-refund-clear
-            href="/dashboard/group?tab=refunds&view=active"
-            hx-get="/dashboard/group/refunds?view=active"
-          >
-            Clear
-          </a>
-        </nav>
         <form id="refund-filters" action="/dashboard/group" hx-get="/dashboard/group/refunds">
           <input name="tab" value="refunds" />
-          <input name="view" value="active" />
           <input id="refund-search" name="ts_query" value="Alice" />
-          <select name="event_id"><option value="" selected>All events</option></select>
-          <button id="refund-filter-apply" type="submit">Apply</button>
+          <button type="button" data-refund-search-clear hx-get="/dashboard/group/refunds">
+            Clear search
+          </button>
+          <select name="event_id"><option value="event-1" selected>Event one</option></select>
+          <select id="refund-view" name="view"><option value="active" selected>Active</option></select>
         </form>
         <details data-actions-menu open>
           <summary>Refund actions</summary>
@@ -110,26 +96,21 @@ describe("dashboard group refund recovery", () => {
   it("preserves refund navigation history and focus across partial swaps", () => {
     // Render refund navigation and prepare the requested filter state.
     const root = renderRecoveryFixture();
-    const viewLink = document.getElementById("refund-view-0");
-    const clearLink = document.querySelector("[data-refund-clear]");
+    const clearButton = document.querySelector("[data-refund-search-clear]");
     const filterForm = document.getElementById("refund-filters");
 
-    // Configure full dashboard URLs for links and filter submissions.
-    viewLink.dispatchEvent(new CustomEvent("htmx:configRequest", { bubbles: true }));
+    // Configure the full dashboard URL for filter submissions.
     filterForm.dispatchEvent(new CustomEvent("htmx:configRequest", { bubbles: true }));
-    expect(viewLink.getAttribute("hx-push-url")).to.equal(
-      "/dashboard/group?tab=refunds&view=needs-attention",
-    );
     expect(filterForm.getAttribute("hx-push-url")).to.equal(
-      "/dashboard/group?tab=refunds&view=active&ts_query=Alice",
+      "/dashboard/group?tab=refunds&ts_query=Alice&event_id=event-1&view=active",
     );
 
     // Restore focus when a swapped navigation control has no replacement.
-    clearLink.dispatchEvent(new CustomEvent("htmx:configRequest", { bubbles: true }));
+    clearButton.dispatchEvent(new CustomEvent("htmx:configRequest", { bubbles: true }));
     document.body.focus();
     dispatchHtmxAfterSwap(root);
-    expect(clearLink.getAttribute("hx-push-url")).to.equal(
-      "/dashboard/group?tab=refunds&view=active",
+    expect(clearButton.getAttribute("hx-push-url")).to.equal(
+      "/dashboard/group?tab=refunds&event_id=event-1&view=active",
     );
     expect(document.activeElement).to.equal(document.getElementById("refund-search"));
   });

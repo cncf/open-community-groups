@@ -536,6 +536,7 @@ test.describe("group dashboard attendees tab", () => {
       "Upcoming In-Person Event",
       TEST_EVENT_IDS.alpha.one,
     );
+    const attendanceFilter = attendeesContent.getByLabel("Attendance");
 
     // Select canceled attendance and verify the replacement control keeps focus.
     await Promise.all([
@@ -546,14 +547,10 @@ test.describe("group dashboard attendees tab", () => {
           response.url().includes("attendance=canceled") &&
           response.ok(),
       ),
-      attendeesContent.getByRole("button", { name: "Canceled", exact: true }).click(),
+      attendanceFilter.selectOption("canceled"),
     ]);
-    await expect(
-      attendeesContent.getByRole("button", { name: "Canceled", exact: true }),
-    ).toBeFocused();
-    await expect(
-      attendeesContent.getByRole("button", { name: "Canceled", exact: true }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(attendanceFilter).toBeFocused();
+    await expect(attendanceFilter).toHaveValue("canceled");
 
     // Return to active attendance and preserve the same focus contract.
     await Promise.all([
@@ -564,11 +561,10 @@ test.describe("group dashboard attendees tab", () => {
           response.url().includes("attendance=active") &&
           response.ok(),
       ),
-      attendeesContent.getByRole("button", { name: "Active", exact: true }).click(),
+      attendanceFilter.selectOption("active"),
     ]);
-    await expect(
-      attendeesContent.getByRole("button", { name: "Active", exact: true }),
-    ).toBeFocused();
+    await expect(attendanceFilter).toBeFocused();
+    await expect(attendanceFilter).toHaveValue("active");
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({ organizerGroupPage }) => {

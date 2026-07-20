@@ -30,43 +30,42 @@ test.describe("group dashboard refunds", () => {
   }) => {
     // Open the refunds dashboard and switch to attention-required work.
     const dashboardContent = await openRefundsDashboard(organizerGroupPage);
-    const needsAttentionLink = dashboardContent.getByRole("link", {
-      name: "Needs attention",
-    });
-    await Promise.all([waitForRefundsResponse(organizerGroupPage), needsAttentionLink.click()]);
+    const refundStatus = dashboardContent.getByLabel("Refund status");
+    await Promise.all([
+      waitForRefundsResponse(organizerGroupPage),
+      refundStatus.selectOption("attention"),
+    ]);
 
     // Verify the selected view is durable and retains focus after the swap.
     await expect
       .poll(() => new URL(organizerGroupPage.url()).searchParams.get("view"))
       .toBe("attention");
-    await expect(
-      dashboardContent.getByRole("link", { name: "Needs attention" }),
-    ).toBeFocused();
+    await expect(dashboardContent.getByLabel("Refund status")).toBeFocused();
 
     // Apply a search and verify its URL and focus contract.
-    const refundSearch = dashboardContent.getByRole("searchbox", {
+    const refundSearch = dashboardContent.getByRole("textbox", {
       name: "Search refunds",
     });
     await refundSearch.fill("E2E Member");
     await Promise.all([
       waitForRefundsResponse(organizerGroupPage),
-      dashboardContent.getByRole("button", { name: "Apply" }).click(),
+      refundSearch.press("Enter"),
     ]);
     await expect
       .poll(() => new URL(organizerGroupPage.url()).searchParams.get("ts_query"))
       .toBe("E2E Member");
-    await expect(dashboardContent.getByRole("button", { name: "Apply" })).toBeFocused();
+    await expect(refundSearch).toBeFocused();
 
     // Clear filters and move focus to the replacement search control.
     await Promise.all([
       waitForRefundsResponse(organizerGroupPage),
-      dashboardContent.getByRole("link", { name: "Clear" }).click(),
+      dashboardContent.getByRole("button", { name: "Clear refund search" }).click(),
     ]);
     await expect
       .poll(() => new URL(organizerGroupPage.url()).searchParams.has("ts_query"))
       .toBe(false);
     await expect(
-      dashboardContent.getByRole("searchbox", { name: "Search refunds" }),
+      dashboardContent.getByRole("textbox", { name: "Search refunds" }),
     ).toBeFocused();
   });
 
