@@ -1,0 +1,43 @@
+{% extends "dashboard/dashboard_base.html" -%}
+{% import "macros/dashboard.html" as dashboard -%}
+{% import "macros/feedback.html" as feedback -%}
+{% block menu -%}
+<div class="mt-3 mb-6 px-3 lg:px-5"><div class="font-semibold text-stone-900 text-sm lg:text-lg">Jobs Dashboard</div></div>
+<div class="px-3 lg:px-5 leading-10 grid gap-y-0.5">
+  {{ dashboard::menu_title(text = "Manage", extra_styles = "py-1.5") -}}
+  {{ dashboard::menu_item(name = "Post & Manage Jobs", icon = "search", is_active = false, href = "/dashboard/jobs") -}}
+  {{ dashboard::menu_item(name = "Jobs Discovery", icon = "search", is_active = true, href = "/dashboard/jobs/discovery") -}}
+  {{ dashboard::menu_item(name = "Mock Interview Queue", icon = "user-small", is_active = false, href = "/dashboard/jobs/mock-interviews") -}}
+</div>
+{% endblock menu -%}
+{% block dashboard_main -%}
+<div class="p-4 sm:p-6 lg:p-12 max-w-4xl">
+  {{ dashboard::page_title(title = "Jobs discovery", description = "Publish validated jobs found through your approved source URLs.") -}}
+  {% if !messages.is_empty() %}<div class="mt-6">{{ feedback::alerts(messages) }}</div>{% endif %}
+  {% if !discovery_available %}
+    <p class="mt-6 text-stone-600">Jobs discovery is not configured by this site.</p>
+  {% else %}
+    <form class="mt-8 space-y-4" action="/dashboard/jobs/discovery/settings" method="post">
+      <label class="flex gap-3 items-center"><input type="checkbox" name="enabled" value="true" {% if discovery.enabled %}checked{% endif %}> Enable jobs discovery</label>
+      <button class="button-primary">Save settings</button>
+    </form>
+    <section class="mt-8 border-t pt-6">
+      <h2 class="font-semibold text-lg">Source URLs</h2>
+      <form class="flex gap-3 mt-3" action="/dashboard/jobs/discovery/sources" method="post">
+        <input class="input-primary flex-1" type="url" name="url" placeholder="https://careers.example.com" required>
+        <button class="button-primary">Add source</button>
+      </form>
+      <ul class="mt-4 space-y-2">{% for source in discovery.sources %}
+        <li class="flex items-center justify-between gap-3 border rounded p-3">
+          <a class="truncate underline" href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.url }}</a>
+          <form hx-delete="/dashboard/jobs/discovery/sources/{{ source.jobs_discovery_source_id }}" hx-target="body"><button class="button-secondary">Remove</button></form>
+        </li>{% endfor %}
+      </ul>
+    </section>
+    <section class="mt-8 border-t pt-6">
+      <form action="/dashboard/jobs/discovery/run" method="post"><button class="button-secondary" {% if !discovery.enabled %}disabled{% endif %}>Run discovery now</button></form>
+      {% if let Some(run) = discovery.latest_run %}<p class="mt-3">Latest run: {{ run.status }} · {{ run.discovered_count }} discovered · {{ run.created_count }} published</p>{% endif %}
+    </section>
+  {% endif %}
+</div>
+{% endblock dashboard_main -%}

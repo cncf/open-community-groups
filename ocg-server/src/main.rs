@@ -111,6 +111,7 @@ async fn main() -> Result<()> {
     start_meetings_workers(&cfg, db.clone(), &background_tasks);
     start_recording_publishing_workers(&cfg, &db, &background_tasks);
     start_event_discovery_worker(&cfg, db.clone(), &background_tasks);
+    start_job_discovery_worker(&cfg, db.clone(), &background_tasks);
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
     let payments_manager = setup_payments_manager(
@@ -197,6 +198,22 @@ fn start_event_discovery_worker(cfg: &Config, db: Arc<PgDB>, background_tasks: &
         .and_then(|integrations| integrations.you_com.clone())
     {
         services::event_discovery::start(
+            you_com_cfg,
+            db,
+            &background_tasks.task_tracker,
+            &background_tasks.cancellation_token,
+        );
+    }
+}
+
+/// Starts global job discovery with the same configured You.com account.
+fn start_job_discovery_worker(cfg: &Config, db: Arc<PgDB>, background_tasks: &BackgroundTasks) {
+    if let Some(you_com_cfg) = cfg
+        .integrations
+        .as_ref()
+        .and_then(|integrations| integrations.you_com.clone())
+    {
+        services::job_discovery::start(
             you_com_cfg,
             db,
             &background_tasks.task_tracker,

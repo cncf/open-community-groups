@@ -8,6 +8,7 @@ use axum::{
 };
 use axum_messages::Messages;
 use garde::Validate;
+use serde::Deserialize;
 use tracing::{instrument, warn};
 use uuid::Uuid;
 
@@ -18,12 +19,14 @@ use crate::{
         error::HandlerError,
         extractors::{CurrentUser, ValidatedForm},
     },
+    integrations::you_com::validate_source_url,
     router::serde_qs_config,
+    services::job_discovery::ManualJobDiscovery,
     services::notifications::{DynNotificationsManager, NewNotification, NotificationKind},
     templates::{
         PageId,
         auth::User,
-        dashboard::jobs::{MockInterviewsPage, Page},
+        dashboard::jobs::{DiscoveryPage, MockInterviewsPage, Page},
         notifications::MockInterviewMatched,
     },
     types::{
@@ -38,6 +41,20 @@ use crate::{
 
 const DASHBOARD_JOBS_URL: &str = "/dashboard/jobs";
 const DASHBOARD_MOCK_INTERVIEWS_URL: &str = "/dashboard/jobs/mock-interviews";
+const DASHBOARD_DISCOVERY_URL: &str = "/dashboard/jobs/discovery";
+
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct DiscoverySettingsInput {
+    #[serde(default)]
+    #[garde(skip)]
+    enabled: bool,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub(crate) struct DiscoverySourceInput {
+    #[garde(skip)]
+    url: String,
+}
 
 /// Render the jobs dashboard.
 #[instrument(skip_all, err)]
@@ -116,6 +133,96 @@ pub(crate) async fn add(
     db.add_job(user.user_id, &input).await?;
     messages.success("Job posted.");
     Ok((StatusCode::SEE_OTHER, [("Location", DASHBOARD_JOBS_URL)]))
+}
+
+/// Render user-owned global jobs discovery settings.
+#[instrument(skip_all, err)]
+pub(crate) async fn discovery_page(
+    auth_session: crate::auth::AuthSession,
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    State(manual_job_discovery): State<Option<ManualJobDiscovery>>,
+) -> Result<impl IntoResponse, HandlerError> {
+    Ok(Html(
+        DiscoveryPage {
+            messages: messages.into_iter().collect(),
+            page_id: PageId::JobsDashboard,
+            path: DASHBOARD_DISCOVERY_URL.into(),
+            site_settings: db.get_site_settings().await?,
+            user: User::from_session(auth_session).await?,
+            discovery: db.get_job_discovery(user.user_id).await?,
+            discovery_available: manual_job_discovery.is_some_and(|runner| runner.enabled()),
+        }
+        .render()?,
+    ))
+}
+
+/// Update discovery enabled state.
+#[instrument(skip_all, err)]
+pub(crate) async fn update_discovery(
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    ValidatedForm(input): ValidatedForm<DiscoverySettingsInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.update_job_discovery(user.user_id, input.enabled).await?;
+    messages.success("Jobs discovery settings saved.");
+    Ok((
+        StatusCode::SEE_OTHER,
+        [("Location", DASHBOARD_DISCOVERY_URL)],
+    ))
+}
+
+/// Add a validated source URL.
+#[instrument(skip_all, err)]
+pub(crate) async fn add_discovery_source(
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    ValidatedForm(input): ValidatedForm<DiscoverySourceInput>,
+) -> Result<impl IntoResponse, HandlerError> {
+    validate_source_url(input.url.trim()).map_err(HandlerError::from)?;
+    db.add_job_discovery_source(user.user_id, input.url.trim()).await?;
+    messages.success("Discovery source added.");
+    Ok((
+        StatusCode::SEE_OTHER,
+        [("Location", DASHBOARD_DISCOVERY_URL)],
+    ))
+}
+
+/// Remove a source URL owned by the current user.
+#[instrument(skip_all, err)]
+pub(crate) async fn delete_discovery_source(
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    Path(source_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.delete_job_discovery_source(user.user_id, source_id).await?;
+    messages.success("Discovery source removed.");
+    Ok((
+        StatusCode::SEE_OTHER,
+        [("Location", DASHBOARD_DISCOVERY_URL)],
+    ))
+}
+
+/// Queue a manual discovery run.
+#[instrument(skip_all, err)]
+pub(crate) async fn run_discovery(
+    messages: Messages,
+    CurrentUser(user): CurrentUser,
+    State(manual_job_discovery): State<Option<ManualJobDiscovery>>,
+) -> Result<impl IntoResponse, HandlerError> {
+    let Some(runner) = manual_job_discovery.filter(|runner| runner.enabled()) else {
+        return Err(HandlerError::NotFound);
+    };
+    runner.spawn_user_run(user.user_id);
+    messages.success("Jobs discovery run started.");
+    Ok((
+        StatusCode::SEE_OTHER,
+        [("Location", DASHBOARD_DISCOVERY_URL)],
+    ))
 }
 
 /// Update a job.

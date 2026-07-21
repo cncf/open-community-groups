@@ -1571,6 +1571,7 @@ pub(crate) fn test_state_with_server_cfg(
         db,
         image_storage,
         manual_event_discovery: None,
+        manual_job_discovery: None,
         meetings_cfg: None,
         notifications_manager,
         payments_cfg: None,

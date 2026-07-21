@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     templates::{PageId, auth::User, filters, helpers::user_initials},
     types::{
-        jobs::{DashboardJobsFilters, JobSummary},
+        jobs::{DashboardJobsFilters, JobDiscoveryDashboard, JobSummary},
         mock_interviews::{
             INTERVIEW_TYPE_OPTIONS, LOCATION_OPTIONS, MockInterviewDashboard, MockInterviewFilters,
             MockInterviewOption, PRACTICE_ROLE_OPTIONS, SENIORITY_OPTIONS, TARGET_COMPANY_OPTIONS,
@@ -41,6 +41,20 @@ pub(crate) struct Page {
     pub total: usize,
     /// Pagination links.
     pub navigation_links: NavigationLinks,
+}
+
+/// Jobs discovery dashboard page.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "dashboard/jobs/discovery.html")]
+pub(crate) struct DiscoveryPage {
+    pub messages: Vec<Message>,
+    #[allow(dead_code)]
+    pub page_id: PageId,
+    pub path: String,
+    pub site_settings: SiteSettings,
+    pub user: User,
+    pub discovery: JobDiscoveryDashboard,
+    pub discovery_available: bool,
 }
 
 /// Mock interviews dashboard page.

@@ -142,6 +142,31 @@ pub(crate) struct DashboardJobsOutput {
     pub total: usize,
 }
 
+/// A user-owned source queried for global job discovery.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct JobDiscoverySource {
+    pub jobs_discovery_source_id: Uuid,
+    pub url: String,
+    pub enabled: bool,
+}
+
+/// Most recent discovery run shown in the Jobs dashboard.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct JobDiscoveryRun {
+    pub status: String,
+    pub discovered_count: i32,
+    pub created_count: i32,
+    pub error_message: Option<String>,
+}
+
+/// Jobs discovery configuration and its owned source URLs.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub(crate) struct JobDiscoveryDashboard {
+    pub enabled: bool,
+    pub sources: Vec<JobDiscoverySource>,
+    pub latest_run: Option<JobDiscoveryRun>,
+}
+
 /// Applicant interest saved for a job.
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]

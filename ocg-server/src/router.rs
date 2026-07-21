@@ -40,7 +40,8 @@ use crate::{
     },
     services::{
         event_discovery::ManualEventDiscovery, images::DynImageStorage,
-        notifications::DynNotificationsManager, payments::DynPaymentsManager,
+        job_discovery::ManualJobDiscovery, notifications::DynNotificationsManager,
+        payments::DynPaymentsManager,
     },
 };
 
@@ -114,6 +115,8 @@ pub(crate) struct State {
     pub image_storage: DynImageStorage,
     /// Optional You.com discovery runner for authorized dashboard actions.
     pub manual_event_discovery: Option<ManualEventDiscovery>,
+    /// Optional You.com discovery runner for global jobs dashboard actions.
+    pub manual_job_discovery: Option<ManualJobDiscovery>,
     /// Meetings configuration.
     pub meetings_cfg: Option<MeetingsConfig>,
     /// Notifications manager handle.
@@ -162,8 +165,12 @@ pub(crate) async fn setup(
         activity_tracker,
         image_storage,
         manual_event_discovery: you_com_cfg
-            .zip(manual_event_discovery_db)
+            .clone()
+            .zip(manual_event_discovery_db.clone())
             .map(|(cfg, db)| ManualEventDiscovery::new(cfg, db)),
+        manual_job_discovery: you_com_cfg
+            .zip(manual_event_discovery_db)
+            .map(|(cfg, db)| ManualJobDiscovery::new(cfg, db)),
         meetings_cfg,
         notifications_manager,
         payments_cfg,
@@ -287,6 +294,26 @@ pub(crate) async fn setup(
         .route(
             "/dashboard/jobs/mock-interviews",
             get(crate::handlers::dashboard::jobs::mock_interviews_page),
+        )
+        .route(
+            "/dashboard/jobs/discovery",
+            get(crate::handlers::dashboard::jobs::discovery_page),
+        )
+        .route(
+            "/dashboard/jobs/discovery/settings",
+            post(crate::handlers::dashboard::jobs::update_discovery),
+        )
+        .route(
+            "/dashboard/jobs/discovery/sources",
+            post(crate::handlers::dashboard::jobs::add_discovery_source),
+        )
+        .route(
+            "/dashboard/jobs/discovery/sources/{source_id}",
+            delete(crate::handlers::dashboard::jobs::delete_discovery_source),
+        )
+        .route(
+            "/dashboard/jobs/discovery/run",
+            post(crate::handlers::dashboard::jobs::run_discovery),
         )
         .route(
             "/dashboard/jobs/mock-interviews/{request_id}/match",

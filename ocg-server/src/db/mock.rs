@@ -1224,6 +1224,17 @@ mock! {
             job_id: Uuid,
             input: &crate::types::jobs::JobApplicationInput,
         ) -> Result<()>;
+        async fn get_job_discovery(
+            &self,
+            user_id: Uuid,
+        ) -> Result<crate::types::jobs::JobDiscoveryDashboard>;
+        async fn update_job_discovery(&self, user_id: Uuid, enabled: bool) -> Result<()>;
+        async fn add_job_discovery_source(&self, user_id: Uuid, url: &str) -> Result<Uuid>;
+        async fn delete_job_discovery_source(
+            &self,
+            user_id: Uuid,
+            source_id: Uuid,
+        ) -> Result<()>;
     }
 
     #[async_trait]
