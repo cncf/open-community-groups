@@ -43,6 +43,7 @@
   <script type="module" src="/static/js/event/attendance.js"></script>
   <script type="module" src="/static/js/event/agenda-tabs.js"></script>
   <script type="module" src="/static/js/event/cfs.js"></script>
+  <script type="module" src="/static/js/event/timezone-localization.js"></script>
 {% endblock scripts -%}
 
 {% block content -%}
@@ -246,6 +247,10 @@
                             {{ start_tz.format("%b %e, %G") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ start_tz.format("%I:%M %p") }}</div>
+                          <div data-localized-time
+                               data-starts-at="{{ starts_at.to_rfc3339() }}"
+                               data-event-timezone="{{ event.timezone }}"
+                               class="mt-1 text-xs text-stone-500 hidden"></div>
                         </div>
                         <div class="text-stone-400 mt-6 xl:mt-7">→</div>
                         <div>
@@ -257,6 +262,10 @@
                             {{ end_tz.format("%b %e, %G") }}
                           </div>
                           <div class="mt-1 text-sm text-stone-600">{{ end_tz.format("%I:%M %p") }}</div>
+                          <div data-localized-time
+                               data-starts-at="{{ ends_at.to_rfc3339() }}"
+                               data-event-timezone="{{ event.timezone }}"
+                               class="mt-1 text-xs text-stone-500 hidden"></div>
                         </div>
                       </div>
                     {% else -%}
@@ -270,6 +279,11 @@
                       <div class="mt-2 text-base text-stone-600">
                         {{ start_tz.format("%I:%M %p") }} - {{ end_tz.format("%I:%M %p %Z") }}
                       </div>
+                      <div data-localized-time
+                           data-starts-at="{{ starts_at.to_rfc3339() }}"
+                           data-ends-at="{{ ends_at.to_rfc3339() }}"
+                           data-event-timezone="{{ event.timezone }}"
+                           class="mt-1 text-xs text-stone-500 hidden"></div>
                     {% endif -%}
                     {% when None -%}
                     {# Single-day event without end time #}
@@ -280,6 +294,10 @@
                       {{ start_tz.format("%B %e, %G") }}
                     </div>
                     <div class="mt-2 text-base text-stone-600">{{ start_tz.format("%I:%M %p %Z") }}</div>
+                    <div data-localized-time
+                         data-starts-at="{{ starts_at.to_rfc3339() }}"
+                         data-event-timezone="{{ event.timezone }}"
+                         class="mt-1 text-xs text-stone-500 hidden"></div>
                   {% endmatch -%}
                 {% else -%}
                   <div class="text-lg sm:text-xl xl:text-3xl font-semibold text-stone-800">TBD</div>
@@ -741,6 +759,13 @@
         {{ session.starts_at.with_timezone(event.timezone).format("%l:%M %p %Z") }}
       {% endif -%}
     </div>
+    <div data-localized-time
+         data-starts-at="{{ session.starts_at.to_rfc3339() }}"
+         {% if let Some(ends_at) = &session.ends_at -%}
+           data-ends-at="{{ ends_at.to_rfc3339() }}"
+         {% endif -%}
+         data-event-timezone="{{ event.timezone }}"
+         class="mb-2 text-xs text-stone-500 hidden"></div>
     <div class="flex flex-col sm:flex-row items-start gap-2">
       <h3 class="md:text-lg font-semibold text-stone-900">{{ session.name|demoji }}</h3>
       {{ badges::event_badge(kind = session.kind, extra_styles = Some("mt-1 md:mt-1.5") ) -}}

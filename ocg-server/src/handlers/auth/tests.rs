@@ -199,7 +199,11 @@ async fn test_user_menu_section_success() {
     db.expect_get_user_by_id()
         .times(1)
         .withf(move |id| *id == user_id)
-        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+        .returning(move |_| {
+            let mut user = sample_auth_user(user_id, &auth_hash);
+            user.timezone = Some("America/Los_Angeles".to_string());
+            Ok(Some(user))
+        });
 
     // Setup notifications manager mock
     let nm = MockNotificationsManager::new();
@@ -223,7 +227,8 @@ async fn test_user_menu_section_success() {
         parts.headers.get(CONTENT_TYPE).unwrap(),
         &HeaderValue::from_static("text/html; charset=utf-8"),
     );
-    assert!(!bytes.is_empty());
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+    assert!(body.contains(r#"data-user-timezone="America/Los_Angeles""#));
 }
 
 #[tokio::test]

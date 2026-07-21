@@ -102,6 +102,8 @@ pub(crate) struct User {
     pub belongs_to_community_team: Option<bool>,
     /// Display name of the user, if any.
     pub name: Option<String>,
+    /// Preferred timezone for rendering user-localized dates.
+    pub timezone: Option<String>,
     /// Username, if any.
     pub username: Option<String>,
 }
@@ -117,6 +119,7 @@ impl User {
             belongs_to_any_group_team: auth_session_user.and_then(|u| u.belongs_to_any_group_team),
             belongs_to_community_team: auth_session_user.and_then(|u| u.belongs_to_community_team),
             name: auth_session_user.map(|u| u.name.clone()),
+            timezone: auth_session_user.and_then(|u| u.timezone.clone()),
             username: auth_session_user.map(|u| u.username.clone()),
         };
         Ok(user)
