@@ -15,6 +15,6 @@
   <textarea id="attribution_copy" name="attribution_copy" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}" class="input-primary mt-2">{{ attribution_value }}</textarea>
 </div>
 <label class="flex items-center gap-3 text-sm font-semibold text-stone-700 md:col-span-2">
-  <input name="public" type="checkbox" class="size-4 rounded border-stone-300 text-primary-600" {{ public_checked }}>
+  <input name="public" type="checkbox" value="true" class="size-4 rounded border-stone-300 text-primary-600" {{ public_checked }}>
   Show this partner on the public integrations page
 </label>
