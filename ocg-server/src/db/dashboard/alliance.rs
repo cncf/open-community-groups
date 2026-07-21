@@ -16,6 +16,7 @@ use crate::{
             event_categories::EventCategoryInput,
             group_categories::GroupCategoryInput,
             groups::Group,
+            partner_integrations::PartnerIntegrationInput,
             regions::RegionInput,
             settings::AllianceUpdate,
             team::{AllianceTeamFilters, AllianceTeamOutput},
@@ -25,6 +26,7 @@ use crate::{
     types::{
         alliance::{AllianceRole, AllianceRoleSummary, AllianceSummary},
         group::{GroupCategory, GroupRegion},
+        partner_integration::PartnerIntegration,
     },
 };
 
@@ -83,6 +85,14 @@ pub(crate) trait DBDashboardAlliance {
         region: &RegionInput,
     ) -> Result<Uuid>;
 
+    /// Adds a partner integration to an alliance.
+    async fn add_partner_integration(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        partner_integration: &PartnerIntegrationInput,
+    ) -> Result<Uuid>;
+
     /// Deactivates a group (sets active=false without deleting).
     async fn deactivate_group(
         &self,
@@ -131,6 +141,14 @@ pub(crate) trait DBDashboardAlliance {
         region_id: Uuid,
     ) -> Result<()>;
 
+    /// Deletes a partner integration from an alliance.
+    async fn delete_partner_integration(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        partner_integration_id: Uuid,
+    ) -> Result<()>;
+
     /// Retrieves analytics statistics for a alliance.
     async fn get_alliance_stats(&self, alliance_id: Uuid) -> Result<AllianceDashboardStats>;
 
@@ -156,6 +174,10 @@ pub(crate) trait DBDashboardAlliance {
 
     /// Lists all regions for a alliance.
     async fn list_regions(&self, alliance_id: Uuid) -> Result<Vec<GroupRegion>>;
+
+    /// Lists all partner integrations for an alliance.
+    async fn list_partner_integrations(&self, alliance_id: Uuid)
+    -> Result<Vec<PartnerIntegration>>;
 
     /// Lists all alliances where the user is a team member.
     async fn list_user_alliances(&self, user_id: &Uuid) -> Result<Vec<AllianceSummary>>;
@@ -211,6 +233,15 @@ pub(crate) trait DBDashboardAlliance {
         region_id: Uuid,
         region: &RegionInput,
     ) -> Result<()>;
+
+    /// Updates a partner integration in an alliance.
+    async fn update_partner_integration(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        partner_integration_id: Uuid,
+        partner_integration: &PartnerIntegrationInput,
+    ) -> Result<()>;
 }
 
 #[async_trait]
@@ -229,6 +260,21 @@ where
         self.execute(
             "select activate_group($1::uuid, $2::uuid, $3::uuid)",
             &[&actor_user_id, &alliance_id, &group_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardAlliance::add_partner_integration`]
+    #[instrument(skip(self, partner_integration), err)]
+    async fn add_partner_integration(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        partner_integration: &PartnerIntegrationInput,
+    ) -> Result<Uuid> {
+        self.fetch_scalar_one(
+            "select add_partner_integration($1::uuid, $2::uuid, $3::jsonb)::uuid",
+            &[&actor_user_id, &alliance_id, &Json(partner_integration)],
         )
         .await
     }
@@ -409,6 +455,21 @@ where
         .await
     }
 
+    /// [`DBDashboardAlliance::delete_partner_integration`]
+    #[instrument(skip(self), err)]
+    async fn delete_partner_integration(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        partner_integration_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select delete_partner_integration($1::uuid, $2::uuid, $3::uuid)",
+            &[&actor_user_id, &alliance_id, &partner_integration_id],
+        )
+        .await
+    }
+
     /// [`DBDashboardAlliance::get_alliance_stats`]
     #[instrument(skip(self), err)]
     async fn get_alliance_stats(&self, alliance_id: Uuid) -> Result<AllianceDashboardStats> {
@@ -491,6 +552,19 @@ where
     async fn list_regions(&self, alliance_id: Uuid) -> Result<Vec<GroupRegion>> {
         self.fetch_json_one("select list_regions($1::uuid)", &[&alliance_id])
             .await
+    }
+
+    /// [`DBDashboardAlliance::list_partner_integrations`]
+    #[instrument(skip(self), err)]
+    async fn list_partner_integrations(
+        &self,
+        alliance_id: Uuid,
+    ) -> Result<Vec<PartnerIntegration>> {
+        self.fetch_json_one(
+            "select list_partner_integrations($1::uuid)",
+            &[&alliance_id],
+        )
+        .await
     }
 
     /// [`DBDashboardAlliance::list_user_alliances`]
@@ -600,6 +674,27 @@ where
         self.execute(
             "select update_region($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
             &[&actor_user_id, &alliance_id, &region_id, &Json(region)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardAlliance::update_partner_integration`]
+    #[instrument(skip(self, partner_integration), err)]
+    async fn update_partner_integration(
+        &self,
+        actor_user_id: Uuid,
+        alliance_id: Uuid,
+        partner_integration_id: Uuid,
+        partner_integration: &PartnerIntegrationInput,
+    ) -> Result<()> {
+        self.execute(
+            "select update_partner_integration($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[
+                &actor_user_id,
+                &alliance_id,
+                &partner_integration_id,
+                &Json(partner_integration),
+            ],
         )
         .await
     }

@@ -33,7 +33,7 @@ pub(crate) trait DBDashboardCommon {
         group_id: Option<Uuid>,
     ) -> Result<Vec<IntentionalDatingOptIn>>;
 
-    /// Lists private book exchange member lists visible to authorized admins.
+    /// Lists book exchange member lists visible to authorized viewers.
     async fn list_book_exchange_members(
         &self,
         alliance_id: Uuid,
@@ -173,7 +173,7 @@ pub(crate) struct IntentionalDatingOptIn {
     pub title: Option<String>,
 }
 
-/// Private book exchange member list visible only to authorized admins.
+/// Book exchange member list visible to authorized viewers.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct BookExchangeMember {
     pub user_id: Uuid,

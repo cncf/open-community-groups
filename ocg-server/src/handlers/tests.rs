@@ -1570,6 +1570,7 @@ pub(crate) fn test_state_with_server_cfg(
         activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
         db,
         image_storage,
+        manual_event_discovery: None,
         meetings_cfg: None,
         notifications_manager,
         payments_cfg: None,
@@ -1620,7 +1621,9 @@ impl TestRouterBuilder {
         router::setup(
             activity_tracker,
             db,
+            None,
             is,
+            None,
             self.meetings_cfg,
             self.payments_cfg,
             payments_manager,

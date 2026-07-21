@@ -145,6 +145,13 @@
                     <div class="svg-icon size-4 icon-people bg-stone-600"></div>
                     Members
                   </a>
+                  {% if group.book_exchange_available() -%}
+                    <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/book-exchange"
+                       class="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">
+                      <div class="svg-icon size-4 icon-list bg-stone-600"></div>
+                      Book exchange
+                    </a>
+                  {% endif -%}
                   <a href="/{{ group.alliance.name }}/group/{{ group.public_slug() }}/spotlights"
                      class="flex w-full items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50">
                     <div class="svg-icon size-4 icon-star bg-stone-600"></div>

@@ -1,16 +1,16 @@
 {% import "macros/dashboard.html" as dashboard -%}
 
-{{ dashboard::page_title(title = "Book Exchange", description = "Privately review opted-in group member book lists.") -}}
+{{ dashboard::page_title(title = "Book Exchange", description = "Discover books opted-in group members want to exchange.") -}}
 
 {% if !can_manage_book_exchange -%}
-  {{ dashboard::permission_warning(message = "Your role cannot review book exchange lists.") -}}
+  {{ dashboard::permission_warning(message = "You can view opted-in book lists for this group. Contact details are only visible to group managers.") -}}
 {% endif -%}
 
 <section class="mt-8 rounded-[1.75rem] border border-primary-100 bg-primary-50/70 p-5 sm:p-6">
   <div class="text-xs font-black uppercase tracking-[0.2em] text-primary-700">Private opt-in</div>
   <h2 class="mt-2 text-xl font-black tracking-tight text-stone-950">Group book lists for exchange</h2>
   <p class="mt-2 max-w-3xl text-sm/6 text-stone-700">
-    Members appear here only when the alliance, this group, and their own account opt-in are all enabled. Book lists are visible to eligible admins only and are not shown on public profiles.
+    Members appear here only when the alliance, this group, and their own account opt-in are all enabled. Book lists are visible to this group's members and are not shown on public profiles.
   </p>
 </section>
 
@@ -28,7 +28,11 @@
         <div class="flex items-start justify-between gap-4">
           <div>
             <h2 class="font-black text-stone-950">{{ member.name.as_deref().unwrap_or(member.username.as_str()) }}</h2>
-            <p class="mt-1 text-sm text-stone-600">{{ member.email.as_deref().unwrap_or("No email") }}</p>
+            {% if can_manage_book_exchange -%}
+              <p class="mt-1 text-sm text-stone-600">{{ member.email.as_deref().unwrap_or("No email") }}</p>
+            {% else -%}
+              <p class="mt-1 text-sm text-stone-600">@{{ member.username }}</p>
+            {% endif -%}
           </div>
           <span class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-bold text-primary-700">Book exchange</span>
         </div>

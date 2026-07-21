@@ -7,7 +7,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 use crate::{
-    db::mock::MockDB,
+    db::{dashboard::common::BookExchangeMember, mock::MockDB},
     handlers::tests::*,
     services::notifications::MockNotificationsManager,
     templates::dashboard::{DASHBOARD_PAGINATION_LIMIT, group::coffee_meet::CoffeeMeetSubscriber},
@@ -176,6 +176,65 @@ async fn test_page_coffee_meet_tab_success() {
 }
 
 #[tokio::test]
+async fn test_page_book_exchange_tab_allows_read_only_group_member() {
+    let alliance_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let groups = sample_user_groups_by_alliance(alliance_id, group_id);
+    let member = sample_book_exchange_member(alliance_id, group_id);
+
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, alliance_id, group_id);
+    expect_group_permission(
+        &mut db,
+        alliance_id,
+        group_id,
+        user_id,
+        GroupPermission::Read,
+    );
+    db.expect_list_user_groups()
+        .times(1)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(groups.clone()));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == alliance_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::SettingsWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
+    db.expect_list_book_exchange_members()
+        .times(1)
+        .withf(move |cid, gid| *cid == alliance_id && *gid == Some(group_id))
+        .returning(move |_, _| Ok(vec![member.clone()]));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/group?tab=book-exchange")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = std::str::from_utf8(&bytes).unwrap();
+
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+    assert!(body.contains("The Pragmatic Programmer"));
+    assert!(body.contains("Contact details are only visible to group managers."));
+    assert!(!body.contains("book-lover@example.com"));
+}
+
+#[tokio::test]
 async fn test_page_events_tab_success() {
     // Setup identifiers and data structures
     let alliance_id = Uuid::new_v4();
@@ -256,6 +315,25 @@ async fn test_page_events_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+fn sample_book_exchange_member(alliance_id: Uuid, group_id: Uuid) -> BookExchangeMember {
+    BookExchangeMember {
+        user_id: Uuid::new_v4(),
+        username: "book-lover".to_string(),
+        group_id,
+        group_name: "GOUP Builders".to_string(),
+        alliance_id,
+        alliance_display_name: "GOUP".to_string(),
+        book_exchange_books: Some("The Pragmatic Programmer".to_string()),
+        city: Some("Phoenix".to_string()),
+        company: Some("GOUP".to_string()),
+        country: Some("US".to_string()),
+        email: Some("book-lover@example.com".to_string()),
+        name: Some("Book Lover".to_string()),
+        photo_url: None,
+        title: Some("Builder".to_string()),
+    }
 }
 
 #[tokio::test]

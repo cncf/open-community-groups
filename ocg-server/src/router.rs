@@ -31,16 +31,16 @@ use tracing::instrument;
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::AuthnBackend,
-    config::{HttpServerConfig, MeetingsConfig, PaymentsConfig},
-    db::DynDB,
+    config::{HttpServerConfig, MeetingsConfig, PaymentsConfig, YouComConfig},
+    db::{DynDB, PgDB},
     handlers::{
         alliance,
         auth::{self, LOG_IN_URL},
         event, group, images, meetings, payments, site,
     },
     services::{
-        images::DynImageStorage, notifications::DynNotificationsManager,
-        payments::DynPaymentsManager,
+        event_discovery::ManualEventDiscovery, images::DynImageStorage,
+        notifications::DynNotificationsManager, payments::DynPaymentsManager,
     },
 };
 
@@ -112,6 +112,8 @@ pub(crate) struct State {
     pub db: DynDB,
     /// Image storage provider handle.
     pub image_storage: DynImageStorage,
+    /// Optional You.com discovery runner for authorized dashboard actions.
+    pub manual_event_discovery: Option<ManualEventDiscovery>,
     /// Meetings configuration.
     pub meetings_cfg: Option<MeetingsConfig>,
     /// Notifications manager handle.
@@ -136,7 +138,9 @@ pub(crate) struct State {
 pub(crate) async fn setup(
     activity_tracker: DynActivityTracker,
     db: DynDB,
+    manual_event_discovery_db: Option<std::sync::Arc<PgDB>>,
     image_storage: DynImageStorage,
+    you_com_cfg: Option<YouComConfig>,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
@@ -157,6 +161,9 @@ pub(crate) async fn setup(
         db: db.clone(),
         activity_tracker,
         image_storage,
+        manual_event_discovery: you_com_cfg
+            .zip(manual_event_discovery_db)
+            .map(|(cfg, db)| ManualEventDiscovery::new(cfg, db)),
         meetings_cfg,
         notifications_manager,
         payments_cfg,
@@ -230,6 +237,10 @@ pub(crate) async fn setup(
         .route(
             "/{alliance}/group/{group_slug}/members",
             get(group::members_page),
+        )
+        .route(
+            "/{alliance}/group/{group_slug}/book-exchange",
+            get(group::book_exchange_page),
         )
         .route(
             "/{alliance}/group/{group_slug}/members/{user_id}/phone-requests",
@@ -368,6 +379,7 @@ pub(crate) async fn setup(
         .route("/wiki", get(site::wiki::page))
         // Alliance-prefixed public routes
         .route("/{alliance}/brand", get(alliance::brand_page))
+        .route("/{alliance}/integrations", get(alliance::integrations_page))
         .route("/{alliance}/members", get(alliance::members_page))
         .route("/{alliance}/reports", get(alliance::report_page))
         .route("/{alliance}", get(alliance::page))

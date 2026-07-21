@@ -83,8 +83,7 @@ pub(crate) async fn add_week(
     ValidatedForm(input): ValidatedForm<AcceleratorWeekInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     ensure_can_manage_accelerator(&db, alliance_id, group_id, user.user_id).await?;
-    db.add_group_accelerator_week(user.user_id, group_id, &input)
-        .await?;
+    db.add_group_accelerator_week(user.user_id, group_id, &input).await?;
 
     Ok(refresh_created())
 }

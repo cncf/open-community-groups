@@ -1,0 +1,20 @@
+<div>
+  <label class="form-label" for="name">Name <span class="asterisk">*</span></label>
+  <input id="name" name="name" type="text" maxlength="{{ crate::validation::MAX_LEN_ENTITY_NAME }}" class="input-primary mt-2" {{ name_value|safe }} required>
+</div>
+<div>
+  <label class="form-label" for="website_url">Website URL</label>
+  <input id="website_url" name="website_url" type="url" maxlength="{{ crate::validation::MAX_LEN_L }}" class="input-primary mt-2" {{ website_value|safe }}>
+</div>
+<div>
+  <label class="form-label" for="logo_url">Logo URL</label>
+  <input id="logo_url" name="logo_url" type="url" maxlength="{{ crate::validation::MAX_LEN_L }}" class="input-primary mt-2" {{ logo_value|safe }}>
+</div>
+<div>
+  <label class="form-label" for="attribution_copy">Attribution copy</label>
+  <textarea id="attribution_copy" name="attribution_copy" maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}" class="input-primary mt-2">{{ attribution_value }}</textarea>
+</div>
+<label class="flex items-center gap-3 text-sm font-semibold text-stone-700 md:col-span-2">
+  <input name="public" type="checkbox" class="size-4 rounded border-stone-300 text-primary-600" {{ public_checked }}>
+  Show this partner on the public integrations page
+</label>

@@ -11,7 +11,10 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{accelerator, coffee_meet, events, logs, members, sponsors, spotlights, store, team};
+use super::{
+    accelerator, coffee_meet, events, integrations, logs, members, sponsors, spotlights, store,
+    team,
+};
 
 use crate::{
     auth::AuthSession,
@@ -104,9 +107,6 @@ pub(crate) async fn page(
                     GroupPermission::SettingsWrite,
                 )
                 .await?;
-            if !can_manage_book_exchange {
-                return Err(HandlerError::Forbidden);
-            }
             let members = db.list_book_exchange_members(alliance_id, Some(group_id)).await?;
             Content::BookExchange(book_exchange_template::ListPage {
                 can_manage_book_exchange,
@@ -133,6 +133,9 @@ pub(crate) async fn page(
                 opt_ins,
             })
         }
+        Tab::Integrations => Content::Integrations(
+            integrations::prepare_page(&db, alliance_id, group_id, user.user_id).await?,
+        ),
         Tab::Members => {
             let (_, template) = members::prepare_list_page(
                 &db,

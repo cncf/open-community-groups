@@ -1,0 +1,57 @@
+{% extends "common/base.html" -%}
+{% import "macros/meta.html" as meta -%}
+
+{% block head_title -%}
+  <title>{{ self.preview_title() |demoji }}</title>
+{% endblock head_title -%}
+
+{% block head_description -%}
+  <meta name="description" content="Integrations available to {{ alliance.display_name }} groups.">
+{% endblock head_description -%}
+
+{% block canonical_link -%}
+  <link rel="canonical" href="{{ self.canonical_url() }}">
+{% endblock canonical_link -%}
+
+{% block open_graph_meta -%}
+  {{ meta::open_graph(title = self.preview_title(),
+  description = "Tools and partners for alliance groups.",
+  url = self.canonical_url(),
+  image_url = self.open_graph_image_url(),
+  image_alt = &alliance.display_name) -}}
+{% endblock open_graph_meta -%}
+
+{% block content -%}
+  <breadcrumb-nav banner-url="{{ alliance.banner_url }}" banner-mobile-url="{{ alliance.banner_mobile_url }}" items='[{"label": "Home", "href": "/", "icon": "home"}, {"label": {{ alliance.display_name|json }}, "href": "/{{ alliance.name }}", "icon": "alliance"}, {"label": "Integrations", "icon": "settings"}]'></breadcrumb-nav>
+  <div class="container mx-auto flex grow px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+    <div class="w-full rounded-[2rem] border border-stone-200 bg-white px-5 py-8 shadow-xl shadow-stone-200/50 sm:px-8 lg:px-12 lg:py-12">
+      <p class="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">Integrations</p>
+      <h1 class="mt-3 text-3xl font-black tracking-[-0.045em] text-stone-950 lg:text-5xl">Tools for {{ alliance.display_name }}</h1>
+      <section class="mt-8 max-w-3xl rounded-2xl border border-stone-200 bg-stone-50 p-6">
+        <h2 class="text-xl font-black text-stone-950">You.com event discovery</h2>
+        <p class="mt-3 text-base leading-7 text-stone-600">Group organizers can connect approved event-source URLs and use You.com search to discover eligible upcoming events for publication.</p>
+        <p class="mt-4 text-sm text-stone-500">Event discovery is powered by You.com.</p>
+      </section>
+      {% if !integrations.is_empty() -%}
+        <section class="mt-8 grid gap-5 md:grid-cols-2">
+          {% for integration in integrations -%}
+            <article class="rounded-2xl border border-stone-200 bg-stone-50 p-6">
+              <div class="flex items-center gap-4">
+                {% if let Some(logo_url) = &integration.logo_url -%}
+                  <img class="size-12 rounded-xl object-contain bg-white p-1" src="{{ logo_url }}" alt="{{ integration.name }} logo">
+                {% endif -%}
+                <h2 class="text-xl font-black text-stone-950">{{ integration.name }}</h2>
+              </div>
+              {% if !integration.attribution_copy.is_empty() -%}
+                <p class="mt-4 text-sm leading-6 text-stone-600">{{ integration.attribution_copy }}</p>
+              {% endif -%}
+              {% if let Some(website_url) = &integration.website_url -%}
+                <a class="mt-4 inline-flex font-bold text-primary-700 hover:text-primary-900" href="{{ website_url }}" rel="noopener noreferrer" target="_blank">Visit {{ integration.name }}</a>
+              {% endif -%}
+            </article>
+          {% endfor -%}
+        </section>
+      {% endif -%}
+    </div>
+  </div>
+{% endblock content -%}

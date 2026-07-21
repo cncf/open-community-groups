@@ -1,5 +1,7 @@
 //! Services modules.
 
+/// Scheduled external event discovery.
+pub(crate) mod event_discovery;
 /// Images service module.
 pub(crate) mod images;
 

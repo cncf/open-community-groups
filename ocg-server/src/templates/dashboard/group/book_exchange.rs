@@ -9,8 +9,8 @@ use crate::db::dashboard::common::BookExchangeMember;
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "dashboard/group/book_exchange.html")]
 pub(crate) struct ListPage {
-    /// Whether the current user can review book exchange members.
+    /// Whether the current user can manage book exchange settings and contact details.
     pub can_manage_book_exchange: bool,
-    /// Private book exchange member lists visible to authorized group admins.
+    /// Book exchange member lists visible to authorized group members.
     pub members: Vec<BookExchangeMember>,
 }

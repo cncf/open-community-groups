@@ -12,8 +12,8 @@ use crate::{
         dashboard::{
             audit,
             group::{
-                accelerator, analytics, book_exchange, coffee_meet, events, intentional_dating,
-                members, settings, sponsors, spotlights, store, team,
+                accelerator, analytics, book_exchange, coffee_meet, events, integrations,
+                intentional_dating, members, settings, sponsors, spotlights, store, team,
             },
         },
         filters,
@@ -89,10 +89,12 @@ pub(crate) enum Content {
     Events(Box<events::ListPage>),
     /// `CoffeeMeet` subscriber page.
     CoffeeMeet(coffee_meet::ListPage),
-    /// Private book exchange page.
+    /// Group book exchange page.
     BookExchange(book_exchange::ListPage),
     /// Private intentional dating curation page.
     IntentionalDating(intentional_dating::ListPage),
+    /// Event discovery integration settings.
+    Integrations(integrations::Page),
     /// Audit logs page.
     Logs(audit::ListPage),
     /// Members list page.
@@ -138,6 +140,9 @@ impl Content {
     /// Check if the content is the intentional dating page.
     fn is_intentional_dating(&self) -> bool {
         matches!(self, Content::IntentionalDating(_))
+    }
+    fn is_integrations(&self) -> bool {
+        matches!(self, Content::Integrations(_))
     }
 
     /// Check if the content is the logs page.
@@ -185,6 +190,7 @@ impl std::fmt::Display for Content {
             Content::CoffeeMeet(template) => write!(f, "{}", template.render()?),
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::IntentionalDating(template) => write!(f, "{}", template.render()?),
+            Content::Integrations(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
@@ -212,10 +218,12 @@ pub(crate) enum Tab {
     Events,
     /// `CoffeeMeet` tab.
     CoffeeMeet,
-    /// Private book exchange tab.
+    /// Book exchange tab.
     BookExchange,
     /// Private intentional dating curation tab.
     IntentionalDating,
+    /// Event discovery integration settings tab.
+    Integrations,
     /// Audit logs tab.
     Logs,
     /// Members list tab.

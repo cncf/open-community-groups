@@ -33,6 +33,7 @@ pub(crate) mod intentional_dating;
 pub(crate) mod landscape;
 pub(crate) mod logs;
 pub(crate) mod members;
+pub(crate) mod partner_integrations;
 pub(crate) mod regions;
 pub(crate) mod settings;
 pub(crate) mod team;

@@ -43,6 +43,8 @@ pub(crate) struct Config {
     pub payments: Option<PaymentsConfig>,
     /// Recording publishing configuration.
     pub recording_publishing: Option<RecordingPublishingConfig>,
+    /// External partner integrations.
+    pub integrations: Option<IntegrationsConfig>,
 }
 
 impl Config {
@@ -96,8 +98,77 @@ impl Config {
             recording_publishing_cfg.validate()?;
         }
 
+        if let Some(integrations_cfg) = &self.integrations {
+            integrations_cfg.validate()?;
+        }
+
         Ok(())
     }
+}
+
+/// Configuration for external partner integrations.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct IntegrationsConfig {
+    /// You.com event discovery configuration.
+    pub you_com: Option<YouComConfig>,
+}
+
+impl IntegrationsConfig {
+    fn validate(&self) -> Result<()> {
+        if let Some(you_com) = &self.you_com {
+            you_com.validate()?;
+        }
+        Ok(())
+    }
+}
+
+/// Configuration for You.com event discovery.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct YouComConfig {
+    /// Enables the event discovery worker.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Secret API key. Set this through `OCG_INTEGRATIONS__YOU_COM__API_KEY`.
+    pub api_key: String,
+    /// Search endpoint, allowing API-version changes without source changes.
+    #[serde(default = "default_you_com_search_url")]
+    pub search_url: String,
+    /// IANA timezone used to schedule the daily discovery run.
+    #[serde(default = "default_baku_timezone")]
+    pub schedule_timezone: String,
+    /// Hour of the daily discovery run in the configured timezone.
+    #[serde(default = "default_baku_schedule_hour")]
+    pub schedule_hour: u8,
+}
+
+impl YouComConfig {
+    fn validate(&self) -> Result<()> {
+        if self.enabled && self.api_key.trim().is_empty() {
+            bail!("integrations.you_com.api_key is required when You.com is enabled");
+        }
+        if self.schedule_hour > 23 {
+            bail!("integrations.you_com.schedule_hour must be between 0 and 23");
+        }
+        self.search_url
+            .parse::<reqwest::Url>()
+            .map_err(|err| anyhow::anyhow!("invalid integrations.you_com.search_url: {err}"))?;
+        self.schedule_timezone.parse::<chrono_tz::Tz>().map_err(|err| {
+            anyhow::anyhow!("invalid integrations.you_com.schedule_timezone: {err}")
+        })?;
+        Ok(())
+    }
+}
+
+fn default_you_com_search_url() -> String {
+    "https://api.you.com/v1/search".into()
+}
+
+fn default_baku_timezone() -> String {
+    "Asia/Baku".into()
+}
+
+const fn default_baku_schedule_hour() -> u8 {
+    9
 }
 
 /// Email configuration.

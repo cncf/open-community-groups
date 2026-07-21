@@ -164,6 +164,9 @@ pub(crate) async fn page(
                 opt_ins,
             })
         }
+        Tab::PartnerIntegrations => Content::PartnerIntegrations(
+            super::partner_integrations::prepare_page(&db, alliance_id, user_id).await?,
+        ),
         Tab::Landscape => {
             let (_, template) = landscape::prepare_list_page(
                 &db,

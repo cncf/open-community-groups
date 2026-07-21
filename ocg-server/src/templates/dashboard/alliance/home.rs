@@ -12,8 +12,8 @@ use crate::{
         dashboard::{
             alliance::{
                 analytics, book_exchange, create, email_templates, event_categories,
-                group_categories, groups, intentional_dating, landscape, members, regions,
-                settings, team,
+                group_categories, groups, intentional_dating, landscape, members,
+                partner_integrations, regions, settings, team,
             },
             audit,
         },
@@ -65,6 +65,8 @@ pub(crate) enum Content {
     BookExchange(book_exchange::ListPage),
     /// Private intentional dating curation page.
     IntentionalDating(intentional_dating::ListPage),
+    /// Partner integrations management page.
+    PartnerIntegrations(partner_integrations::Page),
     /// Landscape management page.
     Landscape(landscape::ListPage),
     /// Members page across all alliance groups.
@@ -120,6 +122,11 @@ impl Content {
         matches!(self, Content::IntentionalDating(_))
     }
 
+    /// Check if the content is the partner integrations page.
+    fn is_partner_integrations(&self) -> bool {
+        matches!(self, Content::PartnerIntegrations(_))
+    }
+
     /// Check if the content is the landscape page.
     fn is_landscape(&self) -> bool {
         matches!(self, Content::Landscape(_))
@@ -162,6 +169,7 @@ impl std::fmt::Display for Content {
             Content::Groups(template) => write!(f, "{}", template.render()?),
             Content::BookExchange(template) => write!(f, "{}", template.render()?),
             Content::IntentionalDating(template) => write!(f, "{}", template.render()?),
+            Content::PartnerIntegrations(template) => write!(f, "{}", template.render()?),
             Content::Landscape(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
@@ -196,6 +204,8 @@ pub(crate) enum Tab {
     BookExchange,
     /// Private intentional dating curation tab.
     IntentionalDating,
+    /// Partner integrations management tab.
+    PartnerIntegrations,
     /// Landscape management tab.
     Landscape,
     /// Members tab across all alliance groups.

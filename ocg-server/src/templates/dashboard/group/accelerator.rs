@@ -116,10 +116,7 @@ impl Page {
 
     /// Count cohorts by status.
     pub(crate) fn cohort_status_count(&self, status: &str) -> usize {
-        self.cohorts
-            .iter()
-            .filter(|cohort| cohort.status == status)
-            .count()
+        self.cohorts.iter().filter(|cohort| cohort.status == status).count()
     }
 
     /// Count applications that still need organizer attention.
@@ -127,7 +124,10 @@ impl Page {
         self.applications
             .iter()
             .filter(|application| {
-                matches!(application.status.as_str(), "submitted" | "reviewing" | "waitlisted")
+                matches!(
+                    application.status.as_str(),
+                    "submitted" | "reviewing" | "waitlisted"
+                )
             })
             .count()
     }
@@ -142,10 +142,7 @@ impl Page {
 
     /// Count active cohort members.
     pub(crate) fn active_member_count(&self) -> usize {
-        self.members
-            .iter()
-            .filter(|member| member.status == "active")
-            .count()
+        self.members.iter().filter(|member| member.status == "active").count()
     }
 
     /// Count submitted weekly updates waiting for review.

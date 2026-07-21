@@ -13,6 +13,7 @@ use crate::{
     types::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
+        partner_integration::PartnerIntegration,
     },
 };
 
@@ -50,6 +51,12 @@ pub(crate) trait DBAlliance {
         alliance_id: Uuid,
         filters: &AllianceMembersFilters,
     ) -> Result<AllianceMembersOutput>;
+
+    /// Lists enabled partner integrations for the public alliance site.
+    async fn list_public_partner_integrations(
+        &self,
+        alliance_id: Uuid,
+    ) -> Result<Vec<PartnerIntegration>>;
 }
 
 #[async_trait]
@@ -169,6 +176,19 @@ where
         self.fetch_json_one(
             "select list_alliance_members($1::uuid, $2::jsonb)",
             &[&alliance_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBAlliance::list_public_partner_integrations`]
+    #[instrument(skip(self), err)]
+    async fn list_public_partner_integrations(
+        &self,
+        alliance_id: Uuid,
+    ) -> Result<Vec<PartnerIntegration>> {
+        self.fetch_json_one(
+            "select list_public_partner_integrations($1::uuid)",
+            &[&alliance_id],
         )
         .await
     }

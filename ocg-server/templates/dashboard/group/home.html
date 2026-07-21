@@ -90,6 +90,7 @@
     <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
       {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
       {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events") -}}
+      {{ dashboard::menu_item(name = "Event discovery", icon = "calendar", is_active = content.is_integrations() , href = "/dashboard/group?tab=integrations") -}}
       {{ dashboard::menu_item(name = "Accelerator", icon = "rocket", is_active = content.is_accelerator() , href = "/dashboard/group?tab=accelerator") -}}
     </div>
     {# End events -#}
@@ -127,7 +128,7 @@
        data-alliance-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
        data-group-name="{{ current_selection.1.name }}"
        data-group-slug="{{ current_selection.1.public_slug() }}"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_coffee_meet() -%}coffee-meet{%- else if content.is_book_exchange() -%}book-exchange{%- else if content.is_intentional_dating() -%}intentional-dating{%- else if content.is_spotlights() -%}spotlights{%- else if content.is_store() -%}store{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else if content.is_accelerator() -%}accelerator{%- else -%}events{%- endif -%}"
+       hx-get="/dashboard/group/{%- if content.is_integrations() -%}integrations{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_coffee_meet() -%}coffee-meet{%- else if content.is_book_exchange() -%}book-exchange{%- else if content.is_intentional_dating() -%}intentional-dating{%- else if content.is_spotlights() -%}spotlights{%- else if content.is_store() -%}store{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_logs() -%}logs{%- else if content.is_accelerator() -%}accelerator{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"

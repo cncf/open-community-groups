@@ -35,7 +35,8 @@ impl ListPage {
             .iter()
             .filter(|session| {
                 matches!(session.match_.status.as_str(), "matched" | "scheduled")
-                    && (session.match_.scheduled_at.is_none() || session.match_.meeting_url.is_none())
+                    && (session.match_.scheduled_at.is_none()
+                        || session.match_.meeting_url.is_none())
             })
             .count()
     }

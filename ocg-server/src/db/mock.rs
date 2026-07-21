@@ -280,6 +280,10 @@ mock! {
             alliance_id: Uuid,
             filters: &crate::templates::alliance::AllianceMembersFilters,
         ) -> Result<crate::templates::alliance::AllianceMembersOutput>;
+        async fn list_public_partner_integrations(
+            &self,
+            alliance_id: Uuid,
+        ) -> Result<Vec<crate::types::partner_integration::PartnerIntegration>>;
     }
 
     impl crate::db::dashboard::DBDashboard for DB {}
@@ -357,6 +361,12 @@ mock! {
             alliance_id: Uuid,
             region: &crate::templates::dashboard::alliance::regions::RegionInput,
         ) -> Result<Uuid>;
+        async fn add_partner_integration(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            partner_integration: &crate::templates::dashboard::alliance::partner_integrations::PartnerIntegrationInput,
+        ) -> Result<Uuid>;
         async fn deactivate_group(&self, actor_user_id: Uuid, alliance_id: Uuid, group_id: Uuid)
             -> Result<()>;
         async fn delete_alliance_team_member(
@@ -379,6 +389,12 @@ mock! {
             group_category_id: Uuid,
         ) -> Result<()>;
         async fn delete_region(&self, actor_user_id: Uuid, alliance_id: Uuid, region_id: Uuid) -> Result<()>;
+        async fn delete_partner_integration(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            partner_integration_id: Uuid,
+        ) -> Result<()>;
         async fn get_alliance_stats(
             &self,
             alliance_id: Uuid,
@@ -404,6 +420,10 @@ mock! {
             &self,
             alliance_id: Uuid,
         ) -> Result<Vec<crate::types::group::GroupRegion>>;
+        async fn list_partner_integrations(
+            &self,
+            alliance_id: Uuid,
+        ) -> Result<Vec<crate::types::partner_integration::PartnerIntegration>>;
         async fn list_user_alliances(
             &self,
             user_id: &Uuid,
@@ -433,6 +453,13 @@ mock! {
             alliance_id: Uuid,
             event_category_id: Uuid,
             event_category: &crate::templates::dashboard::alliance::event_categories::EventCategoryInput,
+        ) -> Result<()>;
+        async fn update_partner_integration(
+            &self,
+            actor_user_id: Uuid,
+            alliance_id: Uuid,
+            partner_integration_id: Uuid,
+            partner_integration: &crate::templates::dashboard::alliance::partner_integrations::PartnerIntegrationInput,
         ) -> Result<()>;
         async fn update_group_category(
             &self,
@@ -590,6 +617,28 @@ mock! {
             alliance_id: Uuid,
             group_id: Uuid,
         ) -> Result<Option<serde_json::Value>>;
+        async fn get_group_event_integration(
+            &self,
+            group_id: Uuid,
+        ) -> Result<crate::templates::dashboard::group::integrations::IntegrationPage>;
+        async fn update_group_event_integration(
+            &self,
+            actor_user_id: Uuid,
+            group_id: Uuid,
+            enabled: bool,
+            city: &str,
+            timezone: &str,
+        ) -> Result<()>;
+        async fn add_group_event_integration_source(
+            &self,
+            group_id: Uuid,
+            url: &str,
+        ) -> Result<Uuid>;
+        async fn delete_group_event_integration_source(
+            &self,
+            group_id: Uuid,
+            source_id: Uuid,
+        ) -> Result<()>;
         async fn get_group_sponsor(
             &self,
             group_id: Uuid,

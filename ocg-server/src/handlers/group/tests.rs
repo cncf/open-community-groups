@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     activity_tracker::{Activity, MockActivityTracker},
-    db::mock::MockDB,
+    db::{dashboard::common::BookExchangeMember, mock::MockDB},
     handlers::tests::*,
     router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::{MockNotificationsManager, NotificationKind},
@@ -351,6 +351,25 @@ fn expect_empty_group_home_previews(db: &mut MockDB, group_id: Uuid) {
         .returning(|_, _| Ok(vec![]));
 }
 
+fn sample_book_exchange_member(alliance_id: Uuid, group_id: Uuid) -> BookExchangeMember {
+    BookExchangeMember {
+        user_id: Uuid::new_v4(),
+        username: "book-lover".to_string(),
+        group_id,
+        group_name: "Test Group".to_string(),
+        alliance_id,
+        alliance_display_name: "Test Alliance".to_string(),
+        book_exchange_books: Some("The Pragmatic Programmer".to_string()),
+        city: Some("Phoenix".to_string()),
+        company: Some("GOUP".to_string()),
+        country: Some("US".to_string()),
+        email: Some("book-lover@example.com".to_string()),
+        name: Some("Book Lover".to_string()),
+        photo_url: None,
+        title: Some("Builder".to_string()),
+    }
+}
+
 #[tokio::test]
 async fn test_members_page_non_member_explains_join_required() {
     // Setup identifiers and data structures
@@ -405,6 +424,65 @@ async fn test_members_page_non_member_explains_join_required() {
     assert_eq!(parts.status, StatusCode::FORBIDDEN);
     let body = String::from_utf8(bytes.to_vec()).unwrap();
     assert!(body.contains("Join this group first to see members."));
+}
+
+#[tokio::test]
+async fn test_book_exchange_page_allows_group_member_without_email() {
+    let alliance_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let member = sample_book_exchange_member(alliance_id, group_id);
+
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_get_alliance_id_by_name()
+        .times(1)
+        .withf(|name| name == "test-alliance")
+        .returning(move |_| Ok(Some(alliance_id)));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+    db.expect_get_group_full_by_slug()
+        .times(1)
+        .withf(move |id, slug| *id == alliance_id && slug == "test-group")
+        .returning(move |_, _| Ok(Some(sample_group_full(alliance_id, group_id))));
+    db.expect_is_group_member()
+        .times(1)
+        .withf(move |aid, gid, uid| *aid == alliance_id && *gid == group_id && *uid == user_id)
+        .returning(|_, _, _| Ok(true));
+    db.expect_list_book_exchange_members()
+        .times(1)
+        .withf(move |aid, gid| *aid == alliance_id && *gid == Some(group_id))
+        .returning(move |_, _| Ok(vec![member.clone()]));
+
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/test-alliance/group/test-group/book-exchange")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+    let body = String::from_utf8(bytes.to_vec()).unwrap();
+
+    assert_eq!(parts.status, StatusCode::OK);
+    assert!(body.contains("The Pragmatic Programmer"));
+    assert!(body.contains("@book-lover"));
+    assert!(!body.contains("book-lover@example.com"));
 }
 
 #[tokio::test]

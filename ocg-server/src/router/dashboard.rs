@@ -166,6 +166,16 @@ pub(super) fn setup_alliance_dashboard_router(state: &State) -> Router<State> {
             post(dashboard::alliance::intentional_dating::add_intro),
         )
         .route(
+            "/partner-integrations",
+            get(dashboard::alliance::partner_integrations::page)
+                .post(dashboard::alliance::partner_integrations::add),
+        )
+        .route(
+            "/partner-integrations/{partner_integration_id}",
+            put(dashboard::alliance::partner_integrations::update)
+                .delete(dashboard::alliance::partner_integrations::delete),
+        )
+        .route(
             "/settings/update",
             put(dashboard::alliance::settings::update),
         )
@@ -281,6 +291,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::attendees::generate_check_in_qr_code),
         )
         .route("/events", get(dashboard::group::events::list_page))
+        .route("/integrations", get(dashboard::group::integrations::page))
         .route("/events/add", get(dashboard::group::events::add_page))
         .route(
             "/events/{event_id}/attendees",
@@ -316,6 +327,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         )
         .route("/logs", get(dashboard::group::logs::list_page))
         .route("/members", get(dashboard::group::members::list_page))
+        .route(
+            "/book-exchange",
+            get(dashboard::group::book_exchange::list_page),
+        )
         .route("/spotlights", get(dashboard::group::spotlights::list_page))
         .route(
             "/settings/update",
@@ -333,6 +348,19 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
 
     // Group events management endpoints
     let events_management = Router::new()
+        .route("/integrations", put(dashboard::group::integrations::update))
+        .route(
+            "/integrations/run",
+            post(dashboard::group::integrations::run),
+        )
+        .route(
+            "/integrations/sources",
+            post(dashboard::group::integrations::add_source),
+        )
+        .route(
+            "/integrations/sources/{source_id}",
+            delete(dashboard::group::integrations::delete_source),
+        )
         .route(
             "/accelerator/applications/{application_id}",
             put(dashboard::group::accelerator::review_application),
@@ -473,10 +501,6 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/analytics/report/public",
             put(dashboard::group::analytics::publish_report)
                 .delete(dashboard::group::analytics::unpublish_report),
-        )
-        .route(
-            "/book-exchange",
-            get(dashboard::group::book_exchange::list_page),
         )
         .route(
             "/intentional-dating",

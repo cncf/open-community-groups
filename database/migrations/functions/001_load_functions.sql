@@ -77,6 +77,7 @@
 {{ template "alliance/get_alliance_site_stats.sql" }}
 {{ template "alliance/get_alliance_upcoming_events.sql" }}
 {{ template "alliance/list_alliance_members.sql" }}
+{{ template "alliance/list_public_partner_integrations.sql" }}
 {{ template "alliance/update_alliance_views.sql" }}
 
 {{ template "dashboard-common/search_user.sql" }}
@@ -91,18 +92,21 @@
 {{ template "dashboard-alliance/add_event_category.sql" }}
 {{ template "dashboard-alliance/add_group.sql" }}
 {{ template "dashboard-alliance/add_group_category.sql" }}
+{{ template "dashboard-alliance/add_partner_integration.sql" }}
 {{ template "dashboard-alliance/add_region.sql" }}
 {{ template "dashboard-alliance/deactivate_group.sql" }}
 {{ template "dashboard-alliance/delete_alliance_team_member.sql" }}
 {{ template "dashboard-alliance/delete_event_category.sql" }}
 {{ template "dashboard-alliance/delete_group.sql" }}
 {{ template "dashboard-alliance/delete_group_category.sql" }}
+{{ template "dashboard-alliance/delete_partner_integration.sql" }}
 {{ template "dashboard-alliance/delete_region.sql" }}
 {{ template "dashboard-alliance/get_alliance_stats.sql" }}
 {{ template "dashboard-alliance/list_alliance_audit_logs.sql" }}
 {{ template "dashboard-alliance/list_alliance_roles.sql" }}
 {{ template "dashboard-alliance/list_alliance_team_members.sql" }}
 {{ template "dashboard-alliance/list_group_categories.sql" }}
+{{ template "dashboard-alliance/list_partner_integrations.sql" }}
 {{ template "dashboard-alliance/list_regions.sql" }}
 {{ template "dashboard-alliance/list_user_alliances.sql" }}
 {{ template "dashboard-alliance/update_alliance.sql" }}
@@ -110,6 +114,7 @@
 {{ template "dashboard-alliance/update_alliance_team_member_role.sql" }}
 {{ template "dashboard-alliance/update_event_category.sql" }}
 {{ template "dashboard-alliance/update_group_category.sql" }}
+{{ template "dashboard-alliance/update_partner_integration.sql" }}
 {{ template "dashboard-alliance/update_region.sql" }}
 
 {{ template "dashboard-group/get_event_ticket_capacity.sql" }} -- Dependency for add/update_event

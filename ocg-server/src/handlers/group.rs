@@ -31,7 +31,10 @@ use crate::{
             AcceleratorApplicationInput, AcceleratorWeeklyUpdateInput,
         },
         dashboard::group::members::GroupMembersFilters,
-        group::{self, AcceleratorPage, MembersPage, Page, ReportPage, SpotlightsPage, StorePage},
+        group::{
+            self, AcceleratorPage, BookExchangePage, MembersPage, Page, ReportPage, SpotlightsPage,
+            StorePage,
+        },
         notifications::{GroupWelcome, MockInterviewMatched},
     },
     types::{
@@ -347,6 +350,63 @@ pub(crate) async fn members_page(
         query: filters.query.clone(),
         site_settings,
         total: results.total,
+        user: template_user,
+    };
+
+    Ok(Html(template.render()?).into_response())
+}
+
+/// Handler that renders group member book exchange lists for logged-in members.
+#[instrument(skip_all)]
+pub(crate) async fn book_exchange_page(
+    CurrentUser(user): CurrentUser,
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path((alliance_name, group_slug)): Path<(String, String)>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let Some(mut group) = db.get_group_full_by_slug(alliance_id, &group_slug).await? else {
+        return not_found::render(site_settings);
+    };
+    trim_public_gallery_images(&mut group.photos_urls);
+    group.sponsors.clear();
+
+    if !db.is_group_member(alliance_id, group.group_id, user.user_id).await? {
+        return Ok((
+            StatusCode::FORBIDDEN,
+            "Join this group first to see book exchange lists.",
+        )
+            .into_response());
+    }
+
+    let members = db
+        .list_book_exchange_members(alliance_id, Some(group.group_id))
+        .await?;
+    let template_user = User {
+        logged_in: true,
+        auth_provider: None,
+        belongs_to_any_group_team: user.belongs_to_any_group_team,
+        belongs_to_alliance_team: user.belongs_to_alliance_team,
+        name: Some(user.name),
+        platform_admin: user.platform_admin,
+        username: Some(user.username),
+    };
+
+    let template = BookExchangePage {
+        base_url: server_cfg.base_url,
+        group,
+        members,
+        page_id: PageId::Group,
+        path: uri.path().to_string(),
+        site_settings,
         user: template_user,
     };
 

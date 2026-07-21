@@ -22,6 +22,7 @@ use crate::{
                 ApprovedSubmissionSummary, CfsSubmissionStatus, EventsListFilters, GroupEvents,
             },
             home::UserGroupsByAlliance,
+            integrations::IntegrationPage,
             invitation_requests::{InvitationRequestsFilters, InvitationRequestsOutput},
             members::{GroupJoinRequest, GroupMembersFilters, GroupMembersOutput},
             sponsors::{GroupSponsorsFilters, GroupSponsorsOutput, Sponsor},
@@ -235,6 +236,29 @@ pub(crate) trait DBDashboardGroup {
         alliance_id: Uuid,
         group_id: Uuid,
     ) -> Result<Option<serde_json::Value>>;
+
+    /// Gets the group event discovery configuration and latest run.
+    async fn get_group_event_integration(&self, group_id: Uuid) -> Result<IntegrationPage>;
+
+    /// Saves group event discovery settings.
+    async fn update_group_event_integration(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        enabled: bool,
+        city: &str,
+        timezone: &str,
+    ) -> Result<()>;
+
+    /// Adds a source URL to group event discovery.
+    async fn add_group_event_integration_source(&self, group_id: Uuid, url: &str) -> Result<Uuid>;
+
+    /// Removes a source URL from group event discovery.
+    async fn delete_group_event_integration_source(
+        &self,
+        group_id: Uuid,
+        source_id: Uuid,
+    ) -> Result<()>;
 
     /// Gets a single sponsor from the database.
     async fn get_group_sponsor(
@@ -1041,6 +1065,86 @@ where
             )
             ",
             &[&alliance_id, &group_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::get_group_event_integration`]
+    #[instrument(skip(self), err)]
+    async fn get_group_event_integration(&self, group_id: Uuid) -> Result<IntegrationPage> {
+        self.fetch_json_one(
+            "select jsonb_build_object(
+                'can_manage_events', false,
+                'enabled', coalesce(i.enabled, false),
+                'city', coalesce(i.city, 'Baku'),
+                'timezone', coalesce(i.timezone, 'Asia/Baku'),
+                'sources', coalesce((
+                    select jsonb_agg(jsonb_build_object(
+                        'group_event_integration_source_id', s.group_event_integration_source_id,
+                        'url', s.url, 'enabled', s.enabled
+                    ) order by s.created_at)
+                    from group_event_integration_source s where s.group_id = $1
+                ), '[]'::jsonb),
+                'latest_run', (
+                    select jsonb_build_object(
+                        'status', r.status, 'discovered_count', r.discovered_count,
+                        'created_count', r.created_count, 'error_message', r.error_message,
+                        'started_at', extract(epoch from r.started_at)::bigint,
+                        'completed_at', extract(epoch from r.completed_at)::bigint
+                    ) from group_event_integration_run r
+                    where r.group_id = $1 order by r.started_at desc limit 1
+                )
+            ) from (select 1) x left join group_event_integration i on i.group_id = $1",
+            &[&group_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_group_event_integration`]
+    #[instrument(skip(self), err)]
+    async fn update_group_event_integration(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        enabled: bool,
+        city: &str,
+        timezone: &str,
+    ) -> Result<()> {
+        self.execute(
+            "insert into group_event_integration (
+                group_id, created_by_user_id, enabled, city, timezone
+             ) values ($1, $2, $3, $4, $5)
+             on conflict (group_id) do update set
+                enabled = excluded.enabled, city = excluded.city,
+                timezone = excluded.timezone, updated_at = now()",
+            &[&group_id, &actor_user_id, &enabled, &city, &timezone],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::add_group_event_integration_source`]
+    #[instrument(skip(self), err)]
+    async fn add_group_event_integration_source(&self, group_id: Uuid, url: &str) -> Result<Uuid> {
+        self.fetch_scalar_one(
+            "insert into group_event_integration_source (group_id, url)
+             values ($1, $2) on conflict (group_id, url) do update set enabled = true,
+             updated_at = now() returning group_event_integration_source_id",
+            &[&group_id, &url],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_group_event_integration_source`]
+    #[instrument(skip(self), err)]
+    async fn delete_group_event_integration_source(
+        &self,
+        group_id: Uuid,
+        source_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "delete from group_event_integration_source
+             where group_id = $1 and group_event_integration_source_id = $2",
+            &[&group_id, &source_id],
         )
         .await
     }

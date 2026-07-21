@@ -98,8 +98,5 @@ pub(crate) async fn prepare_list_page(
         db.list_user_mock_interview_matches(user_id),
     )?;
 
-    Ok(mock_interviews::ListPage {
-        requests,
-        matches,
-    })
+    Ok(mock_interviews::ListPage { requests, matches })
 }

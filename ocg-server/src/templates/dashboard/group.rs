@@ -7,6 +7,7 @@ pub(crate) mod book_exchange;
 pub(crate) mod coffee_meet;
 pub(crate) mod events;
 pub(crate) mod home;
+pub(crate) mod integrations;
 pub(crate) mod intentional_dating;
 pub(crate) mod invitation_requests;
 pub(crate) mod members;

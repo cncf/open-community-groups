@@ -21,6 +21,7 @@ use crate::{
         event::{EventKind, EventSummary},
         group::GroupSummary,
         pagination::{NavigationLinks, Pagination, ToRawQuery},
+        partner_integration::PartnerIntegration,
         site::SiteSettings,
     },
     validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
@@ -90,6 +91,27 @@ pub(crate) struct BrandPage {
     pub base_url: String,
     /// Alliance information.
     pub alliance: AllianceFull,
+    /// Identifier for the current page.
+    #[allow(dead_code)]
+    pub page_id: PageId,
+    /// Current request path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
+    /// Authenticated user information.
+    pub user: User,
+}
+
+/// Template for the public alliance integrations page.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "alliance/integrations.html")]
+pub(crate) struct IntegrationsPage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Alliance information.
+    pub alliance: AllianceFull,
+    /// Enabled partner integrations configured by alliance administrators.
+    pub integrations: Vec<PartnerIntegration>,
     /// Identifier for the current page.
     #[allow(dead_code)]
     pub page_id: PageId,
@@ -317,6 +339,30 @@ impl BrandPage {
     /// Returns the preview title for the alliance brand page.
     pub(crate) fn preview_title(&self) -> String {
         format!("{} brand", self.alliance.display_name)
+    }
+}
+
+impl IntegrationsPage {
+    /// Returns the canonical public URL for the integrations page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!("/{}/integrations", self.alliance.name),
+        )
+    }
+
+    /// Returns the Open Graph image URL for the integrations page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.alliance
+            .og_image_url
+            .as_deref()
+            .or(Some(self.alliance.logo_url.as_str()))
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+
+    /// Returns the preview title for the integrations page.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} integrations", self.alliance.display_name)
     }
 }
 

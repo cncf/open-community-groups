@@ -8,6 +8,7 @@ pub(crate) mod landscape;
 pub mod location;
 pub(crate) mod mock_interviews;
 pub mod pagination;
+pub(crate) mod partner_integration;
 pub mod payments;
 pub mod permissions;
 pub mod questionnaire;

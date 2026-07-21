@@ -4,6 +4,7 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    db::dashboard::common::BookExchangeMember,
     templates::dashboard::group::accelerator::AcceleratorDashboard,
     templates::dashboard::group::{
         analytics::GroupDashboardStats, members::GroupMember, spotlights::GroupMemberSpotlight,
@@ -121,6 +122,27 @@ pub(crate) struct MembersPage {
     pub site_settings: SiteSettings,
     /// Total number of members in the group.
     pub total: usize,
+    /// Authenticated user information.
+    pub user: User,
+}
+
+/// Logged-in group member book exchange page template.
+#[derive(Debug, Clone, Template)]
+#[template(path = "group/book_exchange.html")]
+pub(crate) struct BookExchangePage {
+    /// Configured public base URL.
+    pub base_url: String,
+    /// Detailed information about the group.
+    pub group: GroupFull,
+    /// Opted-in book exchange members.
+    pub members: Vec<BookExchangeMember>,
+    /// Identifier for the current page.
+    #[allow(dead_code)]
+    pub page_id: PageId,
+    /// Current URL path.
+    pub path: String,
+    /// Global site settings.
+    pub site_settings: SiteSettings,
     /// Authenticated user information.
     pub user: User,
 }
@@ -332,6 +354,42 @@ impl MembersPage {
     }
 
     /// Returns the `OpenGraph` image URL for the group members page.
+    pub(crate) fn open_graph_image_url(&self) -> Option<String> {
+        self.group
+            .og_image_url
+            .as_deref()
+            .or(self.group.alliance.og_image_url.as_deref())
+            .map(|image_url| helpers::open_graph_image_url(&self.base_url, image_url))
+    }
+}
+
+impl BookExchangePage {
+    /// Returns the canonical URL for the group book exchange page.
+    pub(crate) fn canonical_url(&self) -> String {
+        helpers::absolute_url(
+            &self.base_url,
+            &format!(
+                "/{}/group/{}/book-exchange",
+                self.group.alliance.name,
+                self.group.public_slug()
+            ),
+        )
+    }
+
+    /// Returns the preview title.
+    pub(crate) fn preview_title(&self) -> String {
+        format!("{} Book Exchange", self.group.name)
+    }
+
+    /// Returns the preview description.
+    pub(crate) fn preview_description(&self) -> String {
+        format!(
+            "Opted-in book exchange lists for members of {}.",
+            self.group.name
+        )
+    }
+
+    /// Returns the `OpenGraph` image URL for the group book exchange page.
     pub(crate) fn open_graph_image_url(&self) -> Option<String> {
         self.group
             .og_image_url

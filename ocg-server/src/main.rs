@@ -48,6 +48,8 @@ mod config;
 mod db;
 /// HTTP request handlers.
 mod handlers;
+/// External partner integrations.
+mod integrations;
 /// HTTP router configuration and setup.
 mod router;
 /// Background services and workers.
@@ -108,6 +110,7 @@ async fn main() -> Result<()> {
     // Configure background services that depend on the database
     start_meetings_workers(&cfg, db.clone(), &background_tasks);
     start_recording_publishing_workers(&cfg, &db, &background_tasks);
+    start_event_discovery_worker(&cfg, db.clone(), &background_tasks);
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
     let payments_manager = setup_payments_manager(
@@ -122,6 +125,9 @@ async fn main() -> Result<()> {
         activity_tracker,
         db,
         image_storage,
+        cfg.integrations
+            .as_ref()
+            .and_then(|integrations| integrations.you_com.clone()),
         cfg.meetings.clone(),
         cfg.payments.clone(),
         payments_manager,
@@ -180,6 +186,22 @@ fn setup_image_storage(cfg: &Config, db: Arc<PgDB>) -> DynImageStorage {
     match &cfg.images {
         ImageStorageConfig::Db => Arc::new(DbImageStorage::new(db)),
         ImageStorageConfig::S3(s3_cfg) => Arc::new(S3ImageStorage::new(s3_cfg)),
+    }
+}
+
+/// Starts You.com discovery when its integration is configured and enabled.
+fn start_event_discovery_worker(cfg: &Config, db: Arc<PgDB>, background_tasks: &BackgroundTasks) {
+    if let Some(you_com_cfg) = cfg
+        .integrations
+        .as_ref()
+        .and_then(|integrations| integrations.you_com.clone())
+    {
+        services::event_discovery::start(
+            you_com_cfg,
+            db,
+            &background_tasks.task_tracker,
+            &background_tasks.cancellation_token,
+        );
     }
 }
 
@@ -294,6 +316,7 @@ async fn run_server(
     activity_tracker: Arc<ActivityTrackerDB>,
     db: Arc<PgDB>,
     image_storage: DynImageStorage,
+    you_com_cfg: Option<config::YouComConfig>,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
@@ -303,8 +326,10 @@ async fn run_server(
     // Build the router before binding the TCP listener
     let router = router::setup(
         activity_tracker,
-        db,
+        db.clone(),
+        Some(db),
         image_storage,
+        you_com_cfg,
         meetings_cfg,
         payments_cfg,
         payments_manager,

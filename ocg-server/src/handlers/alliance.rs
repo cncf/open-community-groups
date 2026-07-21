@@ -119,6 +119,39 @@ pub(crate) async fn brand_page(
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
 }
 
+/// Handler that renders the public alliance integrations page.
+#[instrument(skip_all, err)]
+pub(crate) async fn integrations_page(
+    State(db): State<DynDB>,
+    State(server_cfg): State<HttpServerConfig>,
+    Path(alliance_name): Path<String>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    let (alliance_id, site_settings) = tokio::try_join!(
+        db.get_alliance_id_by_name(&alliance_name),
+        db.get_site_settings()
+    )?;
+    let Some(alliance_id) = alliance_id else {
+        return not_found::render(site_settings);
+    };
+
+    let (alliance, integrations) = tokio::try_join!(
+        db.get_alliance_full(alliance_id),
+        db.list_public_partner_integrations(alliance_id),
+    )?;
+    let template = alliance::IntegrationsPage {
+        base_url: server_cfg.base_url,
+        alliance,
+        integrations,
+        page_id: PageId::Alliance,
+        path: uri.path().to_string(),
+        site_settings,
+        user: User::default(),
+    };
+
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Html(template.render()?)).into_response())
+}
+
 /// Handler that renders the public alliance report page.
 #[instrument(skip_all, err)]
 pub(crate) async fn report_page(
