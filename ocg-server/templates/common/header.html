@@ -12,11 +12,11 @@
        class="inline-flex shrink-0 items-center gap-2 text-[#1A1510]"
        aria-label="GOUP home">
       {% if let Some(logo_url) = &site_settings.favicon_url -%}
-        <img class="size-8 rounded-lg object-contain" src="{{ logo_url }}" alt="" aria-hidden="true">
+        <img class="h-8 w-8 min-w-8 max-w-8 rounded-lg object-contain" src="{{ logo_url }}" alt="" aria-hidden="true">
       {% endif -%}
       <span class="font-metrophobic text-lg font-semibold tracking-[-0.04em]">GOUP</span>
     </a>
-    <div class="hidden items-center gap-7 lg:flex">
+    <div class="ml-8 hidden items-center gap-7 lg:flex">
       <a href="{{ explore_events }}"
          hx-boost="true"
          hx-target="body"
