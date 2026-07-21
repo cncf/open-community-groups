@@ -433,9 +433,14 @@
     <tbody id="attendees-list" role="rowgroup">
       {% if attendees.is_empty() -%}
         {# Empty state -#}
+        {% let has_active_attendee_filters = (ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty())
+        || attendance == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled
+        || checked_in.is_some()
+        || event_ticket_type_ids.is_some()
+        || title.is_some() -%}
         <tr class="bg-white border-b border-stone-200">
           <td class="xl:hidden px-8 py-12 text-center" colspan="3">
-            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+            {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
               {% include "dashboard/placeholders/group_attendees_empty.html" -%}
@@ -443,14 +448,14 @@
           </td>
           <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
               colspan="4">
-            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+            {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
               {% include "dashboard/placeholders/group_attendees_empty.html" -%}
             {% endif -%}
           </td>
           <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
-            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+            {% if has_active_attendee_filters -%}
               {% include "dashboard/placeholders/group_attendees_no_results.html" -%}
             {% else -%}
               {% include "dashboard/placeholders/group_attendees_empty.html" -%}
@@ -517,11 +522,10 @@
 
             {# RSVP Date -#}
             <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
-              {% if attendee.status == "confirmed" -%}
-                <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
-              {% else if attendee.status == "invitation-pending" -%}
-                <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
-              {% else if attendee.status == "invitation-rejected" -%}
+              {% if attendee.status == "confirmed"
+                || attendee.status == "invitation-pending"
+                || attendee.status == "invitation-rejected"
+                || attendee.status == "attendance-canceled" -%}
                 <div>{{ attendee.created_at.format("%b %d, %Y") }}</div>
               {% endif -%}
             </td>
@@ -582,12 +586,20 @@
                             {% endif %}">
                 <input type="checkbox"
                        class="sr-only peer check-in-toggle"
-                       aria-label="{% if attendee.status != "confirmed" %}
+                       aria-label="{% if attendee.status == "attendance-canceled" %}
+                                     Canceled attendance cannot be checked in
+                                   {% else if attendee.status == "invitation-rejected" %}
+                                     Rejected invitation cannot be checked in
+                                   {% else if attendee.status == "registration-questions-pending" %}
+                                     Pending registration cannot be checked in
+                                   {% else if attendee.status != "confirmed" %}
                                      Pending invitation cannot be checked in
                                    {% else if attendee.checked_in %}
                                      Checked in
                                    {% else if event.canceled %}
                                      Canceled event check-in unavailable
+                                   {% else if !can_manage_events %}
+                                     Your role cannot manage check-in
                                    {% else %}
                                      Check in attendee
                                    {% endif %}"

@@ -47,9 +47,7 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include('hx-get="/dashboard/group/refunds"');
     expect(template).to.include('hx-ext="no-empty-vals"');
     expect(template).to.include('hx-trigger="change, submit"');
-    expect(template).to.include(
-      "flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between",
-    );
+    expect(template).to.include("flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between");
     expect(template).to.include("flex-wrap items-center justify-start gap-6");
     expect(template).to.include("xl:justify-end");
     expect(template).to.include("dashboard/placeholders/group_refunds_table.html");
@@ -66,6 +64,7 @@ describe("dashboard group refunds list template", () => {
     expect(template).to.include("refund.status.tone()");
     expect(template).to.include("refund.failure_message");
     expect(template).to.include("refund.attempt_count");
+    expect(template.split("*attempt_count != 1")).to.have.lengthOf(3);
     expect(template).to.include("refund.created_at");
     expect(template).to.include("refund.provider_refund_id");
     expect(template).to.include("refund.review_note");
@@ -78,27 +77,13 @@ describe("dashboard group refunds list template", () => {
     // Verify narrow layouts combine details while wider layouts restore columns.
     expect(template).to.include('class="relative overflow-visible"');
     expect(template).to.not.include("min-w-[920px]");
-    expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-3">Event',
-    );
-    expect(template).to.include(
-      'class="hidden xl:table-cell px-3 xl:px-5 py-3">Status',
-    );
-    expect(template).to.include(
-      'class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated',
-    );
-    expect(template).to.include(
-      'class="w-[40%] px-3 py-3 xl:w-auto xl:px-5">Attendee',
-    );
-    expect(template).to.include(
-      'class="w-[40%] px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5"',
-    );
-    expect(template).to.include(
-      'class="mb-2 truncate font-medium text-stone-900 xl:hidden"',
-    );
-    expect(template).to.include(
-      'class="mt-2 text-xs text-stone-500 2xl:hidden"',
-    );
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-3">Event');
+    expect(template).to.include('class="hidden xl:table-cell px-3 xl:px-5 py-3">Status');
+    expect(template).to.include('class="hidden 2xl:table-cell px-3 xl:px-5 py-3">Updated');
+    expect(template).to.include('class="w-[40%] px-3 py-3 xl:w-auto xl:px-5">Attendee');
+    expect(template).to.include('class="w-[40%] px-3 py-4 xl:w-auto xl:max-w-64 xl:px-5"');
+    expect(template).to.include('class="mb-2 truncate font-medium text-stone-900 xl:hidden"');
+    expect(template).to.include('class="mt-2 text-xs text-stone-500 2xl:hidden"');
     expect(template).to.include('colspan="3" class="xl:hidden');
     expect(template).to.include('colspan="5" class="hidden xl:table-cell 2xl:hidden');
     expect(template).to.include('colspan="6" class="hidden 2xl:table-cell');

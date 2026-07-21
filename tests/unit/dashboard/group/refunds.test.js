@@ -69,17 +69,21 @@ describe("dashboard group refund recovery", () => {
     expect(document.activeElement).to.equal(document.getElementById("close-refund-recovery-modal"));
   });
 
-  it("closes the modal after successful recovery completion", () => {
+  it("focuses the refreshed refunds after successful recovery completion", () => {
     // Open the recovery modal.
-    renderRecoveryFixture();
+    const root = renderRecoveryFixture();
     document.querySelector("[data-refund-recovery-open]")?.click();
     const form = document.getElementById("refund-recovery-form");
 
-    // A successful HTMX request closes the modal and restores body scroll.
+    // A successful HTMX request closes the modal before refreshing the refunds.
     dispatchHtmxAfterRequest(form, { status: 204 });
     expect(document.getElementById("refund-recovery-modal")?.classList.contains("hidden")).to.equal(true);
     expect(document.body.dataset.modalOpenCount).to.equal("0");
-    expect(document.activeElement).to.equal(document.querySelector("[data-actions-menu] summary"));
+
+    // The refreshed search replaces the removed action and receives focus.
+    root.innerHTML = '<input id="refund-search" type="search" />';
+    dispatchHtmxAfterSwap(root);
+    expect(document.activeElement).to.equal(document.getElementById("refund-search"));
   });
 
   it("keeps the modal open after a failed recovery request", () => {

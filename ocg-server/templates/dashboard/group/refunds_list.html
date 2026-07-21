@@ -78,10 +78,7 @@
           crate::templates::dashboard::group::refunds::RefundsView::Completed,
           crate::templates::dashboard::group::refunds::RefundsView::All
           ] -%}
-          <option value="{{ option }}"
-                  {% if view == *option -%}
-                    selected
-                  {% endif -%}>
+          <option value="{{ option }}" {% if view == *option -%} selected {% endif -%}>
             {% if *option == crate::templates::dashboard::group::refunds::RefundsView::Active -%}
               Active
             {% else if *option == crate::templates::dashboard::group::refunds::RefundsView::Attention -%}
@@ -162,7 +159,9 @@
                 {{ badges::invitation_badge(label = refund.status.label() , tone = refund.status.tone(), with_border = true) -}}
                 {% if let Some(attempt_count) = refund.attempt_count -%}
                   {% if *attempt_count > 0 && refund.can_retry() -%}
-                    <div class="mt-1 text-xs text-stone-600">{{ attempt_count }} attempts</div>
+                    <div class="mt-1 text-xs text-stone-600">
+                      {{ attempt_count }} attempt{% if *attempt_count != 1 %}s{% endif %}
+                    </div>
                   {% endif -%}
                 {% endif -%}
               </div>
@@ -189,7 +188,9 @@
               {{ badges::invitation_badge(label = refund.status.label() , tone = refund.status.tone(), with_border = true) -}}
               {% if let Some(attempt_count) = refund.attempt_count -%}
                 {% if *attempt_count > 0 && refund.can_retry() -%}
-                  <div class="mt-2 text-xs text-stone-600">{{ attempt_count }} attempts</div>
+                  <div class="mt-2 text-xs text-stone-600">
+                    {{ attempt_count }} attempt{% if *attempt_count != 1 %}s{% endif %}
+                  </div>
                 {% endif -%}
               {% endif -%}
             </td>

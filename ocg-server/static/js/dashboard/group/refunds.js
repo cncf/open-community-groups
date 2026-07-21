@@ -65,6 +65,7 @@ export const initializeRefundRecovery = (root) => {
   root.addEventListener("htmx:afterRequest", (event) => {
     const requestSucceeded = isSuccessfulXHRStatus(event.detail?.xhr?.status);
     if (event.target === getElementById(root, "refund-recovery-form") && requestSucceeded) {
+      root.dataset[REFUND_FOCUS_TARGET_DATA_KEY] = REFUND_SEARCH_ID;
       setRecoveryModalVisible(root, false);
     }
 
@@ -98,16 +99,10 @@ const buildRefundDashboardUrl = (form, excludedNames = new Set()) => {
  * @returns {void}
  */
 const configureRefundNavigation = (root, requestTarget) => {
-  if (
-    requestTarget instanceof HTMLButtonElement &&
-    requestTarget.matches(REFUND_SEARCH_CLEAR_SELECTOR)
-  ) {
+  if (requestTarget instanceof HTMLButtonElement && requestTarget.matches(REFUND_SEARCH_CLEAR_SELECTOR)) {
     const form = requestTarget.closest(REFUND_FILTER_FORM_SELECTOR);
     if (form instanceof HTMLFormElement) {
-      requestTarget.setAttribute(
-        "hx-push-url",
-        buildRefundDashboardUrl(form, new Set(["ts_query"])),
-      );
+      requestTarget.setAttribute("hx-push-url", buildRefundDashboardUrl(form, new Set(["ts_query"])));
     }
     root.dataset[REFUND_FOCUS_TARGET_DATA_KEY] = REFUND_SEARCH_ID;
     return;

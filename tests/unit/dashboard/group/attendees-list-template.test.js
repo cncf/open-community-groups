@@ -1,7 +1,7 @@
 import { expect } from "@open-wc/testing";
 
-const loadTemplate = async () => {
-  const response = await fetch("/ocg-server/templates/dashboard/group/attendees_list.html");
+const loadTemplate = async (templatePath = "/ocg-server/templates/dashboard/group/attendees_list.html") => {
+  const response = await fetch(templatePath);
 
   expect(response.ok).to.equal(true);
 
@@ -30,12 +30,51 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('id="attendees-attendance"');
     expect(template).to.include('name="attendance"');
     expect(template).to.include('value="{{ option }}"');
-    expect(template).to.include('attendance == *option');
+    expect(template).to.include("attendance == *option");
     expect(template).to.include("AttendanceFilter::Active");
     expect(template).to.include("AttendanceFilter::Canceled");
     expect(template).to.include("AttendanceFilter::All");
     expect(template).to.include('attendee.status == "attendance-canceled"');
     expect(template).to.include('label = "Attendance canceled"');
+  });
+
+  it("uses filter-aware empty states", async () => {
+    // Load the list and filtered-empty placeholder templates.
+    const template = normalizeWhitespace(await loadTemplate());
+    const placeholder = normalizeWhitespace(
+      await loadTemplate("/ocg-server/templates/dashboard/placeholders/group_attendees_no_results.html"),
+    );
+    const emptyState = sliceTemplateSection(template, "{# Empty state -#}", "{# End empty state -#}");
+
+    // Verify every table filter selects useful filtered-empty guidance.
+    expect(emptyState).to.include(
+      "attendance == crate::templates::dashboard::group::attendees::AttendanceFilter::Canceled",
+    );
+    expect(emptyState).to.include("checked_in.is_some()");
+    expect(emptyState).to.include("event_ticket_type_ids.is_some()");
+    expect(emptyState).to.include("title.is_some()");
+    expect(emptyState).to.include("has_active_attendee_filters");
+    expect(placeholder).to.include("No attendees found matching your filters.");
+    expect(placeholder).to.include("Try adjusting your search or filters");
+  });
+
+  it("keeps canceled attendee history and accessible state aligned", async () => {
+    // Load the attendee row before checking canceled attendance details.
+    const template = normalizeWhitespace(await loadTemplate());
+    const rsvpDate = sliceTemplateSection(template, "{# RSVP Date -#}", "{# End RSVP date -#}");
+    const checkInToggle = sliceTemplateSection(
+      template,
+      "{# Checked In Toggle -#}",
+      "{# End checked in toggle -#}",
+    );
+
+    // Verify canceled attendees retain their date and accurate check-in label.
+    expect(rsvpDate).to.include('attendee.status == "attendance-canceled"');
+    expect(rsvpDate).to.include('attendee.created_at.format("%b %d, %Y")');
+    expect(checkInToggle).to.include("Canceled attendance cannot be checked in");
+    expect(checkInToggle).to.include("Rejected invitation cannot be checked in");
+    expect(checkInToggle).to.include("Pending registration cannot be checked in");
+    expect(checkInToggle).to.include("Your role cannot manage check-in");
   });
 
   it("shows refund progress and exposes retryable work", async () => {
@@ -172,9 +211,7 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('name="ts_query"');
     expect(template).to.include('placeholder="Search attendees"');
     expect(template).to.include('aria-label="Clear attendee search"');
-    expect(template).to.include(
-      "flex flex-col gap-6 2xl:flex-row 2xl:items-start 2xl:justify-between",
-    );
+    expect(template).to.include("flex flex-col gap-6 2xl:flex-row 2xl:items-start 2xl:justify-between");
     expect(template).to.include("flex-wrap items-center justify-start gap-6");
     expect(template).to.include("dashboard/placeholders/group_attendees_no_results.html");
   });
@@ -193,8 +230,8 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include('id="attendees-sort"');
     expect(template).to.include('name="sort"');
     expect(template).to.include('hx-trigger="change"');
-    expect(template).to.include("sm:w-[36rem]");
-    expect(template).to.include("self-end sm:ms-auto");
+    expect(template).to.include("2xl:w-auto");
+    expect(template).to.include("2xl:self-end");
     expect(template).to.include("Attendee ↑");
     expect(template).to.include("Attendee ↓");
     expect(template).to.include("RSVP Date ↑");

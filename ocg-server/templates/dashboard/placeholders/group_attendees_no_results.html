@@ -1,9 +1,7 @@
 {% import "macros/dashboard.html" as dashboard -%}
 
 {# Group Attendees No Results Placeholder -#}
-{% call dashboard::empty_state("No attendees found matching your search.", title_margin = "mb-4") -%}
-<p class="text-sm lg:text-md text-stone-700">
-  Try adjusting your search terms or clear the filter to see all attendees.
-</p>
+{% call dashboard::empty_state("No attendees found matching your filters.", title_margin = "mb-4") -%}
+<p class="text-sm lg:text-md text-stone-700">Try adjusting your search or filters to see more attendees.</p>
 {% endcall -%}
 {# End group attendees no results placeholder -#}
