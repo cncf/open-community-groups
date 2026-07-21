@@ -52,11 +52,6 @@ impl YouComClient {
         })
     }
 
-    /// Searches You.com for current Baku community-event pages.
-    pub(crate) async fn search_baku_events(&self) -> Result<Vec<SearchResult>> {
-        self.search("upcoming community events in Baku Azerbaijan").await
-    }
-
     /// Searches You.com with a caller-provided, source-scoped query.
     pub(crate) async fn search(&self, query: &str) -> Result<Vec<SearchResult>> {
         let mut search_url =
@@ -73,7 +68,7 @@ impl YouComClient {
             .context("You.com search returned an error")?;
         let payload: SearchResponse =
             response.json().await.context("decoding You.com search response")?;
-        Ok(payload.results)
+        Ok(payload.results.web.into_iter().chain(payload.results.news).collect())
     }
 }
 
@@ -90,8 +85,16 @@ pub(crate) struct SearchResult {
 
 #[derive(Debug, Deserialize)]
 struct SearchResponse {
-    #[serde(default, alias = "hits")]
-    results: Vec<SearchResult>,
+    #[serde(default)]
+    results: SearchResults,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct SearchResults {
+    #[serde(default)]
+    web: Vec<SearchResult>,
+    #[serde(default)]
+    news: Vec<SearchResult>,
 }
 
 /// Rejects pages that do not identify Baku or Azerbaijan.
@@ -163,5 +166,21 @@ mod tests {
         let mut rescheduled = event.clone();
         rescheduled.starts_at = Utc.with_ymd_and_hms(2026, 7, 22, 12, 0, 0).unwrap();
         assert_ne!(event.fingerprint(), rescheduled.fingerprint());
+    }
+
+    #[test]
+    fn decodes_web_and_news_results() {
+        let payload: SearchResponse = serde_json::from_str(
+            r#"{
+                "results": {
+                    "web": [{"title": "Baku meetup", "url": "https://example.test/web"}],
+                    "news": [{"title": "Baku news", "url": "https://example.test/news"}]
+                }
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(payload.results.web.len(), 1);
+        assert_eq!(payload.results.news.len(), 1);
     }
 }

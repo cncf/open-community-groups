@@ -36,7 +36,7 @@
     <h2 class="font-semibold text-lg">Latest run</h2>
     <form class="mt-3"
           hx-post="/dashboard/group/integrations/run"
-          hx-target="#dashboard-content">
+          hx-swap="none">
       <button class="button-secondary"
               type="submit"
               {% if !integration.can_manage_events %}disabled{% endif %}>Run discovery now</button>

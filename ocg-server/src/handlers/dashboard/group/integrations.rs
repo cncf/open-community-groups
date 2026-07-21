@@ -2,12 +2,13 @@
 
 use askama::Template;
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse},
 };
 use garde::Validate;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -45,14 +46,22 @@ pub(crate) async fn run(
     State(manual_event_discovery): State<Option<ManualEventDiscovery>>,
 ) -> Result<impl IntoResponse, HandlerError> {
     let Some(manual_event_discovery) = manual_event_discovery else {
-        return Ok(StatusCode::NOT_FOUND);
+        return Ok(StatusCode::NOT_FOUND.into_response());
     };
     if !manual_event_discovery.enabled() {
-        return Ok(StatusCode::NOT_FOUND);
+        return Ok(StatusCode::NOT_FOUND.into_response());
     }
 
     manual_event_discovery.spawn_group_run(group_id);
-    Ok(StatusCode::ACCEPTED)
+    Ok((
+        StatusCode::ACCEPTED,
+        [("HX-Trigger", "event-discovery-run-started")],
+        Json(ManualRunResponse {
+            group_id,
+            status: "accepted",
+        }),
+    )
+        .into_response())
 }
 
 /// Updates enabled state and location settings.
@@ -150,6 +159,12 @@ pub(crate) struct SettingsInput {
 pub(crate) struct SourceInput {
     #[garde(skip)]
     url: String,
+}
+
+#[derive(Debug, Serialize)]
+struct ManualRunResponse {
+    group_id: Uuid,
+    status: &'static str,
 }
 
 fn validate_settings(input: &SettingsInput) -> Result<(), HandlerError> {
