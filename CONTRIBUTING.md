@@ -14,6 +14,12 @@ If you are unsure if the change will be welcome you may want to file an issue fi
 
 You can find the existing pull requests at <https://github.com/goup/open-alliance-groups/pulls>.
 
+## Adding an integration
+
+Third-party services belong in [`ocg-server/src/integrations/`](ocg-server/src/integrations/). Follow the
+[Integration Contributor Guide](docs/guides/integrations.md) for configuration, security, database, UI,
+and testing expectations.
+
 ## Developer Certificate of Origin
 
 The Open Alliance Groups project uses a [Developers Certificate of Origin (DCO)](https://developercertificate.org/) to sign-off that you have the right to contribute the code being contributed. The full text of the DCO reads:
