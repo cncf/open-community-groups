@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 use anyhow::anyhow;
 use axum::{
     body::{Body, to_bytes},
@@ -24,10 +26,15 @@ use crate::{
         notifications::{MockNotificationsManager, NotificationKind},
         payments::MockPaymentsManager,
     },
-    templates::dashboard::DASHBOARD_PAGINATION_LIMIT,
-    templates::notifications::{
-        EventAttendanceCanceled, EventCustom, EventInvitation as EventInvitationTemplate,
-        EventWaitlistPromoted,
+    templates::{
+        dashboard::{
+            DASHBOARD_PAGINATION_LIMIT,
+            group::{PresenceFilter, attendees::AttendeesSort},
+        },
+        notifications::{
+            EventAttendanceCanceled, EventCustom, EventInvitation as EventInvitationTemplate,
+            EventWaitlistPromoted,
+        },
     },
     types::{
         event::{EventAttendanceStatus, EventLeaveOutcome},
@@ -605,20 +612,20 @@ async fn test_download_csv_success() {
         Some(group_id),
     );
     let mut attendee = sample_attendee();
-    attendee.name = Some("Doe, Jane".to_string());
-    attendee.company = Some("Example \"Cloud\"".to_string());
+    attendee.user.name = Some("Doe, Jane".to_string());
+    attendee.user.company = Some("Example \"Cloud\"".to_string());
     attendee.manually_invited = true;
-    attendee.title = Some("Principal\nEngineer".to_string());
+    attendee.user.title = Some("Principal\nEngineer".to_string());
     let mut attendee_without_name = sample_attendee();
-    attendee_without_name.name = None;
-    attendee_without_name.username = "anonymous-attendee".to_string();
-    attendee_without_name.company = None;
-    attendee_without_name.title = None;
+    attendee_without_name.user.name = None;
+    attendee_without_name.user.username = "anonymous-attendee".to_string();
+    attendee_without_name.user.company = None;
+    attendee_without_name.user.title = None;
     let mut pending_invitation = sample_attendee();
-    pending_invitation.name = Some("Pending Invite".to_string());
+    pending_invitation.user.name = Some("Pending Invite".to_string());
     pending_invitation.status = "invitation-pending".to_string();
     let mut rejected_invitation = sample_attendee();
-    rejected_invitation.name = Some("Rejected Invite".to_string());
+    rejected_invitation.user.name = Some("Rejected Invite".to_string());
     rejected_invitation.status = "invitation-rejected".to_string();
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
@@ -737,10 +744,10 @@ async fn test_download_csv_with_answers_success() {
         ],
     });
     let mut attendee_without_answers = sample_attendee();
-    attendee_without_answers.name = Some("No Answers".to_string());
+    attendee_without_answers.user.name = Some("No Answers".to_string());
     attendee_without_answers.registration_answers = None;
     let mut pending_invitation = sample_attendee();
-    pending_invitation.name = Some("Pending Invite".to_string());
+    pending_invitation.user.name = Some("Pending Invite".to_string());
     pending_invitation.status = "invitation-pending".to_string();
     let event = sample_event_summary(event_id, group_id);
     let registration_questions = vec![
@@ -1455,7 +1462,7 @@ async fn test_list_page_success() {
     pending_questions_attendee.checked_in = false;
     pending_questions_attendee.manually_invited = false;
     pending_questions_attendee.status = "registration-questions-pending".to_string();
-    pending_questions_attendee.user_id = pending_questions_attendee_id;
+    pending_questions_attendee.user.user_id = pending_questions_attendee_id;
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 2,
@@ -1612,6 +1619,135 @@ async fn test_list_page_db_error() {
 }
 
 #[tokio::test]
+async fn test_list_page_rejects_zero_pagination_limit() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees?limit=0"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
+async fn test_list_page_rejects_too_many_ticket_type_ids() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let mut query = String::new();
+    for index in 0..=25 {
+        if !query.is_empty() {
+            query.push('&');
+        }
+        write!(
+            &mut query,
+            "event_ticket_type_ids[{index}]=00000000-0000-0000-0000-000000000000"
+        )
+        .unwrap();
+    }
+    let request = Request::builder()
+        .method("GET")
+        .uri(format!(
+            "/dashboard/group/events/{event_id}/attendees?{query}"
+        ))
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(!bytes.is_empty());
+}
+
+#[tokio::test]
 async fn test_list_page_with_pagination_params() {
     // Setup identifiers and data structures
     let alliance_id = Uuid::new_v4();
@@ -1715,6 +1851,7 @@ async fn test_list_page_with_search_query() {
     let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
+    let ticket_type_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
     let auth_hash = "hash".to_string();
     let session_record = sample_session_record(
@@ -1726,8 +1863,8 @@ async fn test_list_page_with_search_query() {
     );
     let mut attendee = sample_attendee();
     attendee.email = "ana@example.test".to_string();
-    attendee.name = Some("Ana Lopez".to_string());
-    attendee.company = Some("Example Co".to_string());
+    attendee.user.name = Some("Ana Lopez".to_string());
+    attendee.user.company = Some("Example Co".to_string());
     let event = sample_event_summary(event_id, group_id);
     let output = crate::templates::dashboard::group::attendees::AttendeesOutput {
         all_attendees_email_recipient_total: 1,
@@ -1768,8 +1905,12 @@ async fn test_list_page_with_search_query() {
         .withf(move |gid, filters| {
             *gid == group_id
                 && filters.event_id == event_id
+                && filters.checked_in == Some(true)
+                && filters.event_ticket_type_ids.as_deref() == Some(&[ticket_type_id][..])
                 && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
                 && filters.offset == Some(0)
+                && filters.sort == Some(AttendeesSort::CreatedAtDesc)
+                && filters.title == Some(PresenceFilter::Present)
                 && filters.ts_query.as_deref() == Some("ana")
         })
         .returning(move |_, _| Ok(output.clone()));
@@ -1790,7 +1931,13 @@ async fn test_list_page_with_search_query() {
     let request = Request::builder()
         .method("GET")
         .uri(format!(
-            "/dashboard/group/events/{event_id}/attendees?ts_query=ana"
+            concat!(
+                "/dashboard/group/events/{event_id}/attendees?",
+                "checked_in=true&event_ticket_type_ids[0]={ticket_type_id}&",
+                "sort=created-at-desc&title=present&ts_query=ana"
+            ),
+            event_id = event_id,
+            ticket_type_id = ticket_type_id,
         ))
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())

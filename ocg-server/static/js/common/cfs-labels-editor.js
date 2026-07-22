@@ -340,7 +340,7 @@ export class CfsLabelsEditor extends LitWrapper {
                 trimmedName.length === 0 &&
                 String(row.event_cfs_label_id || "").length === 0);
             return html`
-              <div class="w-full md:w-1/2 py-1">
+              <div class="w-full 2xl:w-1/2 py-1">
                 <div class="flex items-center gap-2">
                   <div class="flex-1">
                     <label class="sr-only" for="cfs-label-name-${row._row_id}">Label</label>
@@ -474,7 +474,7 @@ export class CfsLabelsEditor extends LitWrapper {
             : ""
         }
 
-        <div class="w-full md:w-1/2">
+        <div class="w-full 2xl:w-1/2">
           <button
             type="button"
             class="btn-primary-outline btn-mini"

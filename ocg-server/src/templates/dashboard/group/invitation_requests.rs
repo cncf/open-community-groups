@@ -8,10 +8,11 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{dashboard, helpers::user_initials},
+    templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
         event::{EventInvitationRequestStatus, EventSummary},
         pagination::{self, Pagination, ToRawQuery},
+        user::User,
     },
     validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
@@ -32,6 +33,8 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the invitation request list with the current filters.
     pub refresh_url: String,
+    /// Invitation request status filter.
+    pub status: InvitationRequestsStatusFilter,
     /// Total number of invitation requests for the selected event.
     pub total: usize,
 
@@ -39,6 +42,10 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Sort option used to order invitation requests.
+    pub sort: Option<InvitationRequestsSort>,
+    /// User title presence filter.
+    pub title: Option<PresenceFilter>,
     /// Text search query used to filter invitation requests.
     pub ts_query: Option<String>,
 }
@@ -53,22 +60,12 @@ pub struct InvitationRequest {
     pub created_at: DateTime<Utc>,
     /// Invitation request status.
     pub invitation_request_status: EventInvitationRequestStatus,
-    /// User id.
-    pub user_id: Uuid,
-    /// Username.
-    pub username: String,
+    /// Public profile payload for the requester.
+    pub user: User,
 
-    /// Company the user represents.
-    pub company: Option<String>,
-    /// Full name.
-    pub name: Option<String>,
-    /// URL to user's avatar.
-    pub photo_url: Option<String>,
     /// Review completion time.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub reviewed_at: Option<DateTime<Utc>>,
-    /// Title held by the user.
-    pub title: Option<String>,
 }
 
 /// Filter parameters for invitation request searches.
@@ -81,12 +78,21 @@ pub(crate) struct InvitationRequestsFilters {
 
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order invitation requests.
+    #[garde(skip)]
+    pub sort: Option<InvitationRequestsSort>,
+    /// Invitation request status filter.
+    #[garde(skip)]
+    pub status: Option<EventInvitationRequestStatus>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Search query for requester name, username, email, company, or title.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
@@ -96,14 +102,25 @@ pub(crate) struct InvitationRequestsFilters {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct InvitationRequestsListPageFilters {
+    /// Invitation request status filter.
+    #[serde(default)]
+    #[garde(skip)]
+    pub status: InvitationRequestsStatusFilter,
+
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order invitation requests.
+    #[garde(skip)]
+    pub sort: Option<InvitationRequestsSort>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Text search query.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
@@ -118,4 +135,63 @@ pub(crate) struct InvitationRequestsOutput {
     pub invitation_requests: Vec<InvitationRequest>,
     /// Total number of invitation requests for the selected event.
     pub total: usize,
+}
+
+/// Supported invitation request sort options.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum InvitationRequestsSort {
+    /// Sort by request creation time ascending.
+    CreatedAtAsc,
+    /// Sort by request creation time descending.
+    CreatedAtDesc,
+    /// Sort by requester display name ascending.
+    NameAsc,
+    /// Sort by requester display name descending.
+    NameDesc,
+}
+
+/// Supported invitation request status filters.
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    strum::Display,
+    strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum InvitationRequestsStatusFilter {
+    /// Filter accepted invitation requests.
+    Accepted,
+    /// Include invitation requests with any status.
+    All,
+    /// Filter pending invitation requests.
+    #[default]
+    Pending,
+    /// Filter rejected invitation requests.
+    Rejected,
+}
+
+impl From<InvitationRequestsStatusFilter> for Option<EventInvitationRequestStatus> {
+    fn from(status: InvitationRequestsStatusFilter) -> Self {
+        match status {
+            InvitationRequestsStatusFilter::Accepted => {
+                Some(EventInvitationRequestStatus::Accepted)
+            }
+            InvitationRequestsStatusFilter::All => None,
+            InvitationRequestsStatusFilter::Pending => Some(EventInvitationRequestStatus::Pending),
+            InvitationRequestsStatusFilter::Rejected => {
+                Some(EventInvitationRequestStatus::Rejected)
+            }
+        }
+    }
 }

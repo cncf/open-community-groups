@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(17);
+select plan(18);
 
 -- ============================================================================
 -- VARIABLES
@@ -16,6 +16,7 @@ select plan(17);
 \set notificationAttachmentID '8a010000-0000-0000-0000-000000000005'
 \set notificationEmailVerificationID '8a010000-0000-0000-0000-000000000006'
 \set notificationEventPublishedID '8a010000-0000-0000-0000-000000000007'
+\set notificationFutureRetryID '8a010000-0000-0000-0000-000000000023'
 \set notificationGroupWelcomeID '8a010000-0000-0000-0000-000000000008'
 \set notificationPreRegisteredEventInvitationID '8a010000-0000-0000-0000-000000000009'
 \set notificationPreRegisteredGroupWelcomeID '8a010000-0000-0000-0000-000000000010'
@@ -129,6 +130,7 @@ insert into notification (
     delivery_attempts,
     delivery_status,
     kind,
+    next_delivery_attempt_at,
     notification_id,
     notification_template_data_id,
     user_id
@@ -138,6 +140,7 @@ insert into notification (
         0,
         'pending',
         'email-verification',
+        null,
         :'notificationEmailVerificationID',
         :'templateEmailVerificationID',
         :'userVerifiedID'
@@ -147,6 +150,7 @@ insert into notification (
         0,
         'pending',
         'group-welcome',
+        null,
         :'notificationGroupWelcomeID',
         :'templateGroupWelcomeID',
         :'userVerifiedID'
@@ -156,6 +160,7 @@ insert into notification (
         0,
         'pending',
         'event-published',
+        null,
         :'notificationEventPublishedID',
         :'templateEventPublishedID',
         :'userVerifiedID'
@@ -165,8 +170,19 @@ insert into notification (
         0,
         'pending',
         'event-welcome',
+        null,
         :'notificationAttachmentID',
         null,
+        :'userVerifiedID'
+    ),
+    (
+        '2025-01-01 00:00:08.5',
+        1,
+        'pending',
+        'group-welcome',
+        current_timestamp + interval '1 hour',
+        :'notificationFutureRetryID',
+        :'templateGroupWelcomeID',
         :'userVerifiedID'
     ),
     (
@@ -174,6 +190,7 @@ insert into notification (
         1,
         'pending',
         'group-welcome',
+        null,
         :'notificationRetryID',
         :'templateGroupWelcomeID',
         :'userVerifiedID'
@@ -183,6 +200,7 @@ insert into notification (
         0,
         'pending',
         'email-verification',
+        null,
         :'notificationUnverifiedEmailVerificationID',
         :'templateEmailVerificationID',
         :'userUnverifiedID'
@@ -192,6 +210,7 @@ insert into notification (
         0,
         'pending',
         'event-invitation',
+        null,
         :'notificationPreRegisteredEventInvitationID',
         :'templateEventPublishedID',
         :'userPreRegisteredID'
@@ -201,6 +220,7 @@ insert into notification (
         0,
         'pending',
         'group-welcome',
+        null,
         :'notificationPreRegisteredGroupWelcomeID',
         :'templateGroupWelcomeID',
         :'userPreRegisteredID'
@@ -333,6 +353,17 @@ select is(
     (select notification_id from claim_pending_notification()),
     :'notificationRetryID'::uuid,
     'Claims a previously attempted pending notification'
+);
+
+-- Should skip scheduled retries that are not due
+select is(
+    (
+        select delivery_status
+        from notification
+        where notification_id = :'notificationFutureRetryID'
+    ),
+    'pending',
+    'Leaves future scheduled retry pending'
 );
 
 -- Should increment attempts on claim

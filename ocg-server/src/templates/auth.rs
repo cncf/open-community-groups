@@ -96,6 +96,8 @@ pub(crate) struct UserMenuSection {
 pub(crate) struct User {
     /// Whether the user is logged in.
     pub logged_in: bool,
+    /// Whether the logged-in user has completed their public profile.
+    pub profile_complete: bool,
 
     /// Name of the authentication provider, if any.
     pub auth_provider: Option<String>,
@@ -117,6 +119,7 @@ impl User {
         let auth_session_user = auth_session.user.as_ref();
         let user = Self {
             logged_in: auth_session_user.is_some(),
+            profile_complete: auth_session_user.is_some_and(crate::auth::User::is_profile_complete),
             auth_provider: auth_session.session.get(AUTH_PROVIDER_KEY).await?,
             belongs_to_any_group_team: auth_session_user.and_then(|u| u.belongs_to_any_group_team),
             belongs_to_alliance_team: auth_session_user.and_then(|u| u.belongs_to_alliance_team),

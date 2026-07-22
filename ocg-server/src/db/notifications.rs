@@ -45,6 +45,16 @@ pub(crate) trait DBNotifications {
     async fn mark_stale_processing_notifications_unknown(&self, timeout: Duration)
     -> Result<usize>;
 
+    /// Requeues a notification after a retryable delivery error.
+    async fn requeue_notification(
+        &self,
+        notification: &Notification,
+        error: &str,
+        base_retry_after: Duration,
+        max_retry_after: Duration,
+        max_delivery_attempts: usize,
+    ) -> Result<()>;
+
     /// Updates a notification after a delivery attempt.
     async fn update_notification(
         &self,
@@ -285,8 +295,8 @@ where
         timeout: Duration,
     ) -> Result<usize> {
         // Convert timeout to the database integer type
-        let timeout_seconds = i64::try_from(timeout.as_secs())
-            .map_err(|_| anyhow!("processing timeout cannot exceed i64::MAX seconds"))?;
+        let timeout_seconds =
+            duration_seconds_i64(timeout, "processing timeout cannot exceed i64::MAX seconds")?;
 
         // Mark stale processing notifications with an unknown delivery outcome
         let count = self
@@ -298,6 +308,52 @@ where
 
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         Ok(count as usize)
+    }
+
+    #[instrument(skip(self, notification), err)]
+    async fn requeue_notification(
+        &self,
+        notification: &Notification,
+        error: &str,
+        base_retry_after: Duration,
+        max_retry_after: Duration,
+        max_delivery_attempts: usize,
+    ) -> Result<()> {
+        // Convert retry metadata to database scalar types
+        let base_retry_after_seconds = duration_seconds_i64(
+            base_retry_after,
+            "base retry delay cannot exceed i64::MAX seconds",
+        )?;
+        let max_retry_after_seconds = duration_seconds_i64(
+            max_retry_after,
+            "maximum retry delay cannot exceed i64::MAX seconds",
+        )?;
+        let max_delivery_attempts = i32::try_from(max_delivery_attempts)
+            .map_err(|_| anyhow!("maximum delivery attempts cannot exceed i32::MAX"))?;
+
+        // Requeue the claimed notification or finalize it if attempts are exhausted
+        let db = self.client().await?;
+        db.execute(
+            "
+            select requeue_notification(
+                $1::uuid,
+                $2::text,
+                $3::bigint,
+                $4::bigint,
+                $5::integer
+            );
+            ",
+            &[
+                &notification.notification_id,
+                &error,
+                &base_retry_after_seconds,
+                &max_retry_after_seconds,
+                &max_delivery_attempts,
+            ],
+        )
+        .await?;
+
+        Ok(())
     }
 
     /// Updates the notification record after processing, marking it as processed and
@@ -344,4 +400,9 @@ struct EnqueueNotificationAttachment<'a> {
     content_type: &'a str,
     data_base64: String,
     file_name: &'a str,
+}
+
+/// Convert a duration to the database integer type.
+fn duration_seconds_i64(duration: Duration, overflow_message: &str) -> Result<i64> {
+    i64::try_from(duration.as_secs()).map_err(|_| anyhow!("{overflow_message}"))
 }

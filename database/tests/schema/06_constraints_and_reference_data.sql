@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(66);
+select plan(69);
 
 -- ============================================================================
 -- VARIABLES
@@ -287,6 +287,7 @@ select results_eq(
 -- Test: notification table expected constraints exist
 select has_check('notification', 'notification_delivery_attempts_chk');
 select has_check('notification', 'notification_delivery_status_chk');
+select has_check('notification', 'notification_next_delivery_attempt_at_chk');
 
 -- Test: payment providers should match expected values
 select results_eq(

@@ -5,6 +5,7 @@ use axum::{
     extract::{Path, RawQuery, State},
     response::{Html, IntoResponse},
 };
+use garde::Validate;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -42,10 +43,14 @@ pub(crate) async fn list_page(
     // Fetch event summary and invitation requests
     let page_filters: InvitationRequestsListPageFilters =
         serde_qs_config().deserialize_str(raw_query.as_deref().unwrap_or_default())?;
+    page_filters.validate()?;
     let search_filters = InvitationRequestsFilters {
         event_id,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        sort: page_filters.sort,
+        status: page_filters.status.into(),
+        title: page_filters.title,
         ts_query: page_filters.ts_query.clone(),
     };
     let (can_manage_events, event, search_results) = tokio::try_join!(
@@ -79,6 +84,9 @@ pub(crate) async fn list_page(
         total: search_results.total,
         limit: page_filters.limit,
         offset: page_filters.offset,
+        sort: page_filters.sort,
+        status: page_filters.status,
+        title: page_filters.title,
         ts_query: page_filters.ts_query,
     };
 

@@ -8,6 +8,7 @@ import {
   registerHtmxResponseHandlers,
 } from "/static/js/common/htmx-extensions.js";
 import { resetRestoredModalState } from "/static/js/common/modals/modal-lifecycle.js";
+import "/static/js/common/profile-completion-alert.js";
 
 // Install request filtering before HTMX builds GET query strings.
 registerHtmxNoEmptyValuesExtensions(window.htmx);

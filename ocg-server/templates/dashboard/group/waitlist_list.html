@@ -1,3 +1,4 @@
+{% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
@@ -8,6 +9,8 @@
      hx-target="#waitlist-content"
      hx-swap="innerHTML"></div>
 {# End waitlist refresh trigger -#}
+
+{{ dashboard::form_title(title = "Waitlist", description = "Review and manage people waiting for a seat.") -}}
 
 {# Filters -#}
 <div class="my-5">
@@ -22,6 +25,7 @@
           hx-swap="innerHTML"
           hx-indicator="#dashboard-spinner">
       <label for="search_waitlist" class="sr-only">Search waitlist</label>
+      {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_ts_query = false) -}}
       <input id="search_waitlist"
              name="ts_query"
              type="text"
@@ -39,6 +43,7 @@
                 hx-target="#waitlist-content"
                 hx-swap="innerHTML"
                 hx-indicator="#dashboard-spinner"
+                hx-include="#waitlist-search-form input[type='hidden']"
                 class="cursor-pointer mt-0.5"
                 aria-label="Clear waitlist search">
           <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
@@ -46,13 +51,80 @@
       </div>
     </form>
   </div>
+  <form class="flex shrink-0 items-center gap-3 self-end sm:ms-auto"
+        hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+        hx-trigger="change"
+        hx-target="#waitlist-content"
+        hx-swap="innerHTML"
+        hx-indicator="#dashboard-spinner">
+    {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_sort = false) -}}
+    <label for="waitlist-sort"
+           class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
+    <select id="waitlist-sort"
+            name="sort"
+            class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+            {% if waitlist.is_empty() -%}
+              disabled
+            {% endif -%}>
+      <option value="name-asc"
+              {% if sort.is_none() || sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameAsc) -%}
+                selected
+              {% endif -%}>Entry ↑</option>
+      <option value="name-desc"
+              {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::NameDesc) -%}
+                selected
+              {% endif -%}>Entry ↓</option>
+      <option value="created-at-asc"
+              {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtAsc) -%}
+                selected
+              {% endif -%}>Joined ↑</option>
+      <option value="created-at-desc"
+              {% if sort == Some(crate::templates::dashboard::group::waitlist::WaitlistSort::CreatedAtDesc) -%}
+                selected
+              {% endif -%}>Joined ↓</option>
+    </select>
+  </form>
 </div>
 {# End filters -#}
+
+{% if title.is_some() -%}
+  {# Active filters -#}
+  <div class="mt-7 mb-5 flex flex-wrap items-center gap-2">
+    <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+    {% if let Some(active_title) = title -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+            hx-target="#waitlist-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_title = false) -}}
+        {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
+          {% call dashboard::active_table_filter_badge("Present") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+          {% endcall -%}
+        {% else -%}
+          {% call dashboard::active_table_filter_badge("Missing") -%}
+          {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+          {% endcall -%}
+        {% endif -%}
+      </form>
+    {% endif -%}
+    <form class="inline-flex"
+          hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+          hx-target="#waitlist-content"
+          hx-swap="innerHTML"
+          hx-indicator="#dashboard-spinner">
+      {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_title = false) -}}
+      <button type="submit" class="btn-primary-outline btn-mini h-7!">Reset all</button>
+    </form>
+  </div>
+  {# End active filters -#}
+{% endif -%}
 
 {# Header -#}
 <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
   <div class="text-sm text-stone-600 mb-4 lg:mb-0">
-    {{ pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry") }}
+    {{ pagination::range_display(offset = refresh_offset , count = waitlist.len() , total = total, label = "waitlist entry", plural_label = "waitlist entries") }}
   </div>
 </div>
 {# End header -#}
@@ -67,10 +139,29 @@
     <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
            role="rowgroup">
       <tr>
-        <th scope="col" class="px-3 xl:px-5 py-3">Entry</th>
-        <th scope="col" class="px-3 xl:px-5 py-3">Position</th>
-        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Joined</th>
-        <th scope="col" class="px-3 xl:px-5 py-3 w-[72px]">
+        <th scope="col" class="px-3 xl:px-5 py-1.5">
+          <span class="whitespace-nowrap">Entry</span>
+        </th>
+        <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
+          {% call dashboard::table_filter_menu(id = "waitlist-position-filter", label = "Position", is_active = title.is_some()) -%}
+          <div class="py-2">
+            <form hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist"
+                  hx-target="#waitlist-content"
+                  hx-swap="innerHTML"
+                  hx-indicator="#dashboard-spinner">
+              {{ waitlist_table_state_inputs(limit, sort, title, ts_query, include_title = false) -}}
+              {{ dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true) -}}
+              {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present) ) -}}
+              {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) ) -}}
+            </form>
+          </div>
+          {% endcall -%}
+        </th>
+        <th scope="col" class="px-3 xl:px-5 py-1.5">Queue</th>
+        <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
+          <span class="whitespace-nowrap">Joined</span>
+        </th>
+        <th scope="col" class="px-3 xl:px-5 py-1.5 w-[72px]">
           <span class="sr-only">Actions</span>
         </th>
       </tr>
@@ -89,7 +180,17 @@
               {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
             {% endif -%}
           </td>
-          <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="4">
+          <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
+              colspan="4">
+            {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+              {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
+            {% else if event.waitlist_enabled -%}
+              {% include "dashboard/placeholders/group_waitlist_table.html" -%}
+            {% else -%}
+              {% include "dashboard/placeholders/group_waitlist_disabled_table.html" -%}
+            {% endif -%}
+          </td>
+          <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="5">
             {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
               {% include "dashboard/placeholders/group_waitlist_no_results.html" -%}
             {% else if event.waitlist_enabled -%}
@@ -106,25 +207,24 @@
           <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
             {# Entry -#}
             <td class="px-3 xl:px-5 py-4 max-w-0">
-              <div class="flex items-center space-x-5">
-                <logo-image
-                {% if let Some(photo_url) = &entry.photo_url -%}
-                  image-url="{{ photo_url }}"
-                {% endif -%}
-                size="size-10" placeholder="{{ self::user_initials(entry.name.as_deref() , entry.username.as_str()) }}">
-                </logo-image>
-                <div class="min-w-0">
-                  <div class="font-medium text-stone-900 truncate mb-1">{{ entry.name|assigned_or(entry.username) }}</div>
-                  {% if entry.name.is_some() -%}
-                    <div class="text-xs text-stone-600 truncate">{{ entry.username }}</div>
-                  {% endif -%}
-                </div>
-              </div>
+              {% call dashboard::user_profile_modal_trigger(entry.user, self::user_initials(entry.user.name.as_deref() , entry.user.username.as_str())) -%}
+              <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}</div>
+              {% endcall -%}
             </td>
             {# End entry -#}
             {# Position -#}
-            <td class="px-3 xl:px-5 py-4">{{ entry.waitlist_position }}</td>
+            <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0">
+              <div class="flex flex-col space-y-1">
+                <div class="font-medium text-stone-900 truncate">{{ entry.user.company.as_deref() |assigned_or("-") }}</div>
+                {% if let Some(title) = &entry.user.title -%}
+                  <div class="text-xs text-stone-600 truncate">{{ title }}</div>
+                {% endif -%}
+              </div>
+            </td>
             {# End position -#}
+            {# Queue -#}
+            <td class="px-3 xl:px-5 py-4">{{ entry.waitlist_position }}</td>
+            {# End queue -#}
             {# Joined date -#}
             <td class="hidden xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
               {{ entry.created_at.format("%b %d, %Y") }}
@@ -136,14 +236,14 @@
                 {% if can_manage_events && !event.canceled && !event.is_past() && !event.is_ticketed() -%}
                   <div class="group relative">
                     <button type="button"
-                            data-event-id="waitlist-{{ entry.user_id }}"
-                            aria-label="Open waitlist actions for {{ entry.name|assigned_or(entry.username) }}"
+                            data-event-id="waitlist-{{ entry.user.user_id }}"
+                            aria-label="Open waitlist actions for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}"
                             aria-haspopup="menu"
-                            aria-controls="dropdown-actions-waitlist-{{ entry.user_id }}"
+                            aria-controls="dropdown-actions-waitlist-{{ entry.user.user_id }}"
                             class="btn-actions btn-tertiary flex items-center justify-center p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50">
                       <div class="svg-icon size-4 icon-vertical-dots"></div>
                     </button>
-                    <div id="dropdown-actions-waitlist-{{ entry.user_id }}"
+                    <div id="dropdown-actions-waitlist-{{ entry.user.user_id }}"
                          data-event-actions-dropdown
                          class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                       <ul class="py-2 text-sm text-stone-700" role="menu">
@@ -154,7 +254,7 @@
                                 data-htmx-response
                                 data-success-message="Invitation sent."
                                 data-error-message="Something went wrong sending this invitation. Please try again later.">
-                            <input type="hidden" name="user_id" value="{{ entry.user_id }}" />
+                            <input type="hidden" name="user_id" value="{{ entry.user.user_id }}" />
                             <button type="submit"
                                     role="menuitem"
                                     class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
@@ -179,7 +279,7 @@
                           {% else if event.is_ticketed() -%}
                             title="Manual invitations are not available for ticketed events."
                           {% endif -%}
-                          aria-label="Waitlist actions unavailable for {{ entry.name|assigned_or(entry.username) }}">
+                          aria-label="Waitlist actions unavailable for {{ entry.user.name.as_deref() |assigned_or(entry.user.username) }}">
                     <div class="svg-icon size-4 icon-vertical-dots"></div>
                   </button>
                 {% endif -%}
@@ -200,3 +300,37 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#waitlist-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Waitlist table state fields for filter, sort, and search forms. #}
+{% macro waitlist_table_state_inputs(
+  limit,
+  sort,
+  title,
+  ts_query,
+  include_limit = true,
+  include_sort = true,
+  include_title = true,
+  include_ts_query = true
+  ) -%}
+  {% if include_limit -%}
+    {% if let Some(limit) = limit -%}
+      <input type="hidden" name="limit" value="{{ limit }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_sort -%}
+    {% if let Some(sort) = sort -%}
+      <input type="hidden" name="sort" value="{{ sort }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_title -%}
+    {% if let Some(title) = title -%}
+      <input type="hidden" name="title" value="{{ title }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_ts_query -%}
+    {% if let Some(ts_query) = &ts_query -%}
+      <input type="hidden" name="ts_query" value="{{ ts_query }}">
+    {% endif -%}
+  {% endif -%}
+{% endmacro waitlist_table_state_inputs -%}
+{# End waitlist table state fields. #}

@@ -278,6 +278,8 @@ pub(crate) fn expect_successful_transaction(db: &mut MockDB, mut tx: MockDB) {
 
 /// Sample attendee used in dashboard group home tests.
 pub(crate) fn sample_attendee() -> Attendee {
+    let user_id = Uuid::new_v4();
+
     Attendee {
         can_receive_attendee_email: true,
         checked_in: true,
@@ -286,20 +288,22 @@ pub(crate) fn sample_attendee() -> Attendee {
         manually_invited: false,
         registration_answers: None,
         status: "confirmed".to_string(),
-        user_id: Uuid::new_v4(),
-        username: "attendee".to_string(),
+        user: sample_dashboard_user_profile(
+            user_id,
+            "attendee",
+            Some("Event Attendee"),
+            Some("https://example.test/avatar.png"),
+            Some("Engineer"),
+            Some("Example"),
+        ),
 
         amount_minor: None,
         checked_in_at: Some(Utc.with_ymd_and_hms(2024, 1, 1, 13, 0, 0).unwrap()),
-        company: Some("Example".to_string()),
         currency_code: None,
         discount_code: None,
         event_purchase_id: None,
-        name: Some("Event Attendee".to_string()),
-        photo_url: Some("https://example.test/avatar.png".to_string()),
         refund_request_status: None,
         ticket_title: None,
-        title: Some("Engineer".to_string()),
     }
 }
 
@@ -541,6 +545,34 @@ pub(crate) fn sample_dashboard_user(user_id: Uuid) -> DashboardUser {
 
         name: Some("Test User".to_string()),
         photo_url: Some("https://example.test/avatar.png".to_string()),
+    }
+}
+
+/// Sample public user profile payload used by dashboard row fixtures.
+pub(crate) fn sample_dashboard_user_profile(
+    user_id: Uuid,
+    username: &str,
+    name: Option<&str>,
+    photo_url: Option<&str>,
+    title: Option<&str>,
+    company: Option<&str>,
+) -> TemplateUser {
+    TemplateUser {
+        user_id,
+        username: username.to_string(),
+
+        bio: None,
+        bluesky_url: None,
+        company: company.map(str::to_string),
+        facebook_url: None,
+        github_url: None,
+        linkedin_url: None,
+        name: name.map(str::to_string),
+        photo_url: photo_url.map(str::to_string),
+        provider: None,
+        title: title.map(str::to_string),
+        twitter_url: None,
+        website_url: None,
     }
 }
 
@@ -1086,6 +1118,26 @@ pub(crate) fn sample_group_update() -> GroupUpdate {
     }
 }
 
+/// Sample invitation request used in dashboard group invitation request tests.
+pub(crate) fn sample_invitation_request() -> InvitationRequest {
+    let user_id = Uuid::new_v4();
+
+    InvitationRequest {
+        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
+        invitation_request_status: crate::types::event::EventInvitationRequestStatus::Pending,
+        user: sample_dashboard_user_profile(
+            user_id,
+            "requesting-user",
+            Some("Requesting User"),
+            Some("https://example.test/avatar.png"),
+            Some("Engineer"),
+            Some("Example"),
+        ),
+
+        reviewed_at: None,
+    }
+}
+
 /// Sample pending co-speaker invitation used in user dashboard tests.
 pub(crate) fn sample_pending_co_speaker_invitation(
     session_proposal_id: Uuid,
@@ -1486,32 +1538,19 @@ pub(crate) fn sample_user_summary(user_id: Uuid, username: &str) -> UserSummary 
 
 /// Sample waitlist entry used in dashboard group waitlist tests.
 pub(crate) fn sample_waitlist_entry() -> WaitlistEntry {
+    let user_id = Uuid::new_v4();
+
     WaitlistEntry {
         created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
-        user_id: Uuid::new_v4(),
-        username: "waitlisted-user".to_string(),
+        user: sample_dashboard_user_profile(
+            user_id,
+            "waitlisted-user",
+            Some("Waitlisted User"),
+            Some("https://example.test/avatar.png"),
+            Some("Engineer"),
+            Some("Example"),
+        ),
         waitlist_position: 1,
-
-        company: Some("Example".to_string()),
-        name: Some("Waitlisted User".to_string()),
-        photo_url: Some("https://example.test/avatar.png".to_string()),
-        title: Some("Engineer".to_string()),
-    }
-}
-
-/// Sample invitation request used in dashboard group invitation request tests.
-pub(crate) fn sample_invitation_request() -> InvitationRequest {
-    InvitationRequest {
-        created_at: Utc.with_ymd_and_hms(2024, 1, 1, 12, 0, 0).unwrap(),
-        invitation_request_status: crate::types::event::EventInvitationRequestStatus::Pending,
-        user_id: Uuid::new_v4(),
-        username: "requesting-user".to_string(),
-
-        company: Some("Example".to_string()),
-        name: Some("Requesting User".to_string()),
-        photo_url: Some("https://example.test/avatar.png".to_string()),
-        reviewed_at: None,
-        title: Some("Engineer".to_string()),
     }
 }
 

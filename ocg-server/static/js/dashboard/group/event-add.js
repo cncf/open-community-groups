@@ -5,6 +5,7 @@ import {
   getElementById,
   initializeMatchingRoots,
   initializeOnReadyAndHtmxLoad,
+  markDatasetReady,
   setElementHidden,
 } from "/static/js/common/dom.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
@@ -22,6 +23,19 @@ import { applyEventDefaults } from "/static/js/dashboard/group/event-selector/co
 import { initializeSectionTabs } from "/static/js/dashboard/group/page-form-state.js";
 
 const EVENT_ADD_PAGE_SELECTOR = '[data-event-page="add"]';
+const DRAFT_EVENT_DATE_FALLBACK = "Date not set yet";
+const DRAFT_EVENT_TITLE_FALLBACK = "Untitled event";
+const DRAFT_EVENT_DATE_OPTIONS = {
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  month: "long",
+  year: "numeric",
+};
+const DRAFT_EVENT_TIME_OPTIONS = {
+  hour: "numeric",
+  minute: "2-digit",
+};
 
 /**
  * Initializes recurrence labels and conditional additional-occurrence validation.
@@ -68,6 +82,90 @@ const parseDateTimeLocal = (value) => {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+/**
+ * Formats a draft event date input for the header reminder.
+ * @param {HTMLInputElement|null} input Date input
+ * @param {Intl.DateTimeFormatOptions} options Format options
+ * @returns {string} Formatted date or an empty string
+ */
+const formatDraftEventDate = (input, options) => {
+  const parsedDate = parseDateTimeLocal(input?.value || "");
+  if (!parsedDate) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(undefined, options).format(parsedDate);
+};
+
+/**
+ * Returns the draft event date range label.
+ * @param {HTMLInputElement|null} startsAtInput Start date input
+ * @param {HTMLInputElement|null} endsAtInput End date input
+ * @returns {string} Draft event date label
+ */
+const getDraftEventDateLabel = (startsAtInput, endsAtInput) => {
+  const startLabel = formatDraftEventDate(startsAtInput, DRAFT_EVENT_DATE_OPTIONS);
+  const endLabel = formatDraftEventDate(endsAtInput, DRAFT_EVENT_TIME_OPTIONS);
+
+  if (startLabel && endLabel) {
+    return `${startLabel} - ${endLabel}`;
+  }
+
+  if (startLabel) {
+    return startLabel;
+  }
+
+  return endLabel ? `Ends ${endLabel}` : DRAFT_EVENT_DATE_FALLBACK;
+};
+
+/**
+ * Updates the add-event reminder title and date from draft fields.
+ * @param {Object} config Reminder configuration
+ * @param {HTMLElement} config.dateElement Date text element
+ * @param {HTMLInputElement|null} config.endsAtInput End date input
+ * @param {HTMLInputElement|null} config.nameInput Event name input
+ * @param {HTMLInputElement|null} config.startsAtInput Start date input
+ * @param {HTMLElement} config.titleElement Title text element
+ * @returns {void}
+ */
+const updateDraftEventReminder = ({ dateElement, endsAtInput, nameInput, startsAtInput, titleElement }) => {
+  titleElement.textContent = nameInput?.value.trim() || DRAFT_EVENT_TITLE_FALLBACK;
+  dateElement.textContent = getDraftEventDateLabel(startsAtInput, endsAtInput);
+};
+
+/**
+ * Initializes the add-event draft title reminder.
+ * @param {Object} config Reminder configuration
+ * @param {HTMLInputElement|null} config.endsAtInput End date input
+ * @param {HTMLElement} config.pageRoot Event page root
+ * @param {HTMLInputElement|null} config.startsAtInput Start date input
+ * @returns {void}
+ */
+const initializeDraftEventReminder = ({ endsAtInput, pageRoot, startsAtInput }) => {
+  const titleElement = getElementById(pageRoot, "draft-event-title");
+  const dateElement = getElementById(pageRoot, "draft-event-date");
+  if (!titleElement || !dateElement || !markDatasetReady(titleElement, "draftEventReminderReady")) {
+    return;
+  }
+
+  const nameInput = getElementById(pageRoot, "name");
+  const update = () =>
+    updateDraftEventReminder({
+      dateElement,
+      endsAtInput,
+      nameInput,
+      startsAtInput,
+      titleElement,
+    });
+
+  nameInput?.addEventListener("input", update);
+  startsAtInput?.addEventListener("input", update);
+  startsAtInput?.addEventListener("change", update);
+  endsAtInput?.addEventListener("input", update);
+  endsAtInput?.addEventListener("change", update);
+  update();
 };
 
 /**
@@ -198,6 +296,11 @@ export const initializeEventAddPage = (root = document) => {
     recurrenceAdditionalOccurrencesContainer,
     recurrenceAdditionalOccurrencesInput,
     recurrencePatternSelect,
+    startsAtInput,
+  });
+  initializeDraftEventReminder({
+    endsAtInput,
+    pageRoot,
     startsAtInput,
   });
 

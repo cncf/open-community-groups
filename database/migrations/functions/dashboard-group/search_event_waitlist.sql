@@ -8,6 +8,20 @@ returns json as $$
                 (p_filters->>'event_id')::uuid as event_id,
                 (p_filters->>'limit')::int as limit_value,
                 (p_filters->>'offset')::int as offset_value,
+                case
+                    when lower(p_filters->>'sort') in (
+                        'created-at-asc',
+                        'created-at-desc',
+                        'name-asc',
+                        'name-desc'
+                    ) then lower(p_filters->>'sort')
+                    else 'created-at-asc'
+                end as sort_value,
+                case
+                    when lower(p_filters->>'title') in ('missing', 'present')
+                        then lower(p_filters->>'title')
+                    else null
+                end as title_value,
                 nullif(btrim(p_filters->>'ts_query'), '') as ts_query_value
         ),
         -- Prepare text search with prefix matching
@@ -35,11 +49,19 @@ returns json as $$
                 u.username,
                 row_number() over (order by ew.created_at asc, ew.user_id asc)::int as waitlist_position,
 
+                u.bio,
+                u.bluesky_url,
                 u.company,
+                u.facebook_url,
+                u.github_url,
+                u.linkedin_url,
                 u.name,
                 u.photo_url,
+                get_public_user_provider(u.provider) as provider,
+                u.twitter_url,
                 u.tsdoc,
-                u.title
+                u.title,
+                u.website_url
             from event_waitlist ew
             join event e on e.event_id = ew.event_id
             join "user" u on u.user_id = ew.user_id
@@ -58,21 +80,50 @@ returns json as $$
                     where search_filter.ts_query @@ base_waitlist.tsdoc
                 )
             )
+            and (
+                (select title_value from filters) is null
+                or ((select title_value from filters) = 'present' and title is not null)
+                or ((select title_value from filters) = 'missing' and title is null)
+            )
         ),
         -- Apply pagination and project public waitlist fields
         waitlist as (
             select
                 created_at,
-                user_id,
-                username,
-                waitlist_position,
+                json_strip_nulls(json_build_object(
+                    'user_id', user_id,
+                    'username', username,
 
-                company,
-                name,
-                photo_url,
-                title
+                    'bio', bio,
+                    'bluesky_url', bluesky_url,
+                    'company', company,
+                    'facebook_url', facebook_url,
+                    'github_url', github_url,
+                    'linkedin_url', linkedin_url,
+                    'name', name,
+                    'photo_url', photo_url,
+                    'provider', provider,
+                    'title', title,
+                    'twitter_url', twitter_url,
+                    'website_url', website_url
+                )) as "user",
+                waitlist_position
             from filtered_waitlist
-            order by created_at_sort asc, user_id asc
+            cross join filters f
+            order by
+                case when f.sort_value = 'name-asc'
+                    then coalesce(lower(name), lower(username))
+                end asc nulls last,
+                case when f.sort_value = 'name-desc'
+                    then coalesce(lower(name), lower(username))
+                end desc nulls last,
+                case when f.sort_value = 'created-at-asc'
+                    then created_at_sort
+                end asc nulls last,
+                case when f.sort_value = 'created-at-desc'
+                    then created_at_sort
+                end desc nulls last,
+                user_id asc
             offset (select offset_value from filters)
             limit (select limit_value from filters)
         ),

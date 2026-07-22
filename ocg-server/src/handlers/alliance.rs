@@ -228,6 +228,7 @@ pub(crate) async fn members_page(
         NavigationLinks::from_filters(&filters, results.total, &page_url, &page_url)?;
     let template_user = User {
         logged_in: true,
+        profile_complete: user.is_profile_complete(),
         auth_provider: None,
         belongs_to_any_group_team: user.belongs_to_any_group_team,
         belongs_to_alliance_team: user.belongs_to_alliance_team,

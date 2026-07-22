@@ -2,6 +2,7 @@ import { html } from "/static/vendor/js/lit-all.v3.3.1.min.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/common.js";
 import { parseJsonAttribute } from "/static/js/common/utils.js";
+import { dispatchUserModalOpenEvent } from "/static/js/common/users/user-modal-event.js";
 import "/static/js/common/media/logo-image.js";
 
 /**
@@ -50,28 +51,7 @@ export class UserChip extends LitWrapper {
 
     event.preventDefault();
 
-    this.dispatchEvent(
-      new CustomEvent("open-user-modal", {
-        detail: {
-          name: this.user.name,
-          username: this.user.username,
-          imageUrl: this.user.photo_url,
-          jobTitle: this.user.title,
-          company: this.user.company,
-          bio: this.user.bio,
-          bioIsHtml: this.bioIsHtml,
-          blueskyUrl: this.user.bluesky_url,
-          facebookUrl: this.user.facebook_url,
-          githubUrl: this.user.github_url,
-          linkedinUrl: this.user.linkedin_url,
-          provider: this.user.provider,
-          twitterUrl: this.user.twitter_url,
-          websiteUrl: this.user.website_url,
-        },
-        bubbles: true,
-        composed: true,
-      }),
-    );
+    dispatchUserModalOpenEvent(this, this.user, { bioIsHtml: this.bioIsHtml });
   }
 
   _handleKeydown(event) {

@@ -850,7 +850,7 @@ class TicketTypesEditor extends TicketingEditorBase {
                   <button
                     type="button"
                     data-ticketing-action="add-price-window"
-                    class="btn-primary-outline btn-mini"
+                    class="btn-primary-outline btn-mini shrink-0 whitespace-nowrap"
                     ?disabled=${!this._isModalOpen}
                     @click=${() => this._addDraftPriceWindow()}
                   >

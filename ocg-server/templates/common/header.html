@@ -237,6 +237,7 @@
       </a>
       <button id="user-dropdown-button"
               data-logged-in="true"
+              data-profile-complete="{{ user.profile_complete }}"
               class="cursor-pointer group rounded-full bg-white border text-base leading-none border-stone-200 text-stone-700 shadow-sm hover:text-stone-950 hover:border-stone-950 size-[38px] p-0.5 overflow-hidden">
         <div class="font-semibold uppercase mt-px">
           {{ self::user_initials(user.name.as_deref() , user.username.as_deref().unwrap_or("")) }}

@@ -97,6 +97,7 @@ jobs:
         uses: creyD/prettier_action@v4.6
         with:
           dry: true
+          prettier_version: 3.9.1
           prettier_options: --check ocg-server/static/js/**/*.js --config ocg-server/static/js/.prettierrc.yaml
 
   lint-and-test-server:

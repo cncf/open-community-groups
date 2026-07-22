@@ -18,6 +18,8 @@ import { EVENT_PAGE_FORM_IDS } from "/static/js/dashboard/group/event-page-share
 const PREVIEW_ENDPOINT = "/dashboard/group/events/preview";
 const PREVIEW_BUTTON_ID = "event-preview-button";
 const PREVIEW_MODAL_ROOT_ID = "event-preview-modal-root";
+const LOGIN_PATH = "/log-in";
+const PREVIEW_MODAL_MARKER = "data-event-preview-modal";
 const EVENT_PREVIEW_FORM_IDS = EVENT_PAGE_FORM_IDS.filter((formId) => formId !== "payments-form");
 const EVENT_PREVIEW_CLIENT_RENDERED_FIELDS = new Set(["luma_url", "meetup_url"]);
 const EVENT_PREVIEW_SOCIAL_LINKS = [
@@ -74,7 +76,12 @@ export const initializeEventPreview = ({ pageRoot }) => {
         throw new Error(`Preview request failed with status ${response.status}`);
       }
 
-      openEventPreviewModal(modalRoot, await response.text(), pageRoot);
+      const previewHtml = await response.text();
+      if (isLoginResponse(response) || !previewHtml.includes(PREVIEW_MODAL_MARKER)) {
+        throw new Error("Preview response did not contain an event preview.");
+      }
+
+      openEventPreviewModal(modalRoot, previewHtml, pageRoot);
     } catch (_) {
       showErrorAlert("Unable to open the event preview. Please try again.");
     } finally {
@@ -82,6 +89,16 @@ export const initializeEventPreview = ({ pageRoot }) => {
       previewButton.removeAttribute("aria-busy");
     }
   });
+};
+
+/**
+ * Checks whether the preview request resolved to the login page.
+ * @param {Response} response Preview endpoint response
+ * @returns {boolean}
+ */
+const isLoginResponse = (response) => {
+  const responseUrl = new URL(response.url, window.location.origin);
+  return responseUrl.pathname === LOGIN_PATH;
 };
 
 /**

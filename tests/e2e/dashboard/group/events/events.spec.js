@@ -322,6 +322,64 @@ test.describe("group dashboard events view", () => {
     ).toBeVisible();
   });
 
+  test("organizer sees the expected add and edit event form tabs", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the events dashboard before opening the add form.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+
+    const dashboardContent = organizerGroupPage.locator("#dashboard-content");
+    await dashboardContent.getByRole("button", { name: "Add Event" }).click();
+    await expect(organizerGroupPage.locator("#name")).toBeVisible();
+
+    // The add form exposes authoring tabs and omits review-only tabs.
+    const addSectionSelect = organizerGroupPage.locator(
+      'select[aria-label="Event form section"]',
+    );
+    await expect(addSectionSelect.locator('option[value="details"]')).toHaveText("Details");
+    await expect(addSectionSelect.locator('option[value="date-venue"]')).toHaveText("Date & Venue");
+    await expect(addSectionSelect.locator('option[value="attendees"]')).toHaveCount(0);
+    await expect(addSectionSelect.locator('option[value="waitlist"]')).toHaveCount(0);
+
+    await organizerGroupPage.locator("button[data-section-next]").click();
+    await expect(organizerGroupPage.locator('button[data-section="date-venue"]')).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+
+    // Open an existing event and verify review tabs lazy-load their tables.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    await openEventUpdateFormByName(
+      organizerGroupPage,
+      "Full Event With Waitlist",
+      TEST_EVENT_IDS.alpha.waitlistLab,
+    );
+
+    const editSectionSelect = organizerGroupPage.locator(
+      'select[aria-label="Event form section"]',
+    );
+    await expect(editSectionSelect.locator('option[value="attendees"]')).toHaveText("Attendees");
+    await expect(editSectionSelect.locator('option[value="waitlist"]')).toHaveText("Waitlist");
+    await expect(organizerGroupPage.locator("#waitlist-loading")).toHaveCount(1);
+
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.waitlistLab}/waitlist`) &&
+          response.ok(),
+      ),
+      organizerGroupPage.locator('button[data-section="waitlist"]').click(),
+    ]);
+
+    // Verify the waitlist tab activates and swaps in table content.
+    await expect(organizerGroupPage.locator('button[data-section="waitlist"]')).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    await expect(organizerGroupPage.locator("#waitlist-content").getByRole("table")).toBeVisible();
+  });
+
   test("organizer can create and delete an event", async ({
     organizerGroupPage,
   }) => {

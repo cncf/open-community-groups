@@ -1444,6 +1444,14 @@ mock! {
             &self,
             timeout: std::time::Duration,
         ) -> Result<usize>;
+        async fn requeue_notification(
+            &self,
+            notification: &crate::services::notifications::Notification,
+            error: &str,
+            base_retry_after: std::time::Duration,
+            max_retry_after: std::time::Duration,
+            max_delivery_attempts: usize,
+        ) -> Result<()>;
         async fn update_notification(
             &self,
             notification: &crate::services::notifications::Notification,

@@ -1,3 +1,4 @@
+{% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/pagination.html" as pagination -%}
 {% let refresh_offset = offset.unwrap_or(0) -%}
 
@@ -8,6 +9,8 @@
      hx-trigger="refresh-event-invitation-requests from:body"
      hx-target="#invitation-requests-content"
      hx-swap="innerHTML">
+  {{ dashboard::form_title(title = "Requests", description = "Review and manage attendee approval requests.") -}}
+
   {# Filters -#}
   <div class="my-5">
     <div class="relative w-full max-w-full sm:w-[36rem]">
@@ -21,6 +24,7 @@
             hx-swap="innerHTML"
             hx-indicator="#dashboard-spinner">
         <label for="search_invitation_requests" class="sr-only">Search invitation requests</label>
+        {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_ts_query = false) -}}
         <input id="search_invitation_requests"
                name="ts_query"
                type="text"
@@ -38,6 +42,7 @@
                   hx-target="#invitation-requests-content"
                   hx-swap="innerHTML"
                   hx-indicator="#dashboard-spinner"
+                  hx-include="#invitation-requests-search-form input[type='hidden']"
                   class="cursor-pointer mt-0.5"
                   aria-label="Clear invitation request search">
             <div class="svg-icon size-5 bg-stone-400 hover:bg-stone-700 icon-close"></div>
@@ -45,8 +50,100 @@
         </div>
       </form>
     </div>
+    <form class="flex shrink-0 items-center gap-3 self-end sm:ms-auto"
+          hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+          hx-trigger="change"
+          hx-target="#invitation-requests-content"
+          hx-swap="innerHTML"
+          hx-indicator="#dashboard-spinner">
+      {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_sort = false) -}}
+      <label for="invitation-requests-sort"
+             class="text-sm font-semibold text-nowrap text-stone-900">Sort by</label>
+      <select id="invitation-requests-sort"
+              name="sort"
+              class="block h-10 w-40 rounded-md border border-stone-200 bg-white px-3 py-1 text-sm leading-none text-stone-900 transition-colors hover:border-primary-500 focus:border-stone-200 focus:outline-none focus:ring-0 focus:hover:border-primary-500 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-stone-200"
+              {% if invitation_requests.is_empty() -%}
+                disabled
+              {% endif -%}>
+        <option value="name-asc"
+                {% if sort.is_none() || sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameAsc) -%}
+                  selected
+                {% endif -%}>Requester ↑</option>
+        <option value="name-desc"
+                {% if sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::NameDesc) -%}
+                  selected
+                {% endif -%}>Requester ↓</option>
+        <option value="created-at-asc"
+                {% if sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtAsc) -%}
+                  selected
+                {% endif -%}>Requested ↑</option>
+        <option value="created-at-desc"
+                {% if sort == Some(crate::templates::dashboard::group::invitation_requests::InvitationRequestsSort::CreatedAtDesc) -%}
+                  selected
+                {% endif -%}>Requested ↓</option>
+      </select>
+    </form>
   </div>
   {# End filters -#}
+
+  {% if title.is_some()
+    || status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
+    {# Active filters -#}
+    <div class="mt-7 mb-5 flex flex-wrap items-center gap-2">
+      <span class="text-xs font-semibold uppercase tracking-wide text-stone-500">Active filters</span>
+      {% if status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All -%}
+        <form class="inline-flex"
+              hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+              hx-target="#invitation-requests-content"
+              hx-swap="innerHTML"
+              hx-indicator="#dashboard-spinner">
+          {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
+          <input type="hidden" name="status" value="all">
+          {% if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted -%}
+            {% call dashboard::active_table_filter_badge("Accepted") -%}
+            {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
+            {% endcall -%}
+          {% else if status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Pending -%}
+            {% call dashboard::active_table_filter_badge("Pending") -%}
+            {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
+            {% endcall -%}
+          {% else -%}
+            {% call dashboard::active_table_filter_badge("Rejected") -%}
+            {{ dashboard::active_table_filter_remove_button(label = "Reset status filter") -}}
+            {% endcall -%}
+          {% endif -%}
+        </form>
+      {% endif -%}
+      {% if let Some(active_title) = title -%}
+        <form class="inline-flex"
+              hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+              hx-target="#invitation-requests-content"
+              hx-swap="innerHTML"
+              hx-indicator="#dashboard-spinner">
+          {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
+          {% if *active_title == crate::templates::dashboard::group::PresenceFilter::Present -%}
+            {% call dashboard::active_table_filter_badge("Present") -%}
+            {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+            {% endcall -%}
+          {% else -%}
+            {% call dashboard::active_table_filter_badge("Missing") -%}
+            {{ dashboard::active_table_filter_remove_button(label = "Remove title filter") -}}
+            {% endcall -%}
+          {% endif -%}
+        </form>
+      {% endif -%}
+      <form class="inline-flex"
+            hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+            hx-target="#invitation-requests-content"
+            hx-swap="innerHTML"
+            hx-indicator="#dashboard-spinner">
+        {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false, include_status = false) -}}
+        <input type="hidden" name="status" value="all">
+        <button type="submit" class="btn-primary-outline btn-mini h-7!">Reset all</button>
+      </form>
+    </div>
+    {# End active filters -#}
+  {% endif -%}
 
   {# Header -#}
   <div class="flex flex-col lg:flex-row lg:items-center justify-between my-5">
@@ -65,12 +162,47 @@
       <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
              role="rowgroup">
         <tr>
-          <th scope="col" class="px-3 xl:px-5 py-3">Requester</th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Position</th>
-          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3 w-40">Requested</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-48">Status</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-40">Reviewed</th>
-          <th scope="col" class="px-3 xl:px-5 py-3 w-24 text-right">Actions</th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5">
+            <span class="whitespace-nowrap">Requester</span>
+          </th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5">
+            {% call dashboard::table_filter_menu(id = "invitation-requests-position-filter", label = "Position", is_active = title.is_some()) -%}
+            <div class="py-2">
+              <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+                    hx-target="#invitation-requests-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_title = false) -}}
+                {{ dashboard::table_filter_option_button(label = "All", name = "title", value = "", is_active = title.is_none() , is_clear_option = true) -}}
+                {{ dashboard::table_filter_option_button(label = "Present", name = "title", value = "present", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Present) ) -}}
+                {{ dashboard::table_filter_option_button(label = "Missing", name = "title", value = "missing", is_active = title == Some(crate::templates::dashboard::group::PresenceFilter::Missing) ) -}}
+              </form>
+            </div>
+            {% endcall -%}
+          </th>
+          <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-1.5 w-40">
+            <span class="whitespace-nowrap">Requested</span>
+          </th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5 w-48">
+            {% call dashboard::table_filter_menu(id = "invitation-requests-status-filter", label = "Status", is_active = status != crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All) -%}
+            <div class="py-2">
+              <form hx-get="/dashboard/group/events/{{ event.event_id }}/invitation-requests"
+                    hx-target="#invitation-requests-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#dashboard-spinner">
+                {{ invitation_requests_table_state_inputs(limit, sort, title, status, ts_query, include_status = false) -}}
+                {{ dashboard::table_filter_option_button(label = "All", name = "status", value = "all", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::All, clear_value = "all") -}}
+                {{ dashboard::table_filter_option_button(label = "Pending", name = "status", value = "pending", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Pending, clear_value = "all") -}}
+                {{ dashboard::table_filter_option_button(label = "Accepted", name = "status", value = "accepted", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Accepted, clear_value = "all") -}}
+                {{ dashboard::table_filter_option_button(label = "Rejected", name = "status", value = "rejected", is_active = status == crate::templates::dashboard::group::invitation_requests::InvitationRequestsStatusFilter::Rejected, clear_value = "all") -}}
+              </form>
+            </div>
+            {% endcall -%}
+          </th>
+          <th scope="col" class="hidden 2xl:table-cell px-3 xl:px-5 py-1.5 w-40">Reviewed</th>
+          <th scope="col" class="px-3 xl:px-5 py-1.5 w-24 text-right">
+            <span class="sr-only">Actions</span>
+          </th>
         </tr>
       </thead>
       {# End table header -#}
@@ -78,14 +210,22 @@
         {% if invitation_requests.is_empty() -%}
           {# Empty state -#}
           <tr class="bg-white border-b border-stone-200">
-            <td class="xl:hidden px-8 py-12 text-center" colspan="4">
+            <td class="xl:hidden px-8 py-12 text-center" colspan="3">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
                 <span class="text-stone-500">No invitation requests found.</span>
               {% endif -%}
             </td>
-            <td class="hidden xl:table-cell px-8 py-12 text-center" colspan="6">
+            <td class="hidden xl:table-cell 2xl:hidden px-8 py-12 text-center"
+                colspan="4">
+              {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
+                {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
+              {% else -%}
+                <span class="text-stone-500">No invitation requests found.</span>
+              {% endif -%}
+            </td>
+            <td class="hidden 2xl:table-cell px-8 py-12 text-center" colspan="6">
               {% if ts_query.is_some() && !ts_query.as_ref().unwrap().is_empty() -%}
                 {% include "dashboard/placeholders/group_invitation_requests_no_results.html" -%}
               {% else -%}
@@ -100,28 +240,17 @@
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Requester -#}
               <td class="px-3 xl:px-5 py-4 max-w-0">
-                <div class="flex items-center space-x-5">
-                  <logo-image
-                  {% if let Some(photo_url) = &request.photo_url -%}
-                    image-url="{{ photo_url }}"
-                  {% endif -%}
-                  size="size-10" placeholder="{{ self::user_initials(request.name.as_deref() , request.username.as_str()) }}">
-                  </logo-image>
-                  <div class="min-w-0">
-                    <div class="font-medium text-stone-900 truncate mb-1">{{ request.name|assigned_or(request.username) }}</div>
-                    {% if request.name.is_some() -%}
-                      <div class="text-xs text-stone-600 truncate">{{ request.username }}</div>
-                    {% endif -%}
-                  </div>
-                </div>
+                {% call dashboard::user_profile_modal_trigger(request.user, self::user_initials(request.user.name.as_deref() , request.user.username.as_str())) -%}
+                <div class="font-medium text-stone-900 truncate mb-1 group-hover:text-primary-600">{{ request.user.name.as_deref() |assigned_or(request.user.username) }}</div>
+                {% endcall -%}
               </td>
               {# End requester -#}
 
               {# Position -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-0">
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 max-w-0">
                 <div class="flex flex-col space-y-1">
-                  <div class="font-medium text-stone-900 truncate">{{ request.company|assigned_or("-") }}</div>
-                  {% if let Some(title) = &request.title -%}
+                  <div class="font-medium text-stone-900 truncate">{{ request.user.company.as_deref() |assigned_or("-") }}</div>
+                  {% if let Some(title) = &request.user.title -%}
                     <div class="text-xs text-stone-600 truncate">{{ title }}</div>
                   {% endif -%}
                 </div>
@@ -153,7 +282,7 @@
               {# End status -#}
 
               {# Reviewed -#}
-              <td class="px-3 xl:px-5 py-4 whitespace-nowrap w-40">
+              <td class="hidden 2xl:table-cell px-3 xl:px-5 py-4 whitespace-nowrap w-40">
                 {% if let Some(reviewed_at) = &request.reviewed_at -%}
                   {{ reviewed_at.format("%b %d, %Y") }}
                 {% else -%}
@@ -168,10 +297,10 @@
                   <div class="flex justify-end">
                     <div class="group relative">
                       <button type="button"
-                              data-event-id="invitation-request-{{ request.user_id }}"
-                              aria-label="Open actions menu for {{ request.name|assigned_or(request.username) }}"
+                              data-event-id="invitation-request-{{ request.user.user_id }}"
+                              aria-label="Open actions menu for {{ request.user.name.as_deref() |assigned_or(request.user.username) }}"
                               aria-haspopup="menu"
-                              aria-controls="dropdown-actions-invitation-request-{{ request.user_id }}"
+                              aria-controls="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                               class="btn-actions btn-tertiary p-2 group-has-[.dropdown:not(.hidden)]:bg-stone-50
                                      {% if !can_manage_events -%}
                                        opacity-50 cursor-not-allowed
@@ -183,14 +312,14 @@
                       </button>
 
                       {# Dropdown actions -#}
-                      <div id="dropdown-actions-invitation-request-{{ request.user_id }}"
+                      <div id="dropdown-actions-invitation-request-{{ request.user.user_id }}"
                            data-event-actions-dropdown
                            class="dropdown absolute hidden z-10 end-0 top-8 w-[200px] bg-white divide-y divide-stone-100 rounded-lg shadow border border-stone-200">
                         <ul class="py-2 text-sm text-stone-700" role="menu">
                           <li>
                             <button type="button"
                                     class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation-request/accept"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/accept"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     data-invitation-request-action
@@ -203,10 +332,10 @@
                             </button>
                           </li>
                           <li>
-                            <button id="reject-invitation-request-{{ request.user_id }}"
+                            <button id="reject-invitation-request-{{ request.user.user_id }}"
                                     type="button"
                                     class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100"
-                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user_id }}/invitation-request/reject"
+                                    hx-put="/dashboard/group/events/{{ event.event_id }}/attendees/{{ request.user.user_id }}/invitation-request/reject"
                                     hx-indicator="#dashboard-spinner"
                                     hx-disabled-elt="this"
                                     hx-trigger="confirmed"
@@ -247,3 +376,42 @@
   {{ pagination::navigation_links(links = navigation_links, hx_target = "#invitation-requests-content", hx_indicator = "#dashboard-spinner") }}
 {% endif -%}
 {# End pagination -#}
+
+{# Invitation request table state fields for filter, sort, and search forms. #}
+{% macro invitation_requests_table_state_inputs(
+  limit,
+  sort,
+  title,
+  status,
+  ts_query,
+  include_limit = true,
+  include_sort = true,
+  include_title = true,
+  include_status = true,
+  include_ts_query = true
+  ) -%}
+  {% if include_limit -%}
+    {% if let Some(limit) = limit -%}
+      <input type="hidden" name="limit" value="{{ limit }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_sort -%}
+    {% if let Some(sort) = sort -%}
+      <input type="hidden" name="sort" value="{{ sort }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_title -%}
+    {% if let Some(title) = title -%}
+      <input type="hidden" name="title" value="{{ title }}">
+    {% endif -%}
+  {% endif -%}
+  {% if include_status -%}
+    <input type="hidden" name="status" value="{{ status }}">
+  {% endif -%}
+  {% if include_ts_query -%}
+    {% if let Some(ts_query) = &ts_query -%}
+      <input type="hidden" name="ts_query" value="{{ ts_query }}">
+    {% endif -%}
+  {% endif -%}
+{% endmacro invitation_requests_table_state_inputs -%}
+{# End invitation request table state fields. #}

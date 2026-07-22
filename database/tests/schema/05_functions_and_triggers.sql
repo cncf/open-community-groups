@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(298);
+select plan(300);
 
 -- ============================================================================
 -- VARIABLES
@@ -246,6 +246,7 @@ select has_function('list_user_session_proposals_for_cfs_event', array['uuid', '
 select has_function('manual_check_in_event', array['uuid', 'uuid', 'uuid', 'uuid']::name[]);
 select has_function('mark_google_meet_recording_published', array['uuid', 'timestamp with time zone', 'text', 'text']::name[]);
 select has_function('mark_stale_google_meet_recording_publish_claims_unknown', array['bigint']::name[]);
+select has_function('manual_requeue_notifications', array['uuid[]', 'text']::name[]);
 select has_function('mark_stale_meeting_auto_end_checks_unknown', array['bigint']::name[]);
 select has_function('mark_stale_meeting_syncs_unknown', array['bigint']::name[]);
 select has_function('mark_stale_processing_notifications_unknown', array['bigint']::name[]);
@@ -278,6 +279,7 @@ select has_function('release_google_meet_recording_publish_claim', array['uuid',
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
+select has_function('requeue_notification', array['uuid', 'text', 'bigint', 'bigint', 'integer']::name[]);
 select has_function('resolve_event_custom_notification_recipient_ids', array['uuid', 'uuid', 'text', 'uuid[]']::name[]);
 select has_function('request_group_member_phone', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('resolve_unique_username', array['text', 'uuid']::name[]);

@@ -7,6 +7,7 @@ import {
   getAttendButton,
   getLeaveButton,
   navigateToEvent,
+  restoreSeededWaitlistEvent,
   waitForAttendanceState,
 } from "../../utils.js";
 
@@ -14,9 +15,16 @@ const WAITLIST_EVENT_NAME = "Full Event With Waitlist";
 const WAITLIST_EVENT_SLUG = "alpha-waitlist-lab";
 
 test.describe("event waitlist", () => {
+  test.beforeEach(async ({ member2Page, organizerGroupPage }) => {
+    await restoreSeededWaitlistEvent(member2Page, organizerGroupPage);
+  });
+
+  test.afterEach(async ({ member2Page, organizerGroupPage }) => {
+    await restoreSeededWaitlistEvent(member2Page, organizerGroupPage);
+  });
+
   test("member can join and leave the waitlist from the public event page", async ({
     member2Page,
-    organizerGroupPage,
   }) => {
     // Load the full event where members can join the waitlist.
     await navigateToEvent(

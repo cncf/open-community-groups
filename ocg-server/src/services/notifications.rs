@@ -44,20 +44,29 @@ pub(crate) mod payloads;
 #[cfg(test)]
 mod tests;
 
-/// Number of concurrent workers that deliver notifications.
-const NUM_DELIVERY_WORKERS: usize = 2;
-
-/// Number of workers that recover stale notification delivery claims.
-const NUM_DELIVERY_RECOVERY_WORKERS: usize = 1;
-
-/// Number of workers that enqueue due notifications.
-const NUM_ENQUEUE_WORKERS: usize = 1;
+/// Maximum number of delivery claims before a retryable failure becomes terminal.
+const DELIVERY_MAX_CLAIMS: usize = 10;
 
 /// Time after which a claimed notification requires manual delivery review.
 const DELIVERY_PROCESSING_TIMEOUT: Duration = Duration::from_mins(15);
 
+/// Initial delay before requeueing a retryable notification delivery failure.
+const DELIVERY_REQUEUE_BASE_DELAY: Duration = Duration::from_mins(1);
+
+/// Maximum delay before requeueing a retryable notification delivery failure.
+const DELIVERY_REQUEUE_MAX_DELAY: Duration = Duration::from_mins(30);
+
 /// Maximum number of attempts for one notification delivery claim.
 const DELIVERY_SEND_MAX_ATTEMPTS: usize = 3;
+
+/// Number of workers that recover stale notification delivery claims.
+const NUM_DELIVERY_RECOVERY_WORKERS: usize = 1;
+
+/// Number of concurrent workers that deliver notifications.
+const NUM_DELIVERY_WORKERS: usize = 2;
+
+/// Number of workers that enqueue due notifications.
+const NUM_ENQUEUE_WORKERS: usize = 1;
 
 /// Time to wait after a delivery error before retrying.
 const PAUSE_ON_DELIVERY_ERROR: Duration = Duration::from_secs(10);
@@ -319,7 +328,7 @@ impl DeliveryWorker {
         };
 
         // Prepare and send the notification
-        let err = match Self::prepare_content(&notification) {
+        match Self::prepare_content(&notification) {
             Ok((subject, body)) => match self
                 .send_email_with_retries(
                     &notification.email,
@@ -329,14 +338,15 @@ impl DeliveryWorker {
                 )
                 .await
             {
-                Ok(()) => None,
-                Err(err) => Some(err.to_string()),
+                Ok(()) => self.db.update_notification(&notification, None).await?,
+                Err(err) => self.record_delivery_error(&notification, err).await?,
             },
-            Err(err) => Some(err.to_string()),
-        };
-
-        // Persist the attempt outcome
-        self.db.update_notification(&notification, err).await?;
+            Err(err) => {
+                self.db
+                    .update_notification(&notification, Some(err.to_string()))
+                    .await?;
+            }
+        }
 
         Ok(true)
     }
@@ -529,6 +539,28 @@ impl DeliveryWorker {
         };
 
         Ok((subject, body))
+    }
+
+    /// Record a failed delivery attempt, requeueing retryable errors.
+    async fn record_delivery_error(
+        &self,
+        notification: &Notification,
+        err: anyhow::Error,
+    ) -> Result<()> {
+        let error = err.to_string();
+        if is_retryable_delivery_error(&err) {
+            self.db
+                .requeue_notification(
+                    notification,
+                    &error,
+                    DELIVERY_REQUEUE_BASE_DELAY,
+                    DELIVERY_REQUEUE_MAX_DELAY,
+                    DELIVERY_MAX_CLAIMS,
+                )
+                .await
+        } else {
+            self.db.update_notification(notification, Some(error)).await
+        }
     }
 
     /// Send an email to the specified address with the given subject and body.

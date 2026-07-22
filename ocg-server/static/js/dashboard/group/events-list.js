@@ -15,6 +15,7 @@ const EVENTS_LIST_PAGE_SELECTOR = "[data-events-list-page]";
 const EVENT_ACTION_DROPDOWN_SELECTOR = "[data-event-actions-dropdown]";
 const EVENT_ACTIONS_BUTTON_SELECTOR = ".btn-actions";
 const INVITATION_REQUEST_ACTION_SELECTOR = "[data-invitation-request-action]";
+const TABLE_FILTER_MENU_SELECTOR = "[data-table-filter-menu]";
 
 const closeDropdowns = (root, exceptDropdown = null) => {
   root.querySelectorAll?.(`${EVENT_ACTION_DROPDOWN_SELECTOR}:not(.hidden)`).forEach((dropdown) => {
@@ -90,6 +91,14 @@ const handleInvitationRequestAfterRequest = (button, event) => {
   });
 };
 
+const closeTableFilterMenus = (exceptMenu = null) => {
+  document.querySelectorAll(`${TABLE_FILTER_MENU_SELECTOR}[open]`).forEach((menu) => {
+    if (menu !== exceptMenu) {
+      menu.open = false;
+    }
+  });
+};
+
 /**
  * Closes open event action dropdowns when clicking outside all event lists.
  * @returns {void}
@@ -101,6 +110,14 @@ const bindDocumentDropdownDismissHandler = () => {
 
   documentDismissHandlerBound = true;
   document.addEventListener("click", (event) => {
+    const tableFilterMenu = closestElement(event.target, TABLE_FILTER_MENU_SELECTOR);
+    if (tableFilterMenu) {
+      closeTableFilterMenus(tableFilterMenu);
+      return;
+    }
+
+    closeTableFilterMenus();
+
     if (
       closestElement(event.target, EVENTS_LIST_PAGE_SELECTOR) ||
       closestElement(event.target, EVENT_ACTION_DROPDOWN_SELECTOR) ||
@@ -110,6 +127,11 @@ const bindDocumentDropdownDismissHandler = () => {
     }
 
     closeDropdowns(document);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeTableFilterMenus();
+    }
   });
 };
 
@@ -179,4 +201,5 @@ const initializeEventsListPageRoots = (root = document) => {
   initializeMatchingRoots(root, EVENTS_LIST_PAGE_SELECTOR, initializeEventsListPage);
 };
 
+bindDocumentDropdownDismissHandler();
 initializeOnReadyAndHtmxLoad(initializeEventsListPageRoots);

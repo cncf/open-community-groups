@@ -748,6 +748,7 @@ input:placeholder-shown {
 .icon-eraser { --icon-url: url('/static/images/icons/eraser.svg'); }
 .icon-eye { --icon-url: url('/static/images/icons/eye.svg'); }
 .icon-caret-up { --icon-url: url('/static/images/icons/caret_up.svg'); }
+.icon-caret-up-filled { --icon-url: url('/static/images/icons/caret_up_filled.svg'); }
 .icon-charts { --icon-url: url('/static/images/icons/charts.svg'); }
 .icon-check { --icon-url: url('/static/images/icons/check.svg'); }
 .icon-check-in { --icon-url: url('/static/images/icons/check_in.svg'); }
@@ -806,6 +807,7 @@ input:placeholder-shown {
 .icon-presentation { --icon-url: url('/static/images/icons/presentation.svg'); }
 .icon-proposal { --icon-url: url('/static/images/icons/proposal.svg'); }
 .icon-prev { --icon-url: url('/static/images/icons/prev.svg'); }
+.icon-qr-code { --icon-url: url('/static/images/icons/qr_code.svg'); }
 .icon-question { --icon-url: url('/static/images/icons/question.svg'); }
 .icon-question-mark { --icon-url: url('/static/images/icons/question_mark.svg'); }
 .icon-recording { --icon-url: url('/static/images/icons/recording.svg'); }

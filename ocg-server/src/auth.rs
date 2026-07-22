@@ -653,8 +653,28 @@ pub(crate) struct User {
     pub youtube_url: Option<String>,
 }
 
+impl User {
+    /// Returns whether the user has completed the profile fields useful to organizers.
+    pub(crate) fn is_profile_complete(&self) -> bool {
+        profile_field_is_filled(self.title.as_deref())
+            && profile_field_is_filled(self.bio.as_deref())
+            && [
+                self.linkedin_url.as_deref(),
+                self.twitter_url.as_deref(),
+                self.website_url.as_deref(),
+            ]
+            .into_iter()
+            .any(profile_field_is_filled)
+    }
+}
+
 fn default_true() -> bool {
     true
+}
+
+/// Returns whether an optional profile field has non-whitespace content.
+fn profile_field_is_filled(value: Option<&str>) -> bool {
+    value.is_some_and(|value| !value.trim().is_empty())
 }
 
 impl axum_login::AuthUser for User {

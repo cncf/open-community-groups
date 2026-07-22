@@ -554,6 +554,21 @@ insert into event (
     1,
     true,
     true
+), (
+    '55555555-5555-5555-5555-555555555526',
+    'Dashboard Waitlist Table Lab',
+    'alpha-dashboard-waitlist-lab',
+    'Future event dedicated to dashboard waitlist table coverage.',
+    'UTC',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    now() + interval '59 days',
+    now() + interval '59 days 2 hours',
+    1,
+    true,
+    true
 );
 
 -- Published test event for direct event-page badge coverage.
@@ -1038,6 +1053,26 @@ insert into "user" (
     'f7a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a2'
 );
 
+update "user"
+set
+    bio = 'Member Two profile for dashboard modal coverage.',
+    company = 'Platform Ops Lab',
+    github_url = 'https://github.com/e2e-member-2',
+    provider = '{"linuxfoundation": {"username": "e2e-member-2-lf", "issuer": "private-member-issuer", "subject": "private-member-subject"}}'::jsonb,
+    title = 'Member Experience Engineer',
+    website_url = 'https://example.com/e2e-member-2'
+where user_id = '77777777-7777-7777-7777-777777777706';
+
+update "user"
+set
+    bio = 'Pending One profile for invitation request modal coverage.',
+    company = 'Approval Queue',
+    github_url = 'https://github.com/e2e-pending-1',
+    provider = '{"linuxfoundation": {"username": "e2e-pending-1-lf", "issuer": "private-pending-issuer", "subject": "private-pending-subject"}}'::jsonb,
+    title = 'Community Applicant',
+    website_url = 'https://example.com/e2e-pending-1'
+where user_id = '77777777-7777-7777-7777-777777777707';
+
 -- ============================================================================
 -- ALLIANCE TEAM
 -- Accepted roles and pending invitations for alliance dashboards
@@ -1448,6 +1483,9 @@ values (
     '55555555-5555-5555-5555-555555555521',
     '77777777-7777-7777-7777-777777777703'
 ), (
+    '55555555-5555-5555-5555-555555555526',
+    '77777777-7777-7777-7777-777777777703'
+), (
     '55555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777705'
 ), (
@@ -1462,6 +1500,12 @@ values (
 ), (
     '55555555-5555-5555-5555-555555555523',
     '77777777-7777-7777-7777-777777777712'
+);
+
+insert into event_waitlist (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555526',
+    '77777777-7777-7777-7777-777777777706'
 );
 
 insert into event_attendee (event_id, user_id, manually_invited, status)

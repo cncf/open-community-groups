@@ -157,6 +157,7 @@ export const TEST_EVENT_IDS = {
     two: "55555555-5555-5555-5555-555555555502",
     cfsSummit: "55555555-5555-5555-5555-555555555519",
     waitlistLab: "55555555-5555-5555-5555-555555555521",
+    dashboardWaitlist: "55555555-5555-5555-5555-555555555526",
   },
 };
 
@@ -640,6 +641,67 @@ export const navigateToEvent = async (
  */
 export const navigateToPath = async (page, path) => {
   await navigateToUrl(page, buildUrl(path));
+};
+
+/**
+ * Restores the shared waitlist lab event to its seeded full-event state.
+ */
+export const restoreSeededWaitlistEvent = async (memberPage, organizerPage) => {
+  if (memberPage.isClosed() || organizerPage.isClosed()) {
+    return;
+  }
+
+  // Remove member2 from the shared waitlist event before depending on capacity.
+  await navigateToEvent(
+    memberPage,
+    TEST_COMMUNITY_NAME,
+    TEST_GROUP_SLUGS.community1.alpha,
+    "alpha-waitlist-lab",
+  );
+  await waitForAttendanceState(memberPage);
+
+  if (await getLeaveButton(memberPage).isVisible()) {
+    await getLeaveButton(memberPage).click();
+    await expect(memberPage.getByRole("button", { name: "Yes" })).toBeVisible();
+    await Promise.all([
+      memberPage.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response
+            .url()
+            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/leave`) &&
+          response.ok(),
+      ),
+      memberPage.getByRole("button", { name: "Yes" }).click(),
+    ]);
+  }
+
+  // Restore organizer attendance so the one-seat event is full again.
+  await navigateToEvent(
+    organizerPage,
+    TEST_COMMUNITY_NAME,
+    TEST_GROUP_SLUGS.community1.alpha,
+    "alpha-waitlist-lab",
+  );
+  await waitForAttendanceState(organizerPage);
+
+  if (await getAttendButton(organizerPage).isVisible()) {
+    await expect(getAttendButton(organizerPage)).toContainText("Attend event");
+    await Promise.all([
+      organizerPage.waitForResponse(
+        (response) =>
+          response.request().method() === "POST" &&
+          response
+            .url()
+            .includes(`/event/${TEST_EVENT_IDS.alpha.waitlistLab}/attend`) &&
+          response.ok(),
+      ),
+      getAttendButton(organizerPage).click(),
+    ]);
+    await expect(getLeaveButton(organizerPage)).toContainText(
+      "Cancel attendance",
+    );
+  }
 };
 
 /**

@@ -15,6 +15,7 @@ import {
 } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
+import { showProfileCompletionFeedbackAlert } from "/static/js/common/profile-completion-alert.js";
 import { collectQuestionAnswers as collectQuestionAnswersFromForm } from "/static/js/common/question-answers.js";
 import { parseJsonText } from "/static/js/common/utils.js";
 
@@ -69,21 +70,26 @@ const QUESTIONS_CONTINUE_ACTION_TICKET = "ticket";
 const PENDING_ATTENDANCE_CHECK_RESPONSE = "__ocgPendingAttendanceCheckResponse";
 const AVAILABILITY_REFRESH_ERROR_MESSAGE =
   "Something went wrong loading event availability. The page is showing the last available event details.";
+const showProfileAwareInfoAlert = (trigger, message) => {
+  if (!showProfileCompletionFeedbackAlert({ trigger, message })) {
+    showInfoAlert(message);
+  }
+};
 const PRIMARY_ACTION_CONFIG = {
   "attend-btn": {
     errorMessage: "Something went wrong registering for this event. Please try again later.",
-    onSuccess: (response) => {
+    onSuccess: (response, target) => {
       if (response?.redirect_url) {
         window.location.assign(response.redirect_url);
         return false;
       }
 
       if (response?.status === "waitlisted") {
-        showInfoAlert("You have joined the waiting list for this event.");
+        showProfileAwareInfoAlert(target, "You have joined the waiting list for this event.");
       } else if (response?.status === "pending-approval") {
-        showInfoAlert("Your invitation request has been sent to the organizers.");
+        showProfileAwareInfoAlert(target, "Your invitation request has been sent to the organizers.");
       } else if (response?.status !== "pending-payment") {
-        showInfoAlert("You have successfully registered for this event.");
+        showProfileAwareInfoAlert(target, "You have successfully registered for this event.");
       }
 
       return true;
@@ -637,7 +643,7 @@ const handlePrimaryActionAfterRequest = (event) => {
   }
 
   const response = parseJsonResponse(xhr);
-  if (config.onSuccess(response) !== false) {
+  if (config.onSuccess(response, target) !== false) {
     refreshAvailabilityAndRenderAttendance(container);
   }
 };
@@ -723,7 +729,7 @@ const handleCheckoutAfterRequest = (event) => {
   }
 
   if (response?.status !== "pending-payment") {
-    showInfoAlert("You have successfully registered for this event.");
+    showProfileAwareInfoAlert(target, "You have successfully registered for this event.");
   }
 
   refreshAvailabilityAndRenderAttendance(container);

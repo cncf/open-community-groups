@@ -378,11 +378,11 @@ export class SponsorsSection extends LitWrapper {
 
         ${
           this.selectedSponsors && this.selectedSponsors.length > 0
-            ? html`<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2 w-full">
+            ? html`<div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4 mt-2 w-full">
                 ${this.selectedSponsors.map(
                   (s, i) =>
                     html`<div
-                        class="inline-flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
+                        class="inline-flex min-w-0 items-center gap-3 rounded-xl border border-stone-200 bg-white p-4 w-full"
                       >
                         <div
                           class="relative flex items-center justify-center size-15 md:size-18 shrink-0 rounded-lg bg-white border border-stone-200 overflow-hidden"

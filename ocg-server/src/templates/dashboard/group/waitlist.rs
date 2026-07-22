@@ -8,10 +8,11 @@ use serde_with::skip_serializing_none;
 use uuid::Uuid;
 
 use crate::{
-    templates::{dashboard, helpers::user_initials},
+    templates::{dashboard, dashboard::group::PresenceFilter, helpers::user_initials},
     types::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
+        user::User,
     },
     validation::{MAX_LEN_M, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
 };
@@ -39,6 +40,10 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Sort option used to order waitlist entries.
+    pub sort: Option<WaitlistSort>,
+    /// User title presence filter.
+    pub title: Option<PresenceFilter>,
     /// Text search query used to filter waitlist entries.
     pub ts_query: Option<String>,
 }
@@ -51,21 +56,27 @@ pub struct WaitlistEntry {
     /// Waiting list creation time.
     #[serde(with = "chrono::serde::ts_seconds")]
     pub created_at: DateTime<Utc>,
-    /// User id.
-    pub user_id: Uuid,
-    /// Username.
-    pub username: String,
+    /// Public profile payload for the waitlisted user.
+    pub user: User,
     /// Position in the full event waitlist.
     pub waitlist_position: usize,
+}
 
-    /// Company the user represents.
-    pub company: Option<String>,
-    /// Full name.
-    pub name: Option<String>,
-    /// URL to user's avatar.
-    pub photo_url: Option<String>,
-    /// Title held by the user.
-    pub title: Option<String>,
+/// Supported waitlist sort options.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, strum::Display, strum::EnumString,
+)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum WaitlistSort {
+    /// Sort by waitlist creation time ascending.
+    CreatedAtAsc,
+    /// Sort by waitlist creation time descending.
+    CreatedAtDesc,
+    /// Sort by waitlisted user display name ascending.
+    NameAsc,
+    /// Sort by waitlisted user display name descending.
+    NameDesc,
 }
 
 /// Filter parameters for waitlist searches.
@@ -78,12 +89,18 @@ pub(crate) struct WaitlistFilters {
 
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order waitlist entries.
+    #[garde(skip)]
+    pub sort: Option<WaitlistSort>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Search query for waitlist user name, username, email, company, or title.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
@@ -95,12 +112,18 @@ pub(crate) struct WaitlistFilters {
 pub(crate) struct WaitlistListPageFilters {
     /// Number of results per page.
     #[serde(default = "dashboard::default_limit")]
-    #[garde(range(max = MAX_PAGINATION_LIMIT))]
+    #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
     /// Pagination offset for results.
     #[serde(default = "dashboard::default_offset")]
     #[garde(skip)]
     pub offset: Option<usize>,
+    /// Sort option used to order waitlist entries.
+    #[garde(skip)]
+    pub sort: Option<WaitlistSort>,
+    /// User title presence filter.
+    #[garde(skip)]
+    pub title: Option<PresenceFilter>,
     /// Text search query.
     #[garde(custom(trimmed_non_empty_opt), length(max = MAX_LEN_M))]
     pub ts_query: Option<String>,
