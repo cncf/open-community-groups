@@ -42,6 +42,8 @@ pub(crate) struct Config {
     /// HTTP server configuration.
     pub server: HttpServerConfig,
 
+    /// Optional CertDirectory credentials integration settings.
+    pub credentials: Option<CredentialsConfig>,
     /// Meetings configuration.
     pub meetings: Option<MeetingsConfig>,
     /// Payments configuration.
@@ -101,10 +103,23 @@ impl fmt::Debug for Config {
             .field("images", &self.images)
             .field("log", &self.log)
             .field("server", &self.server)
+            .field("credentials", &self.credentials)
             .field("meetings", &self.meetings)
             .field("payments", &self.payments)
             .finish()
     }
+}
+
+/// Optional CertDirectory credentials integration configuration.
+///
+/// When absent, the server uses the production CertDirectory origin
+/// (`https://credentials.certdirectory.io`). For local development against the
+/// staging API, set `base_url` to `https://dev.credentials.certdirectory.io`.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub(crate) struct CredentialsConfig {
+    /// CertDirectory origin (no trailing path). Example:
+    /// `https://dev.credentials.certdirectory.io`.
+    pub base_url: String,
 }
 
 /// Email configuration.
@@ -583,6 +598,7 @@ mod tests {
                 cookie: None,
                 redirect_hosts: None,
             },
+            credentials: None,
             meetings: Some(MeetingsConfig {
                 zoom: Some(MeetingsZoomConfig {
                     account_id: "zoom-account-id".to_string(),

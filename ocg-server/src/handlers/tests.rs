@@ -1456,6 +1456,7 @@ pub(crate) fn test_state_with_server_cfg(
 ) -> router::State {
     router::State {
         activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
+        credentials_client: crate::services::credentials::CredentialsClient::production(),
         db,
         image_storage,
         meetings_cfg: None,
@@ -1509,6 +1510,7 @@ impl TestRouterBuilder {
             activity_tracker,
             db,
             is,
+            crate::services::credentials::CredentialsClient::production(),
             self.meetings_cfg,
             self.payments_cfg,
             payments_manager,

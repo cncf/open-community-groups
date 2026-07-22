@@ -1,5 +1,8 @@
 //! Services modules.
 
+/// External credentials issuer (CertDirectory) client.
+pub(crate) mod credentials;
+
 /// Images service module.
 pub(crate) mod images;
 

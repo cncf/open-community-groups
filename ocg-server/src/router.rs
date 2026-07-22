@@ -37,8 +37,8 @@ use crate::{
         community, event, group, images, meetings, payments, site,
     },
     services::{
-        images::DynImageStorage, notifications::DynNotificationsManager,
-        payments::DynPaymentsManager,
+        credentials::CredentialsClient, images::DynImageStorage,
+        notifications::DynNotificationsManager, payments::DynPaymentsManager,
     },
 };
 
@@ -106,6 +106,8 @@ struct StaticFile;
 pub(crate) struct State {
     /// Activity tracker handle.
     pub activity_tracker: DynActivityTracker,
+    /// CertDirectory credentials HTTP client.
+    pub credentials_client: CredentialsClient,
     /// Database handle.
     pub db: DynDB,
     /// Image storage provider handle.
@@ -135,6 +137,7 @@ pub(crate) async fn setup(
     activity_tracker: DynActivityTracker,
     db: DynDB,
     image_storage: DynImageStorage,
+    credentials_client: CredentialsClient,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
@@ -154,6 +157,7 @@ pub(crate) async fn setup(
     let state = State {
         db: db.clone(),
         activity_tracker,
+        credentials_client,
         image_storage,
         meetings_cfg,
         notifications_manager,

@@ -117,10 +117,19 @@ async fn main() -> Result<()> {
     );
 
     // Serve HTTP requests until a shutdown signal is received
+    let credentials_client = match cfg.credentials.as_ref() {
+        Some(c) => services::credentials::CredentialsClient::new(c.base_url.clone()),
+        None => services::credentials::CredentialsClient::production(),
+    };
+    info!(
+        credentials_base_url = %credentials_client.base_url(),
+        "credentials client configured"
+    );
     run_server(
         activity_tracker,
         db,
         image_storage,
+        credentials_client,
         cfg.meetings.clone(),
         cfg.payments.clone(),
         payments_manager,
@@ -141,6 +150,7 @@ async fn run_server(
     activity_tracker: Arc<ActivityTrackerDB>,
     db: Arc<PgDB>,
     image_storage: DynImageStorage,
+    credentials_client: services::credentials::CredentialsClient,
     meetings_cfg: Option<MeetingsConfig>,
     payments_cfg: Option<PaymentsConfig>,
     payments_manager: DynPaymentsManager,
@@ -152,6 +162,7 @@ async fn run_server(
         activity_tracker,
         db,
         image_storage,
+        credentials_client,
         meetings_cfg,
         payments_cfg,
         payments_manager,

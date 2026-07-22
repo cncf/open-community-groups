@@ -151,6 +151,7 @@
           {{ event_form::tab_option(section = "invitation-requests", label = "Requests") -}}
         {% endif -%}
         {{ event_form::tab_option(section = "waitlist", label = "Waitlist") -}}
+        {{ event_form::tab_option(section = "credentials", label = "Credentials") -}}
       </select>
       <ul class="hidden flex-col gap-1 font-medium xl:flex">
         {{ event_form::tab_button(section = "details", icon = "event", label = "Details", active = true) -}}
@@ -172,6 +173,9 @@
   {% endif -%}
   {% let waitlist_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/waitlist" hx-trigger="click once" hx-target="#waitlist-content" hx-swap="innerHTML" hx-indicator="#waitlist-loading"{%- endlet %}
 {{ event_form::tab_button(section = "waitlist", icon = "waitlist", label = "Waitlist", extra_attrs = waitlist_attrs) -}}
+  {# Reload on every open (not "once") so attendees + status stay fresh when returning. -#}
+  {% let credentials_attrs -%}hx-get="/dashboard/group/events/{{ event.event_id }}/credentials" hx-trigger="click" hx-target="#credentials-content" hx-swap="innerHTML" hx-indicator="#dashboard-spinner"{%- endlet %}
+{{ event_form::tab_button(section = "credentials", icon = "star", label = "Credentials", extra_attrs = credentials_attrs) -}}
 </ul>
 </aside>
 
@@ -1065,6 +1069,21 @@
   </div>
 </div>
 {# End Waitlist Tab -#}
+
+{# Credentials Tab -#}
+<div data-content="credentials"
+     class="hidden min-w-0 px-4 xl:col-start-2 xl:px-0">
+  <div id="credentials-content">
+    {{ dashboard::form_title(title = "Credentials", description = "Issue CertDirectory credentials to event attendees.") -}}
+    <div id="credentials-loading" class="flex items-center justify-center py-12">
+      <div class="flex flex-col items-center space-y-4">
+        {{ ui::spinner(size = "size-10") -}}
+        <div class="text-sm text-stone-500">Loading credentials...</div>
+      </div>
+    </div>
+  </div>
+</div>
+{# End Credentials Tab -#}
 
 {# Form buttons -#}
 <div class="flex flex-wrap items-center justify-end gap-3 mt-6 px-4 xl:col-start-2 xl:px-0">

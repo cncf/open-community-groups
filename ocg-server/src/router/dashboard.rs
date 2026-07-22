@@ -255,6 +255,10 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/events/{event_id}/waitlist",
             get(dashboard::group::waitlist::list_page),
         )
+        .route(
+            "/events/{event_id}/credentials",
+            get(dashboard::group::credentials::tab_page),
+        )
         .route("/logs", get(dashboard::group::logs::list_page))
         .route("/members", get(dashboard::group::members::list_page))
         .route(
@@ -285,6 +289,18 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
         .route(
             "/events/{event_id}/attendees/{user_id}/check-in",
             post(dashboard::group::attendees::manual_check_in),
+        )
+        .route(
+            "/events/{event_id}/attendees/{user_id}/credentials/issue",
+            post(dashboard::group::credentials::issue_one),
+        )
+        .route(
+            "/events/{event_id}/credentials/status",
+            post(dashboard::group::credentials::status),
+        )
+        .route(
+            "/events/{event_id}/credentials/validate",
+            post(dashboard::group::credentials::validate),
         )
         .route(
             "/events/{event_id}/attendees/{user_id}/invitation/cancel",
