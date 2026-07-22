@@ -118,4 +118,17 @@ describe("dashboard group refund recovery", () => {
     );
     expect(document.activeElement).to.equal(document.getElementById("refund-search"));
   });
+
+  it("restores the focused refund filter after a partial swap", () => {
+    // Focus a filter before its form starts HTMX navigation.
+    const root = renderRecoveryFixture();
+    const filterForm = document.getElementById("refund-filters");
+    document.getElementById("refund-view").focus();
+    filterForm.dispatchEvent(new CustomEvent("htmx:configRequest", { bubbles: true }));
+
+    // Replace the form and verify focus moves to the corresponding control.
+    root.innerHTML = '<select id="refund-view"><option>Active</option></select>';
+    dispatchHtmxAfterSwap(root);
+    expect(document.activeElement).to.equal(document.getElementById("refund-view"));
+  });
 });

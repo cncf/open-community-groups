@@ -120,6 +120,10 @@ const configureRefundNavigation = (root, requestTarget) => {
   }
 
   if (requestTarget instanceof HTMLFormElement && requestTarget.matches(REFUND_FILTER_FORM_SELECTOR)) {
+    const focusedFilter = document.activeElement;
+    if (focusedFilter instanceof HTMLElement && requestTarget.contains(focusedFilter) && focusedFilter.id) {
+      root.dataset[REFUND_FOCUS_TARGET_DATA_KEY] = focusedFilter.id;
+    }
     requestTarget.setAttribute("hx-push-url", buildRefundDashboardUrl(requestTarget));
   }
 };

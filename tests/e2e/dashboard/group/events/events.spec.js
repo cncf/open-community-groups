@@ -611,12 +611,29 @@ test.describe("group dashboard events view", () => {
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Open past events after cancellation moves the event out of the upcoming list.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/dashboard/group/events?events_tab=past") &&
+          response.ok(),
+      ),
+      dashboardContent.getByRole("button", { name: "Past events" }).click(),
+    ]);
+
     // Verify the row reflects canceled state and no longer offers cancellation.
+    await expect(eventRow).toBeVisible();
     await expect(eventRow).toContainText("Canceled");
-    await eventRow.locator(".btn-actions").click();
     await expect(eventRow.locator('button[id^="cancel-event-"]')).toHaveCount(
       0,
     );
+    const eventActionsButton = eventRow.locator(".btn-actions");
+    const eventActionsDropdown = eventRow.locator(
+      "[data-event-actions-dropdown]",
+    );
+    await eventActionsButton.click();
+    await expect(eventActionsDropdown).toBeVisible();
 
     // Delete the temporary canceled event to keep the list reusable.
     const deleteButton = eventRow.locator('button[id^="delete-event-"]');

@@ -496,7 +496,7 @@ test.describe("group dashboard attendees tab", () => {
 
     const noResultsMessage = attendeesContent
       .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
-      .filter({ hasText: "No attendees found matching your search." });
+      .filter({ hasText: "No attendees found matching your filters." });
 
     // Verify the filtered empty result message is shown.
     await expect(noResultsMessage.first()).toBeVisible();
@@ -536,9 +536,12 @@ test.describe("group dashboard attendees tab", () => {
       "Upcoming In-Person Event",
       TEST_EVENT_IDS.alpha.one,
     );
-    const attendanceFilter = attendeesContent.getByLabel("Attendance");
+    const attendanceFilter = attendeesContent.getByLabel("Attendance", {
+      exact: true,
+    });
 
     // Select canceled attendance and verify the replacement control keeps focus.
+    await attendanceFilter.focus();
     await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>

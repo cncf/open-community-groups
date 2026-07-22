@@ -804,7 +804,19 @@ test.describe("community dashboard groups view", () => {
     await expect(clearFilterButton).toBeVisible();
 
     // Click the clear-filter control to reset the list.
-    await clearFilterButton.click();
+    await Promise.all([
+      adminCommunityPage.waitForResponse((response) => {
+        const requestUrl = new URL(response.url());
+
+        return (
+          response.request().method() === "GET" &&
+          requestUrl.pathname === "/dashboard/community/groups" &&
+          !requestUrl.searchParams.has("ts_query") &&
+          response.ok()
+        );
+      }),
+      clearFilterButton.click(),
+    ]);
 
     // Verify clearing removes the empty state and restores seeded rows.
     await expect(adminCommunityPage).toHaveURL(
