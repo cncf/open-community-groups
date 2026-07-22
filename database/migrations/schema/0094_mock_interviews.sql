@@ -1,4 +1,4 @@
-create table mock_interview_request (
+create table if not exists mock_interview_request (
     mock_interview_request_id uuid primary key default gen_random_uuid(),
     requester_user_id uuid not null references "user" (user_id) on delete cascade,
     practice_role text not null check (practice_role in ('interviewee', 'both', 'interviewer', 'not_interested')),
@@ -15,13 +15,13 @@ create table mock_interview_request (
     constraint mock_interview_request_notes_check check (notes is null or btrim(notes) <> '')
 );
 
-create index mock_interview_request_requester_user_id_idx
+create index if not exists mock_interview_request_requester_user_id_idx
 on mock_interview_request (requester_user_id, created_at desc);
 
-create index mock_interview_request_status_idx
+create index if not exists mock_interview_request_status_idx
 on mock_interview_request (status, interview_type, location, created_at desc);
 
-create table mock_interview_match (
+create table if not exists mock_interview_match (
     mock_interview_match_id uuid primary key default gen_random_uuid(),
     mock_interview_request_id uuid not null unique references mock_interview_request (mock_interview_request_id) on delete cascade,
     created_by_user_id uuid not null references "user" (user_id),
@@ -43,5 +43,5 @@ create table mock_interview_match (
     constraint mock_interview_match_interviewer_rating_check check (interviewer_rating is null or interviewer_rating between 1 and 5)
 );
 
-create index mock_interview_match_status_idx
+create index if not exists mock_interview_match_status_idx
 on mock_interview_match (status, scheduled_at desc nulls last);

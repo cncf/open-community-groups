@@ -1,4 +1,4 @@
-create table linkedin_blocklist (
+create table if not exists linkedin_blocklist (
     linkedin_subject text primary key,
     blocked_user_id uuid references "user" (user_id) on delete set null,
     blocked_by_user_id uuid references "user" (user_id) on delete set null,

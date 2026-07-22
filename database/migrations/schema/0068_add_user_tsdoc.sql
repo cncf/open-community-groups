@@ -1,6 +1,6 @@
 -- Adds an indexed search document for user profile lookup.
 
-alter table "user" add column tsdoc tsvector not null
+alter table "user" add column if not exists tsdoc tsvector not null
     generated always as (
         setweight(to_tsvector('simple', coalesce(name, '')), 'A') ||
         setweight(to_tsvector('simple', username), 'A') ||
@@ -9,4 +9,4 @@ alter table "user" add column tsdoc tsvector not null
         setweight(to_tsvector('simple', coalesce(title, '')), 'C')
     ) stored;
 
-create index user_tsdoc_idx on "user" using gin (tsdoc);
+create index if not exists user_tsdoc_idx on "user" using gin (tsdoc);

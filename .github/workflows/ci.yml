@@ -170,6 +170,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Install PostgreSQL, pgTAP, and tern clients
         run: |
           sudo apt-get update
@@ -194,6 +196,23 @@ jobs:
       - name: Apply database migrations
         working-directory: ./database/migrations
         run: TERN_CONF=/tmp/ocg-tern-tests.conf ./migrate.sh
+      - name: Verify schema migration compatibility from version 48
+        run: |
+          PGPASSWORD=tests createdb \
+            --host 127.0.0.1 \
+            --port ${{ job.services.postgres.ports[5432] }} \
+            --username tests \
+            ocg_legacy_migration_tests
+          cat >/tmp/ocg-tern-legacy-migration-tests.conf <<EOF
+          [database]
+          host = 127.0.0.1
+          port = ${{ job.services.postgres.ports[5432] }}
+          database = ocg_legacy_migration_tests
+          user = tests
+          password = tests
+          EOF
+          database/tests/schema_migration_compatibility.sh \
+            /tmp/ocg-tern-legacy-migration-tests.conf
       - name: Install pgtap database extension
         run: PGPASSWORD=tests psql -h 127.0.0.1 -p ${{ job.services.postgres.ports[5432] }} -U tests tests -c 'create extension pgtap;'
       - name: Run database tests

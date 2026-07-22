@@ -1,4 +1,4 @@
-create table group_event_integration (
+create table if not exists group_event_integration (
     group_id uuid primary key references "group"(group_id) on delete cascade,
     created_by_user_id uuid not null references "user"(user_id),
     enabled boolean not null default false,
@@ -8,7 +8,7 @@ create table group_event_integration (
     updated_at timestamptz not null default now()
 );
 
-create table group_event_integration_source (
+create table if not exists group_event_integration_source (
     group_event_integration_source_id uuid primary key default gen_random_uuid(),
     group_id uuid not null references "group"(group_id) on delete cascade,
     url text not null,
@@ -18,7 +18,7 @@ create table group_event_integration_source (
     unique (group_id, url)
 );
 
-create table group_event_integration_run (
+create table if not exists group_event_integration_run (
     group_event_integration_run_id uuid primary key default gen_random_uuid(),
     group_id uuid not null references "group"(group_id) on delete cascade,
     started_at timestamptz not null default now(),
@@ -29,7 +29,7 @@ create table group_event_integration_run (
     error_message text
 );
 
-create table group_event_integration_item (
+create table if not exists group_event_integration_item (
     group_event_integration_item_id uuid primary key default gen_random_uuid(),
     group_id uuid not null references "group"(group_id) on delete cascade,
     source_url text not null,
@@ -39,13 +39,13 @@ create table group_event_integration_item (
     unique (group_id, fingerprint)
 );
 
-create index group_event_integration_source_enabled_idx
+create index if not exists group_event_integration_source_enabled_idx
     on group_event_integration_source (group_id)
     where enabled;
-create index group_event_integration_run_group_started_idx
+create index if not exists group_event_integration_run_group_started_idx
     on group_event_integration_run (group_id, started_at desc);
 
-create table partner_integration (
+create table if not exists partner_integration (
     partner_integration_id uuid primary key default gen_random_uuid(),
     alliance_id uuid not null references alliance(alliance_id) on delete cascade,
     name text not null,

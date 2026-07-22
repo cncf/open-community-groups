@@ -5,7 +5,7 @@ alter table landscape_entry
 add constraint landscape_entry_kind_check
 check (kind in ('startup', 'github_project', 'partner_community', 'podcast_lead', 'investor', 'accelerator'));
 
-create table landscape_accelerator_profile (
+create table if not exists landscape_accelerator_profile (
     landscape_entry_id uuid primary key references landscape_entry (landscape_entry_id) on delete cascade,
     application_url text,
     curriculum_url text,

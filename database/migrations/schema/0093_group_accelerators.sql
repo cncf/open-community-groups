@@ -1,4 +1,4 @@
-create table group_accelerator_program (
+create table if not exists group_accelerator_program (
     group_accelerator_program_id uuid primary key default gen_random_uuid(),
     group_id uuid not null references "group" (group_id) on delete cascade,
     created_by uuid not null references "user" (user_id),
@@ -17,10 +17,10 @@ create table group_accelerator_program (
     constraint group_accelerator_program_curriculum_url_check check (curriculum_url is null or btrim(curriculum_url) <> '')
 );
 
-create index group_accelerator_program_group_id_idx
+create index if not exists group_accelerator_program_group_id_idx
 on group_accelerator_program (group_id, active desc, created_at desc);
 
-create table group_accelerator_cohort (
+create table if not exists group_accelerator_cohort (
     group_accelerator_cohort_id uuid primary key default gen_random_uuid(),
     group_accelerator_program_id uuid not null references group_accelerator_program (group_accelerator_program_id) on delete cascade,
     created_by uuid not null references "user" (user_id),
@@ -37,10 +37,10 @@ create table group_accelerator_cohort (
     constraint group_accelerator_cohort_dates_check check (starts_on is null or ends_on is null or starts_on <= ends_on)
 );
 
-create index group_accelerator_cohort_program_id_idx
+create index if not exists group_accelerator_cohort_program_id_idx
 on group_accelerator_cohort (group_accelerator_program_id, status, starts_on desc nulls last);
 
-create table group_accelerator_application (
+create table if not exists group_accelerator_application (
     group_accelerator_application_id uuid primary key default gen_random_uuid(),
     group_accelerator_cohort_id uuid not null references group_accelerator_cohort (group_accelerator_cohort_id) on delete cascade,
     user_id uuid references "user" (user_id) on delete set null,
@@ -64,10 +64,10 @@ create table group_accelerator_application (
     constraint group_accelerator_application_goals_check check (goals is null or btrim(goals) <> '')
 );
 
-create index group_accelerator_application_cohort_id_idx
+create index if not exists group_accelerator_application_cohort_id_idx
 on group_accelerator_application (group_accelerator_cohort_id, status, created_at desc);
 
-create table group_accelerator_member (
+create table if not exists group_accelerator_member (
     group_accelerator_member_id uuid primary key default gen_random_uuid(),
     group_accelerator_cohort_id uuid not null references group_accelerator_cohort (group_accelerator_cohort_id) on delete cascade,
     group_accelerator_application_id uuid references group_accelerator_application (group_accelerator_application_id) on delete set null,
@@ -84,10 +84,10 @@ create table group_accelerator_member (
     unique (group_accelerator_cohort_id, group_accelerator_application_id)
 );
 
-create index group_accelerator_member_cohort_id_idx
+create index if not exists group_accelerator_member_cohort_id_idx
 on group_accelerator_member (group_accelerator_cohort_id, status, created_at desc);
 
-create table group_accelerator_week (
+create table if not exists group_accelerator_week (
     group_accelerator_week_id uuid primary key default gen_random_uuid(),
     group_accelerator_cohort_id uuid not null references group_accelerator_cohort (group_accelerator_cohort_id) on delete cascade,
     created_by uuid not null references "user" (user_id),
@@ -109,10 +109,10 @@ create table group_accelerator_week (
     unique (group_accelerator_cohort_id, week_number)
 );
 
-create index group_accelerator_week_cohort_id_idx
+create index if not exists group_accelerator_week_cohort_id_idx
 on group_accelerator_week (group_accelerator_cohort_id, week_number);
 
-create table group_accelerator_weekly_update (
+create table if not exists group_accelerator_weekly_update (
     group_accelerator_weekly_update_id uuid primary key default gen_random_uuid(),
     group_accelerator_member_id uuid not null references group_accelerator_member (group_accelerator_member_id) on delete cascade,
     group_accelerator_week_id uuid not null references group_accelerator_week (group_accelerator_week_id) on delete cascade,
@@ -132,5 +132,5 @@ create table group_accelerator_weekly_update (
     unique (group_accelerator_member_id, group_accelerator_week_id)
 );
 
-create index group_accelerator_weekly_update_week_id_idx
+create index if not exists group_accelerator_weekly_update_week_id_idx
 on group_accelerator_weekly_update (group_accelerator_week_id, status, created_at desc);

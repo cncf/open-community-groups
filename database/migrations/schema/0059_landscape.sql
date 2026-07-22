@@ -1,4 +1,4 @@
-create table landscape_entry (
+create table if not exists landscape_entry (
     landscape_entry_id uuid default gen_random_uuid() primary key,
     alliance_id uuid not null references alliance (alliance_id) on delete cascade,
     added_by_user_id uuid not null references "user" (user_id) on delete cascade,
@@ -18,14 +18,14 @@ create table landscape_entry (
     unique (alliance_id, slug)
 );
 
-create index landscape_entry_alliance_published_created_at_idx
+create index if not exists landscape_entry_alliance_published_created_at_idx
 on landscape_entry (alliance_id, published, created_at desc);
 
-create index landscape_entry_published_created_at_idx
+create index if not exists landscape_entry_published_created_at_idx
 on landscape_entry (published, created_at desc);
 
-create index landscape_entry_kind_idx
+create index if not exists landscape_entry_kind_idx
 on landscape_entry (kind);
 
-create index landscape_entry_tags_idx
+create index if not exists landscape_entry_tags_idx
 on landscape_entry using gin (tags);

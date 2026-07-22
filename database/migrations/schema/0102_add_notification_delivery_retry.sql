@@ -1,15 +1,16 @@
 -- Add durable notification delivery retry scheduling.
 
 alter table notification
-    add column next_delivery_attempt_at timestamptz,
+    add column if not exists next_delivery_attempt_at timestamptz,
+    drop constraint if exists notification_next_delivery_attempt_at_chk,
     add constraint notification_next_delivery_attempt_at_chk check (
         next_delivery_attempt_at is null
         or delivery_status = 'pending'
     );
 
-drop index notification_not_processed_idx;
+drop index if exists notification_not_processed_idx;
 
-create index notification_not_processed_idx on notification (
+create index if not exists notification_not_processed_idx on notification (
     created_at,
     next_delivery_attempt_at,
     notification_id

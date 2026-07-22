@@ -1,2 +1,2 @@
 alter table "group"
-    add column event_defaults jsonb;
+    add column if not exists event_defaults jsonb;

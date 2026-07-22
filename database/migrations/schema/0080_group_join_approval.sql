@@ -1,7 +1,7 @@
 alter table "group"
-    add column membership_approval_required boolean default false not null;
+    add column if not exists membership_approval_required boolean default false not null;
 
-create table group_join_request (
+create table if not exists group_join_request (
     group_id uuid not null references "group" (group_id) on delete cascade,
     user_id uuid not null references "user" (user_id) on delete cascade,
     status text default 'pending' not null,
@@ -16,5 +16,5 @@ create table group_join_request (
     )
 );
 
-create index group_join_request_group_status_created_at_idx
+create index if not exists group_join_request_group_status_created_at_idx
 on group_join_request (group_id, status, created_at desc);
