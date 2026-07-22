@@ -63,4 +63,18 @@ describe("dashboard macros template", () => {
     expect(template).to.include('<span class="font-semibold text-stone-900">{{ title }}:</span>');
     expect(template).to.include("<span>{{ label }}</span>");
   });
+
+  it("renders shared refund review modal contracts", async () => {
+    // Load the dashboard macros template before checking refund review markup.
+    const template = normalizeWhitespace(await loadTemplate());
+
+    // Verify decision modals share accessible, form, context, and note contracts.
+    expect(template).to.include("macro refund_review_modal");
+    expect(template).to.include('id="{{ id_prefix }}-modal"');
+    expect(template).to.include('aria-describedby="{{ id_prefix }}-modal-description"');
+    expect(template).to.include('id="{{ id_prefix }}-form"');
+    expect(template).to.include('name="review_note"');
+    expect(template).to.include("{% if show_reason -%}");
+    expect(template).to.include("Review note (optional)");
+  });
 });

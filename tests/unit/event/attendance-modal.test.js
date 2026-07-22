@@ -212,10 +212,33 @@ const renderPaidAttendanceDom = ({
       </details>
       <button
         data-attendance-role="refund-btn"
+        type="button"
         class="hidden"
       >
         <span data-attendance-label>Request refund</span>
       </button>
+      <div
+        id="refund-modal"
+        data-attendance-role="refund-modal"
+        role="dialog"
+        aria-hidden="true"
+        class="hidden"
+      >
+        <div data-attendance-role="refund-modal-overlay"></div>
+        <button data-attendance-role="refund-modal-close" type="button">Close</button>
+        <form data-attendance-role="refund-form">
+          <textarea
+            data-attendance-role="refund-reason-input"
+            name="requested_reason"
+            autofocus
+          ></textarea>
+          <button data-attendance-role="refund-modal-cancel" type="button">Cancel</button>
+          <button data-attendance-role="refund-modal-submit" type="submit">
+            <span data-attendance-role="refund-modal-submit-spinner" class="hidden">Loading</span>
+            <span data-attendance-role="refund-modal-submit-label">Request refund</span>
+          </button>
+        </form>
+      </div>
     </div>
   `;
 
@@ -244,6 +267,29 @@ const renderPaidAttendanceDom = ({
     registrationAnswer: document.querySelector("[data-question-answer]"),
     registrationAnswersInput: document.querySelector(
       '[data-attendance-role="registration-answers-input"]',
+    ),
+    refundButton: document.querySelector('[data-attendance-role="refund-btn"]'),
+    refundForm: document.querySelector('[data-attendance-role="refund-form"]'),
+    refundModal: document.querySelector(
+      '[data-attendance-role="refund-modal"]',
+    ),
+    refundModalCancel: document.querySelector(
+      '[data-attendance-role="refund-modal-cancel"]',
+    ),
+    refundModalOverlay: document.querySelector(
+      '[data-attendance-role="refund-modal-overlay"]',
+    ),
+    refundReasonInput: document.querySelector(
+      '[data-attendance-role="refund-reason-input"]',
+    ),
+    refundSubmitButton: document.querySelector(
+      '[data-attendance-role="refund-modal-submit"]',
+    ),
+    refundSubmitButtonLabel: document.querySelector(
+      '[data-attendance-role="refund-modal-submit-label"]',
+    ),
+    refundSubmitButtonSpinner: document.querySelector(
+      '[data-attendance-role="refund-modal-submit-spinner"]',
     ),
     ticketModal: document.querySelector(
       '[data-attendance-role="ticket-modal"]',
@@ -804,6 +850,152 @@ describe("event attendance paid modal", () => {
     expect(filledEvent.detail.unfilteredParameters.discount_code).to.equal(
       "SPRING25",
     );
+  });
+
+  it("opens and closes the refund modal with focus and keyboard support", async () => {
+    const {
+      checker,
+      refundButton,
+      refundModal,
+      refundModalCancel,
+      refundModalOverlay,
+      refundReasonInput,
+    } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        can_request_refund: true,
+        purchase_amount_minor: 5000,
+        status: "attendee",
+      }),
+    });
+
+    refundButton.click();
+    expect(refundModal.classList.contains("hidden")).to.equal(false);
+    expect(refundModal.getAttribute("aria-hidden")).to.equal("false");
+    expect(document.activeElement).to.equal(refundReasonInput);
+    expect(document.body.style.overflow).to.equal("hidden");
+
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+    );
+    expect(refundModal.classList.contains("hidden")).to.equal(true);
+    expect(document.activeElement).to.equal(refundButton);
+
+    refundButton.click();
+    refundModalOverlay.click();
+    expect(refundModal.classList.contains("hidden")).to.equal(true);
+
+    refundButton.click();
+    refundModalCancel.click();
+    expect(refundModal.classList.contains("hidden")).to.equal(true);
+    expect(document.body.style.overflow).to.equal("");
+  });
+
+  it("omits a blank refund reason and trims a provided reason", async () => {
+    const { checker, refundButton, refundForm, refundReasonInput } =
+      renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        can_request_refund: true,
+        purchase_amount_minor: 5000,
+        status: "attendee",
+      }),
+    });
+    refundButton.click();
+
+    refundReasonInput.value = "   ";
+    const blankEvent = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      detail: {
+        parameters: { requested_reason: "   " },
+        unfilteredParameters: { requested_reason: "   " },
+      },
+    });
+    refundForm.dispatchEvent(blankEvent);
+
+    expect(blankEvent.detail.parameters).to.not.have.property(
+      "requested_reason",
+    );
+    expect(blankEvent.detail.unfilteredParameters).to.not.have.property(
+      "requested_reason",
+    );
+
+    refundReasonInput.value = "  Unable to attend  ";
+    const filledEvent = new CustomEvent("htmx:configRequest", {
+      bubbles: true,
+      detail: {
+        parameters: { requested_reason: "  Unable to attend  " },
+        unfilteredParameters: { requested_reason: "  Unable to attend  " },
+      },
+    });
+    refundForm.dispatchEvent(filledEvent);
+
+    expect(refundReasonInput.value).to.equal("Unable to attend");
+    expect(filledEvent.detail.parameters.requested_reason).to.equal(
+      "Unable to attend",
+    );
+    expect(filledEvent.detail.unfilteredParameters.requested_reason).to.equal(
+      "Unable to attend",
+    );
+  });
+
+  it("preserves the refund reason on failure and closes the modal on success", async () => {
+    const {
+      checker,
+      refundButton,
+      refundForm,
+      refundModal,
+      refundReasonInput,
+      refundSubmitButton,
+      refundSubmitButtonLabel,
+      refundSubmitButtonSpinner,
+    } = renderPaidAttendanceDom();
+    await initializeAttendanceDom();
+
+    dispatchHtmxAfterRequest(checker, {
+      responseText: JSON.stringify({
+        can_request_refund: true,
+        purchase_amount_minor: 5000,
+        status: "attendee",
+      }),
+    });
+    refundButton.click();
+    refundReasonInput.value = "Unable to attend";
+
+    dispatchHtmxBeforeRequest(refundForm);
+    expect(refundSubmitButton.disabled).to.equal(true);
+    expect(refundSubmitButtonSpinner.classList.contains("hidden")).to.equal(
+      false,
+    );
+    expect(refundSubmitButtonLabel.classList.contains("invisible")).to.equal(
+      true,
+    );
+
+    dispatchHtmxAfterRequest(refundForm, {
+      responseText: "refund failed",
+      status: 500,
+    });
+    expect(refundModal.classList.contains("hidden")).to.equal(false);
+    expect(refundReasonInput.value).to.equal("Unable to attend");
+    expect(refundSubmitButton.disabled).to.equal(false);
+    expect(refundSubmitButtonSpinner.classList.contains("hidden")).to.equal(
+      true,
+    );
+
+    dispatchHtmxBeforeRequest(refundForm);
+    dispatchHtmxAfterRequest(refundForm, {
+      responseText: JSON.stringify({ status: "refund-requested" }),
+    });
+    expect(refundModal.classList.contains("hidden")).to.equal(true);
+    expect(refundReasonInput.value).to.equal("");
+    expect(env.current.swal.calls.at(-1)).to.include({
+      icon: "info",
+      text: "Your refund request has been sent to the organizers.",
+    });
   });
 
   it("keeps pending-payment on the main button instead of opening the ticket modal", async () => {

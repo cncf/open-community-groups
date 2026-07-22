@@ -1021,22 +1021,75 @@ test.describe("group dashboard attendees tab", () => {
 
       // Verify pending refunds expose approve and reject actions.
       await rowActionsMenu.locator("summary").click();
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
-        "hx-put",
+      const approveRefundAction = rowActionsMenu.getByRole("menuitem", { name: "Approve refund" });
+      await expect(approveRefundAction).toHaveAttribute(
+        "data-refund-approve-url",
         /\/refunds\/[^/]+\/approve$/,
       );
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
-        "data-success-message",
-        "Refund queued.",
+      await expect(approveRefundAction).toHaveAttribute("data-attendee-refund-approve-open", "");
+      const rejectRefundAction = rowActionsMenu.getByRole("menuitem", { name: "Reject refund" });
+      await expect(rejectRefundAction).toHaveAttribute("data-refund-reject-url", /\/refunds\/[^/]+\/reject$/);
+      await expect(rejectRefundAction).toHaveAttribute("data-attendee-refund-reject-open", "");
+
+      // Verify approval opens the optional review-note modal.
+      await approveRefundAction.click();
+      const approveDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Approve refund request",
+      });
+      await expect(approveDialog).toBeVisible();
+      await expect(approveDialog.getByLabel("Review note (optional)")).toBeFocused();
+      await approveDialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(approveDialog).toBeHidden();
+      await expect(rowActionsMenu.locator("summary")).toBeFocused();
+
+      // Verify rejection opens the optional review-note modal.
+      await rowActionsMenu.locator("summary").click();
+      await rejectRefundAction.click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      await expect(rejectDialog).toBeVisible();
+      await expect(rejectDialog.getByLabel("Review note (optional)")).toBeFocused();
+      await rejectDialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(rejectDialog).toBeHidden();
+      await expect(rowActionsMenu.locator("summary")).toBeFocused();
+    });
+
+    test("organizer submits a review note when rejecting a refund", async ({ organizerGroupPage }) => {
+      // Return a successful rejection without changing seeded payment state.
+      await organizerGroupPage.route("**/refunds/*/reject", (route) => route.fulfill({ status: 204 }));
+
+      // Open the attendee refund rejection modal.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
       );
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
-        "hx-put",
-        /\/refunds\/[^/]+\/reject$/,
-      );
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
-        "data-success-message",
-        "Refund request rejected.",
-      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Member One",
+      });
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      await rejectDialog.getByLabel("Review note (optional)").fill("Outside the refund policy window");
+
+      // Submit the review note and verify the request contract.
+      const [rejectResponse] = await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            /\/dashboard\/group\/refunds\/[^/]+\/reject$/u.test(new URL(response.url()).pathname),
+        ),
+        rejectDialog.getByRole("button", { name: "Reject refund" }).click(),
+      ]);
+      const rejectionData = new URLSearchParams(rejectResponse.request().postData());
+      expect(rejectionData.get("review_note")).toBe("Outside the refund policy window");
+      await expect(rejectDialog).toBeHidden();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund request rejected.");
+      await organizerGroupPage.locator(".swal2-confirm").click();
     });
 
     test("organizer sees success alerts after approving and rejecting refunds", async ({
@@ -1057,16 +1110,33 @@ test.describe("group dashboard attendees tab", () => {
       });
       const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
-      // Approve the refund and verify success feedback.
+      // Approve the refund with a review note and verify success feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Approve refund" }).click();
+      const approveDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Approve refund request",
+      });
+      await approveDialog.getByLabel("Review note (optional)").fill("Approved by organizer");
+      const [approveResponse] = await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            /\/dashboard\/group\/refunds\/[^/]+\/approve$/u.test(new URL(response.url()).pathname),
+        ),
+        approveDialog.getByRole("button", { name: "Approve refund" }).click(),
+      ]);
+      const approvalData = new URLSearchParams(approveResponse.request().postData());
+      expect(approvalData.get("review_note")).toBe("Approved by organizer");
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund queued.");
       await organizerGroupPage.locator(".swal2-confirm").click();
 
       // Reject the refund and verify success feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
-      await organizerGroupPage.getByRole("button", { name: "Yes" }).click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      await rejectDialog.getByRole("button", { name: "Reject refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund request rejected.");
     });
 
@@ -1089,18 +1159,34 @@ test.describe("group dashboard attendees tab", () => {
       // Fail refund approval and verify error feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Approve refund" }).click();
+      const approveDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Approve refund request",
+      });
+      const approvalNote = approveDialog.getByLabel("Review note (optional)");
+      await approvalNote.fill("Approved by organizer");
+      await approveDialog.getByRole("button", { name: "Approve refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
         "Something went wrong approving this refund request. Please try again later.",
       );
+      await expect(approveDialog).toBeVisible();
+      await expect(approvalNote).toHaveValue("Approved by organizer");
       await organizerGroupPage.locator(".swal2-confirm").click();
+      await approveDialog.getByRole("button", { name: "Cancel" }).click();
 
       // Fail refund rejection and verify error feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
-      await organizerGroupPage.getByRole("button", { name: "Yes" }).click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      const reviewNote = rejectDialog.getByLabel("Review note (optional)");
+      await reviewNote.fill("Outside the refund policy window");
+      await rejectDialog.getByRole("button", { name: "Reject refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
         "Something went wrong rejecting this refund request. Please try again later.",
       );
+      await expect(rejectDialog).toBeVisible();
+      await expect(reviewNote).toHaveValue("Outside the refund policy window");
     });
 
     test("organizer cannot retry a refund while provider processing is active", async ({
@@ -1196,8 +1282,10 @@ test.describe("group dashboard attendees tab", () => {
       );
 
       // Verify refund review controls are hidden for read-only viewers.
-      await expect(attendeesContent.locator("[data-refund-review-trigger]")).toHaveCount(0);
-      await expect(groupViewerPage.locator("#attendee-refund-modal")).toBeHidden();
+      await expect(attendeesContent.locator("[data-attendee-refund-approve-open]")).toHaveCount(0);
+      await expect(attendeesContent.locator("[data-attendee-refund-reject-open]")).toHaveCount(0);
+      await expect(groupViewerPage.locator("#attendee-refund-approve-modal")).toHaveCount(0);
+      await expect(groupViewerPage.locator("#attendee-refund-reject-modal")).toHaveCount(0);
     });
   });
 

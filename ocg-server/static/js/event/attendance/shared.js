@@ -9,12 +9,7 @@ import {
   showSignedOutAttendanceState,
 } from "/static/js/event/attendance-view.js";
 
-export const PRIMARY_REQUEST_ROLES = new Set([
-  "attend-btn",
-  "checkout-cancel-btn",
-  "leave-btn",
-  "refund-btn",
-]);
+export const PRIMARY_REQUEST_ROLES = new Set(["attend-btn", "checkout-cancel-btn", "leave-btn"]);
 export const QUESTIONS_CONTINUE_ACTION_ATTEND = "attend";
 export const QUESTIONS_CONTINUE_ACTION_TICKET = "ticket";
 

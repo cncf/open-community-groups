@@ -94,11 +94,30 @@ describe("dashboard group refunds list template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     // Verify review and retry actions use the purchase identifier.
-    expect(template).to.include('hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/approve"');
-    expect(template).to.include('hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/reject"');
+    expect(template).to.include(
+      'data-refund-approve-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/approve"',
+    );
+    expect(template).to.include("data-refund-approve-open");
     expect(template).to.include('hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/retry"');
-    expect(template).to.include('id="reject-refund-{{ refund.event_purchase_id }}"');
-    expect(template).to.include("data-confirm-action");
+    expect(template).to.include(
+      'data-refund-reject-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/reject"',
+    );
+    expect(template).to.include("data-refund-reject-open");
+    expect(template).to.include(
+      'data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"',
+    );
+    expect(template).to.include("dashboard::refund_review_modal");
+    expect(template).to.include('id_prefix = "refund-reject"');
+    expect(template).to.include('review_note_id = "refund-review-note"');
+    expect(template).to.include(
+      "Add a review note to explain why this refund request is being rejected.",
+    );
+    expect(template).to.include('id_prefix = "refund-approve"');
+    expect(template).to.include('review_note_id = "refund-approve-review-note"');
+    expect(template.match(/show_reason = true/g)).to.have.lengthOf(2);
+    expect(template).to.include(
+      "Add a review note to explain why this refund request is being approved.",
+    );
     expect(template).to.include("data-actions-menu");
     expect(template).to.include("refund.can_retry()");
     expect(template).not.to.include('role="menu"');

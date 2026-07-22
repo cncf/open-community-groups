@@ -211,12 +211,11 @@
                       {% if refund.can_approve() -%}
                         <li>
                           <button type="button"
-                                  hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/approve"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-disabled-elt="this"
-                                  data-htmx-response
-                                  data-success-message="Refund queued."
-                                  data-error-message="Something went wrong approving this refund request. Please try again later."
+                                  data-refund-approve-open
+                                  data-refund-approve-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/approve"
+                                  data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
+                                  data-refund-event="{{ refund.event_name }}"
+                                  data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
                                   class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                             <div class="svg-icon size-4 icon-check shrink-0 bg-stone-500"></div>
                             <span>Approve refund</span>
@@ -225,17 +224,12 @@
                       {% endif -%}
                       {% if refund.can_reject() -%}
                         <li>
-                          <button id="reject-refund-{{ refund.event_purchase_id }}"
-                                  type="button"
-                                  hx-put="/dashboard/group/refunds/{{ refund.event_purchase_id }}/reject"
-                                  hx-indicator="#dashboard-spinner"
-                                  hx-trigger="confirmed"
-                                  hx-disabled-elt="this"
-                                  data-confirm-action
-                                  data-confirm-message="Are you sure you want to reject this refund request?"
-                                  data-confirm-text="Yes"
-                                  data-success-message="Refund request rejected."
-                                  data-error-message="Something went wrong rejecting this refund request. Please try again later."
+                          <button type="button"
+                                  data-refund-reject-open
+                                  data-refund-reject-url="/dashboard/group/refunds/{{ refund.event_purchase_id }}/reject"
+                                  data-refund-attendee="{{ refund.name.as_deref() |assigned_or(refund.username) }}"
+                                  data-refund-event="{{ refund.event_name }}"
+                                  data-refund-reason="{{ refund.requested_reason.as_deref() |assigned_or("") }}"
                                   class="flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left">
                             <div class="svg-icon size-4 icon-cancel shrink-0 bg-stone-500"></div>
                             <span>Reject refund</span>
@@ -310,6 +304,34 @@
 {# End pagination -#}
 
 {% if can_manage_events -%}
+  {# Refund approval modal -#}
+  {{ dashboard::refund_review_modal(id_prefix = "refund-approve",
+    title_id = "refund-approve-modal-title",
+    close_id = "close-refund-approve-modal",
+    title = "Approve refund request",
+    description = "Add a review note to explain why this refund request is being approved.",
+    attendee_field_suffix = "attendee",
+    review_note_id = "refund-approve-review-note",
+    submit_label = "Approve refund",
+    success_message = "Refund queued.",
+    error_message = "Something went wrong approving this refund request. Please try again later.",
+    show_reason = true) -}}
+  {# End refund approval modal -#}
+
+  {# Refund rejection modal -#}
+  {{ dashboard::refund_review_modal(id_prefix = "refund-reject",
+    title_id = "refund-reject-modal-title",
+    close_id = "close-refund-reject-modal",
+    title = "Reject refund request",
+    description = "Add a review note to explain why this refund request is being rejected.",
+    attendee_field_suffix = "attendee",
+    review_note_id = "refund-review-note",
+    submit_label = "Reject refund",
+    success_message = "Refund request rejected.",
+    error_message = "Something went wrong rejecting this refund request. Please try again later.",
+    show_reason = true) -}}
+  {# End refund rejection modal -#}
+
   {# Refund recovery modal -#}
   <div id="refund-recovery-modal"
        role="dialog"

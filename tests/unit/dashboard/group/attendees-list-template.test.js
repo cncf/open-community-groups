@@ -95,6 +95,48 @@ describe("dashboard group attendees list template", () => {
     expect(template).to.include("data-actions-menu");
   });
 
+  it("collects an optional review note before rejecting a refund", async () => {
+    // Load the attendee refund rejection action and modal contracts.
+    const template = normalizeWhitespace(await loadTemplate());
+    const rejectAction = sliceTemplateSection(
+      template,
+      'id="reject-refund-{{ attendee.user.user_id }}"',
+      "</button>",
+    );
+
+    // Verify rejection opens the note form instead of submitting directly.
+    expect(rejectAction).to.include("data-attendee-refund-reject-open");
+    expect(rejectAction).to.include(
+      'data-refund-reject-url="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/reject"',
+    );
+    expect(rejectAction).not.to.include("hx-put");
+    expect(rejectAction).not.to.include("data-confirm-action");
+    expect(template).to.include("dashboard::refund_review_modal");
+    expect(template).to.include('id_prefix = "attendee-refund-reject"');
+    expect(template).to.include('review_note_id = "attendee-refund-review-note"');
+  });
+
+  it("collects an optional review note before approving a refund", async () => {
+    // Load the attendee refund approval action and modal contracts.
+    const template = normalizeWhitespace(await loadTemplate());
+    const approveAction = sliceTemplateSection(
+      template,
+      'id="approve-refund-{{ attendee.user.user_id }}"',
+      "</button>",
+    );
+
+    // Verify approval opens the note form instead of submitting directly.
+    expect(approveAction).to.include("data-attendee-refund-approve-open");
+    expect(approveAction).to.include(
+      'data-refund-approve-url="/dashboard/group/refunds/{{ attendee.event_purchase_id.unwrap() }}/approve"',
+    );
+    expect(approveAction).not.to.include("hx-put");
+    expect(template).to.include('id_prefix = "attendee-refund-approve"');
+    expect(template).to.include('review_note_id = "attendee-refund-approve-review-note"');
+    expect(template).not.to.include('id="attendee-refund-modal"');
+    expect(template).not.to.include("data-refund-review-trigger");
+  });
+
   it("renders attendee identity cells as profile modal triggers", async () => {
     // Load the attendees list template before checking profile trigger markup.
     const template = normalizeWhitespace(await loadTemplate());

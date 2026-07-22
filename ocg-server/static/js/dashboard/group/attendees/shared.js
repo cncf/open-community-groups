@@ -26,15 +26,16 @@ export const resolveAttendeesRoot = (root = document) => {
  * @param {Document|Element} root Query root.
  * @param {string} targetModalId Modal element id.
  * @param {boolean} visible Whether the modal should be visible.
+ * @param {HTMLElement|null} [focusOrigin=null] Element that opened the modal.
  * @returns {void}
  */
-export const setScopedModalVisibility = (root, targetModalId, visible) => {
+export const setScopedModalVisibility = (root, targetModalId, visible, focusOrigin = null) => {
   const modal = getElementById(root, targetModalId);
   if (!modal) return;
 
   const isHidden = isElementHidden(modal);
   if ((visible && isHidden) || (!visible && !isHidden)) {
-    toggleModalVisibility(targetModalId);
+    toggleModalVisibility(targetModalId, focusOrigin);
   }
 };
 

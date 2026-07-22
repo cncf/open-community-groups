@@ -82,6 +82,15 @@ test.describe("group dashboard refunds", () => {
     await expect(pendingRefundRow).toBeVisible();
     await actionsMenu.locator("summary").click();
 
+    // Open the approval modal and add an optional review note.
+    await actionsMenu.getByRole("button", { name: "Approve refund" }).click();
+    const approveDialog = organizerGroupPage.getByRole("dialog", {
+      name: "Approve refund request",
+    });
+    const reviewNote = approveDialog.getByLabel("Review note (optional)");
+    await expect(reviewNote).toBeFocused();
+    await reviewNote.fill("Approved by organizer");
+
     // Return the normal refresh event after a successful approval request.
     await organizerGroupPage.route("**/dashboard/group/refunds/*/approve", (route) =>
       route.fulfill({
@@ -89,20 +98,69 @@ test.describe("group dashboard refunds", () => {
         headers: { "HX-Trigger": "refresh-group-refunds" },
       }),
     );
-    await Promise.all([
+    const [approveResponse] = await Promise.all([
       organizerGroupPage.waitForResponse(
         (response) =>
           response.request().method() === "PUT" &&
           /\/dashboard\/group\/refunds\/[^/]+\/approve$/u.test(new URL(response.url()).pathname),
       ),
       waitForRefundsResponse(organizerGroupPage),
-      actionsMenu.getByRole("button", { name: "Approve refund" }).click(),
+      approveDialog.getByRole("button", { name: "Approve refund" }).click(),
     ]);
+    const approvalData = new URLSearchParams(approveResponse.request().postData());
+    expect(approvalData.get("review_note")).toBe("Approved by organizer");
 
     // Verify the action feedback remains visible after the queue refreshes.
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund queued.");
     await organizerGroupPage.locator(".swal2-confirm").click();
     await expect(dashboardContent.getByRole("table", { name: "Refunds list" })).toBeVisible();
+  });
+
+  test("submits and preserves an optional refund rejection note", async ({ organizerGroupPage }) => {
+    // Open the pending refund rejection without changing its seeded state.
+    const dashboardContent = await openRefundsDashboard(organizerGroupPage);
+    const pendingRefundRow = dashboardContent.locator("tr", {
+      hasText: "E2E Member One",
+    });
+    const actionsMenu = pendingRefundRow.locator("[data-actions-menu]");
+    const actionsSummary = actionsMenu.locator("summary");
+    await actionsSummary.click();
+    await actionsMenu.getByRole("button", { name: "Reject refund" }).click();
+
+    // Enter the review note after focus moves into the rejection dialog.
+    const rejectDialog = organizerGroupPage.getByRole("dialog", {
+      name: "Reject refund request",
+    });
+    const reviewNote = rejectDialog.getByLabel("Review note (optional)");
+    await expect(rejectDialog).toBeVisible();
+    await expect(reviewNote).toBeFocused();
+    await reviewNote.fill("Duplicate purchase");
+
+    // Fail the request and verify the submitted contract without mutating the fixture.
+    await organizerGroupPage.route("**/dashboard/group/refunds/*/reject", (route) =>
+      route.fulfill({ status: 422 }),
+    );
+    const [rejectResponse] = await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "PUT" &&
+          /\/dashboard\/group\/refunds\/[^/]+\/reject$/u.test(new URL(response.url()).pathname),
+      ),
+      rejectDialog.getByRole("button", { name: "Reject refund" }).click(),
+    ]);
+    const rejectionData = new URLSearchParams(rejectResponse.request().postData());
+    expect(rejectionData.get("review_note")).toBe("Duplicate purchase");
+
+    // Preserve the note after failure and restore focus when the modal closes.
+    await expect(rejectDialog).toBeVisible();
+    await expect(reviewNote).toHaveValue("Duplicate purchase");
+    await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
+      "Something went wrong rejecting this refund request. Please try again later.",
+    );
+    await organizerGroupPage.locator(".swal2-confirm").click();
+    await rejectDialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(rejectDialog).toBeHidden();
+    await expect(actionsSummary).toBeFocused();
   });
 
   test("preserves recovery evidence on failure and restores menu focus", async ({

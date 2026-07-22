@@ -755,13 +755,18 @@ test.describe("event attendance", () => {
       await expect(refundButton).toBeEnabled();
       await expect(getLeaveButton(pending2Page)).toBeHidden();
 
-      // Request a refund and confirm the organizer-facing workflow.
+      // Open the refund request modal and provide an optional reason.
       await refundButton.click();
-      const confirmButton = pending2Page.getByRole("button", { name: "Yes" });
-      await expect(confirmButton).toBeVisible();
+      const refundModal = pending2Page.getByRole("dialog", {
+        name: "Request a refund",
+      });
+      await expect(refundModal).toBeVisible();
+      await refundModal
+        .getByRole("textbox", { name: "Reason (optional)" })
+        .fill("Unable to attend");
 
-      // Click the confirm button.
-      await Promise.all([
+      // Submit the request and verify the reason reaches the refund endpoint.
+      const [refundResponse] = await Promise.all([
         pending2Page.waitForResponse(
           (response) =>
             response.request().method() === "POST" &&
@@ -772,8 +777,14 @@ test.describe("event attendance", () => {
               ) &&
             response.ok(),
         ),
-        confirmButton.click(),
+        refundModal.getByRole("button", { name: "Request refund" }).click(),
       ]);
+      const refundRequestData = new URLSearchParams(
+        refundResponse.request().postData(),
+      );
+      expect(refundRequestData.get("requested_reason")).toBe(
+        "Unable to attend",
+      );
 
       // Verify the event page updates to the pending refund request state.
       await expect(pending2Page.locator(".swal2-popup")).toContainText(

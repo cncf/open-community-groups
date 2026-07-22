@@ -763,6 +763,25 @@ const setCheckoutLoadingState = (container, isLoading) => {
 };
 
 /**
+ * Toggles the refund form loading affordance.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {boolean} isLoading - Whether the refund request is loading
+ */
+const setRefundLoadingState = (container, isLoading) => {
+  const refundSubmitButton = getAttendanceControl(container, "refund-modal-submit");
+  const refundSubmitLabel = getAttendanceControl(container, "refund-modal-submit-label");
+  const refundSubmitSpinner = getAttendanceControl(container, "refund-modal-submit-spinner");
+
+  if (refundSubmitButton instanceof HTMLButtonElement) {
+    refundSubmitButton.disabled = isLoading;
+    setDisabledStyles(refundSubmitButton, isLoading);
+  }
+  setElementHidden(refundSubmitSpinner, !isLoading);
+  refundSubmitSpinner?.classList.toggle("flex", isLoading);
+  refundSubmitLabel?.classList.toggle("invisible", isLoading);
+};
+
+/**
  * Synchronizes the ticket modal controls for the current modal mode.
  * @param {HTMLElement} container - Attendance container element
  */
@@ -817,6 +836,14 @@ export const restoreCheckoutModalControls = (container) => {
 };
 
 /**
+ * Restores the refund modal controls after a request completes.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const restoreRefundModalControls = (container) => {
+  setRefundLoadingState(container, false);
+};
+
+/**
  * Shows the modal checkout loading state before the checkout request starts.
  * @param {HTMLElement} container - Attendance container element
  */
@@ -829,6 +856,14 @@ export const showCheckoutLoadingState = (container) => {
   checkoutButton.disabled = true;
   setDisabledStyles(checkoutButton, true);
   setCheckoutLoadingState(container, true);
+};
+
+/**
+ * Shows the refund modal loading state before the request starts.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const showRefundLoadingState = (container) => {
+  setRefundLoadingState(container, true);
 };
 
 /**
@@ -884,6 +919,27 @@ export const openQuestionsModal = (container) => {
 };
 
 /**
+ * Opens the refund request modal.
+ * @param {HTMLElement} container - Attendance container element
+ * @param {HTMLElement|null} trigger - Element that opened the modal
+ */
+export const openRefundModal = (container, trigger = null) => {
+  const refundForm = getAttendanceControl(container, "refund-form");
+  const refundModal = getAttendanceControl(container, "refund-modal");
+  if (!(refundModal instanceof HTMLElement) || !refundModal.id) {
+    return;
+  }
+
+  if (refundForm instanceof HTMLFormElement) {
+    refundForm.reset();
+  }
+  restoreRefundModalControls(container);
+  if (isElementHidden(refundModal)) {
+    toggleModalVisibility(refundModal.id, trigger);
+  }
+};
+
+/**
  * Closes the ticket purchase modal if it is open.
  * @param {HTMLElement} container - Attendance container element
  */
@@ -907,6 +963,19 @@ export const closeQuestionsModal = (container) => {
   }
 
   toggleModalVisibility(questionsModal.id);
+};
+
+/**
+ * Closes the refund request modal if it is open.
+ * @param {HTMLElement} container - Attendance container element
+ */
+export const closeRefundModal = (container) => {
+  const refundModal = getAttendanceControl(container, "refund-modal");
+  if (!(refundModal instanceof HTMLElement) || !refundModal.id || isElementHidden(refundModal)) {
+    return;
+  }
+
+  toggleModalVisibility(refundModal.id);
 };
 
 /**

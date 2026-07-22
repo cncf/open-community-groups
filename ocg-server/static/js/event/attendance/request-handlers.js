@@ -1,11 +1,14 @@
 import { handleHtmxResponse, showInfoAlert } from "/static/js/common/alerts.js";
 import { getAttendanceContainer, getAttendanceControl } from "/static/js/event/attendance-dom.js";
 import {
+  closeRefundModal,
   closeTicketModal,
   restoreCheckoutModalControls,
   restorePrimaryRequestControl,
+  restoreRefundModalControls,
   showCheckoutLoadingState,
   showPrimaryRequestLoading,
+  showRefundLoadingState,
 } from "/static/js/event/attendance-view.js";
 import { refreshAvailabilityAndRenderAttendance } from "/static/js/event/attendance/availability-refresh.js";
 import { showProfileAwareInfoAlert } from "/static/js/event/attendance/feedback.js";
@@ -54,13 +57,6 @@ const PRIMARY_ACTION_CONFIG = {
       return true;
     },
   },
-  "refund-btn": {
-    errorMessage: "Something went wrong requesting your refund. Please try again later.",
-    onSuccess: () => {
-      showInfoAlert("Your refund request has been sent to the organizers.");
-      return true;
-    },
-  },
 };
 
 /**
@@ -100,6 +96,43 @@ const handleCheckoutConfigRequest = (event) => {
   if (event.detail?.unfilteredParameters && typeof event.detail.unfilteredParameters === "object") {
     delete event.detail.unfilteredParameters.discount_code;
   }
+};
+
+/**
+ * Normalizes the optional refund reason before HTMX submits the request.
+ * @param {Event} event - htmx:configRequest event
+ * @returns {void}
+ */
+const handleRefundConfigRequest = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || target.dataset.attendanceRole !== "refund-form") {
+    return;
+  }
+
+  const container = getAttendanceContainer(target);
+  const params = event.detail?.parameters;
+  if (!container || !params || typeof params !== "object") {
+    return;
+  }
+
+  const refundReasonInput = getAttendanceControl(container, "refund-reason-input");
+  if (!(refundReasonInput instanceof HTMLTextAreaElement)) {
+    return;
+  }
+
+  const normalizedReason = refundReasonInput.value.trim();
+  refundReasonInput.value = normalizedReason;
+  const parameterSets = [params, event.detail?.unfilteredParameters].filter(
+    (parameters) => parameters && typeof parameters === "object",
+  );
+
+  parameterSets.forEach((parameters) => {
+    if (normalizedReason) {
+      parameters.requested_reason = normalizedReason;
+    } else {
+      delete parameters.requested_reason;
+    }
+  });
 };
 
 /**
@@ -211,6 +244,38 @@ const handleCheckoutAfterRequest = (event) => {
 };
 
 /**
+ * Handles refund form afterRequest state.
+ * @param {Event} event - htmx:afterRequest event
+ * @returns {void}
+ */
+const handleRefundAfterRequest = (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLFormElement) || target.dataset.attendanceRole !== "refund-form") {
+    return;
+  }
+
+  const container = getAttendanceContainer(target);
+  if (!container) {
+    return;
+  }
+
+  restoreRefundModalControls(container);
+  const ok = handleHtmxResponse({
+    xhr: event.detail?.xhr,
+    successMessage: "",
+    errorMessage: "Something went wrong requesting your refund. Please try again later.",
+  });
+  if (!ok) {
+    return;
+  }
+
+  closeRefundModal(container);
+  target.reset();
+  showInfoAlert("Your refund request has been sent to the organizers.");
+  refreshAvailabilityAndRenderAttendance(container);
+};
+
+/**
  * Handles htmx:beforeRequest events for attendance controls.
  * @param {Event} event - htmx:beforeRequest event
  * @returns {void}
@@ -227,6 +292,11 @@ export const handleBeforeRequest = (event) => {
   }
 
   if (blockAttendRequestForQuestions(event, target, container)) {
+    return;
+  }
+
+  if (target.dataset.attendanceRole === "refund-form") {
+    showRefundLoadingState(container);
     return;
   }
 
@@ -257,6 +327,11 @@ export const handleAfterRequest = (event) => {
     return;
   }
 
+  if (target.dataset.attendanceRole === "refund-form") {
+    handleRefundAfterRequest(event);
+    return;
+  }
+
   if (PRIMARY_REQUEST_ROLES.has(target.dataset.attendanceRole)) {
     handlePrimaryActionAfterRequest(event);
     return;
@@ -272,4 +347,5 @@ export const handleAfterRequest = (event) => {
  */
 export const handleConfigRequest = (event) => {
   handleCheckoutConfigRequest(event);
+  handleRefundConfigRequest(event);
 };
