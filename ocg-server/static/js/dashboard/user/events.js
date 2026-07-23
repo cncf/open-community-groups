@@ -1,3 +1,4 @@
+import "/static/js/common/actions-menu.js";
 import { handleHtmxResponse } from "/static/js/common/alerts.js";
 import { closestElement, getElementById, isElementHidden, markDatasetReady } from "/static/js/common/dom.js";
 import { isEscapeEvent } from "/static/js/common/keyboard.js";
@@ -6,7 +7,6 @@ import { collectQuestionAnswers, setQuestionAnswersInputValue } from "/static/js
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 
 const DATA_KEY = "userEventQuestionsReady";
-const ACTIONS_DROPDOWN_SELECTOR = "[data-user-event-actions-dropdown]";
 
 /**
  * Finds the question modal targeted by an open trigger.
@@ -24,25 +24,7 @@ const closeModal = (modal) => {
   }
 };
 
-const closeActionDropdowns = (exceptDropdown = null) => {
-  document.querySelectorAll(`${ACTIONS_DROPDOWN_SELECTOR}[open]`).forEach((dropdown) => {
-    if (dropdown !== exceptDropdown) {
-      dropdown.open = false;
-    }
-  });
-};
-
 const handleClick = (event) => {
-  const actionsSummary = closestElement(event.target, `${ACTIONS_DROPDOWN_SELECTOR} > summary`);
-  const actionsDropdown = actionsSummary?.closest(ACTIONS_DROPDOWN_SELECTOR);
-  if (actionsDropdown instanceof HTMLDetailsElement && !actionsDropdown.open) {
-    closeActionDropdowns(actionsDropdown);
-  }
-
-  if (!closestElement(event.target, ACTIONS_DROPDOWN_SELECTOR)) {
-    closeActionDropdowns();
-  }
-
   const trigger = closestElement(event.target, "[data-user-event-questions-open]");
   if (trigger instanceof HTMLElement) {
     const modal = getModal(trigger);

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(11);
+select plan(13);
 
 -- ============================================================================
 -- VARIABLES
@@ -29,6 +29,7 @@ select plan(11);
 \set priceWindowID '79430000-0000-0000-0000-000000000015'
 \set recoveryPurchaseID '79430000-0000-0000-0000-000000000026'
 \set recoveryReplacementPurchaseID '79430000-0000-0000-0000-000000000027'
+\set reactivationPurchaseID '79430000-0000-0000-0000-000000000029'
 \set registrationQuestionID '79430000-0000-0000-0000-000000000016'
 \set user1ID '79430000-0000-0000-0000-000000000017'
 \set user2ID '79430000-0000-0000-0000-000000000018'
@@ -37,6 +38,7 @@ select plan(11);
 \set user5ID '79430000-0000-0000-0000-000000000021'
 \set user6ID '79430000-0000-0000-0000-000000000025'
 \set user7ID '79430000-0000-0000-0000-000000000028'
+\set user8ID '79430000-0000-0000-0000-00000000002a'
 
 -- ============================================================================
 -- SEED DATA
@@ -120,6 +122,13 @@ values
         'user7@example.com',
         true,
         'user-7'
+    ),
+    (
+        :'user8ID',
+        'hash-8',
+        'user8@example.com',
+        true,
+        'user-8'
     );
 
 -- Group
@@ -319,6 +328,16 @@ insert into event_purchase (
     'pending',
     'General admission',
     :'user6ID'
+), (
+    :'reactivationPurchaseID',
+    0,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    now() + interval '10 minutes',
+    'pending',
+    'General admission',
+    :'user8ID'
 );
 
 -- Refunded paid purchase whose terminal provider failure requires recovery
@@ -389,9 +408,50 @@ values (
     'invitation-pending'
 );
 
+-- Canceled attendee row reactivated by completing a replacement free purchase
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'user8ID',
+    :'eventID',
+    'attendance-canceled',
+    :'user8ID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reactivate canceled attendance when completing a free purchase
+select is(
+    complete_free_event_purchase(:'reactivationPurchaseID'::uuid)::jsonb,
+    jsonb_build_object(
+        'community_id', :'communityID'::uuid,
+        'event_id', :'eventID'::uuid,
+        'user_id', :'user8ID'::uuid
+    ),
+    'Should reactivate canceled attendance when completing a free purchase'
+);
+
+-- Should clear canceled attendance metadata after completing the purchase
+select results_eq(
+    format($$
+        select
+            attendance_canceled_at,
+            attendance_canceled_by_user_id,
+            status
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventID', :'user8ID'),
+    $$ values (null::timestamptz, null::uuid, 'confirmed'::text) $$,
+    'Should clear canceled attendance metadata after completing the purchase'
+);
 
 -- Should complete a pending free purchase
 select is(

@@ -1,195 +1,276 @@
+-- Tests atomic guarded deletion for recurring event series.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(8);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
-\set communityID '3a0b0000-0000-0000-0000-000000000001'
-\set event1ID '3a0b0000-0000-0000-0000-000000000002'
-\set event2ID '3a0b0000-0000-0000-0000-000000000003'
-\set eventCategoryID '3a0b0000-0000-0000-0000-000000000004'
-\set eventSeriesID '3a0b0000-0000-0000-0000-000000000005'
-\set groupCategoryID '3a0b0000-0000-0000-0000-000000000006'
-\set groupID '3a0b0000-0000-0000-0000-000000000007'
-\set userID '3a0b0000-0000-0000-0000-000000000008'
+\set actorID 'd1020000-0000-0000-0000-000000000001'
+\set communityID 'd1020000-0000-0000-0000-000000000002'
+\set eligibleEventOneID 'd1020000-0000-0000-0000-000000000003'
+\set eligibleEventTwoID 'd1020000-0000-0000-0000-000000000004'
+\set eligibleSeriesID 'd1020000-0000-0000-0000-000000000005'
+\set eventCategoryID 'd1020000-0000-0000-0000-000000000006'
+\set groupCategoryID 'd1020000-0000-0000-0000-000000000007'
+\set groupID 'd1020000-0000-0000-0000-000000000008'
+\set guardedAllowedEventID 'd1020000-0000-0000-0000-000000000009'
+\set guardedBlockedEventID 'd1020000-0000-0000-0000-000000000010'
+\set guardedSeriesID 'd1020000-0000-0000-0000-000000000011'
 
 -- ============================================================================
 -- SEED DATA
 -- ============================================================================
 
--- Community
+-- Community owning both recurring series
 insert into community (
-    community_id,
-    name,
-    display_name,
-    description,
     banner_mobile_url,
     banner_url,
-    logo_url
-) values (
-    :'communityID',
-    'test-community',
-    'Test Community',
-    'A test community',
-    'https://example.com/banner-mobile.png',
-    'https://example.com/banner.png',
-    'https://example.com/logo.png'
-);
-
--- User
-insert into "user" (user_id, email, username, auth_hash)
-values (:'userID', 'organizer@example.com', 'organizer', 'hash');
-
--- Event Category
-insert into event_category (event_category_id, name, community_id)
-values (:'eventCategoryID', 'Meetup', :'communityID');
-
--- Group Category
-insert into group_category (group_category_id, name, community_id)
-values (:'groupCategoryID', 'Technology', :'communityID');
-
--- Group
-insert into "group" (
-    group_id,
     community_id,
-    name,
-    slug,
     description,
-    group_category_id
+    display_name,
+    logo_url,
+    name
 ) values (
-    :'groupID',
+    'https://example.test/mobile.png',
+    'https://example.test/banner.png',
     :'communityID',
-    'Test Group',
-    'test-group',
-    'A test group',
-    :'groupCategoryID'
+    'Community',
+    'Community',
+    'https://example.test/logo.png',
+    'community'
 );
 
--- Event Series
+-- Group category owning the test group
+insert into group_category (community_id, group_category_id, name)
+values (:'communityID', :'groupCategoryID', 'Category');
+
+-- Event category used by recurring events
+insert into event_category (community_id, event_category_id, name)
+values (:'communityID', :'eventCategoryID', 'Events');
+
+-- Group owning both recurring series
+insert into "group" (community_id, group_category_id, group_id, name, slug)
+values (:'communityID', :'groupCategoryID', :'groupID', 'Group', 'group');
+
+-- Actor deleting the recurring events
+insert into "user" (auth_hash, email, user_id, username)
+values ('hash', 'actor@example.test', :'actorID', 'actor');
+
+-- Series containing two eligible unused drafts
 insert into event_series (
+    created_by,
     event_series_id,
     group_id,
     recurrence_additional_occurrences,
     recurrence_anchor_starts_at,
     recurrence_pattern,
-    timezone,
-
-    created_by
+    timezone
 ) values (
-    :'eventSeriesID',
+    :'actorID',
+    :'eligibleSeriesID',
     :'groupID',
     1,
     now() + interval '1 day',
     'weekly',
-    'UTC',
-
-    :'userID'
+    'UTC'
 );
 
--- Events
+-- Series containing an eligible occurrence followed by a blocked occurrence
+insert into event_series (
+    created_by,
+    event_series_id,
+    group_id,
+    recurrence_additional_occurrences,
+    recurrence_anchor_starts_at,
+    recurrence_pattern,
+    timezone
+) values (
+    :'actorID',
+    :'guardedSeriesID',
+    :'groupID',
+    1,
+    now() + interval '3 days',
+    'weekly',
+    'UTC'
+);
+
+-- Eligible unused draft occurrences
 insert into event (
+    description,
+    event_category_id,
     event_id,
+    event_kind_id,
     event_series_id,
     group_id,
     name,
     slug,
-    description,
-    timezone,
-    event_category_id,
-    event_kind_id,
     starts_at,
-    ends_at,
-
-    deleted,
-    published
+    timezone
 ) values
     (
-        :'event1ID',
-        :'eventSeriesID',
-        :'groupID',
-        'First Series Event',
-        'first-series-event',
-        'First event',
-        'UTC',
+        'One',
         :'eventCategoryID',
-        'virtual',
+        :'eligibleEventOneID',
+        'in-person',
+        :'eligibleSeriesID',
+        :'groupID',
+        'One',
+        'one',
         now() + interval '1 day',
-        now() + interval '1 day 1 hour',
-
-        false,
-        true
+        'UTC'
     ),
     (
-        :'event2ID',
-        :'eventSeriesID',
-        :'groupID',
-        'Second Series Event',
-        'second-series-event',
-        'Second event',
-        'UTC',
+        'Two',
         :'eventCategoryID',
-        'virtual',
-        now() + interval '8 days',
-        now() + interval '8 days 1 hour',
-
-        false,
-        true
+        :'eligibleEventTwoID',
+        'in-person',
+        :'eligibleSeriesID',
+        :'groupID',
+        'Two',
+        'two',
+        now() + interval '2 days',
+        'UTC'
     );
+
+-- Guarded series whose first occurrence is already canceled
+insert into event (
+    canceled,
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    event_series_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    true,
+    'Allowed',
+    :'eventCategoryID',
+    :'guardedAllowedEventID',
+    'in-person',
+    :'guardedSeriesID',
+    :'groupID',
+    'Allowed',
+    false,
+    'allowed',
+    now() + interval '3 days',
+    'UTC'
+);
+
+-- Guarded series whose second occurrence must be canceled first
+insert into event (
+    description,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    event_series_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'Blocked',
+    :'eventCategoryID',
+    :'guardedBlockedEventID',
+    'in-person',
+    :'guardedSeriesID',
+    :'groupID',
+    'Blocked',
+    true,
+    'blocked',
+    now() + interval '4 days',
+    'UTC'
+);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should delete all requested events
+-- Should delete an eligible draft series atomically
 select lives_ok(
     format(
-        $$
-        select delete_event_series_events(
-            %L::uuid,
-            %L::uuid,
-            array[
-                %L::uuid,
-                %L::uuid
-            ]
-        )
-        $$,
-        :'userID', :'groupID', :'event1ID', :'event2ID'
+        'select delete_event_series_events(%L, %L, %L::uuid[])',
+        :'actorID',
+        :'groupID',
+        array[:'eligibleEventOneID', :'eligibleEventTwoID']
     ),
-    'Should delete all requested events'
+    'Should delete an eligible draft series atomically'
 );
-
--- Should mark all requested events as deleted and unpublished
-select results_eq(
-    format(
-        $$
-        select
-            deleted,
-            published
+select is(
+    (
+        select count(*)::int
         from event
-        where event_id in (
-            %L::uuid,
-            %L::uuid
-        )
-        order by event_id
-        $$,
-        :'event1ID', :'event2ID'
+        where event_series_id = :'eligibleSeriesID'
+        and deleted
     ),
-    $$
-        values (true, false), (true, false)
-    $$,
-    'Should mark all requested events as deleted and unpublished'
+    2,
+    'Should delete every eligible occurrence'
 );
-
--- Should create one audit row per deleted event
+select is(
+    (
+        select count(*)::int
+        from event
+        where event_series_id = :'eligibleSeriesID'
+        and not published
+    ),
+    2,
+    'Should unpublish every deleted occurrence'
+);
 select is(
     (select count(*)::int from audit_log where action = 'event_deleted'),
     2,
-    'Should create one audit row per deleted event'
+    'Should audit every deleted occurrence'
+);
+
+-- Should reject replaying deletion for inactive occurrences
+select throws_ok(
+    format(
+        'select delete_event_series_events(%L, %L, %L::uuid[])',
+        :'actorID',
+        :'groupID',
+        array[:'eligibleEventOneID', :'eligibleEventTwoID']
+    ),
+    'one or more events were not found or inactive',
+    'Should reject replaying deletion for inactive occurrences'
+);
+
+-- Should roll back every occurrence when one deletion is blocked
+select throws_ok(
+    format(
+        'select delete_event_series_events(%L, %L, %L::uuid[])',
+        :'actorID',
+        :'groupID',
+        array[:'guardedAllowedEventID', :'guardedBlockedEventID']
+    ),
+    'event must be canceled and all payment work settled before deletion',
+    'Should reject a series containing a blocked occurrence'
+);
+select is(
+    (
+        select count(*)::int
+        from event
+        where event_series_id = :'guardedSeriesID'
+        and deleted
+    ),
+    0,
+    'Should roll back every occurrence when one deletion is blocked'
+);
+select is(
+    (select count(*)::int from audit_log where action = 'event_deleted'),
+    2,
+    'Should roll back audit rows for a blocked series deletion'
 );
 
 -- ============================================================================

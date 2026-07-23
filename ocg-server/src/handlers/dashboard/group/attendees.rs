@@ -39,7 +39,7 @@ use crate::{
         payments::{ApproveRefundRequestInput, DynPaymentsManager, RejectRefundRequestInput},
     },
     templates::{
-        dashboard::group::attendees::{self, Attendee, AttendeesFilters},
+        dashboard::group::attendees::{self, AttendanceFilter, Attendee, AttendeesFilters},
         notifications::EventCustom,
     },
     types::{
@@ -99,20 +99,26 @@ pub(crate) async fn list_page(
         &format!("/dashboard/group/events/{event_id}/attendees"),
         &filters,
     )?;
+    let attendance = filters.attendance.unwrap_or(if event.canceled {
+        AttendanceFilter::All
+    } else {
+        AttendanceFilter::Active
+    });
     let template = attendees::ListPage {
         all_attendees_email_recipient_total: search_attendees_results
             .all_attendees_email_recipient_total,
+        attendance,
         attendees: search_attendees_results.attendees,
         can_manage_events,
         event,
         navigation_links,
         refresh_url,
-        registration_questions,
         total: search_attendees_results.total,
         checked_in: filters.checked_in,
         event_ticket_type_ids: filters.event_ticket_type_ids,
         limit: filters.limit,
         offset: filters.offset,
+        registration_questions,
         sort: filters.sort,
         title: filters.title,
         ts_query: filters.ts_query,
@@ -172,19 +178,16 @@ pub(crate) async fn accept_invitation_request(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn approve_refund_request(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(payments_manager): State<DynPaymentsManager>,
-    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+    Path(event_purchase_id): Path<Uuid>,
     ValidatedForm(review): ValidatedForm<RefundReviewInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     payments_manager
         .approve_refund_request(&ApproveRefundRequestInput {
             actor_user_id: user.user_id,
-            community_id,
-            event_id,
+            event_purchase_id,
             group_id,
-            user_id,
 
             review_note: review.review_note.clone(),
         })
@@ -192,7 +195,10 @@ pub(crate) async fn approve_refund_request(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-event-attendees")],
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-group-refunds",
+        )],
     )
         .into_response())
 }
@@ -414,19 +420,16 @@ pub(crate) async fn reject_invitation_request(
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn reject_refund_request(
     CurrentUser(user): CurrentUser,
-    SelectedCommunityId(community_id): SelectedCommunityId,
     SelectedGroupId(group_id): SelectedGroupId,
     State(payments_manager): State<DynPaymentsManager>,
-    Path((event_id, user_id)): Path<(Uuid, Uuid)>,
+    Path(event_purchase_id): Path<Uuid>,
     ValidatedForm(review): ValidatedForm<RefundReviewInput>,
 ) -> Result<impl IntoResponse, HandlerError> {
     payments_manager
         .reject_refund_request(&RejectRefundRequestInput {
             actor_user_id: user.user_id,
-            community_id,
-            event_id,
+            event_purchase_id,
             group_id,
-            user_id,
 
             review_note: review.review_note.clone(),
         })
@@ -434,7 +437,29 @@ pub(crate) async fn reject_refund_request(
 
     Ok((
         StatusCode::NO_CONTENT,
-        [("HX-Trigger", "refresh-event-attendees")],
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-group-refunds",
+        )],
+    )
+        .into_response())
+}
+
+/// Requeues an exhausted retryable attendee refund.
+#[instrument(skip_all, err)]
+pub(crate) async fn retry_refund(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_purchase_id): Path<Uuid>,
+) -> Result<impl IntoResponse, HandlerError> {
+    db.requeue_event_purchase_refund(group_id, event_purchase_id).await?;
+
+    Ok((
+        StatusCode::NO_CONTENT,
+        [(
+            "HX-Trigger",
+            "refresh-event-attendees, refresh-group-refunds",
+        )],
     )
         .into_response())
 }

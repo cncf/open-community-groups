@@ -23,6 +23,7 @@ Path: [/dashboard/group](/dashboard/group ':ignore')
   - [Members: Communication](#members-communication)
   - [Sponsors: Reusable Profiles](#sponsors-reusable-profiles)
   - [Events: Operations Hub](#events-operations-hub)
+  - [Refunds: Operational Queue](#refunds-operational-queue)
   - [Audit: Logs](#audit-logs)
 
 ## What This Dashboard Owns
@@ -36,6 +37,7 @@ Main areas:
 - [Team](/dashboard/group?tab=team ':ignore'): organizer membership and roles.
 - [Analytics](/dashboard/group?tab=analytics ':ignore'): group-level growth trends.
 - [Events](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
+- [Refunds](/dashboard/group?tab=refunds ':ignore'): refund review, processing, and recovery work.
 - [Members](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
 - [Sponsors](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.
 - [Logs](/dashboard/group?tab=logs ':ignore'): read-only audit trail for group dashboard actions.
@@ -221,8 +223,9 @@ Typical flow:
 Most organizer time is spent in [Events](/dashboard/group?tab=events ':ignore'): creating drafts,
 publishing, managing CFS, reviewing submissions, and running attendance/check-in flows.
 
-The events list is classified by event start time: `Upcoming events` includes items whose start
-time has not yet passed, and `Past events` includes items whose start time already has.
+The events list keeps an event in `Upcoming events` until its end time passes. When an event has no
+end time, its start time is used instead. `Past events` contains events whose applicable time has
+already passed.
 
 ![Group events area](../screenshots/dashboard-group-events.png)
 
@@ -279,6 +282,40 @@ For complete mechanics, continue to:
 
 To understand how attendees experience the published result, see
 [Public Site Guide](public-site.md).
+
+## Refunds: Operational Queue
+
+`Refunds` brings the selected group's attendee requests, automatic refunds, and
+provider processing into one operational list. It includes checkout-only refunds
+that may not have a corresponding attendee row, as well as completed and rejected
+history.
+
+Use the views to focus the list:
+
+- `Active` shows all unfinished refund work and is the default.
+- `Needs attention` shows requests awaiting review, exhausted retries, and
+  provider outcomes that require recovery.
+- `Completed` shows refunded purchases and rejected requests.
+- `All` shows the complete refund history.
+
+You can search by attendee, event, or ticket and limit the list to one event.
+Organizers with events write access can approve or reject pending requests and
+retry exhausted non-terminal provider failures from the refund row. Read-only
+roles can inspect every state but cannot use those actions.
+
+When a provider outcome requires recovery, the refund row also offers
+`Complete recovery`. Organizers with events write access can use it. Other
+roles see the action disabled with an explanation of the requirement. After
+arranging the attendee's refund outside OCG, the organizer records the external
+refund reference and the evidence reviewed. OCG then completes any pending
+local state, sends the completion notification when needed, and records the
+recovery in the audit log.
+
+The event `Attendees` tab shows refund status and the applicable request-review
+and retry actions for attendees in that event. Recovery completion is available
+only from the group-wide `Refunds` tab. Both views address the underlying
+purchase directly, so historical purchases and checkout-only refunds do not
+depend on a current attendance row.
 
 ## Audit: Logs
 

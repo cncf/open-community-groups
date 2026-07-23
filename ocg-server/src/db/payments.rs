@@ -1,5 +1,7 @@
 //! Database operations for payments, ticketing, and refunds.
 
+use std::ops::{Deref, DerefMut};
+
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -20,17 +22,6 @@ use crate::{
 /// Database operations for payments.
 #[async_trait]
 pub(crate) trait DBPayments {
-    /// Approves a pending refund request after the provider refund succeeds.
-    async fn approve_event_refund_request(
-        &self,
-        actor_user_id: Uuid,
-        group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-        provider_refund_id: String,
-        review_note: Option<String>,
-    ) -> Result<CompletedEventRefund>;
-
     /// Adds the provider checkout session details to a pending purchase.
     async fn attach_checkout_session_to_event_purchase(
         &self,
@@ -38,14 +29,6 @@ pub(crate) trait DBPayments {
         provider: PaymentProvider,
         checkout_session: &CheckoutSession,
     ) -> Result<()>;
-
-    /// Marks a refund request as being approved and returns its purchase.
-    async fn begin_event_refund_approval(
-        &self,
-        group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<EventPurchaseSummary>;
 
     /// Cancels an attendee's active pending checkout.
     async fn cancel_event_checkout(
@@ -55,19 +38,28 @@ pub(crate) trait DBPayments {
         user_id: Uuid,
     ) -> Result<()>;
 
+    /// Claims the next refund ready for the configured provider.
+    async fn claim_event_purchase_refund(
+        &self,
+        provider: PaymentProvider,
+    ) -> Result<Option<ClaimedEventPurchaseRefund>>;
+
+    /// Completes an externally resolved terminal provider refund.
+    async fn complete_event_purchase_refund_recovery(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_refund_id: Uuid,
+        recovery_reference: String,
+        recovery_note: String,
+        notification_template_data: Option<serde_json::Value>,
+    ) -> Result<()>;
+
     /// Completes a free purchase locally without a provider checkout.
     async fn complete_free_event_purchase(
         &self,
         event_purchase_id: Uuid,
     ) -> Result<CompletedEventPurchase>;
-
-    /// Ensures a durable refund record exists before calling the provider.
-    async fn ensure_event_purchase_refund_started(
-        &self,
-        event_purchase_id: Uuid,
-        provider: PaymentProvider,
-        kind: EventPurchaseRefundKind,
-    ) -> Result<EventPurchaseRefund>;
 
     /// Expires a pending purchase when its provider checkout session expires.
     async fn expire_event_purchase_for_checkout_session(
@@ -76,11 +68,26 @@ pub(crate) trait DBPayments {
         provider_session_id: &str,
     ) -> Result<()>;
 
+    /// Finalizes a provider-complete refund for the current worker claim.
+    async fn finalize_event_purchase_refund(
+        &self,
+        event_purchase_refund_id: Uuid,
+        claim_id: Uuid,
+        notification_template_data: serde_json::Value,
+    ) -> Result<()>;
+
     /// Loads the durable refund record for a purchase.
     async fn get_event_purchase_refund(
         &self,
         event_purchase_id: Uuid,
     ) -> Result<EventPurchaseRefund>;
+
+    /// Loads authoritative context for completing a refund recovery.
+    async fn get_event_purchase_refund_recovery_context(
+        &self,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+    ) -> Result<EventPurchaseRefundRecoveryContext>;
 
     /// Loads the current attendee-facing summary for a purchase.
     async fn get_event_purchase_summary(
@@ -95,6 +102,15 @@ pub(crate) trait DBPayments {
         input: &PrepareEventCheckoutPurchaseInput,
     ) -> Result<PreparedEventCheckout>;
 
+    /// Queues an approved attendee refund request for worker processing.
+    async fn queue_event_refund_request_approval(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        review_note: Option<String>,
+    ) -> Result<()>;
+
     /// Reconciles a provider-backed purchase by checkout session id.
     async fn reconcile_event_purchase_for_checkout_session(
         &self,
@@ -103,27 +119,22 @@ pub(crate) trait DBPayments {
         provider_payment_reference: Option<String>,
     ) -> Result<ReconcileEventPurchaseResult>;
 
-    /// Records an automatic refund after an unfulfillable provider purchase is refunded.
-    async fn record_automatic_refund_for_event_purchase(
-        &self,
-        event_purchase_id: Uuid,
-        provider_refund_id: String,
-    ) -> Result<()>;
-
-    /// Records a failed provider refund attempt.
-    async fn record_event_purchase_refund_failed(
-        &self,
-        event_purchase_refund_id: Uuid,
-        failure_message: String,
-    ) -> Result<()>;
-
     /// Records an in-progress provider refund for the expected attempt.
     async fn record_event_purchase_refund_pending(
         &self,
         event_purchase_refund_id: Uuid,
         expected_idempotency_key: String,
         provider_refund_id: String,
+        expected_claim_id: Option<Uuid>,
     ) -> Result<EventPurchaseRefund>;
+
+    /// Releases a worker claim after a retryable provider error.
+    async fn record_event_purchase_refund_retryable_failure(
+        &self,
+        event_purchase_refund_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
+    ) -> Result<()>;
 
     /// Records a successful provider refund for the expected attempt.
     async fn record_event_purchase_refund_succeeded(
@@ -131,6 +142,7 @@ pub(crate) trait DBPayments {
         event_purchase_refund_id: Uuid,
         expected_idempotency_key: String,
         provider_refund_id: String,
+        expected_claim_id: Option<Uuid>,
     ) -> Result<EventPurchaseRefund>;
 
     /// Records a terminal failure and pins the expected provider attempt.
@@ -140,6 +152,7 @@ pub(crate) trait DBPayments {
         expected_idempotency_key: String,
         provider_refund_id: String,
         failure_message: String,
+        expected_claim_id: Option<Uuid>,
     ) -> Result<()>;
 
     /// Rejects a pending attendee refund request.
@@ -147,8 +160,7 @@ pub(crate) trait DBPayments {
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
+        event_purchase_id: Uuid,
         review_note: Option<String>,
     ) -> Result<CompletedEventPurchase>;
 
@@ -162,13 +174,15 @@ pub(crate) trait DBPayments {
         notification_template_data: serde_json::Value,
     ) -> Result<()>;
 
-    /// Reverts a refund request that was marked as processing.
-    async fn revert_event_refund_approval(
+    /// Requeues a retryable refund after an administrator requests another attempt.
+    async fn requeue_event_purchase_refund(
         &self,
         group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
+        event_purchase_id: Uuid,
     ) -> Result<()>;
+
+    /// Releases stale claims left by interrupted refund workers.
+    async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32>;
 }
 
 #[async_trait]
@@ -176,40 +190,6 @@ impl<T> DBPayments for T
 where
     T: PgExecutor + Send + Sync,
 {
-    /// [`DBPayments::approve_event_refund_request`].
-    #[instrument(skip(self, review_note), err)]
-    async fn approve_event_refund_request(
-        &self,
-        actor_user_id: Uuid,
-        group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-        provider_refund_id: String,
-        review_note: Option<String>,
-    ) -> Result<CompletedEventRefund> {
-        self.fetch_json_one(
-            "
-            select approve_event_refund_request(
-                $1::uuid,
-                $2::uuid,
-                $3::uuid,
-                $4::uuid,
-                $5::text,
-                $6::text
-            )
-            ",
-            &[
-                &actor_user_id,
-                &group_id,
-                &event_id,
-                &user_id,
-                &provider_refund_id,
-                &review_note,
-            ],
-        )
-        .await
-    }
-
     /// [`DBPayments::attach_checkout_session_to_event_purchase`].
     #[instrument(skip(self, checkout_session), err)]
     async fn attach_checkout_session_to_event_purchase(
@@ -237,21 +217,6 @@ where
         .await
     }
 
-    /// [`DBPayments::begin_event_refund_approval`].
-    #[instrument(skip(self), err)]
-    async fn begin_event_refund_approval(
-        &self,
-        group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<EventPurchaseSummary> {
-        self.fetch_json_one(
-            "select begin_event_refund_approval($1::uuid, $2::uuid, $3::uuid)",
-            &[&group_id, &event_id, &user_id],
-        )
-        .await
-    }
-
     /// [`DBPayments::cancel_event_checkout`].
     #[instrument(skip(self), err)]
     async fn cancel_event_checkout(
@@ -267,6 +232,53 @@ where
         .await
     }
 
+    /// [`DBPayments::claim_event_purchase_refund`].
+    #[instrument(skip(self), err)]
+    async fn claim_event_purchase_refund(
+        &self,
+        provider: PaymentProvider,
+    ) -> Result<Option<ClaimedEventPurchaseRefund>> {
+        self.fetch_json_opt(
+            "select claim_event_purchase_refund($1::text)",
+            &[&provider.to_string()],
+        )
+        .await
+    }
+
+    /// [`DBPayments::complete_event_purchase_refund_recovery`].
+    #[instrument(skip(self, recovery_note, notification_template_data), err)]
+    async fn complete_event_purchase_refund_recovery(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_refund_id: Uuid,
+        recovery_reference: String,
+        recovery_note: String,
+        notification_template_data: Option<serde_json::Value>,
+    ) -> Result<()> {
+        self.execute(
+            "
+            select complete_event_purchase_refund_recovery(
+                $1::uuid,
+                $2::uuid,
+                $3::uuid,
+                $4::text,
+                $5::text,
+                $6::jsonb
+            )
+            ",
+            &[
+                &actor_user_id,
+                &group_id,
+                &event_purchase_refund_id,
+                &recovery_reference,
+                &recovery_note,
+                &notification_template_data.as_ref().map(Json),
+            ],
+        )
+        .await
+    }
+
     /// [`DBPayments::complete_free_event_purchase`].
     #[instrument(skip(self), err)]
     async fn complete_free_event_purchase(
@@ -276,27 +288,6 @@ where
         self.fetch_json_one(
             "select complete_free_event_purchase($1::uuid)",
             &[&event_purchase_id],
-        )
-        .await
-    }
-
-    /// [`DBPayments::ensure_event_purchase_refund_started`].
-    #[instrument(skip(self), err)]
-    async fn ensure_event_purchase_refund_started(
-        &self,
-        event_purchase_id: Uuid,
-        provider: PaymentProvider,
-        kind: EventPurchaseRefundKind,
-    ) -> Result<EventPurchaseRefund> {
-        self.fetch_json_one(
-            "
-            select ensure_event_purchase_refund_started(
-                $1::uuid,
-                $2::text,
-                $3::text
-            )
-            ",
-            &[&event_purchase_id, &provider.to_string(), &kind.to_string()],
         )
         .await
     }
@@ -315,6 +306,25 @@ where
         .await
     }
 
+    /// [`DBPayments::finalize_event_purchase_refund`].
+    #[instrument(skip(self, notification_template_data), err)]
+    async fn finalize_event_purchase_refund(
+        &self,
+        event_purchase_refund_id: Uuid,
+        claim_id: Uuid,
+        notification_template_data: serde_json::Value,
+    ) -> Result<()> {
+        self.execute(
+            "select finalize_event_purchase_refund($1::uuid, $2::uuid, $3::jsonb)",
+            &[
+                &event_purchase_refund_id,
+                &claim_id,
+                &Json(&notification_template_data),
+            ],
+        )
+        .await
+    }
+
     /// [`DBPayments::get_event_purchase_refund`].
     #[instrument(skip(self), err)]
     async fn get_event_purchase_refund(
@@ -324,6 +334,20 @@ where
         self.fetch_json_one(
             "select get_event_purchase_refund($1::uuid)",
             &[&event_purchase_id],
+        )
+        .await
+    }
+
+    /// [`DBPayments::get_event_purchase_refund_recovery_context`].
+    #[instrument(skip(self), err)]
+    async fn get_event_purchase_refund_recovery_context(
+        &self,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+    ) -> Result<EventPurchaseRefundRecoveryContext> {
+        self.fetch_json_one(
+            "select get_event_purchase_refund_recovery_context($1::uuid, $2::uuid)",
+            &[&group_id, &event_purchase_id],
         )
         .await
     }
@@ -373,6 +397,22 @@ where
         .await
     }
 
+    /// [`DBPayments::queue_event_refund_request_approval`].
+    #[instrument(skip(self, review_note), err)]
+    async fn queue_event_refund_request_approval(
+        &self,
+        actor_user_id: Uuid,
+        group_id: Uuid,
+        event_purchase_id: Uuid,
+        review_note: Option<String>,
+    ) -> Result<()> {
+        self.execute(
+            "select queue_event_refund_request_approval($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[&actor_user_id, &group_id, &event_purchase_id, &review_note],
+        )
+        .await
+    }
+
     /// [`DBPayments::reconcile_event_purchase_for_checkout_session`].
     #[instrument(skip(self), err)]
     async fn reconcile_event_purchase_for_checkout_session(
@@ -401,34 +441,6 @@ where
         Ok(result.into())
     }
 
-    /// [`DBPayments::record_automatic_refund_for_event_purchase`].
-    #[instrument(skip(self), err)]
-    async fn record_automatic_refund_for_event_purchase(
-        &self,
-        event_purchase_id: Uuid,
-        provider_refund_id: String,
-    ) -> Result<()> {
-        self.execute(
-            "select record_automatic_refund_for_event_purchase($1::uuid, $2::text)",
-            &[&event_purchase_id, &provider_refund_id],
-        )
-        .await
-    }
-
-    /// [`DBPayments::record_event_purchase_refund_failed`].
-    #[instrument(skip(self, failure_message), err)]
-    async fn record_event_purchase_refund_failed(
-        &self,
-        event_purchase_refund_id: Uuid,
-        failure_message: String,
-    ) -> Result<()> {
-        self.execute(
-            "select record_event_purchase_refund_failed($1::uuid, $2::text)",
-            &[&event_purchase_refund_id, &failure_message],
-        )
-        .await
-    }
-
     /// [`DBPayments::record_event_purchase_refund_pending`].
     #[instrument(skip(self), err)]
     async fn record_event_purchase_refund_pending(
@@ -436,14 +448,31 @@ where
         event_purchase_refund_id: Uuid,
         expected_idempotency_key: String,
         provider_refund_id: String,
+        expected_claim_id: Option<Uuid>,
     ) -> Result<EventPurchaseRefund> {
         self.fetch_json_one(
-            "select record_event_purchase_refund_pending($1::uuid, $2::text, $3::text)",
+            "select record_event_purchase_refund_pending($1::uuid, $2::text, $3::text, $4::uuid)",
             &[
                 &event_purchase_refund_id,
                 &expected_idempotency_key,
                 &provider_refund_id,
+                &expected_claim_id,
             ],
+        )
+        .await
+    }
+
+    /// [`DBPayments::record_event_purchase_refund_retryable_failure`].
+    #[instrument(skip(self, failure_message), err)]
+    async fn record_event_purchase_refund_retryable_failure(
+        &self,
+        event_purchase_refund_id: Uuid,
+        claim_id: Uuid,
+        failure_message: String,
+    ) -> Result<()> {
+        self.execute(
+            "select record_event_purchase_refund_retryable_failure($1::uuid, $2::uuid, $3::text)",
+            &[&event_purchase_refund_id, &claim_id, &failure_message],
         )
         .await
     }
@@ -455,13 +484,15 @@ where
         event_purchase_refund_id: Uuid,
         expected_idempotency_key: String,
         provider_refund_id: String,
+        expected_claim_id: Option<Uuid>,
     ) -> Result<EventPurchaseRefund> {
         self.fetch_json_one(
-            "select record_event_purchase_refund_succeeded($1::uuid, $2::text, $3::text)",
+            "select record_event_purchase_refund_succeeded($1::uuid, $2::text, $3::text, $4::uuid)",
             &[
                 &event_purchase_refund_id,
                 &expected_idempotency_key,
                 &provider_refund_id,
+                &expected_claim_id,
             ],
         )
         .await
@@ -475,14 +506,16 @@ where
         expected_idempotency_key: String,
         provider_refund_id: String,
         failure_message: String,
+        expected_claim_id: Option<Uuid>,
     ) -> Result<()> {
         self.execute(
-            "select record_event_purchase_refund_terminal_failed($1::uuid, $2::text, $3::text, $4::text)",
+            "select record_event_purchase_refund_terminal_failed($1::uuid, $2::text, $3::text, $4::text, $5::uuid)",
             &[
                 &event_purchase_refund_id,
                 &expected_idempotency_key,
                 &provider_refund_id,
                 &failure_message,
+                &expected_claim_id,
             ],
         )
         .await
@@ -494,8 +527,7 @@ where
         &self,
         actor_user_id: Uuid,
         group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
+        event_purchase_id: Uuid,
         review_note: Option<String>,
     ) -> Result<CompletedEventPurchase> {
         self.fetch_json_one(
@@ -504,11 +536,10 @@ where
                 $1::uuid,
                 $2::uuid,
                 $3::uuid,
-                $4::uuid,
-                $5::text
+                $4::text
             )
             ",
-            &[&actor_user_id, &group_id, &event_id, &user_id, &review_note],
+            &[&actor_user_id, &group_id, &event_purchase_id, &review_note],
         )
         .await
     }
@@ -544,19 +575,25 @@ where
         .await
     }
 
-    /// [`DBPayments::revert_event_refund_approval`].
+    /// [`DBPayments::requeue_event_purchase_refund`].
     #[instrument(skip(self), err)]
-    async fn revert_event_refund_approval(
+    async fn requeue_event_purchase_refund(
         &self,
         group_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
+        event_purchase_id: Uuid,
     ) -> Result<()> {
         self.execute(
-            "select revert_event_refund_approval($1::uuid, $2::uuid, $3::uuid)",
-            &[&group_id, &event_id, &user_id],
+            "select requeue_event_purchase_refund($1::uuid, $2::uuid)",
+            &[&group_id, &event_purchase_id],
         )
         .await
+    }
+
+    /// [`DBPayments::requeue_stale_event_purchase_refund_claims`].
+    #[instrument(skip(self), err)]
+    async fn requeue_stale_event_purchase_refund_claims(&self) -> Result<i32> {
+        self.fetch_scalar_one("select requeue_stale_event_purchase_refund_claims()", &[])
+            .await
     }
 }
 
@@ -576,15 +613,8 @@ enum ReconcileEventPurchaseForCheckoutSessionOutput {
     },
     /// Purchase was already reconciled.
     Noop,
-    /// Purchase cannot be fulfilled and requires an automatic refund.
-    RefundRequired {
-        /// Amount to refund in minor units.
-        amount_minor: i64,
-        /// Purchase requiring the refund.
-        event_purchase_id: Uuid,
-        /// Provider payment reference to refund.
-        provider_payment_reference: String,
-    },
+    /// Purchase cannot be fulfilled and its refund was durably queued.
+    RefundQueued,
 }
 
 /// Result of reconciling a provider-backed purchase completion webhook.
@@ -594,8 +624,8 @@ pub(crate) enum ReconcileEventPurchaseResult {
     Completed(CompletedEventPurchase),
     /// No local work remains for this webhook.
     Noop,
-    /// The purchase can no longer be fulfilled and must be refunded.
-    RefundRequired(RefundRequiredEventPurchase),
+    /// The purchase can no longer be fulfilled and its refund is queued.
+    RefundQueued,
 }
 
 impl From<ReconcileEventPurchaseForCheckoutSessionOutput> for ReconcileEventPurchaseResult {
@@ -611,16 +641,34 @@ impl From<ReconcileEventPurchaseForCheckoutSessionOutput> for ReconcileEventPurc
                 user_id,
             }),
             ReconcileEventPurchaseForCheckoutSessionOutput::Noop => Self::Noop,
-            ReconcileEventPurchaseForCheckoutSessionOutput::RefundRequired {
-                amount_minor,
-                event_purchase_id,
-                provider_payment_reference,
-            } => Self::RefundRequired(RefundRequiredEventPurchase {
-                amount_minor,
-                event_purchase_id,
-                provider_payment_reference,
-            }),
+            ReconcileEventPurchaseForCheckoutSessionOutput::RefundQueued => Self::RefundQueued,
         }
+    }
+}
+
+/// Claimed refund work with the context required for atomic notification handoff.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ClaimedEventPurchaseRefund {
+    /// Community identifier.
+    pub community_id: Uuid,
+    /// Event identifier.
+    pub event_id: Uuid,
+    /// Durable provider refund state.
+    #[serde(flatten)]
+    pub refund: EventPurchaseRefund,
+}
+
+impl Deref for ClaimedEventPurchaseRefund {
+    type Target = EventPurchaseRefund;
+
+    fn deref(&self) -> &Self::Target {
+        &self.refund
+    }
+}
+
+impl DerefMut for ClaimedEventPurchaseRefund {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.refund
     }
 }
 
@@ -631,19 +679,6 @@ pub(crate) struct CompletedEventPurchase {
     pub community_id: Uuid,
     /// Event identifier.
     pub event_id: Uuid,
-    /// User identifier.
-    pub user_id: Uuid,
-}
-
-/// Data returned when an event refund is finalized.
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct CompletedEventRefund {
-    /// Community identifier.
-    pub community_id: Uuid,
-    /// Event identifier.
-    pub event_id: Uuid,
-    /// Whether this call performed the finalization.
-    pub finalized_now: bool,
     /// User identifier.
     pub user_id: Uuid,
 }
@@ -665,21 +700,41 @@ pub(crate) struct EventPurchaseRefund {
     pub kind: EventPurchaseRefundKind,
     /// Payments provider processing the refund.
     pub payment_provider: PaymentProvider,
-    /// Whether this call inserted the durable refund record.
-    pub started_now: bool,
     /// Current provider refund lifecycle status.
     pub status: EventPurchaseRefundStatus,
+    /// Whether the provider reported a terminal failure requiring recovery.
+    pub terminal_failure: bool,
 
+    /// Number of provider reconciliation claims made so far.
+    #[serde(default)]
+    pub attempt_count: i32,
+    /// Identity of the worker claim currently processing this refund.
+    pub claim_id: Option<Uuid>,
     /// Most recent provider failure message.
     pub failure_message: Option<String>,
     /// Time when the local purchase state was finalized.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub finalized_at: Option<DateTime<Utc>>,
+    /// Provider payment reference used to find or create the refund.
+    pub provider_payment_reference: Option<String>,
     /// Provider-specific refund identifier once known.
     pub provider_refund_id: Option<String>,
     /// Time when the provider reported that the refund succeeded.
     #[serde(default, with = "chrono::serde::ts_seconds_option")]
     pub provider_refunded_at: Option<DateTime<Utc>>,
+}
+
+/// Authoritative event context required to complete a refund recovery.
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct EventPurchaseRefundRecoveryContext {
+    /// Community containing the event.
+    pub community_id: Uuid,
+    /// Event whose purchase is being recovered.
+    pub event_id: Uuid,
+    /// Durable refund identifier.
+    pub event_purchase_refund_id: Uuid,
+    /// Whether recovery must enqueue the attendee completion notification.
+    pub notification_required: bool,
 }
 
 /// Durable refund workflow kind.
@@ -689,6 +744,8 @@ pub(crate) struct EventPurchaseRefund {
 pub(crate) enum EventPurchaseRefundKind {
     /// Automatic refund for a checkout that can no longer be fulfilled.
     AutomaticUnfulfillableCheckout,
+    /// Automatic refund caused by an organizer canceling the event.
+    EventCancellation,
     /// Organizer approval of an attendee refund request.
     RefundRequestApproval,
 }
@@ -699,7 +756,9 @@ pub(crate) enum EventPurchaseRefundKind {
 pub(crate) enum EventPurchaseRefundStatus {
     /// Local purchase and request state have been finalized.
     Finalized,
-    /// Represents a terminal provider failure, possibly after local finalization.
+    /// A refund worker currently owns the durable job.
+    Processing,
+    /// Provider reconciliation failed transiently or terminally.
     ProviderFailed,
     /// Provider refund has not succeeded yet.
     ProviderPending,
@@ -723,17 +782,6 @@ pub(crate) struct PrepareEventCheckoutPurchaseInput {
     pub discount_code: Option<String>,
     /// Registration answers provided before checkout starts.
     pub registration_answers: Option<QuestionnaireAnswers>,
-}
-
-/// Data for a provider purchase that must be refunded.
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct RefundRequiredEventPurchase {
-    /// Completed purchase amount in minor units.
-    pub amount_minor: i64,
-    /// Platform purchase identifier.
-    pub event_purchase_id: Uuid,
-    /// Provider payment reference used for refunds.
-    pub provider_payment_reference: String,
 }
 
 #[cfg(test)]
@@ -783,25 +831,16 @@ mod tests {
     }
 
     #[test]
-    fn reconcile_event_purchase_for_checkout_session_output_maps_refund_required() {
-        let event_purchase_id = Uuid::new_v4();
-
+    fn reconcile_event_purchase_for_checkout_session_output_maps_refund_queued() {
         let output: ReconcileEventPurchaseForCheckoutSessionOutput =
             serde_json::from_value(json!({
-                "outcome": "refund_required",
-                "amount_minor": 2500,
-                "event_purchase_id": event_purchase_id,
-                "provider_payment_reference": "pi_test_123"
+                "outcome": "refund_queued"
             }))
             .unwrap();
 
-        match ReconcileEventPurchaseResult::from(output) {
-            ReconcileEventPurchaseResult::RefundRequired(refund) => {
-                assert_eq!(refund.amount_minor, 2500);
-                assert_eq!(refund.event_purchase_id, event_purchase_id);
-                assert_eq!(refund.provider_payment_reference, "pi_test_123");
-            }
-            _ => panic!("expected refund-required result"),
-        }
+        assert!(matches!(
+            ReconcileEventPurchaseResult::from(output),
+            ReconcileEventPurchaseResult::RefundQueued
+        ));
     }
 }

@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(21);
+select plan(23);
 
 -- ============================================================================
 -- VARIABLES
@@ -579,12 +579,7 @@ select results_eq(
 -- Should require refund for expired local holds
 select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_expired', null)::jsonb,
-    jsonb_build_object(
-        'amount_minor', 2000,
-        'event_purchase_id', :'purchaseExpiredID'::uuid,
-        'outcome', 'refund_required',
-        'provider_payment_reference', 'pi_expired'
-    ),
+    jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund for expired local holds'
 );
 
@@ -610,12 +605,7 @@ select results_eq(
 -- Should keep requiring refund for refund-pending purchases after the refund handoff
 select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_expired', null)::jsonb,
-    jsonb_build_object(
-        'amount_minor', 2000,
-        'event_purchase_id', :'purchaseExpiredID'::uuid,
-        'outcome', 'refund_required',
-        'provider_payment_reference', 'pi_expired'
-    ),
+    jsonb_build_object('outcome', 'refund_queued'),
     'Should keep requiring refund for refund-pending purchases after the refund handoff'
 );
 
@@ -633,12 +623,7 @@ select is(
 -- Should require refund when the event can no longer be fulfilled
 select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_canceled', null)::jsonb,
-    jsonb_build_object(
-        'amount_minor', 2500,
-        'event_purchase_id', :'purchaseCanceledID'::uuid,
-        'outcome', 'refund_required',
-        'provider_payment_reference', 'pi_canceled'
-    ),
+    jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when the event can no longer be fulfilled'
 );
 
@@ -649,12 +634,7 @@ select is(
         'cs_recovery_replacement',
         'pi_recovery_replacement'
     )::jsonb,
-    jsonb_build_object(
-        'amount_minor', 2500,
-        'event_purchase_id', :'purchaseRecoveryReplacementID'::uuid,
-        'outcome', 'refund_required',
-        'provider_payment_reference', 'pi_recovery_replacement'
-    ),
+    jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when recovery won before a replacement checkout payment'
 );
 
@@ -685,12 +665,7 @@ select results_eq(
 -- Should require refund when the event has already started
 select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_started', 'pi_started')::jsonb,
-    jsonb_build_object(
-        'amount_minor', 2500,
-        'event_purchase_id', :'purchaseStartedID'::uuid,
-        'outcome', 'refund_required',
-        'provider_payment_reference', 'pi_started'
-    ),
+    jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when the event has already started'
 );
 
@@ -815,12 +790,7 @@ select throws_ok(
 -- Should require refund when the attendee row cannot be confirmed
 select is(
     reconcile_event_purchase_for_checkout_session('stripe', 'cs_invited', null)::jsonb,
-    jsonb_build_object(
-        'amount_minor', 2500,
-        'event_purchase_id', :'purchaseInvitedID'::uuid,
-        'outcome', 'refund_required',
-        'provider_payment_reference', 'pi_invited'
-    ),
+    jsonb_build_object('outcome', 'refund_queued'),
     'Should require refund when the attendee row cannot be confirmed'
 );
 
@@ -847,6 +817,48 @@ select results_eq(
     $$,
     $$ values (true, 'refund-pending'::text, 'invitation-pending'::text) $$,
     'Should persist the refunding purchase fields and keep the invitation row'
+);
+
+-- Should persist every automatic refund handoff for worker processing
+select results_eq(
+    format($$
+        select
+            count(*)::int,
+            bool_and(epr.amount_minor = ep.amount_minor),
+            bool_and(epr.currency_code = ep.currency_code),
+            bool_and(epr.idempotency_key = 'event-purchase-refund-' || ep.event_purchase_id),
+            bool_and(epr.kind = 'automatic-unfulfillable-checkout'),
+            bool_and(epr.payment_provider_id = 'stripe'),
+            bool_and(epr.status = 'provider-pending')
+        from event_purchase ep
+        join event_purchase_refund epr using (event_purchase_id)
+        where ep.event_purchase_id in (
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid,
+            %L::uuid
+        )
+    $$,
+        :'purchaseCanceledID',
+        :'purchaseExpiredID',
+        :'purchaseInvitedID',
+        :'purchaseRecoveryReplacementID',
+        :'purchaseStartedID'
+    ),
+    $$ values (5, true, true, true, true, true, true) $$,
+    'Should persist every automatic refund handoff for worker processing'
+);
+
+-- Should keep one durable refund after replaying the same checkout webhook
+select is(
+    (
+        select count(*)::int
+        from event_purchase_refund
+        where event_purchase_id = :'purchaseExpiredID'
+    ),
+    1,
+    'Should keep one durable refund after replaying the same checkout webhook'
 );
 
 -- Should complete checkout sessions for already confirmed attendees

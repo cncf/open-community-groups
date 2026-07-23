@@ -237,6 +237,80 @@
 {% endmacro permission_warning -%}
 {# End permission warning #}
 
+{# Refund review modal -#}
+{# Used by refund approval and rejection actions across group dashboard lists. -#}
+{% macro refund_review_modal(id_prefix, title_id, close_id, title, description, attendee_field_suffix, review_note_id, submit_label, success_message, error_message, show_reason = false) -%}
+  {% let refund_review_subtitle -%}
+  <p id="{{ id_prefix }}-modal-description"
+     class="mt-1 text-sm text-stone-600">{{ description }}</p>
+{%- endlet %}
+<div id="{{ id_prefix }}-modal"
+     role="dialog"
+     aria-modal="true"
+     aria-hidden="true"
+     aria-labelledby="{{ title_id }}"
+     aria-describedby="{{ id_prefix }}-modal-description"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+  <div id="overlay-{{ id_prefix }}-modal"
+       class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+  <div class="modal-panel p-4 max-w-2xl">
+    <div class="modal-card rounded-lg">
+      {{ modal_header(title_id = title_id,
+            title = title,
+            close_id = close_id,
+            subtitle = refund_review_subtitle,
+            align_items = "items-start") -}}
+      <form id="{{ id_prefix }}-form"
+            hx-indicator="#dashboard-spinner"
+            hx-disabled-elt="find button[type='submit']"
+            hx-ext="no-empty-vals"
+            data-htmx-response
+            data-success-message="{{ success_message }}"
+            data-error-message="{{ error_message }}">
+        <div class="modal-body p-4 md:px-6 md:py-5">
+          <dl class="grid gap-3 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm">
+            <div>
+              <dt class="text-stone-500">Attendee</dt>
+              <dd id="{{ id_prefix }}-{{ attendee_field_suffix }}"
+                  class="mt-1 font-medium text-stone-900">
+              </dd>
+            </div>
+            <div>
+              <dt class="text-stone-500">Event</dt>
+              <dd id="{{ id_prefix }}-event" class="mt-1 font-medium text-stone-900">
+              </dd>
+            </div>
+            {% if show_reason -%}
+              <div>
+                <dt class="text-stone-500">Reason</dt>
+                <dd id="{{ id_prefix }}-reason"
+                    class="mt-1 whitespace-pre-wrap break-words text-stone-900">
+                </dd>
+              </div>
+            {% endif -%}
+          </dl>
+          <div class="mt-5">
+            <label for="{{ review_note_id }}" class="form-label">Review note (optional)</label>
+            <textarea id="{{ review_note_id }}"
+                      class="input-primary mt-2 min-h-28"
+                      name="review_note"
+                      autofocus
+                      maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"></textarea>
+          </div>
+        </div>
+        <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+          <button id="cancel-{{ id_prefix }}-modal"
+                  type="button"
+                  class="btn-primary-outline">Cancel</button>
+          <button type="submit" class="btn-primary">{{ submit_label }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endmacro refund_review_modal -%}
+{# End refund review modal -#}
+
 {# Selector loading button -#}
 {# Used by dashboard shells while community or group selectors load. -#}
 {% macro selector_loading_button(extra_styles = "", spinner_size = "size-4") -%}

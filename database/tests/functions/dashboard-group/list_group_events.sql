@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,9 +14,11 @@ select plan(3);
 \set event3ID '3a200000-0000-0000-0000-000000000004'
 \set event4ID '3a200000-0000-0000-0000-000000000005'
 \set event5ID '3a200000-0000-0000-0000-000000000006'
+\set event6ID '3a200000-0000-0000-0000-000000000013'
 \set eventCategoryID '3a200000-0000-0000-0000-000000000007'
 \set group1ID '3a200000-0000-0000-0000-000000000008'
 \set group2ID '3a200000-0000-0000-0000-000000000009'
+\set group3ID '3a200000-0000-0000-0000-000000000014'
 \set groupCategory1ID '3a200000-0000-0000-0000-000000000010'
 \set missingGroupID '3a200000-0000-0000-0000-000000000011'
 \set user1ID '3a200000-0000-0000-0000-000000000012'
@@ -92,6 +94,18 @@ insert into "group" (
         'NY',
         'US',
         'United States'
+    ),
+    (
+        :'group3ID',
+        :'community1ID',
+        'Ongoing Group',
+        'ongoing-group',
+        'Group with an ongoing event',
+        :'groupCategory1ID',
+        'Madrid',
+        null,
+        'ES',
+        'Spain'
     );
 
 -- Event
@@ -203,9 +217,53 @@ insert into event (
     true
 );
 
+-- Ongoing event that started in the past but has not ended
+insert into event (
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    starts_at,
+    timezone
+) values (
+    'Ongoing event',
+    current_timestamp + interval '1 hour',
+    :'eventCategoryID',
+    :'event6ID',
+    'in-person',
+    :'group3ID',
+    'Ongoing Event',
+    'ongoing-event',
+    current_timestamp - interval '1 hour',
+    'Europe/Madrid'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should keep an ongoing event in the upcoming collection until it ends
+select results_eq(
+    format($$
+        with payload as (
+            select list_group_events(
+                %L::uuid,
+                '{"limit": 50, "past_offset": 0, "upcoming_offset": 0}'::jsonb
+            )::jsonb as value
+        )
+        select
+            (value->'past'->>'total')::int,
+            value->'upcoming'->'events'->0->>'event_id',
+            (value->'upcoming'->>'total')::int
+        from payload
+    $$, :'group3ID'),
+    format($$ values (0, %L::text, 1) $$, :'event6ID'),
+    'Should keep an ongoing event in the upcoming collection until it ends'
+);
 
 select is(
     list_group_events(
@@ -232,6 +290,7 @@ select is(
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
+                    "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Test Group",
@@ -260,6 +319,7 @@ select is(
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
+                    "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Test Group",
@@ -287,6 +347,7 @@ select is(
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
+                    "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Test Group",
@@ -333,6 +394,7 @@ select is(
                     "canceled": false,
                     "community_display_name": "Test Community",
                     "community_name": "test-community",
+                    "delete_eligibility": "allowed",
                     "event_id": "%s",
                     "group_category_name": "Technology",
                     "group_name": "Another Group",

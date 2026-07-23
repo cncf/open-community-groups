@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
@@ -12,7 +12,9 @@ select plan(3);
 \set communityID '3a090000-0000-0000-0000-000000000001'
 \set event1ID '3a090000-0000-0000-0000-000000000002'
 \set event2ID '3a090000-0000-0000-0000-000000000003'
+\set eventCanceledID '3a090000-0000-0000-0000-000000000009'
 \set eventCategoryID '3a090000-0000-0000-0000-000000000004'
+\set eventPastID '3a090000-0000-0000-0000-000000000010'
 \set eventSeriesID '3a090000-0000-0000-0000-000000000005'
 \set groupCategoryID '3a090000-0000-0000-0000-000000000006'
 \set groupID '3a090000-0000-0000-0000-000000000007'
@@ -139,11 +141,50 @@ insert into event (
 
         false,
         true
+    ),
+    (
+        :'eventPastID',
+        :'eventSeriesID',
+        :'groupID',
+        'Completed Series Event',
+        'completed-series-event',
+        'Completed event',
+        'UTC',
+        :'eventCategoryID',
+        'virtual',
+        now() - interval '2 hours',
+        now() - interval '1 hour',
+
+        false,
+        true
+    ),
+    (
+        :'eventCanceledID',
+        :'eventSeriesID',
+        :'groupID',
+        'Canceled Series Event',
+        'canceled-series-event',
+        'Canceled event',
+        'UTC',
+        :'eventCategoryID',
+        'virtual',
+        now() + interval '15 days',
+        now() + interval '15 days 1 hour',
+
+        true,
+        true
     );
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should list only non-completed, non-canceled series occurrences
+select is(
+    list_event_series_cancelable_event_ids(:'groupID', :'eventPastID'),
+    array[:'event1ID'::uuid, :'event2ID'::uuid],
+    'Should list only non-completed, non-canceled series occurrences'
+);
 
 -- Should cancel all requested events
 select lives_ok(

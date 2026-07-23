@@ -266,7 +266,7 @@
                                                     label = "Unpublish",
                                                     disabled_title = "Your role cannot unpublish events.",
                                                     series_message = "This event is part of a recurring series. What would you like to unpublish?",
-                                                    single_message = "Are you sure you wish to unpublish this event?",
+                                                    single_message = "Unpublish this event? Existing attendees and ticket purchases will be retained.",
                                                     success_message = "You have successfully unpublished the event.",
                                                     series_success_message = "You have successfully unpublished the events.",
                                                     series_error_message = "An error occurred unpublishing these events. Please try again later.",
@@ -296,8 +296,8 @@
                                                     icon = "cancel",
                                                     label = "Cancel",
                                                     disabled_title = "Your role cannot cancel events.",
-                                                    series_message = "This event is part of a recurring series. What would you like to cancel?",
-                                                    single_message = "Are you sure you wish to cancel this event? This action is not reversible.",
+                                                    series_message = "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?",
+                                                    single_message = "Cancel this event? This cannot be undone. All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
                                                     success_message = "You have successfully canceled the event.",
                                                     series_success_message = "You have successfully canceled the events.",
                                                     series_error_message = "Something went wrong canceling these events. Please try again later.",
@@ -312,7 +312,7 @@
                                                 label = "Delete",
                                                 disabled_title = "Your role cannot delete events.",
                                                 series_message = "This event is part of a recurring series. What would you like to delete?",
-                                                single_message = "Are you sure you wish to delete this event?",
+                                                single_message = "Delete this event? This removes it from the dashboard and cannot be undone.",
                                                 success_message = "You have successfully deleted the event.",
                                                 series_success_message = "You have successfully deleted the events.",
                                                 series_error_message = "Something went wrong deleting these events. Please try again later.",
@@ -550,7 +550,7 @@
                                                 label = "Delete",
                                                 disabled_title = "Your role cannot delete events.",
                                                 series_message = "This event is part of a recurring series. What would you like to delete?",
-                                                single_message = "Are you sure you wish to delete this event?",
+                                                single_message = "Delete this event? This removes it from the dashboard and cannot be undone.",
                                                 success_message = "You have successfully deleted the event.",
                                                 series_success_message = "You have successfully deleted the events.",
                                                 series_error_message = "Something went wrong deleting these events. Please try again later.",
@@ -608,7 +608,11 @@
             data-htmx-method="{{ htmx_method }}"
             data-has-related-events="{{ event.has_related_events }}"
             data-current-scope-text="Only this event"
-            data-series-scope-text="All in series"
+            {% if action == "cancel" -%}
+              data-series-scope-text="Non-completed events in series"
+            {% else -%}
+              data-series-scope-text="All in series"
+            {% endif -%}
             data-confirm-text="Yes"
             data-series-message="{{ series_message }}"
             data-single-message="{{ single_message }}"
@@ -620,11 +624,16 @@
             hx-indicator="#dashboard-spinner"
             hx-trigger="confirmed"
             class="cursor-pointer w-full text-start px-4 py-2 hover:bg-stone-100
-                   {% if !can_manage_events -%}
+                   {% if !can_manage_events || (action == "delete" && !event.can_delete()) -%}
                      opacity-50 cursor-not-allowed
                    {% endif -%}"
             {% if !can_manage_events -%}
               disabled title="{{ disabled_title }}"
+            {% else if action == "delete" && !event.can_delete() -%}
+              {% if let Some(delete_title) = event.delete_unavailable_title() -%}
+                title="{{ delete_title }}"
+              {% endif -%}
+            disabled
             {% endif -%}>
       <div class="flex items-center">
         <div class="svg-icon size-4 icon-{{ icon }} bg-stone-600"></div>

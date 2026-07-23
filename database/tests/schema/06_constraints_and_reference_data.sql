@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(65);
+select plan(69);
 
 -- ============================================================================
 -- VARIABLES
@@ -186,6 +186,7 @@ select has_check('session', 'session_meeting_provider_required_chk');
 select has_check('session', 'session_meeting_requested_times_chk');
 
 -- Test: event attendee statuses should match expected values
+select has_check('event_attendee', 'event_attendee_attendance_canceled_chk');
 select results_eq(
     $$
         select (regexp_matches(pg_get_constraintdef(oid), $re$'([^']+)'$re$, 'g'))[1]
@@ -193,6 +194,7 @@ select results_eq(
         where conname = 'event_attendee_status_chk'
     $$,
     $$ values
+        ('attendance-canceled'),
         ('confirmed'),
         ('invitation-canceled'),
         ('invitation-pending'),
@@ -230,6 +232,7 @@ select results_eq(
     $$,
     $$ values
         ('automatic-unfulfillable-checkout'),
+        ('event-cancellation'),
         ('refund-request-approval')
     $$,
     'Event purchase refund kinds should match expected values'
@@ -244,6 +247,7 @@ select results_eq(
     $$,
     $$ values
         ('finalized'),
+        ('processing'),
         ('provider-failed'),
         ('provider-pending'),
         ('provider-succeeded')
@@ -252,6 +256,14 @@ select results_eq(
 );
 
 -- Test: event purchase refund lifecycle constraints should exist
+select has_check(
+    'event_purchase_refund',
+    'event_purchase_refund_attempt_count_check'
+);
+select has_check(
+    'event_purchase_refund',
+    'event_purchase_refund_claim_chk'
+);
 select has_check(
     'event_purchase_refund',
     'event_purchase_refund_finalized_at_status_chk'
@@ -280,6 +292,10 @@ select has_check(
 select has_check(
     'event_purchase_refund',
     'event_purchase_refund_provider_refund_required_chk'
+);
+select has_check(
+    'event_purchase_refund',
+    'event_purchase_refund_terminal_failure_chk'
 );
 
 -- Test: event refund request statuses should match expected values

@@ -125,6 +125,7 @@
 {{ template "dashboard-group/delete_group_sponsor.sql" }}
 {{ template "dashboard-group/delete_group_team_member.sql" }}
 {{ template "dashboard-group/get_cfs_submission_notification_data.sql" }}
+{{ template "dashboard-group/get_event_delete_eligibility.sql" }} -- Dependency for event summaries and deletion
 {{ template "dashboard-group/get_event_summary_dashboard.sql" }} -- Dependency for list_group_events
 {{ template "dashboard-group/get_group_sponsor.sql" }}
 {{ template "dashboard-group/get_group_stats.sql" }}
@@ -135,6 +136,7 @@
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
+{{ template "dashboard-group/list_event_series_cancelable_event_ids.sql" }}
 {{ template "dashboard-group/list_event_series_event_ids.sql" }}
 {{ template "dashboard-group/list_event_series_publishable_event_ids.sql" }}
 {{ template "dashboard-group/list_event_waitlist_ids.sql" }}
@@ -142,12 +144,14 @@
 {{ template "dashboard-group/list_group_events.sql" }}
 {{ template "dashboard-group/list_group_members.sql" }}
 {{ template "dashboard-group/list_group_members_ids.sql" }}
+{{ template "dashboard-group/list_group_refunds.sql" }}
 {{ template "dashboard-group/list_group_roles.sql" }}
 {{ template "dashboard-group/list_group_sponsors.sql" }}
 {{ template "dashboard-group/list_group_team_members.sql" }}
 {{ template "dashboard-group/list_group_team_members_ids.sql" }}
 {{ template "dashboard-group/list_session_kinds.sql" }}
 {{ template "dashboard-group/list_user_groups.sql" }}
+{{ template "dashboard-group/lock_events_for_cancellation.sql" }}
 {{ template "dashboard-group/manual_check_in_event.sql" }}
 {{ template "dashboard-group/publish_event.sql" }}
 {{ template "dashboard-group/publish_event_series_events.sql" }}
@@ -230,7 +234,7 @@
 
 {{ template "notifications/claim_pending_notification.sql" }}
 {{ template "notifications/enqueue_due_event_reminders.sql" }}
-{{ template "notifications/enqueue_notification.sql" }} -- Dependency for tracked custom and auth notification helpers
+{{ template "notifications/enqueue_notification.sql" }} -- Dependency for downstream notification-producing functions
 {{ template "notifications/manual_requeue_notifications.sql" }}
 {{ template "notifications/mark_notification_delivery_unknown.sql" }}
 {{ template "notifications/mark_stale_processing_notifications_unknown.sql" }}
@@ -239,15 +243,15 @@
 {{ template "notifications/enqueue_tracked_custom_notification.sql" }}
 {{ template "notifications/update_notification.sql" }}
 
-{{ template "payments/approve_event_refund_request.sql" }}
 {{ template "payments/attach_checkout_session_to_event_purchase.sql" }}
-{{ template "payments/begin_event_refund_approval.sql" }}
 {{ template "payments/cancel_event_checkout.sql" }}
+{{ template "payments/claim_event_purchase_refund.sql" }}
 {{ template "payments/complete_event_purchase_refund_recovery.sql" }}
 {{ template "payments/complete_free_event_purchase.sql" }}
-{{ template "payments/ensure_event_purchase_refund_started.sql" }}
 {{ template "payments/expire_event_purchase_for_checkout_session.sql" }}
+{{ template "payments/finalize_event_purchase_refund.sql" }}
 {{ template "payments/get_event_purchase_refund.sql" }}
+{{ template "payments/get_event_purchase_refund_recovery_context.sql" }}
 {{ template "payments/prepare_event_checkout_expire_previous_hold.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_expire_stale_holds.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_find_existing_purchase.sql" }} -- Dependency for prepare_event_checkout_purchase
@@ -258,16 +262,17 @@
 {{ template "payments/prepare_event_checkout_validate_event.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/upsert_pending_registration_answers.sql" }} -- Dependency for prepare_event_checkout_purchase
 {{ template "payments/prepare_event_checkout_purchase.sql" }}
+{{ template "payments/queue_event_refund_request_approval.sql" }}
 {{ template "payments/reconcile_event_purchase_for_checkout_session.sql" }}
-{{ template "payments/record_automatic_refund_for_event_purchase.sql" }}
-{{ template "payments/record_event_purchase_refund_failed.sql" }}
 {{ template "payments/record_event_purchase_refund_pending.sql" }}
+{{ template "payments/record_event_purchase_refund_retryable_failure.sql" }}
 {{ template "payments/record_event_purchase_refund_succeeded.sql" }}
 {{ template "payments/record_event_purchase_refund_terminal_failed.sql" }}
 {{ template "payments/reject_event_refund_request.sql" }}
 {{ template "payments/release_event_discount_code_availability.sql" }}
 {{ template "payments/request_event_refund.sql" }}
-{{ template "payments/revert_event_refund_approval.sql" }}
+{{ template "payments/requeue_event_purchase_refund.sql" }}
+{{ template "payments/requeue_stale_event_purchase_refund_claims.sql" }}
 
 {{ template "site/get_filters_options.sql" }}
 {{ template "site/get_site_home_stats.sql" }}

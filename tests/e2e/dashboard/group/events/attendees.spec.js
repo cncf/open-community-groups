@@ -6,12 +6,14 @@ import {
   buildE2eUrl,
   E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_CANCELLATION,
   TEST_EVENT_IDS,
+  TEST_EVENT_SLUGS,
+  TEST_GROUP_SLUGS,
+  TEST_INVITATION_CANCELLATION,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
-  TEST_EVENT_SLUGS,
-  TEST_GROUP_SLUGS,
   TEST_USER_IDS,
   navigateToEvent,
   navigateToPath,
@@ -130,13 +132,67 @@ const createApprovalRequiredEvent = async (page, eventName) => {
   };
 };
 
-// Delete the temporary event created for invitation request coverage.
+// Cancel and delete the temporary published event created for invitation request coverage.
 const deleteEventFromList = async (page, eventId) => {
+  const cancelResponse = await page.request.put(buildE2eUrl(`/dashboard/group/events/${eventId}/cancel`));
+  expect([200, 204, 404]).toContain(cancelResponse.status());
   const deleteResponse = await page.request.delete(buildE2eUrl(`/dashboard/group/events/${eventId}/delete`));
   expect([200, 204, 404]).toContain(deleteResponse.status());
 };
 
 test.describe("group dashboard attendees tab", () => {
+  test("event cancellation preserves attendee history and clears check-in", async ({
+    organizerGroupPage,
+  }) => {
+    // Cancel the seeded event through the organizer endpoint.
+    const cancelResponse = await organizerGroupPage.request.put(
+      buildE2eUrl(`/dashboard/group/events/${TEST_EVENT_CANCELLATION.id}/cancel`),
+    );
+    if (!cancelResponse.ok()) {
+      expect(cancelResponse.status()).toBe(422);
+      expect(await cancelResponse.text()).toBe(
+        "one or more events were not found or inactive",
+      );
+    }
+
+    // Open retained attendee history after the event transition completes.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_EVENT_CANCELLATION.name,
+      TEST_EVENT_CANCELLATION.id,
+    );
+    const checkedInAttendeeRow = attendeesContent.locator("tr", {
+      hasText: "E2E Admin One",
+    });
+    const pendingRegistrationRow = attendeesContent.locator("tr", {
+      hasText: "E2E Organizer Two",
+    });
+
+    // Verify active attendance becomes canceled and check-in is cleared.
+    await expect(checkedInAttendeeRow).toContainText("Attendance canceled");
+    await expect(checkedInAttendeeRow.locator(".check-in-toggle")).not.toBeChecked();
+    await expect(checkedInAttendeeRow.locator(".check-in-toggle")).toBeDisabled();
+    await expect(pendingRegistrationRow).toContainText("Attendance canceled");
+  });
+
+  test("canceled invitations remain visible in attendee history", async ({ organizerGroupPage }) => {
+    test.fail(true, "Canceled invitations are currently omitted by search_event_attendees.");
+
+    // Open the pre-canceled event and inspect its retained invitation.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_INVITATION_CANCELLATION.name,
+      TEST_INVITATION_CANCELLATION.id,
+    );
+    const canceledInvitationRow = attendeesContent.locator("tr", {
+      hasText: "E2E Admin Two",
+    });
+
+    // Verify canceled invitations remain discoverable with explicit status.
+    await expect(canceledInvitationRow).toBeVisible();
+    await expect(canceledInvitationRow).toContainText("Invitation canceled");
+  });
+
   test("viewer sees read-only attendee controls on the attendees tab", async ({ groupViewerPage }) => {
     // Load the group events dashboard as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
@@ -494,7 +550,7 @@ test.describe("group dashboard attendees tab", () => {
 
     const noResultsMessage = attendeesContent
       .locator("div.text-xl.lg\\:text-2xl.mb-4:visible")
-      .filter({ hasText: "No attendees found matching your search." });
+      .filter({ hasText: "No attendees found matching your filters." });
 
     // Verify the filtered empty result message is shown.
     await expect(noResultsMessage.first()).toBeVisible();
@@ -523,6 +579,49 @@ test.describe("group dashboard attendees tab", () => {
     // Verify the sorted table keeps both seeded attendees visible.
     await expect(attendeesContent.locator("tr", { hasText: "E2E Member One" })).toBeVisible();
     await expect(attendeesContent.locator("tr", { hasText: "E2E Organizer One" })).toBeVisible();
+  });
+
+  test("organizer retains focus while filtering attendance lifecycle", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the attendees tab for the seeded event.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      "Upcoming In-Person Event",
+      TEST_EVENT_IDS.alpha.one,
+    );
+    const attendanceFilter = attendeesContent.getByLabel("Attendance", {
+      exact: true,
+    });
+
+    // Select canceled attendance and verify the replacement control keeps focus.
+    await attendanceFilter.focus();
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
+          response.url().includes("attendance=canceled") &&
+          response.ok(),
+      ),
+      attendanceFilter.selectOption("canceled"),
+    ]);
+    await expect(attendanceFilter).toBeFocused();
+    await expect(attendanceFilter).toHaveValue("canceled");
+
+    // Return to active attendance and preserve the same focus contract.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes(`/dashboard/group/events/${TEST_EVENT_IDS.alpha.one}/attendees`) &&
+          response.url().includes("attendance=active") &&
+          response.ok(),
+      ),
+      attendanceFilter.selectOption("active"),
+    ]);
+    await expect(attendanceFilter).toBeFocused();
+    await expect(attendanceFilter).toHaveValue("active");
   });
 
   test("organizer can download attendees as CSV from the attendees tab", async ({ organizerGroupPage }) => {
@@ -578,7 +677,7 @@ test.describe("group dashboard attendees tab", () => {
     const attendeeRow = attendeesContent.locator("tr", {
       hasText: "E2E Member One",
     });
-    const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+    const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
     // Assert the expected content is visible.
     await expect(attendeeRow).toBeVisible();
@@ -728,7 +827,7 @@ test.describe("group dashboard attendees tab", () => {
       await expect(attendeeRow).toContainText("Invitation sent");
 
       // Cancel the temporary invitation and wait for the table to refresh.
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Cancel invitation" }).click();
       await expect(organizerGroupPage.getByRole("button", { name: "Yes" })).toBeVisible();
@@ -968,7 +1067,7 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund requested is visible.
       await expect(attendeeRow.getByText("Refund requested", { exact: true })).toBeVisible();
@@ -976,30 +1075,83 @@ test.describe("group dashboard attendees tab", () => {
 
       // Verify pending refunds expose approve and reject actions.
       await rowActionsMenu.locator("summary").click();
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
-        "hx-put",
-        /\/refund\/approve$/,
+      const approveRefundAction = rowActionsMenu.getByRole("menuitem", { name: "Approve refund" });
+      await expect(approveRefundAction).toHaveAttribute(
+        "data-refund-approve-url",
+        /\/refunds\/[^/]+\/approve$/,
       );
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Approve refund" })).toHaveAttribute(
-        "data-success-message",
-        "Refund approved.",
+      await expect(approveRefundAction).toHaveAttribute("data-attendee-refund-approve-open", "");
+      const rejectRefundAction = rowActionsMenu.getByRole("menuitem", { name: "Reject refund" });
+      await expect(rejectRefundAction).toHaveAttribute("data-refund-reject-url", /\/refunds\/[^/]+\/reject$/);
+      await expect(rejectRefundAction).toHaveAttribute("data-attendee-refund-reject-open", "");
+
+      // Verify approval opens the optional review-note modal.
+      await approveRefundAction.click();
+      const approveDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Approve refund request",
+      });
+      await expect(approveDialog).toBeVisible();
+      await expect(approveDialog.getByLabel("Review note (optional)")).toBeFocused();
+      await approveDialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(approveDialog).toBeHidden();
+      await expect(rowActionsMenu.locator("summary")).toBeFocused();
+
+      // Verify rejection opens the optional review-note modal.
+      await rowActionsMenu.locator("summary").click();
+      await rejectRefundAction.click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      await expect(rejectDialog).toBeVisible();
+      await expect(rejectDialog.getByLabel("Review note (optional)")).toBeFocused();
+      await rejectDialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(rejectDialog).toBeHidden();
+      await expect(rowActionsMenu.locator("summary")).toBeFocused();
+    });
+
+    test("organizer submits a review note when rejecting a refund", async ({ organizerGroupPage }) => {
+      // Return a successful rejection without changing seeded payment state.
+      await organizerGroupPage.route("**/refunds/*/reject", (route) => route.fulfill({ status: 204 }));
+
+      // Open the attendee refund rejection modal.
+      const attendeesContent = await openAttendeesTab(
+        organizerGroupPage,
+        TEST_PAYMENT_EVENT_NAMES.refunds,
+        TEST_PAYMENT_EVENT_IDS.refunds,
       );
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
-        "hx-put",
-        /\/refund\/reject$/,
-      );
-      await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveAttribute(
-        "data-success-message",
-        "Refund request rejected.",
-      );
+      const attendeeRow = attendeesContent.locator("tr", {
+        hasText: "E2E Member One",
+      });
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
+      await rowActionsMenu.locator("summary").click();
+      await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      await rejectDialog.getByLabel("Review note (optional)").fill("Outside the refund policy window");
+
+      // Submit the review note and verify the request contract.
+      const [rejectResponse] = await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            /\/dashboard\/group\/refunds\/[^/]+\/reject$/u.test(new URL(response.url()).pathname),
+        ),
+        rejectDialog.getByRole("button", { name: "Reject refund" }).click(),
+      ]);
+      const rejectionData = new URLSearchParams(rejectResponse.request().postData());
+      expect(rejectionData.get("review_note")).toBe("Outside the refund policy window");
+      await expect(rejectDialog).toBeHidden();
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund request rejected.");
+      await organizerGroupPage.locator(".swal2-confirm").click();
     });
 
     test("organizer sees success alerts after approving and rejecting refunds", async ({
       organizerGroupPage,
     }) => {
       // Return successful refund responses without changing seeded payment state.
-      await organizerGroupPage.route("**/refund/approve", (route) => route.fulfill({ status: 204 }));
-      await organizerGroupPage.route("**/refund/reject", (route) => route.fulfill({ status: 204 }));
+      await organizerGroupPage.route("**/refunds/*/approve", (route) => route.fulfill({ status: 204 }));
+      await organizerGroupPage.route("**/refunds/*/reject", (route) => route.fulfill({ status: 204 }));
 
       // Load the pending refund actions.
       const attendeesContent = await openAttendeesTab(
@@ -1010,25 +1162,42 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
-      // Approve the refund and verify success feedback.
+      // Approve the refund with a review note and verify success feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Approve refund" }).click();
-      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund approved.");
+      const approveDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Approve refund request",
+      });
+      await approveDialog.getByLabel("Review note (optional)").fill("Approved by organizer");
+      const [approveResponse] = await Promise.all([
+        organizerGroupPage.waitForResponse(
+          (response) =>
+            response.request().method() === "PUT" &&
+            /\/dashboard\/group\/refunds\/[^/]+\/approve$/u.test(new URL(response.url()).pathname),
+        ),
+        approveDialog.getByRole("button", { name: "Approve refund" }).click(),
+      ]);
+      const approvalData = new URLSearchParams(approveResponse.request().postData());
+      expect(approvalData.get("review_note")).toBe("Approved by organizer");
+      await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund queued.");
       await organizerGroupPage.locator(".swal2-confirm").click();
 
       // Reject the refund and verify success feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
-      await organizerGroupPage.getByRole("button", { name: "Yes" }).click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      await rejectDialog.getByRole("button", { name: "Reject refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText("Refund request rejected.");
     });
 
     test("organizer sees error alerts when refund actions fail", async ({ organizerGroupPage }) => {
       // Return failed refund responses without changing seeded payment state.
-      await organizerGroupPage.route("**/refund/approve", (route) => route.fulfill({ status: 500 }));
-      await organizerGroupPage.route("**/refund/reject", (route) => route.fulfill({ status: 500 }));
+      await organizerGroupPage.route("**/refunds/*/approve", (route) => route.fulfill({ status: 500 }));
+      await organizerGroupPage.route("**/refunds/*/reject", (route) => route.fulfill({ status: 500 }));
 
       // Load the pending refund actions.
       const attendeesContent = await openAttendeesTab(
@@ -1039,26 +1208,42 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Member One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Fail refund approval and verify error feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Approve refund" }).click();
+      const approveDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Approve refund request",
+      });
+      const approvalNote = approveDialog.getByLabel("Review note (optional)");
+      await approvalNote.fill("Approved by organizer");
+      await approveDialog.getByRole("button", { name: "Approve refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
         "Something went wrong approving this refund request. Please try again later.",
       );
+      await expect(approveDialog).toBeVisible();
+      await expect(approvalNote).toHaveValue("Approved by organizer");
       await organizerGroupPage.locator(".swal2-confirm").click();
+      await approveDialog.getByRole("button", { name: "Cancel" }).click();
 
       // Fail refund rejection and verify error feedback.
       await rowActionsMenu.locator("summary").click();
       await rowActionsMenu.getByRole("menuitem", { name: "Reject refund" }).click();
-      await organizerGroupPage.getByRole("button", { name: "Yes" }).click();
+      const rejectDialog = organizerGroupPage.getByRole("dialog", {
+        name: "Reject refund request",
+      });
+      const reviewNote = rejectDialog.getByLabel("Review note (optional)");
+      await reviewNote.fill("Outside the refund policy window");
+      await rejectDialog.getByRole("button", { name: "Reject refund" }).click();
       await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
         "Something went wrong rejecting this refund request. Please try again later.",
       );
+      await expect(rejectDialog).toBeVisible();
+      await expect(reviewNote).toHaveValue("Outside the refund policy window");
     });
 
-    test("organizer sees retry refund finalization for processing refunds in the row menu", async ({
+    test("organizer cannot retry a refund while provider processing is active", async ({
       organizerGroupPage,
     }) => {
       // Load the attendees tab for the seeded refund review event.
@@ -1068,21 +1253,17 @@ test.describe("group dashboard attendees tab", () => {
         TEST_PAYMENT_EVENT_IDS.refunds,
       );
       const attendeeRow = attendeesContent.locator("tr", {
-        hasText: "E2E Member Two",
+        hasText: "E2E Organizer Two",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund processing is visible.
       await expect(attendeeRow.getByText("Refund processing", { exact: true })).toBeVisible();
       await expect(rowActionsMenu).toBeVisible();
 
-      // Verify processing refunds only expose retry finalization.
+      // Verify processing refunds cannot be retried or rejected.
       await rowActionsMenu.locator("summary").click();
-      await expect(
-        rowActionsMenu.getByRole("menuitem", {
-          name: "Retry refund finalization",
-        }),
-      ).toHaveAttribute("hx-put", /\/refund\/approve$/);
+      await expect(rowActionsMenu.getByRole("menuitem", { name: "Retry refund" })).toHaveCount(0);
       await expect(rowActionsMenu.getByRole("menuitem", { name: "Reject refund" })).toHaveCount(0);
     });
 
@@ -1098,7 +1279,7 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Pending One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund rejected is visible.
       await expect(attendeeRow.getByText("Refund rejected", { exact: true })).toBeVisible();
@@ -1128,7 +1309,7 @@ test.describe("group dashboard attendees tab", () => {
       const attendeeRow = attendeesContent.locator("tr", {
         hasText: "E2E Group Viewer One",
       });
-      const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+      const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
       // Assert that Refund approved is visible.
       await expect(attendeeRow.getByText("Refund approved", { exact: true })).toBeVisible();
@@ -1155,8 +1336,10 @@ test.describe("group dashboard attendees tab", () => {
       );
 
       // Verify refund review controls are hidden for read-only viewers.
-      await expect(attendeesContent.locator("[data-refund-review-trigger]")).toHaveCount(0);
-      await expect(groupViewerPage.locator("#attendee-refund-modal")).toBeHidden();
+      await expect(attendeesContent.locator("[data-attendee-refund-approve-open]")).toHaveCount(0);
+      await expect(attendeesContent.locator("[data-attendee-refund-reject-open]")).toHaveCount(0);
+      await expect(groupViewerPage.locator("#attendee-refund-approve-modal")).toHaveCount(0);
+      await expect(groupViewerPage.locator("#attendee-refund-reject-modal")).toHaveCount(0);
     });
   });
 
@@ -1414,7 +1597,7 @@ test.describe("group dashboard attendees tab", () => {
     await expect(attendeeRow).toBeVisible();
 
     // Open the attendee row actions and choose the row-level email action.
-    const rowActionsMenu = attendeeRow.locator("[data-attendee-row-actions-menu]");
+    const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
     await rowActionsMenu.locator("summary").click();
     await rowActionsMenu.getByRole("menuitem", { name: "Send email" }).click();
 

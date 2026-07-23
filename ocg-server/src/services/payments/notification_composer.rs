@@ -11,7 +11,7 @@ use crate::{
     services::notifications::{
         DynNotificationsManager, NewNotification, load_event_notification_context,
         payloads::{
-            build_event_refund_approved_notification, build_event_refund_rejected_notification,
+            build_event_refund_approved_template_data, build_event_refund_rejected_notification,
             build_event_welcome_notification,
         },
     },
@@ -47,6 +47,19 @@ impl PaymentsNotificationComposer {
         }
     }
 
+    /// Builds the notification template payload for an approved refund.
+    pub(super) async fn build_refund_approval_template_data(
+        &self,
+        community_id: Uuid,
+        event_id: Uuid,
+    ) -> Result<Value> {
+        // Load the event summary and site theme used by the approval template
+        let (event, site_settings) =
+            load_event_notification_context(self.db.as_ref(), community_id, event_id).await?;
+
+        build_event_refund_approved_template_data(&event, &self.server_cfg, &site_settings)
+    }
+
     /// Build the notification template payload for a refund request.
     pub(super) async fn build_refund_request_template_data(
         &self,
@@ -57,9 +70,9 @@ impl PaymentsNotificationComposer {
         let (event, site_settings) =
             load_event_notification_context(self.db.as_ref(), community_id, event_id).await?;
 
-        // Point organizers to the full group dashboard events tab
+        // Point organizers to the group refund operations panel
         let base_url = base_url_without_trailing_slash(&self.server_cfg.base_url);
-        let link = format!("{base_url}/dashboard/group?tab=events");
+        let link = format!("{base_url}/dashboard/group?tab=refunds");
 
         serde_json::to_value(&EventRefundRequested {
             event,
@@ -133,38 +146,6 @@ impl PaymentsNotificationComposer {
         };
 
         self.enqueue_notification(&notification, "event welcome").await;
-    }
-
-    /// Enqueue the attendee notification for an approved refund request.
-    pub(super) async fn enqueue_refund_approval_notification(
-        &self,
-        community_id: Uuid,
-        event_id: Uuid,
-        user_id: Uuid,
-    ) {
-        // Skip notification delivery when the event context cannot be loaded
-        let Some((event, site_settings)) = self
-            .load_event_notification_context(community_id, event_id, "refund approval")
-            .await
-        else {
-            return;
-        };
-
-        // Build the attendee-facing refund approval notification
-        let notification = match build_event_refund_approved_notification(
-            &event,
-            user_id,
-            &self.server_cfg,
-            &site_settings,
-        ) {
-            Ok(notification) => notification,
-            Err(err) => {
-                warn!(error = %err, "failed to build refund approval notification");
-                return;
-            }
-        };
-
-        self.enqueue_notification(&notification, "refund approval").await;
     }
 
     /// Enqueue the attendee notification for a rejected refund request.

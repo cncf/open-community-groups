@@ -19,6 +19,43 @@ use crate::{
 use super::PaymentsNotificationComposer;
 
 #[tokio::test]
+async fn build_refund_approval_template_data_returns_expected_payload() {
+    // Setup identifiers and data structures
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let event = sample_event_summary(event_id);
+    let site_settings = SiteSettings::default();
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_event_summary_by_id()
+        .times(1)
+        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
+        .returning(move |_, _| Ok(event.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(move || Ok(site_settings.clone()));
+
+    // Build the template payload
+    let composer = sample_notification_composer(db, MockNotificationsManager::new());
+    let template_data = composer
+        .build_refund_approval_template_data(community_id, event_id)
+        .await
+        .expect("refund approval template data to be built");
+
+    // Check result matches expectations
+    assert_eq!(
+        template_data,
+        to_value(&EventRefundApproved {
+            event: sample_event_summary(event_id),
+            link: "/community/group/group/event/event".to_string(),
+            theme: SiteSettings::default().theme,
+        })
+        .unwrap()
+    );
+}
+
+#[tokio::test]
 async fn build_refund_request_template_data_returns_expected_payload() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -48,7 +85,7 @@ async fn build_refund_request_template_data_returns_expected_payload() {
         template_data,
         to_value(&EventRefundRequested {
             event: sample_event_summary(event_id),
-            link: "/dashboard/group?tab=events".to_string(),
+            link: "/dashboard/group?tab=refunds".to_string(),
             theme: SiteSettings::default().theme,
         })
         .unwrap()
@@ -154,51 +191,6 @@ async fn enqueue_event_welcome_notification_enqueues_expected_payload() {
 }
 
 #[tokio::test]
-async fn enqueue_refund_approval_notification_enqueues_expected_payload() {
-    // Setup identifiers and data structures
-    let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
-    let event = sample_event_summary(event_id);
-    let site_settings = SiteSettings::default();
-    let user_id = Uuid::new_v4();
-    let expected_template_data = to_value(&EventRefundApproved {
-        event: sample_event_summary(event_id),
-        link: "/community/group/group/event/event".to_string(),
-        theme: SiteSettings::default().theme,
-    })
-    .unwrap();
-
-    // Setup database mock
-    let mut db = MockDB::new();
-    db.expect_get_event_summary_by_id()
-        .times(1)
-        .withf(move |cid, eid| *cid == community_id && *eid == event_id)
-        .returning(move |_, _| Ok(event.clone()));
-    db.expect_get_site_settings()
-        .times(1)
-        .returning(move || Ok(site_settings.clone()));
-
-    // Setup notifications manager mock
-    let mut notifications_manager = MockNotificationsManager::new();
-    notifications_manager
-        .expect_enqueue()
-        .times(1)
-        .withf(move |notification| {
-            notification.attachments.is_empty()
-                && matches!(notification.kind, NotificationKind::EventRefundApproved)
-                && notification.recipients == vec![user_id]
-                && notification.template_data.as_ref() == Some(&expected_template_data)
-        })
-        .returning(|_| Box::pin(async { Ok(()) }));
-
-    // Enqueue the refund approval notification
-    let composer = sample_notification_composer(db, notifications_manager);
-    composer
-        .enqueue_refund_approval_notification(community_id, event_id, user_id)
-        .await;
-}
-
-#[tokio::test]
 async fn enqueue_refund_rejection_notification_enqueues_expected_payload() {
     // Setup identifiers and data structures
     let community_id = Uuid::new_v4();
@@ -271,6 +263,7 @@ fn sample_event_summary(event_id: Uuid) -> EventSummary {
         created_by_display_name: None,
         created_by_username: None,
         description_short: None,
+        delete_eligibility: None,
         ends_at: None,
         event_series_id: None,
         group_slug_pretty: None,

@@ -58,8 +58,14 @@ begin
         raise exception 'paid attendees must request a refund instead of leaving the event';
     end if;
 
-    -- Remove the user from confirmed attendees first
-    delete from event_attendee
+    -- Preserve the confirmed attendee row while removing active attendance
+    update event_attendee
+    set
+        attendance_canceled_at = current_timestamp,
+        attendance_canceled_by_user_id = p_user_id,
+        checked_in = false,
+        checked_in_at = null,
+        status = 'attendance-canceled'
     where event_id = p_event_id
     and user_id = p_user_id
     and status = 'confirmed';
@@ -97,9 +103,13 @@ begin
         and manually_invited = true
         and status = 'registration-questions-pending';
 
-        -- Registrations promoted from the waitlist are simply removed
+        -- Registrations promoted from the waitlist retain inactive history
         if not found then
-            delete from event_attendee
+            update event_attendee
+            set
+                attendance_canceled_at = current_timestamp,
+                attendance_canceled_by_user_id = p_user_id,
+                status = 'attendance-canceled'
             where event_id = p_event_id
             and user_id = p_user_id
             and manually_invited = false

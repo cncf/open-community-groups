@@ -390,6 +390,66 @@
   {% endif -%}
   {# End ticket modal -#}
 
+  {# Refund request modal -#}
+  <div id="refund-modal-{{ attendance_instance }}"
+       data-attendance-role="refund-modal"
+       role="dialog"
+       aria-modal="true"
+       aria-hidden="true"
+       aria-labelledby="refund-modal-title-{{ attendance_instance }}"
+       aria-describedby="refund-modal-description-{{ attendance_instance }}"
+       class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 justify-center items-center w-full md:inset-0 h-full max-h-full flex z-[1000]">
+    <div data-attendance-role="refund-modal-overlay"
+         class="modal-overlay absolute w-full h-full bg-stone-950 opacity-[0.35]"></div>
+    <div class="modal-panel p-4 max-w-2xl">
+      <div class="modal-card rounded-lg">
+        <div class="flex items-start justify-between p-4 md:p-5 border-b border-stone-200 rounded-t">
+          <div>
+            <h3 id="refund-modal-title-{{ attendance_instance }}"
+                class="text-xl font-semibold text-stone-900">Request a refund</h3>
+            <p id="refund-modal-description-{{ attendance_instance }}"
+               class="mt-1 text-sm text-stone-600">Add a reason to help the organizers review your request.</p>
+          </div>
+          <button data-attendance-role="refund-modal-close"
+                  type="button"
+                  class="group text-stone-400 bg-transparent hover:bg-stone-200 hover:text-stone-900 transition-colors rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+            <div class="svg-icon w-5 h-5 bg-stone-500 group-hover:bg-stone-900 transition-colors icon-close"></div>
+            <span class="sr-only">Close modal</span>
+          </button>
+        </div>
+        <form data-attendance-role="refund-form"
+              hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/refund-request"
+              hx-swap="none"
+              hx-ext="no-empty-vals"
+              hx-disabled-elt="find button[type='submit']">
+          <div class="modal-body p-4 md:px-6 md:py-5">
+            <label for="refund-reason-{{ attendance_instance }}" class="form-label">Reason (optional)</label>
+            <textarea id="refund-reason-{{ attendance_instance }}"
+                      data-attendance-role="refund-reason-input"
+                      name="requested_reason"
+                      maxlength="{{ crate::validation::MAX_LEN_DESCRIPTION_SHORT }}"
+                      autofocus
+                      class="input-primary mt-2 min-h-28"
+                      placeholder="Tell the organizers why you're requesting a refund"></textarea>
+          </div>
+          <div class="flex flex-col-reverse gap-3 border-t border-stone-200 p-4 sm:flex-row sm:justify-end md:p-5">
+            <button data-attendance-role="refund-modal-cancel"
+                    type="button"
+                    class="btn-primary-outline">Cancel</button>
+            <button data-attendance-role="refund-modal-submit"
+                    type="submit"
+                    class="btn-primary relative inline-flex items-center justify-center">
+              <span data-attendance-role="refund-modal-submit-spinner"
+                    class="absolute inset-0 hidden items-center justify-center">{{ ui::spinner(size = "size-4") -}}</span>
+              <span data-attendance-role="refund-modal-submit-label">Request refund</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {# End refund request modal -#}
+
   {# Join meeting button -#}
   {% if !event.canceled %}
     {% if let Some(meeting_join_url) = &event.meeting_join_url %}
@@ -467,9 +527,7 @@
   {# Refund request button -#}
   <button id="refund-btn-{{ attendance_instance }}"
           data-attendance-role="refund-btn"
-          hx-post="/{{ event.community.name }}/event/{{ event.event_id }}/refund-request"
-          hx-trigger="confirmed"
-          hx-swap="none"
+          type="button"
           class="hidden group btn-primary-outline h-10 md:h-[30px] flex items-center justify-center gap-1 md:gap-2 md:max-xl:gap-1.5 whitespace-nowrap px-3 text-xs sm:px-5 sm:text-sm md:max-xl:px-3 md:max-xl:text-xs max-[360px]:px-2 max-[360px]:text-[11px]">
     {{ attendance::control_content(label = "Request refund", icon_class = "icon-refund") -}}
   </button>

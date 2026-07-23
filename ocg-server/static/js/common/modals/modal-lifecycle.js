@@ -1,7 +1,8 @@
 import { getElementById, isElementHidden, setElementHidden } from "/static/js/common/dom.js";
 
+const MODAL_AUTOFOCUS_SELECTOR = "[autofocus]";
 const MODAL_FOCUS_SELECTOR =
-  "[autofocus], button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), " +
+  "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), " +
   'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const modalFocusOrigins = new WeakMap();
 
@@ -11,7 +12,8 @@ const modalFocusOrigins = new WeakMap();
  * @returns {HTMLElement|null} Element that can receive focus.
  */
 const getModalFocusTarget = (modal) => {
-  const focusTarget = modal.querySelector(MODAL_FOCUS_SELECTOR);
+  const focusTarget =
+    modal.querySelector(MODAL_AUTOFOCUS_SELECTOR) ?? modal.querySelector(MODAL_FOCUS_SELECTOR);
   if (focusTarget instanceof HTMLElement) {
     return focusTarget;
   }

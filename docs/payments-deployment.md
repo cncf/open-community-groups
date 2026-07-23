@@ -205,6 +205,21 @@ Reference:
 
 ### Refund Recovery
 
+All provider-mediated refunds run through durable background work. HTTP handlers and verified
+webhooks only queue or update refund state; they do not call Stripe's refund API directly. OCG
+starts two provider refund workers and one stale-claim recovery worker. This same path handles
+approved attendee requests, paid checkouts that can no longer be fulfilled, and automatic refunds
+from event cancellation.
+
+Workers look up an existing Stripe refund before creating one and reuse the purchase's stable
+idempotency key. Transient failures use up to ten claims with exponential backoff from one to
+thirty minutes. A claim left in `processing` for fifteen minutes is released by the recovery
+worker. If Stripe success was already persisted before interruption, recovery resumes local
+finalization without creating another refund.
+
+When this deployment has no payments provider configured, refund work remains queued and visible
+to organizers. It is not discarded or treated as complete.
+
 OCG validates refund webhook amounts, currencies, and PaymentIntent identifiers
 against the durable purchase before accepting provider state changes. A refund
 event with copied or mismatched purchase metadata cannot finalize the purchase.
@@ -224,27 +239,23 @@ a structured warning for operators. It does not submit another refund because
 permanent destination failures could otherwise create an unbounded replacement
 loop. Operators must arrange an alternative way to refund the attendee.
 
-After confirming that alternative refund, an operator completes recovery with
-the durable refund ID, their OCG user ID, a reference to the external payment,
-and a note describing the evidence reviewed:
+After confirming that alternative refund, an organizer with events write access
+opens the group dashboard `Refunds` tab, finds the `Recovery required` row, and
+selects `Complete recovery`. The organizer records the external payment
+reference and a note describing the evidence reviewed. Other roles can inspect
+the recovery state, but the action is disabled with an explanation of the
+events write access requirement.
 
-```sql
-select complete_event_purchase_refund_recovery(
-    '<operator-user-id>'::uuid,
-    '<event-purchase-refund-id>'::uuid,
-    '<external-payment-reference>',
-    '<recovery-note>'
-);
-```
-
-The function preserves the failed Stripe attempt, records the recovery evidence,
+Completion preserves the failed Stripe attempt, records the recovery evidence,
 restores the purchase to `refunded`, and appends an event audit entry. If the
-provider failed before OCG finalized the refund, the function also completes the
-pending local refund workflow. Repeating the same call is safe; conflicting
-evidence is rejected.
+provider failed before OCG finalized the refund, the same operation also
+completes the pending local refund workflow and atomically queues the attendee's
+completion email. Repeating the same completion with matching evidence is safe;
+conflicting evidence is rejected.
 
 Provider requests that fail without returning a Stripe refund ID remain
-retryable with their original idempotency key. When an unpinned refund receives
+retryable with their original idempotency key. Exhausted transient work can be requeued by an
+event administrator, including safe polling of an already-known Stripe refund ID. When an unpinned refund receives
 an out-of-order success event, OCG checks the named refund's current Stripe
 state before accepting it. Confirmed terminal refunds remain pinned so delayed
 pending or successful events cannot revive them.
@@ -316,8 +327,9 @@ Check that:
 - The failed refund amount, currency, and PaymentIntent match the OCG purchase.
 
 Do not resend the event to trigger another refund. Arrange an alternative refund
-method for the attendee, retain its reference and review evidence, then call
-`complete_event_purchase_refund_recovery` as shown above.
+method for the attendee and retain its reference and review evidence. An
+organizer with events write access can then complete recovery from the group
+dashboard `Refunds` tab.
 
 ### Paid Events Are Still Unavailable For A Group
 

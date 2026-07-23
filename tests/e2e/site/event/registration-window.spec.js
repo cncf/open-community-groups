@@ -138,6 +138,48 @@ test.describe("event registration windows", () => {
     await expect(getTicketModal(member2Page)).toBeHidden();
   });
 
+  test("registration deadline is truncated on mobile @mobile", async ({
+    member2Page,
+  }) => {
+    // Load an event with a registration deadline on a mobile viewport.
+    await navigateToRegistrationWindowEvent(
+      member2Page,
+      TEST_REGISTRATION_WINDOW_EVENTS.ticketedOpen,
+    );
+
+    // Verify the full deadline is truncated without widening the page.
+    const message = member2Page.locator(
+      "[data-registration-window-message-display]",
+    );
+    const icon = member2Page.locator(
+      "[data-registration-window-message-container] .icon-calendar",
+    );
+    await expect(message).toBeVisible();
+    await expect(icon).toBeHidden();
+    const layout = await message.evaluate((node) => {
+      const styles = window.getComputedStyle(node);
+
+      return {
+        clientWidth: node.clientWidth,
+        overflow: styles.overflow,
+        scrollWidth: node.scrollWidth,
+        textOverflow: styles.textOverflow,
+        whiteSpace: styles.whiteSpace,
+      };
+    });
+    const documentWidth = await member2Page.evaluate(() =>
+      Math.max(document.body.scrollWidth, document.documentElement.scrollWidth),
+    );
+
+    expect(layout.overflow).toBe("hidden");
+    expect(layout.textOverflow).toBe("ellipsis");
+    expect(layout.whiteSpace).toBe("nowrap");
+    expect(layout.scrollWidth).toBeGreaterThan(layout.clientWidth);
+    expect(documentWidth).toBeLessThanOrEqual(
+      member2Page.viewportSize()?.width ?? 0,
+    );
+  });
+
   test("free registration actions respect closed and close-only windows", async ({
     member2Page,
   }) => {

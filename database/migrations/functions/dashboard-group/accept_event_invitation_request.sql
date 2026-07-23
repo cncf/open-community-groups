@@ -112,9 +112,12 @@ begin
     values (p_event_id, p_user_id, v_registration_answers)
     on conflict (event_id, user_id) do update
     set
+        attendance_canceled_at = null,
+        attendance_canceled_by_user_id = null,
         registration_answers = v_registration_answers,
         status = 'confirmed'
     where event_attendee.status in (
+        'attendance-canceled',
         'invitation-canceled',
         'invitation-pending',
         'registration-questions-pending'

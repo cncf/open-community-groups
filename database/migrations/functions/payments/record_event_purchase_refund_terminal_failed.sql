@@ -3,7 +3,8 @@ create or replace function record_event_purchase_refund_terminal_failed(
     p_event_purchase_refund_id uuid,
     p_expected_idempotency_key text,
     p_provider_refund_id text,
-    p_failure_message text
+    p_failure_message text,
+    p_expected_claim_id uuid default null
 )
 returns void as $$
 declare
@@ -47,6 +48,10 @@ begin
         raise exception 'event purchase refund not found';
     end if;
 
+    if v_refund.claim_id is distinct from p_expected_claim_id then
+        raise exception 'event purchase refund claim is stale';
+    end if;
+
     -- Ignore stale attempts and reject conflicting provider ids
     if v_refund.idempotency_key <> p_expected_idempotency_key then
         return;
@@ -59,6 +64,7 @@ begin
 
     -- Treat the repeated terminal result for a pinned attempt as an idempotent replay
     if v_refund.status = 'provider-failed'
+       and v_refund.terminal_failure
        and v_refund.provider_refund_id = p_provider_refund_id then
         return;
     end if;
@@ -66,6 +72,8 @@ begin
     -- Pin the terminal provider attempt so it cannot be retried automatically
     update event_purchase_refund
     set
+        claim_id = null,
+        claimed_at = null,
         failure_message = concat_ws(
             ': ',
             nullif(btrim(p_failure_message), ''),
@@ -74,6 +82,7 @@ begin
         provider_refund_id = p_provider_refund_id,
         provider_refunded_at = null,
         status = 'provider-failed',
+        terminal_failure = true,
         updated_at = current_timestamp
     where event_purchase_refund_id = p_event_purchase_refund_id;
 

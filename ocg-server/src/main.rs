@@ -23,7 +23,7 @@ use crate::{
     config::{
         Config, HttpServerConfig, ImageStorageConfig, LogFormat, MeetingsConfig, PaymentsConfig,
     },
-    db::{PgDB, pool as db_pool},
+    db::{DynDB, PgDB, pool as db_pool},
     services::{
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
         meetings::{
@@ -32,6 +32,7 @@ use crate::{
         notifications::{DynEmailSender, LettreEmailSender, PgNotificationsManager},
         payments::{
             DynPaymentsManager, DynPaymentsProvider, PgPaymentsManager, build_payments_provider,
+            start_refund_workers,
         },
     },
 };
@@ -109,10 +110,20 @@ async fn main() -> Result<()> {
     start_meetings_workers(&cfg, db.clone(), &background_tasks);
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;
+    let payments_provider = build_payments_provider(cfg.payments.as_ref());
+    let refund_workers_db = db.clone() as DynDB;
+    start_refund_workers(
+        &refund_workers_db,
+        notifications_manager.clone(),
+        payments_provider.as_ref(),
+        cfg.server.clone(),
+        &background_tasks.task_tracker,
+        &background_tasks.cancellation_token,
+    );
     let payments_manager = setup_payments_manager(
         db.clone(),
         notifications_manager.clone(),
-        build_payments_provider(cfg.payments.as_ref()),
+        payments_provider,
         &cfg.server,
     );
 

@@ -1,29 +1,30 @@
 {% extends "notifications/base.html" -%}
 {% import "macros/email.html" as email -%}
 
-{# Event Refund Approved Notification -#}
+{# Event Refund Completed Notification -#}
 {% block subject -%}
-  Refund approved: {{ event.name }}
+  Refund completed: {{ event.name }}
 {% endblock subject -%}
 
 {% block preheader -%}
-  Your refund request for {{ event.name }} has been approved.
+  Your payment for {{ event.name }} has been refunded.
 {% endblock preheader -%}
 
 {% block content -%}
   <p class="default mb-30" style="margin-bottom: 30px">
-    Your refund request for <strong>{{ event.name }}</strong> has been approved.
+    Your payment for <strong>{{ event.name }}</strong> has been refunded.
     <br />
     <br />
-    The refund is now being processed by Stripe and your ticket has been released.
+    Your ticket has been released. The time it takes for the money to appear in
+    your account depends on your payment provider and bank.
   </p>
 
   {{ email::button(link = link, text = "View event", color = theme.primary_color) }}
 {% endblock content -%}
 
 {% block footer -%}
-  You received this email notification because you requested a refund for
+  You received this email notification because a ticket payment was refunded for
   {{ event.name }}, an event from {{ event.group_name }} in the
   {{ event.community_display_name }} community.
 {% endblock footer -%}
-{# End event refund approved notification -#}
+{# End event refund completed notification -#}

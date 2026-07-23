@@ -340,6 +340,7 @@ mod tests {
             capacity: None,
             created_by_display_name: None,
             created_by_username: None,
+            delete_eligibility: None,
             description_short: Some("Short description".to_string()),
             ends_at: Some(Utc.with_ymd_and_hms(2026, 1, 12, 21, 0, 0).unwrap()),
             event_series_id: None,

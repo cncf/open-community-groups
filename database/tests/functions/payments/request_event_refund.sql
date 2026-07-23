@@ -315,7 +315,10 @@ insert into event_purchase (
     event_ticket_type_id,
     status,
     ticket_title,
-    user_id
+    user_id,
+
+    payment_provider_id,
+    provider_payment_reference
 ) values (
     :'purchaseCanceledID',
     2500,
@@ -325,7 +328,9 @@ insert into event_purchase (
     :'eventCanceledTicketTypeID',
     'completed',
     'General admission',
-    :'requesterID'
+    :'requesterID',
+    'stripe',
+    'pi_canceled'
 ), (
     :'purchaseStartedID',
     2500,
@@ -335,7 +340,9 @@ insert into event_purchase (
     :'eventStartedTicketTypeID',
     'completed',
     'General admission',
-    :'requesterID'
+    :'requesterID',
+    null,
+    null
 ), (
     :'purchaseExpiredID',
     2500,
@@ -345,7 +352,9 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'expired',
     'General admission',
-    :'requesterID'
+    :'requesterID',
+    null,
+    null
 ), (
     :'purchaseID',
     2500,
@@ -355,7 +364,9 @@ insert into event_purchase (
     :'eventTicketTypeID',
     'completed',
     'General admission',
-    :'requesterID'
+    :'requesterID',
+    null,
+    null
 ), (
     :'purchaseNoTeamID',
     2500,
@@ -365,7 +376,9 @@ insert into event_purchase (
     :'eventNoTeamTicketTypeID',
     'completed',
     'General admission',
-    :'requesterID'
+    :'requesterID',
+    null,
+    null
 ), (
     :'purchaseUnpublishedID',
     2500,
@@ -375,7 +388,9 @@ insert into event_purchase (
     :'eventUnpublishedTicketTypeID',
     'completed',
     'General admission',
-    :'requesterID'
+    :'requesterID',
+    null,
+    null
 );
 
 -- ============================================================================
@@ -388,7 +403,7 @@ select lives_ok(
         %L::uuid,
         %L::uuid,
         %L::uuid,
-        'Cannot attend',
+        '  Cannot attend  ',
         '{"event":"refund"}'::jsonb
     )$$, :'communityID', :'eventID', :'requesterID'),
     'Should create a refund request and enqueue organizer notifications'
@@ -451,14 +466,10 @@ select results_eq(
     'Should only enqueue notifications for verified users who can review refunds'
 );
 
--- Should allow refund requests after the event is canceled
-update event
-set
-    canceled = true,
-    published = false
-where event_id = :'eventCanceledID'::uuid;
+-- Should reject a refund request after cancellation queues the automatic refund
+select cancel_event(:'teamUser1ID', :'groupID', :'eventCanceledID');
 
-select lives_ok(
+select throws_ok(
     format($$select request_event_refund(
         %L::uuid,
         %L::uuid,
@@ -466,7 +477,8 @@ select lives_ok(
         null,
         '{}'::jsonb
     )$$, :'communityID', :'eventCanceledID', :'requesterID'),
-    'Should allow refund requests after the event is canceled'
+    'purchase not found or not refundable',
+    'Should reject a redundant request after automatic cancellation refund starts'
 );
 
 -- Should allow refund requests after the event is unpublished

@@ -9,17 +9,19 @@ mod manager;
 mod notification_composer;
 mod provider;
 mod refund_recorder;
+mod refund_worker;
 mod webhook_reconciler;
 
 pub(crate) use manager::{
-    ApproveRefundRequestInput, DynPaymentsManager, HandleWebhookError, PgPaymentsManager,
-    RejectRefundRequestInput, RequestRefundInput,
+    ApproveRefundRequestInput, CompleteRefundRecoveryInput, DynPaymentsManager, HandleWebhookError,
+    PgPaymentsManager, RejectRefundRequestInput, RequestRefundInput,
 };
 pub(crate) use provider::{
     CheckoutSession, CreateCheckoutSessionInput, DynPaymentsProvider, FindRefundInput,
     PaymentsWebhookEvent, RefundPaymentInput, RefundPaymentResult, RefundPaymentStatus,
     build_payments_provider,
 };
+pub(crate) use refund_worker::start_refund_workers;
 
 #[cfg(test)]
 pub(crate) use manager::MockPaymentsManager;

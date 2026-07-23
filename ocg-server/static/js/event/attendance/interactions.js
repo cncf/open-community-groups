@@ -13,8 +13,10 @@ import {
   CANCEL_ATTENDANCE_LABEL,
   CANCEL_INVITATION_REQUEST_LABEL,
   closeQuestionsModal,
+  closeRefundModal,
   closeTicketModal,
   LEAVE_WAITLIST_LABEL,
+  openRefundModal,
   openTicketModal,
   restoreCheckoutModalControls,
 } from "/static/js/event/attendance-view.js";
@@ -130,7 +132,18 @@ export const handleAttendanceClick = (event) => {
 
   const refundButton = closestElement(event.target, '[data-attendance-role="refund-btn"]');
   if (refundButton instanceof HTMLElement) {
-    showConfirmAlert("Are you sure you want to request a refund for this ticket?", refundButton.id, "Yes");
+    event.preventDefault();
+    openRefundModal(container, refundButton);
+    return;
+  }
+
+  const closeRefundModalTrigger = closestElement(
+    event.target,
+    '[data-attendance-role="refund-modal-close"], [data-attendance-role="refund-modal-cancel"], [data-attendance-role="refund-modal-overlay"]',
+  );
+  if (closeRefundModalTrigger) {
+    closeRefundModal(container);
+    return;
   }
 
   const closeTicketModalTrigger = closestElement(
@@ -172,6 +185,11 @@ export const handleAttendanceKeydown = (event) => {
     if (ticketModal && !isElementHidden(ticketModal)) {
       restoreCheckoutModalControls(container);
       closeTicketModal(container);
+    }
+
+    const refundModal = getAttendanceControl(container, "refund-modal");
+    if (refundModal && !isElementHidden(refundModal)) {
+      closeRefundModal(container);
     }
 
     const questionsModal = getAttendanceControl(container, "registration-modal");

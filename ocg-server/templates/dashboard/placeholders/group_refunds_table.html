@@ -1,0 +1,15 @@
+{% import "macros/dashboard.html" as dashboard -%}
+
+{# Group Refunds Table Placeholder -#}
+{% call dashboard::empty_state("No refunds found", title_margin = "mb-4") -%}
+<p class="text-sm lg:text-md text-stone-700">
+  {% if event_id.is_some() || ts_query.is_some() -%}
+    Try clearing the event or search filters.
+  {% else if view == crate::templates::dashboard::group::refunds::RefundsView::Active -%}
+    There is no unfinished refund work for this group.
+  {% else -%}
+    There are no refunds in this view.
+  {% endif -%}
+</p>
+{% endcall -%}
+{# End group refunds table placeholder -#}

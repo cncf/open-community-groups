@@ -132,9 +132,11 @@ begin
     and user_id = v_target_user_id;
 
     -- Reuse canceled rows so organizers can correct mistakes
-    if v_existing_status = 'invitation-canceled' then
+    if v_existing_status in ('attendance-canceled', 'invitation-canceled') then
         update event_attendee
         set
+            attendance_canceled_at = null,
+            attendance_canceled_by_user_id = null,
             checked_in = false,
             checked_in_at = null,
             created_at = current_timestamp,

@@ -38,12 +38,44 @@ const mountEventsList = ({ hasRelatedEvents = false } = {}) => {
   return document.getElementById("events-list-root");
 };
 
+const loadTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/dashboard/group/events_list.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
 describe("events list page", () => {
   const env = useDashboardTestEnv({
     path: "/dashboard/group?tab=events",
     withHtmx: true,
     withScroll: true,
     withSwal: true,
+  });
+
+  it("warns admins about cancellation refunds and unpublish retention", async () => {
+    // Load the events list template before checking destructive action copy.
+    const template = await loadTemplate();
+
+    // Verify cancellation and unpublish warnings explain their effects.
+    expect(template).to.include(
+      "Unpublish this event? Existing attendees and ticket purchases will be retained.",
+    );
+    expect(template).to.include(
+      "All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
+    );
+    expect(template).to.include('data-series-scope-text="Non-completed events in series"');
+  });
+
+  it("disables deletion when the event is not eligible", async () => {
+    // Load the events list template before checking disabled delete actions.
+    const template = await loadTemplate();
+
+    // Verify unavailable delete actions expose their reason in the title.
+    expect(template).to.include('action == "delete" && !event.can_delete()');
+    expect(template).to.include("event.delete_unavailable_title()");
+    expect(template).to.include('title="{{ delete_title }}"');
   });
 
   it("toggles event action dropdowns with delegated handlers", () => {
@@ -110,9 +142,7 @@ describe("events list page", () => {
 
     // Verify confirms a single-event action and rewrites the HTMX request path.
     expect(env.current.swal.calls[0].text).to.equal("Publish this event?");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      [button, "confirmed"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[button, "confirmed"]]);
     expect(button.dataset.requestScope).to.equal("this");
 
     // Prepare config event for confirming a single-event action and rewrites.
@@ -123,9 +153,7 @@ describe("events list page", () => {
     button.dispatchEvent(configEvent);
 
     // Verify confirms a single-event action and rewrites the HTMX request path.
-    expect(configEvent.detail.path).to.equal(
-      "/dashboard/group/events/123/publish",
-    );
+    expect(configEvent.detail.path).to.equal("/dashboard/group/events/123/publish");
   });
 
   it("confirms a series action and reports the scoped response message", async () => {
@@ -141,9 +169,7 @@ describe("events list page", () => {
 
     // Verify confirms a series action and reports the scoped response message.
     expect(env.current.swal.calls[0].text).to.equal("Publish this series?");
-    expect(env.current.htmx.triggerCalls).to.deep.equal([
-      [button, "confirmed"],
-    ]);
+    expect(env.current.htmx.triggerCalls).to.deep.equal([[button, "confirmed"]]);
 
     // Prepare config event for confirming a series action and reports the scoped.
     const configEvent = new CustomEvent("htmx:configRequest", {
@@ -153,9 +179,7 @@ describe("events list page", () => {
     button.dispatchEvent(configEvent);
 
     // Verify confirms a series action and reports the scoped response message.
-    expect(configEvent.detail.path).to.equal(
-      "/dashboard/group/events/123/publish?scope=series",
-    );
+    expect(configEvent.detail.path).to.equal("/dashboard/group/events/123/publish?scope=series");
 
     // Dispatch the successful series action response.
     button.dispatchEvent(
@@ -246,10 +270,7 @@ describe("events list page", () => {
   it("does not close unrelated dropdowns when initialized on the document", () => {
     // Prepare root for does not close unrelated dropdowns when initialized.
     const root = mountEventsList();
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      '<div id="user-dropdown" class="dropdown"></div>',
-    );
+    document.body.insertAdjacentHTML("beforeend", '<div id="user-dropdown" class="dropdown"></div>');
     initializeEventsListPage(document);
 
     // Keep a reference to the button actions element.

@@ -310,33 +310,21 @@ pub(crate) async fn cancel(
     db.as_ref()
         .transaction(|tx| {
             Box::pin(async move {
-                // Load summaries before canceling so notification eligibility uses prior state
-                let event_ids = event_action_ids(tx, group_id, event_id, scope).await?;
+                // Resolve and lock cancellation targets before attendance can change
+                let event_ids = cancel_event_action_ids(tx, group_id, event_id, scope).await?;
+                tx.lock_events_for_cancellation(group_id, &event_ids).await?;
+
+                // Load summaries while locks preserve notification eligibility and recipients
                 let mut events = Vec::with_capacity(event_ids.len());
                 for event_id in &event_ids {
                     events.push(tx.get_event_summary(community_id, group_id, *event_id).await?);
                 }
 
-                // Mark the selected event or the whole linked series as canceled
-                match scope {
-                    EventActionScope::Series => {
-                        tx.cancel_event_series_events(user.user_id, group_id, &event_ids)
-                            .await?;
-                    }
-                    EventActionScope::This => {
-                        tx.cancel_event(user.user_id, group_id, event_id).await?;
-                    }
-                }
-
-                // Enqueue cancellation notifications for future published events
+                // Snapshot and enqueue cancellation recipients before attendance is deactivated
                 let events_to_notify: Vec<EventSummary> = events
                     .into_iter()
                     .filter(|event| {
-                        matches!(
-                            (event.published, event.canceled, event.starts_at),
-                            (true, false, Some(starts_at))
-                                if !event.test_event && starts_at > Utc::now()
-                        )
+                        event.published && !event.canceled && !event.test_event && !event.is_past()
                     })
                     .collect();
                 match (scope, events_to_notify.as_slice()) {
@@ -365,6 +353,17 @@ pub(crate) async fn cancel(
                         .await?;
                     }
                     _ => {}
+                }
+
+                // Mark the selected event or the whole linked series as canceled
+                match scope {
+                    EventActionScope::Series => {
+                        tx.cancel_event_series_events(user.user_id, group_id, &event_ids)
+                            .await?;
+                    }
+                    EventActionScope::This => {
+                        tx.cancel_event(user.user_id, group_id, event_id).await?;
+                    }
                 }
 
                 Ok(())
@@ -639,6 +638,60 @@ enum EventActionScope {
 
 // Helpers.
 
+/// Prepares the events list page and filters for the group dashboard.
+pub(crate) async fn prepare_list_page(
+    db: &DynDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+    raw_query: &str,
+) -> Result<(EventsListFilters, events::ListPage), HandlerError> {
+    // Fetch group's past and upcoming events
+    let filters: EventsListFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
+    let (can_manage_events, events) = tokio::try_join!(
+        db.user_has_group_permission(
+            &community_id,
+            &group_id,
+            &user_id,
+            GroupPermission::EventsWrite
+        ),
+        db.list_group_events(group_id, &filters)
+    )?;
+
+    // Prepare pagination links for each events tab
+    let mut past_filters = filters.clone();
+    past_filters.events_tab = Some(EventsTab::Past);
+    let mut upcoming_filters = filters.clone();
+    upcoming_filters.events_tab = Some(EventsTab::Upcoming);
+    let past_navigation_links = NavigationLinks::from_filters(
+        &past_filters,
+        events.past.total,
+        DASHBOARD_URL,
+        PARTIAL_URL,
+    )?;
+    let upcoming_navigation_links = NavigationLinks::from_filters(
+        &upcoming_filters,
+        events.upcoming.total,
+        DASHBOARD_URL,
+        PARTIAL_URL,
+    )?;
+
+    // Prepare template
+    let template = events::ListPage {
+        can_manage_events,
+        events,
+        events_tab: filters.current_tab(),
+        past_navigation_links,
+        upcoming_navigation_links,
+        limit: filters.limit,
+        past_offset: filters.past_offset,
+        upcoming_offset: filters.upcoming_offset,
+    };
+
+    Ok((filters, template))
+}
+
 /// Builds the database payload for an event form.
 fn build_event_payload(event: &Event) -> Result<serde_json::Value, HandlerError> {
     event
@@ -657,6 +710,25 @@ fn build_meetings_max_participants(
         map.insert(MeetingProvider::Zoom, zoom.max_participants);
     }
     map
+}
+
+/// Resolves the non-completed event identifiers affected by cancellation.
+async fn cancel_event_action_ids(
+    db: &dyn DBOperations,
+    group_id: Uuid,
+    event_id: Uuid,
+    scope: EventActionScope,
+) -> Result<Vec<Uuid>> {
+    if scope == EventActionScope::This {
+        return Ok(vec![event_id]);
+    }
+
+    let event_ids = db.list_event_series_cancelable_event_ids(group_id, event_id).await?;
+    if event_ids.is_empty() {
+        Ok(vec![event_id])
+    } else {
+        Ok(event_ids)
+    }
 }
 
 /// Ensures that ticketing can be used for the event by checking payments configuration and group setup.
@@ -732,58 +804,4 @@ fn payments_ready(
         (Some(payment_recipient), Some(payments_cfg))
             if payment_recipient.provider == payments_cfg.provider()
     )
-}
-
-/// Prepares the events list page and filters for the group dashboard.
-pub(crate) async fn prepare_list_page(
-    db: &DynDB,
-    community_id: Uuid,
-    group_id: Uuid,
-    user_id: Uuid,
-    raw_query: &str,
-) -> Result<(EventsListFilters, events::ListPage), HandlerError> {
-    // Fetch group's past and upcoming events
-    let filters: EventsListFilters = serde_qs_config().deserialize_str(raw_query)?;
-    filters.validate()?;
-    let (can_manage_events, events) = tokio::try_join!(
-        db.user_has_group_permission(
-            &community_id,
-            &group_id,
-            &user_id,
-            GroupPermission::EventsWrite
-        ),
-        db.list_group_events(group_id, &filters)
-    )?;
-
-    // Prepare pagination links for each events tab
-    let mut past_filters = filters.clone();
-    past_filters.events_tab = Some(EventsTab::Past);
-    let mut upcoming_filters = filters.clone();
-    upcoming_filters.events_tab = Some(EventsTab::Upcoming);
-    let past_navigation_links = NavigationLinks::from_filters(
-        &past_filters,
-        events.past.total,
-        DASHBOARD_URL,
-        PARTIAL_URL,
-    )?;
-    let upcoming_navigation_links = NavigationLinks::from_filters(
-        &upcoming_filters,
-        events.upcoming.total,
-        DASHBOARD_URL,
-        PARTIAL_URL,
-    )?;
-
-    // Prepare template
-    let template = events::ListPage {
-        can_manage_events,
-        events,
-        events_tab: filters.current_tab(),
-        past_navigation_links,
-        upcoming_navigation_links,
-        limit: filters.limit,
-        past_offset: filters.past_offset,
-        upcoming_offset: filters.upcoming_offset,
-    };
-
-    Ok((filters, template))
 }

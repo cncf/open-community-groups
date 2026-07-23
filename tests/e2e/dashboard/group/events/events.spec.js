@@ -7,9 +7,10 @@ import {
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
+  TEST_GROUP_SLUGS,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
-  TEST_GROUP_SLUGS,
+  TEST_REGISTRATION_WINDOW_EVENTS,
   TEST_USER_IDS,
   navigateToPath,
   selectTimezone,
@@ -489,7 +490,7 @@ test.describe("group dashboard events view", () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this event?",
+      "Delete this event? This removes it from the dashboard and cannot be undone.",
     );
 
     // Confirm deletion and wait for the server response.
@@ -508,6 +509,48 @@ test.describe("group dashboard events view", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: eventName }),
     ).toHaveCount(0);
+  });
+
+  test("organizer sees why active events cannot be deleted", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the event list and inspect an active published event.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const activeEventRow = organizerGroupPage.locator("tr", {
+      hasText: TEST_EVENT_NAMES.alpha[1],
+    });
+    await expect(activeEventRow).toBeVisible();
+    await activeEventRow.locator(".btn-actions").click();
+
+    // Verify published events must be canceled before deletion.
+    const cancelFirstDeleteButton = activeEventRow.locator(
+      `#delete-event-${TEST_EVENT_IDS.alpha.two}`,
+    );
+    await expect(cancelFirstDeleteButton).toBeDisabled();
+    await expect(cancelFirstDeleteButton).toHaveAttribute(
+      "title",
+      "Cancel this event before deleting it.",
+    );
+
+    // Inspect an event with an active payment hold.
+    await activeEventRow.locator(".btn-actions").click();
+    const pendingCheckoutEvent =
+      TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed;
+    const pendingCheckoutRow = organizerGroupPage.locator("tr", {
+      hasText: pendingCheckoutEvent.name,
+    });
+    await expect(pendingCheckoutRow).toBeVisible();
+    await pendingCheckoutRow.locator(".btn-actions").click();
+
+    // Verify pending checkouts and refunds explain why deletion is blocked.
+    const refundsPendingDeleteButton = pendingCheckoutRow.locator(
+      `#delete-event-${pendingCheckoutEvent.id}`,
+    );
+    await expect(refundsPendingDeleteButton).toBeDisabled();
+    await expect(refundsPendingDeleteButton).toHaveAttribute(
+      "title",
+      "Resolve pending checkouts and refunds before deleting this event.",
+    );
   });
 
   test("organizer can cancel an event from the list", async ({
@@ -596,7 +639,7 @@ test.describe("group dashboard events view", () => {
     await expect(cancelButton).toBeVisible();
     await cancelButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to cancel this event? This action is not reversible.",
+      "Cancel this event? This cannot be undone. All attendees will have their attendance canceled and eligible ticket purchases will be refunded automatically.",
     );
 
     // Confirm cancellation and wait for the server response.
@@ -611,19 +654,36 @@ test.describe("group dashboard events view", () => {
       organizerGroupPage.getByRole("button", { name: "Yes" }).click(),
     ]);
 
+    // Open past events after cancellation moves the event out of the upcoming list.
+    await Promise.all([
+      organizerGroupPage.waitForResponse(
+        (response) =>
+          response.request().method() === "GET" &&
+          response.url().includes("/dashboard/group/events?events_tab=past") &&
+          response.ok(),
+      ),
+      dashboardContent.getByRole("button", { name: "Past events" }).click(),
+    ]);
+
     // Verify the row reflects canceled state and no longer offers cancellation.
+    await expect(eventRow).toBeVisible();
     await expect(eventRow).toContainText("Canceled");
-    await eventRow.locator(".btn-actions").click();
     await expect(eventRow.locator('button[id^="cancel-event-"]')).toHaveCount(
       0,
     );
+    const eventActionsButton = eventRow.locator(".btn-actions");
+    const eventActionsDropdown = eventRow.locator(
+      "[data-event-actions-dropdown]",
+    );
+    await eventActionsButton.click();
+    await expect(eventActionsDropdown).toBeVisible();
 
     // Delete the temporary canceled event to keep the list reusable.
     const deleteButton = eventRow.locator('button[id^="delete-event-"]');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this event?",
+      "Delete this event? This removes it from the dashboard and cannot be undone.",
     );
 
     // Confirm deletion and wait for the server response.
@@ -851,8 +911,12 @@ test.describe("group dashboard events view", () => {
 
       const seriesConfirmationDialog =
         organizerGroupPage.locator(".swal2-popup");
+      const expectedConfirmationMessage =
+        action === "cancel"
+          ? "Canceling is permanent and automatically starts refunds for eligible ticket purchases. Which events would you like to cancel?"
+          : `This event is part of a recurring series. What would you like to ${action}?`;
       await expect(seriesConfirmationDialog).toContainText(
-        `This event is part of a recurring series. What would you like to ${action}?`,
+        expectedConfirmationMessage,
       );
 
       await Promise.all([
@@ -861,7 +925,7 @@ test.describe("group dashboard events view", () => {
             response.request().method() === "PUT" &&
             response.url().includes("/dashboard/group/events/") &&
             response.url().includes(`/${action}`) &&
-            (scopeButtonName === "All in series"
+            (scopeButtonName !== "Only this event"
               ? response.url().includes("scope=series")
               : !response.url().includes("scope=series")) &&
             response.ok(),
@@ -902,7 +966,11 @@ test.describe("group dashboard events view", () => {
     await expect(eventRows.nth(2)).toContainText("Draft");
 
     // Cancel the full series.
-    await selectScopedAction(eventRows.first(), "cancel", "All in series");
+    await selectScopedAction(
+      eventRows.first(),
+      "cancel",
+      "Non-completed events in series",
+    );
     await expect(eventRows.first()).toContainText("Canceled");
     await expect(eventRows.nth(1)).toContainText("Canceled");
     await expect(eventRows.nth(2)).toContainText("Canceled");
@@ -1590,7 +1658,7 @@ test.describe("group dashboard events view", () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
     await expect(organizerGroupPage.locator(".swal2-popup")).toContainText(
-      "Are you sure you wish to delete this event?",
+      "Delete this event? This removes it from the dashboard and cannot be undone.",
     );
 
     // Confirm deletion and wait for the server response.

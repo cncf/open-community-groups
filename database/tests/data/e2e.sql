@@ -583,6 +583,55 @@ insert into event (
     true
 );
 
+-- Events reserved for cancellation lifecycle and canceled invitation history coverage.
+insert into event (
+    event_id,
+    canceled,
+    description,
+    ends_at,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    registration_questions,
+    registration_required,
+    slug,
+    starts_at,
+    timezone
+)
+values (
+    '55555555-5555-5555-5555-555555555527',
+    false,
+    'Future event used to verify attendee state transitions after event cancellation.',
+    now() + interval '62 days 2 hours',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'Event Cancellation Lifecycle',
+    true,
+    '[{"id":"57555555-5555-5555-5555-555555555527","kind":"free-text","prompt":"What should the organizers know?","required":true,"options":[]}]'::jsonb,
+    true,
+    'alpha-event-cancellation-lifecycle',
+    now() + interval '62 days',
+    'UTC'
+), (
+    '55555555-5555-5555-5555-555555555528',
+    true,
+    'Canceled event used to preserve canceled invitation history in the dashboard.',
+    now() + interval '63 days 2 hours',
+    '33333333-3333-3333-3333-333333333331',
+    'virtual',
+    '44444444-4444-4444-4444-444444444441',
+    'Canceled Invitation History',
+    true,
+    '[]'::jsonb,
+    true,
+    'alpha-canceled-invitation-history',
+    now() + interval '63 days',
+    'UTC'
+);
+
 -- Published test event for direct event-page badge coverage.
 insert into event (
     event_id, name, slug, description, description_short, timezone, event_category_id,
@@ -1543,6 +1592,66 @@ values (
     'registration-questions-pending'
 );
 
+-- Attendees used to verify event cancellation state transitions.
+insert into event_attendee (
+    event_id,
+    user_id,
+    checked_in,
+    checked_in_at,
+    manually_invited,
+    status
+)
+values (
+    '55555555-5555-5555-5555-555555555527',
+    '77777777-7777-7777-7777-777777777701',
+    true,
+    now() - interval '1 hour',
+    false,
+    'confirmed'
+), (
+    '55555555-5555-5555-5555-555555555527',
+    '77777777-7777-7777-7777-777777777702',
+    false,
+    null,
+    true,
+    'invitation-pending'
+), (
+    '55555555-5555-5555-5555-555555555527',
+    '77777777-7777-7777-7777-777777777704',
+    false,
+    null,
+    false,
+    'registration-questions-pending'
+);
+
+-- Canceled invitation retained for attendee history regression coverage.
+insert into event_attendee (event_id, user_id, manually_invited, status)
+values (
+    '55555555-5555-5555-5555-555555555528',
+    '77777777-7777-7777-7777-777777777702',
+    true,
+    'invitation-canceled'
+);
+
+-- Attendees used by the refund dashboard operational state matrix.
+insert into event_attendee (event_id, user_id)
+values (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777701'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777704'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777709'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777710'
+), (
+    '55555555-5555-5555-5555-555555555523',
+    '77777777-7777-7777-7777-777777777711'
+);
+
 insert into event_attendee (event_id, user_id, registration_answers)
 values (
     '55555555-5555-5555-5555-555555555525',
@@ -1988,6 +2097,106 @@ values (
     '77777777-7777-7777-7777-777777777712'
 );
 
+-- Purchases used by the refund dashboard operational state matrix.
+insert into event_purchase (
+    event_purchase_id,
+    amount_minor,
+    completed_at,
+    currency_code,
+    discount_amount_minor,
+    event_id,
+    event_ticket_type_id,
+    payment_provider_id,
+    provider_checkout_session_id,
+    provider_checkout_url,
+    provider_payment_reference,
+    refunded_at,
+    status,
+    ticket_title,
+    user_id
+)
+values (
+    '59555555-5555-5555-5555-555555555526',
+    5000,
+    now() - interval '6 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_processing',
+    'https://checkout.stripe.test/cs_e2e_refund_processing',
+    'pi_e2e_refund_processing',
+    null,
+    'refund-pending',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777704'
+), (
+    '59555555-5555-5555-5555-555555555527',
+    5000,
+    now() - interval '7 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_retryable',
+    'https://checkout.stripe.test/cs_e2e_refund_retryable',
+    'pi_e2e_refund_retryable',
+    null,
+    'refund-pending',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777711'
+), (
+    '59555555-5555-5555-5555-555555555528',
+    5000,
+    now() - interval '8 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_finalized',
+    'https://checkout.stripe.test/cs_e2e_refund_finalized',
+    'pi_e2e_refund_finalized',
+    now() - interval '1 day',
+    'refunded',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777701'
+), (
+    '59555555-5555-5555-5555-555555555529',
+    5000,
+    now() - interval '9 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_rejection',
+    'https://checkout.stripe.test/cs_e2e_refund_rejection',
+    'pi_e2e_refund_rejection',
+    null,
+    'refund-requested',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777709'
+), (
+    '59555555-5555-5555-5555-555555555530',
+    5000,
+    now() - interval '10 days',
+    'USD',
+    0,
+    '55555555-5555-5555-5555-555555555523',
+    '56555555-5555-5555-5555-555555555523',
+    'stripe',
+    'cs_e2e_refund_recovery_durable',
+    'https://checkout.stripe.test/cs_e2e_refund_recovery_durable',
+    'pi_e2e_refund_recovery_durable',
+    null,
+    'refund-requested',
+    'VIP pass',
+    '77777777-7777-7777-7777-777777777710'
+);
+
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -2023,6 +2232,7 @@ values (
 -- EVENT REFUND REQUESTS
 -- ============================================================================
 
+-- Refund requests used by attendee and organizer review coverage.
 insert into event_refund_request (
     event_refund_request_id,
     event_purchase_id,
@@ -2054,6 +2264,118 @@ values (
     '77777777-7777-7777-7777-777777777712',
     'Refund completed',
     'approved'
+), (
+    '60555555-5555-5555-5555-555555555529',
+    '59555555-5555-5555-5555-555555555529',
+    '77777777-7777-7777-7777-777777777709',
+    'Duplicate registration',
+    'pending'
+), (
+    '60555555-5555-5555-5555-555555555530',
+    '59555555-5555-5555-5555-555555555530',
+    '77777777-7777-7777-7777-777777777710',
+    'Provider completed the refund outside OCG',
+    'approving'
+);
+
+-- Durable refunds used by recovery and operational state coverage.
+insert into event_purchase_refund (
+    event_purchase_refund_id,
+    amount_minor,
+    attempt_count,
+    currency_code,
+    event_purchase_id,
+    event_refund_request_id,
+    failure_message,
+    finalized_at,
+    idempotency_key,
+    kind,
+    next_attempt_at,
+    payment_provider_id,
+    provider_refund_id,
+    status,
+    terminal_failure
+)
+values (
+    '61555555-5555-5555-5555-555555555522',
+    5000,
+    1,
+    'USD',
+    '59555555-5555-5555-5555-555555555522',
+    '60555555-5555-5555-5555-555555555522',
+    'Provider refund requires manual recovery',
+    null,
+    'event-purchase-refund-59555555-5555-5555-5555-555555555522',
+    'refund-request-approval',
+    now() + interval '100 years',
+    'stripe',
+    're_e2e_refund_recovery',
+    'provider-failed',
+    true
+), (
+    '61555555-5555-5555-5555-555555555526',
+    5000,
+    1,
+    'USD',
+    '59555555-5555-5555-5555-555555555526',
+    null,
+    null,
+    null,
+    'event-purchase-refund-59555555-5555-5555-5555-555555555526',
+    'event-cancellation',
+    now() + interval '100 years',
+    'stripe',
+    're_e2e_refund_processing',
+    'provider-pending',
+    false
+), (
+    '61555555-5555-5555-5555-555555555527',
+    5000,
+    10,
+    'USD',
+    '59555555-5555-5555-5555-555555555527',
+    null,
+    'Provider refund attempts exhausted',
+    null,
+    'event-purchase-refund-59555555-5555-5555-5555-555555555527',
+    'event-cancellation',
+    now() + interval '100 years',
+    'stripe',
+    null,
+    'provider-failed',
+    false
+), (
+    '61555555-5555-5555-5555-555555555528',
+    5000,
+    1,
+    'USD',
+    '59555555-5555-5555-5555-555555555528',
+    null,
+    null,
+    now() - interval '1 day',
+    'event-purchase-refund-59555555-5555-5555-5555-555555555528',
+    'event-cancellation',
+    now() + interval '100 years',
+    'stripe',
+    're_e2e_refund_finalized',
+    'finalized',
+    false
+), (
+    '61555555-5555-5555-5555-555555555530',
+    5000,
+    1,
+    'USD',
+    '59555555-5555-5555-5555-555555555530',
+    '60555555-5555-5555-5555-555555555530',
+    'Provider refund requires external recovery',
+    null,
+    'event-purchase-refund-59555555-5555-5555-5555-555555555530',
+    'refund-request-approval',
+    now() + interval '100 years',
+    'stripe',
+    're_e2e_refund_recovery_durable',
+    'provider-failed',
+    true
 );
 
 -- ============================================================================

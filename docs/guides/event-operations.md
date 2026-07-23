@@ -288,15 +288,23 @@ Ticket and discount data model:
   expires, a free ticket is released, or a refund is finalized.
 
 Refunds follow a request-and-review model. Paid attendees do not use `Leave event`; they use
-`Request refund` from the public event page instead. Organizers review refund requests in
-`Event -> Attendees` and can approve or reject them. Refund requests must be submitted before the
-event starts, though organizers can still approve or reject a request later if it was submitted
-before the start time. Approved refunds are full refunds only, and rejecting a request leaves the
-attendee and ticket unchanged.
+`Request refund` from the public event page instead. Organizers can review refund requests in
+`Event -> Attendees` or the group dashboard `Refunds` tab and approve or reject them. Refund
+requests must be submitted before the event starts, though organizers can still approve or reject
+a request later if it was submitted before the start time. Approved refunds are full refunds only,
+and rejecting a request leaves the attendee and ticket unchanged. Approval queues the provider
+refund; both dashboard views show its progress until the refund completes or needs intervention.
+
+Canceling an event is the other way a refund begins. OCG immediately cancels active attendance,
+completes free-ticket refunds locally, and queues every paid ticket for a full provider refund.
+The event remains canceled even if a provider attempt later needs retry or manual recovery.
+After arranging an external refund for a terminal provider failure, an organizer with events write
+access can complete that recovery from the group dashboard `Refunds` tab. Other roles see the
+recovery action disabled with an explanation of the requirement.
 
 Refund requests, approvals, rejections, and completed refunds are all written to audit logs.
-Organizers are notified when attendees request refunds, and attendees are notified when
-organizers approve or reject the request.
+Organizers are notified when attendees request refunds. Attendees are notified when a rejection
+is recorded or an approved or automatic paid refund has completed.
 
 ### Attendance, Invitation, and Waitlist Operations
 
@@ -408,9 +416,10 @@ Manual check-in bypasses attendee self-check-in timing windows, but the person m
 registered as an attendee and the event must still be published or active.
 
 `Cancel attendance` is available from confirmed attendee row actions for future, active events
-when the attendee does not have a paid ticket. OCG removes the attendance, notifies the attendee,
-and can promote the next waitlisted user when a seat opens. Paid attendees stay on the refund
-workflow instead.
+when the attendee does not have a paid ticket. OCG marks the attendance as canceled, notifies the
+attendee, and can promote the next waitlisted user when a seat opens. Paid attendees stay on the
+refund workflow instead. Canceled attendance remains in the event history rather than being
+deleted.
 
 The attendee actions menu contains event-level attendee actions and exports. `Show check-in QR code`
 opens a QR code for the public check-in flow. `Invite attendee` is available for free RSVP events
@@ -432,6 +441,11 @@ status, title presence, or ticket type. The invitation requests table can be sor
 request date, filtered by request status or title presence, and reset to `All` statuses when you need
 to audit accepted and rejected requests. The waitlist table can be sorted by entry name or joined
 date and filtered by title presence; the queue column still shows the FIFO promotion order.
+
+The `Active`, `Canceled`, and `All` attendance filters control whether canceled attendee history is
+shown. Canceled events open on `All` so organizers can see the full audience and paid-refund
+progress. An exhausted transient refund can be retried from its attendee row; terminal provider
+failures remain visible for operator recovery.
 
 `Send email` in this tab sends operational updates to attendees who receive optional notifications.
 Organizers can send to all eligible attendees, including confirmed attendees and attendees who still
@@ -543,6 +557,13 @@ while `Unpublish` hides it without changing its canceled state. `Cancel` marks t
 proceeding while keeping an already published page available as canceled, and `Delete`
 permanently removes it from normal operations.
 
+Cancellation is irreversible. Its confirmation explains that active attendees will be canceled,
+free tickets will be closed locally, and every paid ticket will be queued for a full refund.
+Unpublishing does not cancel attendance or start refunds. Deleting does not start refunds either:
+future events must be canceled first, and deletion stays disabled while checkout, refund, or refund
+recovery work is unresolved. Unused never-published drafts and completed past events can be deleted
+without cancellation.
+
 Notification behavior differs per action:
 
 !> `Publish` and `Cancel` can notify large participant sets.
@@ -559,16 +580,18 @@ Notification behavior differs per action:
 - `Unpublish` and `Delete` do not send broad attendee updates in this flow.
 
 For `Publish`, `Cancel`, and event-editor updates that require publish, cancellation, reschedule,
-or waitlist promotion notifications, the notifications are guaranteed: if one of them cannot be
-sent, the event change is not saved.
+or waitlist promotion notifications, the notification handoff is guaranteed: if OCG cannot queue
+the required notifications, the event change is not saved. A later payment-provider refund failure
+does not reverse an event cancellation; it remains visible for retry or recovery.
 
 Automatic meetings follow these actions too: `Publish` triggers creation/sync for configured
 automatic meetings (event and session meetings), while `Unpublish`, `Cancel`, and `Delete`
 trigger removal/sync for them.
 
 If an event belongs to a recurring series, `Publish`, `Unpublish`, `Cancel`, and `Delete` ask
-whether to apply the action to only the selected event or all active events in that series. Series
-actions are applied atomically: either every selected event is updated, or none are.
+whether to apply the action to only the selected event or the linked series. Series cancellation
+targets only occurrences that are not completed or already canceled. Series actions are applied
+atomically: either every selected event is updated, or none are.
 
 Other event edits remain individual-event operations. Updating details, dates, venue, online
 meeting configuration, hosts, speakers, sponsors, sessions, CFS settings, tickets, discounts, or

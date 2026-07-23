@@ -3,13 +3,16 @@
 -- ============================================================================
 
 begin;
-select plan(13);
+select plan(15);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
 \set communityID '79490000-0000-0000-0000-000000000001'
+\set claimedPurchaseID '79490000-0000-0000-0000-000000000024'
+\set claimedRefundID '79490000-0000-0000-0000-000000000025'
+\set claimedUserID '79490000-0000-0000-0000-000000000026'
 \set eventCategoryID '79490000-0000-0000-0000-000000000002'
 \set eventID '79490000-0000-0000-0000-000000000003'
 \set eventTicketTypeID '79490000-0000-0000-0000-000000000004'
@@ -23,9 +26,11 @@ select plan(13);
 \set invalidUserID '79490000-0000-0000-0000-000000000018'
 \set missingRefundID '79490000-0000-0000-0000-000000000012'
 \set priceWindowID '79490000-0000-0000-0000-000000000007'
+\set processingClaimID '79490000-0000-0000-0000-000000000022'
 \set purchaseID '79490000-0000-0000-0000-000000000008'
 \set refundID '79490000-0000-0000-0000-000000000009'
 \set refundRequestID '79490000-0000-0000-0000-000000000010'
+\set staleClaimID '79490000-0000-0000-0000-000000000023'
 \set terminalPurchaseID '79490000-0000-0000-0000-000000000019'
 \set terminalRefundID '79490000-0000-0000-0000-000000000020'
 \set terminalUserID '79490000-0000-0000-0000-000000000021'
@@ -62,9 +67,16 @@ values (:'groupCategoryID', :'communityID', 'Tech');
 insert into event_category (event_category_id, community_id, name)
 values (:'eventCategoryID', :'communityID', 'General');
 
--- Buyers for the pending, finalized, and invalid recovery scenarios
+-- Buyers for claimed, pending, finalized, and invalid recovery scenarios
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values
+    (
+        :'claimedUserID',
+        'hash-claimed',
+        'claimed-buyer@example.com',
+        true,
+        'claimed-buyer'
+    ),
     (
         :'finalizedUserID',
         'hash-finalized',
@@ -151,7 +163,7 @@ insert into event_ticket_price_window (
     :'eventTicketTypeID'
 );
 
--- Purchases for the pending, finalized, and invalid recovery scenarios
+-- Purchases for claimed, pending, finalized, and invalid recovery scenarios
 insert into event_purchase (
     event_purchase_id,
     amount_minor,
@@ -162,6 +174,15 @@ insert into event_purchase (
     ticket_title,
     user_id
 ) values (
+    :'claimedPurchaseID',
+    2500,
+    'USD',
+    :'eventID',
+    :'eventTicketTypeID',
+    'refund-pending',
+    'General admission',
+    :'claimedUserID'
+), (
     :'finalizedPurchaseID',
     2500,
     'USD',
@@ -212,7 +233,7 @@ insert into event_refund_request (
     'approving'
 );
 
--- Provider records for the pending, finalized, and invalid recovery scenarios
+-- Provider records for claimed, pending, finalized, and invalid recovery scenarios
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
@@ -222,13 +243,34 @@ insert into event_purchase_refund (
     kind,
     payment_provider_id,
     status,
+    terminal_failure,
 
+    claim_id,
+    claimed_at,
     event_refund_request_id,
     failure_message,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
 ) values (
+    :'claimedRefundID',
+    2500,
+    'USD',
+    :'claimedPurchaseID',
+    'event-purchase-refund-' || :'claimedPurchaseID',
+    'automatic-unfulfillable-checkout',
+    'stripe',
+    'processing',
+    false,
+
+    :'processingClaimID',
+    current_timestamp,
+    null,
+    null,
+    null,
+    null,
+    null
+), (
     :'finalizedRefundID',
     2500,
     'USD',
@@ -237,7 +279,10 @@ insert into event_purchase_refund (
     'automatic-unfulfillable-checkout',
     'stripe',
     'provider-failed',
+    false,
 
+    null,
+    null,
     null,
     'provider refund failed: re_failed_123',
     current_timestamp,
@@ -252,7 +297,10 @@ insert into event_purchase_refund (
     'automatic-unfulfillable-checkout',
     'stripe',
     'provider-failed',
+    false,
 
+    null,
+    null,
     null,
     'provider refund failed: re_invalid_123',
     current_timestamp,
@@ -267,7 +315,10 @@ insert into event_purchase_refund (
     'refund-request-approval',
     'stripe',
     'provider-pending',
+    false,
 
+    null,
+    null,
     :'refundRequestID',
     null,
     null,
@@ -282,7 +333,10 @@ insert into event_purchase_refund (
     'automatic-unfulfillable-checkout',
     'stripe',
     'provider-failed',
+    true,
 
+    null,
+    null,
     null,
     'provider refund failed: re_terminal_123',
     null,
@@ -325,14 +379,15 @@ select is(
     ) - 'event_purchase_refund_id' - 'provider_refunded_at',
     jsonb_build_object(
         'amount_minor', 2500,
+        'attempt_count', 0,
         'currency_code', 'USD',
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
         'payment_provider', 'stripe',
         'provider_refund_id', 're_success_123',
-        'started_now', false,
-        'status', 'provider-succeeded'
+        'status', 'provider-succeeded',
+        'terminal_failure', false
     ),
     'Should record provider refund success on a pending refund row'
 );
@@ -346,14 +401,15 @@ select is(
     ) - 'event_purchase_refund_id' - 'provider_refunded_at',
     jsonb_build_object(
         'amount_minor', 2500,
+        'attempt_count', 0,
         'currency_code', 'USD',
         'event_purchase_id', :'purchaseID'::uuid,
         'idempotency_key', 'event-purchase-refund-' || :'purchaseID',
         'kind', 'refund-request-approval',
         'payment_provider', 'stripe',
         'provider_refund_id', 're_success_123',
-        'started_now', false,
-        'status', 'provider-succeeded'
+        'status', 'provider-succeeded',
+        'terminal_failure', false
     ),
     'Should allow retry with the same provider refund id'
 );
@@ -510,6 +566,34 @@ select throws_ok(
     )$$, :'missingRefundID'),
     'event purchase refund not found',
     'Should reject missing refund rows'
+);
+
+-- Should reject provider success from a stale worker claim
+select throws_ok(
+    format($$select record_event_purchase_refund_succeeded(
+        %L::uuid,
+        %L,
+        're_claimed_123',
+        %L::uuid
+    )$$,
+        :'claimedRefundID',
+        'event-purchase-refund-' || :'claimedPurchaseID',
+        :'staleClaimID'
+    ),
+    'event purchase refund claim is stale',
+    'Should reject provider success from a stale worker claim'
+);
+
+-- Should accept provider success from the current worker claim
+select is(
+    record_event_purchase_refund_succeeded(
+        :'claimedRefundID'::uuid,
+        'event-purchase-refund-' || :'claimedPurchaseID',
+        're_claimed_123',
+        :'processingClaimID'::uuid
+    )->>'status',
+    'processing',
+    'Should accept provider success from the current worker claim'
 );
 
 -- ============================================================================

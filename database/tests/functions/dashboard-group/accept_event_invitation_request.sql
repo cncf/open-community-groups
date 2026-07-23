@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(20);
+select plan(22);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(20);
 \set communityID '3a010000-0000-0000-0000-000000000002'
 \set eventApprovalDisabledID '3a010000-0000-0000-0000-000000000003'
 \set eventAttendeeConflictID '3a010000-0000-0000-0000-000000000004'
+\set eventAttendanceCanceledID '3a010000-0000-0000-0000-000000000025'
 \set eventCategoryID '3a010000-0000-0000-0000-000000000005'
 \set eventFullID '3a010000-0000-0000-0000-000000000006'
 \set eventID '3a010000-0000-0000-0000-000000000007'
@@ -33,6 +34,7 @@ select plan(20);
 \set requester4ID '3a010000-0000-0000-0000-000000000021'
 \set requester5ID '3a010000-0000-0000-0000-000000000022'
 \set requester6ID '3a010000-0000-0000-0000-000000000024'
+\set requester7ID '3a010000-0000-0000-0000-000000000026'
 
 -- ============================================================================
 -- SEED DATA
@@ -76,6 +78,7 @@ values
     (:'requester4ID', 'h', 'requester4@test.com', 'requester4'),
     (:'requester5ID', 'h', 'requester5@test.com', 'requester5'),
     (:'requester6ID', 'h', 'requester6@test.com', 'requester6'),
+    (:'requester7ID', 'h', 'requester7@test.com', 'requester7'),
     (:'questionsAcceptedRequestUserID', 'h', 'rq-accepted-request@test.com', 'rq-accepted-request');
 
 -- Groups
@@ -120,6 +123,22 @@ values
         :'groupID',
         true,
         2,
+        true,
+        null,
+        null,
+        null
+    ),
+    (
+        :'eventAttendanceCanceledID',
+        'Attendance Canceled Event',
+        'attendance-canceled-event',
+        'd',
+        'UTC',
+        :'eventCategoryID',
+        'in-person',
+        :'groupID',
+        true,
+        null,
         true,
         null,
         null,
@@ -299,7 +318,8 @@ values
     (:'eventPendingInvitationID', :'requester3ID'),
     (:'eventAttendeeConflictID', :'requester4ID'),
     (:'eventAttendeeConflictID', :'requester5ID'),
-    (:'eventRegistrationOpenUntilStartID', :'requester6ID');
+    (:'eventRegistrationOpenUntilStartID', :'requester6ID'),
+    (:'eventAttendanceCanceledID', :'requester7ID');
 
 -- Invitation request with registration answers copied when accepted
 insert into event_invitation_request (event_id, user_id, registration_answers)
@@ -330,9 +350,48 @@ values
     (:'eventAttendeeConflictID', :'requester4ID', 'confirmed'),
     (:'eventAttendeeConflictID', :'requester5ID', 'invitation-rejected');
 
+-- Existing canceled attendance row reactivated by accepting a new request
+insert into event_attendee (
+    attendance_canceled_at,
+    attendance_canceled_by_user_id,
+    event_id,
+    status,
+    user_id
+) values (
+    current_timestamp,
+    :'requester7ID',
+    :'eventAttendanceCanceledID',
+    'attendance-canceled',
+    :'requester7ID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
+
+-- Should reactivate canceled attendance when accepting a new request
+select lives_ok(
+    format(
+        'select accept_event_invitation_request(%L::uuid,%L::uuid,%L::uuid,%L::uuid)',
+        :'actorID', :'groupID', :'eventAttendanceCanceledID', :'requester7ID'
+    ),
+    'Should reactivate canceled attendance when accepting a new request'
+);
+
+-- Should clear canceled attendance metadata after reactivation
+select results_eq(
+    format($$
+        select
+            attendance_canceled_at,
+            attendance_canceled_by_user_id,
+            status
+        from event_attendee
+        where event_id = %L::uuid
+        and user_id = %L::uuid
+    $$, :'eventAttendanceCanceledID', :'requester7ID'),
+    $$ values (null::timestamptz, null::uuid, 'confirmed'::text) $$,
+    'Should clear canceled attendance metadata after reactivation'
+);
 
 -- Should accept a pending invitation request
 select lives_ok(

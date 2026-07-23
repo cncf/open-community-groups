@@ -8,6 +8,7 @@ use axum::{
 };
 use axum_login::tower_sessions::session;
 use chrono::Utc;
+use mockall::Sequence;
 use serde_json::{from_slice, from_value, to_value};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -1065,10 +1066,17 @@ async fn test_cancel_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
+    let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
+    tx.expect_lock_events_for_cancellation()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(event_summary.clone()));
     tx.expect_cancel_event()
         .times(1)
@@ -1171,10 +1179,17 @@ async fn test_cancel_test_event_no_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
+    let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
+    tx.expect_lock_events_for_cancellation()
+        .times(1)
+        .withf(move |gid, event_ids| *gid == group_id && event_ids == [event_id].as_slice())
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(test_event.clone()));
     tx.expect_cancel_event()
         .times(1)
@@ -1225,6 +1240,7 @@ async fn test_cancel_series_success() {
         Some(group_id),
     );
     let series_event_ids = vec![event_id, related_event_id];
+    let expected_lock_event_ids = series_event_ids.clone();
     let expected_series_event_ids = series_event_ids.clone();
     let event_summary = EventSummary {
         published: false,
@@ -1255,20 +1271,31 @@ async fn test_cancel_series_success() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
+    let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
-    tx.expect_list_event_series_event_ids()
+    tx.expect_list_event_series_cancelable_event_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _| Ok(series_event_ids.clone()));
+    tx.expect_lock_events_for_cancellation()
+        .times(1)
+        .withf(move |gid, event_ids| {
+            *gid == group_id && event_ids == expected_lock_event_ids.as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(event_summary.clone()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == community_id && *gid == group_id && *eid == related_event_id
         })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     tx.expect_cancel_event().times(0);
     tx.expect_cancel_event_series_events()
@@ -1346,6 +1373,7 @@ async fn test_cancel_series_sends_aggregate_notification() {
         ..sample_event_full(community_id, related_event_id, group_id)
     };
     let series_event_ids = vec![event_id, related_event_id];
+    let expected_lock_event_ids = series_event_ids.clone();
     let expected_series_event_ids = series_event_ids.clone();
     let site_settings = sample_site_settings();
     let site_settings_for_notification = site_settings.clone();
@@ -1369,20 +1397,31 @@ async fn test_cancel_series_sends_aggregate_notification() {
                 && permission == GroupPermission::EventsWrite
         })
         .returning(|_, _, _, _| Ok(true));
+    let mut sequence = Sequence::new();
     let mut tx = MockDB::new();
-    tx.expect_list_event_series_event_ids()
+    tx.expect_list_event_series_cancelable_event_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _| Ok(series_event_ids.clone()));
+    tx.expect_lock_events_for_cancellation()
+        .times(1)
+        .withf(move |gid, event_ids| {
+            *gid == group_id && event_ids == expected_lock_event_ids.as_slice()
+        })
+        .in_sequence(&mut sequence)
+        .returning(|_, _| Ok(()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| *cid == community_id && *gid == group_id && *eid == event_id)
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(event_summary.clone()));
     tx.expect_get_event_summary()
         .times(1)
         .withf(move |cid, gid, eid| {
             *cid == community_id && *gid == group_id && *eid == related_event_id
         })
+        .in_sequence(&mut sequence)
         .returning(move |_, _, _| Ok(related_event_summary.clone()));
     tx.expect_cancel_event_series_events()
         .times(1)

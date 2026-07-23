@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(159);
+select plan(161);
 
 -- ============================================================================
 -- TESTS
@@ -102,6 +102,7 @@ select col_is_fk('event', 'event_series_id', 'event_series');
 select col_is_fk('event', 'group_id', 'group');
 select col_is_fk('event', 'meeting_provider_id', 'meeting_provider');
 select col_is_fk('event', 'published_by', 'user');
+select col_is_fk('event_attendee', 'attendance_canceled_by_user_id', 'user');
 select col_is_fk('event_attendee', 'event_id', 'event');
 select col_is_fk('event_attendee', 'user_id', 'user');
 select col_is_fk('event_category', 'community_id', 'community');
@@ -117,6 +118,7 @@ select col_is_fk('event_purchase', 'event_ticket_type_id', 'event_ticket_type');
 select col_is_fk('event_purchase', 'user_id', 'user');
 select col_is_fk('event_purchase_refund', 'event_purchase_id', 'event_purchase');
 select col_is_fk('event_purchase_refund', 'event_refund_request_id', 'event_refund_request');
+select col_is_fk('event_purchase_refund', 'initiated_by_user_id', 'user');
 select col_is_fk('event_purchase_refund', 'payment_provider_id', 'payment_provider');
 select col_is_fk('event_purchase_refund', 'recovery_completed_by_user_id', 'user');
 select col_is_fk('event_refund_request', 'event_purchase_id', 'event_purchase');

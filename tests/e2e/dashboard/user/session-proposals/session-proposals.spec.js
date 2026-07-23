@@ -87,13 +87,21 @@ test.describe("user dashboard session proposals view", () => {
     // Verify user can create and delete a session proposal.
     await expect(proposalRow).toContainText("Ready for submission");
 
+    // Dismiss the creation feedback before opening the delete confirmation.
+    const creationAlert = pending1Page.locator(".swal2-popup");
+    await expect(creationAlert).toContainText("Session proposal added.");
+    await creationAlert.getByRole("button", { name: "OK" }).click();
+
     // Find the delete proposal button.
     const deleteProposalButton = proposalRow.getByTitle("Delete proposal");
     await expect(deleteProposalButton).toBeVisible();
 
     // Click the delete proposal button.
     await deleteProposalButton.click();
-    await expect(pending1Page.locator(".swal2-popup")).toBeVisible();
+    const deleteConfirmation = pending1Page.locator(".swal2-popup");
+    await expect(deleteConfirmation).toContainText(
+      "Are you sure you want to delete this session proposal?",
+    );
 
     // Click Delete.
     await Promise.all([
@@ -103,7 +111,9 @@ test.describe("user dashboard session proposals view", () => {
           response.url().includes("/dashboard/user/session-proposals/") &&
           response.ok(),
       ),
-      pending1Page.getByRole("button", { name: "Delete" }).click(),
+      deleteConfirmation
+        .getByRole("button", { name: "Delete", exact: true })
+        .click(),
     ]);
 
     // Assert how many matching elements are shown.

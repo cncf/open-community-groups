@@ -596,14 +596,18 @@ select is(
     'Removes attendee and returns attendee leave payload'
 );
 
--- Should remove attendee record after leaving
-select ok(
-    not exists(
-        select 1
+-- Should preserve inactive attendee history after leaving
+select results_eq(
+    format($$
+        select
+            attendance_canceled_at is not null,
+            attendance_canceled_by_user_id,
+            status
         from event_attendee
-        where event_id = :'eventOK'::uuid and user_id = :'user1ID'::uuid
-    ),
-    'Deletes attendee row after leaving'
+        where event_id = %L::uuid and user_id = %L::uuid
+    $$, :'eventOK', :'user1ID'),
+    format($$ values (true, %L::uuid, 'attendance-canceled'::text) $$, :'user1ID'),
+    'Preserves inactive attendee history after leaving'
 );
 
 -- Should allow a user to leave the waitlist
@@ -694,8 +698,13 @@ select is(
             )
         )
     ),
-    format('{"attendees":["%s"],"waitlist":["%s"]}', :'user2ID', :'user3ID')::jsonb,
-    'Moves the promoted user into attendees and keeps the remaining waitlist order'
+    format(
+        '{"attendees":["%s","%s"],"waitlist":["%s"]}',
+        :'user1ID',
+        :'user2ID',
+        :'user3ID'
+    )::jsonb,
+    'Preserves the canceled attendee and moves the promoted user into attendees'
 );
 
 -- Should continue promoting existing waitlisted users after waitlist is disabled
@@ -774,11 +783,12 @@ select is(
         )
     ),
     format(
-        '{"attendees":["%s","%s"],"waitlist":[]}',
+        '{"attendees":["%s","%s","%s"],"waitlist":[]}',
+        :'user1ID',
         :'user2ID',
         :'user4ID'
     )::jsonb,
-    'Moves the full waitlist into attendees when an unlimited event is left'
+    'Preserves the canceled attendee and moves the full waitlist into attendees'
 );
 
 -- Should release a promoted pending-questions registration and promote the next user
@@ -795,8 +805,12 @@ select is(
         from event_attendee
         where event_id = :'eventQuestionsPromoted'::uuid
     ),
-    format('[["%s","registration-questions-pending"]]', :'user6ID')::jsonb,
-    'Deletes the promoted pending-questions row and queues the next user for answers'
+    format(
+        '[["%s","attendance-canceled"],["%s","registration-questions-pending"]]',
+        :'user5ID',
+        :'user6ID'
+    )::jsonb,
+    'Preserves the canceled pending-questions row and queues the next user for answers'
 );
 
 -- Should turn a manually invited pending-questions registration into a rejected invitation

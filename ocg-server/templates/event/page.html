@@ -216,7 +216,7 @@
 
         {# Event date and location -#}
         <div class="py-4">
-          <div class="grid md:grid-cols-2 gap-5 sm:gap-8 md:gap-5 lg:gap-8">
+          <div class="grid grid-cols-1 gap-5 sm:gap-8 md:grid-cols-2 md:gap-5 lg:gap-8">
             {# Event date -#}
             <div class="border border-stone-200 rounded-lg h-full bg-white">
               <div class="p-4 h-full flex flex-col">
@@ -290,7 +290,7 @@
                               hidden
                             {% endif -%}
                             -mx-4 -mb-4 mt-auto flex min-w-0 items-center gap-2 border-t border-stone-200 bg-stone-50 px-4 py-2 text-xs/5 font-semibold text-stone-600">
-                  <div class="svg-icon size-3.5 shrink-0 bg-stone-500 icon-calendar"></div>
+                  <div class="svg-icon hidden size-3.5 shrink-0 bg-stone-500 sm:block icon-calendar"></div>
                   <span data-registration-window-message-display class="min-w-0 truncate">
                     {% if let Some(message) = registration_window_message -%}
                       {{ message }}

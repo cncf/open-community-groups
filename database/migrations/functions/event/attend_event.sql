@@ -105,6 +105,8 @@ begin
         -- Preserve the locked attendee row while updating only the status we read
         update event_attendee
         set
+            attendance_canceled_at = null,
+            attendance_canceled_by_user_id = null,
             registration_answers = v_registration_answers,
             status = 'confirmed'
         where event_id = p_event_id
@@ -161,10 +163,12 @@ begin
             values (p_event_id, p_user_id, v_registration_answers)
             on conflict (event_id, user_id) do update
             set
+                attendance_canceled_at = null,
+                attendance_canceled_by_user_id = null,
                 manually_invited = false,
                 registration_answers = v_registration_answers,
                 status = 'confirmed'
-            where event_attendee.status = 'invitation-canceled';
+            where event_attendee.status in ('attendance-canceled', 'invitation-canceled');
 
             return 'attendee';
         end if;
@@ -202,11 +206,11 @@ begin
 
         if v_attendee_count >= v_capacity then
             if v_waitlist_enabled then
-                -- Remove stale canceled invitations before moving the user into the waitlist
+                -- Remove inactive attendance rows before moving the user into the waitlist
                 delete from event_attendee
                 where event_id = p_event_id
                 and user_id = p_user_id
-                and status = 'invitation-canceled';
+                and status in ('attendance-canceled', 'invitation-canceled');
 
                 -- Add the user to the waitlist, rejecting duplicate joins below
                 insert into event_waitlist (event_id, user_id)
@@ -235,10 +239,16 @@ begin
     values (p_event_id, p_user_id, v_registration_answers)
     on conflict (event_id, user_id) do update
     set
+        attendance_canceled_at = null,
+        attendance_canceled_by_user_id = null,
         manually_invited = false,
         registration_answers = v_registration_answers,
         status = 'confirmed'
-    where event_attendee.status in ('invitation-canceled', 'registration-questions-pending');
+    where event_attendee.status in (
+        'attendance-canceled',
+        'invitation-canceled',
+        'registration-questions-pending'
+    );
 
     if not found then
         raise exception 'user is already attending this event';

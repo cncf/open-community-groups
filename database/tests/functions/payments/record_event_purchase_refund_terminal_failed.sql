@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(18);
+select plan(19);
 
 -- ============================================================================
 -- VARIABLES
@@ -13,6 +13,7 @@ select plan(18);
 \set eventCategoryID '79520000-0000-0000-0000-000000000002'
 \set eventID '79520000-0000-0000-0000-000000000003'
 \set eventTicketTypeID '79520000-0000-0000-0000-000000000004'
+\set failedClaimID '79520000-0000-0000-0000-000000000025'
 \set failedPurchaseID '79520000-0000-0000-0000-000000000005'
 \set failedRefundID '79520000-0000-0000-0000-000000000006'
 \set failedUserID '79520000-0000-0000-0000-000000000007'
@@ -30,6 +31,7 @@ select plan(18);
 \set recoveryRefundID '79520000-0000-0000-0000-000000000023'
 \set recoveryUserID '79520000-0000-0000-0000-000000000024'
 \set replacementPurchaseID '79520000-0000-0000-0000-000000000018'
+\set staleClaimID '79520000-0000-0000-0000-000000000026'
 \set succeededPurchaseID '79520000-0000-0000-0000-000000000011'
 \set succeededRefundID '79520000-0000-0000-0000-000000000012'
 \set succeededUserID '79520000-0000-0000-0000-000000000013'
@@ -251,6 +253,7 @@ insert into event_purchase (
 insert into event_purchase_refund (
     event_purchase_refund_id,
     amount_minor,
+    attempt_count,
     currency_code,
     event_purchase_id,
     idempotency_key,
@@ -258,25 +261,31 @@ insert into event_purchase_refund (
     payment_provider_id,
     status,
 
+    claim_id,
+    claimed_at,
     finalized_at,
     provider_refund_id,
     provider_refunded_at
 ) values (
     :'failedRefundID',
     2500,
+    1,
     'USD',
     :'failedPurchaseID',
     'event-purchase-refund-' || :'failedPurchaseID',
     'automatic-unfulfillable-checkout',
     'stripe',
-    'provider-pending',
+    'processing',
 
+    :'failedClaimID',
+    current_timestamp,
     null,
     're_failed_123',
     null
 ), (
     :'finalizedRefundID',
     2500,
+    0,
     'USD',
     :'finalizedPurchaseID',
     'event-purchase-refund-' || :'finalizedPurchaseID',
@@ -284,12 +293,15 @@ insert into event_purchase_refund (
     'stripe',
     'finalized',
 
+    null,
+    null,
     current_timestamp,
     're_finalized_123',
     current_timestamp
 ), (
     :'invalidRefundID',
     2500,
+    0,
     'USD',
     :'invalidPurchaseID',
     'event-purchase-refund-' || :'invalidPurchaseID',
@@ -297,12 +309,15 @@ insert into event_purchase_refund (
     'stripe',
     'finalized',
 
+    null,
+    null,
     current_timestamp,
     're_invalid_123',
     current_timestamp
 ), (
     :'recoveryRefundID',
     2500,
+    0,
     'USD',
     :'recoveryPurchaseID',
     'event-purchase-refund-' || :'recoveryPurchaseID',
@@ -310,12 +325,15 @@ insert into event_purchase_refund (
     'stripe',
     'provider-failed',
 
+    null,
+    null,
     current_timestamp,
     null,
     null
 ), (
     :'succeededRefundID',
     2500,
+    0,
     'USD',
     :'succeededPurchaseID',
     'event-purchase-refund-' || :'succeededPurchaseID',
@@ -323,6 +341,8 @@ insert into event_purchase_refund (
     'stripe',
     'provider-succeeded',
 
+    null,
+    null,
     null,
     're_success_123',
     current_timestamp
@@ -362,10 +382,32 @@ select throws_ok(
         %L::uuid,
         %L,
         're_conflict_123',
-        'provider refund failed'
-    )$$, :'failedRefundID', 'event-purchase-refund-' || :'failedPurchaseID'),
+        'provider refund failed',
+        %L::uuid
+    )$$,
+        :'failedRefundID',
+        'event-purchase-refund-' || :'failedPurchaseID',
+        :'failedClaimID'
+    ),
     'event purchase refund already has a different provider refund id',
     'Should reject a provider refund id that conflicts with the pinned attempt'
+);
+
+-- Should reject a provider failure from a stale worker claim
+select throws_ok(
+    format($$select record_event_purchase_refund_terminal_failed(
+        %L::uuid,
+        %L,
+        're_failed_123',
+        'provider refund failed',
+        %L::uuid
+    )$$,
+        :'failedRefundID',
+        'event-purchase-refund-' || :'failedPurchaseID',
+        :'staleClaimID'
+    ),
+    'event purchase refund claim is stale',
+    'Should reject a provider failure from a stale worker claim'
 );
 
 -- Should record terminal provider refund failure
@@ -374,8 +416,13 @@ select lives_ok(
         %L::uuid,
         %L,
         're_failed_123',
-        'provider refund failed'
-    )$$, :'failedRefundID', 'event-purchase-refund-' || :'failedPurchaseID'),
+        'provider refund failed',
+        %L::uuid
+    )$$,
+        :'failedRefundID',
+        'event-purchase-refund-' || :'failedPurchaseID',
+        :'failedClaimID'
+    ),
     'Should record terminal provider refund failure'
 );
 
@@ -383,7 +430,10 @@ select lives_ok(
 select results_eq(
     format($$
         select
+            claim_id,
+            claimed_at,
             status,
+            terminal_failure,
             failure_message,
             provider_refund_id,
             idempotency_key = 'event-purchase-refund-' || %L
@@ -391,7 +441,10 @@ select results_eq(
         where event_purchase_refund_id = %L::uuid
     $$, :'failedPurchaseID', :'failedRefundID'),
     $$ values (
+        null::uuid,
+        null::timestamptz,
         'provider-failed'::text,
+        true,
         'provider refund failed: re_failed_123'::text,
         're_failed_123'::text,
         true

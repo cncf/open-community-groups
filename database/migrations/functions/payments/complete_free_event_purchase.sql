@@ -5,15 +5,15 @@ create or replace function complete_free_event_purchase(
 returns jsonb as $$
 declare
     v_amount_minor bigint;
+    v_community_id uuid;
     v_event_canceled boolean;
     v_event_deleted boolean;
     v_event_ends_at timestamptz;
-    v_community_id uuid;
     v_event_id uuid;
-    v_hold_expires_at timestamptz;
     v_event_published boolean;
     v_event_starts_at timestamptz;
     v_group_active boolean;
+    v_hold_expires_at timestamptz;
     v_recovery_pending boolean;
     v_status text;
     v_user_id uuid;
@@ -116,8 +116,16 @@ begin
     insert into event_attendee (event_id, user_id)
     values (v_event_id, v_user_id)
     on conflict (event_id, user_id) do update
-    set status = 'confirmed'
-    where event_attendee.status in ('confirmed', 'invitation-canceled', 'registration-questions-pending');
+    set
+        attendance_canceled_at = null,
+        attendance_canceled_by_user_id = null,
+        status = 'confirmed'
+    where event_attendee.status in (
+        'attendance-canceled',
+        'confirmed',
+        'invitation-canceled',
+        'registration-questions-pending'
+    );
 
     -- Never complete the purchase without a confirmed attendee row
     if not found then

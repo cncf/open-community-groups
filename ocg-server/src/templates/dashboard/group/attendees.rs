@@ -12,7 +12,7 @@ use crate::{
     types::{
         event::EventSummary,
         pagination::{self, Pagination, ToRawQuery},
-        payments::{EventRefundRequestStatus, format_amount_minor},
+        payments::{EventRefundProgress, EventRefundRequestStatus, format_amount_minor},
         questionnaire::{QuestionnaireAnswers, QuestionnaireQuestion},
         user::User,
     },
@@ -27,6 +27,8 @@ use crate::{
 pub(crate) struct ListPage {
     /// Number of attendees eligible for the all-attendees custom email scope.
     pub all_attendees_email_recipient_total: usize,
+    /// Attendance lifecycle filter.
+    pub attendance: AttendanceFilter,
     /// List of attendees for the selected event.
     pub attendees: Vec<Attendee>,
     /// Whether the current user can manage events.
@@ -37,9 +39,6 @@ pub(crate) struct ListPage {
     pub navigation_links: pagination::NavigationLinks,
     /// URL used to refresh the attendee list with the current filters.
     pub refresh_url: String,
-    /// Registration questions configured for the event.
-    #[serde(default)]
-    pub registration_questions: Vec<QuestionnaireQuestion>,
     /// Total number of attendees for the selected event.
     pub total: usize,
 
@@ -51,6 +50,9 @@ pub(crate) struct ListPage {
     pub limit: Option<usize>,
     /// Pagination offset for results.
     pub offset: Option<usize>,
+    /// Registration questions configured for the event.
+    #[serde(default)]
+    pub registration_questions: Vec<QuestionnaireQuestion>,
     /// Sort option used to order attendees.
     pub sort: Option<AttendeesSort>,
     /// User title presence filter.
@@ -60,6 +62,20 @@ pub(crate) struct ListPage {
 }
 
 // Types.
+
+/// Attendance lifecycle rows shown in the attendee table.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub(crate) enum AttendanceFilter {
+    /// Show active attendee and invitation rows.
+    #[default]
+    Active,
+    /// Show all active and canceled history rows.
+    All,
+    /// Show only canceled attendance history.
+    Canceled,
+}
 
 /// Event attendee summary information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,6 +107,8 @@ pub struct Attendee {
     pub discount_code: Option<String>,
     /// Purchase identifier.
     pub event_purchase_id: Option<Uuid>,
+    /// Durable refund progress for this attendee's purchase.
+    pub refund_progress: Option<EventRefundProgress>,
     /// Refund request status for the attendee purchase.
     pub refund_request_status: Option<EventRefundRequestStatus>,
     /// Registration answers submitted by the attendee, when configured.
@@ -120,6 +138,9 @@ pub(crate) enum AttendeesSort {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Validate)]
 pub(crate) struct AttendeesFilters {
+    /// Attendance lifecycle filter.
+    #[garde(skip)]
+    pub attendance: Option<AttendanceFilter>,
     /// Checked-in status filter.
     #[garde(skip)]
     pub checked_in: Option<bool>,

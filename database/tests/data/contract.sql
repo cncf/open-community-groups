@@ -268,6 +268,14 @@ insert into "user" (
         'contract-buyer-refund-recovery'
     ),
     (
+        'contract_hash_cancellation_lock_attendee',
+        'cancellation-lock-attendee.contract@example.com',
+        true,
+        'Contract Cancellation Lock Attendee',
+        '00000000-0000-0000-0000-00000000c0ec',
+        'contract-cancellation-lock-attendee'
+    ),
+    (
         'contract_hash_leaver',
         'leaver.contract@example.com',
         true,
@@ -1232,6 +1240,38 @@ insert into event (
     'UTC'
 );
 
+-- Published event used to verify cancellation locks serialize RSVP
+insert into event (
+    capacity,
+    description,
+    ends_at,
+    event_category_id,
+    event_id,
+    event_kind_id,
+    group_id,
+    name,
+    published,
+    slug,
+    starts_at,
+    test_event,
+    timezone
+) values (
+    100,
+    'A cancellation lock event used by Rust database contract tests',
+    '2099-08-02 11:00:00+00',
+    '00000000-0000-0000-0000-00000000c013',
+    '00000000-0000-0000-0000-00000000c0d6',
+    'virtual',
+    '00000000-0000-0000-0000-00000000c022',
+    'Contract Cancellation Lock Event',
+    true,
+    'contract-cancellation-lock-event',
+    '2099-08-02 10:00:00+00',
+    true,
+    'UTC'
+);
+
+-- Confirmed attendees used by event mutation contracts
 insert into event_attendee (
     event_id,
     user_id

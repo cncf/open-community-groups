@@ -18,6 +18,11 @@ begin
         raise exception 'event not found or inactive';
     end if;
 
+    -- Enforce cancellation and refund settlement before destructive removal
+    if get_event_delete_eligibility(p_group_id, p_event_id) <> 'allowed' then
+        raise exception 'event must be canceled and all payment work settled before deletion';
+    end if;
+
     -- Update event to mark as deleted
     -- If meeting was requested, mark meeting_in_sync as false to trigger deletion
     update event set

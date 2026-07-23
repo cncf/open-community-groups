@@ -298,6 +298,8 @@ select columns_are('event_attendee', array[
     'manually_invited',
     'status',
 
+    'attendance_canceled_at',
+    'attendance_canceled_by_user_id',
     'checked_in_at',
     'registration_answers'
 ]);
@@ -395,24 +397,31 @@ select columns_are('event_purchase', array[
 select columns_are('event_purchase_refund', array[
     'event_purchase_refund_id',
     'amount_minor',
+    'attempt_count',
     'created_at',
     'currency_code',
     'event_purchase_id',
     'idempotency_key',
     'kind',
+    'next_attempt_at',
     'payment_provider_id',
     'status',
+    'terminal_failure',
     'updated_at',
 
+    'claim_id',
+    'claimed_at',
     'event_refund_request_id',
     'failure_message',
     'finalized_at',
+    'initiated_by_user_id',
     'provider_refund_id',
     'provider_refunded_at',
     'recovery_completed_at',
     'recovery_completed_by_user_id',
     'recovery_note',
-    'recovery_reference'
+    'recovery_reference',
+    'review_note'
 ]);
 
 -- Test: event_refund_request columns should match expected

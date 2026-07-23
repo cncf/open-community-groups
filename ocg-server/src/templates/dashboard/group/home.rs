@@ -11,7 +11,7 @@ use crate::{
         auth::User,
         dashboard::{
             audit,
-            group::{analytics, events, members, settings, sponsors, team},
+            group::{analytics, events, members, refunds, settings, sponsors, team},
         },
         filters,
         helpers::user_initials,
@@ -85,6 +85,8 @@ pub(crate) enum Content {
     Logs(audit::ListPage),
     /// Members list page.
     Members(members::ListPage),
+    /// Refund operations page.
+    Refunds(refunds::ListPage),
     /// Settings management page.
     Settings(Box<settings::UpdatePage>),
     /// Sponsors management page.
@@ -114,6 +116,11 @@ impl Content {
         matches!(self, Content::Members(_))
     }
 
+    /// Checks whether the content is the refunds page.
+    fn is_refunds(&self) -> bool {
+        matches!(self, Content::Refunds(_))
+    }
+
     /// Check if the content is the settings page.
     fn is_settings(&self) -> bool {
         matches!(self, Content::Settings(_))
@@ -137,6 +144,7 @@ impl std::fmt::Display for Content {
             Content::Events(template) => write!(f, "{}", template.render()?),
             Content::Logs(template) => write!(f, "{}", template.render()?),
             Content::Members(template) => write!(f, "{}", template.render()?),
+            Content::Refunds(template) => write!(f, "{}", template.render()?),
             Content::Settings(template) => write!(f, "{}", template.render()?),
             Content::Sponsors(template) => write!(f, "{}", template.render()?),
             Content::Team(template) => write!(f, "{}", template.render()?),
@@ -160,6 +168,8 @@ pub(crate) enum Tab {
     Logs,
     /// Members list tab.
     Members,
+    /// Refund operations tab.
+    Refunds,
     /// Settings management tab.
     Settings,
     /// Sponsors management tab.

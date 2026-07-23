@@ -290,6 +290,22 @@ describe("common utilities", () => {
     expect(document.activeElement).to.equal(trigger);
   });
 
+  it("prioritizes a modal autofocus target over earlier controls", () => {
+    // Create a modal with a close control before its preferred focus target.
+    const modal = document.createElement("div");
+    modal.id = "autofocus-modal";
+    modal.className = "hidden";
+    modal.innerHTML = `
+      <button type="button">Close</button>
+      <textarea id="modal-review-note" autofocus></textarea>
+    `;
+    document.body.append(modal);
+
+    // Open the modal and verify focus moves to the explicitly requested target.
+    toggleModalVisibility("autofocus-modal");
+    expect(document.activeElement).to.equal(document.getElementById("modal-review-note"));
+  });
+
   it("tracks nested lock counts before unlocking body scroll", () => {
     // Nested locks keep body scrolling disabled and count both locks.
     lockBodyScroll();

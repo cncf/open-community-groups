@@ -49,6 +49,24 @@ pub enum EventPurchaseStatus {
     RefundRequested,
 }
 
+/// Attendee-facing progress for a durable purchase refund.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum EventRefundProgress {
+    /// Checkout has not completed, so no provider refund can start yet.
+    AwaitingCheckout,
+    /// A worker or the payments provider is processing the refund.
+    Processing,
+    /// Durable refund work is waiting for a worker or retry delay.
+    Queued,
+    /// The provider failure requires external operator recovery.
+    RecoveryRequired,
+    /// Provider and local refund work completed.
+    Refunded,
+    /// Automatic attempts were exhausted and an administrator can retry.
+    RetryableFailure,
+}
+
 /// Status of an attendee refund request.
 #[derive(
     Clone,

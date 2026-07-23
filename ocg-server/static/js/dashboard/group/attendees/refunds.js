@@ -1,9 +1,4 @@
-import {
-  closestElementWithinRoot,
-  getElementById,
-  markDatasetReady,
-  setElementHidden,
-} from "/static/js/common/dom.js";
+import { closestElementWithinRoot, getElementById, markDatasetReady } from "/static/js/common/dom.js";
 import { isSuccessfulXHRStatus } from "/static/js/common/utils.js";
 import {
   bindScopedModalEscape,
@@ -11,132 +6,30 @@ import {
   setScopedModalVisibility,
 } from "/static/js/dashboard/group/attendees/shared.js";
 
-const refundModalId = "attendee-refund-modal";
-const refundApproveButtonId = "attendee-refund-approve";
-const refundRejectButtonId = "attendee-refund-reject";
-
-/**
- * Resolve the current refund review modal controls from the latest DOM.
- * @param {Document|Element} [root=document] Query root.
- * @returns {Object} Refund modal controls.
- */
-const getRefundReviewControls = (root = document) => ({
-  modal: getElementById(root, refundModalId),
-  nameField: getElementById(root, "attendee-refund-name"),
-  ticketField: getElementById(root, "attendee-refund-ticket"),
-  amountField: getElementById(root, "attendee-refund-amount"),
-  approveButton: getElementById(root, refundApproveButtonId),
-  rejectButton: getElementById(root, refundRejectButtonId),
-});
-
-/**
- * Show the refund review modal if it is currently hidden.
- * @param {Document|Element} [root=document] Query root.
- * @returns {void}
- */
-const openRefundModal = (root = document) => {
-  setScopedModalVisibility(root, refundModalId, true);
-};
-
-/**
- * Hide the refund review modal if it is currently visible.
- * @param {Document|Element} [root=document] Query root.
- * @returns {void}
- */
-const closeRefundModal = (root = document) => {
-  setScopedModalVisibility(root, refundModalId, false);
-};
-
-/**
- * Update a refund modal action button label.
- * @param {HTMLElement|null} button Action button.
- * @param {string} label Button label.
- * @returns {void}
- */
-const setRefundActionLabel = (button, label) => {
-  const labelNode = button?.querySelector("[data-refund-action-label]");
-  if (labelNode) {
-    labelNode.textContent = label;
-    return;
-  }
-
-  if (button) {
-    button.textContent = label;
-  }
-};
-
-/**
- * Re-process a refund action button after its HTMX attributes change.
- * @param {HTMLElement|null} button Action button.
- * @returns {void}
- */
-const processRefundActionButton = (button) => {
-  if (button && window.htmx && typeof window.htmx.process === "function") {
-    window.htmx.process(button);
-  }
-};
-
-/**
- * Apply trigger data to the refund review modal.
- * @param {HTMLElement} triggerButton Refund review trigger button.
- * @param {Document|Element} [root=document] Query root.
- * @returns {void}
- */
-const populateRefundReviewModal = (triggerButton, root = document) => {
-  const { modal, nameField, ticketField, amountField, approveButton, rejectButton } =
-    getRefundReviewControls(root);
-
-  if (!modal) {
-    return;
-  }
-
-  const status = (triggerButton.dataset.refundStatus || "pending").trim();
-
-  if (nameField) {
-    nameField.textContent = triggerButton.dataset.refundAttendeeName || "-";
-  }
-
-  if (ticketField) {
-    ticketField.textContent = triggerButton.dataset.refundTicketTitle || "-";
-  }
-
-  if (amountField) {
-    amountField.textContent = triggerButton.dataset.refundAmount || "-";
-  }
-
-  if (approveButton) {
-    setElementHidden(approveButton, false);
-    setRefundActionLabel(
-      approveButton,
-      status === "approving" ? "Retry refund finalization" : "Approve refund",
-    );
-    if (triggerButton.dataset.refundApproveUrl) {
-      approveButton.setAttribute("hx-put", triggerButton.dataset.refundApproveUrl);
-    } else {
-      approveButton.removeAttribute("hx-put");
-    }
-    processRefundActionButton(approveButton);
-  }
-
-  if (!rejectButton) {
-    return;
-  }
-
-  if (status === "approving") {
-    setElementHidden(rejectButton, true);
-    rejectButton.removeAttribute("hx-put");
-    processRefundActionButton(rejectButton);
-    return;
-  }
-
-  setElementHidden(rejectButton, false);
-  if (triggerButton.dataset.refundRejectUrl) {
-    rejectButton.setAttribute("hx-put", triggerButton.dataset.refundRejectUrl);
-  } else {
-    rejectButton.removeAttribute("hx-put");
-  }
-  processRefundActionButton(rejectButton);
-};
+const refundReviewConfigs = [
+  {
+    attendeeId: "attendee-refund-approve-name",
+    closeSelector:
+      "#close-attendee-refund-approve-modal, #cancel-attendee-refund-approve-modal, #overlay-attendee-refund-approve-modal",
+    eventId: "attendee-refund-approve-event",
+    formId: "attendee-refund-approve-form",
+    modalId: "attendee-refund-approve-modal",
+    reviewNoteId: "attendee-refund-approve-review-note",
+    triggerSelector: "[data-attendee-refund-approve-open]",
+    urlDataKey: "refundApproveUrl",
+  },
+  {
+    attendeeId: "attendee-refund-reject-name",
+    closeSelector:
+      "#close-attendee-refund-reject-modal, #cancel-attendee-refund-reject-modal, #overlay-attendee-refund-reject-modal",
+    eventId: "attendee-refund-reject-event",
+    formId: "attendee-refund-reject-form",
+    modalId: "attendee-refund-reject-modal",
+    reviewNoteId: "attendee-refund-review-note",
+    triggerSelector: "[data-attendee-refund-reject-open]",
+    urlDataKey: "refundRejectUrl",
+  },
+];
 
 /**
  * Initialize refund review modal controls for attendee purchases.
@@ -149,35 +42,129 @@ export const initializeRefundReviewModal = (root = document) => {
   }
 
   root.addEventListener("click", (event) => {
-    const refundTrigger = closestElementWithinRoot(event.target, "[data-refund-review-trigger]", root);
-    if (refundTrigger instanceof HTMLElement) {
-      event.stopPropagation();
-      populateRefundReviewModal(refundTrigger, root);
-      openRefundModal(root);
-      return;
-    }
+    for (const config of refundReviewConfigs) {
+      const trigger = closestElementWithinRoot(event.target, config.triggerSelector, root);
+      if (trigger instanceof HTMLElement) {
+        openRefundReviewModal(trigger, config, root);
+        return;
+      }
 
-    closeScopedModalFromEvent(
-      event,
-      root,
-      "#close-attendee-refund-modal, #cancel-attendee-refund-modal, #overlay-attendee-refund-modal",
-      closeRefundModal,
-    );
+      const closedModal = closeScopedModalFromEvent(event, root, config.closeSelector, (modalRoot) =>
+        closeRefundReviewModal(config, modalRoot),
+      );
+      if (closedModal) {
+        return;
+      }
+    }
   });
 
-  bindScopedModalEscape(root, closeRefundModal);
+  bindScopedModalEscape(root, (modalRoot) => {
+    refundReviewConfigs.forEach((config) => closeRefundReviewModal(config, modalRoot));
+  });
+
+  root.addEventListener("htmx:configRequest", (event) => {
+    normalizeRefundReviewNote(root, event);
+  });
 
   root.addEventListener("htmx:afterRequest", (event) => {
-    const requestTarget = event.target;
-    if (
-      !(requestTarget instanceof HTMLElement) ||
-      ![refundApproveButtonId, refundRejectButtonId].includes(requestTarget.id)
-    ) {
+    const config = refundReviewConfigs.find(
+      (reviewConfig) => event.target === getElementById(root, reviewConfig.formId),
+    );
+    if (config && isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
+      closeRefundReviewModal(config, root);
+    }
+  });
+};
+
+/**
+ * Hide a refund review modal if it is currently visible.
+ * @param {Object} config Refund review modal contract.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+const closeRefundReviewModal = (config, root = document) => {
+  setScopedModalVisibility(root, config.modalId, false);
+};
+
+/**
+ * Resolve refund review modal controls from the latest DOM.
+ * @param {Object} config Refund review modal contract.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {Object} Refund review modal controls.
+ */
+const getRefundReviewControls = (config, root = document) => ({
+  attendee: getElementById(root, config.attendeeId),
+  event: getElementById(root, config.eventId),
+  form: getElementById(root, config.formId),
+  reviewNote: getElementById(root, config.reviewNoteId),
+});
+
+/**
+ * Normalize an optional refund review note before HTMX submits the form.
+ * @param {Document|Element} root Query root.
+ * @param {Event} event HTMX configuration event.
+ * @returns {void}
+ */
+const normalizeRefundReviewNote = (root, event) => {
+  const config = refundReviewConfigs.find(
+    (reviewConfig) => event.target === getElementById(root, reviewConfig.formId),
+  );
+  if (!config) {
+    return;
+  }
+
+  const { reviewNote } = getRefundReviewControls(config, root);
+  const parameters = event.detail?.parameters;
+  if (!(reviewNote instanceof HTMLTextAreaElement) || !parameters || typeof parameters !== "object") {
+    return;
+  }
+
+  const normalizedReviewNote = reviewNote.value.trim();
+  reviewNote.value = normalizedReviewNote;
+  [parameters, event.detail?.unfilteredParameters].forEach((parameterSet) => {
+    if (!parameterSet || typeof parameterSet !== "object") {
       return;
     }
 
-    if (isSuccessfulXHRStatus(event.detail?.xhr?.status)) {
-      closeRefundModal(root);
+    if (normalizedReviewNote) {
+      parameterSet.review_note = normalizedReviewNote;
+    } else {
+      delete parameterSet.review_note;
     }
   });
+};
+
+/**
+ * Populate and open a refund review modal for one attendee.
+ * @param {HTMLElement} trigger Refund review trigger button.
+ * @param {Object} config Refund review modal contract.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+const openRefundReviewModal = (trigger, config, root = document) => {
+  const { attendee, event, form, reviewNote } = getRefundReviewControls(config, root);
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  form.reset();
+  const reviewUrl = trigger.dataset[config.urlDataKey];
+  if (reviewUrl) {
+    form.setAttribute("hx-put", reviewUrl);
+    window.htmx?.process?.(form);
+  } else {
+    form.removeAttribute("hx-put");
+  }
+
+  if (attendee) {
+    attendee.textContent = trigger.dataset.refundAttendeeName || "-";
+  }
+  if (event) {
+    event.textContent = trigger.dataset.refundEventName || "-";
+  }
+
+  const actionsMenuSummary = trigger.closest("[data-actions-menu]")?.querySelector("summary");
+  const focusOrigin = actionsMenuSummary instanceof HTMLElement ? actionsMenuSummary : trigger;
+  setScopedModalVisibility(root, config.modalId, true, focusOrigin);
+  reviewNote?.focus();
 };
