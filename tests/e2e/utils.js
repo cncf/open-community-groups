@@ -20,6 +20,16 @@ export const TEST_EVENT_PAGE_BADGE_EVENT = {
   name: "Test Event Page Badge",
   slug: "alpha-test-event-badge",
 };
+export const TEST_EVENT_CANCELLATION = {
+  id: "55555555-5555-5555-5555-555555555527",
+  name: "Event Cancellation Lifecycle",
+  slug: "alpha-event-cancellation-lifecycle",
+};
+export const TEST_INVITATION_CANCELLATION = {
+  id: "55555555-5555-5555-5555-555555555528",
+  name: "Canceled Invitation History",
+  slug: "alpha-canceled-invitation-history",
+};
 export const TEST_REGISTRATION_QUESTIONS_EVENT = {
   id: "55555555-5555-5555-5555-555555555525",
   name: "Registration Answers Lab",

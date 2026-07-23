@@ -7,9 +7,10 @@ import {
   TEST_EVENT_IDS,
   TEST_EVENT_NAMES,
   TEST_EVENT_SLUGS,
+  TEST_GROUP_SLUGS,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
-  TEST_GROUP_SLUGS,
+  TEST_REGISTRATION_WINDOW_EVENTS,
   TEST_USER_IDS,
   navigateToPath,
   selectTimezone,
@@ -508,6 +509,48 @@ test.describe("group dashboard events view", () => {
     await expect(
       dashboardContent.locator("tr", { hasText: eventName }),
     ).toHaveCount(0);
+  });
+
+  test("organizer sees why active events cannot be deleted", async ({
+    organizerGroupPage,
+  }) => {
+    // Load the event list and inspect an active published event.
+    await navigateToPath(organizerGroupPage, "/dashboard/group?tab=events");
+    const activeEventRow = organizerGroupPage.locator("tr", {
+      hasText: TEST_EVENT_NAMES.alpha[1],
+    });
+    await expect(activeEventRow).toBeVisible();
+    await activeEventRow.locator(".btn-actions").click();
+
+    // Verify published events must be canceled before deletion.
+    const cancelFirstDeleteButton = activeEventRow.locator(
+      `#delete-event-${TEST_EVENT_IDS.alpha.two}`,
+    );
+    await expect(cancelFirstDeleteButton).toBeDisabled();
+    await expect(cancelFirstDeleteButton).toHaveAttribute(
+      "title",
+      "Cancel this event before deleting it.",
+    );
+
+    // Inspect an event with an active payment hold.
+    await activeEventRow.locator(".btn-actions").click();
+    const pendingCheckoutEvent =
+      TEST_REGISTRATION_WINDOW_EVENTS.pendingPaymentClosed;
+    const pendingCheckoutRow = organizerGroupPage.locator("tr", {
+      hasText: pendingCheckoutEvent.name,
+    });
+    await expect(pendingCheckoutRow).toBeVisible();
+    await pendingCheckoutRow.locator(".btn-actions").click();
+
+    // Verify pending checkouts and refunds explain why deletion is blocked.
+    const refundsPendingDeleteButton = pendingCheckoutRow.locator(
+      `#delete-event-${pendingCheckoutEvent.id}`,
+    );
+    await expect(refundsPendingDeleteButton).toBeDisabled();
+    await expect(refundsPendingDeleteButton).toHaveAttribute(
+      "title",
+      "Resolve pending checkouts and refunds before deleting this event.",
+    );
   });
 
   test("organizer can cancel an event from the list", async ({

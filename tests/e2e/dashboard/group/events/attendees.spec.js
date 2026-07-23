@@ -6,12 +6,14 @@ import {
   buildE2eUrl,
   E2E_PAYMENTS_ENABLED,
   TEST_COMMUNITY_NAME,
+  TEST_EVENT_CANCELLATION,
   TEST_EVENT_IDS,
+  TEST_EVENT_SLUGS,
+  TEST_GROUP_SLUGS,
+  TEST_INVITATION_CANCELLATION,
   TEST_PAYMENT_EVENT_IDS,
   TEST_PAYMENT_EVENT_NAMES,
   TEST_REGISTRATION_QUESTIONS_EVENT,
-  TEST_EVENT_SLUGS,
-  TEST_GROUP_SLUGS,
   TEST_USER_IDS,
   navigateToEvent,
   navigateToPath,
@@ -139,6 +141,58 @@ const deleteEventFromList = async (page, eventId) => {
 };
 
 test.describe("group dashboard attendees tab", () => {
+  test("event cancellation preserves attendee history and clears check-in", async ({
+    organizerGroupPage,
+  }) => {
+    // Cancel the seeded event through the organizer endpoint.
+    const cancelResponse = await organizerGroupPage.request.put(
+      buildE2eUrl(`/dashboard/group/events/${TEST_EVENT_CANCELLATION.id}/cancel`),
+    );
+    if (!cancelResponse.ok()) {
+      expect(cancelResponse.status()).toBe(422);
+      expect(await cancelResponse.text()).toBe(
+        "one or more events were not found or inactive",
+      );
+    }
+
+    // Open retained attendee history after the event transition completes.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_EVENT_CANCELLATION.name,
+      TEST_EVENT_CANCELLATION.id,
+    );
+    const checkedInAttendeeRow = attendeesContent.locator("tr", {
+      hasText: "E2E Admin One",
+    });
+    const pendingRegistrationRow = attendeesContent.locator("tr", {
+      hasText: "E2E Organizer Two",
+    });
+
+    // Verify active attendance becomes canceled and check-in is cleared.
+    await expect(checkedInAttendeeRow).toContainText("Attendance canceled");
+    await expect(checkedInAttendeeRow.locator(".check-in-toggle")).not.toBeChecked();
+    await expect(checkedInAttendeeRow.locator(".check-in-toggle")).toBeDisabled();
+    await expect(pendingRegistrationRow).toContainText("Attendance canceled");
+  });
+
+  test("canceled invitations remain visible in attendee history", async ({ organizerGroupPage }) => {
+    test.fail(true, "Canceled invitations are currently omitted by search_event_attendees.");
+
+    // Open the pre-canceled event and inspect its retained invitation.
+    const attendeesContent = await openAttendeesTab(
+      organizerGroupPage,
+      TEST_INVITATION_CANCELLATION.name,
+      TEST_INVITATION_CANCELLATION.id,
+    );
+    const canceledInvitationRow = attendeesContent.locator("tr", {
+      hasText: "E2E Admin Two",
+    });
+
+    // Verify canceled invitations remain discoverable with explicit status.
+    await expect(canceledInvitationRow).toBeVisible();
+    await expect(canceledInvitationRow).toContainText("Invitation canceled");
+  });
+
   test("viewer sees read-only attendee controls on the attendees tab", async ({ groupViewerPage }) => {
     // Load the group events dashboard as a read-only viewer.
     await navigateToPath(groupViewerPage, "/dashboard/group?tab=events");
@@ -1199,7 +1253,7 @@ test.describe("group dashboard attendees tab", () => {
         TEST_PAYMENT_EVENT_IDS.refunds,
       );
       const attendeeRow = attendeesContent.locator("tr", {
-        hasText: "E2E Member Two",
+        hasText: "E2E Organizer Two",
       });
       const rowActionsMenu = attendeeRow.locator("[data-actions-menu]");
 
