@@ -1,9 +1,11 @@
+-- Tests database primary and foreign keys.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(161);
+select plan(174);
 
 -- ============================================================================
 -- TESTS
@@ -13,6 +15,9 @@ select plan(161);
 select has_pk('attachment');
 select has_pk('audit_log');
 select has_pk('auth_session');
+select has_pk('badge');
+select has_pk('badge_artwork');
+select has_pk('badge_status_list');
 select has_pk('cfs_submission');
 select has_pk('cfs_submission_rating');
 select has_pk('cfs_submission_status');
@@ -74,9 +79,13 @@ select has_pk('session_proposal_status');
 select has_pk('session_speaker');
 select has_pk('site');
 select has_pk('user');
+select has_pk('user_badge');
 
 -- Test: check tables have expected foreign keys
 select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
+select col_is_fk('badge', 'group_id', 'group');
+select col_is_fk('badge_artwork', 'group_id', 'group');
+select col_is_fk('badge_status_list', 'group_id', 'group');
 select col_is_fk('community_redirect_settings', 'community_id', 'community');
 select col_is_fk('community_role_community_permission', 'community_permission_id', 'community_permission');
 select col_is_fk('community_role_community_permission', 'community_role_id', 'community_role');
@@ -173,6 +182,27 @@ select col_is_fk('session_proposal', 'session_proposal_status_id', 'session_prop
 select col_is_fk('session_proposal', 'user_id', 'user');
 select col_is_fk('session_speaker', 'session_id', 'session');
 select col_is_fk('session_speaker', 'user_id', 'user');
+select fk_ok(
+    'user_badge',
+    array['badge_id', 'group_id']::name[],
+    'badge',
+    array['badge_id', 'group_id']::name[]
+);
+select fk_ok(
+    'user_badge',
+    array['badge_status_list_id', 'group_id']::name[],
+    'badge_status_list',
+    array['badge_status_list_id', 'group_id']::name[]
+);
+select fk_ok(
+    'user_badge',
+    array['event_id', 'group_id']::name[],
+    'event',
+    array['event_id', 'group_id']::name[]
+);
+select col_is_fk('user_badge', 'group_id', 'group');
+select col_is_fk('user_badge', 'revoked_by_user_id', 'user');
+select col_is_fk('user_badge', 'user_id', 'user');
 
 -- ============================================================================
 -- CLEANUP

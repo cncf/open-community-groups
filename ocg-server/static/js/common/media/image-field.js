@@ -19,6 +19,7 @@ const IMAGE_KIND = {
 };
 
 const IMAGE_TARGET = {
+  BADGE: "badge",
   OPEN_GRAPH: "open_graph",
 };
 
@@ -256,17 +257,19 @@ export class ImageField extends LitWrapper {
     const bannerLikeKinds = [IMAGE_KIND.BANNER];
     const isWide = bannerLikeKinds.includes(this.imageKind);
     const isOpenGraphTarget = this.target === IMAGE_TARGET.OPEN_GRAPH;
+    const isBadgeTarget = this.target === IMAGE_TARGET.BADGE;
     const removeDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
     const helpText = isOpenGraphTarget
       ? IMAGE_UPLOAD_MAX_SIZE_TEXT
-      : isWide
-        ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`
-        : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`;
+      : isBadgeTarget
+        ? `Images must be 512 x 512 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} Supported formats: PNG, JPEG and WEBP.`
+        : isWide
+          ? `${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`
+          : `Images must be 360 x 360 px (square). ${IMAGE_UPLOAD_MAX_SIZE_TEXT} ${IMAGE_UPLOAD_SUPPORTED_FORMATS_TEXT}`;
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
-    const acceptedFormats = isOpenGraphTarget
-      ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS
-      : DEFAULT_IMAGE_ACCEPTED_FORMATS;
+    const acceptedFormats =
+      isOpenGraphTarget || isBadgeTarget ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS : DEFAULT_IMAGE_ACCEPTED_FORMATS;
 
     return html`
       <label for=${this._fileInputId} class="form-label">

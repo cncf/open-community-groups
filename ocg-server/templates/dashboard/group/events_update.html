@@ -1,4 +1,5 @@
 {% import "macros/ui.html" as ui -%}
+{% import "macros/badges.html" as badges -%}
 {% import "macros/dashboard.html" as dashboard -%}
 {% import "macros/event_form.html" as event_form -%}
 {% import "macros/form_fields.html" as form_fields -%}
@@ -982,6 +983,16 @@
             {% endif -%}
           {% endif -%}
           <user-search-selector selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
+          {% if can_manage_events && !event.canceled && !event.hosts.is_empty() -%}
+            <div class="mt-4 flex flex-wrap gap-2"
+                 aria-label="Award a badge to an event host">
+              {% for host in event.hosts -%}
+                {% call badges::recipient_award_button(event_id = event.event_id, user_id = host.user_id, recipient_name = host.name, recipient_username = host.username, extra_styles = "btn-primary-outline btn-mini") -%}
+                Award badge to {{ host.name.as_deref() |assigned_or(host.username) }}
+                {% endcall -%}
+              {% endfor -%}
+            </div>
+          {% endif -%}
         </div>
       </div>
       {# End Hosts Section -#}
@@ -996,9 +1007,39 @@
             {% endif -%}
           {% endif -%}
           <speakers-selector selected-speakers="{{ event.speakers|json }}" dashboard-type="group" field-name-prefix="speakers" show-add-button label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
+          {% if can_manage_events && !event.canceled && !event.speakers.is_empty() -%}
+            <div class="mt-4 flex flex-wrap gap-2"
+                 aria-label="Award a badge to an event speaker">
+              {% for speaker in event.speakers -%}
+                {% call badges::recipient_award_button(event_id = event.event_id, user_id = speaker.user.user_id, recipient_name = speaker.user.name, recipient_username = speaker.user.username, extra_styles = "btn-primary-outline btn-mini") -%}
+                Award badge to {{ speaker.user.name.as_deref() |assigned_or(speaker.user.username) }}
+                {% endcall -%}
+              {% endfor -%}
+            </div>
+          {% endif -%}
         </div>
       </div>
       {# End Event Speakers Section -#}
+
+      {% if can_manage_events && !event.canceled && self.has_session_speakers() -%}
+        {# Session Speakers Section -#}
+        <div class="border-b border-stone-900/10 pb-12">
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Session Speakers</div>
+          <p class="mt-2 text-sm text-stone-600">Award an existing session speaker without changing the event.</p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            {% for (_, sessions) in event.sessions -%}
+              {% for session in sessions -%}
+                {% for speaker in session.speakers -%}
+                  {% call badges::recipient_award_button(event_id = event.event_id, user_id = speaker.user.user_id, recipient_name = speaker.user.name, recipient_username = speaker.user.username, extra_styles = "btn-primary-outline btn-mini") -%}
+                  {{ session.name }}: award {{ speaker.user.name.as_deref() |assigned_or(speaker.user.username) }}
+                  {% endcall -%}
+                {% endfor -%}
+              {% endfor -%}
+            {% endfor -%}
+          </div>
+        </div>
+        {# End Session Speakers Section -#}
+      {% endif -%}
 
       {# Sponsors Section -#}
       <div class="pb-12">

@@ -11,7 +11,7 @@ use axum::{
 use axum_messages::Messages;
 use tracing::instrument;
 
-use super::{events, invitations, logs, session_proposals, submissions};
+use super::{badges, events, invitations, logs, session_proposals, submissions};
 
 use crate::{
     auth::AuthSession,
@@ -59,6 +59,7 @@ pub(crate) async fn page(
                 user: UserDetails::from(user),
             }))
         }
+        Tab::Badges => Content::Badges(badges::prepare_list_page(&db, user.user_id).await?),
         Tab::Events => {
             let (_, template) = events::prepare_list_page(&db, user.user_id, raw_query).await?;
             Content::Events(template)

@@ -32,14 +32,17 @@ clap = { version = "4.6.1", features = ["derive"] }
 chrono = { version = "0.4.45", features = ["serde"] }
 chrono-tz = { version = "0.10.4", features = ["serde"] }
 csv = "1.4.0"
+crc32fast = "1.5.0"
 deadpool-postgres = { version = "0.14.1", features = ["serde"] }
 emojis = "0.9.0"
 figment = { version = "0.10.19", features = ["yaml", "env"] }
+flate2 = "1.1.5"
 garde = { version = "0.23.0", features = ["derive", "url", "email"] }
 hex = "0.4"
 hmac = "0.13.0"
 icalendar = "0.17.12"
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "tiff", "webp"] }
+iref = "3.2.2"
 lettre = { version = "0.11.22", default-features = false, features = ["builder", "hostname", "pool", "smtp-transport", "tokio1-rustls-tls"] }
 markdown = "1.0.0"
 mime_guess = "2.0.5"
@@ -65,6 +68,11 @@ serde_qs = { version = "1.1.2", features = ["axum"] }
 serde_urlencoded = "0.7.1"
 serde_with = "3.21.0"
 sha2 = "0.11.0"
+ssi-claims-core = { version = "=0.2.0", default-features = false }
+ssi-data-integrity = { version = "=0.4.0", default-features = false, features = ["ed25519", "w3c"] }
+ssi-json-ld = { version = "=0.3.3", default-features = false }
+ssi-jwk = { version = "=0.4.0", default-features = false }
+ssi-verification-methods = { version = "=0.3.0", default-features = false, features = ["ed25519"] }
 strum = { version = "0.28.0", features = ["derive"] }
 subtle = "2.6"
 thiserror = "2.0.18"

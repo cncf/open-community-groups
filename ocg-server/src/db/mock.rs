@@ -114,6 +114,10 @@ mock! {
 
     #[async_trait]
     impl crate::db::common::DBCommon for DB {
+        async fn get_badge_status_list(
+            &self,
+            badge_status_list_id: Uuid,
+        ) -> Result<Option<crate::types::badges::BadgeStatusList>>;
         async fn get_community_full(
             &self,
             community_id: Uuid,
@@ -149,7 +153,16 @@ mock! {
             group_id: Uuid,
         )
             -> Result<crate::types::group::GroupSummary>;
+        async fn get_public_user_badge(
+            &self,
+            user_badge_id: Uuid,
+        ) -> Result<Option<crate::types::badges::UserBadge>>;
         async fn list_timezones(&self) -> Result<Vec<String>>;
+        async fn list_user_public_badges(
+            &self,
+            community_id: Uuid,
+            username: &str,
+        ) -> Result<Vec<crate::types::badges::PublicUserBadge>>;
         async fn search_events(
             &self,
             filters: &crate::types::search::SearchEventsFilters,
@@ -342,6 +355,20 @@ mock! {
             event_id: Uuid,
             user_id: Uuid,
         ) -> Result<()>;
+        async fn add_badge(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            group_id: Uuid,
+            badge: &crate::types::badges::BadgeInput,
+        ) -> Result<()>;
+        async fn add_badge_artwork(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            group_id: Uuid,
+            file_name: &str,
+        ) -> Result<()>;
         async fn add_event(
             &self,
             actor_user_id: Uuid,
@@ -370,6 +397,13 @@ mock! {
             user_id: Uuid,
             role: &crate::types::group::GroupRole,
         ) -> Result<()>;
+        async fn award_badge(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            group_id: Uuid,
+            input: &crate::types::badges::BadgeAwardInput,
+        ) -> Result<crate::types::badges::AwardBadgeOutcome>;
         async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn cancel_event_attendee_attendance(
             &self,
@@ -390,6 +424,20 @@ mock! {
             actor_user_id: Uuid,
             group_id: Uuid,
             event_ids: &[Uuid],
+        ) -> Result<()>;
+        async fn delete_badge(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            group_id: Uuid,
+            badge_id: Uuid,
+        ) -> Result<()>;
+        async fn delete_badge_artwork(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            group_id: Uuid,
+            badge_artwork_id: Uuid,
         ) -> Result<()>;
         async fn delete_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid) -> Result<()>;
         async fn delete_event_series_events(
@@ -439,6 +487,20 @@ mock! {
             user_id: Option<Uuid>,
             email: Option<String>,
         ) -> Result<Uuid>;
+        async fn list_awarded_badges(
+            &self,
+            group_id: Uuid,
+            filters: &crate::types::badges::AwardedBadgesFilters,
+        ) -> Result<crate::types::badges::GroupAwardedBadges>;
+        async fn list_badge_artwork(
+            &self,
+            group_id: Uuid,
+        ) -> Result<Vec<crate::types::badges::BadgeArtwork>>;
+        async fn list_badges(
+            &self,
+            group_id: Uuid,
+            filters: &crate::types::badges::BadgeFilters,
+        ) -> Result<crate::types::badges::GroupBadges>;
         async fn list_cfs_submission_statuses_for_review(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::group::events::CfsSubmissionStatus>>;
@@ -570,6 +632,14 @@ mock! {
             recipient_scope: &str,
             requested_user_ids: Option<Vec<Uuid>>,
         ) -> Result<Vec<Uuid>>;
+        async fn revoke_group_user_badge(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            group_id: Uuid,
+            user_badge_id: Uuid,
+            reason: &str,
+        ) -> Result<()>;
         async fn search_event_attendees(
             &self,
             group_id: Uuid,
@@ -592,6 +662,14 @@ mock! {
             -> Result<()>;
         async fn unpublish_event_series_events(&self, actor_user_id: Uuid, group_id: Uuid, event_ids: &[Uuid])
             -> Result<()>;
+        async fn update_badge(
+            &self,
+            actor_user_id: Uuid,
+            community_id: Uuid,
+            group_id: Uuid,
+            badge_id: Uuid,
+            badge: &crate::types::badges::BadgeInput,
+        ) -> Result<()>;
         async fn update_event(
             &self,
             actor_user_id: Uuid,
@@ -682,6 +760,11 @@ mock! {
             user_id: Uuid,
             session_proposal_id: Uuid,
         ) -> Result<Option<crate::db::dashboard::user::SessionProposalCoSpeakerUser>>;
+        async fn get_user_badge(
+            &self,
+            user_id: Uuid,
+            user_badge_id: Uuid,
+        ) -> Result<Option<crate::types::badges::UserBadge>>;
         async fn list_session_proposal_levels(
             &self,
         ) -> Result<Vec<crate::templates::dashboard::user::session_proposals::SessionProposalLevel>>;
@@ -690,6 +773,10 @@ mock! {
             actor_user_id: Uuid,
             filters: &crate::templates::dashboard::audit::AuditLogFilters,
         ) -> Result<crate::templates::dashboard::audit::AuditLogsOutput>;
+        async fn list_user_badges(
+            &self,
+            user_id: Uuid,
+        ) -> Result<Vec<crate::types::badges::UserBadge>>;
         async fn list_user_cfs_submissions(
             &self,
             user_id: Uuid,
@@ -739,6 +826,11 @@ mock! {
             actor_user_id: Uuid,
             cfs_submission_id: Uuid,
         ) -> Result<()>;
+        async fn revoke_user_badge(
+            &self,
+            actor_user_id: Uuid,
+            user_badge_id: Uuid,
+        ) -> Result<()>;
         async fn submit_event_registration_answers(
             &self,
             actor_user_id: Uuid,
@@ -751,6 +843,17 @@ mock! {
             actor_user_id: Uuid,
             session_proposal_id: Uuid,
             session_proposal: &crate::templates::dashboard::user::session_proposals::SessionProposalInput,
+        ) -> Result<()>;
+        async fn update_user_badge_listing(
+            &self,
+            actor_user_id: Uuid,
+            user_badge_id: Uuid,
+            is_listed: bool,
+        ) -> Result<()>;
+        async fn update_user_badges_order(
+            &self,
+            actor_user_id: Uuid,
+            user_badge_ids: &[Uuid],
         ) -> Result<()>;
         async fn withdraw_cfs_submission(
             &self,
@@ -882,6 +985,10 @@ mock! {
             &self,
             file_name: &str,
         ) -> Result<Option<crate::services::images::Image>>;
+        async fn is_badge_image(
+            &self,
+            file_name: &str,
+        ) -> Result<bool>;
         async fn is_open_graph_image(
             &self,
             file_name: &str,

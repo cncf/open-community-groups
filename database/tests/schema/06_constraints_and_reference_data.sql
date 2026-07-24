@@ -1,9 +1,11 @@
+-- Tests database constraints and reference data.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(69);
+select plan(79);
 
 -- ============================================================================
 -- VARIABLES
@@ -22,6 +24,22 @@ select has_check('custom_notification');
 
 -- Test: community table expected constraints exist
 select has_check('community', 'community_og_image_url_check');
+
+-- Test: badge definitions should preserve required nonblank text fields
+select has_check('badge', 'badge_criteria_chk');
+select has_check('badge', 'badge_description_chk');
+select has_check('badge', 'badge_image_file_name_chk');
+select has_check('badge', 'badge_name_chk');
+
+-- Test: badge artwork should preserve route-safe filenames
+select has_check('badge_artwork', 'badge_artwork_file_name_chk');
+
+-- Test: badge awards should preserve status, ownership, and revocation invariants
+select has_check('user_badge', 'user_badge_active_user_chk');
+select col_has_check('user_badge', 'display_order');
+select col_has_check('user_badge', 'revocation_reason');
+select col_has_check('user_badge', 'snapshot');
+select col_has_check('user_badge', 'status_list_index');
 
 -- Test: community redirect settings table expected constraints exist
 select has_check(
@@ -380,6 +398,8 @@ select results_eq(
 select results_eq(
     'select name, optional_notification from notification_kind order by name',
     $$ values
+        ('badge-awarded', false),
+        ('badge-revoked', false),
         ('cfs-submission-updated', false),
         ('community-team-invitation', false),
         ('email-verification', false),

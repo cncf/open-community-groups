@@ -7,6 +7,47 @@ use crate::types::{event::EventSummary, group::GroupSummary, site::Theme};
 
 // Emails templates.
 
+/// Template for a newly awarded badge notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/badge_awarded.html")]
+pub(crate) struct BadgeAwarded {
+    /// Immutable badge and issuer snapshot.
+    pub badge: crate::types::badges::BadgeSnapshot,
+    /// Link to badge controls in the user dashboard.
+    pub dashboard_url: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+
+    /// Deployment base URL added immediately before delivery.
+    #[serde(default)]
+    pub base_url: String,
+}
+
+impl BadgeAwarded {
+    /// Return the stable public badge image path.
+    pub fn image_url(&self) -> String {
+        format!(
+            "{}/images/badges/{}",
+            self.base_url.trim_end_matches('/'),
+            self.badge.image_file_name
+        )
+    }
+}
+
+/// Template for a permanently revoked badge notification.
+#[derive(Debug, Clone, Template, Serialize, Deserialize)]
+#[template(path = "notifications/badge_revoked.html")]
+pub(crate) struct BadgeRevoked {
+    /// Immutable badge name.
+    pub badge_name: String,
+    /// Link to badge controls in the user dashboard.
+    pub dashboard_url: String,
+    /// Issuing group name.
+    pub group_name: String,
+    /// Theme configuration for the community.
+    pub theme: Theme,
+}
+
 /// Template for CFS submission update notification.
 #[derive(Debug, Clone, Template, Serialize, Deserialize)]
 #[template(path = "notifications/cfs_submission_updated.html")]

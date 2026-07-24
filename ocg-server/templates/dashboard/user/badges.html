@@ -1,0 +1,67 @@
+<section aria-labelledby="user-badges-title">
+  <div class="mb-8">
+    <h1 id="user-badges-title" class="text-2xl font-bold text-stone-900">Badges</h1>
+    <p class="mt-2 text-stone-600">
+      Choose which badges appear on your profile, set their order, share credentials, or permanently revoke them.
+      Direct credential links remain public even when a badge is not shown on your profile.
+    </p>
+  </div>
+
+  <div id="user-badges-feedback" class="sr-only" aria-live="polite"></div>
+  {% if badges.is_empty() -%}
+    <div class="rounded-lg border border-dashed border-stone-300 p-10 text-center"
+         data-user-badges-empty>
+      <h2 class="font-semibold text-stone-900">No active badges yet</h2>
+      <p class="mt-1 text-stone-600">Badges awarded by your groups will appear here.</p>
+    </div>
+  {% else -%}
+    <ol id="user-badges-list" class="space-y-4" data-badge-order-list>
+      {% for badge in badges -%}
+        <li class="grid gap-5 rounded-lg border border-stone-200 p-4 shadow-sm md:grid-cols-[6rem_1fr_auto]"
+            data-user-badge-id="{{ badge.user_badge_id }}"
+            draggable="true">
+          <img class="size-24 rounded-lg object-cover"
+               src="/images/badges/{{ badge.snapshot.image_file_name }}"
+               alt="{{ badge.snapshot.name }} badge artwork"
+               width="96"
+               height="96">
+          <div class="min-w-0">
+            <h2 class="font-semibold text-stone-900">{{ badge.snapshot.name }}</h2>
+            <p class="mt-1 text-sm text-stone-600">{{ badge.snapshot.description }}</p>
+            <p class="mt-2 text-xs text-stone-500">Issued by {{ badge.snapshot.issuer.group_name }}</p>
+            <label class="mt-4 inline-flex items-center gap-2 text-sm font-medium">
+              <input type="checkbox"
+                     data-badge-listing
+                     data-endpoint="/dashboard/user/badges/{{ badge.user_badge_id }}/listing"
+                     {% if badge.is_listed %}checked{% endif %}>
+              Show on profile
+            </label>
+          </div>
+          <div class="flex flex-wrap items-start gap-2 md:max-w-48 md:justify-end">
+            <button class="btn-secondary text-sm"
+                    type="button"
+                    data-badge-move="up"
+                    aria-label="Move {{ badge.snapshot.name }} up">Move up</button>
+            <button class="btn-secondary text-sm"
+                    type="button"
+                    data-badge-move="down"
+                    aria-label="Move {{ badge.snapshot.name }} down">Move down</button>
+            <a class="btn-secondary-anchor text-sm"
+               href="/badges/credentials/{{ badge.user_badge_id }}"
+               target="_blank"
+               rel="noopener">Share</a>
+            <a class="btn-secondary-anchor text-sm"
+               href="/dashboard/user/badges/{{ badge.user_badge_id }}/export"
+               download
+               hx-boost="false">Export PNG</a>
+            <button class="btn-danger text-sm"
+                    type="button"
+                    data-badge-revoke
+                    data-endpoint="/dashboard/user/badges/{{ badge.user_badge_id }}"
+                    data-badge-name="{{ badge.snapshot.name }}">Revoke</button>
+          </div>
+        </li>
+      {% endfor -%}
+    </ol>
+  {% endif -%}
+</section>

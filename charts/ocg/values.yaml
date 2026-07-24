@@ -148,6 +148,22 @@ server:
   # Address to listen on
   addr: 0.0.0.0:9000
 
+  # Open Badges 3.0 credential keys. The signing key is an Ed25519 private JWK;
+  # verification keys are retained public JWKs from previous rotations.
+  badges:
+    # Required active Ed25519 JWK used for credentials, status lists, and
+    # verification. Keep this in a protected values source; the chart renders it
+    # into the server Secret and rejects missing values.
+    # signingKey:
+    #   key_id: active-2026
+    #   private_jwk: { kty: OKP, crv: Ed25519, x: PUBLIC_BASE64URL, d: PRIVATE_BASE64URL }
+    signingKey: null
+    # Retain old public keys without changing their IDs after signing-key rotation.
+    # verificationKeys:
+    #   - key_id: retired-2025
+    #     public_jwk: { kty: OKP, crv: Ed25519, x: RETIRED_PUBLIC_BASE64URL }
+    verificationKeys: []
+
   # Base URL
   baseUrl: "https://{YOUR_OCG_SERVER_HOSTNAME}"
 

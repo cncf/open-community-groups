@@ -186,6 +186,15 @@ jobs:
               webhook_secret_token: whsec_zoom_e2e
           server:
             addr: 127.0.0.1:9001
+            badges:
+              signing_key:
+                key_id: e2e-key
+                private_jwk:
+                  crv: Ed25519
+                  d: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc
+                  kty: OKP
+                  x: 6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw
+              verification_keys: []
             base_url: http://127.0.0.1:9001
             cookie:
               secure: false

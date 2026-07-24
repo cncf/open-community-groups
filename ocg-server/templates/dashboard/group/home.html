@@ -22,6 +22,8 @@
   <script type="module"
           src="/static/js/dashboard/group/event-selector/selector.js"></script>
   <script type="module" src="/static/js/dashboard/group/attendees.js"></script>
+  <script type="module" src="/static/js/dashboard/group/badges.js"></script>
+  <script type="module" src="/static/js/dashboard/group/badge-award-modal.js"></script>
   <script type="module" src="/static/js/dashboard/group/event-add.js"></script>
   <script type="module" src="/static/js/dashboard/group/event-update.js"></script>
   <script type="module" src="/static/js/dashboard/group/events-list.js"></script>
@@ -87,6 +89,9 @@
   <div class="leading-10 pt-6 border-t border-stone-200 grid gap-y-0.5">
     {{ dashboard::menu_title(text = "Events", extra_styles = "py-1.5") -}}
     {{ dashboard::menu_item(name = "Events", icon = "calendar", is_active = content.is_events() , href = "/dashboard/group?tab=events") -}}
+    {% if can_manage_badges -%}
+      {{ dashboard::menu_item(name = "Badges", icon = "certificate", is_active = content.is_badges() , href = "/dashboard/group?tab=badges") -}}
+    {% endif -%}
     {{ dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds") -}}
   </div>
   {# End events -#}
@@ -119,7 +124,7 @@
        data-community-banner-mobile-url="{{ current_selection.0.banner_mobile_url }}"
        data-group-name="{{ current_selection.1.name }}"
        data-group-slug="{{ current_selection.1.public_slug() }}"
-       hx-get="/dashboard/group/{%- if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
+       hx-get="/dashboard/group/{%- if content.is_badges() -%}badges{%- else if content.is_team() -%}team{%- else if content.is_settings() -%}settings{%- else if content.is_sponsors() -%}sponsors{%- else if content.is_refunds() -%}refunds{%- else if content.is_logs() -%}logs{%- else -%}events{%- endif -%}"
        hx-trigger="refresh-group-dashboard-table"
        hx-swap="innerHTML show:window:top"
        hx-indicator="#dashboard-spinner"
@@ -136,4 +141,5 @@
   {# End messages -#}
 
   <user-info-modal></user-info-modal>
+  <badge-award-modal></badge-award-modal>
 {% endblock dashboard_main -%}

@@ -34,6 +34,10 @@ use crate::{
         },
     },
     types::{
+        badges::{
+            AwardBadgeOutcome, AwardedBadgesFilters, BadgeArtwork, BadgeAwardInput, BadgeFilters,
+            BadgeInput, GroupAwardedBadges, GroupBadges,
+        },
         event::{
             EventCategory, EventKindSummary as EventKind, EventLeaveOutcome,
             SessionKindSummary as SessionKind,
@@ -53,6 +57,24 @@ pub(crate) trait DBDashboardGroup {
         group_id: Uuid,
         event_id: Uuid,
         user_id: Uuid,
+    ) -> Result<()>;
+
+    /// Adds a badge definition to a group.
+    async fn add_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge: &BadgeInput,
+    ) -> Result<()>;
+
+    /// Adds reusable artwork to a group badge gallery.
+    async fn add_badge_artwork(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        file_name: &str,
     ) -> Result<()>;
 
     /// Adds a new event to the database.
@@ -91,6 +113,15 @@ pub(crate) trait DBDashboardGroup {
         role: &GroupRole,
     ) -> Result<()>;
 
+    /// Awards a badge to a server-resolved event recipient scope.
+    async fn award_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        input: &BadgeAwardInput,
+    ) -> Result<AwardBadgeOutcome>;
+
     /// Cancels an event (sets canceled=true).
     async fn cancel_event(&self, actor_user_id: Uuid, group_id: Uuid, event_id: Uuid)
     -> Result<()>;
@@ -119,6 +150,24 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         event_ids: &[Uuid],
+    ) -> Result<()>;
+
+    /// Deletes a badge definition while retaining credential history.
+    async fn delete_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge_id: Uuid,
+    ) -> Result<()>;
+
+    /// Deletes an unreferenced badge gallery entry.
+    async fn delete_badge_artwork(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge_artwork_id: Uuid,
     ) -> Result<()>;
 
     /// Deletes an event (soft delete by setting deleted=true and `deleted_at`).
@@ -187,6 +236,19 @@ pub(crate) trait DBDashboardGroup {
         user_id: Option<Uuid>,
         email: Option<String>,
     ) -> Result<Uuid>;
+
+    /// Lists searchable group badge award history.
+    async fn list_awarded_badges(
+        &self,
+        group_id: Uuid,
+        filters: &AwardedBadgesFilters,
+    ) -> Result<GroupAwardedBadges>;
+
+    /// Lists reusable artwork in a group badge gallery.
+    async fn list_badge_artwork(&self, group_id: Uuid) -> Result<Vec<BadgeArtwork>>;
+
+    /// Lists searchable group badge definitions.
+    async fn list_badges(&self, group_id: Uuid, filters: &BadgeFilters) -> Result<GroupBadges>;
 
     /// Lists reviewer-available CFS submission statuses.
     async fn list_cfs_submission_statuses_for_review(&self) -> Result<Vec<CfsSubmissionStatus>>;
@@ -348,6 +410,16 @@ pub(crate) trait DBDashboardGroup {
         requested_user_ids: Option<Vec<Uuid>>,
     ) -> Result<Vec<Uuid>>;
 
+    /// Permanently revokes a group-issued badge.
+    async fn revoke_group_user_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        user_badge_id: Uuid,
+        reason: &str,
+    ) -> Result<()>;
+
     /// Searches attendees for a group's event using filters.
     async fn search_event_attendees(
         &self,
@@ -386,6 +458,16 @@ pub(crate) trait DBDashboardGroup {
         actor_user_id: Uuid,
         group_id: Uuid,
         event_ids: &[Uuid],
+    ) -> Result<()>;
+
+    /// Updates a badge definition without changing issued snapshots.
+    async fn update_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge_id: Uuid,
+        badge: &BadgeInput,
     ) -> Result<()>;
 
     /// Updates a CFS submission for an event.
@@ -452,6 +534,38 @@ where
         self.execute(
             "select accept_event_invitation_request($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
             &[&actor_user_id, &group_id, &event_id, &user_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::add_badge`].
+    #[instrument(skip(self, badge), err)]
+    async fn add_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge: &BadgeInput,
+    ) -> Result<()> {
+        self.execute(
+            "select add_badge($1::uuid, $2::uuid, $3::uuid, $4::jsonb)",
+            &[&actor_user_id, &community_id, &group_id, &Json(badge)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::add_badge_artwork`].
+    #[instrument(skip(self), err)]
+    async fn add_badge_artwork(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        file_name: &str,
+    ) -> Result<()> {
+        self.execute(
+            "select add_badge_artwork($1::uuid, $2::uuid, $3::uuid, $4::text)",
+            &[&actor_user_id, &community_id, &group_id, &file_name],
         )
         .await
     }
@@ -531,6 +645,30 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::award_badge`].
+    #[instrument(skip(self), err)]
+    async fn award_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        input: &BadgeAwardInput,
+    ) -> Result<AwardBadgeOutcome> {
+        self.fetch_json_one(
+            "select award_badge($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::uuid, $6::text, $7::uuid)",
+            &[
+                &actor_user_id,
+                &community_id,
+                &group_id,
+                &input.badge_id,
+                &input.event_id,
+                &input.scope.as_str(),
+                &input.user_id,
+            ],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::cancel_event`]
     #[instrument(skip(self), err)]
     async fn cancel_event(
@@ -589,6 +727,38 @@ where
         self.execute(
             "select cancel_event_series_events($1::uuid, $2::uuid, $3::uuid[])",
             &[&actor_user_id, &group_id, &event_ids],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_badge`].
+    #[instrument(skip(self), err)]
+    async fn delete_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select delete_badge($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &community_id, &group_id, &badge_id],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::delete_badge_artwork`].
+    #[instrument(skip(self), err)]
+    async fn delete_badge_artwork(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge_artwork_id: Uuid,
+    ) -> Result<()> {
+        self.execute(
+            "select delete_badge_artwork($1::uuid, $2::uuid, $3::uuid, $4::uuid)",
+            &[&actor_user_id, &community_id, &group_id, &badge_artwork_id],
         )
         .await
     }
@@ -750,6 +920,37 @@ where
         self.fetch_scalar_one(
             "select invite_event_attendee($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::text)::uuid",
             &[&actor_user_id, &group_id, &event_id, &user_id, &email],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_awarded_badges`].
+    #[instrument(skip(self, filters), err)]
+    async fn list_awarded_badges(
+        &self,
+        group_id: Uuid,
+        filters: &AwardedBadgesFilters,
+    ) -> Result<GroupAwardedBadges> {
+        self.fetch_json_one(
+            "select list_awarded_badges($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::list_badge_artwork`].
+    #[instrument(skip(self), err)]
+    async fn list_badge_artwork(&self, group_id: Uuid) -> Result<Vec<BadgeArtwork>> {
+        self.fetch_json_one("select list_badge_artwork($1::uuid)", &[&group_id])
+            .await
+    }
+
+    /// [`DBDashboardGroup::list_badges`].
+    #[instrument(skip(self, filters), err)]
+    async fn list_badges(&self, group_id: Uuid, filters: &BadgeFilters) -> Result<GroupBadges> {
+        self.fetch_json_one(
+            "select list_badges($1::uuid, $2::jsonb)",
+            &[&group_id, &Json(filters)],
         )
         .await
     }
@@ -1143,6 +1344,29 @@ where
         .await
     }
 
+    /// [`DBDashboardGroup::revoke_group_user_badge`].
+    #[instrument(skip(self, reason), err)]
+    async fn revoke_group_user_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        user_badge_id: Uuid,
+        reason: &str,
+    ) -> Result<()> {
+        self.execute(
+            "select revoke_group_user_badge($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::text)",
+            &[
+                &actor_user_id,
+                &community_id,
+                &group_id,
+                &user_badge_id,
+                &reason,
+            ],
+        )
+        .await
+    }
+
     /// [`DBDashboardGroup::search_event_attendees`]
     #[instrument(skip(self, filters), err)]
     async fn search_event_attendees(
@@ -1234,6 +1458,29 @@ where
                 &event_id,
                 &cfs_submission_id,
                 &Json(submission),
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_badge`].
+    #[instrument(skip(self, badge), err)]
+    async fn update_badge(
+        &self,
+        actor_user_id: Uuid,
+        community_id: Uuid,
+        group_id: Uuid,
+        badge_id: Uuid,
+        badge: &BadgeInput,
+    ) -> Result<()> {
+        self.execute(
+            "select update_badge($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5::jsonb)",
+            &[
+                &actor_user_id,
+                &community_id,
+                &group_id,
+                &badge_id,
+                &Json(badge),
             ],
         )
         .await

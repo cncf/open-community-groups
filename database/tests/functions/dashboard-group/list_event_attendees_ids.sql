@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(4);
+select plan(3);
 
 -- ============================================================================
 -- VARIABLES
@@ -62,6 +62,13 @@ insert into "user" (
     username,
     name
 ) values (
+    :'user0ID',
+    gen_random_bytes(32),
+    'u0@example.com',
+    true,
+    'u0',
+    'U0'
+), (
     :'user1ID',
     gen_random_bytes(32),
     'u1@example.com',
@@ -114,33 +121,22 @@ insert into event (
 );
 
 -- Event attendees
-insert into event_attendee (event_id, user_id, status)
+insert into event_attendee (checked_in, event_id, status, user_id)
 values
-    (:'eventID', :'user1ID', 'confirmed'),
-    (:'eventID', :'user2ID', 'confirmed'),
-    (:'eventID', :'user3ID', 'invitation-pending');
+    (false, :'eventID', 'confirmed', :'user0ID'),
+    (true, :'eventID', 'confirmed', :'user1ID'),
+    (true, :'eventID', 'confirmed', :'user2ID'),
+    (true, :'eventID', 'invitation-pending', :'user3ID');
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return only verified confirmed attendees
-select is(
-    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid),
-    array[:'user1ID'::uuid],
-    'Returns verified confirmed attendees only'
-);
-
--- Should return attendees ordered by user_id asc
--- Intentional mid-test seed: user0 must not exist for the previous test,
--- and is added here to verify ascending user_id ordering
-insert into "user" (user_id, auth_hash, email, username, email_verified)
-values (:'user0ID', gen_random_bytes(32), 'u0@example.com', 'u0', true);
-insert into event_attendee (event_id, user_id) values (:'eventID', :'user0ID');
+-- Should return verified confirmed attendees ordered by user id
 select is(
     list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid),
     array[:'user0ID'::uuid, :'user1ID'::uuid],
-    'Returns attendees ordered by user id asc'
+    'Returns verified confirmed attendees ordered by user id'
 );
 
 -- Should return empty list for event without attendees

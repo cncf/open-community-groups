@@ -1356,6 +1356,126 @@ insert into cfs_submission_label (
 );
 
 -- ============================================================================
+-- BADGES
+-- ============================================================================
+
+-- Reusable artwork consumed by badge gallery JSON contracts
+insert into badge_artwork (
+    badge_artwork_id,
+    created_at,
+    file_name,
+    group_id
+) values (
+    '00000000-0000-0000-0000-00000000c0ba',
+    '2024-01-11 10:00:00+00',
+    'contract-badge.png',
+    '00000000-0000-0000-0000-00000000c021'
+);
+
+-- Definition consumed by group badge list JSON contracts
+insert into badge (
+    badge_id,
+    created_at,
+    criteria,
+    description,
+    group_id,
+    image_file_name,
+    name
+) values (
+    '00000000-0000-0000-0000-00000000c0bb',
+    '2024-01-11 10:00:00+00',
+    'Attend the contract event',
+    'Recognizes contract event participation',
+    '00000000-0000-0000-0000-00000000c021',
+    'contract-badge.png',
+    'Contract Participant'
+);
+
+-- Stable list consumed by status-list JSON contracts
+insert into badge_status_list (
+    badge_status_list_id,
+    created_at,
+    group_id
+) values (
+    '00000000-0000-0000-0000-00000000c0bc',
+    '2024-01-11 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c021'
+);
+
+-- Active and revoked issuances cover required and nullable JSON fields
+insert into user_badge (
+    awarded_at,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+    user_badge_id,
+
+    badge_id,
+    event_id,
+    revocation_reason,
+    revoked_at,
+    revoked_by_user_id,
+    user_id
+) values
+    (
+        '2024-01-12 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c0bc',
+        0,
+        '00000000-0000-0000-0000-00000000c021',
+        true,
+        '{
+            "criteria": "Attend the contract event",
+            "description": "Recognizes contract event participation",
+            "image_file_name": "contract-badge.png",
+            "issuer": {
+                "community_id": "00000000-0000-0000-0000-00000000c001",
+                "community_name": "Contract Community",
+                "group_id": "00000000-0000-0000-0000-00000000c021",
+                "group_name": "Contract Group"
+            },
+            "name": "Contract Participant"
+        }'::jsonb,
+        7,
+        '00000000-0000-0000-0000-00000000c0bd',
+        '00000000-0000-0000-0000-00000000c0bb',
+        '00000000-0000-0000-0000-00000000c031',
+        null,
+        null,
+        null,
+        '00000000-0000-0000-0000-00000000c042'
+    ),
+    (
+        '2024-01-10 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c0bc',
+        1,
+        '00000000-0000-0000-0000-00000000c021',
+        false,
+        '{
+            "criteria": "Attend the contract event",
+            "description": "Recognizes contract event participation",
+            "image_file_name": "contract-badge.png",
+            "issuer": {
+                "community_id": "00000000-0000-0000-0000-00000000c001",
+                "community_name": "Contract Community",
+                "group_id": "00000000-0000-0000-0000-00000000c021",
+                "group_name": "Contract Group"
+            },
+            "name": "Contract Participant"
+        }'::jsonb,
+        11,
+        '00000000-0000-0000-0000-00000000c0be',
+        '00000000-0000-0000-0000-00000000c0bb',
+        null,
+        'contract revocation',
+        '2024-01-13 10:00:00+00',
+        '00000000-0000-0000-0000-00000000c041',
+        '00000000-0000-0000-0000-00000000c042'
+    );
+
+-- ============================================================================
 -- PAGE VIEWS
 -- ============================================================================
 

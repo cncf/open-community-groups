@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::{
     db::{BBox, PgClient, PgExecutor, Total},
     types::{
+        badges::{BadgeStatusList, PublicUserBadge, UserBadge},
         community::{CommunityFull, CommunitySummary},
         event::{EventCfsLabel, EventFull, EventSummary},
         group::{GroupFull, GroupSummary},
@@ -21,6 +22,12 @@ use crate::{
 /// Common database operations trait.
 #[async_trait]
 pub(crate) trait DBCommon {
+    /// Retrieves public revocation state for a badge status list.
+    async fn get_badge_status_list(
+        &self,
+        badge_status_list_id: Uuid,
+    ) -> Result<Option<BadgeStatusList>>;
+
     /// Retrieves community information by its unique identifier.
     async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull>;
 
@@ -49,11 +56,21 @@ pub(crate) trait DBCommon {
     /// Gets group summary details.
     async fn get_group_summary(&self, community_id: Uuid, group_id: Uuid) -> Result<GroupSummary>;
 
+    /// Retrieves one durable public badge credential record.
+    async fn get_public_user_badge(&self, user_badge_id: Uuid) -> Result<Option<UserBadge>>;
+
     /// Lists labels configured for an event.
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>>;
 
     /// Lists all available timezones.
     async fn list_timezones(&self) -> Result<Vec<String>>;
+
+    /// Lists active profile-visible badges for a community user.
+    async fn list_user_public_badges(
+        &self,
+        community_id: Uuid,
+        username: &str,
+    ) -> Result<Vec<PublicUserBadge>>;
 
     /// Searches for events based on provided filters.
     async fn search_events(&self, filters: &SearchEventsFilters) -> Result<SearchEventsOutput>;
@@ -67,6 +84,19 @@ impl<T> DBCommon for T
 where
     T: PgExecutor + Send + Sync,
 {
+    /// [`DBCommon::get_badge_status_list`].
+    #[instrument(skip(self), err)]
+    async fn get_badge_status_list(
+        &self,
+        badge_status_list_id: Uuid,
+    ) -> Result<Option<BadgeStatusList>> {
+        self.fetch_json_opt(
+            "select get_badge_status_list($1::uuid)",
+            &[&badge_status_list_id],
+        )
+        .await
+    }
+
     /// [`DBCommon::get_community_full`]
     #[instrument(skip(self), err)]
     async fn get_community_full(&self, community_id: Uuid) -> Result<CommunityFull> {
@@ -131,6 +161,13 @@ where
         .await
     }
 
+    /// [`DBCommon::get_public_user_badge`].
+    #[instrument(skip(self), err)]
+    async fn get_public_user_badge(&self, user_badge_id: Uuid) -> Result<Option<UserBadge>> {
+        self.fetch_json_opt("select get_public_user_badge($1::uuid)", &[&user_badge_id])
+            .await
+    }
+
     /// [`DBCommon::list_event_cfs_labels`]
     #[instrument(skip(self), err)]
     async fn list_event_cfs_labels(&self, event_id: Uuid) -> Result<Vec<EventCfsLabel>> {
@@ -169,6 +206,20 @@ where
 
         let db = self.client().await?;
         inner(db).await
+    }
+
+    /// [`DBCommon::list_user_public_badges`].
+    #[instrument(skip(self), err)]
+    async fn list_user_public_badges(
+        &self,
+        community_id: Uuid,
+        username: &str,
+    ) -> Result<Vec<PublicUserBadge>> {
+        self.fetch_json_one(
+            "select list_user_public_badges($1::uuid, $2::text)",
+            &[&community_id, &username],
+        )
+        .await
     }
 
     /// [`DBCommon::search_events`]

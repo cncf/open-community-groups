@@ -26,6 +26,8 @@ export class UserInfoModal extends LitWrapper {
   static get properties() {
     return {
       _isOpen: { type: Boolean, state: true },
+      _badges: { type: Array, state: true },
+      _badgesState: { type: String, state: true },
       _userData: { type: Object, state: true },
     };
   }
@@ -33,7 +35,11 @@ export class UserInfoModal extends LitWrapper {
   constructor() {
     super();
     this._isOpen = false;
+    this._badges = [];
+    this._badgesState = "idle";
     this._userData = null;
+    this._badgesAbortController = null;
+    this._badgesRequestId = 0;
     this._removeDismissListeners = null;
   }
 
@@ -49,23 +55,84 @@ export class UserInfoModal extends LitWrapper {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._removeEventListeners();
+    this._badgesRequestId += 1;
+    this._badgesAbortController?.abort();
     this._isOpen = closeModalBodyScroll(this._isOpen);
     document.removeEventListener("open-user-modal", this._handleOpenModal);
   }
 
   _handleOpenModal(event) {
+    this._badgesAbortController?.abort();
     this._userData = event.detail;
+    this._badges = [];
+    this._badgesState = "loading";
     this._isOpen = openModalBodyScroll(this._isOpen);
     this._removeEventListeners();
     this._removeDismissListeners = bindModalDismissListeners({
       onKeydown: this._handleKeydown,
       onOutsideClick: this._handleOutsideClick,
     });
+    this._loadBadges();
   }
 
   _closeModal() {
+    this._badgesRequestId += 1;
+    this._badgesAbortController?.abort();
     this._isOpen = closeModalBodyScroll(this._isOpen);
     this._removeEventListeners();
+  }
+
+  _communityName() {
+    const dashboardCommunity = document.querySelector("[data-community-name]")?.dataset?.communityName;
+    if (dashboardCommunity) {
+      return dashboardCommunity;
+    }
+
+    const firstPathSegment = window.location.pathname.split("/").filter(Boolean)[0] || "";
+    return [
+      "__web-test-runner__",
+      "badges",
+      "dashboard",
+      "docs",
+      "explore",
+      "images",
+      "log-in",
+      "tests",
+    ].includes(firstPathSegment)
+      ? ""
+      : firstPathSegment;
+  }
+
+  async _loadBadges() {
+    const requestId = ++this._badgesRequestId;
+    const community = this._communityName();
+    const username = this._userData?.username;
+    if (!community || !username) {
+      this._badgesState = "empty";
+      return;
+    }
+
+    this._badgesAbortController = new AbortController();
+    try {
+      const response = await fetch(
+        `/communities/${encodeURIComponent(community)}/users/${encodeURIComponent(username)}/badges`,
+        { signal: this._badgesAbortController.signal },
+      );
+      if (!response.ok) {
+        throw new Error("Badge profile request failed");
+      }
+      const badges = await response.json();
+      if (requestId !== this._badgesRequestId) {
+        return;
+      }
+      this._badges = Array.isArray(badges) ? badges : [];
+      this._badgesState = this._badges.length ? "ready" : "empty";
+    } catch (error) {
+      if (error.name !== "AbortError" && requestId === this._badgesRequestId) {
+        this._badges = [];
+        this._badgesState = "error";
+      }
+    }
   }
 
   _removeEventListeners() {
@@ -179,6 +246,58 @@ export class UserInfoModal extends LitWrapper {
           )}
         </div>
       </div>
+    `;
+  }
+
+  _renderBadges() {
+    if (this._badgesState === "loading") {
+      return html`<p class="sr-only" role="status">Loading profile badges</p>`;
+    }
+    if (this._badgesState === "error") {
+      return html`<p class="mt-6 text-sm text-red-700" role="status">
+        Profile badges are temporarily unavailable.
+      </p>`;
+    }
+    if (this._badgesState !== "ready") {
+      return "";
+    }
+
+    return html`
+      <section class="mt-6 border-t border-stone-200 pt-6" aria-labelledby="profile-badges-title">
+        <h4
+          id="profile-badges-title"
+          class="mb-4 text-sm font-semibold uppercase tracking-wide text-stone-500"
+        >
+          Badges
+        </h4>
+        <ul class="grid gap-3 sm:grid-cols-2">
+          ${this._badges.map(
+            (badge) => html`
+              <li>
+                <a
+                  class="group grid grid-cols-[3rem_1fr] gap-3 rounded-lg border border-stone-200 p-3 transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:border-primary-500 focus-visible:outline-2 focus-visible:outline-primary-500"
+                  href=${`/badges/credentials/${badge.user_badge_id}`}
+                  aria-label=${`View ${badge.snapshot.name} badge credential`}
+                >
+                  <img
+                    class="size-12 rounded-md object-cover"
+                    src=${`/images/badges/${badge.snapshot.image_file_name}`}
+                    alt=${`${badge.snapshot.name} badge artwork`}
+                    width="48"
+                    height="48"
+                  />
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-semibold text-stone-900"
+                      >${badge.snapshot.name}</span
+                    >
+                    <span class="mt-1 block text-xs text-stone-600">${badge.snapshot.issuer.group_name}</span>
+                  </span>
+                </a>
+              </li>
+            `,
+          )}
+        </ul>
+      </section>
     `;
   }
 
@@ -309,6 +428,7 @@ export class UserInfoModal extends LitWrapper {
                   : ""
               }
               ${this._renderProfilePlaceholder(bio, socialLinks)} ${this._renderSocialLinks(socialLinks)}
+              ${this._renderBadges()}
             </div>
           </div>
         </div>

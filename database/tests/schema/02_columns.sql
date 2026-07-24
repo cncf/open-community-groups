@@ -1,9 +1,11 @@
+-- Tests database columns.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(71);
+select plan(75);
 
 -- ============================================================================
 -- TESTS
@@ -40,6 +42,33 @@ select columns_are('auth_session', array[
     'auth_session_id',
     'data',
     'expires_at'
+]);
+
+-- Test: badge columns should match expected
+select columns_are('badge', array[
+    'badge_id',
+    'created_at',
+    'criteria',
+    'description',
+    'group_id',
+    'image_file_name',
+    'name',
+    'tsdoc'
+]);
+
+-- Test: badge artwork columns should match expected
+select columns_are('badge_artwork', array[
+    'badge_artwork_id',
+    'created_at',
+    'file_name',
+    'group_id'
+]);
+
+-- Test: badge status list columns should match expected
+select columns_are('badge_status_list', array[
+    'badge_status_list_id',
+    'created_at',
+    'group_id'
 ]);
 
 -- Test: cfs_submission columns should match expected
@@ -876,6 +905,25 @@ select columns_are('user', array[
     'title',
     'twitter_url',
     'website_url'
+]);
+
+-- Test: user badge columns should match expected
+select columns_are('user_badge', array[
+    'user_badge_id',
+    'awarded_at',
+    'badge_status_list_id',
+    'display_order',
+    'group_id',
+    'is_listed',
+    'snapshot',
+    'status_list_index',
+
+    'badge_id',
+    'event_id',
+    'revocation_reason',
+    'revoked_at',
+    'revoked_by_user_id',
+    'user_id'
 ]);
 
 -- ============================================================================

@@ -1,4 +1,4 @@
-import { expect } from "@open-wc/testing";
+import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/common/modals/user-info-modal.js";
 import {
@@ -169,5 +169,163 @@ describe("user-info-modal", () => {
 
     // The modal is closed after the overlay interaction.
     expect(element._isOpen).to.equal(false);
+  });
+
+  it("lazily renders active listed badges with accessible links and image text", async () => {
+    const originalFetch = window.fetch;
+    const dashboard = document.createElement("div");
+    dashboard.dataset.communityName = "cloud-native";
+    document.body.append(dashboard);
+    let requestUrl = "";
+    window.fetch = async (url) => {
+      requestUrl = String(url);
+      return new Response(
+        JSON.stringify([
+          {
+            awarded_at: "2024-01-01T00:00:00Z",
+            group_id: "00000000-0000-0000-0000-000000000001",
+            snapshot: {
+              criteria: "Attend",
+              description: "Participant badge",
+              image_file_name: "participant.png",
+              issuer: {
+                community_id: "00000000-0000-0000-0000-000000000002",
+                community_name: "Cloud Native",
+                group_id: "00000000-0000-0000-0000-000000000001",
+                group_name: "Kubernetes Group",
+              },
+              name: "Participant",
+            },
+            user_badge_id: "00000000-0000-0000-0000-000000000003",
+          },
+        ]),
+        { headers: { "Content-Type": "application/json" } },
+      );
+    };
+    const element = await mountLitComponent("user-info-modal");
+
+    document.dispatchEvent(
+      new CustomEvent("open-user-modal", {
+        detail: { name: "Ada", username: "ada" },
+      }),
+    );
+    await waitUntil(
+      () => element._badgesState === "ready",
+      "profile badges should load",
+    );
+    await element.updateComplete;
+
+    expect(requestUrl).to.equal("/communities/cloud-native/users/ada/badges");
+    expect(element.querySelector("#profile-badges-title")).to.not.equal(null);
+    const link = element.querySelector(
+      'a[href="/badges/credentials/00000000-0000-0000-0000-000000000003"]',
+    );
+    expect(link.getAttribute("aria-label")).to.equal(
+      "View Participant badge credential",
+    );
+    expect(link.querySelector("img").getAttribute("alt")).to.equal(
+      "Participant badge artwork",
+    );
+    expect(link.textContent).to.include("Kubernetes Group");
+
+    window.fetch = originalFetch;
+    dashboard.remove();
+  });
+
+  it("omits the badge section when no badges are listed", async () => {
+    const originalFetch = window.fetch;
+    const dashboard = document.createElement("div");
+    dashboard.dataset.communityName = "cloud-native";
+    document.body.append(dashboard);
+    window.fetch = async () =>
+      new Response("[]", { headers: { "Content-Type": "application/json" } });
+    const element = await mountLitComponent("user-info-modal");
+
+    document.dispatchEvent(
+      new CustomEvent("open-user-modal", {
+        detail: { name: "Ada", username: "ada" },
+      }),
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    await element.updateComplete;
+
+    expect(element.querySelector("#profile-badges-title")).to.equal(null);
+
+    window.fetch = originalFetch;
+    dashboard.remove();
+  });
+
+  it("shows a recoverable state when profile badges cannot be loaded", async () => {
+    const originalFetch = window.fetch;
+    const dashboard = document.createElement("div");
+    dashboard.dataset.communityName = "cloud-native";
+    document.body.append(dashboard);
+    window.fetch = async () => new Response("Unavailable", { status: 503 });
+    const element = await mountLitComponent("user-info-modal");
+
+    document.dispatchEvent(
+      new CustomEvent("open-user-modal", {
+        detail: { name: "Ada", username: "ada" },
+      }),
+    );
+    await waitUntil(
+      () => element._badgesState === "error",
+      "profile badge failure should render",
+    );
+    await element.updateComplete;
+
+    expect(element.textContent).to.include(
+      "Profile badges are temporarily unavailable",
+    );
+    expect(element.querySelector('[role="status"]')).to.not.equal(null);
+
+    window.fetch = originalFetch;
+    dashboard.remove();
+  });
+
+  it("ignores an older badge response after opening a user without lookup context", async () => {
+    const originalFetch = window.fetch;
+    const dashboard = document.createElement("div");
+    dashboard.dataset.communityName = "cloud-native";
+    document.body.append(dashboard);
+    let resolveBadges;
+    window.fetch = () =>
+      new Promise((resolve) => {
+        resolveBadges = resolve;
+      });
+    const element = await mountLitComponent("user-info-modal");
+
+    document.dispatchEvent(
+      new CustomEvent("open-user-modal", {
+        detail: { name: "Ada", username: "ada" },
+      }),
+    );
+    await waitUntil(
+      () => Boolean(resolveBadges),
+      "the first profile badge request should start",
+    );
+    document.dispatchEvent(
+      new CustomEvent("open-user-modal", { detail: { name: "Anonymous" } }),
+    );
+    resolveBadges(
+      new Response(
+        JSON.stringify([
+          { user_badge_id: "stale", snapshot: { name: "Stale" } },
+        ]),
+        {
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    await element.updateComplete;
+
+    expect(element._badgesState).to.equal("empty");
+    expect(element._badges).to.deep.equal([]);
+
+    window.fetch = originalFetch;
+    dashboard.remove();
   });
 });

@@ -2,7 +2,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
-    sync::Arc,
+    sync::{Arc, LazyLock},
 };
 
 use axum::{
@@ -13,13 +13,17 @@ use axum_login::tower_sessions::session;
 use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::UTC;
 use serde_json::json;
+use ssi_jwk::JWK;
 use time::{Duration as TimeDuration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::{
     activity_tracker::DynActivityTracker,
     auth::User as AuthUser,
-    config::{HttpServerConfig, MeetingsConfig, MeetingsZoomConfig, PaymentsConfig},
+    config::{
+        BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig, MeetingsConfig, MeetingsZoomConfig,
+        PaymentsConfig,
+    },
     db::{
         BBox, DynDB,
         common::{SearchEventsOutput, SearchGroupsOutput},
@@ -212,6 +216,25 @@ pub(crate) fn expect_authenticated_group_session(
         Some(community_id),
         Some(group_id),
     );
+
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+}
+
+/// Expect an authenticated session without a selected dashboard scope.
+pub(crate) fn expect_authenticated_session(
+    db: &mut MockDB,
+    session_id: session::Id,
+    user_id: Uuid,
+) {
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
 
     db.expect_get_session()
         .times(1)
@@ -1456,8 +1479,13 @@ pub(crate) fn test_state_with_server_cfg(
     notifications_manager: DynNotificationsManager,
     server_cfg: &HttpServerConfig,
 ) -> router::State {
+    let badges_config = server_cfg.badges.as_ref().unwrap_or(&TEST_BADGES_CONFIG);
     router::State {
         activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
+        badge_service: Arc::new(crate::services::badges::BadgeService::new(
+            &server_cfg.base_url,
+            badges_config,
+        )),
         db,
         image_storage,
         meetings_cfg: None,
@@ -1472,7 +1500,7 @@ pub(crate) fn test_state_with_server_cfg(
 /// Builder for test router configuration.
 pub(crate) struct TestRouterBuilder {
     activity_tracker: Option<crate::activity_tracker::MockActivityTracker>,
-    db: MockDB,
+    db: Box<MockDB>,
     image_storage: Option<MockImageStorage>,
     meetings_cfg: Option<crate::config::MeetingsConfig>,
     nm: MockNotificationsManager,
@@ -1486,7 +1514,7 @@ impl TestRouterBuilder {
     pub(crate) fn new(db: MockDB, nm: MockNotificationsManager) -> Self {
         Self {
             activity_tracker: None,
-            db,
+            db: Box::new(db),
             image_storage: None,
             meetings_cfg: None,
             nm,
@@ -1498,12 +1526,13 @@ impl TestRouterBuilder {
 
     /// Builds the application router with the configured options.
     pub(crate) async fn build(self) -> Router {
-        let db: DynDB = Arc::new(self.db);
+        let db: DynDB = Arc::new(*self.db);
         let activity_tracker: DynActivityTracker =
             Arc::new(self.activity_tracker.unwrap_or_default());
         let is: DynImageStorage = Arc::new(self.image_storage.unwrap_or_default());
         let nm: DynNotificationsManager = Arc::new(self.nm);
-        let server_cfg = self.server_cfg.unwrap_or_default();
+        let mut server_cfg = self.server_cfg.unwrap_or_default();
+        server_cfg.badges.get_or_insert_with(|| TEST_BADGES_CONFIG.clone());
         let payments_manager = self.payments_manager.unwrap_or_default();
         let payments_manager = Arc::new(payments_manager) as DynPaymentsManager;
 
@@ -1560,3 +1589,12 @@ impl TestRouterBuilder {
         self
     }
 }
+
+/// Shared valid signing configuration for tests outside the badge surface.
+static TEST_BADGES_CONFIG: LazyLock<BadgesConfig> = LazyLock::new(|| BadgesConfig {
+    signing_key: BadgeSigningKeyConfig {
+        key_id: "handler-test".to_string(),
+        private_jwk: JWK::generate_ed25519().expect("test signing key generation to succeed"),
+    },
+    verification_keys: vec![],
+});

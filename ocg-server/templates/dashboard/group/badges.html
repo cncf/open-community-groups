@@ -1,0 +1,351 @@
+{% import "macros/pagination.html" as pagination -%}
+
+<section aria-labelledby="group-badges-title"
+         data-group-badges
+         data-initial-pane="{{ pane }}">
+  <div class="mb-7">
+    <h1 id="group-badges-title" class="text-2xl font-bold text-stone-900">Badges</h1>
+    <p class="mt-2 text-stone-600">Create recognition badges, review award history, and manage reusable artwork.</p>
+  </div>
+
+  <label class="mb-5 block md:hidden" for="badge-pane-select">
+    <span class="sr-only">Badge management section</span>
+    <select id="badge-pane-select"
+            class="w-full rounded-md border border-stone-300"
+            data-badge-pane-select>
+      <option value="definitions">Badges</option>
+      <option value="awards">Awards</option>
+      <option value="artwork">Artwork</option>
+    </select>
+  </label>
+
+  <div class="grid gap-8 md:grid-cols-[10rem_1fr]">
+    <nav class="hidden md:block" aria-label="Badge management">
+      <div class="grid gap-2" role="tablist" aria-orientation="vertical">
+        <button class="btn-secondary text-left"
+                id="badge-pane-tab-definitions"
+                type="button"
+                role="tab"
+                data-badge-pane-button="definitions"
+                aria-controls="badge-pane-definitions"
+                aria-selected="true">Badges</button>
+        <button class="btn-secondary text-left"
+                id="badge-pane-tab-awards"
+                type="button"
+                role="tab"
+                data-badge-pane-button="awards"
+                aria-controls="badge-pane-awards"
+                aria-selected="false">Awards</button>
+        <button class="btn-secondary text-left"
+                id="badge-pane-tab-artwork"
+                type="button"
+                role="tab"
+                data-badge-pane-button="artwork"
+                aria-controls="badge-pane-artwork"
+                aria-selected="false">Artwork</button>
+      </div>
+    </nav>
+
+    <div>
+      <section id="badge-pane-definitions"
+               data-content="definitions"
+               role="tabpanel"
+               aria-labelledby="badge-pane-tab-definitions">
+        <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <form class="flex gap-2"
+                method="get"
+                action="/dashboard/group"
+                hx-get="/dashboard/group/badges"
+                hx-ext="no-empty-vals"
+                hx-target="#dashboard-content">
+            <input type="hidden" name="tab" value="badges">
+            <input type="hidden" name="pane" value="definitions">
+            {% if let Some(limit) = limit -%}
+              <input type="hidden" name="limit" value="{{ limit }}">
+            {% endif -%}
+            {% if let Some(awards_offset) = awards_offset -%}
+              <input type="hidden" name="awards_offset" value="{{ awards_offset }}">
+            {% endif -%}
+            <input type="hidden" name="awards_query" value="{{ awards_query }}">
+            <input type="hidden" name="status" value="{{ status }}">
+            <input type="hidden" name="from" value="{{ from }}">
+            <input type="hidden" name="to" value="{{ to }}">
+            {% if let Some(badge_id) = badge_id -%}
+              <input type="hidden" name="badge_id" value="{{ badge_id }}">
+            {% endif -%}
+            {% if let Some(event_id) = event_id -%}
+              <input type="hidden" name="event_id" value="{{ event_id }}">
+            {% endif -%}
+            <label>
+              <span class="sr-only">Search badges</span>
+              <input class="rounded-md border border-stone-300 px-3 py-2"
+                     name="badges_query"
+                     value="{{ badges_query }}"
+                     placeholder="Search badges">
+            </label>
+            <button class="btn-secondary" type="submit">Search</button>
+          </form>
+          <button class="btn-primary"
+                  type="button"
+                  data-badge-dialog-open="badge-add-dialog">Add badge</button>
+        </div>
+        <div class="mb-5 text-sm text-stone-600">
+          {{ pagination::range_display(offset = badges_offset.unwrap_or(0), count = badges.badges.len(), total = badges.total, label = "badge") }}
+        </div>
+        {% if badges.badges.is_empty() -%}
+          <div class="rounded-lg border border-dashed border-stone-300 p-8 text-center">
+            {% if badges_query.is_empty() -%}
+              <h2 class="font-semibold">Create your first badge</h2>
+              <p class="mt-1 text-stone-600">Upload artwork first, then define what the badge recognizes.</p>
+            {% else -%}
+              <h2 class="font-semibold">No badges matched</h2>
+              <p class="mt-1 text-stone-600">Try a different search.</p>
+            {% endif -%}
+          </div>
+        {% else -%}
+          <div class="grid gap-4 lg:grid-cols-2">
+            {% for badge in badges.badges -%}
+              <article class="grid grid-cols-[5rem_1fr] gap-4 rounded-lg border border-stone-200 p-4">
+                <img class="size-20 rounded-md object-cover"
+                     src="/images/badges/{{ badge.image_file_name }}"
+                     alt="{{ badge.name }} badge artwork"
+                     width="80"
+                     height="80">
+                <div class="min-w-0">
+                  <h2 class="font-semibold">{{ badge.name }}</h2>
+                  <p class="mt-1 text-sm text-stone-600">{{ badge.description }}</p>
+                  <p class="mt-2 text-xs text-stone-500"><strong>Criteria:</strong> {{ badge.criteria }}</p>
+                  <div class="mt-3 flex gap-2">
+                    <button class="btn-secondary text-sm"
+                            type="button"
+                            data-badge-dialog-open="badge-edit-{{ badge.badge_id }}">Edit</button>
+                    <button id="delete-badge-{{ badge.badge_id }}"
+                            class="btn-danger text-sm"
+                            type="button"
+                            hx-delete="/dashboard/group/badges/{{ badge.badge_id }}"
+                            hx-trigger="confirmed"
+                            hx-swap="none"
+                            hx-disabled-elt="this"
+                            data-badge-refresh-pane="definitions"
+                            data-confirm-action
+                            data-confirm-message="Delete {{ badge.name }}? Existing awards and credentials will remain available from their immutable snapshots."
+                            data-confirm-text="Delete badge"
+                            data-success-message="Badge deleted."
+                            data-error-message="The badge could not be deleted.">Delete</button>
+                  </div>
+                </div>
+              </article>
+              <dialog id="badge-edit-{{ badge.badge_id }}"
+                      class="w-full max-w-xl rounded-lg p-0 backdrop:bg-stone-900/50"
+                      aria-labelledby="badge-edit-title-{{ badge.badge_id }}">
+                {{ badge_definition_form(id = badge.badge_id.to_string(), name = badge.name, description = badge.description, criteria = badge.criteria, image_file_name = badge.image_file_name.clone(), artwork = artwork, is_edit = true) -}}
+              </dialog>
+            {% endfor -%}
+          </div>
+        {% endif -%}
+        {# Badge definitions pagination -#}
+        {% if badges.total > badges.badges.len() -%}
+          {{ pagination::navigation_links(links = badges_navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "badge-definitions-pagination-") }}
+        {% endif -%}
+        {# End badge definitions pagination -#}
+      </section>
+
+      <section id="badge-pane-awards"
+               data-content="awards"
+               role="tabpanel"
+               aria-labelledby="badge-pane-tab-awards"
+               hidden>
+        <form class="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+              method="get"
+              action="/dashboard/group"
+              hx-get="/dashboard/group/badges"
+              hx-ext="no-empty-vals"
+              hx-target="#dashboard-content">
+          <input type="hidden" name="tab" value="badges">
+          <input type="hidden" name="pane" value="awards">
+          {% if let Some(limit) = limit -%}
+            <input type="hidden" name="limit" value="{{ limit }}">
+          {% endif -%}
+          {% if let Some(badges_offset) = badges_offset -%}
+            <input type="hidden" name="badges_offset" value="{{ badges_offset }}">
+          {% endif -%}
+          <input type="hidden" name="badges_query" value="{{ badges_query }}">
+          <label>
+            <span class="sr-only">Search awards</span>
+            <input class="w-full rounded-md border border-stone-300 px-3 py-2"
+                   name="awards_query"
+                   value="{{ awards_query }}"
+                   placeholder="Recipient or badge">
+          </label>
+          <label><span class="sr-only">Award status</span><select class="w-full rounded-md border border-stone-300" name="status"><option value="">All statuses</option><option value="active" {% if status == "active" %}selected{% endif %}>Active</option><option value="revoked" {% if status == "revoked" %}selected{% endif %}>Revoked</option></select></label>
+          <label><span class="sr-only">Badge</span><select class="w-full rounded-md border border-stone-300" name="badge_id"><option value="">All badges</option>{% for badge in awarded_badges.badges %}<option value="{{ badge.badge_id }}"
+        {% if badge_id.as_ref() == Some(badge.badge_id) %}selected{% endif %}>{{ badge.name }}</option>{% endfor %}</select></label>
+          <label><span class="sr-only">Event source</span><select class="w-full rounded-md border border-stone-300" name="event_id"><option value="">All sources</option>{% for source in awarded_badges.sources %}<option value="{{ source.event_id }}"
+        {% if event_id.as_ref() == Some(source.event_id) %}selected{% endif %}>{{ source.name }}</option>{% endfor %}</select></label>
+          <label class="text-sm text-stone-700">
+            Awarded from
+            <input class="mt-1 w-full rounded-md border border-stone-300"
+                   type="date"
+                   name="from"
+                   value="{{ from }}">
+          </label>
+          <label class="text-sm text-stone-700">
+            Awarded through
+            <input class="mt-1 w-full rounded-md border border-stone-300"
+                   type="date"
+                   name="to"
+                   value="{{ to }}">
+          </label>
+          <div class="flex items-end gap-2">
+            <button class="btn-secondary" type="submit">Apply filters</button>
+            <a class="btn-tertiary-anchor"
+               href="/dashboard/group?tab=badges&amp;pane=awards"
+               hx-get="/dashboard/group/badges?pane=awards"
+               hx-target="#dashboard-content">Clear</a>
+          </div>
+        </form>
+        <div class="mb-5 text-sm text-stone-600">
+          {{ pagination::range_display(offset = awards_offset.unwrap_or(0), count = awarded_badges.awards.len(), total = awarded_badges.total, label = "award") }}
+        </div>
+        {% if awarded_badges.awards.is_empty() -%}
+          <div class="rounded-lg border border-dashed border-stone-300 p-8 text-center">
+            <h2 class="font-semibold">No awards matched</h2>
+            <p class="mt-1 text-stone-600">Awarded badges and revoked history appear here.</p>
+          </div>
+        {% else -%}
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead>
+                <tr class="border-b">
+                  <th class="p-3">Recipient</th>
+                  <th class="p-3">Badge</th>
+                  <th class="p-3">Source</th>
+                  <th class="p-3">Awarded</th>
+                  <th class="p-3">Status</th>
+                  <th class="p-3"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for award in awarded_badges.awards -%}
+                  <tr class="border-b border-stone-100"><td class="p-3">{% if let Some(name) = &award.recipient_name %}{{ name }}{% else %}Removed user{% endif %}</td><td class="p-3">{{ award.snapshot.name }}</td><td class="p-3">{% if let Some(event_name) = &award.event_name %}{{ event_name }}{% else %}Group{% endif %}</td><td class="p-3">{{ award.awarded_at.format("%Y-%m-%d") }}</td><td class="p-3">{% if let Some(revoked_at) = &award.revoked_at %}<span class="text-red-700">Revoked {{ revoked_at.format("%Y-%m-%d") }}</span>{% if let Some(reason) = &award.revocation_reason %}<span class="block text-xs text-stone-500">{{ reason }}</span>{% endif %}{% else %}<span class="text-green-700">Active</span>{% endif %}</td><td class="p-3"><a class="btn-secondary-anchor text-xs"
+   href="/badges/credentials/{{ award.user_badge_id }}"
+   target="_blank"
+   rel="noopener">View credential</a>{% if award.revoked_at.is_none() %}<button class="btn-danger ms-2 text-xs"
+        type="button"
+        data-badge-revoke
+        data-endpoint="/dashboard/group/badges/awards/{{ award.user_badge_id }}/revoke"
+        data-name="{{ award.snapshot.name }}">Revoke</button>{% endif %}</td></tr>
+                {% endfor -%}
+              </tbody>
+            </table>
+          </div>
+        {% endif -%}
+        {# Award history pagination -#}
+        {% if awarded_badges.total > awarded_badges.awards.len() -%}
+          {{ pagination::navigation_links(links = awards_navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "badge-awards-pagination-") }}
+        {% endif -%}
+        {# End award history pagination -#}
+      </section>
+
+      <section id="badge-pane-artwork"
+               data-content="artwork"
+               role="tabpanel"
+               aria-labelledby="badge-pane-tab-artwork"
+               hidden>
+        <div class="mb-5">
+          <form class="grid gap-3"
+                hx-post="/dashboard/group/badges/artwork"
+                hx-swap="none"
+                hx-disabled-elt="find button[type='submit']"
+                data-artwork-form
+                data-badge-refresh-pane="artwork"
+                data-htmx-response
+                data-success-message="Artwork added to the gallery."
+                data-error-message="The artwork could not be added.">
+            <image-field label="Upload 512 × 512 artwork" name="badge_artwork_url" image-kind="badge" target="badge">
+            </image-field>
+            <input type="hidden" name="file_name" data-artwork-file-name>
+            <button class="btn-primary" type="submit">Add uploaded artwork to gallery</button>
+          </form>
+        </div>
+        {% if artwork.is_empty() -%}<div class="rounded-lg border border-dashed border-stone-300 p-8 text-center">No reusable artwork yet.</div>{% else -%}<ul class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">{% for image in artwork -%}<li class="rounded-lg border border-stone-200 p-3"><img class="aspect-square w-full rounded-md object-cover"
+     src="/images/badges/{{ image.file_name }}"
+     alt="Reusable badge artwork"
+     width="512"
+     height="512"><button class="btn-danger mt-3 w-full text-sm"
+        id="delete-badge-artwork-{{ image.badge_artwork_id }}"
+        type="button"
+        hx-delete="/dashboard/group/badges/artwork/{{ image.badge_artwork_id }}"
+        hx-trigger="confirmed"
+        hx-swap="none"
+        hx-disabled-elt="this"
+        data-badge-refresh-pane="artwork"
+        data-confirm-action
+        data-confirm-message="Remove this artwork? Artwork in use by a badge cannot be removed. Existing credential images remain available."
+        data-confirm-text="Remove"
+        data-success-message="Artwork removed."
+        data-error-message="The artwork could not be removed.">Remove</button></li>{% endfor -%}</ul>{% endif -%}
+      </section>
+    </div>
+  </div>
+
+  <dialog id="badge-add-dialog"
+          class="w-full max-w-xl rounded-lg p-0 backdrop:bg-stone-900/50"
+          aria-labelledby="badge-add-title">
+    {{ badge_definition_form(id = "new", name = "", description = "", criteria = "", image_file_name = "".to_string(), artwork = artwork, is_edit = false) -}}
+  </dialog>
+</section>
+
+{% macro badge_definition_form(id, name, description, criteria, image_file_name, artwork, is_edit) -%}
+  <form class="space-y-4 p-6"
+        {% if is_edit -%}
+          hx-put="/dashboard/group/badges/{{ id }}"
+        {% else -%}
+          hx-post="/dashboard/group/badges"
+        {% endif -%}
+        hx-swap="none"
+        hx-disabled-elt="find button[type='submit']"
+        data-badge-refresh-pane="definitions"
+        data-htmx-response
+        data-success-message="Badge saved."
+        data-error-message="The badge could not be saved.">
+    <h2 id="badge-{% if is_edit %}edit-{{ id }}{% else %}add{% endif %}-title"
+        class="text-xl font-bold">{% if is_edit %}Edit {{ name }}{% else %}Add badge{% endif %}</h2>
+    <label class="block">
+      Name
+      <input class="mt-1 w-full rounded-md border border-stone-300"
+             name="name"
+             value="{{ name }}"
+             maxlength="200"
+             required>
+    </label>
+    <label class="block">
+      Description<textarea class="mt-1 w-full rounded-md border border-stone-300"
+          name="description"
+          maxlength="10000"
+          required>{{ description }}</textarea>
+    </label>
+    <label class="block">
+      Criteria<textarea class="mt-1 w-full rounded-md border border-stone-300"
+          name="criteria"
+          maxlength="10000"
+          required>{{ criteria }}</textarea>
+    </label>
+    <label class="block">
+      Artwork
+      <select class="mt-1 w-full rounded-md border border-stone-300"
+              name="image_file_name"
+              required>
+        {% if !is_edit -%}<option value="">Select artwork</option>{% endif -%}
+        {% for image in artwork -%}
+          <option value="{{ image.file_name }}"
+                  {% if image.file_name.as_str() == image_file_name.as_str() %}selected{% endif %}>{{ image.file_name }}</option>
+        {% endfor -%}
+      </select>
+    </label>
+    <div class="flex justify-end gap-2">
+      <button class="btn-secondary" type="button" data-badge-dialog-close>Cancel</button>
+      <button class="btn-primary" type="submit">{% if is_edit %}Save{% else %}Add badge{% endif %}</button>
+    </div>
+  </form>
+{% endmacro badge_definition_form -%}

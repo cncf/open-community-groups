@@ -8,6 +8,8 @@ mod dashboard;
 #[cfg(test)]
 mod tests;
 
+use std::sync::Arc;
+
 use anyhow::Result;
 use axum::{
     Router,
@@ -34,10 +36,10 @@ use crate::{
     db::DynDB,
     handlers::{
         auth::{self, LOG_IN_URL},
-        community, event, group, images, meetings, payments, site,
+        badges, community, event, group, images, meetings, payments, site,
     },
     services::{
-        images::DynImageStorage, notifications::DynNotificationsManager,
+        badges::BadgeService, images::DynImageStorage, notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
     },
 };
@@ -106,6 +108,8 @@ struct StaticFile;
 pub(crate) struct State {
     /// Activity tracker handle.
     pub activity_tracker: DynActivityTracker,
+    /// Open Badges credential service.
+    pub badge_service: Arc<BadgeService>,
     /// Database handle.
     pub db: DynDB,
     /// Image storage provider handle.
@@ -151,9 +155,14 @@ pub(crate) async fn setup(
     let payments_enabled = payments_cfg.is_some();
 
     // Setup router state
+    let badges_config = server_cfg
+        .badges
+        .as_ref()
+        .expect("server badge configuration to be validated before router setup");
     let state = State {
-        db: db.clone(),
         activity_tracker,
+        badge_service: Arc::new(BadgeService::new(&server_cfg.base_url, badges_config)),
+        db: db.clone(),
         image_storage,
         meetings_cfg,
         notifications_manager,
@@ -244,6 +253,20 @@ pub(crate) async fn setup(
             "/apple-touch-icon.png",
             get(|| async { StatusCode::NOT_FOUND }),
         )
+        .route(
+            "/badges/credentials/{user_badge_id}",
+            get(badges::credential),
+        )
+        .route("/badges/issuers/{group_id}", get(badges::issuer))
+        .route("/badges/keys/{key_id}", get(badges::verification_key))
+        .route(
+            "/badges/status-lists/{badge_status_list_id}",
+            get(badges::status_list),
+        )
+        .route(
+            "/badges/verify",
+            get(badges::verify_page).post(badges::verify),
+        )
         .route("/docs", get(site::docs::page))
         .route("/explore", get(site::explore::page))
         .route(
@@ -266,6 +289,11 @@ pub(crate) async fn setup(
         .route("/explore/groups/search", get(site::explore::search_groups))
         .route("/favicon.ico", get(favicon))
         .route("/health-check", get(health_check))
+        .route(
+            "/communities/{community}/users/{username}/badges",
+            get(badges::user_profile_badges),
+        )
+        .route("/images/badges/{file_name}", get(images::serve_badge))
         .route("/images/og/{file_name}", get(images::serve_open_graph))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))

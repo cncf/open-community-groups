@@ -54,6 +54,11 @@ use crate::{
         site::explore::Entity,
     },
     types::{
+        badges::{
+            AwardedBadgesFilters, Badge, BadgeArtwork, BadgeAwardDefinition, BadgeAwardSource,
+            BadgeFilters, BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicUserBadge,
+            UserBadge,
+        },
         community::CommunityRole,
         event::{EventAttendanceStatus, EventInvitationRequestStatus, EventKind},
         group::GroupRole,
@@ -88,6 +93,155 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
     assert_eq!(user.registration_status, "registered");
     assert_eq!(user.user_id, activation_id());
     assert_eq!(user.username, "contract-activation");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+#[allow(clippy::too_many_lines)]
+async fn db_contracts_badge_json_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+
+    // Read every badge JSON shape through its production database wrapper
+    let artwork = db.list_badge_artwork(group_id()).await?;
+    let badges = db
+        .list_badges(
+            group_id(),
+            &BadgeFilters {
+                limit: 10,
+                offset: 0,
+                query: Some("Contract Participant".to_string()),
+            },
+        )
+        .await?;
+    let awards = db
+        .list_awarded_badges(
+            group_id(),
+            &AwardedBadgesFilters {
+                limit: 10,
+                offset: 0,
+                ..Default::default()
+            },
+        )
+        .await?;
+    let active = db
+        .get_user_badge(attendee_id(), active_user_badge_id())
+        .await?
+        .context("active contract badge should exist")?;
+    let public = db
+        .get_public_user_badge(active_user_badge_id())
+        .await?
+        .context("public contract badge should exist")?;
+    let profile = db
+        .list_user_public_badges(community_id(), "contract-attendee")
+        .await?;
+    let status = db
+        .get_badge_status_list(badge_status_list_id())
+        .await?
+        .context("contract status list should exist")?;
+    let user_badges = db.list_user_badges(attendee_id()).await?;
+
+    // Assert every required, optional, and revocation field
+    let snapshot = contract_badge_snapshot();
+    assert_eq!(
+        artwork,
+        vec![BadgeArtwork {
+            badge_artwork_id: badge_artwork_id(),
+            file_name: "contract-badge.png".to_string(),
+        }]
+    );
+    assert_eq!(badges.total, 1);
+    assert_eq!(
+        badges.badges,
+        vec![Badge {
+            badge_id: badge_id(),
+            criteria: "Attend the contract event".to_string(),
+            description: "Recognizes contract event participation".to_string(),
+            image_file_name: "contract-badge.png".to_string(),
+            name: "Contract Participant".to_string(),
+        }]
+    );
+    assert_eq!(awards.total, 2);
+    assert_eq!(
+        awards.badges,
+        vec![BadgeAwardDefinition {
+            badge_id: badge_id(),
+            name: "Contract Participant".to_string(),
+        }]
+    );
+    assert_eq!(
+        awards.sources,
+        vec![BadgeAwardSource {
+            event_id: event_id(),
+            name: "Future Contract Event".to_string(),
+        }]
+    );
+    assert_eq!(
+        awards.awards,
+        vec![
+            contract_active_user_badge(
+                snapshot.clone(),
+                Some("Future Contract Event".to_string()),
+                Some("Contract Attendee".to_string()),
+                Some("contract-attendee".to_string()),
+            ),
+            UserBadge {
+                awarded_at: DateTime::from_timestamp(1_704_880_800, 0).unwrap(),
+                badge_status_list_id: badge_status_list_id(),
+                display_order: 1,
+                group_id: group_id(),
+                is_listed: false,
+                snapshot: snapshot.clone(),
+                status_list_index: 11,
+                user_badge_id: revoked_user_badge_id(),
+
+                badge_id: Some(badge_id()),
+                event_id: None,
+                event_name: None,
+                recipient_name: Some("Contract Attendee".to_string()),
+                recipient_username: Some("contract-attendee".to_string()),
+                revocation_reason: Some("contract revocation".to_string()),
+                revoked_at: Some(DateTime::from_timestamp(1_705_140_000, 0).unwrap()),
+                revoked_by_user_id: Some(organizer_id()),
+                user_id: Some(attendee_id()),
+            },
+        ]
+    );
+    assert_eq!(
+        active,
+        contract_active_user_badge(snapshot.clone(), None, None, None)
+    );
+    assert_eq!(
+        public,
+        contract_active_user_badge(
+            snapshot.clone(),
+            None,
+            Some("Contract Attendee".to_string()),
+            Some("contract-attendee".to_string()),
+        )
+    );
+    assert_eq!(
+        profile,
+        vec![PublicUserBadge {
+            awarded_at: DateTime::from_timestamp(1_705_053_600, 0).unwrap(),
+            group_id: group_id(),
+            snapshot: snapshot.clone(),
+            user_badge_id: active_user_badge_id(),
+        }]
+    );
+    assert_eq!(
+        status,
+        BadgeStatusList {
+            badge_status_list_id: badge_status_list_id(),
+            group_id: group_id(),
+            revoked_indexes: vec![11],
+        }
+    );
+    assert_eq!(
+        user_badges,
+        vec![contract_active_user_badge(snapshot, None, None, None)]
+    );
 
     Ok(())
 }
@@ -1967,8 +2121,12 @@ async fn db_contracts_update_user_external_auth_deserializes() -> Result<()> {
 // Helpers.
 
 const ACTIVATION_ID: &str = "00000000-0000-0000-0000-00000000c045";
+const ACTIVE_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bd";
 const ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c042";
 const AUTO_END_MEETING_ID: &str = "00000000-0000-0000-0000-00000000c0a3";
+const BADGE_ARTWORK_ID: &str = "00000000-0000-0000-0000-00000000c0ba";
+const BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bb";
+const BADGE_STATUS_LIST_ID: &str = "00000000-0000-0000-0000-00000000c0bc";
 const CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c0e9";
 /// User fixture that races an RSVP against event cancellation.
 const CANCELLATION_LOCK_ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c0ec";
@@ -2007,6 +2165,7 @@ const REFUND_RECOVERY_REFUND_ID: &str = "00000000-0000-0000-0000-00000000c0fe";
 const REFUND_REJECT_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e7";
 /// Purchase fixture whose refund request is ready for rejection.
 const REFUND_REJECT_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f8";
+const REVOKED_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0be";
 const SESSION_PROPOSAL_ID: &str = "00000000-0000-0000-0000-00000000c0c1";
 const SITE_ID: &str = "00000000-0000-0000-0000-00000000c0b1";
 const SUBGROUP_ID: &str = "00000000-0000-0000-0000-00000000c022";
@@ -2019,12 +2178,71 @@ fn activation_id() -> Uuid {
     parse_uuid(ACTIVATION_ID)
 }
 
+fn active_user_badge_id() -> Uuid {
+    parse_uuid(ACTIVE_USER_BADGE_ID)
+}
+
 fn attendee_id() -> Uuid {
     parse_uuid(ATTENDEE_ID)
 }
 
 fn auto_end_meeting_id() -> Uuid {
     parse_uuid(AUTO_END_MEETING_ID)
+}
+
+fn badge_artwork_id() -> Uuid {
+    parse_uuid(BADGE_ARTWORK_ID)
+}
+
+fn badge_id() -> Uuid {
+    parse_uuid(BADGE_ID)
+}
+
+fn badge_status_list_id() -> Uuid {
+    parse_uuid(BADGE_STATUS_LIST_ID)
+}
+
+fn contract_active_user_badge(
+    snapshot: BadgeSnapshot,
+    event_name: Option<String>,
+    recipient_name: Option<String>,
+    recipient_username: Option<String>,
+) -> UserBadge {
+    UserBadge {
+        awarded_at: DateTime::from_timestamp(1_705_053_600, 0).unwrap(),
+        badge_status_list_id: badge_status_list_id(),
+        display_order: 0,
+        group_id: group_id(),
+        is_listed: true,
+        snapshot,
+        status_list_index: 7,
+        user_badge_id: active_user_badge_id(),
+
+        badge_id: Some(badge_id()),
+        event_id: Some(event_id()),
+        event_name,
+        recipient_name,
+        recipient_username,
+        revocation_reason: None,
+        revoked_at: None,
+        revoked_by_user_id: None,
+        user_id: Some(attendee_id()),
+    }
+}
+
+fn contract_badge_snapshot() -> BadgeSnapshot {
+    BadgeSnapshot {
+        criteria: "Attend the contract event".to_string(),
+        description: "Recognizes contract event participation".to_string(),
+        image_file_name: "contract-badge.png".to_string(),
+        issuer: BadgeSnapshotIssuer {
+            community_id: community_id(),
+            community_name: "Contract Community".to_string(),
+            group_id: group_id(),
+            group_name: "Contract Group".to_string(),
+        },
+        name: "Contract Participant".to_string(),
+    }
 }
 
 fn cancelee_id() -> Uuid {
@@ -2160,6 +2378,10 @@ fn past_event_id() -> Uuid {
     parse_uuid(PAST_EVENT_ID)
 }
 
+fn pre_registered_id() -> Uuid {
+    parse_uuid(PRE_REGISTERED_ID)
+}
+
 fn reconcile_buyer_id() -> Uuid {
     parse_uuid(RECONCILE_BUYER_ID)
 }
@@ -2200,12 +2422,12 @@ fn refund_reject_purchase_id() -> Uuid {
     parse_uuid(REFUND_REJECT_PURCHASE_ID)
 }
 
-fn session_proposal_id() -> Uuid {
-    parse_uuid(SESSION_PROPOSAL_ID)
+fn revoked_user_badge_id() -> Uuid {
+    parse_uuid(REVOKED_USER_BADGE_ID)
 }
 
-fn pre_registered_id() -> Uuid {
-    parse_uuid(PRE_REGISTERED_ID)
+fn session_proposal_id() -> Uuid {
+    parse_uuid(SESSION_PROPOSAL_ID)
 }
 
 fn site_id() -> Uuid {

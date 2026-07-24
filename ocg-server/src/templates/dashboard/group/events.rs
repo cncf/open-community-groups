@@ -130,6 +130,15 @@ pub(crate) struct UpdatePage {
 }
 
 impl UpdatePage {
+    /// Returns whether any event session has an assigned speaker.
+    pub(crate) fn has_session_speakers(&self) -> bool {
+        self.event
+            .sessions
+            .values()
+            .flatten()
+            .any(|session| !session.speakers.is_empty())
+    }
+
     /// Returns true when the provided currency code matches the current event currency.
     pub(crate) fn is_selected_payment_currency_code(&self, payment_currency_code: &str) -> bool {
         self.event.payment_currency_code.as_deref() == Some(payment_currency_code)

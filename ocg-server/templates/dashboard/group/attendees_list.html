@@ -286,6 +286,19 @@
               <span>Invite attendee</span>
             </button>
           </li>
+          {% if can_manage_events && !event.canceled -%}
+            <li>
+              <button type="button"
+                      role="menuitem"
+                      class="flex items-center w-full px-4 py-2 text-left hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 whitespace-nowrap"
+                      data-badge-award-open
+                      data-award-scope="bulk"
+                      data-event-id="{{ event.event_id }}">
+                <div class="svg-icon size-4 icon-certificate shrink-0 bg-stone-500"></div>
+                <span>Award badge to attendees</span>
+              </button>
+            </li>
+          {% endif -%}
           <li role="presentation" class="my-2 border-t border-stone-100"></li>
           <li>
             <a href="/dashboard/group/events/{{ event.event_id }}/attendees.csv"
@@ -720,6 +733,13 @@
                               <div class="svg-icon size-4 icon-email shrink-0 bg-stone-500"></div>
                               <span>Send email</span>
                             </button>
+                          </li>
+                        {% endif -%}
+                        {% if can_manage_events && !event.canceled && attendee.status == "confirmed" -%}
+                          <li>
+                            {% call badges::recipient_award_button(event_id = event.event_id, user_id = attendee.user.user_id, recipient_name = attendee.user.name, recipient_username = attendee.user.username, extra_styles = "flex items-center w-full px-4 py-2 hover:bg-stone-100 hover:text-stone-900 transition-colors gap-3 text-left", menu_item = true) -%}
+                            <span>Award badge</span>
+                            {% endcall -%}
                           </li>
                         {% endif -%}
                         {% if can_manage_events && attendee.status == "confirmed" -%}

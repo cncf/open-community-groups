@@ -13,6 +13,7 @@
   - [Group Dashboard](/guides/group-dashboard.md)
   - [Payments Setup](/guides/payments-setup.md)
   - [Event Operations](/guides/event-operations.md)
+  - [Badges](/guides/badges.md)
 
 - Support
   - [Frequently Asked Questions](/support/faq.md)

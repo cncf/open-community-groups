@@ -1,9 +1,11 @@
+-- Tests database indexes.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(70);
+select plan(80);
 
 -- ============================================================================
 -- TESTS
@@ -29,6 +31,36 @@ select indexes_are('audit_log', array[
 select indexes_are('auth_session', array[
     'auth_session_pkey'
 ]);
+
+-- Test: badge indexes should match expected
+select indexes_are('badge', array[
+    'badge_pkey',
+    'badge_badge_id_group_id_key',
+    'badge_group_id_idx',
+    'badge_image_file_name_idx',
+    'badge_tsdoc_idx'
+]);
+select index_is_unique('badge', 'badge_badge_id_group_id_key');
+
+-- Test: badge artwork indexes should match expected
+select indexes_are('badge_artwork', array[
+    'badge_artwork_pkey',
+    'badge_artwork_group_file_name_key',
+    'badge_artwork_file_name_idx',
+    'badge_artwork_group_id_idx'
+]);
+select index_is_unique('badge_artwork', 'badge_artwork_group_file_name_key');
+
+-- Test: badge status list indexes should match expected
+select indexes_are('badge_status_list', array[
+    'badge_status_list_pkey',
+    'badge_status_list_badge_status_list_id_group_id_key',
+    'badge_status_list_group_id_idx'
+]);
+select index_is_unique(
+    'badge_status_list',
+    'badge_status_list_badge_status_list_id_group_id_key'
+);
 
 -- Test: cfs_submission indexes should match expected
 select indexes_are('cfs_submission', array[
@@ -131,6 +163,7 @@ select indexes_are('email_verification_code', array[
 -- Test: event indexes should match expected
 select indexes_are('event', array[
     'event_pkey',
+    'event_event_id_group_id_key',
     'event_slug_group_id_key',
     'event_event_category_id_idx',
     'event_event_kind_id_idx',
@@ -145,6 +178,7 @@ select indexes_are('event', array[
     'event_tsdoc_idx',
     'event_group_not_deleted_starts_at_idx'
 ]);
+select index_is_unique('event', 'event_event_id_group_id_key');
 
 -- Test: event_series indexes should match expected
 select indexes_are('event_series', array[
@@ -496,6 +530,20 @@ select indexes_are('user', array[
     'user_tsdoc_idx',
     'user_username_lower_idx'
 ]);
+
+-- Test: user badge indexes should match expected
+select indexes_are('user_badge', array[
+    'user_badge_pkey',
+    'user_badge_status_list_index_key',
+    'user_badge_badge_id_idx',
+    'user_badge_badge_id_user_id_active_idx',
+    'user_badge_event_id_idx',
+    'user_badge_group_id_awarded_at_idx',
+    'user_badge_snapshot_image_file_name_idx',
+    'user_badge_user_id_display_order_idx'
+]);
+select index_is_unique('user_badge', 'user_badge_badge_id_user_id_active_idx');
+select index_is_unique('user_badge', 'user_badge_status_list_index_key');
 select index_is_unique('user', 'user_email_lower_idx');
 select index_is_unique('user', 'user_linuxfoundation_identity_idx');
 select index_is_unique('user', 'user_username_lower_idx');

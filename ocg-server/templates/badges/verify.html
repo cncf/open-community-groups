@@ -1,0 +1,78 @@
+{% extends "common/base.html" -%}
+
+{% block head_title -%}
+  <title>Verify an OCG badge</title>
+{% endblock head_title -%}
+
+{% block content -%}
+  <section class="mx-auto w-full max-w-2xl px-4 py-10 lg:py-16"
+           aria-labelledby="verify-title">
+    <h1 id="verify-title" class="text-3xl font-bold text-stone-900">Verify an OCG badge</h1>
+    <p class="mt-2 text-stone-700">Enter an OCG credential URL or ID, or upload an exported PNG.</p>
+
+    <form class="mt-8 space-y-5 rounded-xl border border-stone-200 bg-white p-6 shadow-sm"
+          method="post"
+          enctype="multipart/form-data">
+      <div>
+        <label class="block font-medium text-stone-900" for="credential">Credential URL or ID</label>
+        <input class="mt-2 w-full rounded-md border border-stone-300 px-3 py-2"
+               id="credential"
+               name="credential"
+               type="text"
+               autocomplete="off">
+      </div>
+      <div>
+        <label class="block font-medium text-stone-900" for="png">Exported PNG</label>
+        <input class="mt-2 block w-full text-sm"
+               id="png"
+               name="png"
+               type="file"
+               accept="image/png">
+      </div>
+      <button class="rounded-md bg-primary-600 px-4 py-2 font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
+              type="submit">Verify badge</button>
+    </form>
+
+    <div class="mt-6" aria-live="polite">
+      {% if let Some(error) = &error -%}
+        <div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
+             role="alert">{{ error }}</div>
+      {% endif -%}
+      {% if let Some(result) = &verified -%}
+        <article class="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+          <div class="mb-3">
+            {% if result.revoked -%}
+              <span class="rounded-full bg-red-100 px-3 py-1 text-sm font-medium text-red-800">Valid proof · revoked</span>
+            {% else -%}
+              <span class="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">Valid and active</span>
+            {% endif -%}
+          </div>
+          <h2 class="text-2xl font-bold text-stone-900">{{ result.name }}</h2>
+          <p class="mt-2 text-stone-700">{{ result.description }}</p>
+          <dl class="mt-5 space-y-3 text-sm">
+            {% if let Some(recipient_name) = &result.recipient_name -%}
+              <div>
+                <dt class="font-semibold">Current recipient</dt>
+                <dd>
+                  {{ recipient_name }}
+                </dd>
+              </div>
+            {% endif -%}
+            <div>
+              <dt class="font-semibold">Issuer</dt>
+              <dd class="break-all">
+                {{ result.issuer }}
+              </dd>
+            </div>
+            <div>
+              <dt class="font-semibold">Awarded</dt>
+              <dd>
+                {{ result.valid_from }}
+              </dd>
+            </div>
+          </dl>
+        </article>
+      {% endif -%}
+    </div>
+  </section>
+{% endblock content -%}

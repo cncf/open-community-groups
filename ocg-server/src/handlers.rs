@@ -12,6 +12,8 @@ use crate::{config::HttpServerConfig, router::PUBLIC_SHARED_CACHE_HEADERS};
 
 /// Authentication handlers.
 pub(crate) mod auth;
+/// Public Open Badges credential handlers.
+pub(crate) mod badges;
 /// Community site handlers.
 pub(crate) mod community;
 /// Dashboards handlers.

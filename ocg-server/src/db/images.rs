@@ -13,6 +13,9 @@ pub(crate) trait DBImages {
     /// Retrieves an image by file name.
     async fn get_image(&self, file_name: &str) -> Result<Option<Image>>;
 
+    /// Returns whether the file is retained by badge data.
+    async fn is_badge_image(&self, file_name: &str) -> Result<bool>;
+
     /// Returns whether the file is referenced as a public Open Graph image.
     async fn is_open_graph_image(&self, file_name: &str) -> Result<bool>;
 
@@ -50,6 +53,13 @@ where
             });
 
         Ok(image)
+    }
+
+    /// [`DBImages::is_badge_image`].
+    #[instrument(skip(self), err)]
+    async fn is_badge_image(&self, file_name: &str) -> Result<bool> {
+        self.fetch_scalar_one("select is_badge_image($1::text)", &[&file_name])
+            .await
     }
 
     #[instrument(skip(self), err)]

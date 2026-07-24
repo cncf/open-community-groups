@@ -163,6 +163,86 @@ async fn test_serve_allows_missing_referer_when_checks_disabled() {
 }
 
 #[tokio::test]
+async fn test_serve_badge_returns_referenced_image_without_referer() {
+    // Setup a referenced stored badge image
+    let mut db = MockDB::new();
+    db.expect_is_badge_image()
+        .times(1)
+        .withf(|file_name| file_name == "badge.png")
+        .returning(|_| Ok(true));
+    let mut storage = MockImageStorage::new();
+    storage
+        .expect_get()
+        .times(1)
+        .withf(|file_name| file_name == "badge.png")
+        .returning(|_| {
+            Box::pin(async {
+                Ok(Some(Image {
+                    bytes: PNG_BYTES.to_vec(),
+                    content_type: "image/png".to_string(),
+                }))
+            })
+        });
+    let router = Router::new()
+        .route("/images/badges/{file_name}", get(serve_badge))
+        .with_state(test_state_with_server_cfg(
+            Arc::new(db),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ));
+
+    // Request the public badge image without a referer
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/images/badges/badge.png")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check the referenced image uses the immutable public response contract
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response.headers().get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_IMMUTABLE
+    );
+}
+
+#[tokio::test]
+async fn test_serve_badge_returns_not_found_for_unreferenced_image() {
+    // Setup an unreferenced badge basename
+    let mut db = MockDB::new();
+    db.expect_is_badge_image().times(1).returning(|_| Ok(false));
+    let mut storage = MockImageStorage::new();
+    storage.expect_get().never();
+    let router = Router::new()
+        .route("/images/badges/{file_name}", get(serve_badge))
+        .with_state(test_state_with_server_cfg(
+            Arc::new(db),
+            Arc::new(storage),
+            Arc::new(MockNotificationsManager::new()),
+            &sample_tracking_server_cfg(),
+        ));
+
+    // Request the unreferenced public badge image
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/images/badges/missing.png")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check storage is not consulted and the route remains private by default
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn test_serve_open_graph_returns_not_found_for_unreferenced_image() {
     // Setup mocks
     let mut db = MockDB::new();
@@ -705,6 +785,25 @@ async fn test_upload_stores_image_and_returns_url() {
 }
 
 #[test]
+fn test_validate_badge_image_dimensions() {
+    // Build an exact-size badge image
+    let image = RgbaImage::new(512, 512);
+    let mut bytes = Vec::new();
+    image
+        .write_to(&mut std::io::Cursor::new(&mut bytes), ImageFormat::Png)
+        .unwrap();
+
+    // Check exact badge dimensions pass and the 1x1 fixture fails
+    assert!(validate_image_dimensions(&bytes, ImageTarget::Badge).is_ok());
+    assert_eq!(
+        validate_image_dimensions(PNG_BYTES, ImageTarget::Badge)
+            .unwrap_err()
+            .to_string(),
+        "image dimensions 1x1 do not match required 512x512"
+    );
+}
+
+#[test]
 fn test_validate_image_dimensions_rejects_wrong_dimensions() {
     // PNG_BYTES is 1x1 pixel, should fail for any target
     let result = validate_image_dimensions(PNG_BYTES, ImageTarget::Logo);
@@ -714,7 +813,7 @@ fn test_validate_image_dimensions_rejects_wrong_dimensions() {
     );
 }
 
-// Helpers
+// Helpers.
 
 fn build_multipart_body(boundary: &str, bytes: &[u8]) -> Vec<u8> {
     build_multipart_body_with_target_opt(boundary, None, bytes)

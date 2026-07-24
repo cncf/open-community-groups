@@ -55,6 +55,21 @@ pub(crate) async fn serve(
     Ok(serve_image(&image_storage, &file_name).await?.into_response())
 }
 
+/// Serves images referenced by current or historical badge credentials.
+#[instrument(skip_all, err)]
+pub(crate) async fn serve_badge(
+    State(db): State<DynDB>,
+    State(image_storage): State<DynImageStorage>,
+    Path(file_name): Path<String>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Keep historical credential artwork available while referenced
+    if !db.is_badge_image(&file_name).await? {
+        return Ok(StatusCode::NOT_FOUND.into_response());
+    }
+
+    Ok(serve_image(&image_storage, &file_name).await?.into_response())
+}
+
 /// Serves images that are currently configured for public Open Graph previews.
 #[instrument(skip_all, err)]
 pub(crate) async fn serve_open_graph(
@@ -131,11 +146,18 @@ pub(crate) async fn upload(
 
     // Validate target-specific image requirements
     if let Some(target) = target {
-        // Validate Open Graph image format
-        if matches!(target, ImageTarget::OpenGraph) && !format.is_open_graph_supported() {
+        // Validate public credential and Open Graph image formats
+        if matches!(target, ImageTarget::Badge | ImageTarget::OpenGraph)
+            && !format.is_public_supported()
+        {
+            let target_name = if matches!(target, ImageTarget::Badge) {
+                "Badge"
+            } else {
+                "Open Graph"
+            };
             return Ok((
                 StatusCode::UNPROCESSABLE_ENTITY,
-                "Open Graph images must be PNG, JPEG, or WebP",
+                format!("{target_name} images must be PNG, JPEG, or WebP"),
             )
                 .into_response());
         }
@@ -161,7 +183,12 @@ pub(crate) async fn upload(
     image_storage.save(&new_image).await?;
 
     // Prepare response with image URL
-    let body = Json(json!({ "url": format!("/images/{}", new_image.file_name) }));
+    let image_path = if matches!(target, Some(ImageTarget::Badge)) {
+        format!("/images/badges/{}", new_image.file_name)
+    } else {
+        format!("/images/{}", new_image.file_name)
+    };
+    let body = Json(json!({ "url": image_path }));
 
     Ok((StatusCode::CREATED, body).into_response())
 }
@@ -377,6 +404,8 @@ fn validate_image_dimensions(bytes: &[u8], target: ImageTarget) -> Result<()> {
 /// Image target defining expected dimensions.
 #[derive(Clone, Copy)]
 enum ImageTarget {
+    /// Square Open Badges artwork.
+    Badge,
     /// Desktop banner image.
     Banner,
     /// Mobile banner image.
@@ -391,6 +420,7 @@ impl ImageTarget {
     /// Returns (width, height) for the target.
     fn dimensions(self) -> (u32, u32) {
         match self {
+            ImageTarget::Badge => (512, 512),
             ImageTarget::Banner => (2428, 192),
             ImageTarget::BannerMobile => (1220, 192),
             ImageTarget::Logo => (360, 360),
@@ -404,6 +434,7 @@ impl FromStr for ImageTarget {
 
     fn from_str(s: &str) -> Result<Self> {
         match s {
+            "badge" => Ok(ImageTarget::Badge),
             "banner" => Ok(ImageTarget::Banner),
             "banner_mobile" => Ok(ImageTarget::BannerMobile),
             "logo" => Ok(ImageTarget::Logo),
@@ -430,8 +461,8 @@ enum SupportedImageFormat {
 }
 
 impl SupportedImageFormat {
-    /// Returns whether the image format is supported for Open Graph previews.
-    fn is_open_graph_supported(&self) -> bool {
+    /// Returns whether the image format is supported for public previews and credentials.
+    fn is_public_supported(&self) -> bool {
         matches!(self, Self::Jpeg | Self::Png | Self::Webp)
     }
 }
