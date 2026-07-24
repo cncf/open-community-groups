@@ -38,6 +38,8 @@ export class ImageField extends LitWrapper {
    * @property {string} imageKind - Determines which styling preset (avatar/banner) to apply.
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
+   * @property {boolean} hideUploadButton - Whether to hide the secondary upload button.
+   * @property {string} submitLabel - Optional label for a form submit action.
    * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo", "open_graph").
    * @property {string} legend - Optional legend text displayed under the image preview area.
    */
@@ -50,6 +52,8 @@ export class ImageField extends LitWrapper {
     imageKind: { type: String, attribute: "image-kind" },
     previewBgClass: { type: String, attribute: "preview-bg-class" },
     helpPrefixText: { type: String, attribute: "help-prefix-text" },
+    hideUploadButton: { type: Boolean, attribute: "hide-upload-button" },
+    submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
   };
@@ -67,6 +71,8 @@ export class ImageField extends LitWrapper {
     this._uniqueId = `image-field-${Math.random().toString(36).slice(2, 9)}`;
     this.previewBgClass = "";
     this.helpPrefixText = "";
+    this.hideUploadButton = false;
+    this.submitLabel = "";
     this.target = "";
     this.legend = "";
   }
@@ -89,6 +95,14 @@ export class ImageField extends LitWrapper {
     return typeof this.value === "string" && this.value.trim().length > 0;
   }
 
+  /** Return a dashboard-safe preview URL for unsaved badge artwork. */
+  get _previewUrl() {
+    if (this.target === IMAGE_TARGET.BADGE && this.value.startsWith("/images/badges/")) {
+      return this.value.replace("/images/badges/", "/images/");
+    }
+    return this.value;
+  }
+
   /**
    * Render either the selected image or the placeholder markup for the kind.
    */
@@ -96,7 +110,7 @@ export class ImageField extends LitWrapper {
     if (this._hasImage) {
       return html`
         <img
-          src=${this.value}
+          src=${this._previewUrl}
           alt="Image preview"
           class=${
             isWide
@@ -259,6 +273,7 @@ export class ImageField extends LitWrapper {
     const isOpenGraphTarget = this.target === IMAGE_TARGET.OPEN_GRAPH;
     const isBadgeTarget = this.target === IMAGE_TARGET.BADGE;
     const removeDisabled = !this._hasImage || this._isUploading;
+    const submitDisabled = !this._hasImage || this._isUploading;
     const helpPrefixText = (this.helpPrefixText || "").trim();
     const helpText = isOpenGraphTarget
       ? IMAGE_UPLOAD_MAX_SIZE_TEXT
@@ -309,8 +324,9 @@ export class ImageField extends LitWrapper {
           <p class="form-legend hidden xl:block">${combinedHelpText}</p>
           <div class="flex flex-wrap gap-3 mb-1">
             <label
-              class="btn-primary btn-mini inline-flex items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
-                this._isUploading ? "opacity-75 pointer-events-none" : ""
+              class="btn-primary btn-mini items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
+                this.hideUploadButton ? "hidden" : "inline-flex"
+              } ${this._isUploading ? "opacity-75 pointer-events-none" : ""
               }"
             >
               <input
@@ -323,6 +339,20 @@ export class ImageField extends LitWrapper {
               />
               Upload image
             </label>
+            ${
+              this.submitLabel
+                ? html`
+                    <button
+                      type="submit"
+                      class="btn-primary btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0"
+                      ?disabled=${submitDisabled}
+                      title=${submitDisabled ? "Upload an image first." : ""}
+                    >
+                      ${this.submitLabel}
+                    </button>
+                  `
+                : ""
+            }
             <button
               type="button"
               class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${

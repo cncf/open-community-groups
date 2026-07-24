@@ -42,9 +42,7 @@ describe("dashboard group home template", () => {
     expect(template).to.include(
       'dashboard::menu_item(name = "Refunds", icon = "refund", is_active = content.is_refunds() , href = "/dashboard/group?tab=refunds")',
     );
-    expect(template).to.include(
-      "else if content.is_refunds() -%}refunds",
-    );
+    expect(template).to.include("else if content.is_refunds() -%}refunds");
     expect(template).not.to.include("refresh-group-refunds");
   });
 

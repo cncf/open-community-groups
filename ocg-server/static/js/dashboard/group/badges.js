@@ -5,6 +5,7 @@ import { ocgFetch } from "/static/js/common/fetch.js";
 const ROOT_SELECTOR = "[data-group-badges]";
 const READY_KEY = "groupBadgesReady";
 
+/** Send a badge request and surface any server error message. */
 const request = async (url, options) => {
   const response = await ocgFetch(url, options);
   if (!response.ok) {
@@ -14,6 +15,7 @@ const request = async (url, options) => {
   return response;
 };
 
+/** Keep dashboard refreshes focused on the requested badge pane. */
 const setRefreshPane = (pane) => {
   const dashboard = document.getElementById("dashboard-content");
   if (pane && dashboard) {
@@ -23,12 +25,14 @@ const setRefreshPane = (pane) => {
   }
 };
 
+/** Refresh the badge dashboard while preserving its current pane. */
 const refresh = (pane = "") => {
   const dashboard = document.getElementById("dashboard-content");
   setRefreshPane(pane);
   window.htmx?.trigger(dashboard || document.body, "refresh-group-dashboard-table");
 };
 
+/** Show a badge pane and synchronize its navigation controls. */
 const setPane = (root, requestedPane, { focus = false } = {}) => {
   const buttons = [...root.querySelectorAll("[data-badge-pane-button]")];
   const pane = requestedPane;
@@ -50,6 +54,7 @@ const setPane = (root, requestedPane, { focus = false } = {}) => {
   return pane;
 };
 
+/** Move keyboard focus between badge pane controls. */
 const moveTabFocus = (root, current, key) => {
   const buttons = [...root.querySelectorAll("[data-badge-pane-button]")];
   const currentIndex = buttons.indexOf(current);
@@ -71,6 +76,7 @@ const moveTabFocus = (root, current, key) => {
   setPane(root, buttons[nextIndex].dataset.badgePaneButton, { focus: true });
 };
 
+/** Confirm and permanently revoke an awarded credential. */
 const revokeAward = async (button) => {
   if (button.disabled || button.dataset.revokePending === "true") {
     return;
@@ -116,6 +122,7 @@ const revokeAward = async (button) => {
   }
 };
 
+/** Validate that uploaded artwork is available before submission. */
 const prepareArtworkForm = (form) => {
   const field = form.querySelector('image-field[target="badge"]');
   const fileName = field?.value?.split("/").filter(Boolean).pop();
@@ -123,16 +130,28 @@ const prepareArtworkForm = (form) => {
     showErrorAlert("Upload badge artwork before adding it to the gallery.");
     return false;
   }
-  form.querySelector("[data-artwork-file-name]").value = fileName;
   return true;
 };
 
+/** Synchronize the uploaded artwork filename with its form field. */
+const syncArtworkFileName = (form) => {
+  const field = form.querySelector('image-field[target="badge"]');
+  const fileName = field?.value?.split("/").filter(Boolean).pop() || "";
+  const fileNameInput = form.querySelector("[data-artwork-file-name]");
+  if (!fileNameInput) {
+    return;
+  }
+  fileNameInput.value = fileName;
+};
+
+/** Initialize badge dashboard interactions within a rendered root. */
 export const initializeGroupBadges = (root) => {
   if (!markDatasetReady(root, READY_KEY)) {
     return;
   }
   const initialPane = root.dataset.initialPane || "definitions";
   setPane(root, initialPane);
+  root.querySelectorAll("[data-artwork-form]").forEach(syncArtworkFileName);
 
   root.addEventListener("click", (event) => {
     const refreshOwner = event.target.closest?.("[data-badge-refresh-pane]");
@@ -157,6 +176,12 @@ export const initializeGroupBadges = (root) => {
     const revoke = event.target.closest?.("[data-badge-revoke]");
     if (revoke) {
       revokeAward(revoke);
+    }
+  });
+  root.addEventListener("image-change", (event) => {
+    const artworkForm = event.target.closest?.("[data-artwork-form]");
+    if (artworkForm) {
+      syncArtworkFileName(artworkForm);
     }
   });
   root.addEventListener("keydown", (event) => {
