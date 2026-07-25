@@ -1,17 +1,32 @@
 <!-- markdownlint-disable MD013 -->
 
-# Badges
+# Badges Guide
 
-OCG badges let groups recognize event attendees, speakers, and hosts with portable
-Open Badges 3.0 credentials. A badge remains resolvable after its definition, event, or recipient
-account changes because every award stores an immutable snapshot.
+OCG badges let groups recognize event attendees, speakers, hosts, and group team members with
+portable Open Badges 3.0 credentials.
 
-## Access and Badge Setup
+!> Badges are an experimental feature. Their behavior and interfaces may change as the feature
+evolves.
+
+Every award stores an immutable snapshot of the badge and issuing group. The credential therefore
+keeps the name, description, criteria, artwork, and issuer that applied when it was awarded, even
+if the badge definition, event, group, or recipient account changes later.
+
+**Sections:**
+
+- [Group Badge Management](#group-badge-management)
+- [User Badge Operations](#user-badge-operations)
+
+## Group Badge Management
+
+Use this section when your group wants to create badges, award them, or manage award history.
+
+### Access and Badge Setup
 
 Open [Group Dashboard -> Badges](/dashboard/group?tab=badges ':ignore'). Badge management and
-awarding require `group.events.write`. Group Admins and Events Managers have this permission;
+awarding require events write access. Group Admins and Events Managers have this permission;
 community Admins and Groups Managers inherit it for their groups. Viewers do not see or open the
-protected badge-management surface.
+protected badge-management area.
 
 The badge dashboard has three sections:
 
@@ -22,7 +37,7 @@ The badge dashboard has three sections:
 - `Artwork` uploads reusable PNG, JPEG, or WebP images. Artwork must be exactly 512 by 512 pixels.
 
 Badge names support up to 200 characters. Descriptions and achievement criteria support up to
-10,000 characters each so every accepted definition remains exportable as a baked credential.
+10,000 characters each.
 
 Upload artwork before creating a definition. A gallery item cannot be removed while a current
 definition references it. Removing a gallery entry never removes an image retained by an issued
@@ -31,7 +46,7 @@ credential snapshot.
 Deleting a definition does not revoke earlier awards. Those credentials continue to use their
 snapshotted name, description, criteria, image, and issuer.
 
-## Award Badges
+### Award Badges
 
 The attendee page has a dedicated `Award badge` menu with three choices:
 
@@ -46,148 +61,111 @@ An attendee row's three-dot menu awards a badge to that individual attendee. The
 does not add a separate "select all matching" operation; the two event-wide choices cover all and
 checked-in recipients directly.
 
-The event's Hosts & Speakers tab uses simple tables for hosts and event-level speakers. Their row
-menus can award a badge to one contributor or delete that host or event-level speaker. Adding a
-speaker from this tab adds them at the event level. A second table lists each session-level speaker
-once and shows all of their associated sessions; its row menu can award a badge but session speaker
-assignments are still edited from the Sessions tab.
+The event's Hosts & Speakers tab offers equivalent actions for contributors:
 
-`Award badge to all hosts` awards every current host. `Award badge to all speakers` combines and
-deduplicates event-level and session-level speakers. Contributor award actions are disabled after
-an unsaved host, speaker, or session change; save the event before awarding so eligibility matches
-the stored event. New-event forms use the same tables for editing but do not offer award actions
-until the event exists.
+- A host or event-level speaker row can award a badge to that contributor.
+- A session-level speaker row can award a badge to that speaker. Session assignments are still
+  edited from the Sessions tab.
+- `Award badge to all hosts` awards every current host.
+- `Award badge to all speakers` combines and deduplicates event-level and session-level speakers.
+
+Contributor award actions are disabled after an unsaved host, speaker, or session change. Save the
+event before awarding so eligibility matches the stored event. New-event forms do not offer award
+actions until the event exists.
 
 Accepted members on the Group Team page also have `Award badge` in their row menu when the current
-administrator has event-management permission. Team awards are group-scoped and do not need an
-event. Pending team invitations are not eligible. Team deletion and role controls continue to use
-the separate team-management permission and retain the last-admin safeguard.
+administrator has events write access. Team awards belong to the group and do not need an event.
+Pending team invitations are not eligible.
 
-For an event-scoped award, every verified recipient must currently be a confirmed attendee, event
-host, event-level speaker, or session-level speaker. An event organizer qualifies only when they
-also hold one of those roles. For an award without an event, every verified recipient must be an
-accepted member of that group's team. Canceled events cannot issue awards.
+For an event award, every recipient must currently be a confirmed attendee, event host,
+event-level speaker, or session-level speaker. An event organizer qualifies only when they also
+hold one of those roles. For an award without an event, every recipient must be an accepted member
+of that group's team. Canceled events cannot issue awards.
 
-Every award entry point passes an explicit recipient list to the same badge picker and mutation.
-The server deduplicates the list and validates every recipient atomically; if any recipient is
-ineligible, nobody in that request receives the badge. One active award is allowed for each badge
-and user. Current holders are skipped and the result reports both awarded and skipped totals. If a
-revoked badge is awarded again, OCG creates a new credential URL, opaque subject, and status-list
-entry.
+OCG validates the complete recipient list before awarding the badge. If any recipient is
+ineligible, nobody in that request receives it. One active award is allowed for each badge and
+user. Current holders are skipped, and the result reports both awarded and skipped totals.
 
-Award insertion and the `badge-awarded` email enqueue happen in one database transaction. Newly
-awarded users receive the badge image, description, criteria, issuing group, and a link to their
-badge dashboard. Existing active holders receive no duplicate email.
+New recipients receive an email with the badge image, description, criteria, issuing group, and a
+link to [User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore'). Existing active holders
+do not receive another award or email.
 
-## Revocation
+### Award History and Revocation
 
-Revocation is permanent. It retains the public credential as history and changes its status-list
-bit so standards-based verification reports it as revoked.
+Authorized group managers can open `Awards` to review active and revoked credentials. Revocation
+is permanent: the public credential remains available as history, but verification reports it as
+revoked.
 
-Authorized group managers can revoke an active award from the `Awards` section. They must record
-an internal reason. OCG records the actor and reason in protected history and sends the recipient a
-`badge-revoked` email. The reason is not included in the email or public credential.
+Revoking an active award requires an internal reason. OCG records the actor and reason in protected
+history and emails the recipient. The reason is not included in the email or public credential.
 
-Recipients can revoke their own active credential from
-[User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore'). Self-revocation needs no reason
-and sends no email. Deleting a recipient account also revokes active credentials before removing
-the internal user association.
+Revoking a badge does not prevent the group from awarding the same definition to that user later.
+A later award creates a new credential URL.
 
-## Profile Listing and Order
+## User Badge Operations
 
-The user badge dashboard contains active badges only. `Show on profile` controls discovery in the
-community-scoped user profile modal. Turning it off is reversible and is the right choice when a
-user only wants to hide a badge.
+Use this section to manage badges that groups have awarded to you.
 
-An unlisted badge is not private: anyone who already has its direct credential URL can still open
-it. Direct URLs remain public so shared and baked credentials stay resolvable.
+Open [User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore'). This dashboard shows your
+active badges and provides controls for profile listing, order, sharing, export, and revocation.
 
-Users can reorder badges by dragging with a pointer or with the `Move up` and `Move down` buttons.
-Both controls save the same display order.
+### Profile Listing and Order
 
-## Sharing, Export, and Verification
+`Show on profile` controls whether a badge appears when someone opens your community-scoped public
+profile. Turning it off is reversible and is the right choice when you only want to hide a badge.
 
-Each award has a stable public page at:
+!> An unlisted badge is not private. Anyone who already has its direct credential URL can still
+open it.
 
-```text
-/badges/credentials/{user_badge_id}
-```
+You can reorder badges by dragging them with a pointer or by using `Move up` and `Move down`. Both
+controls save the same profile display order.
 
-The browser page shows the immutable badge snapshot, issuing group, award date, and current active
-or revoked state. A request accepting `application/vc+ld+json` receives the signed JSON-LD
-credential.
+### Share and Export Credentials
 
-`Export PNG` transcodes the 512-pixel artwork to PNG and adds exactly one uncompressed
-`openbadgecredential` iTXt chunk containing the signed credential.
+Select `Share` to open the badge's stable public credential page. You can copy that page's URL and
+send it directly or add it to a profile, portfolio, or other place where you want to show the
+credential. The page displays the badge details, issuing group, award date, and current active or
+revoked state.
 
-Use `/badges/verify` with an OCG credential UUID or URL, or upload an OCG badge PNG. Verification:
+Select `Export PNG` to download a portable copy. The exported file is a baked Open Badges 3.0
+credential: it contains both the badge artwork and the signed credential data.
 
-1. accepts only local OCG credential, issuer, key, and status-list URL forms;
-2. loads only the reviewed vendored JSON-LD contexts;
-3. verifies the `eddsa-rdfc-2022` Data Integrity proof against an allowlisted public key;
-4. binds the credential UUID, issuer, status-list UUID, and index to the durable local award; and
-5. reports the current active or revoked state from that award.
+To move the credential into another compatible system, use that system's badge or credential
+import flow. Depending on the system, you can:
 
-Uploaded credentials cannot trigger arbitrary URL or context requests. A recipient name appears
-only when the opaque award UUID still resolves to a current local account association.
+- Upload the exported PNG to an Open Badges 3.0-compatible wallet, backpack, or credential
+  platform.
+- Provide the public credential URL when the system supports importing credentials by URL.
 
-## Credential Privacy and Status
+Compatible software can also request `application/vc+ld+json` from the public credential URL to
+receive the signed JSON-LD credential directly.
 
-The credential subject is `urn:uuid:{user_badge_id}`. It contains no email address, email hash,
-salt, username, Open Badges `IdentityObject`, or stable cross-award recipient identifier. OCG keeps
-the recipient association internally while the account exists, but an external verifier cannot
-match the portable credential to an email address.
+### Verify a Credential
 
-Each group has stable revocation-list UUIDs with 131,072 entries. OCG allocates indexes randomly,
-sets bits most-significant-bit first, and publishes a gzip plus multibase-base64url encoded list.
-Status-list credentials always declare a 600,000 millisecond TTL and are served with a 600-second
-public cache lifetime. The server reuses a size-bounded signed representation while the exact
-revocation state remains unchanged. Concurrent cache misses are deduplicated, and changed
-revocation state bypasses the application cache on the next origin request.
+Open [/badges/verify](/badges/verify ':ignore') to verify an OCG credential. You can enter its
+public URL or credential ID, or upload an exported PNG.
 
-Stable public infrastructure includes:
+Verification checks the signed credential and reports whether it is active or revoked. An already
+exported or shared credential remains available after revocation, but current verification reports
+the revoked state.
 
-```text
-/badges/issuers/{group_id}
-/badges/keys/{key_id}
-/badges/status-lists/{badge_status_list_id}
-```
+### Credential Privacy
 
-These URLs must remain available for as long as issued credentials may be presented.
+The portable credential uses an opaque identifier for its subject. It does not contain your email
+address, email hash, username, or a stable identifier shared by your other badge awards.
 
-## Signing and Key Rotation
+OCG keeps the account association internally while your account exists. The verification page can
+show the current recipient name while that internal association remains available.
 
-The server and Helm chart require one active Ed25519 private JWK. Retained public Ed25519 JWKs are
-required after key rotation for as long as credentials reference them:
+### Revoke Your Credential
 
-```yaml
-server:
-  badges:
-    signingKey:
-      key_id: active-2026
-      private_jwk:
-        kty: OKP
-        crv: Ed25519
-        x: PUBLIC_BASE64URL
-        d: PRIVATE_BASE64URL
-    verificationKeys:
-      - key_id: retired-2025
-        public_jwk:
-          kty: OKP
-          crv: Ed25519
-          x: RETIRED_PUBLIC_BASE64URL
-```
+Select `Revoke` from [User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore') to revoke one
+of your active credentials. Self-revocation needs no reason and does not send an email.
 
-Key IDs are stable lowercase URL-safe identifiers. Private material is rendered through the chart
-secret and redacted from configuration debug output and errors. The server refuses to start when
-the badge configuration or active signing key is missing.
+!> Revocation is permanent. If you only want to remove a badge from your public profile, turn off
+`Show on profile` instead.
 
-To rotate keys:
-
-1. Move the old active key's public JWK to `verificationKeys` without changing its key ID.
-2. Configure a new private JWK and new key ID as `signingKey`.
-3. Keep every public key that may be referenced by an issued credential or status list.
-
-Previously issued credential proofs verify with retained public keys. OCG also requires the active
-private key to publish the current signed status-list representation. Operators must back up active
-private material and key history independently from application data.
+After revocation, the badge leaves your active badge dashboard and public profile. Its direct page
+remains available with a revoked status so previously shared URLs and exported credentials can
+still be checked. Deleting your OCG account also revokes its active credentials before removing the
+internal account association.

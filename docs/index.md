@@ -21,6 +21,7 @@ Pick the entry point that matches what you are trying to do:
 | Run a community                            | [Community Dashboard Guide](guides/community-dashboard.md)   |
 | Run a group and events                     | [Group Dashboard Guide](guides/group-dashboard.md)           |
 | Run the full event lifecycle               | [Event Operations](guides/event-operations.md)               |
+| Create, award, share, or export badges      | [Badges Guide](guides/badges.md)                             |
 
 ## How OCG Is Organized
 
@@ -37,7 +38,7 @@ Speakers.
 
 The [user dashboard](/dashboard/user ':ignore') is where you manage your personal activity in
 OCG: your upcoming events, profile, invitations, session proposals, and submissions all live
-here.
+here. This is also where you manage, share, and export badges awarded to you.
 
 ### Community Dashboard
 
@@ -48,7 +49,7 @@ and event categories, analytics, and groups.
 ### Group Dashboard
 
 The [group dashboard](/dashboard/group ':ignore') is where organizers run groups and events day
-to day, managing events, organizers, members, sponsors, and communication.
+to day, managing events, organizers, members, sponsors, badges, and communication.
 
 ## Reading Paths by Role
 

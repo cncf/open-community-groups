@@ -3,8 +3,8 @@
 # User Dashboard Guide
 
 Think of the User Dashboard as your home base inside OCG. It brings upcoming events, profile,
-invitations, proposal writing, and submission tracking into one place so moving from participant
-to speaker feels smooth.
+badges, invitations, proposal writing, and submission tracking into one place so moving from
+participant to speaker feels smooth.
 
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
@@ -16,6 +16,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 - [User Dashboard Structure](#user-dashboard-structure)
 - [My Events: Upcoming Participation](#my-events-upcoming-participation)
 - [Profile: Public Identity](#profile-public-identity)
+- [Badges: Portable Credentials](#badges-portable-credentials)
 - [Invitations: Access and Attendance](#invitations-access-and-attendance)
 - [Session Proposals: Reusable Talks](#session-proposals-reusable-talks)
 - [Submissions: Track and Respond](#submissions-track-and-respond)
@@ -24,17 +25,18 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into six areas:
+The dashboard is organized into seven areas:
 
 - [My Events](/dashboard/user?tab=events ':ignore')
 - [Profile](/dashboard/user?tab=account ':ignore')
+- [Badges](/dashboard/user?tab=badges ':ignore')
 - [Invitations](/dashboard/user?tab=invitations ':ignore')
 - [Session proposals](/dashboard/user?tab=session-proposals ':ignore')
 - [Submissions](/dashboard/user?tab=submissions ':ignore')
 - [Logs](/dashboard/user?tab=logs ':ignore')
 
-Each area supports a different part of your participation in OCG: events,
-profile, access, proposals, submissions, and audit visibility.
+Each area supports a different part of your participation in OCG: events, profile, portable
+credentials, access, proposals, submissions, and audit visibility.
 
 ## My Events: Upcoming Participation
 
@@ -85,6 +87,15 @@ organizers. Turning it off does not disable account, invitation, registration, s
 waitlist, cancellation, or reschedule updates.
 
 ![User profile area](../screenshots/dashboard-user-profile.png)
+
+## Badges: Portable Credentials
+
+`Badges` contains the active credentials that groups have awarded to you. From here, you can choose
+which badges appear on your public profile, set their order, open a shareable public credential
+page, export a portable PNG, or permanently revoke a credential.
+
+For sharing options, compatible-system imports, verification, privacy, and revocation behavior,
+follow [User Badge Operations](badges.md#user-badge-operations) in the Badges Guide.
 
 ## Invitations: Access and Attendance
 
