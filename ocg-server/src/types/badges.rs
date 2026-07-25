@@ -14,8 +14,8 @@ pub(crate) const BADGE_NAME_MAX_CHARS: usize = 200;
 /// Result counts returned by a bulk badge award operation.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct AwardBadgeOutcome {
-    /// Number of new credentials accepted for durable issuance.
-    pub awarded_count: usize,
+    /// Number of new credentials queued for durable issuance.
+    pub queued_count: usize,
     /// Number of recipients who already held an active badge.
     pub skipped_count: usize,
 }

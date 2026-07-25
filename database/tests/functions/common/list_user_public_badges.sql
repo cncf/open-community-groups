@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(5);
+select plan(7);
 
 -- ============================================================================
 -- VARIABLES
@@ -14,6 +14,7 @@ select plan(5);
 \set communityID 'b0040000-0000-0000-0000-000000000001'
 \set groupCategoryID 'b0040000-0000-0000-0000-000000000002'
 \set groupID 'b0040000-0000-0000-0000-000000000003'
+\set limitUserID 'b0040000-0000-0000-0000-000000000008'
 \set statusListID 'b0040000-0000-0000-0000-000000000004'
 \set userBadgeHiddenID 'b0040000-0000-0000-0000-000000000005'
 \set userBadgeListedID 'b0040000-0000-0000-0000-000000000006'
@@ -26,6 +27,10 @@ select plan(5);
 -- User whose public badges are requested
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'hash', 'profile@example.test', true, 'profile-user');
+
+-- User whose null-limit listing proves the default public page cap
+insert into "user" (user_id, auth_hash, email, email_verified, username)
+values (:'limitUserID', 'hash', 'limit-profile@example.test', true, 'limit-profile-user');
 
 -- Community that contains the issuing group
 insert into community (community_id, banner_mobile_url, banner_url, description, display_name, logo_url, name)
@@ -69,6 +74,25 @@ insert into user_badge (
         :'userID'
     );
 
+-- Listed active awards used to prove null limits remain bounded
+insert into user_badge (
+    badge_status_list_id, display_order, group_id, is_listed, snapshot, status_list_index,
+    user_id
+)
+select
+    :'statusListID'::uuid,
+    series.value,
+    :'groupID'::uuid,
+    true,
+    jsonb_build_object(
+        'image_file_name', format('listed-%s.png', series.value),
+        'issuer', jsonb_build_object('group_name', 'Profile Group'),
+        'name', format('Listed %s', series.value)
+    ),
+    100 + series.value,
+    :'limitUserID'::uuid
+from generate_series(0, 50) as series(value);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -99,6 +123,27 @@ select is(
     list_user_public_badges(:'communityID', 'profile-user', 50, 1)::jsonb,
     '[]'::jsonb,
     'Should apply public profile pagination'
+);
+
+-- Should default a null limit to the public page-size cap
+select is(
+    jsonb_array_length(list_user_public_badges(:'communityID', 'limit-profile-user', null, 0)::jsonb),
+    50,
+    'Should default a null limit to the public page-size cap'
+);
+
+-- Should default a null offset to the first public profile page
+select is(
+    list_user_public_badges(:'communityID', 'profile-user', 50, null)::jsonb,
+    jsonb_build_array(jsonb_build_object(
+        'snapshot', jsonb_build_object(
+            'image_file_name', 'listed.png',
+            'issuer', jsonb_build_object('group_name', 'Profile Group'),
+            'name', 'Listed'
+        ),
+        'user_badge_id', :'userBadgeListedID'::uuid
+    )),
+    'Should default a null offset to the first public profile page'
 );
 
 -- Should reject requests above the public page-size cap

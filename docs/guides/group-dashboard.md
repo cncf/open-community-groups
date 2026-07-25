@@ -291,7 +291,7 @@ To understand how attendees experience the published result, see
 ## Badges: Portable Recognition
 
 `Badges` is where groups create reusable badge definitions, manage artwork, and review active or
-revoked award history. Badge management requires events write access, so Group Admins and Events
+revoked award history. Badge management requires badges write access, so Group Admins and Events
 Managers can use it while Viewers cannot.
 
 Awards can come from several parts of the group dashboard. Event attendee and contributor actions

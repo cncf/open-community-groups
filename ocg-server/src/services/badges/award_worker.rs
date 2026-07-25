@@ -39,6 +39,7 @@ pub(crate) fn start_badge_award_workers(
     task_tracker: &TaskTracker,
     cancellation_token: &CancellationToken,
 ) {
+    // Start bounded award processors
     for _ in 0..NUM_AWARD_WORKERS {
         let worker = BadgeAwardWorker {
             cancellation_token: cancellation_token.clone(),
@@ -49,6 +50,7 @@ pub(crate) fn start_badge_award_workers(
         });
     }
 
+    // Start recovery and cleanup maintenance
     for _ in 0..NUM_AWARD_RECOVERY_WORKERS {
         let worker = BadgeAwardRecoveryWorker {
             cancellation_token: cancellation_token.clone(),
@@ -84,16 +86,19 @@ impl BadgeAwardWorker {
     /// Processes badge awards until graceful shutdown.
     async fn run(&self) {
         loop {
+            // Stop before claiming new durable ownership
             if self.cancellation_token.is_cancelled() {
                 break;
             }
 
-            let Some(result) =
-                run_until_cancelled(&self.cancellation_token, self.process_next_award_job()).await
-            else {
-                break;
+            // Claim at most one job and complete any claimed batch durably
+            let result = match self.process_next_award_job().await {
+                Ok(Some(processed)) => Ok(processed),
+                Ok(None) => break,
+                Err(err) => Err(err),
             };
 
+            // Select the pause required by this worker outcome
             let pause = match result {
                 Ok(true) => None,
                 Ok(false) => Some(PAUSE_ON_NONE),
@@ -103,6 +108,7 @@ impl BadgeAwardWorker {
                 }
             };
 
+            // Wait without delaying graceful shutdown
             if let Some(pause) = pause {
                 tokio::select! {
                     () = sleep(pause) => {},
@@ -110,19 +116,29 @@ impl BadgeAwardWorker {
                 }
             }
 
+            // Honor shutdown after a completed batch before claiming again
             if self.cancellation_token.is_cancelled() {
                 break;
             }
         }
     }
 
-    /// Claims and processes one bounded durable award batch.
+    /// Claims and processes one bounded durable award batch when shutdown has not won.
     #[instrument(skip(self), err)]
-    async fn process_next_award_job(&self) -> Result<bool> {
-        let Some(job) = self.db.claim_badge_award_job().await? else {
-            return Ok(false);
+    async fn process_next_award_job(&self) -> Result<Option<bool>> {
+        // Race cancellation only while acquiring new durable ownership
+        let claim =
+            run_until_cancelled(&self.cancellation_token, self.db.claim_badge_award_job()).await;
+        let Some(claim) = claim else {
+            return Ok(None);
+        };
+        let job = match claim {
+            Ok(Some(job)) => job,
+            Ok(None) => return Ok(Some(false)),
+            Err(err) => return Err(err),
         };
 
+        // Process a claimed batch to completion before observing shutdown
         let result = self
             .db
             .process_badge_award_job_batch(
@@ -133,6 +149,7 @@ impl BadgeAwardWorker {
             )
             .await;
 
+        // Record the durable processing outcome
         match result {
             Ok(outcome) => {
                 if outcome.rate_limited {
@@ -140,7 +157,7 @@ impl BadgeAwardWorker {
                         badge_award_job_id = %job.badge_award_job_id,
                         "paused badge award job at global issuance limit"
                     );
-                    return Ok(false);
+                    return Ok(Some(false));
                 }
                 if outcome.completed {
                     info!(
@@ -149,7 +166,7 @@ impl BadgeAwardWorker {
                         "completed badge award job"
                     );
                 }
-                Ok(true)
+                Ok(Some(true))
             }
             Err(err) => {
                 self.release_failure(&job, &err).await;
@@ -160,6 +177,7 @@ impl BadgeAwardWorker {
 
     /// Releases the current claim or records terminal failure without hiding the error.
     async fn release_failure(&self, job: &ClaimedBadgeAwardJob, err: &anyhow::Error) {
+        // Persist the failed claim outcome for retry or operator intervention
         match self
             .db
             .record_badge_award_job_failure(
@@ -196,15 +214,18 @@ impl BadgeAwardRecoveryWorker {
     /// Runs maintenance until graceful shutdown.
     async fn run(&self) {
         loop {
+            // Stop before starting a maintenance pass
             if self.cancellation_token.is_cancelled() {
                 break;
             }
 
+            // Race maintenance because it holds no durable processing claim
             let Some(()) = run_until_cancelled(&self.cancellation_token, self.maintain()).await
             else {
                 break;
             };
 
+            // Wait between maintenance passes unless shutdown arrives
             tokio::select! {
                 () = sleep(PAUSE_ON_RECOVERY) => {},
                 () = self.cancellation_token.cancelled() => break,
@@ -214,6 +235,7 @@ impl BadgeAwardRecoveryWorker {
 
     /// Performs one stale-claim recovery and completed-summary cleanup pass.
     async fn maintain(&self) {
+        // Recover abandoned claims without taking ownership of active work
         match self
             .db
             .recover_stale_badge_award_jobs(MAX_FAILURES, PROCESSING_TIMEOUT)
@@ -226,6 +248,7 @@ impl BadgeAwardRecoveryWorker {
             Err(err) => error!(error = %err, "error recovering badge award job claims"),
         }
 
+        // Remove completed summaries after the retention window
         match self.db.cleanup_badge_award_jobs(COMPLETED_JOB_RETENTION).await {
             Ok(deleted) if deleted > 0 => {
                 info!(deleted, "deleted expired badge award job summaries");

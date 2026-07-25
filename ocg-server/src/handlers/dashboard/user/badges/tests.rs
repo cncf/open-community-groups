@@ -18,7 +18,7 @@ use uuid::Uuid;
 use crate::{
     config::{BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig},
     db::mock::MockDB,
-    handlers::tests::{TestRouterBuilder, expect_authenticated_session},
+    handlers::tests::{TestRouterBuilder, assert_empty_response, expect_authenticated_session},
     services::{
         badges::{BadgeService, png},
         images::{Image, MockImageStorage},
@@ -65,6 +65,44 @@ async fn test_export_missing_artwork_returns_not_found() {
 
     // Check missing source artwork is reported without exposing storage details
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_export_revoked_badge_returns_not_found() {
+    // Setup an authenticated owner whose requested award is already revoked
+    let session_id = session::Id::default();
+    let user_badge_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let award = sample_user_badge(user_badge_id, user_id);
+    let mut db = MockDB::new();
+    expect_authenticated_session(&mut db, session_id, user_id);
+    db.expect_get_user_badge()
+        .times(1)
+        .withf(move |owner_id, badge_id| *owner_id == user_id && *badge_id == user_badge_id)
+        .return_once(move |_, _| Ok(Some(award)));
+    let mut storage = MockImageStorage::new();
+    storage.expect_get().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_image_storage(storage)
+        .build()
+        .await;
+
+    // Request a PNG export for a revoked credential
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri(format!("/dashboard/user/badges/{user_badge_id}/export"))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check revoked awards are hidden before artwork loading or signing
+    assert_empty_response(&parts, &body, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

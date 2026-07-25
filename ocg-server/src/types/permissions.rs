@@ -37,6 +37,8 @@ impl PartialEq<CommunityPermission> for &CommunityPermission {
 /// Group-scoped permission identifiers.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum GroupPermission {
+    /// Permission to manage badges in a group.
+    BadgesWrite,
     /// Permission to manage events in a group.
     EventsWrite,
     /// Permission to manage group members.
@@ -55,6 +57,7 @@ impl GroupPermission {
     /// Returns the canonical string identifier used in SQL checks.
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
+            Self::BadgesWrite => "group.badges.write",
             Self::EventsWrite => "group.events.write",
             Self::MembersWrite => "group.members.write",
             Self::Read => "group.read",

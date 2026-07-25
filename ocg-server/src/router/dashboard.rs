@@ -287,12 +287,12 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             "/badges/artwork/{badge_artwork_id}",
             delete(dashboard::group::badges::delete_artwork),
         )
+        .route("/badges/award", post(dashboard::group::badges::award))
         .route(
             "/badges/awards/{user_badge_id}/revoke",
             post(dashboard::group::badges::revoke),
         )
         .route("/badges/options", get(dashboard::group::badges::options))
-        .route("/badges/award", post(dashboard::group::badges::award))
         .route(
             "/badges/{badge_id}",
             put(dashboard::group::badges::update).delete(dashboard::group::badges::delete),
@@ -302,7 +302,7 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
             get(dashboard::group::badges::recipients),
         )
         .route_layer(check_selected_group_permission(
-            GroupPermission::EventsWrite,
+            GroupPermission::BadgesWrite,
         ));
 
     // Group events management endpoints

@@ -56,9 +56,9 @@ use crate::{
     },
     types::{
         badges::{
-            AwardedBadgesFilters, Badge, BadgeArtwork, BadgeAwardDefinition, BadgeAwardSource,
-            BadgeFilters, BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
-            PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
+            AwardedBadgesFilters, Badge, BadgeArtwork, BadgeAwardDefinition, BadgeAwardInput,
+            BadgeAwardSource, BadgeFilters, BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList,
+            PublicBadgeSnapshot, PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
         },
         community::CommunityRole,
         event::{EventAttendanceStatus, EventInvitationRequestStatus, EventKind},
@@ -94,6 +94,53 @@ async fn db_contracts_activate_pre_registered_user_external_provider_deserialize
     assert_eq!(user.registration_status, "registered");
     assert_eq!(user.user_id, activation_id());
     assert_eq!(user.username, "contract-activation");
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_award_badge_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let outcome = db
+        .award_badge(
+            organizer_id(),
+            community_id(),
+            group_id(),
+            &BadgeAwardInput {
+                badge_id: badge_id(),
+                user_ids: vec![organizer_id()],
+                event_id: None,
+            },
+        )
+        .await?;
+
+    assert_eq!(outcome.queued_count, 1);
+    assert_eq!(outcome.skipped_count, 0);
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_badge_award_worker_deserializes() -> Result<()> {
+    // Setup the contract database wrapper
+    let db = contract_tests_db()?;
+
+    // Claim and process the seeded pending award job
+    let claim = db
+        .claim_badge_award_job()
+        .await?
+        .context("contract badge award job should be claimable")?;
+    let outcome = db
+        .process_badge_award_job_batch(claim.badge_award_job_id, claim.claim_id, 25, 500)
+        .await?;
+
+    // Check worker claim and batch outcome JSON deserialize into Rust DTOs
+    assert_eq!(claim.badge_award_job_id, badge_award_job_id());
+    assert!(outcome.completed);
+    assert_eq!(outcome.processed_count, 1);
+    assert!(!outcome.rate_limited);
 
     Ok(())
 }
@@ -247,27 +294,6 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
         user_badges,
         vec![contract_active_user_badge(snapshot, None, None, None)]
     );
-
-    Ok(())
-}
-
-#[tokio::test]
-#[ignore = "requires the contract test database"]
-async fn db_contracts_badge_award_worker_deserializes() -> Result<()> {
-    let db = contract_tests_db()?;
-    let claim = db
-        .claim_badge_award_job()
-        .await?
-        .context("contract badge award job should be claimable")?;
-
-    assert_eq!(claim.badge_award_job_id, badge_award_job_id());
-    let outcome = db
-        .process_badge_award_job_batch(claim.badge_award_job_id, claim.claim_id, 25, 500)
-        .await?;
-
-    assert!(outcome.completed);
-    assert_eq!(outcome.processed_count, 1);
-    assert!(!outcome.rate_limited);
 
     Ok(())
 }

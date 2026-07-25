@@ -262,13 +262,13 @@ export class BadgeAwardModal extends LitWrapper {
   }
 
   _renderSuccess() {
-    const awarded = this._success?.awarded_count || 0;
+    const queued = this._success?.queued_count || 0;
     const skipped = this._success?.skipped_count || 0;
     return html`
       <div class="rounded-lg border border-green-200 bg-green-50 p-5" role="status">
-        <h4 class="font-semibold text-green-900">Award complete</h4>
+        <h4 class="font-semibold text-green-900">Award accepted</h4>
         <p class="mt-1 text-sm text-green-900">
-          ${awarded} new ${awarded === 1 ? "credential" : "credentials"} issued.
+          ${queued} new ${queued === 1 ? "credential" : "credentials"} queued for issuance.
           ${skipped ? `${skipped} active holder${skipped === 1 ? " was" : "s were"} skipped.` : ""}
         </p>
       </div>

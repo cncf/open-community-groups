@@ -1,5 +1,9 @@
 -- Adds group badges, durable awards, and revocation status lists.
 
+-- Drop the previous signature so the loader can add the checked-in filter
+drop function if exists list_event_attendees_ids(uuid, uuid);
+
+-- Stores current badge definitions managed by a group.
 create table badge (
     badge_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
@@ -8,6 +12,7 @@ create table badge (
     group_id uuid not null references "group",
     image_file_name text not null,
     name text not null,
+    -- Supports definition search by name, description, and criteria.
     tsdoc tsvector not null
         generated always as (
             setweight(to_tsvector('simple', name), 'A') ||
@@ -34,6 +39,11 @@ create table badge (
     )
 );
 
+create index badge_group_id_idx on badge (group_id);
+create index badge_image_file_name_idx on badge (image_file_name);
+create index badge_tsdoc_idx on badge using gin (tsdoc);
+
+-- Stores reusable badge artwork files available to one group.
 create table badge_artwork (
     badge_artwork_id uuid primary key default gen_random_uuid(),
     created_at timestamptz default current_timestamp not null,
@@ -47,11 +57,17 @@ create table badge_artwork (
     constraint badge_artwork_group_file_name_key unique (group_id, file_name)
 );
 
+create index badge_artwork_file_name_idx on badge_artwork (file_name);
+create index badge_artwork_group_id_idx on badge_artwork (group_id);
+
+-- Stores durable badge award work claimed by background workers.
 create table badge_award_job (
     badge_award_job_id uuid primary key default gen_random_uuid(),
+    -- Tracks accepted and issued recipient progress across worker batches.
     accepted_count integer not null check (accepted_count >= 0),
     actor_username text not null,
     awarded_count integer default 0 not null check (awarded_count >= 0),
+    -- Captures immutable badge and issuer fields used by deferred issuance.
     badge_snapshot jsonb not null check (jsonb_typeof(badge_snapshot) = 'object'),
     community_id uuid not null references community,
     created_at timestamptz default current_timestamp not null,
@@ -111,6 +127,17 @@ create table badge_award_job (
     )
 );
 
+create index badge_award_job_claimed_at_idx on badge_award_job (claimed_at)
+    where status = 'processing';
+create index badge_award_job_completed_at_idx on badge_award_job (completed_at)
+    where status = 'completed';
+create index badge_award_job_group_id_created_at_idx
+on badge_award_job (group_id, created_at desc);
+create index badge_award_job_pending_idx
+on badge_award_job (next_attempt_at, created_at, badge_award_job_id)
+    where status = 'pending';
+
+-- Stores the canonical recipient order for a durable award job.
 create table badge_award_job_recipient (
     badge_award_job_id uuid not null references badge_award_job on delete cascade,
     position integer not null check (position >= 0),
@@ -127,8 +154,14 @@ create table badge_award_job_recipient (
     )
 );
 
+create index badge_award_job_recipient_user_id_idx
+on badge_award_job_recipient (user_id)
+    where user_id is not null;
+
+-- Stores revocation bit-list allocation state for a group.
 create table badge_status_list (
     badge_status_list_id uuid primary key default gen_random_uuid(),
+    -- Defines the deterministic permutation used to spread issued indexes.
     allocation_offset integer default floor(random() * 131072)::integer not null,
     allocation_position integer default 0 not null,
     allocation_stride integer default (floor(random() * 65536)::integer * 2 + 1) not null,
@@ -151,9 +184,16 @@ create table badge_status_list (
     )
 );
 
+create index badge_status_list_available_idx
+on badge_status_list (group_id, created_at desc)
+    where allocation_position < 131072;
+create index badge_status_list_group_id_idx on badge_status_list (group_id);
+
+-- Enables group-scoped badge awards to retain event links safely.
 alter table event
 add constraint event_event_id_group_id_key unique (event_id, group_id);
 
+-- Stores issued badge credentials and their revocation state.
 create table user_badge (
     user_badge_id uuid primary key default gen_random_uuid(),
     awarded_at timestamptz default current_timestamp not null,
@@ -161,7 +201,9 @@ create table user_badge (
     display_order integer not null check (display_order >= 0),
     group_id uuid not null references "group",
     is_listed boolean default true not null,
+    -- Preserves badge and issuer display context at issuance.
     snapshot jsonb not null check (jsonb_typeof(snapshot) = 'object'),
+    -- Points to the revocation bit within the status list.
     status_list_index integer not null check (status_list_index between 0 and 131071),
 
     badge_id uuid,
@@ -190,27 +232,6 @@ create table user_badge (
     )
 );
 
-create index badge_artwork_file_name_idx on badge_artwork (file_name);
-create index badge_artwork_group_id_idx on badge_artwork (group_id);
-create index badge_award_job_claimed_at_idx on badge_award_job (claimed_at)
-    where status = 'processing';
-create index badge_award_job_completed_at_idx on badge_award_job (completed_at)
-    where status = 'completed';
-create index badge_award_job_group_id_created_at_idx
-on badge_award_job (group_id, created_at desc);
-create index badge_award_job_pending_idx
-on badge_award_job (next_attempt_at, created_at, badge_award_job_id)
-    where status = 'pending';
-create index badge_award_job_recipient_user_id_idx
-on badge_award_job_recipient (user_id)
-    where user_id is not null;
-create index badge_group_id_idx on badge (group_id);
-create index badge_image_file_name_idx on badge (image_file_name);
-create index badge_status_list_available_idx
-on badge_status_list (group_id, created_at desc)
-    where allocation_position < 131072;
-create index badge_status_list_group_id_idx on badge_status_list (group_id);
-create index badge_tsdoc_idx on badge using gin (tsdoc);
 create index user_badge_awarded_at_idx on user_badge (awarded_at);
 create index user_badge_badge_id_idx on user_badge (badge_id);
 create unique index user_badge_badge_id_user_id_active_idx on user_badge (badge_id, user_id)
@@ -287,6 +308,7 @@ begin
 end;
 $$ language plpgsql;
 
+-- Enforces immutable issuance and revocation metadata on updates.
 create trigger prevent_user_badge_revocation_reversal
 before update on user_badge
 for each row execute function prevent_user_badge_revocation_reversal();
@@ -336,6 +358,7 @@ begin
 end;
 $$ language plpgsql;
 
+-- Converts user deletion into durable badge revocation history.
 create trigger revoke_user_badges_on_user_delete
 before delete on "user"
 for each row execute function revoke_user_badges_on_user_delete();
@@ -344,3 +367,16 @@ insert into notification_kind (name, optional_notification)
 values
     ('badge-awarded', false),
     ('badge-revoked', false);
+
+insert into group_permission (group_permission_id, display_name)
+values ('group.badges.write', 'Badges Write');
+
+insert into community_role_group_permission (community_role_id, group_permission_id)
+values
+    ('admin', 'group.badges.write'),
+    ('groups-manager', 'group.badges.write');
+
+insert into group_role_group_permission (group_role_id, group_permission_id)
+values
+    ('admin', 'group.badges.write'),
+    ('events-manager', 'group.badges.write');

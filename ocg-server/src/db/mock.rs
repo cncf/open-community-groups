@@ -545,11 +545,6 @@ mock! {
             &self,
             group_id: Uuid,
             event_id: Uuid,
-        ) -> Result<Vec<Uuid>>;
-        async fn list_event_badge_recipient_ids(
-            &self,
-            group_id: Uuid,
-            event_id: Uuid,
             checked_in_only: bool,
         ) -> Result<Vec<Uuid>>;
         async fn list_event_categories(
@@ -708,6 +703,13 @@ mock! {
             badge_id: Uuid,
             badge: &crate::types::badges::BadgeInput,
         ) -> Result<()>;
+        async fn update_cfs_submission(
+            &self,
+            reviewer_id: Uuid,
+            event_id: Uuid,
+            cfs_submission_id: Uuid,
+            submission: &crate::templates::dashboard::group::submissions::CfsSubmissionUpdate,
+        ) -> Result<bool>;
         async fn update_event(
             &self,
             actor_user_id: Uuid,
@@ -716,13 +718,6 @@ mock! {
             event: &serde_json::Value,
             cfg_max_participants: &HashMap<crate::services::meetings::MeetingProvider, i32>,
         ) -> Result<Vec<Uuid>>;
-        async fn update_cfs_submission(
-            &self,
-            reviewer_id: Uuid,
-            event_id: Uuid,
-            cfs_submission_id: Uuid,
-            submission: &crate::templates::dashboard::group::submissions::CfsSubmissionUpdate,
-        ) -> Result<bool>;
         async fn update_group_sponsor(
             &self,
             actor_user_id: Uuid,

@@ -1513,6 +1513,7 @@ insert into badge_award_job (
     '00000000-0000-0000-0000-00000000c031'
 );
 
+-- Pending recipient consumed by the badge award job contract checks
 insert into badge_award_job_recipient (badge_award_job_id, position, user_id)
 values (
     '00000000-0000-0000-0000-00000000c0bf',

@@ -16,4 +16,4 @@ returns boolean as $$
         from user_badge
         where snapshot->>'image_file_name' = p_file_name
     );
-$$ language sql;
+$$ language sql stable;

@@ -27,6 +27,23 @@ use super::{
 };
 
 #[tokio::test]
+async fn test_credential_cache_reuses_immutable_signed_representation() {
+    // Setup one immutable award and two distinct proof timestamps
+    let service = service(test_jwk(7), vec![]);
+    let award = sample_award();
+    let first_created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
+    let later_created_at = Utc.with_ymd_and_hms(2024, 2, 4, 4, 5, 6).unwrap();
+
+    // Request the same signed representation twice
+    let first = service.cached_credential(&award, first_created_at).await.unwrap();
+    let cached = service.cached_credential(&award, later_created_at).await.unwrap();
+
+    // Check the second request reuses the first proof instead of signing again
+    assert_eq!(cached, first);
+    assert_eq!(cached["proof"]["created"], "2024-02-03T04:05:06.000Z");
+}
+
+#[tokio::test]
 async fn test_credential_profile_signs_and_verifies_after_key_rotation() {
     // Setup and issue the deterministic credential fixture
     let original_key = test_jwk(7);
@@ -62,23 +79,6 @@ async fn test_credential_profile_signs_and_verifies_after_key_rotation() {
     assert_eq!(verified.user_badge_id, award.user_badge_id);
     assert_eq!(verified.status_list_id, award.badge_status_list_id);
     assert_eq!(verified.status_list_index, award.status_list_index);
-}
-
-#[tokio::test]
-async fn test_credential_cache_reuses_immutable_signed_representation() {
-    // Setup one immutable award and two distinct proof timestamps
-    let service = service(test_jwk(7), vec![]);
-    let award = sample_award();
-    let first_created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
-    let later_created_at = Utc.with_ymd_and_hms(2024, 2, 4, 4, 5, 6).unwrap();
-
-    // Request the same signed representation twice
-    let first = service.cached_credential(&award, first_created_at).await.unwrap();
-    let cached = service.cached_credential(&award, later_created_at).await.unwrap();
-
-    // Check the second request reuses the first proof instead of signing again
-    assert_eq!(cached, first);
-    assert_eq!(cached["proof"]["created"], "2024-02-03T04:05:06.000Z");
 }
 
 #[tokio::test]

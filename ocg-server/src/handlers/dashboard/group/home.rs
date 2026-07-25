@@ -65,7 +65,7 @@ pub(crate) async fn page(
             &community_id,
             &group_id,
             &user.user_id,
-            GroupPermission::EventsWrite
+            GroupPermission::BadgesWrite
         ),
         db.list_user_groups(&user.user_id),
         db.get_site_settings()

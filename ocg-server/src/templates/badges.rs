@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::{
-    templates::{PageId, auth::User, filters, helpers::user_initials},
+    templates::filters,
     types::{badges::UserBadge, site::SiteSettings},
 };
 
@@ -15,16 +15,12 @@ pub struct CredentialPage {
     pub award: UserBadge,
     /// Public badge image URL.
     pub image_url: String,
-    /// Identifier for the current page.
-    pub page_id: PageId,
     /// Current request path.
     pub path: String,
     /// Whether this credential is permanently revoked.
     pub revoked: bool,
     /// Global site settings.
     pub site_settings: SiteSettings,
-    /// Public page user state.
-    pub user: User,
 }
 
 impl CredentialPage {
@@ -56,14 +52,10 @@ pub struct VerifiedBadgeView {
 #[derive(Debug, Clone, Template)]
 #[template(path = "badges/verify.html")]
 pub struct VerifyPage {
-    /// Identifier for the current page.
-    pub page_id: PageId,
     /// Current request path.
     pub path: String,
     /// Global site settings.
     pub site_settings: SiteSettings,
-    /// Public page user state.
-    pub user: User,
 
     /// Generic invalid-result message.
     pub error: Option<String>,

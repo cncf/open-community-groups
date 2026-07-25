@@ -12,8 +12,8 @@ use tower::ServiceExt;
 use crate::{
     db::mock::MockDB,
     handlers::tests::{
-        TestRouterBuilder, assert_empty_hx_trigger_response, expect_authenticated_group_session,
-        expect_group_permission,
+        TestRouterBuilder, assert_empty_hx_trigger_response, assert_empty_response,
+        expect_authenticated_group_session, expect_group_permission,
     },
     services::{
         images::{Image, MockImageStorage},
@@ -41,7 +41,7 @@ async fn test_add_artwork_rejects_missing_image() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_add_badge_artwork().never();
     let mut storage = MockImageStorage::new();
@@ -87,7 +87,7 @@ async fn test_add_artwork_rejects_wrong_dimensions() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_add_badge_artwork().never();
     let mut storage = MockImageStorage::new();
@@ -140,7 +140,7 @@ async fn test_add_artwork_success() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_add_badge_artwork()
         .times(1)
@@ -211,7 +211,7 @@ async fn test_add_success() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_add_badge()
         .times(1)
@@ -271,7 +271,7 @@ async fn test_award_success() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_award_badge()
         .times(1)
@@ -288,7 +288,7 @@ async fn test_award_success() {
         })
         .return_once(|_, _, _, _| {
             Ok(AwardBadgeOutcome {
-                awarded_count: 1,
+                queued_count: 1,
                 skipped_count: 0,
             })
         });
@@ -335,8 +335,9 @@ async fn test_award_requires_recipient() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
+    db.expect_award_badge().never();
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .build()
         .await;
@@ -356,9 +357,12 @@ async fn test_award_requires_recipient() {
         )
         .await
         .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
 
     // Check the handler rejects an empty set before mutation
-    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "badge recipients cannot be empty");
 }
 
 #[tokio::test]
@@ -377,7 +381,7 @@ async fn test_group_scoped_award_success() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_award_badge()
         .times(1)
@@ -394,7 +398,7 @@ async fn test_group_scoped_award_success() {
         })
         .return_once(|_, _, _, _| {
             Ok(AwardBadgeOutcome {
-                awarded_count: 1,
+                queued_count: 1,
                 skipped_count: 0,
             })
         });
@@ -427,8 +431,274 @@ async fn test_group_scoped_award_success() {
 
     // Check the inserted and skipped counts cross the HTTP boundary
     assert_eq!(parts.status, StatusCode::CREATED);
-    assert_eq!(body.awarded_count, 1);
+    assert_eq!(body.queued_count, 1);
     assert_eq!(body.skipped_count, 0);
+}
+
+#[tokio::test]
+async fn test_delete_forbidden() {
+    // Setup an authenticated group session without badge write access
+    let badge_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_badges_write_forbidden(&mut db, community_id, group_id, user_id);
+    db.expect_delete_badge().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Attempt to delete a badge definition without write permission
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/dashboard/group/badges/{badge_id}"))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check permission fails before the badge mutation
+    assert_empty_response(&parts, &body, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_delete_rejects_invalid_badge_id() {
+    // Setup an authorized group session without mutation expectations
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_delete_badge().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Attempt to delete a badge definition with a malformed path identifier
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri("/dashboard/group/badges/not-a-uuid")
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check path validation fails before the badge mutation
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert!(body.contains("Cannot parse"));
+    assert!(body.contains("badge_id"));
+}
+
+#[tokio::test]
+async fn test_delete_success() {
+    // Setup an authorized group session and existing badge definition
+    let badge_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_delete_badge()
+        .times(1)
+        .withf(move |actor, community, group, badge| {
+            *actor == user_id
+                && *community == community_id
+                && *group == group_id
+                && *badge == badge_id
+        })
+        .return_once(|_, _, _, _| Ok(()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Delete the badge definition through the protected route
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/dashboard/group/badges/{badge_id}"))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the dashboard refresh contract
+    assert_empty_hx_trigger_response(
+        &parts,
+        &body,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
+    );
+}
+
+#[tokio::test]
+async fn test_delete_artwork_forbidden() {
+    // Setup an authenticated group session without badge write access
+    let badge_artwork_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_badges_write_forbidden(&mut db, community_id, group_id, user_id);
+    db.expect_delete_badge_artwork().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Attempt to delete gallery artwork without write permission
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!(
+                    "/dashboard/group/badges/artwork/{badge_artwork_id}"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check permission fails before the artwork mutation
+    assert_empty_response(&parts, &body, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_delete_artwork_rejects_invalid_artwork_id() {
+    // Setup an authorized group session without mutation expectations
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_delete_badge_artwork().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Attempt to delete gallery artwork with a malformed path identifier
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri("/dashboard/group/badges/artwork/not-a-uuid")
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check path validation fails before the artwork mutation
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert!(body.contains("Cannot parse"));
+    assert!(body.contains("badge_artwork_id"));
+}
+
+#[tokio::test]
+async fn test_delete_artwork_success() {
+    // Setup an authorized group session and unreferenced artwork
+    let badge_artwork_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_delete_badge_artwork()
+        .times(1)
+        .withf(move |actor, community, group, artwork| {
+            *actor == user_id
+                && *community == community_id
+                && *group == group_id
+                && *artwork == badge_artwork_id
+        })
+        .return_once(|_, _, _, _| Ok(()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Delete the gallery artwork through the protected route
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!(
+                    "/dashboard/group/badges/artwork/{badge_artwork_id}"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the dashboard refresh contract
+    assert_empty_hx_trigger_response(
+        &parts,
+        &body,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
+    );
 }
 
 #[tokio::test]
@@ -447,9 +717,9 @@ async fn test_resolve_checked_in_attendee_recipients() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
-    db.expect_list_event_badge_recipient_ids()
+    db.expect_list_event_attendees_ids()
         .times(1)
         .withf(move |group, event, checked_in_only| {
             *group == group_id && *event == event_id && *checked_in_only
@@ -482,12 +752,304 @@ async fn test_resolve_checked_in_attendee_recipients() {
     assert_eq!(body, json!({ "user_ids": [recipient_id] }));
 }
 
+#[tokio::test]
+async fn test_revoke_forbidden() {
+    // Setup an authenticated group session without badge write access
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_badge_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_badges_write_forbidden(&mut db, community_id, group_id, user_id);
+    db.expect_revoke_group_user_badge().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Attempt to revoke a credential without write permission
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!(
+                    "/dashboard/group/badges/awards/{user_badge_id}/revoke"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from("reason=duplicate"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check permission fails before the revocation mutation
+    assert_empty_response(&parts, &body, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_revoke_rejects_invalid_user_badge_id() {
+    // Setup an authorized group session without mutation expectations
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_revoke_group_user_badge().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Attempt to revoke a credential with a malformed path identifier
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/dashboard/group/badges/awards/not-a-uuid/revoke")
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from("reason=duplicate"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check path validation fails before the revocation mutation
+    assert_eq!(parts.status, StatusCode::BAD_REQUEST);
+    assert!(body.contains("Cannot parse"));
+    assert!(body.contains("user_badge_id"));
+}
+
+#[tokio::test]
+async fn test_revoke_success() {
+    // Setup an authorized group session and active issued credential
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_badge_id = Uuid::new_v4();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_revoke_group_user_badge()
+        .times(1)
+        .withf(move |actor, community, group, badge, reason| {
+            *actor == user_id
+                && *community == community_id
+                && *group == group_id
+                && *badge == user_badge_id
+                && reason == "duplicate"
+        })
+        .return_once(|_, _, _, _, _| Ok(()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Revoke the issued credential with its private reason
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!(
+                    "/dashboard/group/badges/awards/{user_badge_id}/revoke"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from("reason=duplicate"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the dashboard refresh contract
+    assert_empty_hx_trigger_response(
+        &parts,
+        &body,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
+    );
+}
+
+#[tokio::test]
+async fn test_update_forbidden() {
+    // Setup an authenticated group session without badge write access
+    let badge_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let input = sample_badge_input();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_badges_write_forbidden(&mut db, community_id, group_id, user_id);
+    db.expect_update_badge().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Attempt to update a badge definition without write permission
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/dashboard/group/badges/{badge_id}"))
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from(serde_qs::to_string(&input).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check permission fails before the badge mutation
+    assert_empty_response(&parts, &body, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_update_rejects_invalid_input() {
+    // Setup an authorized group session and invalid badge definition
+    let badge_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let mut input = sample_badge_input();
+    input.name.clear();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_update_badge().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Submit a badge definition missing a required field
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/dashboard/group/badges/{badge_id}"))
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from(serde_qs::to_string(&input).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check input validation fails before the badge mutation
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "all badge fields are required");
+}
+
+#[tokio::test]
+async fn test_update_success() {
+    // Setup an authorized group session and valid badge definition
+    let badge_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let input = sample_badge_input();
+    let body = serde_qs::to_string(&input).unwrap();
+    let expected = input.clone();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_update_badge()
+        .times(1)
+        .withf(move |actor, community, group, badge_id_arg, badge| {
+            *actor == user_id
+                && *community == community_id
+                && *group == group_id
+                && *badge_id_arg == badge_id
+                && badge.criteria == expected.criteria
+                && badge.description == expected.description
+                && badge.image_file_name == expected.image_file_name
+                && badge.name == expected.name
+        })
+        .return_once(|_, _, _, _, _| Ok(()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Submit the updated definition through the protected route
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/dashboard/group/badges/{badge_id}"))
+                .header(COOKIE, format!("id={session_id}"))
+                .header(CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the dashboard refresh contract
+    assert_empty_hx_trigger_response(
+        &parts,
+        &body,
+        StatusCode::NO_CONTENT,
+        "refresh-group-dashboard-table",
+    );
+}
+
 #[test]
 fn test_is_safe_artwork_file_name_rejects_paths() {
     // Check the image-service basename shape and unsafe path forms
     assert!(is_safe_artwork_file_name("0123456789abcdef.png"));
     assert!(!is_safe_artwork_file_name("../../log-out"));
     assert!(!is_safe_artwork_file_name("badge/image.png"));
+}
+
+#[test]
+fn test_parse_to_date_filter_rejects_out_of_range_exclusive_bound() {
+    // Check an unrepresentable exclusive upper bound remains an error
+    assert!(matches!(
+        parse_to_date_filter("+262142-12-31"),
+        Err(HandlerError::Deserialization(message)) if message == "to date is invalid"
+    ));
 }
 
 #[test]
@@ -520,7 +1082,7 @@ async fn test_options_trims_search_and_returns_json() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_list_badges()
         .times(1)
@@ -570,7 +1132,7 @@ async fn test_artwork_page_renders_independent_tab() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_list_badge_artwork()
         .times(1)
@@ -610,6 +1172,16 @@ async fn test_awards_page_builds_navigation() {
     let badge_id = Uuid::new_v4();
     let community_id = Uuid::new_v4();
     let event_id = Uuid::new_v4();
+    let expected_from = NaiveDate::from_ymd_opt(2026, 1, 1)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
+    let expected_to = NaiveDate::from_ymd_opt(2026, 2, 1)
+        .unwrap()
+        .and_hms_opt(0, 0, 0)
+        .unwrap()
+        .and_utc();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -620,7 +1192,7 @@ async fn test_awards_page_builds_navigation() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_list_awarded_badges()
         .times(1)
@@ -630,10 +1202,10 @@ async fn test_awards_page_builds_navigation() {
                 && filters.offset == 50
                 && filters.badge_id == Some(badge_id)
                 && filters.event_id == Some(event_id)
-                && filters.from.is_some()
+                && filters.from.as_ref() == Some(&expected_from)
                 && filters.query.as_deref() == Some("alice")
                 && filters.status.as_deref() == Some("active")
-                && filters.to.is_some()
+                && filters.to.as_ref() == Some(&expected_to)
         })
         .return_once(|_, _| {
             Ok(GroupAwardedBadges {
@@ -682,6 +1254,86 @@ async fn test_awards_page_builds_navigation() {
 }
 
 #[tokio::test]
+async fn test_awards_page_rejects_invalid_from_date() {
+    // Setup an authorized group session without database page expectations
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_list_awarded_badges().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request award history with an invalid lower date bound
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/dashboard/group/awards?from=not-a-date")
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check date validation fails before querying award history
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "from date is invalid");
+}
+
+#[tokio::test]
+async fn test_awards_page_rejects_invalid_to_date() {
+    // Setup an authorized group session without database page expectations
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_list_awarded_badges().never();
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request award history with an invalid upper date bound
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/dashboard/group/awards?to=2026-02-31")
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check date validation fails before querying award history
+    assert_eq!(parts.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body, "to date is invalid");
+}
+
+#[tokio::test]
 async fn test_badges_page_builds_navigation() {
     // Setup an authorized group session and paginated badge definitions
     let community_id = Uuid::new_v4();
@@ -695,7 +1347,7 @@ async fn test_badges_page_builds_navigation() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     db.expect_list_badge_artwork()
         .times(1)
@@ -766,7 +1418,7 @@ async fn test_awards_page_rejects_oversized_offset() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .build()
@@ -802,7 +1454,7 @@ async fn test_badges_page_rejects_oversized_offset() {
         community_id,
         group_id,
         user_id,
-        GroupPermission::EventsWrite,
+        GroupPermission::BadgesWrite,
     );
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .build()
@@ -825,6 +1477,33 @@ async fn test_badges_page_rejects_oversized_offset() {
 }
 
 // Helpers.
+
+/// Expect badge write permission to be denied while read access remains.
+fn expect_badges_write_forbidden(
+    db: &mut MockDB,
+    community_id: Uuid,
+    group_id: Uuid,
+    user_id: Uuid,
+) {
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+}
 
 /// Encode a PNG fixture with the requested dimensions.
 fn png_bytes(width: u32, height: u32) -> Vec<u8> {

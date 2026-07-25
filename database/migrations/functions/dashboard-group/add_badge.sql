@@ -16,7 +16,7 @@ begin
         p_community_id,
         p_group_id,
         p_actor_user_id,
-        'group.events.write'
+        'group.badges.write'
     ) then
         raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
     end if;

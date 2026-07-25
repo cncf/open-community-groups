@@ -1088,8 +1088,10 @@ async fn test_cancel_success() {
         .returning(move |_, _, _| Ok(event_full.clone()));
     tx.expect_list_event_attendees_ids()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(vec![attendee_id]));
+        .withf(move |gid, eid, checked_in_only| {
+            *gid == group_id && *eid == event_id && !checked_in_only
+        })
+        .returning(move |_, _, _| Ok(vec![attendee_id]));
     tx.expect_list_event_waitlist_ids()
         .times(1)
         .withf(move |gid, eid| *gid == group_id && *eid == event_id)
@@ -1441,8 +1443,10 @@ async fn test_cancel_series_sends_aggregate_notification() {
         .returning(move |_, _, _| Ok(related_event_full.clone()));
     tx.expect_list_event_attendees_ids()
         .times(2)
-        .withf(move |gid, eid| *gid == group_id && (*eid == event_id || *eid == related_event_id))
-        .returning(move |_, _| Ok(vec![attendee_id]));
+        .withf(move |gid, eid, checked_in_only| {
+            *gid == group_id && (*eid == event_id || *eid == related_event_id) && !checked_in_only
+        })
+        .returning(move |_, _, _| Ok(vec![attendee_id]));
     tx.expect_list_event_waitlist_ids()
         .times(2)
         .withf(move |gid, eid| *gid == group_id && (*eid == event_id || *eid == related_event_id))
@@ -2760,8 +2764,10 @@ async fn test_update_promotes_waitlist_and_sends_reschedule_notification() {
         .returning(move |_, _, _| Ok(event_full.clone()));
     tx.expect_list_event_attendees_ids()
         .times(1)
-        .withf(move |gid, eid| *gid == group_id && *eid == event_id)
-        .returning(move |_, _| Ok(vec![attendee_id]));
+        .withf(move |gid, eid, checked_in_only| {
+            *gid == group_id && *eid == event_id && !checked_in_only
+        })
+        .returning(move |_, _, _| Ok(vec![attendee_id]));
     tx.expect_get_site_settings()
         .times(2)
         .returning(move || Ok(site_settings.clone()));

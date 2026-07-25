@@ -80,14 +80,14 @@ select lives_ok(
     'Should accept duplicate artwork as an idempotent request'
 );
 
--- Should not audit an idempotent duplicate request as another mutation
+-- Should not audit duplicate artwork as another mutation
 select is(
     (select count(*)::integer from audit_log where action = 'badge_artwork_added'),
     1,
     'Should not audit duplicate artwork as another mutation'
 );
 
--- Should reject a filename that can escape the public badge image route
+-- Should reject artwork path traversal
 select throws_ok(
     format(
         $$select add_badge_artwork(%L::uuid, %L::uuid, %L::uuid, '../../log-out')$$,

@@ -1,9 +1,11 @@
+-- Tests listing verified confirmed attendee ids for an event.
+
 -- ============================================================================
 -- SETUP
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -17,6 +19,7 @@ select plan(6);
 \set missingEventID '3a180000-0000-0000-0000-000000000006'
 \set missingGroupID '3a180000-0000-0000-0000-000000000007'
 \set otherGroupID '3a180000-0000-0000-0000-000000000008'
+\set otherEventID '3a180000-0000-0000-0000-000000000013'
 \set user0ID '3a180000-0000-0000-0000-000000000009'
 \set user1ID '3a180000-0000-0000-0000-000000000010'
 \set user2ID '3a180000-0000-0000-0000-000000000011'
@@ -120,7 +123,30 @@ insert into event (
     true
 );
 
--- Event attendees
+-- Other event in the same group used to prove event isolation
+insert into event (
+    event_id,
+    event_category_id,
+    event_kind_id,
+    group_id,
+    name,
+    slug,
+    description,
+    timezone,
+    published
+) values (
+    :'otherEventID',
+    :'eventCategoryID',
+    'in-person',
+    :'groupID',
+    'Other Test Event',
+    'other-test-event',
+    'Other test event description',
+    'UTC',
+    true
+);
+
+-- Event attendees covering checked-in, pending, and unverified states
 insert into event_attendee (checked_in, event_id, status, user_id)
 values
     (false, :'eventID', 'confirmed', :'user0ID'),
@@ -128,50 +154,47 @@ values
     (true, :'eventID', 'confirmed', :'user2ID'),
     (true, :'eventID', 'invitation-pending', :'user3ID');
 
+-- Other event attendee excluded from the primary event result set
+insert into event_attendee (checked_in, event_id, status, user_id)
+values (true, :'otherEventID', 'confirmed', :'user3ID');
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
--- Should return verified confirmed attendees ordered by user id
-select is(
-    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid),
-    array[:'user0ID'::uuid, :'user1ID'::uuid],
-    'Returns verified confirmed attendees ordered by user id'
-);
-
 -- Should return empty list for event without attendees
 select is(
-    list_event_attendees_ids(:'missingGroupID'::uuid, :'missingEventID'::uuid),
+    list_event_attendees_ids(:'missingGroupID'::uuid, :'missingEventID'::uuid, false),
     array[]::uuid[],
-    'Returns empty list for event without attendees'
+    'Should return empty list for event without attendees'
 );
 
 -- Should return empty list when wrong group_id provided
 select is(
-    list_event_attendees_ids(:'otherGroupID'::uuid, :'eventID'::uuid),
+    list_event_attendees_ids(:'otherGroupID'::uuid, :'eventID'::uuid, false),
     array[]::uuid[],
-    'Returns empty list when wrong group_id is provided'
+    'Should return empty list when wrong group_id provided'
 );
 
--- Should resolve all verified confirmed badge recipients
+-- Should return only checked-in verified confirmed attendees when filtered
 select is(
-    list_event_badge_recipient_ids(:'groupID'::uuid, :'eventID'::uuid, false),
-    array[:'user0ID'::uuid, :'user1ID'::uuid],
-    'Returns all verified confirmed badge recipients'
-);
-
--- Should resolve only checked-in badge recipients
-select is(
-    list_event_badge_recipient_ids(:'groupID'::uuid, :'eventID'::uuid, true),
+    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid, true),
     array[:'user1ID'::uuid],
-    'Returns only checked-in badge recipients'
+    'Should return only checked-in verified confirmed attendees when filtered'
 );
 
--- Should return no badge recipients outside the group boundary
+-- Should return verified confirmed attendees ordered by user id
 select is(
-    list_event_badge_recipient_ids(:'otherGroupID'::uuid, :'eventID'::uuid, false),
-    array[]::uuid[],
-    'Returns no badge recipients outside the group boundary'
+    list_event_attendees_ids(:'groupID'::uuid, :'eventID'::uuid, false),
+    array[:'user0ID'::uuid, :'user1ID'::uuid],
+    'Should return verified confirmed attendees ordered by user id'
+);
+
+-- Should isolate attendees to the requested event
+select is(
+    list_event_attendees_ids(:'groupID'::uuid, :'otherEventID'::uuid, false),
+    array[:'user3ID'::uuid],
+    'Should isolate attendees to the requested event'
 );
 
 -- ============================================================================

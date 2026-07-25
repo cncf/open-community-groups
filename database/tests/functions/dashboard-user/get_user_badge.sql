@@ -47,16 +47,48 @@ values (:'statusListID', :'groupID');
 
 -- Active award owned by the dashboard user
 insert into user_badge (
-    user_badge_id, badge_status_list_id, display_order, group_id, snapshot, status_list_index,
+    user_badge_id, awarded_at, badge_status_list_id, display_order, group_id, snapshot, status_list_index,
     user_id
-) values (:'userBadgeID', :'statusListID', 0, :'groupID', '{"name":"Badge"}', 1, :'userID');
+) values (
+    :'userBadgeID',
+    '2026-03-01 00:00:00+00',
+    :'statusListID',
+    0,
+    :'groupID',
+    '{"name":"Badge"}',
+    1,
+    :'userID'
+);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should return an active badge owned by the user
-select is((get_user_badge(:'userID', :'userBadgeID')::jsonb)->>'user_badge_id', :'userBadgeID', 'Should return an active badge owned by the user');
+select is(
+    get_user_badge(:'userID', :'userBadgeID')::jsonb,
+    jsonb_build_object(
+        'awarded_at', '2026-03-01 00:00:00+00'::timestamptz,
+        'badge_status_list_id', :'statusListID'::uuid,
+        'display_order', 0,
+        'group_id', :'groupID'::uuid,
+        'is_listed', true,
+        'snapshot', '{"name":"Badge"}'::jsonb,
+        'status_list_index', 1,
+        'user_badge_id', :'userBadgeID'::uuid,
+
+        'badge_id', null,
+        'event_id', null,
+        'event_name', null,
+        'recipient_name', null,
+        'recipient_username', null,
+        'revocation_reason', null,
+        'revoked_at', null,
+        'revoked_by_user_id', null,
+        'user_id', :'userID'::uuid
+    ),
+    'Should return an active badge owned by the user'
+);
 
 -- Should not return another user's badge
 select is(get_user_badge(:'otherUserID', :'userBadgeID')::jsonb, null::jsonb, 'Should not return another user''s badge');

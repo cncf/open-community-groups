@@ -232,7 +232,7 @@ pub(crate) async fn prepare_list_page(
             &community_id,
             &group_id,
             &user_id,
-            GroupPermission::EventsWrite
+            GroupPermission::BadgesWrite
         ),
         db.user_has_group_permission(
             &community_id,

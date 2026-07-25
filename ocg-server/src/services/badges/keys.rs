@@ -65,12 +65,15 @@ impl KeySet {
 
     /// Build an Ed25519 Multikey for one allowlisted verification method URL.
     pub(super) fn multikey(&self, base_url: &str, key_id: &str) -> Result<Multikey> {
+        // Load the allowlisted public key material
         let jwk = self
             .public_jwk(key_id)
             .ok_or(BadgeServiceError::UnknownVerificationMethod)?;
         let Params::OKP(params) = &jwk.params else {
             return Err(BadgeServiceError::InvalidKey);
         };
+
+        // Validate the public key bytes as an Ed25519 verifying key
         let public_key: [u8; 32] = params
             .public_key
             .0
@@ -79,10 +82,13 @@ impl KeySet {
             .map_err(|_| BadgeServiceError::InvalidKey)?;
         let public_key =
             VerifyingKey::from_bytes(&public_key).map_err(|_| BadgeServiceError::InvalidKey)?;
+
+        // Build stable verification method and controller URLs
         let key_url = key_url(base_url, key_id)?;
         let controller = UriBuf::new(format!("{base_url}/badges").into_bytes())
             .map_err(|_| BadgeServiceError::InvalidUrl)?;
 
+        // Return the multikey method for the closed resolver
         Ok(Multikey::from_public_key(key_url, controller, &public_key))
     }
 

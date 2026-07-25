@@ -33,7 +33,7 @@ describe("badge-award-modal", () => {
     window.fetch = async (url, options = {}) => {
       calls.push({ url: String(url), options });
       if (options.method === "POST") {
-        return new Response(JSON.stringify({ awarded_count: 1, skipped_count: 0 }), {
+        return new Response(JSON.stringify({ queued_count: 1, skipped_count: 0 }), {
           status: 201,
           headers: { "Content-Type": "application/json" },
         });
@@ -70,7 +70,7 @@ describe("badge-award-modal", () => {
     await element.updateComplete;
 
     expect(element._state).to.equal("success");
-    expect(element.textContent).to.include("1 new credential issued");
+    expect(element.textContent).to.include("1 new credential queued for issuance");
     expect(document.activeElement).to.equal(element.querySelector("[data-badge-award-close]"));
     expect(calls.filter((call) => call.options.method === "POST")).to.have.length(1);
     const body = JSON.parse(calls.find((call) => call.options.method === "POST").options.body);
@@ -186,7 +186,7 @@ describe("badge-award-modal", () => {
     });
     await waitUntil(() => element._state === "ready", "new badge options should load");
     pendingAward(
-      new Response(JSON.stringify({ awarded_count: 1, skipped_count: 0 }), {
+      new Response(JSON.stringify({ queued_count: 1, skipped_count: 0 }), {
         headers: { "Content-Type": "application/json" },
       }),
     );

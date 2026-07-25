@@ -23,7 +23,6 @@ select plan(2);
 -- SEED DATA
 -- ============================================================================
 
--- Community that owns the status list
 -- Active recipient used to distinguish the unrevoked bit
 insert into "user" (user_id, auth_hash, email, email_verified, username)
 values (:'userID', 'hash', 'status@example.test', true, 'status-user');
@@ -56,11 +55,15 @@ insert into user_badge (
 -- TESTS
 -- ============================================================================
 
--- Should return only revoked indexes
+-- Should return a complete status list contract with only revoked indexes
 select is(
-    (get_badge_status_list(:'statusListID')::jsonb)->'revoked_indexes',
-    '[42]'::jsonb,
-    'Should return only revoked indexes'
+    get_badge_status_list(:'statusListID')::jsonb,
+    jsonb_build_object(
+        'badge_status_list_id', :'statusListID'::uuid,
+        'group_id', :'groupID'::uuid,
+        'revoked_indexes', jsonb_build_array(42)
+    ),
+    'Should return a complete status list contract with only revoked indexes'
 );
 
 -- Should return null for an unknown status list

@@ -1,4 +1,4 @@
--- Deletes completed badge award job summaries after their retention period.
+-- Deletes terminal badge award job summaries after their retention period.
 create or replace function cleanup_badge_award_jobs(
     p_retention_seconds bigint default 2592000
 )
@@ -11,11 +11,11 @@ begin
         raise exception 'badge award job retention must be positive';
     end if;
 
-    -- Remove one bounded batch of successful summaries outside the retention window
+    -- Remove one bounded batch of terminal summaries outside the retention window
     with expired_jobs as (
         select badge_award_job_id
         from badge_award_job
-        where status = 'completed'
+        where status in ('completed', 'failed')
         and completed_at < current_timestamp - make_interval(secs => p_retention_seconds)
         order by completed_at, badge_award_job_id
         for update skip locked

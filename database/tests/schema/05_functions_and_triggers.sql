@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(331);
+select plan(330);
 
 -- ============================================================================
 -- VARIABLES
@@ -182,7 +182,6 @@ select has_function('get_group_stats', array['uuid', 'uuid', 'boolean']::name[])
 select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
 select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
 select has_function('get_public_user_badge', array['uuid']::name[]);
-select has_function('list_user_public_badges', array['uuid', 'text', 'integer', 'integer']::name[]);
 select has_function('get_public_user_provider', array['jsonb']::name[]);
 select has_function('group_has_active_subgroups', array['uuid', 'uuid']::name[]);
 select has_function('group_has_child_links', array['uuid', 'uuid']::name[]);
@@ -229,11 +228,7 @@ select has_function('list_community_audit_logs', array['uuid', 'jsonb']::name[])
 select has_function('list_community_roles', '{}'::name[]);
 select has_function('list_community_team_members', array['uuid', 'jsonb']::name[]);
 select has_function('list_event_approved_cfs_submissions', array['uuid']::name[]);
-select has_function('list_event_attendees_ids', array['uuid', 'uuid']::name[]);
-select has_function(
-    'list_event_badge_recipient_ids',
-    array['uuid', 'uuid', 'boolean']::name[]
-);
+select has_function('list_event_attendees_ids', array['uuid', 'uuid', 'boolean']::name[]);
 select has_function('list_event_categories', array['uuid']::name[]);
 select has_function('list_event_cfs_labels', array['uuid']::name[]);
 select has_function('list_event_cfs_submissions', array['uuid', 'jsonb']::name[]);
@@ -271,6 +266,7 @@ select has_function('list_user_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_group_team_invitations', array['uuid']::name[]);
 select has_function('list_user_groups', array['uuid']::name[]);
 select has_function('list_user_pending_session_proposal_co_speaker_invitations', array['uuid']::name[]);
+select has_function('list_user_public_badges', array['uuid', 'text', 'integer', 'integer']::name[]);
 select has_function('list_user_session_proposals', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_session_proposals_for_cfs_event', array['uuid', 'uuid']::name[]);
 select has_function('lock_events_for_cancellation', array['uuid', 'uuid[]']::name[]);

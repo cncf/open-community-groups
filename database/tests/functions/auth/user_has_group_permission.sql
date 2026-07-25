@@ -3,7 +3,7 @@
 -- ============================================================================
 
 begin;
-select plan(131);
+select plan(149);
 
 -- ============================================================================
 -- VARIABLES
@@ -331,6 +331,7 @@ with tested_permissions (
     permission
 ) as (
     values
+        ('group.badges.write'),
         ('group.events.write'),
         ('group.members.write'),
         ('group.read'),
@@ -378,6 +379,7 @@ with actors (
             :'groupID'::uuid,
             :'userCommunityAdminID'::uuid,
             array[
+                'group.badges.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -392,6 +394,7 @@ with actors (
             :'otherGroupID'::uuid,
             :'userCommunityAdminID'::uuid,
             array[
+                'group.badges.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -406,6 +409,7 @@ with actors (
             :'groupID'::uuid,
             :'userCommunityGroupsManagerID'::uuid,
             array[
+                'group.badges.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -450,6 +454,7 @@ with actors (
             :'groupID'::uuid,
             :'userDualRoleID'::uuid,
             array[
+                'group.badges.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -464,6 +469,7 @@ with actors (
             :'groupID'::uuid,
             :'userGroupAdminID'::uuid,
             array[
+                'group.badges.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -478,6 +484,7 @@ with actors (
             :'groupID'::uuid,
             :'userEventsManagerID'::uuid,
             array[
+                'group.badges.write',
                 'group.events.write',
                 'group.read'
             ]::text[]
@@ -504,6 +511,7 @@ with actors (
             :'otherCommunityGroupID'::uuid,
             :'userOtherGroupAdminID'::uuid,
             array[
+                'group.badges.write',
                 'group.events.write',
                 'group.members.write',
                 'group.read',
@@ -551,6 +559,7 @@ with actors (
     permission
 ) as (
     values
+        ('group.badges.write'),
         ('group.events.write'),
         ('group.members.write'),
         ('group.read'),

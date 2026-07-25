@@ -24,7 +24,7 @@ Use this section when your group wants to create badges, award them, or manage a
 ### Access and Badge Setup
 
 The group dashboard's main menu has a `Badges` section below `Events`. Badge management and
-awarding require events write access. Group Admins and Events Managers have this permission;
+awarding require badges write access. Group Admins and Events Managers have this permission;
 community Admins and Groups Managers inherit it for their groups. Viewers do not see or open these
 protected tabs.
 
@@ -59,9 +59,9 @@ The attendee page has a dedicated `Award badge` menu with three choices:
   be changed while choosing; selections remain until they are cleared or canceled. `Continue`
   opens the badge picker for exactly those selected attendees.
 
-An attendee row's three-dot menu awards a badge to that individual attendee. The checkbox workflow
-does not add a separate "select all matching" operation; the two event-wide choices cover all and
-checked-in recipients directly.
+An attendee row's three-dot menu awards a badge to that single attendee. There is no separate
+"select all matching" action; the two event-wide choices already cover all and checked-in
+attendees.
 
 The event's Hosts & Speakers tab offers equivalent actions for contributors:
 
@@ -76,7 +76,7 @@ event before awarding so eligibility matches the stored event. New-event forms d
 actions until the event exists.
 
 Accepted members on the Group Team page also have `Award badge` in their row menu when the current
-administrator has events write access. Team awards belong to the group and do not need an event.
+administrator has badges write access. Team awards belong to the group and do not need an event.
 Pending team invitations are not eligible.
 
 For an event award, every recipient must currently be a confirmed attendee, event host,
@@ -85,9 +85,9 @@ hold one of those roles. For an award without an event, every recipient must be 
 of that group's team. Canceled events cannot issue awards.
 
 OCG validates the complete recipient list before awarding the badge. If any recipient is
-ineligible, nobody in that request receives it. One active award is allowed for each badge and
-user. Current holders are skipped, and the result reports both accepted-for-issuance and skipped
-totals.
+ineligible, nobody in that request receives it. Each user can hold one active award of a badge:
+recipients who already hold it are skipped, and the result reports how many awards were queued and
+how many recipients were skipped.
 
 After validation, OCG places accepted awards in a durable queue so large recipient sets do not
 affect normal platform traffic. Credentials, award history, and emails may take a short time to
@@ -114,8 +114,8 @@ A later award creates a new credential URL.
 
 Use this section to manage badges that groups have awarded to you.
 
-Open [User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore'). This dashboard shows your
-active badges and provides controls for profile listing, order, sharing, export, and revocation.
+Open [User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore'). The tab shows your active
+badges and provides controls for profile listing, ordering, sharing, export, and revocation.
 
 ### Profile Listing and Order
 
@@ -130,8 +130,8 @@ controls save the same profile display order.
 
 ### Share and Export Credentials
 
-Select `Share` to open the badge's stable public credential page. You can copy that page's URL and
-send it directly or add it to a profile, portfolio, or other place where you want to show the
+Select `Share` to open the badge's stable public credential page. You can copy the page URL and
+share it directly, or add it to a profile, portfolio, or anywhere else you want to show the
 credential. The page displays the badge details, issuing group, award date, and current active or
 revoked state.
 
@@ -153,9 +153,9 @@ receive the signed JSON-LD credential directly.
 Open [/badges/verify](/badges/verify ':ignore') to verify an OCG credential. You can enter its
 public URL or credential ID, or upload an exported PNG.
 
-Verification checks the signed credential and reports whether it is active or revoked. An already
-exported or shared credential remains available after revocation, but current verification reports
-the revoked state.
+Verification checks the signed credential and reports whether it is active or revoked. Credentials
+that were exported or shared before revocation remain available, but verification reports their
+revoked state.
 
 ### Credential Privacy
 

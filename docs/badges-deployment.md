@@ -2,7 +2,7 @@
 
 # Badges Deployment Guide
 
-This document is for OCG operators and deployment maintainers. It is intentionally unlisted from
+This document is for OCG operators and deployment maintainers. It is intentionally left out of
 the public docs navigation because it covers credential signing, public verification
 infrastructure, and operational requirements.
 
@@ -100,8 +100,8 @@ key.
 
 The credential route serves a browser page by default. A request accepting
 `application/vc+ld+json` receives the signed JSON-LD credential. The user export route transcodes
-the 512-pixel artwork to PNG and adds one uncompressed `openbadgecredential` iTXt chunk containing
-a signed credential for the same award.
+the 512 by 512 pixel artwork to PNG and adds one uncompressed `openbadgecredential` iTXt chunk
+containing a signed credential for the same award.
 
 Each award stores an immutable snapshot of the definition and issuer display data. Deleting or
 editing the current definition does not change an issued credential.
@@ -125,12 +125,12 @@ This design deliberately favors platform stability over issuance speed:
 A small award will usually appear after a short delay. An award to a large recipient set, or one
 submitted while other awards are queued, can take several minutes. This is expected behavior and
 does not mean that the organizer should submit the award again. Duplicate active credentials are
-checked again during processing, and recipients already owned by queued work are skipped during
-new requests, so overlapping submissions remain idempotent without amplifying queue load.
+checked again during processing, and new requests skip recipients already covered by queued work,
+so overlapping submissions remain idempotent without amplifying queue load.
 
 Worker claims are durable. Processing failures use exponential backoff and stop after ten failed
-attempts. A claim left by an interrupted worker is recovered after 15 minutes. Completed job
-summaries are kept for 30 days, with recipient rows removed at completion.
+attempts. A claim left by an interrupted worker is recovered after 15 minutes. Completed and
+failed job summaries are kept for 30 days, with recipient rows removed at completion.
 
 Operators can inspect aggregate queue state without loading recipient rows:
 
@@ -184,10 +184,10 @@ derive an email address from the portable credential.
 Each group has stable status-list UUIDs with 131,072 entries. OCG allocates indexes randomly, sets
 bits most-significant-bit first, and publishes a gzip plus multibase-base64url encoded list.
 
-Status-list credentials declare a 600,000 millisecond TTL and are served with a 600-second public
-cache lifetime. The server reuses a size-bounded signed representation while the exact revocation
-state remains unchanged. Concurrent cache misses are deduplicated, and changed revocation state
-bypasses the application cache on the next origin request.
+Status-list credentials declare a 10-minute TTL (600,000 milliseconds) and are served with a
+600-second public cache lifetime. The server reuses a size-bounded signed representation while the
+exact revocation state remains unchanged. Concurrent cache misses are deduplicated, and changed
+revocation state bypasses the application cache on the next origin request.
 
 Revocation is permanent. It retains the credential as public history and changes its status-list
 bit so standards-based verification reports it as revoked.

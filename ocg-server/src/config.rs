@@ -462,12 +462,21 @@ impl fmt::Debug for BadgeSigningKeyConfig {
 }
 
 /// Retained Ed25519 verification key configuration.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub(crate) struct BadgeVerificationKeyConfig {
     /// Stable URL-safe key identifier.
     pub key_id: String,
     /// Public Ed25519 JWK.
     pub public_jwk: JWK,
+}
+
+impl fmt::Debug for BadgeVerificationKeyConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BadgeVerificationKeyConfig")
+            .field("key_id", &self.key_id)
+            .field("public_jwk", &REDACTED_CONFIG_VALUE)
+            .finish()
+    }
 }
 
 /// Cookie settings configuration.

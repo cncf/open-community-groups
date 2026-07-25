@@ -335,9 +335,11 @@ export class ImageField extends LitWrapper {
           <div class="svg-icon size-8 shrink-0 icon-image bg-stone-400" aria-hidden="true"></div>
           <p class="text-sm">
             <span class="font-semibold text-primary-600">Click to upload</span>
-            ${this._directFileName
-              ? html`<span> ${this._directFileName}</span>`
-              : html`<span> or drag and drop an exported PNG file</span>`}
+            ${
+              this._directFileName
+                ? html`<span> ${this._directFileName}</span>`
+                : html`<span> or drag and drop an exported PNG file</span>`
+            }
           </p>
           <input
             type="file"
@@ -376,7 +378,9 @@ export class ImageField extends LitWrapper {
     const combinedHelpText = helpPrefixText.length > 0 ? `${helpPrefixText} ${helpText}` : helpText;
     const acceptedFormats =
       this.acceptedFormats.trim() ||
-      (isOpenGraphTarget || isBadgeTarget ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS : DEFAULT_IMAGE_ACCEPTED_FORMATS);
+      (isOpenGraphTarget || isBadgeTarget
+        ? OPEN_GRAPH_IMAGE_ACCEPTED_FORMATS
+        : DEFAULT_IMAGE_ACCEPTED_FORMATS);
 
     if (this.directUpload) {
       return this._renderDirectUploadField(acceptedFormats);
@@ -422,8 +426,7 @@ export class ImageField extends LitWrapper {
             <label
               class="btn-primary btn-mini items-center justify-center cursor-pointer whitespace-nowrap text-center h-auto min-h-0 ${
                 this.hideUploadButton ? "hidden" : "inline-flex"
-              } ${this._isUploading ? "opacity-75 pointer-events-none" : ""
-              }"
+              } ${this._isUploading ? "opacity-75 pointer-events-none" : ""}"
             >
               <input
                 type="file"

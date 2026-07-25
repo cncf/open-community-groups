@@ -23,11 +23,7 @@ use crate::{
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_IMMUTABLE, CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::badges::{BadgeService, BadgeServiceError, png, rfc3339},
-    templates::{
-        PageId,
-        auth::User,
-        badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
-    },
+    templates::badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
 };
 
 #[cfg(test)]
@@ -83,14 +79,13 @@ pub(crate) async fn credential(
     // Render the browser representation from the same snapshot
     let site_settings = db.get_site_settings().await?;
     let image_url = format!("/images/badges/{}", award.snapshot.image_file_name);
+    let revoked = award.revoked_at.is_some();
     let page = CredentialPage {
-        revoked: award.revoked_at.is_some(),
         award,
         image_url,
-        page_id: PageId::BadgeCredential,
         path: uri.path().to_string(),
+        revoked,
         site_settings,
-        user: User::default(),
     };
 
     let cache_headers = extend_public_shared_cache_headers(&[("vary", CREDENTIAL_CACHE_VARY)])?;
@@ -337,10 +332,8 @@ async fn render_verify_page(
 ) -> Result<Response, HandlerError> {
     // Render an uncached result because recipient information may be present
     let page = VerifyPage {
-        page_id: PageId::BadgeVerify,
         path: path.to_string(),
         site_settings: db.get_site_settings().await?,
-        user: User::default(),
 
         error,
         verified,

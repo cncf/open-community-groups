@@ -83,7 +83,7 @@ async fn test_list_page_success() {
             *cid == community_id
                 && *gid == group_id
                 && *uid == user_id
-                && permission == GroupPermission::EventsWrite
+                && permission == GroupPermission::BadgesWrite
         })
         .returning(move |_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -178,7 +178,7 @@ async fn test_list_page_with_pagination_params() {
             *cid == community_id
                 && *gid == group_id
                 && *uid == user_id
-                && permission == GroupPermission::EventsWrite
+                && permission == GroupPermission::BadgesWrite
         })
         .returning(move |_, _, _, _| Ok(true));
     db.expect_user_has_group_permission()
@@ -278,7 +278,7 @@ async fn test_list_page_shows_restricted_policy_tooltip_when_team_write_is_block
             *cid == community_id
                 && *gid == group_id
                 && *uid == user_id
-                && permission == GroupPermission::EventsWrite
+                && permission == GroupPermission::BadgesWrite
         })
         .returning(move |_, _, _, _| Ok(false));
     db.expect_user_has_group_permission()

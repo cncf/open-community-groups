@@ -65,9 +65,9 @@ async fn test_enqueue_worker_enqueue_due_notifications() {
 
     // Setup worker and enqueue due notifications
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        db,
     };
     let enqueued = worker.enqueue_due_notifications().await.unwrap();
 
@@ -87,9 +87,9 @@ async fn test_enqueue_worker_enqueue_due_notifications_error() {
 
     // Setup worker and enqueue due notifications
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: CancellationToken::new(),
+        db,
     };
     let err = worker.enqueue_due_notifications().await.unwrap_err();
 
@@ -116,9 +116,9 @@ async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_error() {
 
     // Setup worker and execute loop
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: cancellation_token.clone(),
+        db,
     };
     worker.run().await;
 
@@ -145,9 +145,9 @@ async fn test_enqueue_worker_run_stops_on_cancellation_after_enqueue_success() {
 
     // Setup worker and execute loop
     let worker = EnqueueWorker {
-        db,
         base_url: "https://example.test".to_string(),
         cancellation_token: cancellation_token.clone(),
+        db,
     };
     worker.run().await;
 
@@ -167,8 +167,8 @@ async fn test_delivery_recovery_worker_mark_stale_processing_notifications_unkno
 
     // Setup worker and recover stale processing notifications
     let worker = DeliveryRecoveryWorker {
-        db,
         cancellation_token: CancellationToken::new(),
+        db,
     };
     let recovered = worker.mark_stale_processing_notifications_unknown().await.unwrap();
 
@@ -195,8 +195,8 @@ async fn test_delivery_recovery_worker_run_stops_on_cancellation_after_success()
 
     // Setup worker and execute loop
     let worker = DeliveryRecoveryWorker {
-        db,
         cancellation_token: cancellation_token.clone(),
+        db,
     };
     worker.run().await;
 
@@ -246,9 +246,9 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification() 
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
-        db,
-        cfg: sample_email_config(None),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -304,9 +304,9 @@ async fn test_delivery_worker_deliver_notification_sends_pending_notification_wi
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
-        db,
-        cfg: sample_email_config(None),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -330,9 +330,9 @@ async fn test_delivery_worker_deliver_notification_no_pending_notifications() {
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
-        db,
-        cfg: sample_email_config(None),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -377,9 +377,9 @@ async fn test_delivery_worker_deliver_notification_records_send_error() {
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
-        db,
-        cfg: sample_email_config(None),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -489,9 +489,9 @@ async fn test_delivery_worker_deliver_notification_requeues_retryable_send_error
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
-        db,
-        cfg: sample_email_config(None),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let delivered = worker.deliver_notification().await.unwrap();
@@ -588,9 +588,9 @@ async fn test_delivery_worker_deliver_notification_returns_update_error() {
     // Setup worker and deliver notification
     let mut worker = DeliveryWorker {
         base_url: "https://example.test".to_string(),
-        db,
-        cfg: sample_email_config(None),
         cancellation_token: CancellationToken::new(),
+        cfg: sample_email_config(None),
+        db,
         email_sender: es,
     };
     let err = worker.deliver_notification().await.unwrap_err();

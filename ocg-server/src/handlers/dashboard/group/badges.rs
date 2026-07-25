@@ -228,26 +228,6 @@ pub(crate) async fn award(
     Ok((StatusCode::CREATED, Json(outcome)))
 }
 
-/// Resolve attendee badge recipients for one event-owned bypass option.
-#[instrument(skip_all, err)]
-pub(crate) async fn recipients(
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    Path(event_id): Path<Uuid>,
-    Query(query): Query<RecipientsQuery>,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Resolve the exact current attendee set before opening the generic modal
-    let user_ids = db
-        .list_event_badge_recipient_ids(
-            group_id,
-            event_id,
-            query.scope == RecipientScope::CheckedInAttendees,
-        )
-        .await?;
-
-    Ok(Json(RecipientsOutput { user_ids }))
-}
-
 /// Delete one definition while retaining historical credential snapshots.
 #[instrument(skip_all, err)]
 pub(crate) async fn delete(
@@ -282,6 +262,26 @@ pub(crate) async fn delete_artwork(
         StatusCode::NO_CONTENT,
         [("HX-Trigger", "refresh-group-dashboard-table")],
     ))
+}
+
+/// Resolve attendee badge recipients for one event-owned bypass option.
+#[instrument(skip_all, err)]
+pub(crate) async fn recipients(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    Path(event_id): Path<Uuid>,
+    Query(query): Query<RecipientsQuery>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Resolve the exact current attendee set before opening the generic modal
+    let user_ids = db
+        .list_event_attendees_ids(
+            group_id,
+            event_id,
+            query.scope == RecipientScope::CheckedInAttendees,
+        )
+        .await?;
+
+    Ok(Json(RecipientsOutput { user_ids }))
 }
 
 /// Permanently revoke one active group-issued credential with a private reason.
@@ -421,15 +421,17 @@ pub(crate) async fn prepare_awards_page(
     let query = filters.awards_query.clone().unwrap_or_default();
     let status = filters.status.clone().unwrap_or_default();
     let to = filters.to.clone().unwrap_or_default();
+    let from_filter = parse_date_filter("from", &from)?;
+    let to_filter = parse_to_date_filter(&to)?;
     let award_filters = AwardedBadgesFilters {
         limit,
         offset,
         badge_id: filters.badge_id,
         event_id: filters.event_id,
-        from: parse_date(&from),
+        from: from_filter,
         query: filters.awards_query.clone(),
         status: filters.status.clone(),
-        to: parse_date(&to).and_then(|date| date.checked_add_signed(TimeDelta::days(1))),
+        to: to_filter,
     };
 
     // Load the filtered award history
@@ -521,11 +523,30 @@ fn is_safe_artwork_file_name(file_name: &str) -> bool {
 }
 
 /// Parse a date-only award filter at UTC midnight.
-fn parse_date(value: &str) -> Option<chrono::DateTime<Utc>> {
-    NaiveDate::parse_from_str(value, "%Y-%m-%d")
-        .ok()?
+fn parse_date_filter(
+    field_name: &str,
+    value: &str,
+) -> Result<Option<chrono::DateTime<Utc>>, HandlerError> {
+    if value.is_empty() {
+        return Ok(None);
+    }
+
+    let date = NaiveDate::parse_from_str(value, "%Y-%m-%d")
+        .map_err(|_| HandlerError::Deserialization(format!("{field_name} date is invalid")))?;
+    let date = date
         .and_hms_opt(0, 0, 0)
-        .map(|date| date.and_utc())
+        .ok_or_else(|| HandlerError::Deserialization(format!("{field_name} date is invalid")))?;
+    Ok(Some(date.and_utc()))
+}
+
+/// Parse the inclusive latest award date into an exclusive upper bound.
+fn parse_to_date_filter(value: &str) -> Result<Option<chrono::DateTime<Utc>>, HandlerError> {
+    parse_date_filter("to", value)?
+        .map(|date| {
+            date.checked_add_signed(TimeDelta::days(1))
+                .ok_or_else(|| HandlerError::Deserialization("to date is invalid".to_string()))
+        })
+        .transpose()
 }
 
 /// Require a bounded 512×512 PNG, JPEG, or WebP stored image.

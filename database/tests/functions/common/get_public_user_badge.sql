@@ -44,21 +44,45 @@ values (:'statusListID', :'groupID');
 
 -- Durable credential record
 insert into user_badge (
-    user_badge_id, badge_status_list_id, display_order, group_id, snapshot, status_list_index,
+    user_badge_id, awarded_at, badge_status_list_id, display_order, group_id, snapshot, status_list_index,
     user_id
-) values (:'userBadgeID', :'statusListID', 0, :'groupID', '{"name":"Badge"}', 9, :'userID');
+) values (
+    :'userBadgeID',
+    '2026-01-02 03:04:05+00',
+    :'statusListID',
+    0,
+    :'groupID',
+    '{"name":"Badge"}',
+    9,
+    :'userID'
+);
 
 -- ============================================================================
 -- TESTS
 -- ============================================================================
 
 -- Should return durable and current recipient fields
-select ok(
-    get_public_user_badge(:'userBadgeID')::jsonb @> jsonb_build_object(
-        'recipient_name', 'Recipient',
-        'recipient_username', 'recipient',
+select is(
+    get_public_user_badge(:'userBadgeID')::jsonb,
+    jsonb_build_object(
+        'awarded_at', '2026-01-02 03:04:05+00'::timestamptz,
+        'badge_status_list_id', :'statusListID'::uuid,
+        'display_order', 0,
+        'group_id', :'groupID'::uuid,
+        'is_listed', true,
+        'snapshot', '{"name":"Badge"}'::jsonb,
         'status_list_index', 9,
-        'user_badge_id', :'userBadgeID'::uuid
+        'user_badge_id', :'userBadgeID'::uuid,
+
+        'badge_id', null,
+        'event_id', null,
+        'revocation_reason', null,
+        'revoked_at', null,
+        'revoked_by_user_id', null,
+        'user_id', :'userID'::uuid,
+
+        'recipient_name', 'Recipient',
+        'recipient_username', 'recipient'
     ),
     'Should return durable and current recipient fields'
 );

@@ -13,14 +13,14 @@ declare
     v_actor_username text;
     v_badge badge%rowtype;
     v_community_name text;
-    v_eligible_recipient_ids uuid[];
+    v_eligible_recipient_count integer;
     v_group_name text;
     v_job_id uuid;
     v_recipient_user_ids uuid[];
     v_skipped_count integer;
     v_snapshot jsonb;
 begin
-    -- Lock and authorize the group boundary before accepting durable work
+    -- Lock and load the group boundary before accepting durable work
     select
         c.display_name,
         g.name
@@ -37,11 +37,13 @@ begin
     if not found then
         raise exception 'group not found';
     end if;
+
+    -- Authorize the actor to award badges within the group
     if not user_has_group_permission(
         p_community_id,
         p_group_id,
         p_actor_user_id,
-        'group.events.write'
+        'group.badges.write'
     ) then
         raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
     end if;
@@ -92,9 +94,9 @@ begin
             raise exception 'event not found';
         end if;
 
-        -- Resolve every verified event participant in canonical order
-        select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
-        into v_eligible_recipient_ids
+        -- Count the requested recipients who are verified event participants
+        select count(*)
+        into v_eligible_recipient_count
         from "user" u
         where u.email_verified = true
         and u.user_id = any(v_recipient_user_ids)
@@ -127,9 +129,9 @@ begin
             )
         );
     else
-        -- Resolve every verified accepted group team member in canonical order
-        select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
-        into v_eligible_recipient_ids
+        -- Count the requested recipients who are verified accepted team members
+        select count(*)
+        into v_eligible_recipient_count
         from group_team gt
         join "user" u using (user_id)
         where gt.accepted = true
@@ -138,7 +140,7 @@ begin
         and u.user_id = any(v_recipient_user_ids);
     end if;
 
-    if cardinality(v_eligible_recipient_ids) <> cardinality(v_recipient_user_ids) then
+    if v_eligible_recipient_count <> cardinality(v_recipient_user_ids) then
         raise exception 'badge recipient is not eligible';
     end if;
 
@@ -225,9 +227,9 @@ begin
         from unnest(v_accepted_recipient_ids) with ordinality recipient(user_id, ordinality);
     end if;
 
-    -- Return the existing frontend contract using accepted issuance counts
+    -- Return the queued and skipped counts for the accepted issuance work
     return json_build_object(
-        'awarded_count', cardinality(v_accepted_recipient_ids),
+        'queued_count', cardinality(v_accepted_recipient_ids),
         'skipped_count', v_skipped_count
     );
 end;

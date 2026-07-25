@@ -8,11 +8,15 @@ create or replace function list_user_public_badges(
 returns json as $$
 declare
     v_badges json;
+    v_limit integer := coalesce(p_limit, 50);
+    v_offset integer := coalesce(p_offset, 0);
 begin
-    if p_limit <= 0 or p_limit > 50 or p_offset < 0 then
+    -- Validate normalized pagination
+    if v_limit <= 0 or v_limit > 50 or v_offset < 0 then
         raise exception 'badge pagination is outside the supported range';
     end if;
 
+    -- Query active public badges in stable profile order
     select coalesce(
         json_agg(
             row.badge
@@ -43,8 +47,8 @@ begin
         and ub.is_listed = true
         and ub.revoked_at is null
         order by ub.display_order, ub.awarded_at desc, ub.user_badge_id
-        limit p_limit
-        offset p_offset
+        limit v_limit
+        offset v_offset
     ) row;
 
     return v_badges;

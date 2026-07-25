@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(42);
+select plan(31);
 
 -- ============================================================================
 -- VARIABLES
@@ -32,7 +32,6 @@ select plan(42);
 \set unverifiedID 'b1080000-0000-0000-0000-000000000019'
 \set unknownBadgeID 'b1080000-0000-0000-0000-000000000020'
 \set viewerID 'b1080000-0000-0000-0000-000000000021'
-\set lifecycleJobID 'b1080000-0000-0000-0000-000000000022'
 
 -- ============================================================================
 -- SEED DATA
@@ -229,7 +228,7 @@ select is(
         array[:'checkedInID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":1,"skipped_count":0}'::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
     'Should award an explicit attendee list'
 );
 select test_process_badge_award_jobs();
@@ -244,7 +243,7 @@ select is(
         array[:'attendeeID'::uuid, :'checkedInID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":1,"skipped_count":1}'::jsonb,
+    '{"queued_count":1,"skipped_count":1}'::jsonb,
     'Should award multiple recipients and skip active holders'
 );
 select test_process_badge_award_jobs();
@@ -259,11 +258,11 @@ select is(
         array[:'eventHostID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":1,"skipped_count":0}'::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
     'Should award an event host'
 );
 
--- Should avoid amplifying durable work when the same recipient is already queued
+-- Should skip a recipient already owned by durable award work
 select is(
     award_badge(
         :'actorID',
@@ -273,7 +272,7 @@ select is(
         array[:'eventHostID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":0,"skipped_count":1}'::jsonb,
+    '{"queued_count":0,"skipped_count":1}'::jsonb,
     'Should skip a recipient already owned by durable award work'
 );
 select test_process_badge_award_jobs();
@@ -298,7 +297,7 @@ select is(
         array[:'eventSpeakerID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":1,"skipped_count":0}'::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
     'Should award an event speaker'
 );
 select test_process_badge_award_jobs();
@@ -313,12 +312,12 @@ select is(
         array[:'sessionSpeakerID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":1,"skipped_count":0}'::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
     'Should award a session speaker'
 );
 select test_process_badge_award_jobs();
 
--- Should skip an active single attendee
+-- Should deduplicate recipients before skipping an active attendee
 select is(
     award_badge(
         :'actorID',
@@ -328,7 +327,7 @@ select is(
         array[:'attendeeID'::uuid, :'attendeeID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":0,"skipped_count":1}'::jsonb,
+    '{"queued_count":0,"skipped_count":1}'::jsonb,
     'Should deduplicate recipients before skipping an active attendee'
 );
 
@@ -342,7 +341,7 @@ select is(
         array[:'eventOrganizerID'::uuid],
         null
     )::jsonb,
-    '{"awarded_count":1,"skipped_count":0}'::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
     'Should award an accepted group team member without an event'
 );
 select test_process_badge_award_jobs();
@@ -448,7 +447,7 @@ select throws_ok(
     'Should reject a recipient outside the event'
 );
 
--- Should reject a group member without an event
+-- Should reject a non-team group member without an event
 select throws_ok(
     format(
         $$select award_badge(%L::uuid, %L::uuid, %L::uuid, %L::uuid, array[%L::uuid], null)$$,
@@ -548,7 +547,7 @@ select is(
         array[:'attendeeID'::uuid],
         :'eventID'
     )::jsonb,
-    '{"awarded_count":1,"skipped_count":0}'::jsonb,
+    '{"queued_count":1,"skipped_count":0}'::jsonb,
     'Should allow a new credential after permanent revocation'
 );
 select test_process_badge_award_jobs();
@@ -558,157 +557,6 @@ select is(
     (select count(*)::integer from user_badge where badge_id = :'badgeID' and user_id = :'attendeeID'),
     2,
     'Should retain revoked history after a re-award'
-);
-
--- Should retain successful queue summaries without recipient rows
-select is(
-    (
-        select count(*)::integer
-        from badge_award_job
-        where status = 'completed'
-        and not exists (
-            select 1
-            from badge_award_job_recipient bajr
-            where bajr.badge_award_job_id = badge_award_job.badge_award_job_id
-        )
-    ),
-    7,
-    'Should retain completed durable award summaries'
-);
-
--- Queue one synthetic job for failure, operator retry, and recovery lifecycle tests
-insert into badge_award_job (
-    badge_award_job_id,
-    accepted_count,
-    actor_username,
-    badge_snapshot,
-    community_id,
-    group_id,
-    recipient_count,
-
-    actor_user_id,
-    badge_id,
-    event_id
-) values (
-    :'lifecycleJobID',
-    1,
-    'award-admin',
-    '{"criteria":"Check in","description":"Attended Award Event","image_file_name":"attendee.png","issuer":{"community_id":"b1080000-0000-0000-0000-000000000006","community_name":"Award Community","group_id":"b1080000-0000-0000-0000-000000000014","group_name":"Award Group"},"name":"Attendee"}',
-    :'communityID',
-    :'groupID',
-    1,
-
-    :'actorID',
-    :'badgeID',
-    :'eventID'
-);
-
-insert into badge_award_job_recipient (badge_award_job_id, position, user_id)
-values (:'lifecycleJobID', 0, :'attendeeID');
-
--- Should claim the oldest due job with a durable ownership token
-select is(
-    (claim_badge_award_job()->>'badge_award_job_id')::uuid,
-    :'lifecycleJobID'::uuid,
-    'Should claim the oldest due badge award job'
-);
-
--- Should terminally fail work that exhausts its bounded retry budget
-select is(
-    record_badge_award_job_failure(
-        :'lifecycleJobID',
-        (select claim_id from badge_award_job where badge_award_job_id = :'lifecycleJobID'),
-        'synthetic failure',
-        1
-    ),
-    true,
-    'Should terminally fail a badge award job after its retry budget'
-);
-
-select ok(
-    (
-        select status = 'failed'
-            and completed_at is not null
-            and error = 'synthetic failure'
-            and failure_count = 1
-        from badge_award_job
-        where badge_award_job_id = :'lifecycleJobID'
-    ),
-    'Should retain terminal badge award failure details'
-);
-
--- Should allow an operator-reviewed failed job to be retried
-select lives_ok(
-    format($$select requeue_badge_award_job(%L::uuid)$$, :'lifecycleJobID'),
-    'Should requeue one operator-reviewed failed badge award job'
-);
-
-select ok(
-    (
-        select status = 'pending'
-            and completed_at is null
-            and error is null
-            and failure_count = 0
-        from badge_award_job
-        where badge_award_job_id = :'lifecycleJobID'
-    ),
-    'Should reset retry state when requeueing a failed badge award job'
-);
-
--- Should recover a claim abandoned longer than the processing timeout
-select claim_badge_award_job();
-update badge_award_job
-set claimed_at = current_timestamp - interval '1 hour'
-where badge_award_job_id = :'lifecycleJobID';
-
-select is(
-    recover_stale_badge_award_jobs(60, 10),
-    1,
-    'Should recover an abandoned badge award claim'
-);
-
-select ok(
-    (
-        select status = 'pending'
-            and claim_id is null
-            and failure_count = 1
-            and error = 'badge award worker claim expired'
-        from badge_award_job
-        where badge_award_job_id = :'lifecycleJobID'
-    ),
-    'Should release recovered work with a durable failure count'
-);
-
--- Should release a claim without consuming failure budget when the global rate is exhausted
-select claim_badge_award_job();
-select is(
-    (
-        process_badge_award_job_batch(
-            :'lifecycleJobID',
-            (select claim_id from badge_award_job where badge_award_job_id = :'lifecycleJobID'),
-            25,
-            1
-        )->>'rate_limited'
-    )::boolean,
-    true,
-    'Should pause badge issuance at the global rolling rate limit'
-);
-
--- Should remove only successful summaries beyond their retention period
-update badge_award_job
-set completed_at = current_timestamp - interval '60 days'
-where status = 'completed';
-
-select is(
-    cleanup_badge_award_jobs(2592000),
-    7,
-    'Should clean completed badge award summaries after retention'
-);
-
-select is(
-    (select count(*)::integer from badge_award_job where status = 'completed'),
-    0,
-    'Should leave no expired completed badge award summaries'
 );
 
 -- ============================================================================

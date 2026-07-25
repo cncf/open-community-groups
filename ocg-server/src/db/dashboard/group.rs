@@ -259,11 +259,9 @@ pub(crate) trait DBDashboardGroup {
         event_id: Uuid,
     ) -> Result<Vec<ApprovedSubmissionSummary>>;
 
-    /// Lists all verified attendees user ids for an event.
-    async fn list_event_attendees_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>>;
-
-    /// Lists verified confirmed attendees eligible for an event badge award.
-    async fn list_event_badge_recipient_ids(
+    /// Lists verified confirmed attendees user ids for an event, optionally
+    /// restricted to checked-in attendees.
+    async fn list_event_attendees_ids(
         &self,
         group_id: Uuid,
         event_id: Uuid,
@@ -984,24 +982,14 @@ where
 
     /// [`DBDashboardGroup::list_event_attendees_ids`]
     #[instrument(skip(self), err)]
-    async fn list_event_attendees_ids(&self, group_id: Uuid, event_id: Uuid) -> Result<Vec<Uuid>> {
-        self.fetch_scalar_one(
-            "select list_event_attendees_ids($1::uuid, $2::uuid)",
-            &[&group_id, &event_id],
-        )
-        .await
-    }
-
-    /// [`DBDashboardGroup::list_event_badge_recipient_ids`]
-    #[instrument(skip(self), err)]
-    async fn list_event_badge_recipient_ids(
+    async fn list_event_attendees_ids(
         &self,
         group_id: Uuid,
         event_id: Uuid,
         checked_in_only: bool,
     ) -> Result<Vec<Uuid>> {
         self.fetch_scalar_one(
-            "select list_event_badge_recipient_ids($1::uuid, $2::uuid, $3::boolean)",
+            "select list_event_attendees_ids($1::uuid, $2::uuid, $3::boolean)",
             &[&group_id, &event_id, &checked_in_only],
         )
         .await
@@ -1464,27 +1452,6 @@ where
         .await
     }
 
-    /// [`DBDashboardGroup::update_cfs_submission`]
-    #[instrument(skip(self, submission), err)]
-    async fn update_cfs_submission(
-        &self,
-        reviewer_id: Uuid,
-        event_id: Uuid,
-        cfs_submission_id: Uuid,
-        submission: &CfsSubmissionUpdate,
-    ) -> Result<bool> {
-        self.fetch_scalar_one(
-            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::bool",
-            &[
-                &reviewer_id,
-                &event_id,
-                &cfs_submission_id,
-                &Json(submission),
-            ],
-        )
-        .await
-    }
-
     /// [`DBDashboardGroup::update_badge`].
     #[instrument(skip(self, badge), err)]
     async fn update_badge(
@@ -1503,6 +1470,27 @@ where
                 &group_id,
                 &badge_id,
                 &Json(badge),
+            ],
+        )
+        .await
+    }
+
+    /// [`DBDashboardGroup::update_cfs_submission`].
+    #[instrument(skip(self, submission), err)]
+    async fn update_cfs_submission(
+        &self,
+        reviewer_id: Uuid,
+        event_id: Uuid,
+        cfs_submission_id: Uuid,
+        submission: &CfsSubmissionUpdate,
+    ) -> Result<bool> {
+        self.fetch_scalar_one(
+            "select update_cfs_submission($1::uuid, $2::uuid, $3::uuid, $4::jsonb)::bool",
+            &[
+                &reviewer_id,
+                &event_id,
+                &cfs_submission_id,
+                &Json(submission),
             ],
         )
         .await

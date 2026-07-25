@@ -46,9 +46,8 @@
 {{ template "common/get_event_summary.sql" }}
 {{ template "common/get_event_registration_questions.sql" }} -- Do not sort alphabetically, dependency for dashboard-user/list_user_events
 {{ template "common/get_group_full.sql" }}
-{{ template "common/insert_audit_log.sql" }}
-{{ template "notifications/enqueue_notification.sql" }} -- Dependency for badge award and revocation functions
 {{ template "common/get_public_user_badge.sql" }}
+{{ template "common/insert_audit_log.sql" }}
 {{ template "common/is_badge_image.sql" }}
 {{ template "common/is_open_graph_image.sql" }}
 {{ template "common/list_event_cfs_labels.sql" }}
@@ -148,7 +147,6 @@
 {{ template "dashboard-group/list_cfs_submission_statuses_for_review.sql" }}
 {{ template "dashboard-group/list_event_approved_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_attendees_ids.sql" }}
-{{ template "dashboard-group/list_event_badge_recipient_ids.sql" }}
 {{ template "dashboard-group/list_event_categories.sql" }}
 {{ template "dashboard-group/list_event_cfs_submissions.sql" }}
 {{ template "dashboard-group/list_event_kinds.sql" }}
@@ -261,6 +259,7 @@
 
 {{ template "notifications/claim_pending_notification.sql" }}
 {{ template "notifications/enqueue_due_event_reminders.sql" }}
+{{ template "notifications/enqueue_notification.sql" }}
 {{ template "notifications/manual_requeue_notifications.sql" }}
 {{ template "notifications/mark_notification_delivery_unknown.sql" }}
 {{ template "notifications/mark_stale_processing_notifications_unknown.sql" }}
