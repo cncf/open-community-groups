@@ -226,7 +226,18 @@ describe("user-info-modal", () => {
     expect(link.querySelector("img").getAttribute("alt")).to.equal(
       "Participant badge artwork",
     );
-    expect(link.textContent).to.include("Kubernetes Group");
+    expect(link.classList.contains("size-16")).to.equal(true);
+    expect(link.classList.contains("sm:size-24")).to.equal(true);
+    const badgeDetails = link.querySelector('[role="tooltip"]');
+    expect(link.getAttribute("aria-describedby")).to.equal(badgeDetails.id);
+    expect(badgeDetails.classList.contains("group-hover:visible")).to.equal(
+      true,
+    );
+    expect(
+      badgeDetails.classList.contains("group-focus-visible:visible"),
+    ).to.equal(true);
+    expect(badgeDetails.textContent).to.include("Participant");
+    expect(badgeDetails.textContent).to.include("Kubernetes Group");
 
     window.fetch = originalFetch;
     dashboard.remove();

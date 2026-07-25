@@ -2,6 +2,8 @@ import { showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
 import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
+const CARD_SELECTOR = "[data-badge-card]";
+const DRAG_HANDLE_SELECTOR = "[data-badge-drag-handle]";
 const LIST_SELECTOR = "[data-badge-order-list]";
 const READY_KEY = "badgeControlsReady";
 const SAVE_PENDING_KEY = "badgeOrderPending";
@@ -35,11 +37,26 @@ const emptyState = () => {
   return state;
 };
 
+const clearDragStyles = (list) => {
+  list.querySelectorAll("[data-user-badge-id]").forEach((item) => {
+    item.classList.remove("opacity-70");
+    item.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
+  });
+};
+
 const syncReorderControls = (list) => {
   const items = [...list.querySelectorAll("[data-user-badge-id]")];
   const pending = list.dataset[SAVE_PENDING_KEY] === "true";
   items.forEach((item, index) => {
-    item.draggable = !pending;
+    const handle = item.querySelector(DRAG_HANDLE_SELECTOR);
+    const position = item.querySelector("[data-badge-position]");
+    if (handle) {
+      handle.disabled = pending || items.length <= 1;
+      handle.draggable = !handle.disabled;
+    }
+    if (position) {
+      position.textContent = String(index + 1);
+    }
     item.querySelectorAll("[data-badge-move]").forEach((button) => {
       const atBoundary = button.dataset.badgeMove === "up" ? index === 0 : index === items.length - 1;
       button.disabled = pending || atBoundary;
@@ -47,6 +64,12 @@ const syncReorderControls = (list) => {
   });
 };
 
+/**
+ * Persist the visible badge order and restore it if saving fails.
+ * @param {HTMLOListElement} list Badge order list.
+ * @param {Array<string>} previousOrder Badge IDs before reordering.
+ * @returns {Promise<boolean>} Whether the order was saved.
+ */
 export const persistOrder = async (list, previousOrder) => {
   if (list.dataset[SAVE_PENDING_KEY] === "true") {
     return false;
@@ -74,8 +97,14 @@ export const persistOrder = async (list, previousOrder) => {
   }
 };
 
-export const moveBadge = async (button) => {
-  const item = button.closest("[data-user-badge-id]");
+/**
+ * Move a badge one position with a keyboard or fallback button control.
+ * @param {HTMLElement} control Reorder control inside the badge card.
+ * @param {"up"|"down"} direction Direction to move the badge.
+ * @returns {Promise<void>}
+ */
+export const moveBadge = async (control, direction = control.dataset.badgeMove) => {
+  const item = control.closest("[data-user-badge-id]");
   const list = item?.closest(LIST_SELECTOR);
   if (!item || !list) {
     return;
@@ -84,7 +113,6 @@ export const moveBadge = async (button) => {
     return;
   }
   const previousOrder = badgeIds(list);
-  const direction = button.dataset.badgeMove;
   const sibling = direction === "up" ? item.previousElementSibling : item.nextElementSibling;
   if (!sibling) {
     return;
@@ -94,7 +122,7 @@ export const moveBadge = async (button) => {
   } else {
     list.insertBefore(sibling, item);
   }
-  button.focus();
+  control.focus();
   try {
     await persistOrder(list, previousOrder);
   } catch (error) {
@@ -102,6 +130,11 @@ export const moveBadge = async (button) => {
   }
 };
 
+/**
+ * Save whether a badge is shown on the user's public profile.
+ * @param {HTMLInputElement} control Profile listing checkbox.
+ * @returns {Promise<void>}
+ */
 export const updateListing = async (control) => {
   const previousValue = !control.checked;
   control.disabled = true;
@@ -124,6 +157,11 @@ export const updateListing = async (control) => {
   }
 };
 
+/**
+ * Permanently revoke a badge after the user confirms the destructive action.
+ * @param {HTMLButtonElement} button Badge revoke control.
+ * @returns {Promise<void>}
+ */
 export const revokeBadge = async (button) => {
   if (button.disabled) {
     return;
@@ -165,12 +203,18 @@ export const revokeBadge = async (button) => {
   }
 };
 
+/**
+ * Initialize listing, reorder, and revoke controls for a badge list.
+ * @param {HTMLOListElement} list Badge order list.
+ * @returns {void}
+ */
 export const initializeBadgeList = (list) => {
   if (!markDatasetReady(list, READY_KEY)) {
     return;
   }
 
   let draggedItem = null;
+  let dropTargetItem = null;
   let previousOrder = [];
   syncReorderControls(list);
   list.addEventListener("click", (event) => {
@@ -189,15 +233,32 @@ export const initializeBadgeList = (list) => {
       updateListing(event.target);
     }
   });
+  list.addEventListener("keydown", (event) => {
+    const dragHandle = event.target.closest?.(DRAG_HANDLE_SELECTOR);
+    if (!dragHandle || dragHandle.disabled) {
+      return;
+    }
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+      return;
+    }
+    event.preventDefault();
+    moveBadge(dragHandle, event.key === "ArrowUp" ? "up" : "down");
+  });
   list.addEventListener("dragstart", (event) => {
     if (list.dataset[SAVE_PENDING_KEY] === "true") {
       event.preventDefault();
       return;
     }
-    draggedItem = event.target.closest?.("[data-user-badge-id]");
+    const dragHandle = event.target.closest?.(DRAG_HANDLE_SELECTOR);
+    draggedItem = dragHandle?.closest("[data-user-badge-id]") || null;
     if (draggedItem) {
       previousOrder = badgeIds(list);
-      event.dataTransfer.effectAllowed = "move";
+      draggedItem.classList.add("opacity-70");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData?.("text/plain", draggedItem.dataset.userBadgeId);
+        event.dataTransfer.setDragImage?.(dragHandle, 0, 0);
+      }
     }
   });
   list.addEventListener("dragover", (event) => {
@@ -206,11 +267,18 @@ export const initializeBadgeList = (list) => {
       return;
     }
     event.preventDefault();
+    if (dropTargetItem !== target) {
+      dropTargetItem?.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
+      dropTargetItem = target;
+      dropTargetItem.querySelector(CARD_SELECTOR)?.classList.add("ring-2", "ring-primary-300");
+    }
     const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
     list.insertBefore(draggedItem, before ? target : target.nextElementSibling);
     syncReorderControls(list);
   });
   list.addEventListener("dragend", async () => {
+    clearDragStyles(list);
+    dropTargetItem = null;
     if (!draggedItem || previousOrder.join() === badgeIds(list).join()) {
       draggedItem = null;
       return;

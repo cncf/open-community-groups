@@ -13,13 +13,17 @@ const fixture = () => {
   const list = document.createElement("ol");
   list.dataset.badgeOrderList = "";
   list.innerHTML = `
-    <li data-user-badge-id="first" draggable="true">
+    <li data-user-badge-id="first">
+      <span data-badge-position>1</span>
+      <button type="button" data-badge-drag-handle draggable="true">Reorder First</button>
+      <div data-badge-card></div>
       <input type="checkbox" data-badge-listing data-endpoint="/listing/first" checked>
-      <button type="button" data-badge-move="down">Move down</button>
       <button type="button" data-badge-revoke data-endpoint="/badges/first" data-badge-name="First">Revoke</button>
     </li>
-    <li data-user-badge-id="second" draggable="true">
-      <button type="button" data-badge-move="up">Move up</button>
+    <li data-user-badge-id="second">
+      <span data-badge-position>2</span>
+      <button type="button" data-badge-drag-handle draggable="true">Reorder Second</button>
+      <div data-badge-card></div>
     </li>`;
   document.body.append(feedback, list);
   return { feedback, list };
@@ -43,19 +47,25 @@ describe("user dashboard badges", () => {
     window.Swal = originalSwal;
   });
 
-  it("persists keyboard ordering and announces the new order", async () => {
+  it("persists arrow-key ordering, updates positions, and announces the new order", async () => {
     const { feedback, list } = fixture();
     let requestBody;
     window.fetch = async (_url, options) => {
       requestBody = JSON.parse(options.body);
       return new Response(null, { status: 204 });
     };
+    initializeBadgeList(list);
 
-    await moveBadge(list.querySelector('[data-badge-move="down"]'));
+    list
+      .querySelector('[data-user-badge-id="first"] [data-badge-drag-handle]')
+      .dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowDown" }));
+    await Promise.resolve();
+    await Promise.resolve();
 
+    expect([...list.children].map((item) => item.dataset.userBadgeId)).to.deep.equal(["second", "first"]);
     expect(
-      [...list.children].map((item) => item.dataset.userBadgeId),
-    ).to.deep.equal(["second", "first"]);
+      [...list.querySelectorAll("[data-badge-position]")].map((position) => position.textContent),
+    ).to.deep.equal(["1", "2"]);
     expect(requestBody).to.deep.equal({ user_badge_ids: ["second", "first"] });
     expect(feedback.textContent).to.equal("Badge order saved.");
   });
@@ -66,15 +76,13 @@ describe("user dashboard badges", () => {
       throw new TypeError("Network unavailable");
     };
 
-    await moveBadge(list.querySelector('[data-badge-move="down"]'));
+    await moveBadge(list.querySelector("[data-badge-drag-handle]"), "down");
 
-    expect(
-      [...list.children].map((item) => item.dataset.userBadgeId),
-    ).to.deep.equal(["first", "second"]);
+    expect([...list.children].map((item) => item.dataset.userBadgeId)).to.deep.equal(["first", "second"]);
     expect(list.dataset.badgeOrderPending).to.equal(undefined);
   });
 
-  it("blocks overlapping reorder saves and keeps boundary controls accurate", async () => {
+  it("blocks overlapping reorder saves and restores the drag handles", async () => {
     const { list } = fixture();
     let resolveRequest;
     let requestCount = 0;
@@ -85,20 +93,16 @@ describe("user dashboard badges", () => {
       });
     };
     initializeBadgeList(list);
-    const moveDown = list.querySelector('[data-badge-move="down"]');
+    const dragHandle = list.querySelector("[data-badge-drag-handle]");
 
-    const firstMove = moveBadge(moveDown);
+    const firstMove = moveBadge(dragHandle, "down");
     await Promise.resolve();
-    await moveBadge(moveDown);
+    await moveBadge(dragHandle, "up");
 
     expect(requestCount).to.equal(1);
+    expect([...list.children].map((item) => item.dataset.userBadgeId)).to.deep.equal(["second", "first"]);
     expect(
-      [...list.children].map((item) => item.dataset.userBadgeId),
-    ).to.deep.equal(["second", "first"]);
-    expect(
-      [...list.querySelectorAll("[data-badge-move]")].every(
-        (button) => button.disabled,
-      ),
+      [...list.querySelectorAll("[data-badge-drag-handle]")].every((handle) => handle.disabled),
     ).to.equal(true);
 
     resolveRequest(new Response(null, { status: 204 }));
@@ -106,13 +110,9 @@ describe("user dashboard badges", () => {
 
     expect(list.dataset.badgeOrderPending).to.equal(undefined);
     expect(
-      list.querySelector('[data-user-badge-id="second"] [data-badge-move="up"]')
-        .disabled,
-    ).to.equal(true);
-    expect(
-      list.querySelector(
-        '[data-user-badge-id="first"] [data-badge-move="down"]',
-      ).disabled,
+      [...list.querySelectorAll("[data-badge-drag-handle]")].every(
+        (handle) => !handle.disabled && handle.draggable,
+      ),
     ).to.equal(true);
   });
 
@@ -147,6 +147,7 @@ describe("user dashboard badges", () => {
     expect(calls[0].text).to.include("cannot be undone");
     expect(calls[0].text).to.include("Show on profile");
     expect(list.querySelector('[data-user-badge-id="first"]')).to.equal(null);
+    expect(list.querySelector("[data-badge-drag-handle]").disabled).to.equal(true);
     expect(feedback.textContent).to.equal("Badge permanently revoked.");
   });
 
@@ -159,9 +160,9 @@ describe("user dashboard badges", () => {
     await revokeBadge(list.querySelector("[data-badge-revoke]"));
 
     expect(document.querySelector("[data-badge-order-list]")).to.equal(null);
-    expect(
-      document.querySelector("[data-user-badges-empty]")?.textContent,
-    ).to.include("No active badges yet");
+    expect(document.querySelector("[data-user-badges-empty]")?.textContent).to.include(
+      "No active badges yet",
+    );
   });
 
   it("persists pointer reordering through the same order endpoint", async () => {
@@ -174,6 +175,7 @@ describe("user dashboard badges", () => {
     initializeBadgeList(list);
     const first = list.firstElementChild;
     const second = list.lastElementChild;
+    const firstHandle = first.querySelector("[data-badge-drag-handle]");
     first.getBoundingClientRect = () => ({ top: 0 });
     second.getBoundingClientRect = () => ({ top: 0 });
     Object.defineProperty(second, "offsetHeight", {
@@ -188,12 +190,17 @@ describe("user dashboard badges", () => {
       return event;
     };
 
-    first.dispatchEvent(dragEvent("dragstart"));
+    firstHandle.dispatchEvent(dragEvent("dragstart"));
     second.dispatchEvent(dragEvent("dragover", 10));
-    first.dispatchEvent(dragEvent("dragend"));
+
+    expect(second.querySelector("[data-badge-card]").classList.contains("ring-2")).to.equal(true);
+
+    firstHandle.dispatchEvent(dragEvent("dragend"));
     await Promise.resolve();
     await Promise.resolve();
 
     expect(bodies[0]).to.deep.equal({ user_badge_ids: ["second", "first"] });
+    expect(first.classList.contains("opacity-70")).to.equal(false);
+    expect(second.querySelector("[data-badge-card]").classList.contains("ring-2")).to.equal(false);
   });
 });

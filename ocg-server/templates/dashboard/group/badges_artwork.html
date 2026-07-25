@@ -16,56 +16,56 @@
           data-success-message="Artwork added to the gallery."
           data-error-message="The artwork could not be added.">
       <image-field class="block [&_.form-legend]:block" label="Upload artwork" name="badge_artwork_url" image-kind="badge" target="badge" hide-remove-button submit-label="Save to library">
-      </image-field>
-      <input type="hidden" name="file_name" data-artwork-file-name>
-    </form>
+    </image-field>
+    <input type="hidden" name="file_name" data-artwork-file-name>
+  </form>
+</div>
+<div class="mt-10 flex items-end justify-between gap-4 border-b border-stone-200 pb-3">
+  <div>
+    <h2 class="text-lg font-semibold text-stone-900">Saved artwork</h2>
+    <p class="mt-1 text-sm text-stone-500">Choose these images when creating or editing a badge.</p>
   </div>
-  <div class="mt-10 flex items-end justify-between gap-4 border-b border-stone-200 pb-3">
-    <div>
-      <h2 class="text-lg font-semibold text-stone-900">Saved artwork</h2>
-      <p class="mt-1 text-sm text-stone-500">Choose these images when creating or editing a badge.</p>
+  <span class="shrink-0 text-sm text-stone-500">
+    {{ artwork.len() }} {% if artwork.len() == 1 %}item{% else %}items{% endif %}
+  </span>
+</div>
+{% if artwork.is_empty() -%}
+  <div class="mt-5 flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 p-8 text-center">
+    <div class="flex size-10 items-center justify-center rounded-full bg-stone-100"
+         aria-hidden="true">
+      <div class="svg-icon size-5 icon-image bg-stone-500"></div>
     </div>
-    <span class="shrink-0 text-sm text-stone-500">
-      {{ artwork.len() }} {% if artwork.len() == 1 %}item{% else %}items{% endif %}
-    </span>
+    <h3 class="mt-3 font-semibold text-stone-900">No artwork yet</h3>
+    <p class="mt-1 text-sm text-stone-600">Upload an image above and save it to start your library.</p>
   </div>
-  {% if artwork.is_empty() -%}
-    <div class="mt-5 flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-stone-300 p-8 text-center">
-      <div class="flex size-10 items-center justify-center rounded-full bg-stone-100"
-           aria-hidden="true">
-        <div class="svg-icon size-5 icon-image bg-stone-500"></div>
-      </div>
-      <h3 class="mt-3 font-semibold text-stone-900">No artwork yet</h3>
-      <p class="mt-1 text-sm text-stone-600">Upload an image above and save it to start your library.</p>
-    </div>
-  {% else -%}
-    <ul class="mt-5 grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-      {% for image in artwork -%}
-        <li class="relative overflow-hidden rounded-lg border border-stone-200 bg-white p-2">
-          <img class="aspect-square w-full rounded-md object-cover"
-               src="/images/badges/{{ image.file_name }}"
-               alt="Reusable badge artwork {{ loop.index }}"
-               width="512"
-               height="512"
-               loading="lazy">
-          <button id="delete-badge-artwork-{{ image.badge_artwork_id }}"
-                  class="btn-tertiary absolute right-2.5 top-2.5 inline-flex size-8 items-center justify-center bg-white/95 p-0 shadow-sm ring-1 ring-stone-200 hover:enabled:bg-red-50"
-                  type="button"
-                  hx-delete="/dashboard/group/badges/artwork/{{ image.badge_artwork_id }}"
-                  hx-trigger="confirmed"
-                  hx-swap="none"
-                  hx-disabled-elt="this"
-                  data-confirm-action
-                  data-confirm-message="Remove this artwork? Artwork in use by a badge cannot be removed. Existing credential images remain available."
-                  data-confirm-text="Remove"
-                  data-success-message="Artwork removed."
-                  data-error-message="The artwork could not be removed."
-                  aria-label="Remove artwork {{ loop.index }}"
-                  title="Remove artwork">
-            <span class="svg-icon size-4 icon-trash bg-red-600" aria-hidden="true"></span>
-          </button>
-        </li>
-      {% endfor -%}
-    </ul>
-  {% endif -%}
+{% else -%}
+  <ul class="mt-5 grid grid-cols-3 gap-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+    {% for image in artwork -%}
+      <li class="relative overflow-hidden rounded-lg border border-stone-200 bg-white p-2">
+        <img class="aspect-square w-full rounded-md object-cover"
+             src="/images/badges/{{ image.file_name }}"
+             alt="Reusable badge artwork {{ loop.index }}"
+             width="512"
+             height="512"
+             loading="lazy">
+        <button id="delete-badge-artwork-{{ image.badge_artwork_id }}"
+                class="btn-tertiary absolute right-2.5 top-2.5 inline-flex size-8 items-center justify-center bg-white/95 p-0 shadow-sm ring-1 ring-stone-200 hover:enabled:bg-red-50"
+                type="button"
+                hx-delete="/dashboard/group/badges/artwork/{{ image.badge_artwork_id }}"
+                hx-trigger="confirmed"
+                hx-swap="none"
+                hx-disabled-elt="this"
+                data-confirm-action
+                data-confirm-message="Remove this artwork? Artwork in use by a badge cannot be removed. Existing credential images remain available."
+                data-confirm-text="Remove"
+                data-success-message="Artwork removed."
+                data-error-message="The artwork could not be removed."
+                aria-label="Remove artwork {{ loop.index }}"
+                title="Remove artwork">
+          <span class="svg-icon size-4 icon-trash bg-red-600" aria-hidden="true"></span>
+        </button>
+      </li>
+    {% endfor -%}
+  </ul>
+{% endif -%}
 </section>

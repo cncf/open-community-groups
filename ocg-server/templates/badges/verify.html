@@ -42,44 +42,45 @@
           <div class="h-px grow bg-stone-200"></div>
         </div>
         <div>
-          <image-field class="block"
-                       label="Exported PNG"
-                       name="png"
-                       image-kind="logo"
-                       accepted-formats="image/png"
-                       direct-upload
-                       hide-remove-button>
-          </image-field>
-        </div>
-        <button class="btn-primary w-full" type="submit">Verify badge</button>
-      </form>
+          <image-field class="block" label="Exported PNG" name="png" image-kind="logo" accepted-formats="image/png" direct-upload hide-remove-button>
+        </image-field>
+      </div>
+      <button class="btn-primary w-full" type="submit">Verify badge</button>
+    </form>
 
-      <div class="mt-6" aria-live="polite">
-        {% if let Some(error) = &error -%}
-          <div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
-               role="alert">{{ error }}</div>
-        {% endif -%}
-        {% if let Some(result) = &verified -%}
-          <article class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
-            <div class="flex items-center gap-3 px-6 py-4 {% if result.revoked %}bg-red-50 text-red-800{% else %}bg-green-50 text-green-800{% endif %}">
-              {% if result.revoked -%}
-                <div class="flex size-5 items-center justify-center rounded-full bg-red-600" aria-hidden="true">
-                  <div class="svg-icon size-3 icon-check bg-white"></div>
-                </div>
-                <p class="text-sm font-semibold">Credential revoked</p>
-              {% else -%}
-                <div class="flex size-5 items-center justify-center rounded-full bg-green-600" aria-hidden="true">
-                  <div class="svg-icon size-3 icon-check bg-white"></div>
-                </div>
-                <p class="text-sm font-semibold">Valid and active</p>
-              {% endif -%}
-            </div>
-            <div class="p-6">
-              <div>
-                <h2 class="text-xl font-medium text-stone-900">{{ result.name }}</h2>
-                <p class="mt-2 text-stone-600">{{ result.description }}</p>
+    <div class="mt-6" aria-live="polite">
+      {% if let Some(error) = &error -%}
+        <div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-800"
+             role="alert">{{ error }}</div>
+      {% endif -%}
+      {% if let Some(result) = &verified -%}
+        <article class="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm">
+          <div class="flex items-center gap-3 px-6 py-4
+                      {% if result.revoked %}
+                        bg-red-50 text-red-800
+                      {% else %}
+                        bg-green-50 text-green-800
+                      {% endif %}">
+            {% if result.revoked -%}
+              <div class="flex size-5 items-center justify-center rounded-full bg-red-600"
+                   aria-hidden="true">
+                <div class="svg-icon size-3 icon-check bg-white"></div>
               </div>
-              <dl class="mt-6 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-[10rem_1fr]">
+              <p class="text-sm font-semibold">Credential revoked</p>
+            {% else -%}
+              <div class="flex size-5 items-center justify-center rounded-full bg-green-600"
+                   aria-hidden="true">
+                <div class="svg-icon size-3 icon-check bg-white"></div>
+              </div>
+              <p class="text-sm font-semibold">Valid and active</p>
+            {% endif -%}
+          </div>
+          <div class="p-6">
+            <div>
+              <h2 class="text-xl font-medium text-stone-900">{{ result.name }}</h2>
+              <p class="mt-2 text-stone-600">{{ result.description }}</p>
+            </div>
+            <dl class="mt-6 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-[10rem_1fr]">
               {% if let Some(recipient_name) = &result.recipient_name -%}
                 <div class="contents">
                   <dt class="font-medium text-stone-500">Current recipient</dt>
@@ -101,11 +102,11 @@
                   {{ result.valid_from }}
                 </dd>
               </div>
-              </dl>
-            </div>
-          </article>
-        {% endif -%}
-      </div>
+            </dl>
+          </div>
+        </article>
+      {% endif -%}
     </div>
-  </section>
+  </div>
+</section>
 {% endblock content -%}

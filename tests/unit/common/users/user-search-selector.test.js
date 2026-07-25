@@ -30,6 +30,19 @@ describe("user-search-selector", () => {
     expect(focusCalls).to.equal(1);
   });
 
+  it("renders the empty host state as placeholder text", async () => {
+    const element = await mountLitComponent("user-search-selector", {
+      displayMode: "table",
+    });
+    const emptyState = [...element.querySelectorAll("p")].find(
+      (paragraph) => paragraph.textContent.trim() === "No hosts added yet.",
+    );
+
+    expect(emptyState).to.not.equal(undefined);
+    expect(emptyState.classList.contains("italic")).to.equal(true);
+    expect(emptyState.classList.contains("text-stone-400")).to.equal(true);
+  });
+
   it("adds and removes selected users while honoring maxUsers", async () => {
     // Render the user-search-selector fixture.
     const element = await mountLitComponent("user-search-selector", {
@@ -74,7 +87,10 @@ describe("user-search-selector", () => {
 
     expect(element.querySelector('table[aria-label="Event hosts"]')).to.not.equal(null);
     expect(element.querySelectorAll("[data-badge-award-open]")).to.have.length(2);
-    expect(element.querySelector("[data-badge-award-open]").dataset.userIds).to.equal("7");
+    const bulkAwardButton = element.querySelector("[data-badge-award-open]");
+    expect(bulkAwardButton.dataset.userIds).to.equal("7");
+    expect(bulkAwardButton.textContent.trim()).to.equal("Award badge");
+    expect(bulkAwardButton.classList.contains("btn-mini")).to.equal(false);
 
     element.awardsDisabled = true;
     await element.updateComplete;

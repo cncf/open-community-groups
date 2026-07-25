@@ -9,8 +9,9 @@
         class="text-xl font-medium text-stone-900 lg:text-2xl">Badges Awards</h1>
     <p class="m-0 mt-1 text-sm/6 text-stone-500">Review award history and manage active badge credentials.</p>
   </div>
+  {% let has_active_filters = status != "" || badge_id.is_some() || event_id.is_some() || !from.is_empty() || !to.is_empty() -%}
   <form id="awards-filters"
-        class="mb-5 mt-10 space-y-5"
+        class="mb-4 mt-8 space-y-4"
         method="get"
         action="/dashboard/group"
         hx-get="/dashboard/group/awards"
@@ -22,36 +23,35 @@
     {% if let Some(limit) = limit -%}
       <input type="hidden" name="limit" value="{{ limit }}">
     {% endif -%}
-    <div>
-      <label for="awards-search" class="form-label">Search awards</label>
-      <div class="relative mt-2">
-        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
-          <div class="svg-icon size-4 icon-search bg-stone-300"></div>
-        </div>
-        <input id="awards-search"
-               class="input-primary peer w-full pe-9 ps-9"
-               name="awards_query"
-               value="{{ query }}"
-               placeholder="Search recipients or badges"
-               autocomplete="off"
-               autocorrect="off"
-               autocapitalize="off"
-               spellcheck="false">
-        <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
-          <button type="button"
-                  hx-get="/dashboard/group/awards"
-                  hx-trigger="click"
-                  hx-target="#dashboard-content"
-                  hx-indicator="#dashboard-spinner"
-                  hx-include="#awards-filters input[type='hidden'], #award-status, #award-badge, #award-source, #award-from, #award-to"
-                  class="mt-0.5 cursor-pointer"
-                  aria-label="Clear award search">
-            <div class="svg-icon size-5 icon-close bg-stone-400 hover:bg-stone-700"></div>
-          </button>
-        </div>
+    <div class="relative w-full max-w-full sm:w-[36rem]">
+      <label for="awards-search" class="sr-only">Search awards</label>
+      <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+        <div class="svg-icon size-4 icon-search bg-stone-300"></div>
+      </div>
+      <input id="awards-search"
+             class="input-primary peer w-full pe-9 ps-9"
+             name="awards_query"
+             value="{{ query }}"
+             placeholder="Search recipients or badges"
+             autocomplete="off"
+             autocorrect="off"
+             autocapitalize="off"
+             spellcheck="false">
+      <div class="absolute end-1.5 top-1.5 peer-placeholder-shown:hidden">
+        <button type="button"
+                hx-get="/dashboard/group/awards"
+                hx-trigger="click"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner"
+                hx-include="#awards-filters input[type='hidden'], #award-status, #award-badge, #award-source, #award-from, #award-to"
+                class="mt-0.5 cursor-pointer"
+                aria-label="Clear award search">
+          <div class="svg-icon size-5 icon-close bg-stone-400 hover:bg-stone-700"></div>
+        </button>
       </div>
     </div>
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div id="awards-advanced-filters"
+         class="grid gap-4 rounded-lg border border-stone-200 bg-stone-50/50 p-4 sm:grid-cols-2 xl:grid-cols-5">
       <div>
         <label for="award-status" class="form-label">Status</label>
         <select id="award-status" class="select-primary mt-2" name="status">
@@ -96,17 +96,156 @@
                name="to"
                value="{{ to }}">
       </div>
-      <div class="flex items-end">
-        <a class="btn-tertiary-anchor"
+    </div>
+  </form>
+  <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    {% if has_active_filters -%}
+      <div class="flex flex-wrap items-center gap-2">
+        {% if status != "" -%}
+          <form class="inline-flex"
+                method="get"
+                action="/dashboard/group"
+                hx-get="/dashboard/group/awards"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner">
+            <input type="hidden" name="tab" value="awards">
+            <input type="hidden" name="awards_query" value="{{ query }}">
+            {% if let Some(active_badge_id) = badge_id -%}
+              <input type="hidden" name="badge_id" value="{{ active_badge_id }}">
+            {% endif -%}
+            {% if let Some(active_event_id) = event_id -%}
+              <input type="hidden" name="event_id" value="{{ active_event_id }}">
+            {% endif -%}
+            <input type="hidden" name="from" value="{{ from }}">
+            <input type="hidden" name="to" value="{{ to }}">
+            {% if let Some(limit) = limit -%}
+              <input type="hidden" name="limit" value="{{ limit }}">
+            {% endif -%}
+            {% if status == "active" -%}
+              {% call dashboard::active_table_filter_badge("Status", "Active") -%}
+              {{ dashboard::active_table_filter_remove_button(label = "Remove status filter") -}}
+              {% endcall -%}
+            {% else -%}
+              {% call dashboard::active_table_filter_badge("Status", "Revoked") -%}
+              {{ dashboard::active_table_filter_remove_button(label = "Remove status filter") -}}
+              {% endcall -%}
+            {% endif -%}
+          </form>
+        {% endif -%}
+        {% if badge_id.is_some() -%}
+          {% for badge in awarded_badges.badges -%}
+            {% if badge_id.as_ref() == Some(badge.badge_id) -%}
+              <form class="inline-flex"
+                    method="get"
+                    action="/dashboard/group"
+                    hx-get="/dashboard/group/awards"
+                    hx-target="#dashboard-content"
+                    hx-indicator="#dashboard-spinner">
+                <input type="hidden" name="tab" value="awards">
+                <input type="hidden" name="awards_query" value="{{ query }}">
+                <input type="hidden" name="status" value="{{ status }}">
+                {% if let Some(active_event_id) = event_id -%}
+                  <input type="hidden" name="event_id" value="{{ active_event_id }}">
+                {% endif -%}
+                <input type="hidden" name="from" value="{{ from }}">
+                <input type="hidden" name="to" value="{{ to }}">
+                {% if let Some(limit) = limit -%}
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                {% endif -%}
+                {% call dashboard::active_table_filter_badge("Badge", badge.name) -%}
+                {{ dashboard::active_table_filter_remove_button(label = "Remove badge filter") -}}
+                {% endcall -%}
+              </form>
+            {% endif -%}
+          {% endfor -%}
+        {% endif -%}
+        {% if event_id.is_some() -%}
+          {% for source in awarded_badges.sources -%}
+            {% if event_id.as_ref() == Some(source.event_id) -%}
+              <form class="inline-flex"
+                    method="get"
+                    action="/dashboard/group"
+                    hx-get="/dashboard/group/awards"
+                    hx-target="#dashboard-content"
+                    hx-indicator="#dashboard-spinner">
+                <input type="hidden" name="tab" value="awards">
+                <input type="hidden" name="awards_query" value="{{ query }}">
+                <input type="hidden" name="status" value="{{ status }}">
+                {% if let Some(active_badge_id) = badge_id -%}
+                  <input type="hidden" name="badge_id" value="{{ active_badge_id }}">
+                {% endif -%}
+                <input type="hidden" name="from" value="{{ from }}">
+                <input type="hidden" name="to" value="{{ to }}">
+                {% if let Some(limit) = limit -%}
+                  <input type="hidden" name="limit" value="{{ limit }}">
+                {% endif -%}
+                {% call dashboard::active_table_filter_badge("Source", source.name) -%}
+                {{ dashboard::active_table_filter_remove_button(label = "Remove source filter") -}}
+                {% endcall -%}
+              </form>
+            {% endif -%}
+          {% endfor -%}
+        {% endif -%}
+        {% if !from.is_empty() -%}
+          <form class="inline-flex"
+                method="get"
+                action="/dashboard/group"
+                hx-get="/dashboard/group/awards"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner">
+            <input type="hidden" name="tab" value="awards">
+            <input type="hidden" name="awards_query" value="{{ query }}">
+            <input type="hidden" name="status" value="{{ status }}">
+            {% if let Some(active_badge_id) = badge_id -%}
+              <input type="hidden" name="badge_id" value="{{ active_badge_id }}">
+            {% endif -%}
+            {% if let Some(active_event_id) = event_id -%}
+              <input type="hidden" name="event_id" value="{{ active_event_id }}">
+            {% endif -%}
+            <input type="hidden" name="to" value="{{ to }}">
+            {% if let Some(limit) = limit -%}
+              <input type="hidden" name="limit" value="{{ limit }}">
+            {% endif -%}
+            {% call dashboard::active_table_filter_badge("Awarded from", from) -%}
+            {{ dashboard::active_table_filter_remove_button(label = "Remove awarded from filter") -}}
+            {% endcall -%}
+          </form>
+        {% endif -%}
+        {% if !to.is_empty() -%}
+          <form class="inline-flex"
+                method="get"
+                action="/dashboard/group"
+                hx-get="/dashboard/group/awards"
+                hx-target="#dashboard-content"
+                hx-indicator="#dashboard-spinner">
+            <input type="hidden" name="tab" value="awards">
+            <input type="hidden" name="awards_query" value="{{ query }}">
+            <input type="hidden" name="status" value="{{ status }}">
+            {% if let Some(active_badge_id) = badge_id -%}
+              <input type="hidden" name="badge_id" value="{{ active_badge_id }}">
+            {% endif -%}
+            {% if let Some(active_event_id) = event_id -%}
+              <input type="hidden" name="event_id" value="{{ active_event_id }}">
+            {% endif -%}
+            <input type="hidden" name="from" value="{{ from }}">
+            {% if let Some(limit) = limit -%}
+              <input type="hidden" name="limit" value="{{ limit }}">
+            {% endif -%}
+            {% call dashboard::active_table_filter_badge("Through", to) -%}
+            {{ dashboard::active_table_filter_remove_button(label = "Remove through filter") -}}
+            {% endcall -%}
+          </form>
+        {% endif -%}
+        <a class="px-2 py-1 text-xs font-medium text-stone-500 transition-colors hover:text-stone-900"
            href="/dashboard/group?tab=awards"
            hx-get="/dashboard/group/awards"
            hx-target="#dashboard-content"
-           hx-indicator="#dashboard-spinner">Clear filters</a>
+           hx-indicator="#dashboard-spinner">Clear all</a>
       </div>
+    {% endif -%}
+    <div class="shrink-0 text-sm text-stone-600 sm:ms-auto">
+      {{ pagination::range_display(offset = offset.unwrap_or(0) , count = awarded_badges.awards.len(), total = awarded_badges.total, label = "award") }}
     </div>
-  </form>
-  <div class="mb-5 text-sm text-stone-600">
-    {{ pagination::range_display(offset = offset.unwrap_or(0), count = awarded_badges.awards.len(), total = awarded_badges.total, label = "award") }}
   </div>
   {% if awarded_badges.awards.is_empty() -%}
     <div class="rounded-lg border border-dashed border-stone-300 p-8 text-center">
@@ -248,6 +387,16 @@
                         </form>
                       </div>
                     </dialog>
+                  {% else -%}
+                    <div>
+                      <button class="btn-tertiary p-2 inline-flex items-center justify-center opacity-50 cursor-not-allowed"
+                              type="button"
+                              disabled
+                              aria-label="Revoke credential: {{ award.snapshot.name }} (already revoked)"
+                              title="Credential already revoked">
+                        <div class="svg-icon size-4 icon-ban"></div>
+                      </button>
+                    </div>
                   {% endif -%}
                 </div>
               </td>

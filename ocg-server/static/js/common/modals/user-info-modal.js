@@ -270,27 +270,32 @@ export class UserInfoModal extends LitWrapper {
         >
           Badges
         </h4>
-        <ul class="grid gap-3 sm:grid-cols-2">
+        <ul class="flex flex-wrap gap-4">
           ${this._badges.map(
             (badge) => html`
               <li>
                 <a
-                  class="group grid grid-cols-[3rem_1fr] gap-3 rounded-lg border border-stone-200 p-3 transition-colors hover:border-primary-400 hover:bg-primary-50 focus-visible:border-primary-500 focus-visible:outline-2 focus-visible:outline-primary-500"
+                  class="group relative inline-flex size-16 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 sm:size-24"
                   href=${`/badges/credentials/${badge.user_badge_id}`}
                   aria-label=${`View ${badge.snapshot.name} badge credential`}
+                  aria-describedby=${`profile-badge-details-${badge.user_badge_id}`}
                 >
                   <img
-                    class="size-12 rounded-md object-cover"
+                    class="size-full rounded-md object-contain"
                     src=${`/images/badges/${badge.snapshot.image_file_name}`}
                     alt=${`${badge.snapshot.name} badge artwork`}
-                    width="48"
-                    height="48"
+                    width="96"
+                    height="96"
                   />
-                  <span class="min-w-0">
-                    <span class="block truncate text-sm font-semibold text-stone-900"
-                      >${badge.snapshot.name}</span
-                    >
-                    <span class="mt-1 block text-xs text-stone-600">${badge.snapshot.issuer.group_name}</span>
+                  <span
+                    id=${`profile-badge-details-${badge.user_badge_id}`}
+                    role="tooltip"
+                    class="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-56 rounded-lg border border-stone-200 bg-white p-3 text-left opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
+                  >
+                    <span class="block text-sm font-semibold text-stone-900">${badge.snapshot.name}</span>
+                    <span class="mt-1 block text-xs text-stone-600">
+                      ${badge.snapshot.issuer.group_name}
+                    </span>
                   </span>
                 </a>
               </li>

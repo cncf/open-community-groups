@@ -67,19 +67,36 @@ describe("speakers-selector", () => {
   });
 
   it("renders event speakers as a table and deduplicates bulk award recipients", async () => {
+    // Render the event speakers table with its header actions.
     const element = await mountLitComponent("speakers-selector", {
       additionalAwardUserIds: ["21", "22"],
       canAwardBadges: true,
       displayMode: "table",
       eventId: "event-1",
       selectedSpeakers: [{ user_id: "21", username: "grace", featured: true }],
+      showAddButton: true,
       showAwardAll: true,
     });
 
-    expect(element.querySelector('table[aria-label="Event speakers"]')).to.not.equal(null);
-    expect(element.querySelector("[data-badge-award-open]").dataset.userIds).to.equal("21,22");
+    // Verify the featured column and right-aligned action order.
+    const table = element.querySelector('table[aria-label="Event speakers"]');
+    const tableHeaders = [...table.querySelectorAll("th")].map((header) => header.textContent.trim());
+    const speakerRow = table.querySelector("tbody tr");
+    const bulkAwardButton = element.querySelector("[data-badge-award-open]");
+    const addSpeakerButton = [...element.querySelectorAll("button")].find(
+      (button) => button.textContent.trim() === "Add speaker",
+    );
+
+    expect(tableHeaders).to.deep.equal(["Speaker", "Featured speaker", "Actions"]);
+    expect(speakerRow.children[0].querySelector(".icon-star")).to.equal(null);
+    expect(speakerRow.children[1].querySelector(".icon-star")).to.not.equal(null);
+    expect(bulkAwardButton.dataset.userIds).to.equal("21,22");
+    expect(bulkAwardButton.textContent.trim()).to.equal("Award badge");
+    expect(bulkAwardButton.classList.contains("btn-mini")).to.equal(false);
+    expect(bulkAwardButton.nextElementSibling).to.equal(addSpeakerButton);
     expect(element.querySelectorAll("[data-badge-award-open]")).to.have.length(2);
 
+    // Remove the speaker through the existing row action.
     element.querySelector(".icon-trash")?.closest("button")?.click();
     await element.updateComplete;
     expect(element.selectedSpeakers).to.deep.equal([]);

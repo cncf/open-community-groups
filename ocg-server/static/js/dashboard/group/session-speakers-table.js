@@ -36,6 +36,7 @@ export class SessionSpeakersTable extends LitWrapper {
         const key = speakerKey(speaker);
         if (!key) return;
         const current = rows.get(key) || { ...speaker, sessionNames: new Set() };
+        current.featured = current.featured || speaker.featured;
         if (session.name) {
           current.sessionNames.add(session.name);
         }
@@ -62,6 +63,7 @@ export class SessionSpeakersTable extends LitWrapper {
           <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
             <tr>
               <th scope="col" class="px-4 py-3">Speaker</th>
+              <th scope="col" class="w-40 px-4 py-3 text-center">Featured speaker</th>
               <th scope="col" class="px-4 py-3">Sessions</th>
               ${
                 this.canAwardBadges && this.eventId
@@ -94,6 +96,19 @@ export class SessionSpeakersTable extends LitWrapper {
                           <div class="truncate text-xs text-stone-500">@${speaker.username || ""}</div>
                         </div>
                       </div>
+                    </td>
+                    <td class="w-40 px-4 py-3 text-center">
+                      ${
+                        speaker.featured
+                          ? html`<span
+                              class="inline-flex items-center justify-center"
+                              title="Featured speaker"
+                            >
+                              <span class="svg-icon size-3 icon-star bg-amber-500" aria-hidden="true"></span>
+                              <span class="sr-only">Yes</span>
+                            </span>`
+                          : html`<span class="text-stone-400" aria-label="No">—</span>`
+                      }
                     </td>
                     <td class="px-4 py-3 text-stone-700">${speaker.sessionNames.join(", ")}</td>
                     ${

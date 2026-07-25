@@ -186,6 +186,7 @@ export class SpeakersSelector extends LitWrapper {
           <thead class="border-b border-stone-200 bg-stone-100 text-xs uppercase text-stone-700">
             <tr>
               <th scope="col" class="px-4 py-3">Speaker</th>
+              <th scope="col" class="w-40 px-4 py-3 text-center">Featured speaker</th>
               <th scope="col" class="w-[72px] px-4 py-3"><span class="sr-only">Actions</span></th>
             </tr>
           </thead>
@@ -207,20 +208,23 @@ export class SpeakersSelector extends LitWrapper {
                           hide-border="true"
                         ></logo-image>
                         <div class="min-w-0">
-                          <div class="flex items-center gap-2 truncate font-medium text-stone-900">
-                            ${displayName}
-                            ${
-                              speaker.featured
-                                ? html`<span
-                                    class="svg-icon size-3 shrink-0 icon-star bg-amber-500"
-                                    title="Featured speaker"
-                                  ></span>`
-                                : ""
-                            }
-                          </div>
+                          <div class="truncate font-medium text-stone-900">${displayName}</div>
                           <div class="truncate text-xs text-stone-500">@${speaker.username || ""}</div>
                         </div>
                       </div>
+                    </td>
+                    <td class="w-40 px-4 py-3 text-center">
+                      ${
+                        speaker.featured
+                          ? html`<span
+                              class="inline-flex items-center justify-center"
+                              title="Featured speaker"
+                            >
+                              <span class="svg-icon size-3 icon-star bg-amber-500" aria-hidden="true"></span>
+                              <span class="sr-only">Yes</span>
+                            </span>`
+                          : html`<span class="text-stone-400" aria-label="No">—</span>`
+                      }
                     </td>
                     <td class="px-4 py-3 text-right">
                       <details data-actions-menu class="group relative inline-block text-left">
@@ -317,30 +321,38 @@ export class SpeakersSelector extends LitWrapper {
         <div class="flex items-center justify-between gap-4 flex-wrap w-full">
           <label class="form-label m-0">${this.label}</label>
           ${
-            this.showAddButton
-              ? html`<button
-                  type="button"
-                  class="btn-secondary"
-                  @click=${this._openSpeakerModal}
-                  ?disabled=${this.disabled}
-                >
-                  Add speaker
-                </button>`
-              : ""
-          }
-          ${
-            this.showAwardAll && this.canAwardBadges && this.eventId
-              ? html`<button
-                  type="button"
-                  class="btn-primary-outline btn-mini"
-                  data-badge-award-open
-                  data-event-id=${this.eventId}
-                  data-user-ids=${awardUserIds.join(",")}
-                  title=${this.awardsDisabled ? "Save contributor changes before awarding badges." : ""}
-                  ?disabled=${this.awardsDisabled || awardUserIds.length === 0}
-                >
-                  Award badge to all speakers
-                </button>`
+            this.showAddButton || (this.showAwardAll && this.canAwardBadges && this.eventId)
+              ? html`<div class="flex items-center justify-end gap-3">
+                  ${
+                    this.showAwardAll && this.canAwardBadges && this.eventId
+                      ? html`<button
+                          type="button"
+                          class="btn-primary-outline"
+                          data-badge-award-open
+                          data-event-id=${this.eventId}
+                          data-user-ids=${awardUserIds.join(",")}
+                          title=${
+                            this.awardsDisabled ? "Save contributor changes before awarding badges." : ""
+                          }
+                          ?disabled=${this.awardsDisabled || awardUserIds.length === 0}
+                        >
+                          Award badge
+                        </button>`
+                      : ""
+                  }
+                  ${
+                    this.showAddButton
+                      ? html`<button
+                          type="button"
+                          class="btn-secondary"
+                          @click=${this._openSpeakerModal}
+                          ?disabled=${this.disabled}
+                        >
+                          Add speaker
+                        </button>`
+                      : ""
+                  }
+                </div>`
               : ""
           }
         </div>

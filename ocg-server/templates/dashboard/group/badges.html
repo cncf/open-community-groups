@@ -55,7 +55,7 @@
             data-badge-dialog-open="badge-add-dialog">Add badge</button>
   </div>
   <div class="mb-5 text-sm text-stone-600">
-    {{ pagination::range_display(offset = offset.unwrap_or(0), count = badges.badges.len(), total = badges.total, label = "badge") }}
+    {{ pagination::range_display(offset = offset.unwrap_or(0) , count = badges.badges.len(), total = badges.total, label = "badge") }}
   </div>
   {% if badges.badges.is_empty() -%}
     <div class="rounded-lg border border-dashed border-stone-300 p-8 text-center">
@@ -142,7 +142,7 @@
                         class="m-auto w-full max-w-2xl overflow-visible bg-transparent p-4 backdrop:bg-stone-950/35"
                         aria-labelledby="badge-edit-title-{{ badge.badge_id }}">
                   <div class="modal-panel w-full max-w-2xl">
-                    {{ badge_definition_form(id = badge.badge_id.to_string(), name = badge.name, description = badge.description, criteria = badge.criteria, image_file_name = badge.image_file_name.clone(), artwork = artwork, is_edit = true) -}}
+                    {{ badge_definition_form(id = badge.badge_id.to_string() , name = badge.name, description = badge.description, criteria = badge.criteria, image_file_name = badge.image_file_name.clone(), artwork = artwork, is_edit = true) -}}
                   </div>
                 </dialog>
               </td>
@@ -164,7 +164,7 @@
           class="m-auto w-full max-w-2xl overflow-visible bg-transparent p-4 backdrop:bg-stone-950/35"
           aria-labelledby="badge-add-title">
     <div class="modal-panel w-full max-w-2xl">
-      {{ badge_definition_form(id = "new", name = "", description = "", criteria = "", image_file_name = "".to_string(), artwork = artwork, is_edit = false) -}}
+      {{ badge_definition_form(id = "new", name = "", description = "", criteria = "", image_file_name = "".to_string() , artwork = artwork, is_edit = false) -}}
     </div>
   </dialog>
 </section>
@@ -182,7 +182,13 @@
         data-success-message="Badge saved."
         data-error-message="The badge could not be saved.">
     <div class="flex items-center justify-between rounded-t border-b border-stone-200 p-4 md:p-5">
-      <h3 id="badge-{% if is_edit %}edit-{{ id }}{% else %}add{% endif %}-title"
+      <h3 id="badge-
+              {% if is_edit %}
+                edit-{{ id }}
+              {% else %}
+                add
+              {% endif %}
+              -title"
           class="text-xl font-semibold text-stone-900">{% if is_edit %}Edit {{ name }}{% else %}Add badge{% endif %}</h3>
       {{ dashboard::modal_close_button(attrs = "data-badge-dialog-close") -}}
     </div>

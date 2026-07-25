@@ -226,14 +226,12 @@ export class BadgeAwardModal extends LitWrapper {
       </p>`;
     }
     return html`
-      <div class="grid max-h-80 gap-3 overflow-y-auto" role="radiogroup" aria-label="Badge">
+      <div class="grid max-h-80 scroll-p-1 gap-3 overflow-y-auto p-1" role="radiogroup" aria-label="Badge">
         ${this._badges.map(
           (badge) => html`
-            <label
-              class="grid cursor-pointer grid-cols-[3.5rem_1fr] gap-3 rounded-lg border p-3 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50"
-            >
+            <label class="relative cursor-pointer">
               <input
-                class="sr-only"
+                class="peer sr-only"
                 type="radio"
                 name="award-badge"
                 value=${badge.badge_id}
@@ -243,17 +241,29 @@ export class BadgeAwardModal extends LitWrapper {
                   this._selectedBadgeId = badge.badge_id;
                 }}
               />
-              <img
-                class="size-14 rounded-md object-cover"
-                src=${`/images/badges/${badge.image_file_name}`}
-                alt=${`${badge.name} badge artwork`}
-                width="56"
-                height="56"
-              />
-              <span class="min-w-0">
-                <span class="block font-semibold text-stone-900">${badge.name}</span>
-                <span class="mt-1 block text-sm text-stone-600">${badge.description}</span>
+              <span
+                class="grid grid-cols-[3.5rem_1fr] gap-3 rounded-xl border border-stone-200 bg-white p-3 pr-12 transition hover:border-primary-300 hover:shadow-sm peer-checked:border-primary-400 peer-checked:ring-2 peer-checked:ring-primary-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"
+              >
+                <img
+                  class="size-14 rounded-md object-cover"
+                  src=${`/images/badges/${badge.image_file_name}`}
+                  alt=${`${badge.name} badge artwork`}
+                  width="56"
+                  height="56"
+                />
+                <span class="min-w-0">
+                  <span class="block font-semibold text-stone-900">${badge.name}</span>
+                  <span class="mt-1 block text-sm text-stone-600">${badge.description}</span>
+                </span>
               </span>
+              <span
+                class="pointer-events-none absolute right-2 top-2 size-6 rounded-full border-2 border-stone-300 bg-white peer-checked:border-primary-500"
+                aria-hidden="true"
+              ></span>
+              <span
+                class="pointer-events-none absolute right-3.5 top-3.5 hidden size-3 rounded-full bg-primary-500 peer-checked:block"
+                aria-hidden="true"
+              ></span>
             </label>
           `,
         )}

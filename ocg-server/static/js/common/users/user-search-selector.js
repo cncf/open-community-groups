@@ -146,7 +146,7 @@ export class UserSearchSelector extends LitWrapper {
   /** Renders the selected users as a simple editable table. */
   _renderUserTable() {
     if (this.selectedUsers.length === 0) {
-      return html`<p class="mt-3 text-sm text-stone-500">No hosts added yet.</p>`;
+      return html`<p class="mt-3 text-sm italic text-stone-400">No hosts added yet.</p>`;
     }
 
     return html`
@@ -284,14 +284,14 @@ export class UserSearchSelector extends LitWrapper {
             ? html`<div class="flex justify-end">
                 <button
                   type="button"
-                  class="btn-primary-outline btn-mini"
+                  class="btn-primary-outline"
                   data-badge-award-open
                   data-event-id=${this.eventId}
                   data-user-ids=${userIds.join(",")}
                   title=${this.awardsDisabled ? "Save contributor changes before awarding badges." : ""}
                   ?disabled=${this.awardsDisabled || userIds.length === 0}
                 >
-                  Award badge to all hosts
+                  Award badge
                 </button>
               </div>`
             : ""

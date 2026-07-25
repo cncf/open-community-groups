@@ -58,7 +58,16 @@ describe("badge-award-modal", () => {
 
     expect(element._state).to.equal("ready");
     expect(element.querySelector("dialog[aria-labelledby]")).to.not.equal(null);
+    const badgeList = element.querySelector('[role="radiogroup"]');
     const badgeControl = element.querySelector('input[name="award-badge"]');
+    const badgeOption = badgeControl.closest("label");
+    const badgeOptionSurface = badgeControl.nextElementSibling;
+    expect(badgeList.classList.contains("p-1")).to.equal(true);
+    expect(badgeList.classList.contains("scroll-p-1")).to.equal(true);
+    expect(badgeControl.classList.contains("peer")).to.equal(true);
+    expect(badgeOptionSurface.classList.contains("peer-checked:ring-2")).to.equal(true);
+    expect(badgeOptionSurface.classList.contains("peer-focus-visible:ring-2")).to.equal(true);
+    expect(badgeOption.querySelectorAll(".pointer-events-none")).to.have.length(2);
     badgeControl.click();
     await element.updateComplete;
     expect(element._selectedBadgeId).to.equal(badge.badge_id);
