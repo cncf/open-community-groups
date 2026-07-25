@@ -1,0 +1,17 @@
+{# Public badge pages header -#}
+<header class="border-b border-stone-200 bg-white" role="banner">
+  <nav class="mx-auto flex h-20 max-w-5xl items-center justify-center px-4 lg:px-8"
+       aria-label="Badge navigation">
+    <a href="/" class="inline-flex items-center" aria-label="Go to homepage">
+      {% if let Some(url) = &site_settings.header_logo_url -%}
+        <img class="h-10 w-auto max-w-44 sm:h-[42px] sm:max-w-52"
+             src="{{ url }}"
+             alt="{{ site_settings.title }} logo"
+             height="42">
+      {% else -%}
+        <span class="text-lg font-semibold text-stone-900">{{ site_settings.title }}</span>
+      {% endif -%}
+    </a>
+  </nav>
+</header>
+{# End public badge pages header -#}
