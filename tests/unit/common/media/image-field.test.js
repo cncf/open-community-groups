@@ -72,6 +72,21 @@ describe("image-field", () => {
     expect(element.value).to.equal("");
   });
 
+  it("hides the remove button when hide-remove-button is set", async () => {
+    // Render the image-field fixture without the remove button.
+    const element = await mountLitComponent("image-field", {
+      hideRemoveButton: true,
+      value: "https://example.com/image.png",
+    });
+
+    // Collect the rendered button labels.
+    const labels = [...element.querySelectorAll("button")].map((button) => button.textContent.trim());
+
+    // The remove button is not rendered while the upload control remains.
+    expect(labels).to.not.include("Remove image");
+    expect(element.textContent).to.include("Upload image");
+  });
+
   it("does not show the generic supported formats text for Open Graph images", async () => {
     // Mount an Open Graph image field with explicit format guidance.
     const element = await mountLitComponent("image-field", {

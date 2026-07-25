@@ -1,24 +1,11 @@
-import { expect, waitUntil } from "@open-wc/testing";
+import { expect } from "@open-wc/testing";
 
 import { initializeGroupBadges } from "/static/js/dashboard/group/badges.js";
 
 describe("group dashboard badges", () => {
-  let originalFetch;
-  let originalHtmx;
-  let originalSwal;
-
-  beforeEach(() => {
-    originalFetch = window.fetch;
-    originalHtmx = window.htmx;
-    originalSwal = window.Swal;
-  });
-
   afterEach(() => {
     document.querySelector("[data-group-badges]")?.remove();
     document.getElementById("dashboard-content")?.remove();
-    window.fetch = originalFetch;
-    window.htmx = originalHtmx;
-    window.Swal = originalSwal;
   });
 
   const fixture = () => {
@@ -34,7 +21,14 @@ describe("group dashboard badges", () => {
       <button type="button" data-badge-pane-button="awards"></button>
       <section data-content="definitions"></section>
       <section data-content="awards">
-        <button type="button" data-badge-revoke data-name="Participant" data-endpoint="/dashboard/group/badges/awards/one/revoke">Revoke</button>
+        <button type="button" data-badge-dialog-open="badge-revoke-one">Revoke</button>
+        <dialog id="badge-revoke-one">
+          <form data-badge-refresh-pane="awards">
+            <textarea name="reason"></textarea>
+            <button type="button" data-badge-dialog-close>Cancel</button>
+            <button type="submit">Permanently revoke</button>
+          </form>
+        </dialog>
       </section>
       <section data-content="artwork">
         <form data-artwork-form data-badge-refresh-pane="artwork">
@@ -66,59 +60,20 @@ describe("group dashboard badges", () => {
     expect(document.activeElement).to.equal(awards);
   });
 
-  it("requires a private reason, prevents duplicate revocation, and refreshes awards", async () => {
+  it("opens and closes the revoke dialog and targets the awards pane on submit", () => {
     const { dashboard, root } = fixture();
-    const triggers = [];
-    const requests = [];
-    window.htmx = {
-      trigger: (target, name) => triggers.push({ target, name }),
-    };
-    window.Swal = {
-      fire: async (options) =>
-        options.input === "textarea" ? { isConfirmed: true, value: "Policy violation" } : {},
-      showValidationMessage() {},
-    };
-    window.fetch = async (url, options) => {
-      requests.push({ url: String(url), options });
-      return new Response(null, { status: 204 });
-    };
-    const button = root.querySelector("[data-badge-revoke]");
+    const dialog = root.querySelector("#badge-revoke-one");
 
-    button.click();
-    button.click();
-    await waitUntil(
-      () => dashboard.getAttribute("hx-get") === "/dashboard/group/badges?pane=awards",
-      "award history should refresh after revocation",
-    );
+    root.querySelector('[data-badge-dialog-open="badge-revoke-one"]').click();
+    expect(dialog.open).to.equal(true);
 
-    expect(requests).to.have.length(1);
-    expect(requests[0].options.body.toString()).to.equal("reason=Policy+violation");
-    expect(button.disabled).to.equal(true);
+    dialog
+      .querySelector("form")
+      .dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
     expect(dashboard.getAttribute("hx-get")).to.equal("/dashboard/group/badges?pane=awards");
-    expect(triggers[0]).to.deep.include({
-      target: dashboard,
-      name: "refresh-group-dashboard-table",
-    });
-  });
 
-  it("preserves a revocation action after a recoverable server error", async () => {
-    const { root } = fixture();
-    window.htmx = { trigger() {} };
-    window.Swal = {
-      fire: async (options) => (options.input === "textarea" ? { isConfirmed: true, value: "Reason" } : {}),
-      showValidationMessage() {},
-    };
-    window.fetch = async () => new Response("Temporary failure", { status: 500 });
-    const button = root.querySelector("[data-badge-revoke]");
-
-    button.click();
-    await waitUntil(
-      () => button.dataset.revokePending === undefined,
-      "a failed revocation should become actionable again",
-    );
-
-    expect(button.disabled).to.equal(false);
-    expect(button.isConnected).to.equal(true);
+    dialog.querySelector("[data-badge-dialog-close]").click();
+    expect(dialog.open).to.equal(false);
   });
 
   it("adds the uploaded badge filename to the declarative artwork form", () => {

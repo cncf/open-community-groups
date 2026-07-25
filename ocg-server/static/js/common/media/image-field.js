@@ -39,6 +39,7 @@ export class ImageField extends LitWrapper {
    * @property {string} previewBgClass - Optional utility class to override the preview background (e.g., "bg-stone-900").
    * @property {string} helpPrefixText - Optional text shown before the built-in helper copy.
    * @property {boolean} hideUploadButton - Whether to hide the secondary upload button.
+   * @property {boolean} hideRemoveButton - Whether to hide the remove image button.
    * @property {string} submitLabel - Optional label for a form submit action.
    * @property {string} target - Image target for dimension validation ("banner", "banner_mobile", "logo", "open_graph").
    * @property {string} legend - Optional legend text displayed under the image preview area.
@@ -53,6 +54,7 @@ export class ImageField extends LitWrapper {
     previewBgClass: { type: String, attribute: "preview-bg-class" },
     helpPrefixText: { type: String, attribute: "help-prefix-text" },
     hideUploadButton: { type: Boolean, attribute: "hide-upload-button" },
+    hideRemoveButton: { type: Boolean, attribute: "hide-remove-button" },
     submitLabel: { type: String, attribute: "submit-label" },
     target: { type: String },
     legend: { type: String },
@@ -72,6 +74,7 @@ export class ImageField extends LitWrapper {
     this.previewBgClass = "";
     this.helpPrefixText = "";
     this.hideUploadButton = false;
+    this.hideRemoveButton = false;
     this.submitLabel = "";
     this.target = "";
     this.legend = "";
@@ -353,16 +356,22 @@ export class ImageField extends LitWrapper {
                   `
                 : ""
             }
-            <button
-              type="button"
-              class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${
-                removeDisabled ? "cursor-not-allowed opacity-60" : "enabled:cursor-pointer"
-              }"
-              ?disabled=${removeDisabled}
-              @click=${this._handleRemove}
-            >
-              Remove image
-            </button>
+            ${
+              this.hideRemoveButton
+                ? ""
+                : html`
+                    <button
+                      type="button"
+                      class="btn-primary-outline btn-mini inline-flex items-center justify-center whitespace-nowrap text-center h-auto min-h-0 ${
+                        removeDisabled ? "cursor-not-allowed opacity-60" : "enabled:cursor-pointer"
+                      }"
+                      ?disabled=${removeDisabled}
+                      @click=${this._handleRemove}
+                    >
+                      Remove image
+                    </button>
+                  `
+            }
           </div>
         </div>
       </div>
