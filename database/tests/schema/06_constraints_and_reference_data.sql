@@ -25,7 +25,7 @@ select has_check('custom_notification');
 -- Test: community table expected constraints exist
 select has_check('community', 'community_og_image_url_check');
 
--- Test: badge definitions should preserve required nonblank text fields
+-- Test: badge definitions should preserve required text, length, and filename invariants
 select has_check('badge', 'badge_criteria_chk');
 select has_check('badge', 'badge_description_chk');
 select has_check('badge', 'badge_image_file_name_chk');
@@ -34,7 +34,7 @@ select has_check('badge', 'badge_name_chk');
 -- Test: badge artwork should preserve route-safe filenames
 select has_check('badge_artwork', 'badge_artwork_file_name_chk');
 
--- Test: badge awards should preserve status, ownership, and revocation invariants
+-- Test: badge awards should preserve issuance, status, and revocation invariants
 select has_check('user_badge', 'user_badge_active_user_chk');
 select col_has_check('user_badge', 'display_order');
 select col_has_check('user_badge', 'revocation_reason');
