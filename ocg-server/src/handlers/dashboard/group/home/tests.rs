@@ -87,7 +87,78 @@ async fn test_page_analytics_tab_success() {
 
     // Check response matches expectations
     assert_html_response(&parts, &bytes, StatusCode::OK);
-    assert!(!std::str::from_utf8(&bytes).unwrap().contains("tab=badges"));
+    let body = std::str::from_utf8(&bytes).unwrap();
+    assert!(!body.contains("tab=artwork"));
+    assert!(!body.contains("tab=awards"));
+    assert!(!body.contains("tab=badges"));
+}
+
+#[tokio::test]
+async fn test_page_badge_tabs_require_management_permission() {
+    // Setup a readable group session without badge-management access
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(
+        session_id,
+        user_id,
+        &auth_hash,
+        Some(community_id),
+        Some(group_id),
+    );
+    let groups = sample_user_groups_by_community(community_id, group_id);
+
+    // Require every protected tab to stop before loading its page data
+    let mut db = MockDB::new();
+    expect_badge_permission(&mut db, community_id, group_id, user_id, false, 3);
+    db.expect_get_session()
+        .times(3)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(3)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_user_has_group_permission()
+        .times(3)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::Read
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_list_user_groups()
+        .times(3)
+        .withf(move |uid| uid == &user_id)
+        .returning(move |_| Ok(groups.clone()));
+    db.expect_get_site_settings()
+        .times(3)
+        .returning(|| Ok(sample_site_settings()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request each badge-management tab through the full dashboard route
+    for tab in ["artwork", "awards", "badges"] {
+        let response = router
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/dashboard/group?tab={tab}"))
+                    .header(COOKIE, format!("id={session_id}"))
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // Check unauthorized users cannot open a hidden badge tab directly
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
 }
 
 #[tokio::test]
@@ -161,8 +232,18 @@ async fn test_page_events_tab_success() {
     let (parts, body) = response.into_parts();
     let bytes = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check response matches expectations
+    // Check the response and badge section navigation
     assert_html_response(&parts, &bytes, StatusCode::OK);
+    let body = std::str::from_utf8(&bytes).unwrap();
+    let events_menu = body.find("tab=events").unwrap();
+    let badges_menu = body.find("tab=badges").unwrap();
+    let artwork_menu = body.find("tab=artwork").unwrap();
+    let awards_menu = body.find("tab=awards").unwrap();
+    let members_menu = body.find("tab=members").unwrap();
+    assert!(events_menu < badges_menu);
+    assert!(badges_menu < artwork_menu);
+    assert!(artwork_menu < awards_menu);
+    assert!(awards_menu < members_menu);
 }
 
 #[tokio::test]

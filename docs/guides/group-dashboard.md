@@ -38,8 +38,10 @@ Main areas:
 - [Team](/dashboard/group?tab=team ':ignore'): organizer membership and roles.
 - [Analytics](/dashboard/group?tab=analytics ':ignore'): group-level growth trends.
 - [Events](/dashboard/group?tab=events ':ignore'): full event lifecycle operations.
-- [Badges](/dashboard/group?tab=badges ':ignore'): badge definitions, artwork, awards, and
-  credential history.
+- `Badges`: a main-menu section below `Events` with full-width
+  [Badges](/dashboard/group?tab=badges ':ignore'),
+  [Artwork](/dashboard/group?tab=artwork ':ignore'), and
+  [Awards](/dashboard/group?tab=awards ':ignore') tabs.
 - [Refunds](/dashboard/group?tab=refunds ':ignore'): refund review, processing, and recovery work.
 - [Members](/dashboard/group?tab=members ':ignore'): membership view and group-wide communication.
 - [Sponsors](/dashboard/group?tab=sponsors ':ignore'): reusable sponsor records for event use.

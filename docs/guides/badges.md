@@ -23,18 +23,20 @@ Use this section when your group wants to create badges, award them, or manage a
 
 ### Access and Badge Setup
 
-Open [Group Dashboard -> Badges](/dashboard/group?tab=badges ':ignore'). Badge management and
+The group dashboard's main menu has a `Badges` section below `Events`. Badge management and
 awarding require events write access. Group Admins and Events Managers have this permission;
-community Admins and Groups Managers inherit it for their groups. Viewers do not see or open the
-protected badge-management area.
+community Admins and Groups Managers inherit it for their groups. Viewers do not see or open these
+protected tabs.
 
-The badge dashboard has three sections:
+The section has three full-width tabs:
 
-- `Badges` creates and edits definitions. Each definition has a name, description, achievement
-  criteria, and one gallery image.
-- `Awards` searches credential history by recipient or badge and filters by status, definition,
-  source event, and award date. Revoked awards remain visible to authorized managers.
-- `Artwork` uploads reusable PNG, JPEG, or WebP images. Artwork must be exactly 512 by 512 pixels.
+- [Badges](/dashboard/group?tab=badges ':ignore') creates and edits definitions. Each definition
+  has a name, description, achievement criteria, and one gallery image.
+- [Artwork](/dashboard/group?tab=artwork ':ignore') opens the `Badges Artwork` page for uploading
+  reusable PNG, JPEG, or WebP images. Artwork must be exactly 512 by 512 pixels.
+- [Awards](/dashboard/group?tab=awards ':ignore') opens the `Badges Awards` page for searching
+  credential history by recipient or badge and filtering by status, definition, source event, and
+  award date. Revoked awards remain visible to authorized managers.
 
 Badge names support up to 200 characters. Descriptions and achievement criteria support up to
 10,000 characters each.

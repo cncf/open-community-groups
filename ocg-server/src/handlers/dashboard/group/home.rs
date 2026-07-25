@@ -71,6 +71,11 @@ pub(crate) async fn page(
         db.get_site_settings()
     )?;
 
+    // Protect every badge-management dashboard tab consistently
+    if !can_manage_badges && matches!(&tab, Tab::Artwork | Tab::Awards | Tab::Badges) {
+        return Err(HandlerError::Forbidden);
+    }
+
     // Prepare content for the selected tab
     let content = match tab {
         Tab::Analytics => {
@@ -84,13 +89,26 @@ pub(crate) async fn page(
                 stats,
             }))
         }
+        Tab::Artwork => {
+            let template = badges::prepare_artwork_page(&db, group_id).await?;
+            Content::Artwork(Box::new(template))
+        }
+        Tab::Awards => {
+            let (_, template) = badges::prepare_awards_page(
+                &db,
+                group_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
+            Content::Awards(Box::new(template))
+        }
         Tab::Badges => {
-            if !can_manage_badges {
-                return Err(HandlerError::Forbidden);
-            }
-            let (_, template) =
-                badges::prepare_page(&db, group_id, raw_query.as_deref().unwrap_or_default())
-                    .await?;
+            let (_, template) = badges::prepare_badges_page(
+                &db,
+                group_id,
+                raw_query.as_deref().unwrap_or_default(),
+            )
+            .await?;
             Content::Badges(Box::new(template))
         }
         Tab::Events => {

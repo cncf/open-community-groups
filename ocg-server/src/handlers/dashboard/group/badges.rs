@@ -7,7 +7,7 @@ use askama::Template;
 use axum::{
     Form, Json,
     extract::{Path, Query, RawQuery, State},
-    http::{HeaderName, StatusCode},
+    http::{HeaderName, HeaderValue, StatusCode},
     response::{Html, IntoResponse},
 };
 use chrono::{NaiveDate, TimeDelta, Utc};
@@ -25,7 +25,9 @@ use crate::{
     },
     router::serde_qs_config,
     services::images::{DynImageStorage, Image},
-    templates::dashboard::group::badges::{BadgesFilters, Page},
+    templates::dashboard::group::badges::{
+        ArtworkPage, AwardsFilters, AwardsPage, BadgesFilters, BadgesPage,
+    },
     types::{
         badges::{
             AwardedBadgesFilters, BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS,
@@ -38,11 +40,23 @@ use crate::{
 #[cfg(test)]
 mod tests;
 
+/// Full dashboard URL for badge artwork.
+const ARTWORK_DASHBOARD_URL: &str = "/dashboard/group?tab=artwork";
+
+/// Full dashboard URL for badge awards.
+const AWARDS_DASHBOARD_URL: &str = "/dashboard/group?tab=awards";
+
+/// Partial dashboard URL for badge awards.
+const AWARDS_PARTIAL_URL: &str = "/dashboard/group/awards";
+
 /// Required badge artwork height and width.
 const BADGE_ARTWORK_SIZE: u32 = 512;
 
-/// Full dashboard URL for badge management.
-const DASHBOARD_URL: &str = "/dashboard/group?tab=badges";
+/// Full dashboard URL for badge definitions.
+const BADGES_DASHBOARD_URL: &str = "/dashboard/group?tab=badges";
+
+/// Partial dashboard URL for badge definitions.
+const BADGES_PARTIAL_URL: &str = "/dashboard/group/badges";
 
 /// Maximum stored badge artwork size accepted by the upload boundary.
 const MAX_BADGE_ARTWORK_SIZE_BYTES: usize = 1024 * 1024;
@@ -50,10 +64,61 @@ const MAX_BADGE_ARTWORK_SIZE_BYTES: usize = 1024 * 1024;
 /// Largest badge-list offset accepted by database integer parameters.
 const MAX_DATABASE_OFFSET: usize = i32::MAX as usize;
 
-/// Partial dashboard URL for badge management.
-const PARTIAL_URL: &str = "/dashboard/group/badges";
-
 // Pages handlers.
+
+/// Renders the badge artwork page.
+#[instrument(skip_all, err)]
+pub(crate) async fn artwork_page(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the artwork page through its shared preparation path
+    let template = prepare_artwork_page(&db, group_id).await?;
+
+    // Keep browser navigation on the full dashboard URL
+    let headers = [(
+        HeaderName::from_static("hx-push-url"),
+        HeaderValue::from_static(ARTWORK_DASHBOARD_URL),
+    )];
+
+    Ok((headers, Html(template.render()?)))
+}
+
+/// Renders the badge award history page.
+#[instrument(skip_all, err)]
+pub(crate) async fn awards_page(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the awards page through its shared preparation path
+    let (filters, template) =
+        prepare_awards_page(&db, group_id, raw_query.as_deref().unwrap_or_default()).await?;
+
+    // Keep browser navigation on the full dashboard URL
+    let url = pagination::build_url(AWARDS_DASHBOARD_URL, &filters)?;
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
+}
+
+/// Renders the badge definitions page.
+#[instrument(skip_all, err)]
+pub(crate) async fn badges_page(
+    SelectedGroupId(group_id): SelectedGroupId,
+    State(db): State<DynDB>,
+    RawQuery(raw_query): RawQuery,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Load the definitions page through its shared preparation path
+    let (filters, template) =
+        prepare_badges_page(&db, group_id, raw_query.as_deref().unwrap_or_default()).await?;
+
+    // Keep browser navigation on the full dashboard URL
+    let url = pagination::build_url(BADGES_DASHBOARD_URL, &filters)?;
+    let headers = [(HeaderName::from_static("hx-push-url"), url)];
+
+    Ok((headers, Html(template.render()?)))
+}
 
 /// Return searchable badge definitions for the shared award modal.
 #[instrument(skip_all, err)]
@@ -79,24 +144,6 @@ pub(crate) async fn options(
         .await?;
 
     Ok(Json(badges))
-}
-
-/// Render the complete badge management surface.
-#[instrument(skip_all, err)]
-pub(crate) async fn page(
-    SelectedGroupId(group_id): SelectedGroupId,
-    State(db): State<DynDB>,
-    RawQuery(raw_query): RawQuery,
-) -> Result<impl IntoResponse, HandlerError> {
-    // Render the complete surface through the shared page preparation path
-    let (filters, template) =
-        prepare_page(&db, group_id, raw_query.as_deref().unwrap_or_default()).await?;
-
-    // Keep browser navigation on the full dashboard URL
-    let url = pagination::build_url(DASHBOARD_URL, &filters)?;
-    let headers = [(HeaderName::from_static("hx-push-url"), url)];
-
-    Ok((headers, Html(template.render()?)))
 }
 
 // Actions handlers.
@@ -343,43 +390,40 @@ pub(crate) struct RevokeInput {
 
 // Helpers.
 
-/// Prepare the complete management surface for the dashboard shell and partial route.
-pub(crate) async fn prepare_page(
+/// Prepares the badge artwork page for full and partial dashboard routes.
+pub(crate) async fn prepare_artwork_page(
+    db: &DynDB,
+    group_id: Uuid,
+) -> Result<ArtworkPage, HandlerError> {
+    // Load the reusable artwork collection
+    let artwork = db.list_badge_artwork(group_id).await?;
+
+    Ok(ArtworkPage { artwork })
+}
+
+/// Prepares the badge award history page for full and partial dashboard routes.
+pub(crate) async fn prepare_awards_page(
     db: &DynDB,
     group_id: Uuid,
     raw_query: &str,
-) -> Result<(BadgesFilters, Page), HandlerError> {
-    // Parse, validate, and normalize independent page filters
-    let mut filters: BadgesFilters = serde_qs_config().deserialize_str(raw_query)?;
+) -> Result<(AwardsFilters, AwardsPage), HandlerError> {
+    // Parse and validate the award-history filters
+    let filters: AwardsFilters = serde_qs_config().deserialize_str(raw_query)?;
     filters.validate()?;
-    let pane = filters.current_pane().to_string();
-    filters.pane = Some(pane.clone());
-    let awards_offset = filters.awards_offset.unwrap_or(0);
-    if awards_offset > MAX_DATABASE_OFFSET {
+    let offset = filters.awards_offset.unwrap_or(0);
+    if offset > MAX_DATABASE_OFFSET {
         return Err(HandlerError::Deserialization(
             "award history offset is too large".to_string(),
         ));
     }
-    let badges_offset = filters.badges_offset.unwrap_or(0);
-    if badges_offset > MAX_DATABASE_OFFSET {
-        return Err(HandlerError::Deserialization(
-            "badge definition offset is too large".to_string(),
-        ));
-    }
     let limit = filters.limit.expect("validated pagination limit to be set");
-    let awards_query = filters.awards_query.clone().unwrap_or_default();
-    let badges_query = filters.badges_query.clone().unwrap_or_default();
     let from = filters.from.clone().unwrap_or_default();
+    let query = filters.awards_query.clone().unwrap_or_default();
     let status = filters.status.clone().unwrap_or_default();
     let to = filters.to.clone().unwrap_or_default();
-    let badge_filters = BadgeFilters {
-        limit,
-        offset: badges_offset,
-        query: filters.badges_query.clone(),
-    };
     let award_filters = AwardedBadgesFilters {
         limit,
-        offset: awards_offset,
+        offset,
         badge_id: filters.badge_id,
         event_id: filters.event_id,
         from: parse_date(&from),
@@ -388,49 +432,81 @@ pub(crate) async fn prepare_page(
         to: parse_date(&to).and_then(|date| date.checked_add_signed(TimeDelta::days(1))),
     };
 
-    // Load independent page sections concurrently
-    let (artwork, awarded_badges, badges) = tokio::try_join!(
-        db.list_badge_artwork(group_id),
-        db.list_awarded_badges(group_id, &award_filters),
-        db.list_badges(group_id, &badge_filters)
-    )?;
-    // Build navigation for each independently paginated pane
-    let mut history_navigation_filters = filters.clone();
-    history_navigation_filters.pane = Some("awards".to_string());
-    let awards_navigation_links = NavigationLinks::from_filters(
-        &history_navigation_filters,
+    // Load the filtered award history
+    let awarded_badges = db.list_awarded_badges(group_id, &award_filters).await?;
+
+    // Build navigation within the top-level awards tab
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
         awarded_badges.total,
-        DASHBOARD_URL,
-        PARTIAL_URL,
-    )?;
-    let mut definition_navigation_filters = filters.clone();
-    definition_navigation_filters.pane = Some("definitions".to_string());
-    let badges_navigation_links = NavigationLinks::from_filters(
-        &definition_navigation_filters,
-        badges.total,
-        DASHBOARD_URL,
-        PARTIAL_URL,
+        AWARDS_DASHBOARD_URL,
+        AWARDS_PARTIAL_URL,
     )?;
 
-    // Assemble the template contract with filter selections preserved
-    let template = Page {
-        artwork,
+    // Assemble the award page with its current filters
+    let template = AwardsPage {
         awarded_badges,
-        awards_navigation_links,
-        awards_query,
-        badges,
-        badges_navigation_links,
-        badges_query,
         from,
-        pane,
+        navigation_links,
+        query,
         status,
         to,
 
-        awards_offset: filters.awards_offset,
         badge_id: filters.badge_id,
-        badges_offset: filters.badges_offset,
         event_id: filters.event_id,
         limit: filters.limit,
+        offset: filters.awards_offset,
+    };
+
+    Ok((filters, template))
+}
+
+/// Prepares the badge definitions page for full and partial dashboard routes.
+pub(crate) async fn prepare_badges_page(
+    db: &DynDB,
+    group_id: Uuid,
+    raw_query: &str,
+) -> Result<(BadgesFilters, BadgesPage), HandlerError> {
+    // Parse and validate the badge-definition filters
+    let filters: BadgesFilters = serde_qs_config().deserialize_str(raw_query)?;
+    filters.validate()?;
+    let offset = filters.badges_offset.unwrap_or(0);
+    if offset > MAX_DATABASE_OFFSET {
+        return Err(HandlerError::Deserialization(
+            "badge definition offset is too large".to_string(),
+        ));
+    }
+    let limit = filters.limit.expect("validated pagination limit to be set");
+    let query = filters.badges_query.clone().unwrap_or_default();
+    let badge_filters = BadgeFilters {
+        limit,
+        offset,
+        query: filters.badges_query.clone(),
+    };
+
+    // Load definitions and their reusable artwork concurrently
+    let (artwork, badges) = tokio::try_join!(
+        db.list_badge_artwork(group_id),
+        db.list_badges(group_id, &badge_filters)
+    )?;
+
+    // Build navigation within the top-level badges tab
+    let navigation_links = NavigationLinks::from_filters(
+        &filters,
+        badges.total,
+        BADGES_DASHBOARD_URL,
+        BADGES_PARTIAL_URL,
+    )?;
+
+    // Assemble the definitions page with its current filters
+    let template = BadgesPage {
+        artwork,
+        badges,
+        navigation_links,
+        query,
+
+        limit: filters.limit,
+        offset: filters.badges_offset,
     };
 
     Ok((filters, template))

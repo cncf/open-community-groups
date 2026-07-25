@@ -273,9 +273,11 @@ pub(super) fn setup_group_dashboard_router(state: &State) -> Router<State> {
 
     // Group badge management endpoints
     let badges_management = Router::new()
+        .route("/artwork", get(dashboard::group::badges::artwork_page))
+        .route("/awards", get(dashboard::group::badges::awards_page))
         .route(
             "/badges",
-            get(dashboard::group::badges::page).post(dashboard::group::badges::add),
+            get(dashboard::group::badges::badges_page).post(dashboard::group::badges::add),
         )
         .route(
             "/badges/artwork",

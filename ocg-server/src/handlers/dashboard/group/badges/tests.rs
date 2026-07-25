@@ -491,19 +491,6 @@ fn test_is_safe_artwork_file_name_rejects_paths() {
 }
 
 #[test]
-fn test_badges_filters_fall_back_to_definitions_pane() {
-    // Check supported panes and untrusted query values
-    let mut filters = BadgesFilters::default();
-    assert_eq!(filters.current_pane(), "definitions");
-    filters.pane = Some("awards".to_string());
-    assert_eq!(filters.current_pane(), "awards");
-    filters.pane = Some("artwork".to_string());
-    assert_eq!(filters.current_pane(), "artwork");
-    filters.pane = Some("unknown".to_string());
-    assert_eq!(filters.current_pane(), "definitions");
-}
-
-#[test]
 fn test_validate_badge_input_rejects_oversized_text() {
     // Build otherwise-valid definitions exceeding each credential text bound
     let mut criteria = sample_badge_input();
@@ -570,11 +557,9 @@ async fn test_options_trims_search_and_returns_json() {
 }
 
 #[tokio::test]
-async fn test_page_builds_independent_badge_navigation() {
-    // Setup an authorized group session and two independently paginated result sets
-    let badge_id = Uuid::new_v4();
+async fn test_artwork_page_renders_independent_tab() {
+    // Setup an authorized group session and empty artwork library
     let community_id = Uuid::new_v4();
-    let event_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
     let session_id = session::Id::default();
     let user_id = Uuid::new_v4();
@@ -591,6 +576,52 @@ async fn test_page_builds_independent_badge_navigation() {
         .times(1)
         .withf(move |id| *id == group_id)
         .return_once(|_| Ok(Vec::new()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request the artwork partial through its top-level dashboard route
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/dashboard/group/artwork")
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check artwork renders alone and pushes its full dashboard URL
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get("hx-push-url").unwrap(),
+        "/dashboard/group?tab=artwork"
+    );
+    assert!(body.contains(">Badges Artwork</h1>"));
+    assert!(!body.contains("data-badge-pane"));
+}
+
+#[tokio::test]
+async fn test_awards_page_builds_navigation() {
+    // Setup an authorized group session and paginated award history
+    let badge_id = Uuid::new_v4();
+    let community_id = Uuid::new_v4();
+    let event_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
     db.expect_list_awarded_badges()
         .times(1)
         .withf(move |id, filters| {
@@ -610,6 +641,66 @@ async fn test_page_builds_independent_badge_navigation() {
                 ..Default::default()
             })
         });
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request filtered award navigation through its top-level dashboard route
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri(format!(
+                    "/dashboard/group/awards?awards_offset=50&awards_query=alice&badge_id={badge_id}\
+                     &event_id={event_id}&from=2026-01-01&limit=25&status=active&to=2026-01-31"
+                ))
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
+
+    // Check full and partial navigation stay within the awards tab
+    assert_eq!(parts.status, StatusCode::OK);
+    assert!(
+        parts
+            .headers
+            .get("hx-push-url")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with("/dashboard/group?tab=awards&")
+    );
+    assert!(body.contains("badge-awards-pagination-next-spinner"));
+    assert!(body.contains("awards_offset=75"));
+    assert!(body.contains("awards_query=alice"));
+    assert!(body.contains("href=\"/dashboard/group?tab=awards"));
+    assert!(body.contains("hx-get=\"/dashboard/group/awards?"));
+    assert!(body.contains(">Badges Awards</h1>"));
+}
+
+#[tokio::test]
+async fn test_badges_page_builds_navigation() {
+    // Setup an authorized group session and paginated badge definitions
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::EventsWrite,
+    );
+    db.expect_list_badge_artwork()
+        .times(1)
+        .withf(move |id| *id == group_id)
+        .return_once(|_| Ok(Vec::new()));
     db.expect_list_badges()
         .times(1)
         .withf(move |id, filters| {
@@ -628,15 +719,11 @@ async fn test_page_builds_independent_badge_navigation() {
         .build()
         .await;
 
-    // Request definition navigation while preserving award-history state
+    // Request filtered definition navigation through its top-level dashboard route
     let response = router
         .oneshot(
             Request::builder()
-                .uri(format!(
-                    "/dashboard/group/badges?tab=badges&awards_offset=50&awards_query=alice&badge_id={badge_id}\
-                     &badges_offset=75&badges_query=helper&event_id={event_id}\
-                     &from=2026-01-01&limit=25&pane=definitions&status=active&to=2026-01-31"
-                ))
+                .uri("/dashboard/group/badges?badges_offset=75&badges_query=helper&limit=25")
                 .header(COOKIE, format!("id={session_id}"))
                 .body(Body::empty())
                 .unwrap(),
@@ -646,7 +733,7 @@ async fn test_page_builds_independent_badge_navigation() {
     let (parts, body) = response.into_parts();
     let body = String::from_utf8(to_bytes(body, usize::MAX).await.unwrap().to_vec()).unwrap();
 
-    // Check full and partial navigation keep both offsets and filter selections
+    // Check full and partial navigation stay within the badges tab
     assert_eq!(parts.status, StatusCode::OK);
     assert!(
         parts
@@ -658,17 +745,15 @@ async fn test_page_builds_independent_badge_navigation() {
             .starts_with("/dashboard/group?tab=badges&")
     );
     assert!(body.contains("badge-definitions-pagination-next-spinner"));
-    assert!(body.contains("badge-awards-pagination-next-spinner"));
     assert!(body.contains("badges_offset=100"));
-    assert!(body.contains("awards_offset=75"));
     assert!(body.contains("badges_query=helper"));
-    assert!(body.contains("awards_query=alice"));
     assert!(body.contains("href=\"/dashboard/group?tab=badges"));
     assert!(body.contains("hx-get=\"/dashboard/group/badges?"));
+    assert!(body.contains(">Badges</h1>"));
 }
 
 #[tokio::test]
-async fn test_page_rejects_oversized_awards_offset() {
+async fn test_awards_page_rejects_oversized_offset() {
     // Setup an authorized group session without database page expectations
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
@@ -691,7 +776,7 @@ async fn test_page_rejects_oversized_awards_offset() {
     let response = router
         .oneshot(
             Request::builder()
-                .uri("/dashboard/group/badges?awards_offset=2147483648")
+                .uri("/dashboard/group/awards?awards_offset=2147483648")
                 .header(COOKIE, format!("id={session_id}"))
                 .body(Body::empty())
                 .unwrap(),
@@ -704,7 +789,7 @@ async fn test_page_rejects_oversized_awards_offset() {
 }
 
 #[tokio::test]
-async fn test_page_rejects_oversized_badges_offset() {
+async fn test_badges_page_rejects_oversized_offset() {
     // Setup an authorized group session without database page expectations
     let community_id = Uuid::new_v4();
     let group_id = Uuid::new_v4();
