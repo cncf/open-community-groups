@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(80);
+select plan(83);
 
 -- ============================================================================
 -- TESTS
@@ -51,10 +51,31 @@ select indexes_are('badge_artwork', array[
 ]);
 select index_is_unique('badge_artwork', 'badge_artwork_group_file_name_key');
 
+-- Test: durable badge award queue indexes should match expected
+select indexes_are('badge_award_job', array[
+    'badge_award_job_pkey',
+    'badge_award_job_claimed_at_idx',
+    'badge_award_job_completed_at_idx',
+    'badge_award_job_group_id_created_at_idx',
+    'badge_award_job_pending_idx'
+]);
+
+-- Test: durable badge award recipient indexes should match expected
+select indexes_are('badge_award_job_recipient', array[
+    'badge_award_job_recipient_pkey',
+    'badge_award_job_recipient_badge_award_job_id_user_id_key',
+    'badge_award_job_recipient_user_id_idx'
+]);
+select index_is_unique(
+    'badge_award_job_recipient',
+    'badge_award_job_recipient_badge_award_job_id_user_id_key'
+);
+
 -- Test: badge status list indexes should match expected
 select indexes_are('badge_status_list', array[
     'badge_status_list_pkey',
     'badge_status_list_badge_status_list_id_group_id_key',
+    'badge_status_list_available_idx',
     'badge_status_list_group_id_idx'
 ]);
 select index_is_unique(
@@ -535,12 +556,15 @@ select indexes_are('user', array[
 select indexes_are('user_badge', array[
     'user_badge_pkey',
     'user_badge_status_list_index_key',
+    'user_badge_awarded_at_idx',
     'user_badge_badge_id_idx',
     'user_badge_badge_id_user_id_active_idx',
     'user_badge_event_id_idx',
     'user_badge_group_id_awarded_at_idx',
     'user_badge_snapshot_image_file_name_idx',
-    'user_badge_user_id_display_order_idx'
+    'user_badge_status_list_revoked_idx',
+    'user_badge_user_id_display_order_idx',
+    'user_badge_user_id_listed_display_order_idx'
 ]);
 select index_is_unique('user_badge', 'user_badge_badge_id_user_id_active_idx');
 select index_is_unique('user_badge', 'user_badge_status_list_index_key');

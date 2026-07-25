@@ -165,7 +165,7 @@ pub(crate) async fn award(
         ));
     }
 
-    // Validate and persist the complete award set atomically
+    // Validate and durably queue the complete award set atomically
     let outcome = db
         .award_badge(
             user.user_id,

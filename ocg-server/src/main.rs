@@ -25,6 +25,7 @@ use crate::{
     },
     db::{DynDB, PgDB, pool as db_pool},
     services::{
+        badges::start_badge_award_workers,
         images::{DbImageStorage, DynImageStorage, S3ImageStorage},
         meetings::{
             DynMeetingsProvider, MeetingProvider, MeetingsManager, zoom::ZoomMeetingsProvider,
@@ -107,6 +108,12 @@ async fn main() -> Result<()> {
     let image_storage = setup_image_storage(&cfg, db.clone());
 
     // Configure background services that depend on the database
+    let badge_workers_db = db.clone() as DynDB;
+    start_badge_award_workers(
+        &badge_workers_db,
+        &background_tasks.task_tracker,
+        &background_tasks.cancellation_token,
+    );
     start_meetings_workers(&cfg, db.clone(), &background_tasks);
     let activity_tracker = setup_activity_tracker(db.clone(), &background_tasks);
     let notifications_manager = setup_notifications_manager(&cfg, db.clone(), &background_tasks)?;

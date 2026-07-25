@@ -47,11 +47,104 @@ create table badge_artwork (
     constraint badge_artwork_group_file_name_key unique (group_id, file_name)
 );
 
+create table badge_award_job (
+    badge_award_job_id uuid primary key default gen_random_uuid(),
+    accepted_count integer not null check (accepted_count >= 0),
+    actor_username text not null,
+    awarded_count integer default 0 not null check (awarded_count >= 0),
+    badge_snapshot jsonb not null check (jsonb_typeof(badge_snapshot) = 'object'),
+    community_id uuid not null references community,
+    created_at timestamptz default current_timestamp not null,
+    failure_count integer default 0 not null check (failure_count >= 0),
+    group_id uuid not null references "group",
+    next_attempt_at timestamptz default current_timestamp not null,
+    next_recipient_offset integer default 0 not null check (next_recipient_offset >= 0),
+    recipient_count integer not null check (recipient_count > 0),
+    skipped_count integer default 0 not null check (skipped_count >= 0),
+    status text default 'pending' not null,
+    updated_at timestamptz default current_timestamp not null,
+
+    actor_user_id uuid references "user" on delete set null,
+    badge_id uuid references badge on delete set null,
+    claim_id uuid,
+    claimed_at timestamptz,
+    completed_at timestamptz,
+    error text,
+    event_id uuid references event on delete set null,
+
+    constraint badge_award_job_claim_chk check (
+        (
+            status = 'processing'
+            and claim_id is not null
+            and claimed_at is not null
+        )
+        or (
+            status <> 'processing'
+            and claim_id is null
+            and claimed_at is null
+        )
+    ),
+    constraint badge_award_job_counts_chk check (
+        accepted_count + skipped_count >= recipient_count
+        and awarded_count + skipped_count <= recipient_count
+        and next_recipient_offset <= accepted_count
+        and (
+            status <> 'completed'
+            or (
+                awarded_count + skipped_count = recipient_count
+                and next_recipient_offset = accepted_count
+            )
+        )
+    ),
+    constraint badge_award_job_status_chk check (
+        status in ('completed', 'failed', 'pending', 'processing')
+    ),
+    constraint badge_award_job_terminal_chk check (
+        (
+            status in ('completed', 'failed')
+            and completed_at is not null
+        )
+        or (
+            status in ('pending', 'processing')
+            and completed_at is null
+        )
+    )
+);
+
+create table badge_award_job_recipient (
+    badge_award_job_id uuid not null references badge_award_job on delete cascade,
+    position integer not null check (position >= 0),
+
+    user_id uuid references "user" on delete set null,
+
+    constraint badge_award_job_recipient_pkey primary key (
+        badge_award_job_id,
+        position
+    ),
+    constraint badge_award_job_recipient_badge_award_job_id_user_id_key unique (
+        badge_award_job_id,
+        user_id
+    )
+);
+
 create table badge_status_list (
     badge_status_list_id uuid primary key default gen_random_uuid(),
+    allocation_offset integer default floor(random() * 131072)::integer not null,
+    allocation_position integer default 0 not null,
+    allocation_stride integer default (floor(random() * 65536)::integer * 2 + 1) not null,
     created_at timestamptz default current_timestamp not null,
     group_id uuid not null references "group",
 
+    constraint badge_status_list_allocation_offset_chk check (
+        allocation_offset between 0 and 131071
+    ),
+    constraint badge_status_list_allocation_position_chk check (
+        allocation_position between 0 and 131072
+    ),
+    constraint badge_status_list_allocation_stride_chk check (
+        allocation_stride between 1 and 131071
+        and allocation_stride % 2 = 1
+    ),
     constraint badge_status_list_badge_status_list_id_group_id_key unique (
         badge_status_list_id,
         group_id
@@ -99,10 +192,26 @@ create table user_badge (
 
 create index badge_artwork_file_name_idx on badge_artwork (file_name);
 create index badge_artwork_group_id_idx on badge_artwork (group_id);
+create index badge_award_job_claimed_at_idx on badge_award_job (claimed_at)
+    where status = 'processing';
+create index badge_award_job_completed_at_idx on badge_award_job (completed_at)
+    where status = 'completed';
+create index badge_award_job_group_id_created_at_idx
+on badge_award_job (group_id, created_at desc);
+create index badge_award_job_pending_idx
+on badge_award_job (next_attempt_at, created_at, badge_award_job_id)
+    where status = 'pending';
+create index badge_award_job_recipient_user_id_idx
+on badge_award_job_recipient (user_id)
+    where user_id is not null;
 create index badge_group_id_idx on badge (group_id);
 create index badge_image_file_name_idx on badge (image_file_name);
+create index badge_status_list_available_idx
+on badge_status_list (group_id, created_at desc)
+    where allocation_position < 131072;
 create index badge_status_list_group_id_idx on badge_status_list (group_id);
 create index badge_tsdoc_idx on badge using gin (tsdoc);
+create index user_badge_awarded_at_idx on user_badge (awarded_at);
 create index user_badge_badge_id_idx on user_badge (badge_id);
 create unique index user_badge_badge_id_user_id_active_idx on user_badge (badge_id, user_id)
     where revoked_at is null;
@@ -110,8 +219,14 @@ create index user_badge_event_id_idx on user_badge (event_id);
 create index user_badge_group_id_awarded_at_idx on user_badge (group_id, awarded_at desc);
 create index user_badge_snapshot_image_file_name_idx
 on user_badge ((snapshot->>'image_file_name'));
+create index user_badge_status_list_revoked_idx
+on user_badge (badge_status_list_id, status_list_index)
+    where revoked_at is not null;
 create index user_badge_user_id_display_order_idx on user_badge (user_id, display_order)
     where revoked_at is null;
+create index user_badge_user_id_listed_display_order_idx
+on user_badge (user_id, display_order)
+    where revoked_at is null and is_listed = true;
 
 -- Protects immutable issuance fields and prevents revoked badges from returning active.
 create function prevent_user_badge_revocation_reversal()

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(79);
+select plan(87);
 
 -- ============================================================================
 -- VARIABLES
@@ -33,6 +33,18 @@ select has_check('badge', 'badge_name_chk');
 
 -- Test: badge artwork should preserve route-safe filenames
 select has_check('badge_artwork', 'badge_artwork_file_name_chk');
+
+-- Test: durable award jobs should preserve ownership, progress, and terminal state invariants
+select has_check('badge_award_job', 'badge_award_job_claim_chk');
+select has_check('badge_award_job', 'badge_award_job_counts_chk');
+select has_check('badge_award_job', 'badge_award_job_status_chk');
+select has_check('badge_award_job', 'badge_award_job_terminal_chk');
+select col_has_check('badge_award_job_recipient', 'position');
+
+-- Test: status-list allocation should remain bounded and collision-free
+select has_check('badge_status_list', 'badge_status_list_allocation_offset_chk');
+select has_check('badge_status_list', 'badge_status_list_allocation_position_chk');
+select has_check('badge_status_list', 'badge_status_list_allocation_stride_chk');
 
 -- Test: badge awards should preserve issuance, status, and revocation invariants
 select has_check('user_badge', 'user_badge_active_user_chk');

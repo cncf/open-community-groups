@@ -15,9 +15,11 @@ use crate::{
     config::{BadgeSigningKeyConfig, BadgesConfig, HttpServerConfig},
     db::mock::MockDB,
     handlers::tests::{TestRouterBuilder, sample_site_settings},
+    router::CACHE_CONTROL_PUBLIC_SHARED,
     services::notifications::MockNotificationsManager,
     types::badges::{
-        BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicUserBadge, UserBadge,
+        BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
+        PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
     },
 };
 
@@ -90,7 +92,7 @@ async fn test_credential_html_response_uses_public_snapshot_and_cache_contract()
 }
 
 #[tokio::test]
-async fn test_credential_json_ld_response_is_signed_and_uncached() {
+async fn test_credential_json_ld_response_is_signed_and_shared_cached() {
     // Setup a public award and active signing configuration
     let award = sample_user_badge();
     let user_badge_id = award.user_badge_id;
@@ -118,7 +120,7 @@ async fn test_credential_json_ld_response_is_signed_and_uncached() {
     let (parts, body) = response.into_parts();
     let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
 
-    // Check the signed JSON-LD and private-cache boundary
+    // Check the signed JSON-LD and bounded shared-cache boundary
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(
         parts.headers.get(CONTENT_TYPE).unwrap(),
@@ -126,8 +128,9 @@ async fn test_credential_json_ld_response_is_signed_and_uncached() {
     );
     assert_eq!(
         parts.headers.get(CACHE_CONTROL).unwrap(),
-        CACHE_CONTROL_NO_STORE
+        CACHE_CONTROL_PUBLIC_SHARED
     );
+    assert_eq!(parts.headers.get("vary").unwrap(), CREDENTIAL_CACHE_VARY);
     assert_eq!(
         body["id"],
         format!("https://badges.example.test/badges/credentials/{user_badge_id}")
@@ -284,9 +287,13 @@ async fn test_user_profile_badges_returns_public_projection() {
     let community_id = Uuid::new_v4();
     let award = sample_user_badge();
     let expected = vec![PublicUserBadge {
-        awarded_at: award.awarded_at,
-        group_id: award.group_id,
-        snapshot: award.snapshot,
+        snapshot: PublicBadgeSnapshot {
+            image_file_name: award.snapshot.image_file_name,
+            issuer: PublicBadgeSnapshotIssuer {
+                group_name: award.snapshot.issuer.group_name,
+            },
+            name: award.snapshot.name,
+        },
         user_badge_id: award.user_badge_id,
     }];
     let output = expected.clone();
@@ -297,8 +304,10 @@ async fn test_user_profile_badges_returns_public_projection() {
         .return_once(move |_| Ok(Some(community_id)));
     db.expect_list_user_public_badges()
         .times(1)
-        .withf(move |id, username| *id == community_id && username == "ada")
-        .return_once(move |_, _| Ok(output));
+        .withf(move |id, limit, offset, username| {
+            *id == community_id && *limit == 50 && *offset == 0 && username == "ada"
+        })
+        .return_once(move |_, _, _, _| Ok(output));
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .build()
         .await;
@@ -317,13 +326,32 @@ async fn test_user_profile_badges_returns_public_projection() {
     let body: Vec<PublicUserBadge> =
         serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
 
-    // Check only the public DTO crosses the uncached handler boundary
+    // Check only the bounded public DTO crosses the shared-cache boundary
     assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        CACHE_CONTROL_NO_STORE
-    );
+    assert!(parts.headers.get(CACHE_CONTROL).is_some());
     assert_eq!(body, expected);
+}
+
+#[tokio::test]
+async fn test_user_profile_badges_rejects_page_above_public_cap() {
+    // Build a public router whose database must not be queried for invalid pagination
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request a page larger than the fixed public response cap
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/communities/test-community/users/ada/badges?limit=51")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check validation rejects the request before any public-profile reads
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]
@@ -350,7 +378,10 @@ async fn test_verification_key_returns_allowlisted_multikey() {
     // Check the Multikey response and public cache boundary
     assert_eq!(parts.status, StatusCode::OK);
     assert_eq!(parts.headers.get(CONTENT_TYPE).unwrap(), "application/json");
-    assert!(parts.headers.get(CACHE_CONTROL).is_some());
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_IMMUTABLE
+    );
     assert_eq!(body["type"], "Multikey");
     assert_eq!(
         body["id"],

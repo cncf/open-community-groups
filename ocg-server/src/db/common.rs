@@ -69,6 +69,8 @@ pub(crate) trait DBCommon {
     async fn list_user_public_badges(
         &self,
         community_id: Uuid,
+        limit: usize,
+        offset: usize,
         username: &str,
     ) -> Result<Vec<PublicUserBadge>>;
 
@@ -213,11 +215,15 @@ where
     async fn list_user_public_badges(
         &self,
         community_id: Uuid,
+        limit: usize,
+        offset: usize,
         username: &str,
     ) -> Result<Vec<PublicUserBadge>> {
+        let limit = i32::try_from(limit)?;
+        let offset = i32::try_from(offset)?;
         self.fetch_json_one(
-            "select list_user_public_badges($1::uuid, $2::text)",
-            &[&community_id, &username],
+            "select list_user_public_badges($1::uuid, $2::text, $3::integer, $4::integer)",
+            &[&community_id, &username, &limit, &offset],
         )
         .await
     }

@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(75);
+select plan(77);
 
 -- ============================================================================
 -- TESTS
@@ -64,9 +64,47 @@ select columns_are('badge_artwork', array[
     'group_id'
 ]);
 
+-- Test: durable badge award queue columns should match expected
+select columns_are('badge_award_job', array[
+    'badge_award_job_id',
+    'accepted_count',
+    'actor_username',
+    'awarded_count',
+    'badge_snapshot',
+    'community_id',
+    'created_at',
+    'failure_count',
+    'group_id',
+    'next_attempt_at',
+    'next_recipient_offset',
+    'recipient_count',
+    'skipped_count',
+    'status',
+    'updated_at',
+
+    'actor_user_id',
+    'badge_id',
+    'claim_id',
+    'claimed_at',
+    'completed_at',
+    'error',
+    'event_id'
+]);
+
+-- Test: durable badge award recipient columns should match expected
+select columns_are('badge_award_job_recipient', array[
+    'badge_award_job_id',
+    'position',
+
+    'user_id'
+]);
+
 -- Test: badge status list columns should match expected
 select columns_are('badge_status_list', array[
     'badge_status_list_id',
+    'allocation_offset',
+    'allocation_position',
+    'allocation_stride',
     'created_at',
     'group_id'
 ]);

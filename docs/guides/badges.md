@@ -84,7 +84,13 @@ of that group's team. Canceled events cannot issue awards.
 
 OCG validates the complete recipient list before awarding the badge. If any recipient is
 ineligible, nobody in that request receives it. One active award is allowed for each badge and
-user. Current holders are skipped, and the result reports both awarded and skipped totals.
+user. Current holders are skipped, and the result reports both accepted-for-issuance and skipped
+totals.
+
+After validation, OCG places accepted awards in a durable queue so large recipient sets do not
+affect normal platform traffic. Credentials, award history, and emails may take a short time to
+appear. Large awards can take several minutes by design; do not submit the same award again while
+it is processing.
 
 New recipients receive an email with the badge image, description, criteria, issuing group, and a
 link to [User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore'). Existing active holders

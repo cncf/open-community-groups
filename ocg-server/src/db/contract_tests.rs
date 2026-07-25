@@ -14,6 +14,7 @@ use crate::{
     db::{
         DB, PgDB,
         auth::DBAuth,
+        badges::DBBadges,
         common::DBCommon,
         community::DBCommunity,
         dashboard::{
@@ -56,8 +57,8 @@ use crate::{
     types::{
         badges::{
             AwardedBadgesFilters, Badge, BadgeArtwork, BadgeAwardDefinition, BadgeAwardSource,
-            BadgeFilters, BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicUserBadge,
-            UserBadge,
+            BadgeFilters, BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
+            PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
         },
         community::CommunityRole,
         event::{EventAttendanceStatus, EventInvitationRequestStatus, EventKind},
@@ -134,7 +135,7 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
         .await?
         .context("public contract badge should exist")?;
     let profile = db
-        .list_user_public_badges(community_id(), "contract-attendee")
+        .list_user_public_badges(community_id(), 50, 0, "contract-attendee")
         .await?;
     let status = db
         .get_badge_status_list(badge_status_list_id())
@@ -224,9 +225,13 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
     assert_eq!(
         profile,
         vec![PublicUserBadge {
-            awarded_at: DateTime::from_timestamp(1_705_053_600, 0).unwrap(),
-            group_id: group_id(),
-            snapshot: snapshot.clone(),
+            snapshot: PublicBadgeSnapshot {
+                image_file_name: "contract-badge.png".to_string(),
+                issuer: PublicBadgeSnapshotIssuer {
+                    group_name: "Contract Group".to_string(),
+                },
+                name: "Contract Participant".to_string(),
+            },
             user_badge_id: active_user_badge_id(),
         }]
     );
@@ -242,6 +247,27 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
         user_badges,
         vec![contract_active_user_badge(snapshot, None, None, None)]
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
+async fn db_contracts_badge_award_worker_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+    let claim = db
+        .claim_badge_award_job()
+        .await?
+        .context("contract badge award job should be claimable")?;
+
+    assert_eq!(claim.badge_award_job_id, badge_award_job_id());
+    let outcome = db
+        .process_badge_award_job_batch(claim.badge_award_job_id, claim.claim_id, 25, 500)
+        .await?;
+
+    assert!(outcome.completed);
+    assert_eq!(outcome.processed_count, 1);
+    assert!(!outcome.rate_limited);
 
     Ok(())
 }
@@ -2125,6 +2151,7 @@ const ACTIVE_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bd";
 const ATTENDEE_ID: &str = "00000000-0000-0000-0000-00000000c042";
 const AUTO_END_MEETING_ID: &str = "00000000-0000-0000-0000-00000000c0a3";
 const BADGE_ARTWORK_ID: &str = "00000000-0000-0000-0000-00000000c0ba";
+const BADGE_AWARD_JOB_ID: &str = "00000000-0000-0000-0000-00000000c0bf";
 const BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0bb";
 const BADGE_STATUS_LIST_ID: &str = "00000000-0000-0000-0000-00000000c0bc";
 const CANCELEE_ID: &str = "00000000-0000-0000-0000-00000000c0e9";
@@ -2192,6 +2219,10 @@ fn auto_end_meeting_id() -> Uuid {
 
 fn badge_artwork_id() -> Uuid {
     parse_uuid(BADGE_ARTWORK_ID)
+}
+
+fn badge_award_job_id() -> Uuid {
+    parse_uuid(BADGE_AWARD_JOB_ID)
 }
 
 fn badge_id() -> Uuid {

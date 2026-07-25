@@ -14,7 +14,7 @@ pub(crate) const BADGE_NAME_MAX_CHARS: usize = 200;
 /// Result counts returned by a bulk badge award operation.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct AwardBadgeOutcome {
-    /// Number of new credentials inserted.
+    /// Number of new credentials accepted for durable issuance.
     pub awarded_count: usize,
     /// Number of recipients who already held an active badge.
     pub skipped_count: usize,
@@ -80,7 +80,7 @@ pub(crate) struct BadgeAwardDefinition {
 pub(crate) struct BadgeAwardInput {
     /// Badge definition to award.
     pub badge_id: Uuid,
-    /// Explicit recipients to validate and award atomically.
+    /// Explicit recipients to validate and queue atomically.
     pub user_ids: Vec<Uuid>,
 
     /// Event that defines recipient eligibility, when applicable.
@@ -184,14 +184,28 @@ pub(crate) struct GroupBadges {
 /// Public profile badge summary.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct PublicUserBadge {
-    /// Credential award time.
-    pub awarded_at: DateTime<Utc>,
-    /// Issuing group identifier.
-    pub group_id: Uuid,
-    /// Immutable badge snapshot.
-    pub snapshot: BadgeSnapshot,
+    /// Minimal immutable fields rendered by public profiles.
+    pub snapshot: PublicBadgeSnapshot,
     /// Opaque award identifier used by the credential URL.
     pub user_badge_id: Uuid,
+}
+
+/// Minimal immutable badge fields exposed by public profiles.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct PublicBadgeSnapshot {
+    /// Content-addressed artwork file name.
+    pub image_file_name: String,
+    /// Minimal issuer context rendered by public profiles.
+    pub issuer: PublicBadgeSnapshotIssuer,
+    /// Badge name.
+    pub name: String,
+}
+
+/// Minimal immutable issuer fields exposed by public profiles.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct PublicBadgeSnapshotIssuer {
+    /// Issuing group display name.
+    pub group_name: String,
 }
 
 /// Durable badge award and credential issuance state.

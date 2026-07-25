@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(2);
+select plan(5);
 
 -- ============================================================================
 -- VARIABLES
@@ -48,8 +48,26 @@ insert into user_badge (
     user_badge_id, badge_status_list_id, display_order, group_id, is_listed, snapshot, status_list_index,
     user_id
 ) values
-    (:'userBadgeListedID', :'statusListID', 0, :'groupID', true, '{"name":"Listed"}', 1, :'userID'),
-    (:'userBadgeHiddenID', :'statusListID', 1, :'groupID', false, '{"name":"Hidden"}', 2, :'userID');
+    (
+        :'userBadgeListedID',
+        :'statusListID',
+        0,
+        :'groupID',
+        true,
+        '{"image_file_name":"listed.png","issuer":{"group_name":"Profile Group"},"name":"Listed"}',
+        1,
+        :'userID'
+    ),
+    (
+        :'userBadgeHiddenID',
+        :'statusListID',
+        1,
+        :'groupID',
+        false,
+        '{"image_file_name":"hidden.png","issuer":{"group_name":"Profile Group"},"name":"Hidden"}',
+        2,
+        :'userID'
+    );
 
 -- ============================================================================
 -- TESTS
@@ -60,6 +78,37 @@ select is(
     jsonb_array_length(list_user_public_badges(:'communityID', 'PROFILE-USER')::jsonb),
     1,
     'Should return only listed active badges in the requested community'
+);
+
+-- Should expose only the minimal projection used by public profiles
+select is(
+    list_user_public_badges(:'communityID', 'profile-user')::jsonb,
+    jsonb_build_array(jsonb_build_object(
+        'snapshot', jsonb_build_object(
+            'image_file_name', 'listed.png',
+            'issuer', jsonb_build_object('group_name', 'Profile Group'),
+            'name', 'Listed'
+        ),
+        'user_badge_id', :'userBadgeListedID'::uuid
+    )),
+    'Should expose only the minimal public profile projection'
+);
+
+-- Should apply bounded pagination after stable display ordering
+select is(
+    list_user_public_badges(:'communityID', 'profile-user', 50, 1)::jsonb,
+    '[]'::jsonb,
+    'Should apply public profile pagination'
+);
+
+-- Should reject requests above the public page-size cap
+select throws_ok(
+    format(
+        $$select list_user_public_badges(%L::uuid, 'profile-user', 51, 0)$$,
+        :'communityID'
+    ),
+    'badge pagination is outside the supported range',
+    'Should reject an unbounded public profile request'
 );
 
 -- Should return an empty list for an unknown user

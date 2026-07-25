@@ -1,4 +1,4 @@
--- Awards a badge atomically to an explicit eligible recipient list.
+-- Queues a durable badge award for an explicit eligible recipient list.
 create or replace function award_badge(
     p_actor_user_id uuid,
     p_community_id uuid,
@@ -9,32 +9,30 @@ create or replace function award_badge(
 )
 returns json as $$
 declare
-    v_awarded_count integer := 0;
+    v_accepted_recipient_ids uuid[];
+    v_actor_username text;
     v_badge badge%rowtype;
-    v_badge_status_list_id uuid;
     v_community_name text;
-    v_display_order integer;
     v_eligible_recipient_ids uuid[];
     v_group_name text;
-    v_index_attempts integer;
-    v_notification_recipient_ids uuid[] := '{}';
-    v_recipient_user_id uuid;
+    v_job_id uuid;
     v_recipient_user_ids uuid[];
-    v_skipped_count integer := 0;
+    v_skipped_count integer;
     v_snapshot jsonb;
-    v_status_list_index integer;
-    v_theme jsonb;
-    v_user_badge_id uuid;
 begin
-    -- Serialize group status-list allocation and authorize the requested boundary
-    select g.name, c.display_name
-    into v_group_name, v_community_name
+    -- Lock and authorize the group boundary before accepting durable work
+    select
+        c.display_name,
+        g.name
+    into
+        v_community_name,
+        v_group_name
     from "group" g
     join community c using (community_id)
     where g.community_id = p_community_id
     and g.group_id = p_group_id
     and g.deleted = false
-    for update of g;
+    for share of g;
 
     if not found then
         raise exception 'group not found';
@@ -48,7 +46,16 @@ begin
         raise exception 'badge permission denied' using errcode = 'insufficient_privilege';
     end if;
 
-    -- Lock the definition used to build every immutable issuance snapshot
+    -- Load the actor and definition snapshots used by deferred issuance
+    select username
+    into v_actor_username
+    from "user"
+    where user_id = p_actor_user_id;
+
+    if not found then
+        raise exception 'badge actor not found';
+    end if;
+
     select *
     into v_badge
     from badge
@@ -66,6 +73,7 @@ begin
        or array_position(p_user_ids, null) is not null then
         raise exception 'badge recipients cannot be empty';
     end if;
+
     select array_agg(distinct recipients.user_id order by recipients.user_id)
     into v_recipient_user_ids
     from unnest(p_user_ids) as recipients(user_id);
@@ -84,7 +92,7 @@ begin
             raise exception 'event not found';
         end if;
 
-        -- Validate every recipient as a verified event participant
+        -- Resolve every verified event participant in canonical order
         select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
         into v_eligible_recipient_ids
         from "user" u
@@ -119,7 +127,7 @@ begin
             )
         );
     else
-        -- Validate every recipient as a verified accepted group team member
+        -- Resolve every verified accepted group team member in canonical order
         select coalesce(array_agg(u.user_id order by u.user_id), '{}'::uuid[])
         into v_eligible_recipient_ids
         from group_team gt
@@ -134,14 +142,7 @@ begin
         raise exception 'badge recipient is not eligible';
     end if;
 
-    -- Serialize recipient badge order and duplicate checks in canonical order
-    perform 1
-    from "user" u
-    where u.user_id = any(v_recipient_user_ids)
-    order by u.user_id
-    for update;
-
-    -- Build one immutable snapshot from the locked definition and issuer state
+    -- Snapshot immutable definition and issuer fields before releasing request locks
     v_snapshot := jsonb_build_object(
         'criteria', v_badge.criteria,
         'description', v_badge.description,
@@ -154,136 +155,79 @@ begin
         ),
         'name', v_badge.name
     );
-    select theme into v_theme from site limit 1;
 
-    -- Insert one credential per recipient while skipping active holders
-    foreach v_recipient_user_id in array v_recipient_user_ids
-    loop
-        if exists (
-            select 1
-            from user_badge
-            where badge_id = p_badge_id
-            and revoked_at is null
-            and user_id = v_recipient_user_id
-        ) then
-            v_skipped_count := v_skipped_count + 1;
-            continue;
-        end if;
+    -- Serialize same-definition handoffs so repeated requests cannot amplify queue load
+    perform pg_advisory_xact_lock(
+        hashtextextended('ocg:badge-award-queue:' || p_badge_id::text, 0)
+    );
 
-        -- Select or create a group-scoped status list with remaining capacity
-        select bsl.badge_status_list_id
-        into v_badge_status_list_id
-        from badge_status_list bsl
-        where bsl.group_id = p_group_id
-        and (
-            select count(*)
-            from user_badge ub
-            where ub.badge_status_list_id = bsl.badge_status_list_id
-        ) < 131072
-        order by bsl.created_at desc, bsl.badge_status_list_id desc
-        limit 1
-        for update;
+    -- Exclude current holders and recipients already owned by durable work
+    select coalesce(array_agg(recipients.user_id order by recipients.user_id), '{}'::uuid[])
+    into v_accepted_recipient_ids
+    from unnest(v_recipient_user_ids) as recipients(user_id)
+    where not exists (
+        select 1
+        from user_badge ub
+        where ub.badge_id = p_badge_id
+        and ub.revoked_at is null
+        and ub.user_id = recipients.user_id
+    )
+    and not exists (
+        select 1
+        from badge_award_job_recipient bajr
+        join badge_award_job baj using (badge_award_job_id)
+        where baj.badge_id = p_badge_id
+        and baj.status in ('failed', 'pending', 'processing')
+        and bajr.user_id = recipients.user_id
+    );
 
-        if not found then
-            insert into badge_status_list (group_id)
-            values (p_group_id)
-            returning badge_status_list_id into v_badge_status_list_id;
-        end if;
+    v_skipped_count := cardinality(v_recipient_user_ids)
+        - cardinality(v_accepted_recipient_ids);
 
-        -- Allocate a random unused status index with a deterministic fallback
-        v_index_attempts := 0;
-        loop
-            v_status_list_index := floor(random() * 131072)::integer;
-            exit when not exists (
-                select 1
-                from user_badge
-                where badge_status_list_id = v_badge_status_list_id
-                and status_list_index = v_status_list_index
-            );
-
-            v_index_attempts := v_index_attempts + 1;
-            if v_index_attempts >= 128 then
-                select candidate
-                into v_status_list_index
-                from generate_series(0, 131071) candidate
-                where not exists (
-                    select 1
-                    from user_badge
-                    where badge_status_list_id = v_badge_status_list_id
-                    and status_list_index = candidate
-                )
-                order by candidate
-                limit 1;
-                exit;
-            end if;
-        end loop;
-
-        -- Append the award to the recipient's active display order
-        select coalesce(max(display_order) + 1, 0)
-        into v_display_order
-        from user_badge
-        where revoked_at is null
-        and user_id = v_recipient_user_id;
-
-        insert into user_badge (
-            badge_status_list_id,
-            display_order,
+    -- Persist one durable handoff when issuance work remains
+    if cardinality(v_accepted_recipient_ids) > 0 then
+        insert into badge_award_job (
+            accepted_count,
+            actor_username,
+            badge_snapshot,
+            community_id,
             group_id,
-            snapshot,
-            status_list_index,
+            recipient_count,
+            skipped_count,
 
+            actor_user_id,
             badge_id,
-            event_id,
-            user_id
+            event_id
         ) values (
-            v_badge_status_list_id,
-            v_display_order,
-            p_group_id,
+            cardinality(v_accepted_recipient_ids),
+            v_actor_username,
             v_snapshot,
-            v_status_list_index,
-
-            p_badge_id,
-            p_event_id,
-            v_recipient_user_id
-        )
-        returning user_badge_id into v_user_badge_id;
-
-        v_awarded_count := v_awarded_count + 1;
-        v_notification_recipient_ids := array_append(
-            v_notification_recipient_ids,
-            v_recipient_user_id
-        );
-
-        -- Record each durable credential issuance after its insert succeeds
-        perform insert_audit_log(
-            'badge_awarded',
-            p_actor_user_id,
-            'user_badge',
-            v_user_badge_id,
             p_community_id,
             p_group_id,
-            p_event_id,
-            jsonb_build_object('badge_name', v_badge.name)
-        );
-    end loop;
+            cardinality(v_recipient_user_ids),
+            v_skipped_count,
 
-    -- Enqueue only newly inserted awards in the same database operation
-    if v_awarded_count > 0 then
-        perform enqueue_notification(
-            'badge-awarded',
-            jsonb_build_object(
-                'badge', v_snapshot,
-                'dashboard_url', '/dashboard/user?tab=badges',
-                'theme', v_theme
-            ),
-            '[]'::jsonb,
-            v_notification_recipient_ids
-        );
+            p_actor_user_id,
+            p_badge_id,
+            p_event_id
+        )
+        returning badge_award_job_id into v_job_id;
+
+        insert into badge_award_job_recipient (
+            badge_award_job_id,
+            position,
+            user_id
+        )
+        select
+            v_job_id,
+            (recipient.ordinality - 1)::integer,
+            recipient.user_id
+        from unnest(v_accepted_recipient_ids) with ordinality recipient(user_id, ordinality);
     end if;
 
-    -- Return stable counts for organizer feedback
+    -- Return the existing frontend contract using accepted issuance counts
     return json_build_object(
-        'awarded_count', v_awarded_count,
+        'awarded_count', cardinality(v_accepted_recipient_ids),
         'skipped_count', v_skipped_count
     );
 end;

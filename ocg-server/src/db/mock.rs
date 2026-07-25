@@ -23,6 +23,36 @@ mock! {
     }
 
     #[async_trait]
+    impl crate::db::badges::DBBadges for DB {
+        async fn claim_badge_award_job(
+            &self,
+        ) -> Result<Option<crate::db::badges::ClaimedBadgeAwardJob>>;
+        async fn cleanup_badge_award_jobs(
+            &self,
+            retention: std::time::Duration,
+        ) -> Result<usize>;
+        async fn process_badge_award_job_batch(
+            &self,
+            badge_award_job_id: Uuid,
+            claim_id: Uuid,
+            batch_size: usize,
+            rate_limit: usize,
+        ) -> Result<crate::db::badges::BadgeAwardBatchOutcome>;
+        async fn record_badge_award_job_failure(
+            &self,
+            badge_award_job_id: Uuid,
+            claim_id: Uuid,
+            error: String,
+            max_failures: usize,
+        ) -> Result<bool>;
+        async fn recover_stale_badge_award_jobs(
+            &self,
+            max_failures: usize,
+            processing_timeout: std::time::Duration,
+        ) -> Result<usize>;
+    }
+
+    #[async_trait]
     impl crate::db::auth::DBAuth for DB {
         async fn activate_pre_registered_user_email_password(
             &self,
@@ -161,6 +191,8 @@ mock! {
         async fn list_user_public_badges(
             &self,
             community_id: Uuid,
+            limit: usize,
+            offset: usize,
             username: &str,
         ) -> Result<Vec<crate::types::badges::PublicUserBadge>>;
         async fn search_events(

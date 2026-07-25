@@ -106,6 +106,74 @@ a signed credential for the same award.
 Each award stores an immutable snapshot of the definition and issuer display data. Deleting or
 editing the current definition does not change an issued credential.
 
+## Award Queue and Capacity
+
+Award requests validate the complete recipient set and store an immutable badge snapshot before
+returning, but credential issuance happens asynchronously through the durable
+`badge_award_job` PostgreSQL queue. A successful response means that the eligible work was
+accepted durably. The credential rows, award history, audit entries, and email notifications
+appear as the worker processes the queue.
+
+This design deliberately favors platform stability over issuance speed:
+
+- one low-concurrency worker runs per server replica;
+- each database transaction consumes at most 25 recipients;
+- a database advisory lock serializes issuance admission across replicas;
+- the database admits at most 500 credentials in any rolling minute across the deployment; and
+- an idle worker waits up to 15 seconds before checking for new work.
+
+A small award will usually appear after a short delay. An award to a large recipient set, or one
+submitted while other awards are queued, can take several minutes. This is expected behavior and
+does not mean that the organizer should submit the award again. Duplicate active credentials are
+checked again during processing, and recipients already owned by queued work are skipped during
+new requests, so overlapping submissions remain idempotent without amplifying queue load.
+
+Worker claims are durable. Processing failures use exponential backoff and stop after ten failed
+attempts. A claim left by an interrupted worker is recovered after 15 minutes. Completed job
+summaries are kept for 30 days, with recipient rows removed at completion.
+
+Operators can inspect aggregate queue state without loading recipient rows:
+
+```sql
+select status, count(*)
+from badge_award_job
+group by status
+order by status;
+
+select min(created_at) as oldest_pending_at
+from badge_award_job
+where status = 'pending';
+
+select badge_award_job_id, created_at, error, failure_count, group_id
+from badge_award_job
+where status = 'failed'
+order by completed_at desc;
+```
+
+Review the stored error before retrying a failed job. After correcting the underlying problem,
+requeue that one job with:
+
+```sql
+select requeue_badge_award_job('BADGE_AWARD_JOB_UUID'::uuid);
+```
+
+Do not bulk-requeue failed jobs without first confirming the cause; the low issuance rate protects
+normal load but cannot correct persistent data or configuration errors.
+
+## Public Caching and Read Bounds
+
+Content-addressed badge artwork and stable verification-key documents use long-lived immutable
+public caching. Signed JSON-LD credentials use the standard bounded shared-cache policy because a
+signing-key rotation can produce a new valid proof at the same stable credential identifier. The
+server retains a size-bounded credential cache and serializes cold signing misses; excess cold
+requests receive a short retryable `503` instead of creating unbounded signing work.
+
+Issuer profiles and public profile badge lists use the standard bounded shared-cache policy.
+Public badge lists return at most 50 minimal badge summaries per request and accept `limit` and
+`offset` query parameters for additional pages. Credential HTML pages use the same shared-cache
+policy and vary by the requested representation. Private dashboard, export, and verification
+responses remain non-cacheable.
+
 ## Credential Privacy and Status
 
 The credential subject is `urn:uuid:{user_badge_id}`. It contains no email address, email hash,

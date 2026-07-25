@@ -9,9 +9,10 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use tokio_postgres::types::{FromSql, Json, ToSql};
 
 use crate::db::{
-    activity_tracker::DBActivityTracker, auth::DBAuth, common::DBCommon, community::DBCommunity,
-    dashboard::DBDashboard, event::DBEvent, group::DBGroup, images::DBImages, meetings::DBMeetings,
-    notifications::DBNotifications, payments::DBPayments, site::DBSite,
+    activity_tracker::DBActivityTracker, auth::DBAuth, badges::DBBadges, common::DBCommon,
+    community::DBCommunity, dashboard::DBDashboard, event::DBEvent, group::DBGroup,
+    images::DBImages, meetings::DBMeetings, notifications::DBNotifications, payments::DBPayments,
+    site::DBSite,
 };
 
 /// Module containing database functionality for the activity tracker.
@@ -19,6 +20,9 @@ pub(crate) mod activity_tracker;
 
 /// Module containing authentication database operations.
 pub(crate) mod auth;
+
+/// Module containing durable badge award database operations.
+pub(crate) mod badges;
 
 /// Module containing common database operations.
 pub(crate) mod common;
@@ -63,8 +67,9 @@ pub(crate) mod site;
 
 /// Database operations supported by root and transaction-scoped handles.
 pub(crate) trait DBOperations:
-    DBAuth
-    + DBActivityTracker
+    DBActivityTracker
+    + DBAuth
+    + DBBadges
     + DBCommon
     + DBCommunity
     + DBDashboard
@@ -81,8 +86,9 @@ pub(crate) trait DBOperations:
 }
 
 impl<T> DBOperations for T where
-    T: DBAuth
-        + DBActivityTracker
+    T: DBActivityTracker
+        + DBAuth
+        + DBBadges
         + DBCommon
         + DBCommunity
         + DBDashboard

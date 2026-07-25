@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(324);
+select plan(331);
 
 -- ============================================================================
 -- VARIABLES
@@ -116,10 +116,12 @@ select has_function('cancel_event_attendee_invitation', array['uuid', 'uuid', 'u
 select has_function('cancel_event_checkout', array['uuid', 'uuid', 'uuid']::name[]);
 select has_function('cancel_event_series_events', array['uuid', 'uuid', 'uuid[]']::name[]);
 select has_function('check_in_event', array['uuid', 'uuid', 'uuid', 'boolean']::name[]);
+select has_function('claim_badge_award_job', '{}'::name[]);
 select has_function('claim_event_purchase_refund', array['text']::name[]);
 select has_function('claim_meeting_for_auto_end', '{}'::name[]);
 select has_function('claim_meeting_out_of_sync', '{}'::name[]);
 select has_function('claim_pending_notification', array['integer', 'integer']::name[]);
+select has_function('cleanup_badge_award_jobs', array['bigint']::name[]);
 select has_function(
     'complete_event_purchase_refund_recovery',
     array['uuid', 'uuid', 'uuid', 'text', 'text', 'jsonb']::name[]
@@ -180,6 +182,7 @@ select has_function('get_group_stats', array['uuid', 'uuid', 'boolean']::name[])
 select has_function('get_group_summary', array['uuid', 'uuid']::name[]);
 select has_function('get_group_upcoming_events', array['uuid', 'text', 'text[]', 'integer']::name[]);
 select has_function('get_public_user_badge', array['uuid']::name[]);
+select has_function('list_user_public_badges', array['uuid', 'text', 'integer', 'integer']::name[]);
 select has_function('get_public_user_provider', array['jsonb']::name[]);
 select has_function('group_has_active_subgroups', array['uuid', 'uuid']::name[]);
 select has_function('group_has_child_links', array['uuid', 'uuid']::name[]);
@@ -289,6 +292,10 @@ select has_function('prepare_event_checkout_reserve_discount_code_availability',
 select has_function('prepare_event_checkout_validate_and_resolve_pricing', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('prepare_event_checkout_validate_attendee_state', array['uuid', 'uuid']::name[]);
 select has_function('prepare_event_checkout_validate_event', array['uuid', 'uuid', 'text']::name[]);
+select has_function(
+    'process_badge_award_job_batch',
+    array['uuid', 'uuid', 'integer', 'integer']::name[]
+);
 select has_function('promote_event_waitlist', array['uuid', 'integer']::name[]);
 select has_function('publish_event', array['uuid', 'uuid', 'uuid', 'text']::name[]);
 select has_function('publish_event_series_events', array['uuid', 'uuid', 'uuid[]', 'text']::name[]);
@@ -298,6 +305,10 @@ select has_function(
     array['uuid', 'uuid', 'uuid', 'text']::name[]
 );
 select has_function('reconcile_event_purchase_for_checkout_session', array['text', 'text', 'text']::name[]);
+select has_function(
+    'record_badge_award_job_failure',
+    array['uuid', 'uuid', 'text', 'integer']::name[]
+);
 select has_function(
     'record_event_purchase_refund_pending',
     array['uuid', 'text', 'text', 'uuid']::name[]
@@ -314,6 +325,7 @@ select has_function(
     'record_event_purchase_refund_terminal_failed',
     array['uuid', 'text', 'text', 'text', 'uuid']::name[]
 );
+select has_function('recover_stale_badge_award_jobs', array['bigint', 'integer']::name[]);
 select has_function('refund_free_event_purchase', array['uuid']::name[]);
 select has_function('reject_community_team_invitation', array['uuid', 'uuid']::name[]);
 select has_function('reject_event_attendee_invitation', array['uuid', 'uuid']::name[]);
@@ -326,6 +338,7 @@ select has_function('release_event_discount_code_availability', array['uuid', 'i
 select has_function('release_meeting_auto_end_check_claim', array['timestamp with time zone', 'uuid']::name[]);
 select has_function('release_meeting_sync_claim', array['uuid', 'uuid', 'uuid', 'timestamp with time zone']::name[]);
 select has_function('request_event_refund', array['uuid', 'uuid', 'uuid', 'text', 'jsonb']::name[]);
+select has_function('requeue_badge_award_job', array['uuid']::name[]);
 select has_function('requeue_event_purchase_refund', array['uuid', 'uuid']::name[]);
 select has_function(
     'requeue_notification',

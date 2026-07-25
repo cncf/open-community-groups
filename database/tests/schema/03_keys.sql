@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(174);
+select plan(183);
 
 -- ============================================================================
 -- TESTS
@@ -17,6 +17,8 @@ select has_pk('audit_log');
 select has_pk('auth_session');
 select has_pk('badge');
 select has_pk('badge_artwork');
+select has_pk('badge_award_job');
+select has_pk('badge_award_job_recipient');
 select has_pk('badge_status_list');
 select has_pk('cfs_submission');
 select has_pk('cfs_submission_rating');
@@ -85,6 +87,13 @@ select has_pk('user_badge');
 select col_is_fk('community', 'community_site_layout_id', 'community_site_layout');
 select col_is_fk('badge', 'group_id', 'group');
 select col_is_fk('badge_artwork', 'group_id', 'group');
+select col_is_fk('badge_award_job', 'actor_user_id', 'user');
+select col_is_fk('badge_award_job', 'badge_id', 'badge');
+select col_is_fk('badge_award_job', 'community_id', 'community');
+select col_is_fk('badge_award_job', 'event_id', 'event');
+select col_is_fk('badge_award_job', 'group_id', 'group');
+select col_is_fk('badge_award_job_recipient', 'badge_award_job_id', 'badge_award_job');
+select col_is_fk('badge_award_job_recipient', 'user_id', 'user');
 select col_is_fk('badge_status_list', 'group_id', 'group');
 select col_is_fk('community_redirect_settings', 'community_id', 'community');
 select col_is_fk('community_role_community_permission', 'community_permission_id', 'community_permission');

@@ -48,6 +48,10 @@ use crate::{
 #[cfg(any(not(debug_assertions), test))]
 pub(crate) const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
+/// Cache-Control header value for immutable public assets in local development.
+#[cfg(all(debug_assertions, not(test)))]
+pub(crate) const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=0";
+
 /// Cache-Control header value instructing clients and proxies not to store responses.
 pub(crate) const CACHE_CONTROL_NO_STORE: &str = "no-store";
 

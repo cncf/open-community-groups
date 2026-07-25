@@ -1,5 +1,6 @@
 //! OCG-owned Open Badges credential, status, key, and PNG service.
 
+mod award_worker;
 mod contexts;
 mod credential;
 mod keys;
@@ -15,6 +16,7 @@ use uuid::Uuid;
 
 use crate::config::BadgesConfig;
 
+pub(crate) use award_worker::start_badge_award_workers;
 pub(crate) use credential::{CredentialInput, rfc3339};
 
 /// Site-wide badge credential service.
@@ -22,6 +24,8 @@ pub(crate) use credential::{CredentialInput, rfc3339};
 pub(crate) struct BadgeService {
     /// Canonical public origin without a trailing slash.
     base_url: String,
+    /// Signed immutable credential representations.
+    credential_cache: credential::CredentialCache,
     /// Active signing and retained verification keys.
     keys: keys::KeySet,
     /// Signed status-list representations bounded by list recency.
@@ -33,6 +37,7 @@ impl BadgeService {
     pub(crate) fn new(base_url: &str, config: &BadgesConfig) -> Self {
         Self {
             base_url: base_url.trim_end_matches('/').to_string(),
+            credential_cache: credential::CredentialCache::new(),
             keys: keys::KeySet::new(config),
             status_list_cache: status::StatusListCache::new(),
         }
@@ -96,6 +101,9 @@ impl BadgeService {
 /// Badge service failures translated into safe handler-level errors.
 #[derive(Debug, Error)]
 pub(crate) enum BadgeServiceError {
+    /// The bounded credential signer is busy serving another cold request.
+    #[error("badge credential signer is busy")]
+    Busy,
     /// A reviewed JSON-LD context could not be loaded.
     #[error("invalid badge context configuration")]
     InvalidContext,

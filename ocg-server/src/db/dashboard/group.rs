@@ -113,7 +113,7 @@ pub(crate) trait DBDashboardGroup {
         role: &GroupRole,
     ) -> Result<()>;
 
-    /// Awards a badge to an explicit, atomically validated recipient list.
+    /// Queues a badge for an explicit, atomically validated recipient list.
     async fn award_badge(
         &self,
         actor_user_id: Uuid,

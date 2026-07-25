@@ -5,13 +5,15 @@ use std::sync::Arc;
 use askama::Template;
 use axum::{
     Json,
-    extract::{Multipart, Path, State},
+    extract::{Multipart, Path, Query, State},
     http::{
         HeaderMap, StatusCode, Uri, header::ACCEPT, header::CACHE_CONTROL, header::CONTENT_TYPE,
+        header::RETRY_AFTER,
     },
     response::{Html, IntoResponse, Response},
 };
 use chrono::Utc;
+use serde::Deserialize;
 use serde_json::{Value, json};
 use tracing::instrument;
 use uuid::Uuid;
@@ -19,7 +21,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
-    router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
+    router::{CACHE_CONTROL_IMMUTABLE, CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::badges::{BadgeService, BadgeServiceError, png, rfc3339},
     templates::{
         PageId,
@@ -38,6 +40,8 @@ const INVALID_VERIFICATION_MESSAGE: &str =
     "This badge could not be verified as an OCG-issued credential.";
 /// Cache policy for signed status list credentials.
 const STATUS_LIST_CACHE_CONTROL: &str = "public, max-age=600";
+/// Default and maximum number of badges returned by one public profile request.
+const USER_PROFILE_BADGES_LIMIT: usize = 50;
 
 // Pages handlers.
 
@@ -57,22 +61,23 @@ pub(crate) async fn credential(
         .ok_or(HandlerError::NotFound)?;
 
     if accepts_credential(&headers) {
-        // Issue an uncached signed representation on explicit negotiation
-        let credential = badge_service
-            .issue_credential(crate::services::badges::CredentialInput {
-                award: &award,
-                created_at: Utc::now(),
-            })
-            .await
-            .map_err(|error| HandlerError::Other(error.into()))?;
-        return Ok((
-            [
-                (CONTENT_TYPE, "application/vc+ld+json"),
-                (CACHE_CONTROL, CACHE_CONTROL_NO_STORE),
-            ],
-            Json(credential),
-        )
-            .into_response());
+        // Reuse the immutable signature and shed excess cold-signing load
+        let credential = match badge_service.cached_credential(&award, Utc::now()).await {
+            Ok(credential) => credential,
+            Err(BadgeServiceError::Busy) => {
+                return Ok((
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    [(CACHE_CONTROL, CACHE_CONTROL_NO_STORE), (RETRY_AFTER, "1")],
+                )
+                    .into_response());
+            }
+            Err(error) => return Err(HandlerError::Other(error.into())),
+        };
+        let cache_headers = extend_public_shared_cache_headers(&[
+            ("content-type", "application/vc+ld+json"),
+            ("vary", CREDENTIAL_CACHE_VARY),
+        ])?;
+        return Ok((cache_headers, Json(credential)).into_response());
     }
 
     // Render the browser representation from the same snapshot
@@ -159,15 +164,26 @@ pub(crate) async fn status_list(
 pub(crate) async fn user_profile_badges(
     State(db): State<DynDB>,
     Path((community_name, username)): Path<(String, String)>,
+    Query(query): Query<UserProfileBadgesQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    let limit = query.limit.unwrap_or(USER_PROFILE_BADGES_LIMIT);
+    let offset = query.offset.unwrap_or_default();
+    if limit == 0 || limit > USER_PROFILE_BADGES_LIMIT || i32::try_from(offset).is_err() {
+        return Err(HandlerError::Deserialization(
+            "badge pagination is outside the supported range".to_string(),
+        ));
+    }
+
     // Resolve the community boundary before returning its public projection
     let community_id = db
         .get_community_id_by_name(&community_name)
         .await?
         .ok_or(HandlerError::NotFound)?;
-    let badges = db.list_user_public_badges(community_id, &username).await?;
+    let badges = db
+        .list_user_public_badges(community_id, limit, offset, &username)
+        .await?;
 
-    Ok(([(CACHE_CONTROL, CACHE_CONTROL_NO_STORE)], Json(badges)))
+    Ok((PUBLIC_SHARED_CACHE_HEADERS, Json(badges)))
 }
 
 /// Publish one allowlisted Ed25519 Multikey verification method.
@@ -177,7 +193,7 @@ pub(crate) async fn verification_key(
     Path(key_id): Path<String>,
 ) -> Response {
     match badge_service.verification_method(&key_id) {
-        Ok(method) => (PUBLIC_SHARED_CACHE_HEADERS, Json(method)).into_response(),
+        Ok(method) => ([(CACHE_CONTROL, CACHE_CONTROL_IMMUTABLE)], Json(method)).into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
@@ -254,6 +270,15 @@ pub(crate) async fn verify(
 }
 
 // Types.
+
+/// Pagination accepted by the public profile badge endpoint.
+#[derive(Debug, Default, Deserialize)]
+pub(crate) struct UserProfileBadgesQuery {
+    /// Requested page size.
+    limit: Option<usize>,
+    /// Requested result offset.
+    offset: Option<usize>,
+}
 
 /// Expected invalid input or an operational verification failure.
 #[derive(Debug, thiserror::Error)]

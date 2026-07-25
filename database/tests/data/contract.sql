@@ -1475,6 +1475,51 @@ insert into user_badge (
         '00000000-0000-0000-0000-00000000c042'
     );
 
+-- Pending durable award consumed by Rust worker JSON contract tests
+insert into badge_award_job (
+    badge_award_job_id,
+    accepted_count,
+    actor_username,
+    badge_snapshot,
+    community_id,
+    group_id,
+    recipient_count,
+
+    actor_user_id,
+    badge_id,
+    event_id
+) values (
+    '00000000-0000-0000-0000-00000000c0bf',
+    1,
+    'contract-organizer',
+    '{
+        "criteria": "Attend the contract event",
+        "description": "Recognizes contract event participation",
+        "image_file_name": "contract-badge.png",
+        "issuer": {
+            "community_id": "00000000-0000-0000-0000-00000000c001",
+            "community_name": "Contract Community",
+            "group_id": "00000000-0000-0000-0000-00000000c021",
+            "group_name": "Contract Group"
+        },
+        "name": "Contract Participant"
+    }'::jsonb,
+    '00000000-0000-0000-0000-00000000c001',
+    '00000000-0000-0000-0000-00000000c021',
+    1,
+
+    '00000000-0000-0000-0000-00000000c041',
+    '00000000-0000-0000-0000-00000000c0bb',
+    '00000000-0000-0000-0000-00000000c031'
+);
+
+insert into badge_award_job_recipient (badge_award_job_id, position, user_id)
+values (
+    '00000000-0000-0000-0000-00000000c0bf',
+    0,
+    '00000000-0000-0000-0000-00000000c042'
+);
+
 -- ============================================================================
 -- PAGE VIEWS
 -- ============================================================================

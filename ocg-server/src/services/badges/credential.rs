@@ -1,7 +1,8 @@
 //! Open Badges 3.0 credential construction and signing.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
+use cached::{Cached, LruCache};
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Value, json};
 use ssi_claims_core::SignatureEnvironment;
@@ -9,10 +10,60 @@ use ssi_data_integrity::{
     AnySignatureOptions, AnySuite, CryptographicSuite, DataIntegrityDocument, ProofOptions,
 };
 use ssi_verification_methods::{AnyMethod, Multikey, SingleSecretSigner};
+use tokio::{
+    sync::{Mutex, MutexGuard},
+    time::timeout,
+};
+use uuid::Uuid;
 
 use crate::types::badges::UserBadge;
 
 use super::{BadgeService, BadgeServiceError, Result, contexts};
+
+/// Maximum signed credential representations retained in memory.
+const CREDENTIAL_CACHE_CAPACITY: usize = 256;
+/// Maximum wait for the bounded signer during a cold credential burst.
+const CREDENTIAL_SIGNING_WAIT: Duration = Duration::from_secs(2);
+
+/// Shared size-bounded cache for immutable signed credentials.
+#[derive(Clone)]
+pub(super) struct CredentialCache {
+    /// Least-recently-used entries shared by service clones.
+    entries: Arc<Mutex<LruCache<Uuid, Value>>>,
+    /// Serializes cache misses to bound CPU-intensive JSON-LD signing.
+    signing_lock: Arc<Mutex<()>>,
+}
+
+impl CredentialCache {
+    /// Creates an empty cache with the fixed application capacity.
+    pub(super) fn new() -> Self {
+        let entries = LruCache::builder()
+            .max_size(CREDENTIAL_CACHE_CAPACITY)
+            .build()
+            .expect("credential cache capacity must be positive");
+        Self {
+            entries: Arc::new(Mutex::new(entries)),
+            signing_lock: Arc::new(Mutex::new(())),
+        }
+    }
+
+    /// Returns a cached immutable credential by opaque award identifier.
+    async fn get(&self, user_badge_id: Uuid) -> Option<Value> {
+        self.entries.lock().await.cache_get(&user_badge_id).cloned()
+    }
+
+    /// Stores an immutable signed credential for subsequent requests.
+    async fn insert(&self, user_badge_id: Uuid, credential: Value) {
+        self.entries.lock().await.cache_set(user_badge_id, credential);
+    }
+
+    /// Acquires the bounded signing lock or rejects an overloaded cold request.
+    async fn signing_guard(&self) -> Result<MutexGuard<'_, ()>> {
+        timeout(CREDENTIAL_SIGNING_WAIT, self.signing_lock.lock())
+            .await
+            .map_err(|_| BadgeServiceError::Busy)
+    }
+}
 
 /// Inputs used to issue an immutable Open Badges credential.
 pub(crate) struct CredentialInput<'a> {
@@ -23,6 +74,30 @@ pub(crate) struct CredentialInput<'a> {
 }
 
 impl BadgeService {
+    /// Return a cached signed credential or issue its immutable representation once.
+    pub(crate) async fn cached_credential(
+        &self,
+        award: &UserBadge,
+        created_at: DateTime<Utc>,
+    ) -> Result<Value> {
+        if let Some(credential) = self.credential_cache.get(award.user_badge_id).await {
+            return Ok(credential);
+        }
+
+        // Bound cold signing concurrency and recheck after any preceding signer finishes
+        let _signing_guard = self.credential_cache.signing_guard().await?;
+        if let Some(credential) = self.credential_cache.get(award.user_badge_id).await {
+            return Ok(credential);
+        }
+
+        let credential = self.issue_credential(CredentialInput { award, created_at }).await?;
+        self.credential_cache
+            .insert(award.user_badge_id, credential.clone())
+            .await;
+
+        Ok(credential)
+    }
+
     /// Issue and sign one Open Badges 3.0 credential.
     pub(crate) async fn issue_credential(&self, input: CredentialInput<'_>) -> Result<Value> {
         // Resolve stable public identifiers from the immutable award
