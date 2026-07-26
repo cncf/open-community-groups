@@ -1,6 +1,5 @@
--- Lists active profile-visible badges for a community user.
+-- Lists active profile-visible badges for a user across all communities.
 create or replace function list_user_public_badges(
-    p_community_id uuid,
     p_username text,
     p_limit integer default 50,
     p_offset integer default 0
@@ -40,10 +39,8 @@ begin
         ub.display_order,
         ub.user_badge_id
         from user_badge ub
-        join "group" g using (group_id)
         join "user" u using (user_id)
-        where g.community_id = p_community_id
-        and lower(u.username) = lower(p_username)
+        where lower(u.username) = lower(p_username)
         and ub.is_listed = true
         and ub.revoked_at is null
         order by ub.display_order, ub.awarded_at desc, ub.user_badge_id

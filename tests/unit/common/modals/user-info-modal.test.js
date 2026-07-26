@@ -165,9 +165,6 @@ describe("user-info-modal", () => {
 
   it("lazily renders active listed badges with accessible links and image text", async () => {
     const originalFetch = window.fetch;
-    const dashboard = document.createElement("div");
-    dashboard.dataset.communityName = "cloud-native";
-    document.body.append(dashboard);
     let requestUrl = "";
     window.fetch = async (url) => {
       requestUrl = String(url);
@@ -204,7 +201,7 @@ describe("user-info-modal", () => {
     await waitUntil(() => element._badgesState === "ready", "profile badges should load");
     await element.updateComplete;
 
-    expect(requestUrl).to.equal("/communities/cloud-native/users/ada/badges");
+    expect(requestUrl).to.equal("/users/ada/badges");
     const badgeSection = element.querySelector("#profile-badges-title").closest("section");
     expect(badgeSection.classList.contains("border-t")).to.equal(true);
     const link = element.querySelector('a[href="/badges/credentials/00000000-0000-0000-0000-000000000003"]');
@@ -232,14 +229,10 @@ describe("user-info-modal", () => {
     ).to.equal(false);
 
     window.fetch = originalFetch;
-    dashboard.remove();
   });
 
   it("omits the badge section when no badges are listed", async () => {
     const originalFetch = window.fetch;
-    const dashboard = document.createElement("div");
-    dashboard.dataset.communityName = "cloud-native";
-    document.body.append(dashboard);
     window.fetch = async () => new Response("[]", { headers: { "Content-Type": "application/json" } });
     const element = await mountLitComponent("user-info-modal");
 
@@ -255,14 +248,10 @@ describe("user-info-modal", () => {
     expect(element.querySelector("#profile-badges-title")).to.equal(null);
 
     window.fetch = originalFetch;
-    dashboard.remove();
   });
 
   it("shows a recoverable state when profile badges cannot be loaded", async () => {
     const originalFetch = window.fetch;
-    const dashboard = document.createElement("div");
-    dashboard.dataset.communityName = "cloud-native";
-    document.body.append(dashboard);
     window.fetch = async () => new Response("Unavailable", { status: 503 });
     const element = await mountLitComponent("user-info-modal");
 
@@ -278,14 +267,10 @@ describe("user-info-modal", () => {
     expect(element.querySelector('[role="status"]')).to.not.equal(null);
 
     window.fetch = originalFetch;
-    dashboard.remove();
   });
 
   it("ignores an older badge response after opening a user without lookup context", async () => {
     const originalFetch = window.fetch;
-    const dashboard = document.createElement("div");
-    dashboard.dataset.communityName = "cloud-native";
-    document.body.append(dashboard);
     let resolveBadges;
     window.fetch = () =>
       new Promise((resolve) => {
@@ -313,6 +298,5 @@ describe("user-info-modal", () => {
     expect(element._badges).to.deep.equal([]);
 
     window.fetch = originalFetch;
-    dashboard.remove();
   });
 });

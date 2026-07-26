@@ -8,10 +8,6 @@ portable Open Badges 3.0 credentials.
 !> Badges are an experimental feature. Their behavior and interfaces may change as the feature
 evolves.
 
-Every award stores an immutable snapshot of the badge and issuing group. The credential therefore
-keeps the name, description, criteria, artwork, and issuer that applied when it was awarded, even
-if the badge definition, event, group, or recipient account changes later.
-
 **Sections:**
 
 - [Group Badge Management](#group-badge-management)
@@ -50,6 +46,15 @@ snapshotted name, description, criteria, image, and issuer.
 
 ### Award Badges
 
+Badges can be awarded from three places:
+
+- **Attendees**: the event's attendee page awards badges to confirmed attendees.
+- **Contributors**: the event's Hosts & Speakers tab awards badges to hosts and speakers.
+- **Organizers**: the Group Team page awards badges to accepted team members. These awards are
+  not linked to any event.
+
+#### Attendees
+
 The attendee page has a dedicated `Award badge` menu with three choices:
 
 - `All attendees` resolves every confirmed attendee with a verified email address and opens the
@@ -59,9 +64,9 @@ The attendee page has a dedicated `Award badge` menu with three choices:
   be changed while choosing; selections remain until they are cleared or canceled. `Continue`
   opens the badge picker for exactly those selected attendees.
 
-An attendee row's three-dot menu awards a badge to that single attendee. There is no separate
-"select all matching" action; the two event-wide choices already cover all and checked-in
-attendees.
+An attendee row's three-dot menu awards a badge to that single attendee.
+
+#### Contributors
 
 The event's Hosts & Speakers tab offers equivalent actions for contributors:
 
@@ -75,9 +80,13 @@ Contributor award actions are disabled after an unsaved host, speaker, or sessio
 event before awarding so eligibility matches the stored event. New-event forms do not offer award
 actions until the event exists.
 
+#### Organizers
+
 Accepted members on the Group Team page also have `Award badge` in their row menu when the current
 administrator has badges write access. Team awards belong to the group and do not need an event.
 Pending team invitations are not eligible.
+
+#### Eligibility and Processing
 
 For an event award, every recipient must currently be a confirmed attendee, event host,
 event-level speaker, or session-level speaker. An event organizer qualifies only when they also
@@ -119,8 +128,9 @@ badges and provides controls for profile listing, ordering, sharing, export, and
 
 ### Profile Listing and Order
 
-`Show on profile` controls whether a badge appears when someone opens your community-scoped public
-profile. Turning it off is reversible and is the right choice when you only want to hide a badge.
+`Show on profile` controls whether a badge appears when someone opens your public profile. Listed
+badges are shown together, regardless of the community whose groups awarded them. Turning it off
+is reversible and is the right choice when you only want to hide a badge.
 
 !> An unlisted badge is not private. Anyone who already has its direct credential URL can still
 open it.

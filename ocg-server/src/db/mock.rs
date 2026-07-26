@@ -190,7 +190,6 @@ mock! {
         async fn list_timezones(&self) -> Result<Vec<String>>;
         async fn list_user_public_badges(
             &self,
-            community_id: Uuid,
             limit: usize,
             offset: usize,
             username: &str,

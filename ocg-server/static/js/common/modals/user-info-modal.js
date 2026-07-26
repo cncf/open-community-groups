@@ -82,42 +82,19 @@ export class UserInfoModal extends LitWrapper {
     this._removeEventListeners();
   }
 
-  _communityName() {
-    const dashboardCommunity = document.querySelector("[data-community-name]")?.dataset?.communityName;
-    if (dashboardCommunity) {
-      return dashboardCommunity;
-    }
-
-    const firstPathSegment = window.location.pathname.split("/").filter(Boolean)[0] || "";
-    return [
-      "__web-test-runner__",
-      "badges",
-      "dashboard",
-      "docs",
-      "explore",
-      "images",
-      "log-in",
-      "tests",
-    ].includes(firstPathSegment)
-      ? ""
-      : firstPathSegment;
-  }
-
   async _loadBadges() {
     const requestId = ++this._badgesRequestId;
-    const community = this._communityName();
     const username = this._userData?.username;
-    if (!community || !username) {
+    if (!username) {
       this._badgesState = "empty";
       return;
     }
 
     this._badgesAbortController = new AbortController();
     try {
-      const response = await fetch(
-        `/communities/${encodeURIComponent(community)}/users/${encodeURIComponent(username)}/badges`,
-        { signal: this._badgesAbortController.signal },
-      );
+      const response = await fetch(`/users/${encodeURIComponent(username)}/badges`, {
+        signal: this._badgesAbortController.signal,
+      });
       if (!response.ok) {
         throw new Error("Badge profile request failed");
       }

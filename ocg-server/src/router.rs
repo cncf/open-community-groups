@@ -293,15 +293,12 @@ pub(crate) async fn setup(
         .route("/explore/groups/search", get(site::explore::search_groups))
         .route("/favicon.ico", get(favicon))
         .route("/health-check", get(health_check))
-        .route(
-            "/communities/{community}/users/{username}/badges",
-            get(badges::user_profile_badges),
-        )
         .route("/images/badges/{file_name}", get(images::serve_badge))
         .route("/images/og/{file_name}", get(images::serve_open_graph))
         .route("/images/{file_name}", get(images::serve))
         .route("/log-in", get(auth::log_in_page))
         .route("/stats", get(site::stats::page))
+        .route("/users/{username}/badges", get(badges::user_profile_badges))
         // Community-prefixed public routes
         .route("/{community}", get(community::page))
         .route("/{community}/group/{group_slug}", get(group::page))

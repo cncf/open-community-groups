@@ -284,7 +284,6 @@ async fn test_status_list_unknown_id_returns_not_found() {
 #[tokio::test]
 async fn test_user_profile_badges_returns_public_projection() {
     // Setup one discoverable public badge
-    let community_id = Uuid::new_v4();
     let award = sample_user_badge();
     let expected = vec![PublicUserBadge {
         snapshot: PublicBadgeSnapshot {
@@ -298,25 +297,19 @@ async fn test_user_profile_badges_returns_public_projection() {
     }];
     let output = expected.clone();
     let mut db = MockDB::new();
-    db.expect_get_community_id_by_name()
-        .times(1)
-        .withf(|name| name == "test-community")
-        .return_once(move |_| Ok(Some(community_id)));
     db.expect_list_user_public_badges()
         .times(1)
-        .withf(move |id, limit, offset, username| {
-            *id == community_id && *limit == 50 && *offset == 0 && username == "ada"
-        })
-        .return_once(move |_, _, _, _| Ok(output));
+        .withf(move |limit, offset, username| *limit == 50 && *offset == 0 && username == "ada")
+        .return_once(move |_, _, _| Ok(output));
     let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .build()
         .await;
 
-    // Request the community-scoped public projection
+    // Request the public profile projection
     let response = router
         .oneshot(
             Request::builder()
-                .uri("/communities/test-community/users/ada/badges")
+                .uri("/users/ada/badges")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -343,7 +336,7 @@ async fn test_user_profile_badges_rejects_page_above_public_cap() {
     let response = router
         .oneshot(
             Request::builder()
-                .uri("/communities/test-community/users/ada/badges?limit=51")
+                .uri("/users/ada/badges?limit=51")
                 .body(Body::empty())
                 .unwrap(),
         )

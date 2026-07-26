@@ -65,10 +65,9 @@ pub(crate) trait DBCommon {
     /// Lists all available timezones.
     async fn list_timezones(&self) -> Result<Vec<String>>;
 
-    /// Lists active profile-visible badges for a community user.
+    /// Lists active profile-visible badges for a user across all communities.
     async fn list_user_public_badges(
         &self,
-        community_id: Uuid,
         limit: usize,
         offset: usize,
         username: &str,
@@ -214,7 +213,6 @@ where
     #[instrument(skip(self), err)]
     async fn list_user_public_badges(
         &self,
-        community_id: Uuid,
         limit: usize,
         offset: usize,
         username: &str,
@@ -222,8 +220,8 @@ where
         let limit = i32::try_from(limit)?;
         let offset = i32::try_from(offset)?;
         self.fetch_json_one(
-            "select list_user_public_badges($1::uuid, $2::text, $3::integer, $4::integer)",
-            &[&community_id, &username, &limit, &offset],
+            "select list_user_public_badges($1::text, $2::integer, $3::integer)",
+            &[&username, &limit, &offset],
         )
         .await
     }

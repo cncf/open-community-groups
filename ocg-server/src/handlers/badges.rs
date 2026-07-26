@@ -154,13 +154,14 @@ pub(crate) async fn status_list(
         .into_response())
 }
 
-/// Return active, listed badges for a user in one community.
+/// Return active, listed badges for a user across all communities.
 #[instrument(skip_all, err)]
 pub(crate) async fn user_profile_badges(
     State(db): State<DynDB>,
-    Path((community_name, username)): Path<(String, String)>,
+    Path(username): Path<String>,
     Query(query): Query<UserProfileBadgesQuery>,
 ) -> Result<impl IntoResponse, HandlerError> {
+    // Validate the requested page stays within the public response cap
     let limit = query.limit.unwrap_or(USER_PROFILE_BADGES_LIMIT);
     let offset = query.offset.unwrap_or_default();
     if limit == 0 || limit > USER_PROFILE_BADGES_LIMIT || i32::try_from(offset).is_err() {
@@ -169,14 +170,8 @@ pub(crate) async fn user_profile_badges(
         ));
     }
 
-    // Resolve the community boundary before returning its public projection
-    let community_id = db
-        .get_community_id_by_name(&community_name)
-        .await?
-        .ok_or(HandlerError::NotFound)?;
-    let badges = db
-        .list_user_public_badges(community_id, limit, offset, &username)
-        .await?;
+    // List the user's public profile badges across all communities
+    let badges = db.list_user_public_badges(limit, offset, &username).await?;
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Json(badges)))
 }

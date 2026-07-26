@@ -266,7 +266,7 @@ select has_function('list_user_events', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_group_team_invitations', array['uuid']::name[]);
 select has_function('list_user_groups', array['uuid']::name[]);
 select has_function('list_user_pending_session_proposal_co_speaker_invitations', array['uuid']::name[]);
-select has_function('list_user_public_badges', array['uuid', 'text', 'integer', 'integer']::name[]);
+select has_function('list_user_public_badges', array['text', 'integer', 'integer']::name[]);
 select has_function('list_user_session_proposals', array['uuid', 'jsonb']::name[]);
 select has_function('list_user_session_proposals_for_cfs_event', array['uuid', 'uuid']::name[]);
 select has_function('lock_events_for_cancellation', array['uuid', 'uuid[]']::name[]);

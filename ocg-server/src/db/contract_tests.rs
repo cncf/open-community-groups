@@ -181,9 +181,7 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
         .get_public_user_badge(active_user_badge_id())
         .await?
         .context("public contract badge should exist")?;
-    let profile = db
-        .list_user_public_badges(community_id(), 50, 0, "contract-attendee")
-        .await?;
+    let profile = db.list_user_public_badges(50, 0, "contract-attendee").await?;
     let status = db
         .get_badge_status_list(badge_status_list_id())
         .await?
