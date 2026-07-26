@@ -4,6 +4,8 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
+use super::{BadgesManagerError, Result};
+
 /// Verified portable credential fields bound to local identifiers by handlers.
 pub(crate) struct VerifiedCredential {
     /// Immutable badge description.
@@ -35,11 +37,24 @@ pub(super) fn contains_identifier(value: &Value) -> bool {
     }
 }
 
+/// Returns the single proof from the canonical plain-JSON proof set.
+pub(super) fn single_proof(value: &Value) -> Result<&Value> {
+    let proofs = value
+        .get("proof")
+        .and_then(Value::as_array)
+        .ok_or(BadgesManagerError::InvalidCredential)?;
+    if proofs.len() != 1 || !proofs[0].is_object() {
+        return Err(BadgesManagerError::InvalidCredential);
+    }
+
+    Ok(&proofs[0])
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
 
-    use super::contains_identifier;
+    use super::{contains_identifier, single_proof};
 
     #[test]
     fn test_contains_identifier_accepts_credential_without_identifier_claims() {
@@ -71,5 +86,27 @@ mod tests {
         assert!(contains_identifier(
             &json!({"identifier": "recipient@example.test"})
         ));
+    }
+
+    #[test]
+    fn test_single_proof_accepts_one_object_in_array() {
+        let credential = json!({"proof": [{"type": "DataIntegrityProof"}]});
+
+        assert_eq!(
+            single_proof(&credential).unwrap()["type"],
+            "DataIntegrityProof"
+        );
+    }
+
+    #[test]
+    fn test_single_proof_rejects_noncanonical_shapes() {
+        for credential in [
+            json!({}),
+            json!({"proof": {"type": "DataIntegrityProof"}}),
+            json!({"proof": []}),
+            json!({"proof": [{"type": "DataIntegrityProof"}, {"type": "DataIntegrityProof"}]}),
+        ] {
+            assert!(single_proof(&credential).is_err());
+        }
     }
 }

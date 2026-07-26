@@ -138,7 +138,10 @@ async fn test_credential_json_ld_response_is_signed_and_shared_cached() {
         body["id"],
         format!("https://badges.example.test/badges/credentials/{user_badge_id}")
     );
-    assert_eq!(body["proof"]["cryptosuite"], "eddsa-rdfc-2022");
+    assert_eq!(body["issuer"]["name"], "Test Group");
+    assert_eq!(body["issuer"]["type"], json!(["Profile"]));
+    assert_eq!(body["proof"].as_array().unwrap().len(), 1);
+    assert_eq!(body["proof"][0]["cryptosuite"], "eddsa-rdfc-2022");
 }
 
 #[tokio::test]
@@ -171,9 +174,10 @@ async fn test_credential_unknown_award_returns_not_found() {
 
 #[tokio::test]
 async fn test_issuer_returns_stable_public_profile() {
-    // Setup a public router without configured signing material
+    // Setup a public router with one active signing method
     let group_id = Uuid::new_v4();
     let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .with_server_cfg(badges_server_config())
         .build()
         .await;
 
@@ -192,14 +196,22 @@ async fn test_issuer_returns_stable_public_profile() {
 
     // Check stable issuer identity and public caching
     assert_eq!(parts.status, StatusCode::OK);
-    assert!(
-        body["id"]
-            .as_str()
-            .unwrap()
-            .ends_with(&format!("/badges/issuers/{group_id}"))
+    let issuer_id = format!("https://badges.example.test/badges/issuers/{group_id}");
+    let method = &body["verificationMethod"][0];
+    assert_eq!(body["id"], issuer_id);
+    assert_eq!(body["type"], json!(["Profile"]));
+    assert_eq!(body["assertionMethod"][0], method["id"]);
+    assert_eq!(body["verificationMethod"].as_array().unwrap().len(), 1);
+    assert_eq!(method["controller"], issuer_id);
+    assert_eq!(method["type"], "Multikey");
+    assert_eq!(
+        method["id"],
+        format!(
+            "{issuer_id}#{}",
+            method["publicKeyMultibase"].as_str().unwrap()
+        )
     );
-    assert_eq!(body["type"], "Profile");
-    assert_eq!(body["assertionMethod"], json!([]));
+    assert!(method["publicKeyMultibase"].as_str().unwrap().starts_with("z6Mk"));
     assert!(parts.headers.get("cache-control").is_some());
 }
 
@@ -253,7 +265,9 @@ async fn test_status_list_returns_signed_current_state() {
         STATUS_LIST_CACHE_CONTROL
     );
     assert_eq!(body["credentialSubject"]["statusPurpose"], "revocation");
-    assert_eq!(body["proof"]["cryptosuite"], "eddsa-rdfc-2022");
+    assert!(body["issuer"].get("type").is_none());
+    assert_eq!(body["proof"].as_array().unwrap().len(), 1);
+    assert_eq!(body["proof"][0]["cryptosuite"], "eddsa-rdfc-2022");
 }
 
 #[tokio::test]
@@ -352,14 +366,18 @@ async fn test_user_profile_badges_rejects_page_above_public_cap() {
 }
 
 #[tokio::test]
-async fn test_verification_key_returns_allowlisted_multikey() {
-    // Setup one active allowlisted verification key
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+async fn test_verification_key_route_is_not_mounted() {
+    // Setup a public router with badge signing and not-found page settings
+    let mut db = MockDB::new();
+    db.expect_get_site_settings()
+        .times(1)
+        .return_once(|| Ok(sample_site_settings()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
         .with_server_cfg(badges_server_config())
         .build()
         .await;
 
-    // Request the stable public verification method
+    // Request the removed standalone verification method route
     let response = router
         .oneshot(
             Request::builder()
@@ -369,42 +387,7 @@ async fn test_verification_key_returns_allowlisted_multikey() {
         )
         .await
         .unwrap();
-    let (parts, body) = response.into_parts();
-    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
-
-    // Check the Multikey response and public cache boundary
-    assert_eq!(parts.status, StatusCode::OK);
-    assert_eq!(parts.headers.get(CONTENT_TYPE).unwrap(), "application/json");
-    assert_eq!(
-        parts.headers.get(CACHE_CONTROL).unwrap(),
-        CACHE_CONTROL_IMMUTABLE
-    );
-    assert_eq!(body["type"], "Multikey");
-    assert_eq!(
-        body["id"],
-        "https://badges.example.test/badges/keys/test-key"
-    );
-}
-
-#[tokio::test]
-async fn test_verification_key_unknown_id_returns_not_found() {
-    // Setup a public router without an allowlisted key
-    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
-        .build()
-        .await;
-
-    // Request an unconfigured verification method
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/badges/keys/unknown-key")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    // Check arbitrary key identifiers are not published
+    // Check standalone key documents are not part of the public interface
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 

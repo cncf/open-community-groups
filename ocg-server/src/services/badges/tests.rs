@@ -22,6 +22,10 @@ use super::{
     status::STATUS_LIST_TTL_MS,
 };
 
+/// Deterministic group issuer URL used by signed test documents.
+const TEST_ISSUER_URL: &str =
+    "https://badges.example.test/badges/issuers/00000000-0000-0000-0000-00000000000c";
+
 #[tokio::test(start_paused = true)]
 async fn test_cached_credential_rejects_cold_request_when_signer_is_busy() {
     // Setup a manager whose cold-signing guard is already held
@@ -54,7 +58,7 @@ async fn test_credential_cache_reuses_immutable_signed_representation() {
 
     // Check the second request reuses the first proof instead of signing again
     assert_eq!(cached, first);
-    assert_eq!(cached["proof"]["created"], "2024-02-03T04:05:06.000Z");
+    assert_eq!(cached["proof"][0]["created"], "2024-02-03T04:05:06.000Z");
 }
 
 #[tokio::test]
@@ -170,7 +174,10 @@ async fn test_status_list_profile_uses_required_ttl_and_revocation_purpose() {
     );
     assert_eq!(
         status["issuer"],
-        format!("https://badges.example.test/badges/issuers/{group_id}")
+        json!({
+            "id": format!("https://badges.example.test/badges/issuers/{group_id}"),
+            "name": BadgesManager::issuer_name(group_id)
+        })
     );
     assert_eq!(status["validFrom"], "2024-02-03T04:05:06.000Z");
     assert_eq!(
@@ -180,6 +187,15 @@ async fn test_status_list_profile_uses_required_ttl_and_revocation_purpose() {
     assert_eq!(status["credentialSubject"]["type"], "BitstringStatusList");
     assert_eq!(status["credentialSubject"]["statusPurpose"], "revocation");
     assert_eq!(status["credentialSubject"]["ttl"], STATUS_LIST_TTL_MS);
+    assert_eq!(status["proof"].as_array().unwrap().len(), 1);
+    assert!(
+        status["proof"][0]["verificationMethod"]
+            .as_str()
+            .unwrap()
+            .starts_with(&format!(
+                "https://badges.example.test/badges/issuers/{group_id}#z6Mk"
+            ))
+    );
     assert!(
         status["credentialSubject"]["encodedList"]
             .as_str()
@@ -198,9 +214,10 @@ async fn test_unknown_context_fails_closed_during_signing() {
                 "@context": [contexts::VC_CONTEXT_URL, "https://example.test/unknown-context"],
                 "id": "https://example.test/document",
                 "type": ["VerifiableCredential"],
-                "issuer": "https://badges.example.test/badges/issuers/00000000-0000-0000-0000-000000000001",
+                "issuer": {"id": TEST_ISSUER_URL},
                 "credentialSubject": {"id": "urn:uuid:00000000-0000-0000-0000-000000000002"}
             }),
+            TEST_ISSUER_URL,
             Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
         )
         .await;
@@ -231,7 +248,7 @@ async fn test_verify_credential_rejects_foreign_and_malformed_urls() {
 
     // Check a foreign issuer URL is rejected before proof verification
     let mut foreign_issuer = credential;
-    foreign_issuer["issuer"] =
+    foreign_issuer["issuer"]["id"] =
         json!("https://attacker.example.test/badges/issuers/00000000-0000-0000-0000-00000000000c");
     assert!(matches!(
         manager.verify_credential(&foreign_issuer).await,
@@ -263,7 +280,7 @@ async fn test_verify_credential_rejects_invalid_status_entries() {
         let mut status = valid_status.clone();
         status[field] = value;
         let credential = manager
-            .sign_document(credential_document(&status), created_at)
+            .sign_document(credential_document(&status), TEST_ISSUER_URL, created_at)
             .await
             .unwrap();
         assert!(matches!(
@@ -278,7 +295,7 @@ async fn test_verify_credential_rejects_invalid_status_entries() {
         "https://attacker.example.test/badges/status-lists/00000000-0000-0000-0000-00000000000d"
     );
     let credential = manager
-        .sign_document(credential_document(&status), created_at)
+        .sign_document(credential_document(&status), TEST_ISSUER_URL, created_at)
         .await
         .unwrap();
     assert!(matches!(
@@ -294,7 +311,11 @@ async fn test_verify_credential_rejects_invalid_valid_from() {
     let mut document = credential_document(&credential_status());
     document["validFrom"] = json!("not-a-timestamp");
     let credential = manager
-        .sign_document(document, Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap())
+        .sign_document(
+            document,
+            TEST_ISSUER_URL,
+            Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+        )
         .await
         .unwrap();
 
@@ -336,8 +357,9 @@ async fn test_verify_credential_rejects_unknown_verification_method() {
 
     // Check a proof key outside the local key namespace is rejected
     let mut foreign_method = signed_credential(&verifier).await;
-    foreign_method["proof"]["verificationMethod"] =
-        json!("https://attacker.example.test/badges/keys/test-key");
+    foreign_method["proof"][0]["verificationMethod"] = json!(
+        "https://attacker.example.test/badges/issuers/00000000-0000-0000-0000-00000000000c#z6Mkforeign"
+    );
     assert!(matches!(
         verifier.verify_credential(&foreign_method).await,
         Err(BadgesManagerError::UnknownVerificationMethod)
@@ -349,6 +371,22 @@ async fn test_verify_credential_rejects_unsupported_profile_and_identifier_claim
     // Issue the valid signed fixture
     let manager = manager(test_jwk(7), vec![]);
     let credential = signed_credential(&manager).await;
+
+    // Check a URI-only issuer is rejected by the canonical local profile
+    let mut string_issuer = credential.clone();
+    string_issuer["issuer"] = json!(TEST_ISSUER_URL);
+    assert!(matches!(
+        manager.verify_credential(&string_issuer).await,
+        Err(BadgesManagerError::InvalidCredential)
+    ));
+
+    // Check an issuer without the exact Profile type is rejected
+    let mut wrong_issuer_type = credential.clone();
+    wrong_issuer_type["issuer"]["type"] = json!("Profile");
+    assert!(matches!(
+        manager.verify_credential(&wrong_issuer_type).await,
+        Err(BadgesManagerError::InvalidCredential)
+    ));
 
     // Check a credential without the Open Badges context is rejected
     let mut wrong_context = credential.clone();
@@ -397,7 +435,7 @@ async fn test_verify_credential_rejects_unsupported_proof_profile() {
         ("type", json!("Ed25519Signature2020")),
     ] {
         let mut altered = credential.clone();
-        altered["proof"][field] = value;
+        altered["proof"][0][field] = value;
         assert!(matches!(
             manager.verify_credential(&altered).await,
             Err(BadgesManagerError::InvalidProof)
@@ -412,9 +450,17 @@ async fn test_verify_credential_rejects_unsupported_proof_profile() {
         Err(BadgesManagerError::InvalidCredential)
     ));
 
+    // Check a singleton proof object is rejected
+    let mut singleton_proof = credential.clone();
+    singleton_proof["proof"] = singleton_proof["proof"][0].clone();
+    assert!(matches!(
+        manager.verify_credential(&singleton_proof).await,
+        Err(BadgesManagerError::InvalidCredential)
+    ));
+
     // Check duplicated proofs are rejected
     let mut duplicated_proofs = credential.clone();
-    let proof = duplicated_proofs["proof"].clone();
+    let proof = duplicated_proofs["proof"][0].clone();
     duplicated_proofs["proof"] = json!([proof.clone(), proof]);
     assert!(matches!(
         manager.verify_credential(&duplicated_proofs).await,
@@ -432,7 +478,11 @@ fn credential_document(credential_status: &serde_json::Value) -> serde_json::Val
         "@context": [contexts::VC_CONTEXT_URL, contexts::OPEN_BADGES_CONTEXT_URL],
         "id": credential_url,
         "type": ["VerifiableCredential", "OpenBadgeCredential"],
-        "issuer": "https://badges.example.test/badges/issuers/00000000-0000-0000-0000-00000000000c",
+        "issuer": {
+            "id": TEST_ISSUER_URL,
+            "type": ["Profile"],
+            "name": "Fixture Group"
+        },
         "validFrom": "2024-01-02T03:04:05.000Z",
         "name": "Fixture Badge",
         "credentialSubject": {

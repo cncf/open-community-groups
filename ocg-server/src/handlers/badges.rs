@@ -1,4 +1,4 @@
-//! Public Open Badges credential, status, key, issuer, and verification handlers.
+//! Public Open Badges credential, issuer, status, and verification handlers.
 
 use std::sync::Arc;
 
@@ -21,7 +21,7 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
-    router::{CACHE_CONTROL_IMMUTABLE, CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
+    router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
     services::badges::{BadgesManager, BadgesManagerError, png},
     templates::badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
 };
@@ -108,33 +108,31 @@ pub(crate) async fn verify_page(
 // JSON handlers.
 
 /// Publish a stable group issuer profile.
-#[instrument(skip_all)]
+#[instrument(skip_all, err)]
 pub(crate) async fn issuer(
     State(badges_manager): State<Arc<BadgesManager>>,
     Path(group_id): Path<Uuid>,
-) -> impl IntoResponse {
-    // Publish every retained assertion method on the stable issuer profile
-    let assertion_methods = badges_manager
-        .verification_key_ids()
-        .into_iter()
-        .filter_map(|key_id| {
-            badges_manager
-                .verification_method(key_id)
-                .ok()?
-                .get("id")?
-                .as_str()
-                .map(str::to_string)
-        })
+) -> Result<impl IntoResponse, HandlerError> {
+    // Derive every retained verification method for this issuer controller
+    let verification_methods = badges_manager
+        .verification_methods(group_id)
+        .map_err(|error| HandlerError::Other(error.into()))?;
+    let assertion_methods = verification_methods
+        .iter()
+        .map(|method| method.id.to_string())
         .collect::<Vec<_>>();
-    (
+
+    // Publish the issuer identity, verification methods, and assertion relationship
+    Ok((
         PUBLIC_SHARED_CACHE_HEADERS,
         Json(json!({
             "id": badges_manager.issuer_url(group_id),
-            "type": "Profile",
-            "name": format!("Open Community Groups issuer {group_id}"),
-            "assertionMethod": assertion_methods
+            "type": ["Profile"],
+            "name": BadgesManager::issuer_name(group_id),
+            "assertionMethod": assertion_methods,
+            "verificationMethod": verification_methods
         })),
-    )
+    ))
 }
 
 /// Publish a signed revocation-only Bitstring Status List credential.
@@ -189,18 +187,6 @@ pub(crate) async fn user_profile_badges(
     let badges = db.list_user_public_badges(limit, offset, &username).await?;
 
     Ok((PUBLIC_SHARED_CACHE_HEADERS, Json(badges)))
-}
-
-/// Publish one allowlisted Ed25519 Multikey verification method.
-#[instrument(skip_all)]
-pub(crate) async fn verification_key(
-    State(badges_manager): State<Arc<BadgesManager>>,
-    Path(key_id): Path<String>,
-) -> Response {
-    match badges_manager.verification_method(&key_id) {
-        Ok(method) => ([(CACHE_CONTROL, CACHE_CONTROL_IMMUTABLE)], Json(method)).into_response(),
-        Err(_) => StatusCode::NOT_FOUND.into_response(),
-    }
 }
 
 // Actions handlers.

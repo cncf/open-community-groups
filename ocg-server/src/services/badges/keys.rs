@@ -47,15 +47,8 @@ impl KeySet {
         }
     }
 
-    /// Return all retained stable key identifiers.
-    pub(super) fn key_ids(&self) -> Vec<&str> {
-        let mut key_ids = self.verification_keys.keys().map(String::as_str).collect::<Vec<_>>();
-        key_ids.sort_unstable();
-        key_ids
-    }
-
-    /// Build an Ed25519 Multikey for one allowlisted verification method URL.
-    pub(super) fn multikey(&self, base_url: &str, key_id: &str) -> Result<Multikey> {
+    /// Builds an issuer-controlled Ed25519 Multikey for one allowlisted key.
+    pub(super) fn multikey(&self, issuer_url: &str, key_id: &str) -> Result<Multikey> {
         // Load the allowlisted public key material
         let jwk = self
             .public_jwk(key_id)
@@ -74,48 +67,61 @@ impl KeySet {
         let public_key =
             VerifyingKey::from_bytes(&public_key).map_err(|_| BadgesManagerError::InvalidKey)?;
 
-        // Build stable verification method and controller URLs
-        let key_url = key_url(base_url, key_id)?;
-        let controller = UriBuf::new(format!("{base_url}/badges").into_bytes())
+        // Build the issuer controller and encode the public key as a Multikey
+        let controller = UriBuf::new(issuer_url.as_bytes().to_vec())
             .map_err(|_| BadgesManagerError::InvalidUrl)?;
+        let placeholder_id =
+            IriBuf::new(issuer_url.to_string()).map_err(|_| BadgesManagerError::InvalidUrl)?;
+        let mut method = Multikey::from_public_key(placeholder_id, controller, &public_key);
 
-        // Return the multikey method for the closed resolver
-        Ok(Multikey::from_public_key(key_url, controller, &public_key))
+        // Identify the method with the self-contained public-key fragment
+        method.id = IriBuf::new(format!(
+            "{issuer_url}#{}",
+            method.public_key.encoded.as_str()
+        ))
+        .map_err(|_| BadgesManagerError::InvalidUrl)?;
+
+        Ok(method)
     }
 
-    /// Return a retained public JWK by stable key identifier.
-    pub(super) fn public_jwk(&self, key_id: &str) -> Option<&JWK> {
-        self.verification_keys.get(key_id)
+    /// Builds every retained issuer-controlled Multikey in stable key order.
+    pub(super) fn multikeys(&self, issuer_url: &str) -> Result<Vec<Multikey>> {
+        // Sort internal identifiers to keep the public controller document deterministic
+        let mut key_ids = self.verification_keys.keys().map(String::as_str).collect::<Vec<_>>();
+        key_ids.sort_unstable();
+
+        // Derive one self-contained verification method per retained public key
+        key_ids
+            .into_iter()
+            .map(|key_id| self.multikey(issuer_url, key_id))
+            .collect()
     }
 
     /// Build the closed SSI resolver used for proof verification.
-    pub(super) fn resolver(&self, base_url: &str) -> Result<HashMap<IriBuf, AnyMethod>> {
-        self.verification_keys
-            .keys()
-            .map(|key_id| {
-                let method = self.multikey(base_url, key_id)?;
-                Ok((method.id.clone(), AnyMethod::Multikey(method)))
-            })
-            .collect()
+    pub(super) fn resolver(&self, issuer_url: &str) -> Result<HashMap<IriBuf, AnyMethod>> {
+        Ok(self
+            .multikeys(issuer_url)?
+            .into_iter()
+            .map(|method| (method.id.clone(), AnyMethod::Multikey(method)))
+            .collect())
     }
 
     /// Returns the active signing key.
     pub(super) fn signing_key(&self) -> &SigningKey {
         &self.signing_key
     }
+
+    /// Returns a retained public JWK by its internal stable identifier.
+    fn public_jwk(&self, key_id: &str) -> Option<&JWK> {
+        self.verification_keys.get(key_id)
+    }
 }
 
 /// Active credential signing key.
 #[derive(Clone)]
 pub(super) struct SigningKey {
-    /// Stable identifier published in the verification method URL.
+    /// Stable internal identifier used to select configured key material.
     pub(super) key_id: String,
     /// Validated Ed25519 private key material.
     pub(super) private_jwk: JWK,
-}
-
-/// Build a stable verification method URL.
-pub(super) fn key_url(base_url: &str, key_id: &str) -> Result<IriBuf> {
-    IriBuf::new(format!("{base_url}/badges/keys/{key_id}"))
-        .map_err(|_| BadgesManagerError::InvalidUrl)
 }

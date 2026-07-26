@@ -46,11 +46,7 @@ use crate::{
 
 /// Cache-Control header value for immutable public assets.
 #[cfg(any(not(debug_assertions), test))]
-pub(crate) const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
-
-/// Cache-Control header value for immutable public assets in local development.
-#[cfg(all(debug_assertions, not(test)))]
-pub(crate) const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=0";
+const CACHE_CONTROL_IMMUTABLE: &str = "public, max-age=31536000, immutable";
 
 /// Cache-Control header value instructing clients and proxies not to store responses.
 pub(crate) const CACHE_CONTROL_NO_STORE: &str = "no-store";
@@ -264,7 +260,6 @@ pub(crate) async fn setup(
             get(badges::credential),
         )
         .route("/badges/issuers/{group_id}", get(badges::issuer))
-        .route("/badges/keys/{key_id}", get(badges::verification_key))
         .route(
             "/badges/status-lists/{badge_status_list_id}",
             get(badges::status_list),

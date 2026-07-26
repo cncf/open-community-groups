@@ -28,7 +28,7 @@ use crate::{config::BadgesConfig, types::badges::UserBadge};
 
 use credential::required_string;
 use status::{STATUS_LIST_ENTRIES, STATUS_LIST_TTL_MS, encode_status_list};
-use verification::{VerifiedCredential, contains_identifier};
+use verification::{VerifiedCredential, contains_identifier, single_proof};
 
 pub(crate) use award_worker::start_badge_award_workers;
 pub(crate) use credential::{CredentialInput, rfc3339};
@@ -146,7 +146,11 @@ impl BadgesManager {
             "@context": [contexts::VC_CONTEXT_URL, contexts::OPEN_BADGES_CONTEXT_URL],
             "id": credential_url,
             "type": ["VerifiableCredential", "OpenBadgeCredential"],
-            "issuer": issuer_url,
+            "issuer": {
+                "id": issuer_url,
+                "type": ["Profile"],
+                "name": award.snapshot.issuer.group_name
+            },
             "validFrom": rfc3339(award.awarded_at),
             "name": award.snapshot.name,
             "credentialSubject": {
@@ -171,7 +175,7 @@ impl BadgesManager {
         });
 
         // Sign the complete credential with the active issuer key
-        self.sign_document(document, input.created_at).await
+        self.sign_document(document, &issuer_url, input.created_at).await
     }
 
     /// Build and sign one revocation-only status-list credential.
@@ -190,7 +194,10 @@ impl BadgesManager {
             "@context": [contexts::VC_CONTEXT_URL],
             "id": status_list_url,
             "type": ["VerifiableCredential", "BitstringStatusListCredential"],
-            "issuer": issuer_url,
+            "issuer": {
+                "id": issuer_url,
+                "name": Self::issuer_name(group_id)
+            },
             "validFrom": rfc3339(created_at),
             "credentialSubject": {
                 "id": format!("{status_list_url}#list"),
@@ -202,7 +209,12 @@ impl BadgesManager {
         });
 
         // Sign the complete status-list credential with the active issuer key
-        self.sign_document(document, created_at).await
+        self.sign_document(document, &issuer_url, created_at).await
+    }
+
+    /// Returns the stable display name for a group issuer profile.
+    pub(crate) fn issuer_name(group_id: Uuid) -> String {
+        format!("Open Community Groups issuer {group_id}")
     }
 
     /// Return the stable public issuer profile URL.
@@ -233,15 +245,9 @@ impl BadgesManager {
         )
     }
 
-    /// Return retained public key identifiers.
-    pub(crate) fn verification_key_ids(&self) -> Vec<&str> {
-        self.keys.key_ids()
-    }
-
-    /// Return a retained public key as a stable Multikey verification method.
-    pub(crate) fn verification_method(&self, key_id: &str) -> Result<serde_json::Value> {
-        let method = self.keys.multikey(&self.base_url, key_id)?;
-        serde_json::to_value(method).map_err(|_| BadgesManagerError::InvalidKey)
+    /// Returns every retained Multikey controlled by a group issuer.
+    pub(crate) fn verification_methods(&self, group_id: Uuid) -> Result<Vec<Multikey>> {
+        self.keys.multikeys(&self.issuer_url(group_id))
     }
 
     /// Verifies an OCG credential proof and closed local profile.
@@ -267,8 +273,20 @@ impl BadgesManager {
             return Err(BadgesManagerError::InvalidCredential);
         }
 
+        // Validate the embedded issuer profile before trusting its identifier
+        let issuer_profile = credential
+            .get("issuer")
+            .and_then(Value::as_object)
+            .ok_or(BadgesManagerError::InvalidCredential)?;
+        if issuer_profile.len() != 3
+            || issuer_profile.get("type") != Some(&json!(["Profile"]))
+            || required_string(credential, "/issuer/name")?.is_empty()
+        {
+            return Err(BadgesManagerError::InvalidCredential);
+        }
+
         // Verify the issuer identity and credential proof
-        let issuer = required_string(credential, "/issuer")?;
+        let issuer = required_string(credential, "/issuer/id")?;
         let group_id = self.parse_issuer_url(issuer)?;
         self.verify_document(credential, issuer).await?;
 
@@ -325,10 +343,20 @@ impl BadgesManager {
     }
 
     /// Sign a supported JSON-LD badge document using eddsa-rdfc-2022.
-    async fn sign_document(&self, document: Value, created_at: DateTime<Utc>) -> Result<Value> {
+    async fn sign_document(
+        &self,
+        document: Value,
+        issuer_url: &str,
+        created_at: DateTime<Utc>,
+    ) -> Result<Value> {
+        // Bind the document issuer to the verification method controller
+        if required_string(&document, "/issuer/id")? != issuer_url {
+            return Err(BadgesManagerError::InvalidCredential);
+        }
+
         // Resolve the active key and its allowlisted verification method
         let signing_key = self.keys.signing_key();
-        let method = self.keys.multikey(&self.base_url, &signing_key.key_id)?;
+        let method = self.keys.multikey(issuer_url, &signing_key.key_id)?;
         let method_url = method.id.clone();
         let resolver = HashMap::from([(method_url.clone(), AnyMethod::Multikey(method))]);
 
@@ -359,29 +387,40 @@ impl BadgesManager {
             )
             .await
             .map_err(|_| BadgesManagerError::SigningFailed)?;
+        let mut signed_document = serde_json::to_value(signed_document)
+            .map_err(|_| BadgesManagerError::InvalidCredential)?;
 
-        serde_json::to_value(signed_document).map_err(|_| BadgesManagerError::InvalidCredential)
+        // Preserve the signature while emitting the strict plain-JSON proof set shape
+        let proof = signed_document
+            .get_mut("proof")
+            .ok_or(BadgesManagerError::SigningFailed)?;
+        if !proof.is_object() {
+            return Err(BadgesManagerError::SigningFailed);
+        }
+        *proof = Value::Array(vec![proof.take()]);
+
+        Ok(signed_document)
     }
 
     /// Verifies one Data Integrity proof with the closed context and key resolvers.
     async fn verify_document(&self, document: &Value, issuer_url: &str) -> Result<()> {
         // Validate the fixed proof profile before invoking cryptography
-        if required_string(document, "/issuer")? != issuer_url
-            || required_string(document, "/proof/type")? != "DataIntegrityProof"
-            || required_string(document, "/proof/cryptosuite")? != "eddsa-rdfc-2022"
-            || required_string(document, "/proof/proofPurpose")? != "assertionMethod"
+        let proof = single_proof(document)?;
+        if required_string(document, "/issuer/id")? != issuer_url
+            || required_string(proof, "/type")? != "DataIntegrityProof"
+            || required_string(proof, "/cryptosuite")? != "eddsa-rdfc-2022"
+            || required_string(proof, "/proofPurpose")? != "assertionMethod"
         {
             return Err(BadgesManagerError::InvalidProof);
         }
 
         // Resolve the proof key exclusively through the configured allowlist
-        let verification_method = required_string(document, "/proof/verificationMethod")?;
-        let key_prefix = format!("{}/badges/keys/", self.base_url);
-        let key_id = verification_method
-            .strip_prefix(&key_prefix)
-            .filter(|key_id| !key_id.is_empty() && !key_id.contains('/'))
-            .ok_or(BadgesManagerError::UnknownVerificationMethod)?;
-        if self.keys.public_jwk(key_id).is_none() {
+        let verification_method = required_string(proof, "/verificationMethod")?;
+        let resolver = self.keys.resolver(issuer_url)?;
+        if !resolver
+            .keys()
+            .any(|method_id| method_id.as_str() == verification_method)
+        {
             return Err(BadgesManagerError::UnknownVerificationMethod);
         }
 
@@ -392,7 +431,6 @@ impl BadgesManager {
         if signed.proofs.len() != 1 {
             return Err(BadgesManagerError::InvalidProof);
         }
-        let resolver = self.keys.resolver(&self.base_url)?;
         let parameters = VerificationParameters::from_resolver(resolver)
             .with_json_ld_loader(contexts::loader()?);
 

@@ -77,9 +77,9 @@ server:
           x: RETIRED_PUBLIC_BASE64URL
 ```
 
-Key IDs must contain 1 to 64 lowercase URL-safe characters, start and end with a letter or number,
-and remain stable after a key is published. Signing keys must contain Ed25519 private material;
-retained verification keys must contain public material only.
+Key IDs are internal configuration identifiers. They must contain 1 to 64 lowercase URL-safe
+characters and start and end with a letter or number. Signing keys must contain Ed25519 private
+material; retained verification keys must contain public material only.
 
 Private key material is redacted from configuration debug output and errors.
 
@@ -90,13 +90,17 @@ Badge credentials depend on stable public routes:
 ```text
 /badges/credentials/{user_badge_id}
 /badges/issuers/{group_id}
-/badges/keys/{key_id}
 /badges/status-lists/{badge_status_list_id}
 ```
 
 These routes use the configured server base URL and must remain publicly available for as long as
 issued credentials may be presented. Keep the base URL stable and retain every referenced public
-key.
+key in badge configuration.
+
+Each issuer profile publishes its active and retained Ed25519 Multikey objects in
+`verificationMethod` and authorizes them through `assertionMethod`. Credential proofs identify the
+signing method as `{issuer_url}#{publicKeyMultibase}`, allowing verifiers to read the key from the
+fragment or resolve the same method through the issuer profile.
 
 The credential route serves a browser page by default. A request accepting
 `application/vc+ld+json` receives the signed JSON-LD credential. The user export route transcodes
