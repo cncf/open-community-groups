@@ -173,7 +173,7 @@ available, but verification reports their revoked state.
 
 You are not limited to OCG's own verifier. Because exported files are standard Open Badges 3.0
 credentials, anyone can independently verify them with third-party tools such as
-[verifybadge.org](https://verifybadge.org/) by uploading the exported PNG there.
+[vc.1ed.tech](https://vc.1ed.tech/) by uploading the exported PNG there.
 
 ### Credential Privacy
 
