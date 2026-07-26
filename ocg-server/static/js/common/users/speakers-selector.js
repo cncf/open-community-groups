@@ -1,8 +1,10 @@
 import { html, repeat } from "/static/vendor/js/lit-all.v3.3.3.min.js";
-import "/static/js/common/actions-menu.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
-import "/static/js/common/media/logo-image.js";
-import { computeUserInitials } from "/static/js/common/users/initials.js";
+import {
+  renderContributorActions,
+  renderContributorIdentity,
+  renderFeaturedContributorState,
+} from "/static/js/common/users/contributor-row.js";
 import "/static/js/common/users/selected-user-pill.js";
 import "/static/js/dashboard/event/sessions/speaker-modal.js";
 import {
@@ -198,92 +200,22 @@ export class SpeakersSelector extends LitWrapper {
                     speakers,
                     (speaker, index) => `${speakerKey(speaker) || index}`,
                     (speaker) => {
-                      const displayName = speaker.name || speaker.username || "";
                       return html`
                         <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
-                          <td class="px-4 py-3">
-                            <div class="flex min-w-0 items-center gap-3">
-                              <logo-image
-                                image-url=${speaker.photo_url || ""}
-                                placeholder=${computeUserInitials(speaker.name, speaker.username, 2)}
-                                size="size-8"
-                                font-size="text-xs"
-                                hide-border="true"
-                              ></logo-image>
-                              <div class="min-w-0">
-                                <div class="truncate font-medium text-stone-900">${displayName}</div>
-                                <div class="truncate text-xs text-stone-500">@${speaker.username || ""}</div>
-                              </div>
-                            </div>
-                          </td>
+                          <td class="px-4 py-3">${renderContributorIdentity(speaker)}</td>
                           <td class="w-40 px-4 py-3 text-center">
-                            ${
-                              speaker.featured
-                                ? html`<span
-                                    class="inline-flex items-center justify-center"
-                                    title="Featured speaker"
-                                  >
-                                    <span
-                                      class="svg-icon size-4 icon-star bg-amber-500"
-                                      aria-hidden="true"
-                                    ></span>
-                                    <span class="sr-only">Yes</span>
-                                  </span>`
-                                : html`<span class="sr-only">No</span>`
-                            }
+                            ${renderFeaturedContributorState(speaker.featured)}
                           </td>
                           <td class="px-4 py-3 text-right">
-                            <details data-actions-menu class="group relative inline-block text-left">
-                              <summary
-                                class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
-                                aria-label=${`Open speaker actions for ${displayName}`}
-                              >
-                                <span class="svg-icon size-4 icon-vertical-dots"></span>
-                              </summary>
-                              <div
-                                class="dropdown absolute z-20 end-0 top-8 w-48 rounded-lg border border-stone-200 bg-white shadow"
-                              >
-                                <ul class="py-2 text-sm text-stone-700" role="menu">
-                                  ${
-                                    this.canAwardBadges && this.eventId
-                                      ? html`<li>
-                                          <button
-                                            type="button"
-                                            class="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                            data-badge-award-open
-                                            data-event-id=${this.eventId}
-                                            data-user-ids=${speaker.user_id}
-                                            role="menuitem"
-                                            title=${
-                                              this.awardsDisabled
-                                                ? "Save contributor changes before awarding badges."
-                                                : ""
-                                            }
-                                            ?disabled=${this.awardsDisabled}
-                                          >
-                                            <span
-                                              class="svg-icon size-4 icon-certificate bg-stone-500"
-                                            ></span>
-                                            <span>Award badge</span>
-                                          </button>
-                                        </li>`
-                                      : ""
-                                  }
-                                  <li>
-                                    <button
-                                      type="button"
-                                      class="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                      role="menuitem"
-                                      ?disabled=${this.disabled}
-                                      @click=${() => this._removeSpeaker(speaker)}
-                                    >
-                                      <span class="svg-icon size-4 icon-trash bg-stone-500"></span>
-                                      <span>Delete</span>
-                                    </button>
-                                  </li>
-                                </ul>
-                              </div>
-                            </details>
+                            ${renderContributorActions({
+                              actionLabel: "speaker",
+                              awardsDisabled: this.awardsDisabled,
+                              canAwardBadges: this.canAwardBadges,
+                              contributor: speaker,
+                              deleteDisabled: this.disabled,
+                              eventId: this.eventId,
+                              onDelete: () => this._removeSpeaker(speaker),
+                            })}
                           </td>
                         </tr>
                       `;
@@ -338,7 +270,7 @@ export class SpeakersSelector extends LitWrapper {
                           type="button"
                           class="btn-primary-outline"
                           data-badge-award-open
-                          data-badge-award-confirm-all-speakers
+                          data-badge-award-all-speakers
                           data-event-id=${this.eventId}
                           data-user-ids=${awardUserIds.join(",")}
                           title=${

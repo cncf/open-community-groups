@@ -184,7 +184,7 @@ describe("dashboard group event update template", () => {
     expect(template).to.include("can-award-badges show-award-all");
     expect(template).to.include("Session-level speakers");
     expect(template).to.include(
-      '<div class="mt-8"> <h3 class="text-base font-semibold text-stone-900">Session-level speakers</h3>',
+      '<div class="mt-8"> <h3 class="text-xl lg:text-2xl font-medium text-stone-900">Session-level speakers</h3> <p class="mt-5 text-sm text-stone-500">',
     );
     expect(template).not.to.include('<div class="mt-8 border-t border-stone-200 pt-8">');
     expect(template).to.include(

@@ -1,7 +1,10 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
-import { confirmAction } from "/static/js/common/alerts.js";
-import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import { LitWrapper } from "/static/js/common/lit-wrapper.js";
+import { clearTimeoutId, replaceTimeout } from "/static/js/common/timers.js";
+
+const BADGE_LOAD_ERROR_MESSAGE = "We couldn't load the badges. Check your connection and try again.";
+const BADGE_SEARCH_DELAY = 300;
 
 const STATE = Object.freeze({
   IDLE: "idle",
@@ -16,6 +19,7 @@ const STATE = Object.freeze({
 /** Shared light-DOM dialog for badge awards to explicit recipients. */
 export class BadgeAwardModal extends LitWrapper {
   static properties = {
+    _allSpeakersAward: { type: Boolean },
     _badges: { type: Array },
     _error: { type: String },
     _isOpen: { type: Boolean },
@@ -27,6 +31,7 @@ export class BadgeAwardModal extends LitWrapper {
 
   constructor() {
     super();
+    this._allSpeakersAward = false;
     this._badges = [];
     this._error = "";
     this._isOpen = false;
@@ -40,6 +45,7 @@ export class BadgeAwardModal extends LitWrapper {
     this._eventId = "";
     this._requestId = 0;
     this._returnFocus = null;
+    this._searchTimeoutId = 0;
     this._userIds = [];
     this._handleDocumentClick = this._handleDocumentClick.bind(this);
   }
@@ -54,45 +60,24 @@ export class BadgeAwardModal extends LitWrapper {
     document.removeEventListener("click", this._handleDocumentClick);
     this._abortController?.abort();
     this._awardAbortController?.abort();
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     this.querySelector("[data-badge-award-dialog]")?.close();
     this._isOpen = false;
   }
 
-  async _handleDocumentClick(event) {
+  _handleDocumentClick(event) {
     const trigger = event.target?.closest?.("[data-badge-award-open]");
     if (!trigger || trigger.disabled) {
       return;
     }
     event.preventDefault();
-    if (trigger.dataset.badgeAwardConfirmPending === "true") {
-      return;
-    }
-    if (trigger.hasAttribute("data-badge-award-confirm-all-speakers")) {
-      trigger.dataset.badgeAwardConfirmPending = "true";
-      let confirmed = false;
-      try {
-        confirmed = await confirmAction({
-          message:
-            "This will award the selected badge to all event speakers, including speakers assigned " +
-            "to individual sessions. Do you want to continue?",
-          confirmText: "Continue",
-          cancelText: "Cancel",
-        });
-      } finally {
-        delete trigger.dataset.badgeAwardConfirmPending;
-      }
-      if (!this.isConnected || !trigger.isConnected) {
-        return;
-      }
-      if (!confirmed) {
-        trigger.focus();
-        return;
-      }
-    }
-    trigger.closest("details[open]")?.removeAttribute("open");
+    const menu = trigger.closest("details[open]");
+    const returnFocus = menu?.querySelector("summary") || trigger;
+    menu?.removeAttribute("open");
     this.open({
+      allSpeakersAward: trigger.hasAttribute("data-badge-award-all-speakers"),
       eventId: trigger.dataset.eventId,
-      trigger,
+      trigger: returnFocus,
       userIds: (trigger.dataset.userIds || "")
         .split(",")
         .map((userId) => userId.trim())
@@ -100,14 +85,16 @@ export class BadgeAwardModal extends LitWrapper {
     });
   }
 
-  open({ eventId = "", trigger, userIds = [] }) {
+  open({ allSpeakersAward = false, eventId = "", trigger, userIds = [] }) {
     const normalizedUserIds = [...new Set(userIds.filter(Boolean))];
     if (normalizedUserIds.length === 0) {
       return;
     }
     this._abortController?.abort();
     this._awardAbortController?.abort();
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     this._awardRequestId += 1;
+    this._allSpeakersAward = allSpeakersAward;
     this._eventId = eventId;
     this._userIds = normalizedUserIds;
     this._returnFocus = trigger;
@@ -123,7 +110,7 @@ export class BadgeAwardModal extends LitWrapper {
         if (!dialog?.open) {
           dialog?.showModal();
         }
-        dialog?.focus();
+        this.querySelector('[aria-label="Close award badge dialog"]')?.focus();
       }
     });
     this._loadBadges();
@@ -132,6 +119,7 @@ export class BadgeAwardModal extends LitWrapper {
   close({ restoreFocus = true } = {}) {
     this._abortController?.abort();
     this._awardAbortController?.abort();
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     this._awardRequestId += 1;
     this.querySelector("[data-badge-award-dialog]")?.close();
     this._isOpen = false;
@@ -173,7 +161,7 @@ export class BadgeAwardModal extends LitWrapper {
         signal: this._abortController.signal,
       });
       if (!response.ok) {
-        throw new Error("Badges could not be loaded.");
+        throw new Error(BADGE_LOAD_ERROR_MESSAGE);
       }
       const output = await response.json();
       if (requestId !== this._requestId) {
@@ -187,13 +175,47 @@ export class BadgeAwardModal extends LitWrapper {
       if (error.name === "AbortError" || requestId !== this._requestId) {
         return;
       }
-      this._error = error.message;
+      this._error = BADGE_LOAD_ERROR_MESSAGE;
       this._state = STATE.ERROR;
+      await this.updateComplete;
+      if (this._isOpen && requestId === this._requestId) {
+        this.querySelector("[data-badge-search]")?.focus();
+      }
     }
+  }
+
+  /**
+   * Clears the badge query and restores the full badge list.
+   * @returns {void}
+   * @private
+   */
+  _clearSearch() {
+    this._query = "";
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
+    this._loadBadges();
+  }
+
+  /**
+   * Debounces remote badge filtering while the query changes.
+   * @param {InputEvent} event Input event from the badge search field.
+   * @returns {void}
+   * @private
+   */
+  _handleSearchInput(event) {
+    this._query = event.target.value;
+    this._searchTimeoutId = replaceTimeout(
+      this._searchTimeoutId,
+      () => {
+        this._searchTimeoutId = 0;
+        this._loadBadges();
+      },
+      BADGE_SEARCH_DELAY,
+    );
   }
 
   _search(event) {
     event.preventDefault();
+    this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     this._loadBadges();
   }
 
@@ -238,7 +260,7 @@ export class BadgeAwardModal extends LitWrapper {
         return;
       }
       this._error = error.message;
-      this._state = STATE.ERROR;
+      this._state = STATE.READY;
     }
   }
 
@@ -345,27 +367,85 @@ export class BadgeAwardModal extends LitWrapper {
                 this._state === STATE.SUCCESS
                   ? this._renderSuccess()
                   : html`
-                      <form class="flex gap-2" @submit=${(event) => this._search(event)}>
+                      ${
+                        this._allSpeakersAward
+                          ? html`
+                              <div
+                                class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+                                data-badge-award-all-speakers-notice
+                                role="alert"
+                              >
+                                <div class="flex items-start gap-2">
+                                  <span
+                                    class="svg-icon icon-warning mt-0.5 size-4 shrink-0 bg-amber-700"
+                                    aria-hidden="true"
+                                  ></span>
+                                  <span>
+                                    This badge will be awarded to all event speakers, including speakers
+                                    assigned to individual sessions.
+                                  </span>
+                                </div>
+                              </div>
+                            `
+                          : ""
+                      }
+                      <form class="relative" @submit=${(event) => this._search(event)}>
+                        <div class="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3">
+                          <span class="svg-icon size-4 icon-search bg-stone-300" aria-hidden="true"></span>
+                        </div>
                         <label class="grow">
                           <span class="sr-only">Search badges</span>
                           <input
-                            class="input-primary"
+                            class="input-primary peer w-full ps-9 pe-9"
                             data-badge-search
                             type="search"
                             placeholder="Search badges"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
                             ?disabled=${busy}
                             .value=${this._query}
-                            @input=${(event) => {
-                              this._query = event.target.value;
-                            }}
+                            @input=${(event) => this._handleSearchInput(event)}
                           />
                         </label>
-                        <button class="btn-primary-outline" type="submit" ?disabled=${busy}>Search</button>
+                        ${
+                          this._query
+                            ? html`<button
+                                class="absolute end-1.5 top-1.5 cursor-pointer"
+                                type="button"
+                                data-badge-search-clear
+                                aria-label="Clear badge search"
+                                ?disabled=${busy}
+                                @click=${() => this._clearSearch()}
+                              >
+                                <span
+                                  class="svg-icon size-5 icon-close bg-stone-400 hover:bg-stone-700"
+                                ></span>
+                              </button>`
+                            : ""
+                        }
                       </form>
                       ${this._renderBadges()}
-                      <p class="min-h-5 text-sm text-red-700" role="alert" aria-live="assertive">
-                        ${this._error}
-                      </p>
+                      ${
+                        this._error
+                          ? html`
+                              <div
+                                class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                                role="alert"
+                                aria-live="assertive"
+                              >
+                                <div class="flex items-start gap-2">
+                                  <span
+                                    class="svg-icon icon-error mt-0.5 size-4 shrink-0"
+                                    aria-hidden="true"
+                                  ></span>
+                                  <span>${this._error}</span>
+                                </div>
+                              </div>
+                            `
+                          : ""
+                      }
                     `
               }
             </div>

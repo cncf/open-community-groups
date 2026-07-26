@@ -2,17 +2,6 @@ import { markDatasetReady } from "/static/js/common/dom.js";
 import { normalizeSpeakers } from "/static/js/dashboard/event/sessions/speaker-utils.js";
 import "/static/js/dashboard/group/session-speakers-table.js";
 
-/** Returns unique session-level speaker identifiers. */
-const getSessionSpeakerIds = (sessions) => [
-  ...new Set(
-    (sessions || []).flatMap((session) =>
-      normalizeSpeakers(session.speakers)
-        .map((speaker) => speaker.user_id)
-        .filter(Boolean),
-    ),
-  ),
-];
-
 /**
  * Coordinates contributor tables, bulk speaker recipients, and save-first award state.
  * @param {Document|Element} pageRoot Event page root.
@@ -64,3 +53,14 @@ export const initializeEventContributors = (pageRoot) => {
     setAwardsDisabled();
   });
 };
+
+/** Returns unique session-level speaker identifiers. */
+const getSessionSpeakerIds = (sessions) => [
+  ...new Set(
+    (sessions || []).flatMap((session) =>
+      normalizeSpeakers(session.speakers)
+        .map((speaker) => speaker.user_id)
+        .filter(Boolean),
+    ),
+  ),
+];

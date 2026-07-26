@@ -47,12 +47,20 @@
               <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-900"
                     data-badge-position
                     aria-hidden="true">{{ loop.index }}</span>
-              <img class="size-20 shrink-0 object-contain"
-                   src="/images/badges/{{ badge.snapshot.image_file_name }}"
-                   alt="{{ badge.snapshot.name }} badge artwork"
-                   draggable="false"
-                   width="80"
-                   height="80">
+              <span class="relative block size-20 shrink-0" data-badge-artwork>
+                <span class="absolute inset-0 flex items-center justify-center rounded-md bg-stone-100"
+                      data-badge-artwork-placeholder
+                      aria-hidden="true">
+                  <span class="svg-icon size-8 icon-certificate bg-stone-400"></span>
+                </span>
+                <img class="invisible relative size-20 object-contain"
+                     data-badge-artwork-image
+                     src="/images/badges/{{ badge.snapshot.image_file_name }}"
+                     alt=""
+                     draggable="false"
+                     width="80"
+                     height="80">
+              </span>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center justify-between gap-4">
                   <h2 class="min-w-0 font-semibold text-stone-900">{{ badge.snapshot.name }}</h2>

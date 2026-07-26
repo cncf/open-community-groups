@@ -4,28 +4,6 @@ import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/commo
 const ROOT_SELECTOR = "[data-group-badges]";
 const READY_KEY = "groupBadgesReady";
 
-/** Validate that uploaded artwork is available before submission. */
-const prepareArtworkForm = (form) => {
-  const field = form.querySelector('image-field[target="badge"]');
-  const fileName = field?.value?.split("/").filter(Boolean).pop();
-  if (!fileName) {
-    showErrorAlert("Upload badge artwork before adding it to the gallery.");
-    return false;
-  }
-  return true;
-};
-
-/** Synchronize the uploaded artwork filename with its form field. */
-const syncArtworkFileName = (form) => {
-  const field = form.querySelector('image-field[target="badge"]');
-  const fileName = field?.value?.split("/").filter(Boolean).pop() || "";
-  const fileNameInput = form.querySelector("[data-artwork-file-name]");
-  if (!fileNameInput) {
-    return;
-  }
-  fileNameInput.value = fileName;
-};
-
 /** Initialize badge dashboard interactions within a rendered root. */
 export const initializeGroupBadges = (root) => {
   if (!markDatasetReady(root, READY_KEY)) {
@@ -59,6 +37,28 @@ export const initializeGroupBadges = (root) => {
       }
     }
   });
+};
+
+/** Validate that uploaded artwork is available before submission. */
+const prepareArtworkForm = (form) => {
+  const field = form.querySelector('image-field[target="badge"]');
+  const fileName = field?.value?.split("/").filter(Boolean).pop();
+  if (!fileName) {
+    showErrorAlert("Upload badge artwork before adding it to the gallery.");
+    return false;
+  }
+  return true;
+};
+
+/** Synchronize the uploaded artwork filename with its form field. */
+const syncArtworkFileName = (form) => {
+  const field = form.querySelector('image-field[target="badge"]');
+  const fileName = field?.value?.split("/").filter(Boolean).pop() || "";
+  const fileNameInput = form.querySelector("[data-artwork-file-name]");
+  if (!fileNameInput) {
+    return;
+  }
+  fileNameInput.value = fileName;
 };
 
 initializeOnReadyAndHtmxLoad((root) => {

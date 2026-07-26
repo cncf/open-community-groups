@@ -1007,8 +1007,8 @@
           {% endif -%}
           <speakers-selector id="event-speakers-selector" selected-speakers="{{ event.speakers|json }}" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}" field-name-prefix="speakers" show-add-button {% if can_manage_events && !event.canceled %}can-award-badges show-award-all{% endif %} label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
           <div class="mt-8">
-            <h3 class="text-base font-semibold text-stone-900">Session-level speakers</h3>
-            <p class="mt-1 text-sm text-stone-500">
+            <h3 class="text-xl lg:text-2xl font-medium text-stone-900">Session-level speakers</h3>
+            <p class="mt-5 text-sm text-stone-500">
               Speakers added to individual sessions are listed here. Manage their session assignments
               from the Sessions tab.
             </p>

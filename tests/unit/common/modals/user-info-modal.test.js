@@ -5,6 +5,16 @@ import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-u
 
 describe("user-info-modal", () => {
   useMountedElementsCleanup("user-info-modal");
+  let originalFetch;
+
+  beforeEach(() => {
+    originalFetch = window.fetch;
+    window.fetch = async () => new Response("[]", { headers: { "Content-Type": "application/json" } });
+  });
+
+  afterEach(() => {
+    window.fetch = originalFetch;
+  });
 
   it("renders nothing while closed", async () => {
     // Mount the modal without opening it.
@@ -164,7 +174,6 @@ describe("user-info-modal", () => {
   });
 
   it("lazily renders active listed badges with accessible links and image text", async () => {
-    const originalFetch = window.fetch;
     let requestUrl = "";
     window.fetch = async (url) => {
       requestUrl = String(url);
@@ -186,6 +195,21 @@ describe("user-info-modal", () => {
               name: "Participant",
             },
             user_badge_id: "00000000-0000-0000-0000-000000000003",
+          },
+          {
+            awarded_at: "2024-01-02T00:00:00Z",
+            group_id: "00000000-0000-0000-0000-000000000004",
+            snapshot: {
+              criteria: "Contribute",
+              description: "Group badge",
+              image_file_name: "group.png",
+              issuer: {
+                group_id: "00000000-0000-0000-0000-000000000004",
+                group_name: "Solo Group",
+              },
+              name: "Contributor",
+            },
+            user_badge_id: "00000000-0000-0000-0000-000000000005",
           },
         ]),
         { headers: { "Content-Type": "application/json" } },
@@ -217,9 +241,14 @@ describe("user-info-modal", () => {
     expect(badgeDetails.textContent).to.include("Participant");
     expect(badgeDetails.textContent).to.include("Participant badge");
     expect(badgeDetails.textContent).to.include("Kubernetes Group");
-    const tooltipPointer = badgeDetails.querySelector('[aria-hidden="true"]');
+    expect(badgeDetails.textContent).to.include("Cloud Native");
+    const groupOnlyDetails = element
+      .querySelector('a[href="/badges/credentials/00000000-0000-0000-0000-000000000005"]')
+      .querySelector('[role="tooltip"]');
+    expect(groupOnlyDetails.textContent).to.include("Solo Group");
+    expect(groupOnlyDetails.textContent).to.not.include("·");
+    const tooltipPointer = badgeDetails.querySelector('[aria-hidden="true"].rotate-45');
     expect(tooltipPointer).to.not.equal(null);
-    expect(tooltipPointer.classList.contains("rotate-45")).to.equal(true);
 
     element._userData = { ...element._userData, websiteUrl: "https://example.com" };
     await element.updateComplete;
@@ -227,12 +256,9 @@ describe("user-info-modal", () => {
     expect(
       element.querySelector("#profile-badges-title").closest("section").classList.contains("border-t"),
     ).to.equal(false);
-
-    window.fetch = originalFetch;
   });
 
   it("omits the badge section when no badges are listed", async () => {
-    const originalFetch = window.fetch;
     window.fetch = async () => new Response("[]", { headers: { "Content-Type": "application/json" } });
     const element = await mountLitComponent("user-info-modal");
 
@@ -246,12 +272,9 @@ describe("user-info-modal", () => {
     await element.updateComplete;
 
     expect(element.querySelector("#profile-badges-title")).to.equal(null);
-
-    window.fetch = originalFetch;
   });
 
   it("shows a recoverable state when profile badges cannot be loaded", async () => {
-    const originalFetch = window.fetch;
     window.fetch = async () => new Response("Unavailable", { status: 503 });
     const element = await mountLitComponent("user-info-modal");
 
@@ -265,12 +288,9 @@ describe("user-info-modal", () => {
 
     expect(element.textContent).to.include("Profile badges are temporarily unavailable");
     expect(element.querySelector('[role="status"]')).to.not.equal(null);
-
-    window.fetch = originalFetch;
   });
 
   it("ignores an older badge response after opening a user without lookup context", async () => {
-    const originalFetch = window.fetch;
     let resolveBadges;
     window.fetch = () =>
       new Promise((resolve) => {
@@ -296,7 +316,5 @@ describe("user-info-modal", () => {
 
     expect(element._badgesState).to.equal("empty");
     expect(element._badges).to.deep.equal([]);
-
-    window.fetch = originalFetch;
   });
 });

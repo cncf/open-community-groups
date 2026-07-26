@@ -108,15 +108,13 @@ describe("speakers-selector", () => {
     expect(speakerRow.children[0].querySelector(".icon-star")).to.equal(null);
     expect(speakerRow.children[1].querySelector(".icon-star").classList.contains("size-4")).to.equal(true);
     expect(bulkAwardButton.dataset.userIds).to.equal("21,22");
-    expect(bulkAwardButton.hasAttribute("data-badge-award-confirm-all-speakers")).to.equal(true);
+    expect(bulkAwardButton.hasAttribute("data-badge-award-all-speakers")).to.equal(true);
     expect(bulkAwardButton.textContent.trim()).to.equal("Award badge");
     expect(bulkAwardButton.classList.contains("btn-mini")).to.equal(false);
     expect(bulkAwardButton.nextElementSibling).to.equal(addSpeakerButton);
     expect(element.querySelectorAll("[data-badge-award-open]")).to.have.length(2);
     expect(
-      speakerRow
-        .querySelector("[data-badge-award-open]")
-        .hasAttribute("data-badge-award-confirm-all-speakers"),
+      speakerRow.querySelector("[data-badge-award-open]").hasAttribute("data-badge-award-all-speakers"),
     ).to.equal(false);
 
     // Remove the speaker through the existing row action.

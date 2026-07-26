@@ -65,6 +65,33 @@ describe("user dashboard badges", () => {
     );
   });
 
+  it("shows an icon until badge artwork loads", () => {
+    const list = document.createElement("ol");
+    list.dataset.badgeOrderList = "";
+    list.innerHTML = `
+      <li data-user-badge-id="first">
+        <span data-badge-artwork>
+          <span data-badge-artwork-placeholder><span class="icon-certificate"></span></span>
+          <img class="invisible" data-badge-artwork-image alt="">
+        </span>
+      </li>`;
+    document.body.append(list);
+    const image = list.querySelector("[data-badge-artwork-image]");
+    Object.defineProperty(image, "complete", { configurable: true, value: false });
+    Object.defineProperty(image, "naturalWidth", { configurable: true, value: 0 });
+
+    initializeBadgeList(list);
+
+    expect(list.querySelector("[data-badge-artwork-placeholder] .icon-certificate")).to.not.equal(null);
+    expect(image.classList.contains("invisible")).to.equal(true);
+
+    Object.defineProperty(image, "naturalWidth", { configurable: true, value: 80 });
+    image.dispatchEvent(new Event("load"));
+
+    expect(list.querySelector("[data-badge-artwork-placeholder]")).to.equal(null);
+    expect(image.classList.contains("invisible")).to.equal(false);
+  });
+
   it("persists arrow-key ordering, updates positions, and announces the new order", async () => {
     const { feedback, list } = fixture();
     let requestBody;

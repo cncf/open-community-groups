@@ -283,7 +283,15 @@ export class UserInfoModal extends LitWrapper {
                       ${badge.snapshot.description}
                     </span>
                     <span class="mt-2 block text-xs font-medium text-stone-500">
-                      ${badge.snapshot.issuer.group_name}
+                      <span>${badge.snapshot.issuer.group_name}</span>
+                      ${
+                        badge.snapshot.issuer.community_name
+                          ? html`
+                              <span aria-hidden="true"> · </span>
+                              <span>${badge.snapshot.issuer.community_name}</span>
+                            `
+                          : ""
+                      }
                     </span>
                     <span
                       class="absolute top-full left-6 size-3 -translate-y-1/2 rotate-45 border-r border-b border-stone-200 bg-white sm:left-10"

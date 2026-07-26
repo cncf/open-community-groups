@@ -11,6 +11,30 @@ import {
 const requestControllers = new WeakMap();
 
 /**
+ * Initialize attendee badge bypass actions.
+ * @param {Document|Element} [root=document] Query root.
+ * @returns {void}
+ */
+export const initializeAttendeeBadgeAwards = (root = document) => {
+  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeBadgeAwardsReady")) {
+    return;
+  }
+
+  root.addEventListener("click", (event) => {
+    const trigger = closestElementWithinRoot(event.target, "[data-attendee-badge-recipients-open]", root);
+    if (!(trigger instanceof HTMLButtonElement) || trigger.disabled) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    closeAttendeeActionsDropdown(root);
+    closeAttendeeBadgeActionsDropdown(root);
+    closeAttendeeEmailActionsDropdown(root);
+    closeAttendeeRowActionMenus(root);
+    openResolvedAttendeeAward(root, trigger);
+  });
+};
+
+/**
  * Resolve one attendee bypass option and open the shared award modal.
  * @param {Document|Element} root Query root.
  * @param {HTMLButtonElement} trigger Bypass option trigger.
@@ -55,28 +79,4 @@ const openResolvedAttendeeAward = async (root, trigger) => {
       }
     }
   }
-};
-
-/**
- * Initialize attendee badge bypass actions.
- * @param {Document|Element} [root=document] Query root.
- * @returns {void}
- */
-export const initializeAttendeeBadgeAwards = (root = document) => {
-  if (!(root instanceof Element) || !markDatasetReady(root, "attendeeBadgeAwardsReady")) {
-    return;
-  }
-
-  root.addEventListener("click", (event) => {
-    const trigger = closestElementWithinRoot(event.target, "[data-attendee-badge-recipients-open]", root);
-    if (!(trigger instanceof HTMLButtonElement) || trigger.disabled) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    closeAttendeeActionsDropdown(root);
-    closeAttendeeBadgeActionsDropdown(root);
-    closeAttendeeEmailActionsDropdown(root);
-    closeAttendeeRowActionMenus(root);
-    openResolvedAttendeeAward(root, trigger);
-  });
 };

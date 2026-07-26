@@ -2,99 +2,107 @@ import { getCommonAlertOptions, showErrorAlert, showSuccessAlert } from "/static
 import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
+const ARTWORK_IMAGE_SELECTOR = "[data-badge-artwork-image]";
 const CARD_SELECTOR = "[data-badge-card]";
 const DRAG_HANDLE_SELECTOR = "[data-badge-drag-handle]";
 const LIST_SELECTOR = "[data-badge-order-list]";
 const READY_KEY = "badgeControlsReady";
 const SAVE_PENDING_KEY = "badgeOrderPending";
 
-const badgeIds = (list) =>
-  [...list.querySelectorAll("[data-user-badge-id]")].map((item) => item.dataset.userBadgeId);
-
-const restoreOrder = (list, order) => {
-  order.forEach((id) => {
-    const item = list.querySelector(`[data-user-badge-id="${CSS.escape(id)}"]`);
-    if (item) {
-      list.append(item);
-    }
-  });
-};
-
-const announce = (message) => {
-  const region = document.getElementById("user-badges-feedback");
-  if (region) {
-    region.textContent = message;
-  }
-};
-
-const emptyState = () => {
-  const state = document.createElement("div");
-  state.className = "rounded-lg border border-dashed border-stone-300 p-10 text-center";
-  state.dataset.userBadgesEmpty = "";
-  state.innerHTML = `
-    <h2 class="font-semibold text-stone-900">No active badges yet</h2>
-    <p class="mt-1 text-stone-600">Badges awarded by your groups will appear here.</p>`;
-  return state;
-};
-
-const clearDragStyles = (list) => {
-  list.querySelectorAll("[data-user-badge-id]").forEach((item) => {
-    item.classList.remove("opacity-70");
-    item.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
-  });
-};
-
-const syncReorderControls = (list) => {
-  const items = [...list.querySelectorAll("[data-user-badge-id]")];
-  const pending = list.dataset[SAVE_PENDING_KEY] === "true";
-  items.forEach((item, index) => {
-    const handle = item.querySelector(DRAG_HANDLE_SELECTOR);
-    const position = item.querySelector("[data-badge-position]");
-    if (handle) {
-      handle.disabled = pending || items.length <= 1;
-      handle.draggable = !handle.disabled;
-    }
-    if (position) {
-      position.textContent = String(index + 1);
-    }
-    item.querySelectorAll("[data-badge-move]").forEach((button) => {
-      const atBoundary = button.dataset.badgeMove === "up" ? index === 0 : index === items.length - 1;
-      button.disabled = pending || atBoundary;
-    });
-  });
-};
-
 /**
- * Persist the visible badge order and restore it if saving fails.
+ * Initialize listing, reorder, and revoke controls for a badge list.
  * @param {HTMLOListElement} list Badge order list.
- * @param {Array<string>} previousOrder Badge IDs before reordering.
- * @returns {Promise<boolean>} Whether the order was saved.
+ * @returns {void}
  */
-export const persistOrder = async (list, previousOrder) => {
-  if (list.dataset[SAVE_PENDING_KEY] === "true") {
-    return false;
+export const initializeBadgeList = (list) => {
+  if (!markDatasetReady(list, READY_KEY)) {
+    return;
   }
-  list.dataset[SAVE_PENDING_KEY] = "true";
+
+  let draggedItem = null;
+  let dropTargetItem = null;
+  let previousOrder = [];
+  initializeBadgeArtwork(list);
   syncReorderControls(list);
-  try {
-    const response = await ocgFetch("/dashboard/user/badges/order", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_badge_ids: badgeIds(list) }),
-    });
-    if (!response.ok) {
-      throw new Error("Badge order was not saved.");
+  list.addEventListener("click", (event) => {
+    const downloadLink = event.target.closest?.("[data-badge-download]");
+    if (downloadLink) {
+      event.preventDefault();
+      downloadBadge(downloadLink);
+      return;
     }
-    announce("Badge order saved.");
-    showSuccessAlert("Badge order saved.");
-    return true;
-  } catch (error) {
-    restoreOrder(list, previousOrder);
-    throw error;
-  } finally {
-    delete list.dataset[SAVE_PENDING_KEY];
+    const moveButton = event.target.closest?.("[data-badge-move]");
+    if (moveButton) {
+      moveBadge(moveButton);
+      return;
+    }
+    const revokeButton = event.target.closest?.("[data-badge-revoke]");
+    if (revokeButton) {
+      revokeBadge(revokeButton);
+    }
+  });
+  list.addEventListener("change", (event) => {
+    if (event.target.matches?.("[data-badge-listing]")) {
+      updateListing(event.target);
+    }
+  });
+  list.addEventListener("keydown", (event) => {
+    const dragHandle = event.target.closest?.(DRAG_HANDLE_SELECTOR);
+    if (!dragHandle || dragHandle.disabled) {
+      return;
+    }
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
+      return;
+    }
+    event.preventDefault();
+    moveBadge(dragHandle, event.key === "ArrowUp" ? "up" : "down");
+  });
+  list.addEventListener("dragstart", (event) => {
+    if (list.dataset[SAVE_PENDING_KEY] === "true") {
+      event.preventDefault();
+      return;
+    }
+    const dragHandle = event.target.closest?.(DRAG_HANDLE_SELECTOR);
+    draggedItem = dragHandle?.closest("[data-user-badge-id]") || null;
+    if (draggedItem) {
+      previousOrder = badgeIds(list);
+      draggedItem.classList.add("opacity-70");
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData?.("text/plain", draggedItem.dataset.userBadgeId);
+        event.dataTransfer.setDragImage?.(dragHandle, 0, 0);
+      }
+    }
+  });
+  list.addEventListener("dragover", (event) => {
+    const target = event.target.closest?.("[data-user-badge-id]");
+    if (!draggedItem || !target || target === draggedItem) {
+      return;
+    }
+    event.preventDefault();
+    if (dropTargetItem !== target) {
+      dropTargetItem?.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
+      dropTargetItem = target;
+      dropTargetItem.querySelector(CARD_SELECTOR)?.classList.add("ring-2", "ring-primary-300");
+    }
+    const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
+    list.insertBefore(draggedItem, before ? target : target.nextElementSibling);
     syncReorderControls(list);
-  }
+  });
+  list.addEventListener("dragend", async () => {
+    clearDragStyles(list);
+    dropTargetItem = null;
+    if (!draggedItem || previousOrder.join() === badgeIds(list).join()) {
+      draggedItem = null;
+      return;
+    }
+    draggedItem = null;
+    try {
+      await persistOrder(list, previousOrder);
+    } catch (error) {
+      showErrorAlert(error.message);
+    }
+  });
 };
 
 /**
@@ -176,29 +184,35 @@ export const moveBadge = async (control, direction = control.dataset.badgeMove) 
 };
 
 /**
- * Save whether a badge is shown on the user's public profile.
- * @param {HTMLInputElement} control Profile listing checkbox.
- * @returns {Promise<void>}
+ * Persist the visible badge order and restore it if saving fails.
+ * @param {HTMLOListElement} list Badge order list.
+ * @param {Array<string>} previousOrder Badge IDs before reordering.
+ * @returns {Promise<boolean>} Whether the order was saved.
  */
-export const updateListing = async (control) => {
-  const previousValue = !control.checked;
-  control.disabled = true;
+export const persistOrder = async (list, previousOrder) => {
+  if (list.dataset[SAVE_PENDING_KEY] === "true") {
+    return false;
+  }
+  list.dataset[SAVE_PENDING_KEY] = "true";
+  syncReorderControls(list);
   try {
-    const response = await ocgFetch(control.dataset.endpoint, {
+    const response = await ocgFetch("/dashboard/user/badges/order", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_listed: control.checked }),
+      body: JSON.stringify({ user_badge_ids: badgeIds(list) }),
     });
     if (!response.ok) {
-      throw new Error("Profile listing was not saved.");
+      throw new Error("Badge order was not saved.");
     }
-    announce("Profile listing saved.");
-    showSuccessAlert("Profile listing saved.");
+    announce("Badge order saved.");
+    showSuccessAlert("Badge order saved.");
+    return true;
   } catch (error) {
-    control.checked = previousValue;
-    showErrorAlert(error.message);
+    restoreOrder(list, previousOrder);
+    throw error;
   } finally {
-    control.disabled = false;
+    delete list.dataset[SAVE_PENDING_KEY];
+    syncReorderControls(list);
   }
 };
 
@@ -252,97 +266,112 @@ export const revokeBadge = async (button) => {
 };
 
 /**
- * Initialize listing, reorder, and revoke controls for a badge list.
+ * Save whether a badge is shown on the user's public profile.
+ * @param {HTMLInputElement} control Profile listing checkbox.
+ * @returns {Promise<void>}
+ */
+export const updateListing = async (control) => {
+  const previousValue = !control.checked;
+  control.disabled = true;
+  try {
+    const response = await ocgFetch(control.dataset.endpoint, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_listed: control.checked }),
+    });
+    if (!response.ok) {
+      throw new Error("Profile listing was not saved.");
+    }
+    announce("Profile listing saved.");
+    showSuccessAlert("Profile listing saved.");
+  } catch (error) {
+    control.checked = previousValue;
+    showErrorAlert(error.message);
+  } finally {
+    control.disabled = false;
+  }
+};
+
+const announce = (message) => {
+  const region = document.getElementById("user-badges-feedback");
+  if (region) {
+    region.textContent = message;
+  }
+};
+
+const badgeIds = (list) =>
+  [...list.querySelectorAll("[data-user-badge-id]")].map((item) => item.dataset.userBadgeId);
+
+const clearDragStyles = (list) => {
+  list.querySelectorAll("[data-user-badge-id]").forEach((item) => {
+    item.classList.remove("opacity-70");
+    item.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
+  });
+};
+
+const emptyState = () => {
+  const state = document.createElement("div");
+  state.className = "rounded-lg border border-dashed border-stone-300 p-10 text-center";
+  state.dataset.userBadgesEmpty = "";
+  state.innerHTML = `
+    <h2 class="font-semibold text-stone-900">No active badges yet</h2>
+    <p class="mt-1 text-stone-600">Badges awarded by your groups will appear here.</p>`;
+  return state;
+};
+
+/**
+ * Keeps badge placeholders visible until their artwork loads.
  * @param {HTMLOListElement} list Badge order list.
  * @returns {void}
  */
-export const initializeBadgeList = (list) => {
-  if (!markDatasetReady(list, READY_KEY)) {
+const initializeBadgeArtwork = (list) => {
+  list.querySelectorAll(ARTWORK_IMAGE_SELECTOR).forEach((image) => {
+    image.addEventListener("load", () => showBadgeArtwork(image), { once: true });
+    if (image.complete && image.naturalWidth > 0) {
+      showBadgeArtwork(image);
+    }
+  });
+};
+
+const restoreOrder = (list, order) => {
+  order.forEach((id) => {
+    const item = list.querySelector(`[data-user-badge-id="${CSS.escape(id)}"]`);
+    if (item) {
+      list.append(item);
+    }
+  });
+};
+
+/**
+ * Replaces a badge placeholder after the artwork loads successfully.
+ * @param {HTMLImageElement} image Loaded badge artwork.
+ * @returns {void}
+ */
+const showBadgeArtwork = (image) => {
+  if (image.dataset.ocgBrokenImagePlaceholder === "true" || image.naturalWidth === 0) {
     return;
   }
+  image.closest("[data-badge-artwork]")?.querySelector("[data-badge-artwork-placeholder]")?.remove();
+  image.classList.remove("invisible");
+};
 
-  let draggedItem = null;
-  let dropTargetItem = null;
-  let previousOrder = [];
-  syncReorderControls(list);
-  list.addEventListener("click", (event) => {
-    const downloadLink = event.target.closest?.("[data-badge-download]");
-    if (downloadLink) {
-      event.preventDefault();
-      downloadBadge(downloadLink);
-      return;
+const syncReorderControls = (list) => {
+  const items = [...list.querySelectorAll("[data-user-badge-id]")];
+  const pending = list.dataset[SAVE_PENDING_KEY] === "true";
+  items.forEach((item, index) => {
+    const handle = item.querySelector(DRAG_HANDLE_SELECTOR);
+    const position = item.querySelector("[data-badge-position]");
+    if (handle) {
+      handle.disabled = pending || items.length <= 1;
+      handle.draggable = !handle.disabled;
     }
-    const moveButton = event.target.closest?.("[data-badge-move]");
-    if (moveButton) {
-      moveBadge(moveButton);
-      return;
+    if (position) {
+      position.textContent = String(index + 1);
     }
-    const revokeButton = event.target.closest?.("[data-badge-revoke]");
-    if (revokeButton) {
-      revokeBadge(revokeButton);
-    }
-  });
-  list.addEventListener("change", (event) => {
-    if (event.target.matches?.("[data-badge-listing]")) {
-      updateListing(event.target);
-    }
-  });
-  list.addEventListener("keydown", (event) => {
-    const dragHandle = event.target.closest?.(DRAG_HANDLE_SELECTOR);
-    if (!dragHandle || dragHandle.disabled) {
-      return;
-    }
-    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") {
-      return;
-    }
-    event.preventDefault();
-    moveBadge(dragHandle, event.key === "ArrowUp" ? "up" : "down");
-  });
-  list.addEventListener("dragstart", (event) => {
-    if (list.dataset[SAVE_PENDING_KEY] === "true") {
-      event.preventDefault();
-      return;
-    }
-    const dragHandle = event.target.closest?.(DRAG_HANDLE_SELECTOR);
-    draggedItem = dragHandle?.closest("[data-user-badge-id]") || null;
-    if (draggedItem) {
-      previousOrder = badgeIds(list);
-      draggedItem.classList.add("opacity-70");
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData?.("text/plain", draggedItem.dataset.userBadgeId);
-        event.dataTransfer.setDragImage?.(dragHandle, 0, 0);
-      }
-    }
-  });
-  list.addEventListener("dragover", (event) => {
-    const target = event.target.closest?.("[data-user-badge-id]");
-    if (!draggedItem || !target || target === draggedItem) {
-      return;
-    }
-    event.preventDefault();
-    if (dropTargetItem !== target) {
-      dropTargetItem?.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
-      dropTargetItem = target;
-      dropTargetItem.querySelector(CARD_SELECTOR)?.classList.add("ring-2", "ring-primary-300");
-    }
-    const before = event.clientY < target.getBoundingClientRect().top + target.offsetHeight / 2;
-    list.insertBefore(draggedItem, before ? target : target.nextElementSibling);
-    syncReorderControls(list);
-  });
-  list.addEventListener("dragend", async () => {
-    clearDragStyles(list);
-    dropTargetItem = null;
-    if (!draggedItem || previousOrder.join() === badgeIds(list).join()) {
-      draggedItem = null;
-      return;
-    }
-    draggedItem = null;
-    try {
-      await persistOrder(list, previousOrder);
-    } catch (error) {
-      showErrorAlert(error.message);
-    }
+    item.querySelectorAll("[data-badge-move]").forEach((button) => {
+      const atBoundary = button.dataset.badgeMove === "up" ? index === 0 : index === items.length - 1;
+      button.disabled = pending || atBoundary;
+    });
   });
 };
 

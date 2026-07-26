@@ -1,7 +1,6 @@
 import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/badge-award-modal.js";
-import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 const badge = {
@@ -20,20 +19,18 @@ const flush = async (element) => {
 describe("badge-award-modal", () => {
   useMountedElementsCleanup("badge-award-modal");
   let originalFetch;
-  let swal;
 
   beforeEach(() => {
     originalFetch = window.fetch;
-    swal = mockSwal();
   });
 
   afterEach(() => {
+    document.querySelector("[data-test-menu-award]")?.remove();
     document.querySelector("[data-test-bulk-speaker-award]")?.remove();
     window.fetch = originalFetch;
-    swal.restore();
   });
 
-  it("confirms the all-speakers scope before opening the badge picker", async () => {
+  it("shows the all-speakers scope in the badge picker without a separate confirmation", async () => {
     window.fetch = async () =>
       new Response(JSON.stringify({ badges: [badge], total: 1 }), {
         headers: { "Content-Type": "application/json" },
@@ -42,35 +39,47 @@ describe("badge-award-modal", () => {
     const trigger = document.createElement("button");
     trigger.dataset.testBulkSpeakerAward = "";
     trigger.dataset.badgeAwardOpen = "";
-    trigger.dataset.badgeAwardConfirmAllSpeakers = "";
+    trigger.dataset.badgeAwardAllSpeakers = "";
     trigger.dataset.eventId = "event-1";
     trigger.dataset.userIds = "speaker-1,session-speaker-2";
     document.body.append(trigger);
 
-    swal.setNextResult({ isConfirmed: false });
-    trigger.click();
-    await waitUntil(() => swal.calls.length === 1, "confirmation should open");
-    await flush(element);
-
-    expect(swal.calls[0]).to.include({
-      cancelButtonText: "Cancel",
-      confirmButtonText: "Continue",
-      icon: "warning",
-      position: "center",
-      showCancelButton: true,
-    });
-    expect(swal.calls[0].text).to.include("all event speakers");
-    expect(swal.calls[0].text).to.include("speakers assigned to individual sessions");
-    expect(element._isOpen).to.equal(false);
-    expect(document.activeElement).to.equal(trigger);
-
-    swal.setNextResult({ isConfirmed: true });
     trigger.click();
     await waitUntil(() => element._state === "ready", "badge options should load");
 
-    expect(swal.calls).to.have.length(2);
     expect(element._isOpen).to.equal(true);
+    expect(element._allSpeakersAward).to.equal(true);
     expect(element._userIds).to.deep.equal(["speaker-1", "session-speaker-2"]);
+    const allSpeakersNotice = element.querySelector("[data-badge-award-all-speakers-notice]");
+    const searchForm = element.querySelector("form");
+    expect(allSpeakersNotice.textContent).to.include("all event speakers");
+    expect(allSpeakersNotice.textContent).to.include("individual sessions");
+    expect(
+      allSpeakersNotice.compareDocumentPosition(searchForm) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).to.not.equal(0);
+  });
+
+  it("restores focus to an action menu summary after closing", async () => {
+    window.fetch = async () =>
+      new Response(JSON.stringify({ badges: [badge], total: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const element = await mountLitComponent("badge-award-modal");
+    const menu = document.createElement("details");
+    menu.dataset.testMenuAward = "";
+    menu.open = true;
+    menu.innerHTML = `
+      <summary>Actions</summary>
+      <button data-badge-award-open data-event-id="event-1" data-user-ids="user-1">Award badge</button>`;
+    document.body.append(menu);
+
+    const summary = menu.querySelector("summary");
+    menu.querySelector("[data-badge-award-open]").click();
+    await waitUntil(() => element._state === "ready", "badge options should load");
+
+    element.close();
+
+    expect(document.activeElement).to.equal(summary);
   });
 
   it("models loading, ready, selection, submitting, and success states", async () => {
@@ -136,11 +145,17 @@ describe("badge-award-modal", () => {
     trigger.remove();
   });
 
-  it("renders empty and recoverable error states while preserving selection", async () => {
+  it("renders empty states and preserves selection for an award retry", async () => {
     let mode = "empty";
+    let awardAttempts = 0;
     window.fetch = async (_url, options = {}) => {
       if (options.method === "POST") {
-        return new Response("Try again", { status: 500 });
+        awardAttempts += 1;
+        return awardAttempts === 1
+          ? new Response("Try again", { status: 500 })
+          : new Response(JSON.stringify({ queued_count: 1, skipped_count: 0 }), {
+              headers: { "Content-Type": "application/json" },
+            });
       }
       return new Response(JSON.stringify({ badges: mode === "empty" ? [] : [badge], total: 1 }), {
         status: 200,
@@ -162,9 +177,43 @@ describe("badge-award-modal", () => {
     await element._award();
     await element.updateComplete;
 
-    expect(element._state).to.equal("error");
+    expect(element._state).to.equal("ready");
     expect(element._selectedBadgeId).to.equal(badge.badge_id);
     expect(element.textContent).to.include("Try again");
+    expect(element.querySelector(".btn-primary").disabled).to.equal(false);
+
+    await element._award();
+
+    expect(element._state).to.equal("success");
+  });
+
+  it("filters badges as the search query changes and clears the query inline", async () => {
+    const requestedUrls = [];
+    window.fetch = async (url) => {
+      requestedUrls.push(String(url));
+      return new Response(JSON.stringify({ badges: [badge], total: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+    const element = await mountLitComponent("badge-award-modal");
+    element.open({ eventId: "event", trigger: document.body, userIds: ["user"] });
+    await waitUntil(() => element._state === "ready", "badge options should load");
+
+    const searchInput = element.querySelector("[data-badge-search]");
+    expect(searchInput.form.querySelector('button[type="submit"]')).to.equal(null);
+    searchInput.value = "Host";
+    searchInput.dispatchEvent(new InputEvent("input", { bubbles: true }));
+    await waitUntil(() => requestedUrls.length === 2, "badge query should load after a short delay");
+    await waitUntil(() => element._state === "ready", "filtered badge options should load");
+
+    expect(requestedUrls[1]).to.equal("/dashboard/group/badges/options?query=Host");
+    const clearButton = element.querySelector("[data-badge-search-clear]");
+    expect(clearButton).to.not.equal(null);
+    clearButton.click();
+    await waitUntil(() => requestedUrls.length === 3, "clearing should restore all badge options");
+
+    expect(element._query).to.equal("");
+    expect(requestedUrls[2]).to.equal("/dashboard/group/badges/options?");
   });
 
   it("clears stale selection and disables award controls while new options load", async () => {
@@ -263,7 +312,7 @@ describe("badge-award-modal", () => {
     trigger.focus();
     element.open({ eventId: "event", trigger, userIds: ["user"] });
     await element.updateComplete;
-    expect(document.activeElement).to.equal(element.querySelector("[data-badge-award-dialog]"));
+    expect(document.activeElement).to.equal(element.querySelector('[aria-label="Close award badge dialog"]'));
     element._query = "new";
     const newerRequest = element._loadBadges();
 
@@ -310,10 +359,17 @@ describe("badge-award-modal", () => {
     const element = await mountLitComponent("badge-award-modal");
     element.open({ eventId: "event", trigger: document.body, userIds: ["user"] });
     await waitUntil(() => element._state === "error", "the badge load should fail");
-    expect(document.activeElement).to.equal(element.querySelector("[data-badge-award-dialog]"));
+    const searchInput = element.querySelector("[data-badge-search]");
+    expect(document.activeElement).to.equal(searchInput);
+    expect(element.textContent).to.include(
+      "We couldn't load the badges. Check your connection and try again.",
+    );
+    const errorAlert = element.querySelector('[role="alert"]');
+    expect(errorAlert.classList.contains("bg-red-50")).to.equal(true);
+    expect(errorAlert.querySelector(".icon-error")).to.not.equal(null);
 
     loadFails = false;
-    await element._loadBadges();
+    searchInput.form.dispatchEvent(new Event("submit", { cancelable: true }));
     await waitUntil(() => element._state === "ready", "badge options should load");
     element._selectedBadgeId = badge.badge_id;
 
