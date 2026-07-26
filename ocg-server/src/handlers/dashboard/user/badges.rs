@@ -19,7 +19,7 @@ use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser},
     services::{
-        badges::{BadgesManager, CredentialInput, png},
+        badges::{BadgesManager, CredentialInput, EmailIdentity, png},
         images::DynImageStorage,
     },
     templates::dashboard::user::badges::ListPage,
@@ -50,11 +50,13 @@ pub(crate) async fn export(
         .await?
         .ok_or(HandlerError::NotFound)?;
 
-    // Issue the signed credential and bake it into a bounded PNG
+    // Issue the signed credential bound to the owner's account email and bake
+    // it into a bounded PNG so importers such as Credly can match the owner
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
             created_at: Utc::now(),
+            email_identity: Some(EmailIdentity::new(&user.email)),
         })
         .await
         .map_err(|error| HandlerError::Other(error.into()))?;

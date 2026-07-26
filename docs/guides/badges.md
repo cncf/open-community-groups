@@ -152,6 +152,13 @@ Select `Download PNG` to download a portable copy. OCG first explains what the f
 asks for confirmation before the download starts. The exported file is a baked Open Badges 3.0
 credential: it contains both the badge artwork and the signed credential data.
 
+The exported credential identifies you as its recipient through a salted SHA-256 hash of your
+account email address, using the Open Badges hashed `IdentityObject` format. Credential platforms
+that already know your email address can confirm the badge belongs to you, but the file itself
+never contains the email address in plain text. Every download uses a fresh random salt and your
+current account email: if your account email changes, download the PNG again to get a credential
+bound to the new address.
+
 To move the credential into another compatible system, use that system's badge or credential
 import flow. Depending on the system, you can:
 
@@ -177,8 +184,16 @@ credentials, anyone can independently verify them with third-party tools such as
 
 ### Credential Privacy
 
-The portable credential uses an opaque identifier for its subject. It does not contain your email
-address, email hash, username, or a stable identifier shared by your other badge awards.
+The public credential page and its signed JSON-LD representation use an opaque identifier for the
+subject. They do not contain your email address, email hash, username, or a stable identifier
+shared by your other badge awards.
+
+The exported PNG additionally carries a salted SHA-256 hash of your account email so credential
+platforms can match the badge to your account. The salt is random for every download, so two
+exports do not share a stable identifier and the hash cannot be looked up in precomputed tables.
+A salted hash cannot be reversed into your email address, but someone who already suspects a
+specific address can test it against the file, so share the exported PNG as deliberately as you
+would any credential file. The file never contains your email address or username in plain text.
 
 OCG keeps the account association internally while your account exists. The verification page can
 show the current recipient name while that internal association remains available.

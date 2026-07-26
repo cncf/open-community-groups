@@ -216,7 +216,9 @@ describe("user dashboard badges", () => {
 
     expect(alertOptions.title).to.equal("Download First badge?");
     expect(alertOptions.html).to.include("signed Open Badges 3.0 credential data");
-    expect(alertOptions.html).to.include("does not include your email address or username");
+    expect(alertOptions.html).to.include("credential platforms such as Credly");
+    expect(alertOptions.html).to.include("includes a salted hash of your account email");
+    expect(alertOptions.html).to.include("does not include your email address or username in plain text");
     expect(alertOptions.confirmButtonText).to.equal("Download PNG");
     expect(alertOptions.cancelButtonText).to.equal("Cancel");
     expect(downloadHref).to.equal(link.href);

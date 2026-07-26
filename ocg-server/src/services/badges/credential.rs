@@ -4,14 +4,14 @@ use std::{sync::Arc, time::Duration};
 
 use cached::{Cached, LruCache};
 use chrono::{DateTime, SecondsFormat, Utc};
-use serde_json::Value;
+use serde_json::{Value, json};
 use tokio::{
     sync::{Mutex, MutexGuard},
     time::timeout,
 };
 use uuid::Uuid;
 
-use crate::types::badges::UserBadge;
+use crate::{types::badges::UserBadge, util::compute_hash};
 
 use super::{BadgesManagerError, Result};
 
@@ -66,6 +66,42 @@ pub(crate) struct CredentialInput<'a> {
     pub award: &'a UserBadge,
     /// Proof creation time.
     pub created_at: DateTime<Utc>,
+
+    /// Salted recipient identity embedded only in owner-requested exports.
+    pub email_identity: Option<EmailIdentity>,
+}
+
+/// Salted recipient email identity embedded in owner-requested exports.
+pub(crate) struct EmailIdentity {
+    /// Recipient account email address.
+    pub email: String,
+    /// Random per-export salt appended to the email before hashing.
+    pub salt: String,
+}
+
+impl EmailIdentity {
+    /// Creates an identity for one export with a fresh random salt.
+    pub(crate) fn new(email: &str) -> Self {
+        Self {
+            email: email.to_string(),
+            salt: Uuid::new_v4().simple().to_string(),
+        }
+    }
+
+    /// Builds the hashed Open Badges email identity entry.
+    pub(super) fn identifier_entry(&self) -> Value {
+        // Hash the lowercased email with the per-export salt appended
+        let salted = format!("{}{}", self.email.to_lowercase(), self.salt);
+        let identity_hash = format!("sha256${}", compute_hash(salted.as_bytes()));
+
+        json!({
+            "type": "IdentityObject",
+            "hashed": true,
+            "identityHash": identity_hash,
+            "identityType": "emailAddress",
+            "salt": self.salt
+        })
+    }
 }
 
 /// Extract a required string from a credential JSON object.

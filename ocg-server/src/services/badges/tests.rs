@@ -18,7 +18,7 @@ use crate::{
 };
 
 use super::{
-    BadgesManager, BadgesManagerError, CredentialInput, contexts, png::bake,
+    BadgesManager, BadgesManagerError, CredentialInput, EmailIdentity, contexts, png::bake,
     status::STATUS_LIST_TTL_MS,
 };
 
@@ -59,6 +59,48 @@ async fn test_credential_cache_reuses_immutable_signed_representation() {
     // Check the second request reuses the first proof instead of signing again
     assert_eq!(cached, first);
     assert_eq!(cached["proof"][0]["created"], "2024-02-03T04:05:06.000Z");
+}
+
+#[tokio::test]
+async fn test_credential_email_identity_binds_salted_hash_and_verifies() {
+    // Issue an export credential bound to a fixed salted email identity
+    let manager = manager(test_jwk(7), vec![]);
+    let credential = manager
+        .issue_credential(CredentialInput {
+            award: &sample_award(),
+            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            email_identity: Some(EmailIdentity {
+                email: "Recipient@Example.Test".to_string(),
+                salt: "0123456789abcdef0123456789abcdef".to_string(),
+            }),
+        })
+        .await
+        .unwrap();
+
+    // Check the exact single hashed lowercased email identity entry
+    assert_eq!(
+        credential["credentialSubject"]["identifier"],
+        json!([{
+            "type": "IdentityObject",
+            "hashed": true,
+            "identityHash":
+                "sha256$fa4e696fed1caae3ce9bda21a14b5d7960f8ef36bf1566164dafb09f4c8ac324",
+            "identityType": "emailAddress",
+            "salt": "0123456789abcdef0123456789abcdef"
+        }])
+    );
+
+    // Check no plaintext email leaks into the serialized credential
+    assert!(
+        !credential
+            .to_string()
+            .to_lowercase()
+            .contains("recipient@example.test")
+    );
+
+    // Check the email-bound export credential still verifies
+    let verified = manager.verify_credential(&credential).await.unwrap();
+    assert_eq!(verified.user_badge_id, sample_award().user_badge_id);
 }
 
 #[tokio::test]
@@ -105,6 +147,7 @@ async fn test_maximum_badge_text_fits_png_credential_limit() {
         .issue_credential(CredentialInput {
             award: &award,
             created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            email_identity: Some(EmailIdentity::new(&"long-export-recipient".repeat(12))),
         })
         .await
         .unwrap();
@@ -579,6 +622,7 @@ async fn signed_credential(manager: &BadgesManager) -> serde_json::Value {
         .issue_credential(CredentialInput {
             award: &sample_award(),
             created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            email_identity: None,
         })
         .await
         .unwrap()

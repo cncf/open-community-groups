@@ -25,6 +25,7 @@ use crate::{
         notifications::MockNotificationsManager,
     },
     types::badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
+    util::compute_hash,
 };
 
 #[tokio::test]
@@ -170,6 +171,22 @@ async fn test_export_success() {
     let verified = verification_manager.verify_credential(&credential).await.unwrap();
     assert_eq!(verified.user_badge_id, user_badge_id);
     assert_eq!(verified.status_list_id, badge_status_list_id);
+
+    // Check the credential binds a salted hash of the owner's account email
+    let identifier = credential["credentialSubject"]["identifier"].as_array().unwrap();
+    assert_eq!(identifier.len(), 1);
+    let entry = &identifier[0];
+    let salt = entry["salt"].as_str().unwrap();
+    let expected_hash = format!(
+        "sha256${}",
+        compute_hash(format!("user@example.test{salt}").as_bytes())
+    );
+    assert_eq!(entry["type"], json!("IdentityObject"));
+    assert_eq!(entry["hashed"], json!(true));
+    assert_eq!(entry["identityHash"], json!(expected_hash));
+    assert_eq!(entry["identityType"], json!("emailAddress"));
+    assert_eq!(salt.len(), 32);
+    assert!(!credential.to_string().contains("user@example.test"));
 }
 
 #[tokio::test]

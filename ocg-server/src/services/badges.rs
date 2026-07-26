@@ -28,10 +28,10 @@ use crate::{config::BadgesConfig, types::badges::UserBadge};
 
 use credential::required_string;
 use status::{STATUS_LIST_ENTRIES, STATUS_LIST_TTL_MS, encode_status_list};
-use verification::{VerifiedCredential, contains_identifier, single_proof};
+use verification::{VerifiedCredential, contains_unsupported_identifier, single_proof};
 
 pub(crate) use award_worker::start_badge_award_workers;
-pub(crate) use credential::{CredentialInput, rfc3339};
+pub(crate) use credential::{CredentialInput, EmailIdentity, rfc3339};
 
 /// Site-wide badge credential manager.
 #[derive(Clone)]
@@ -73,7 +73,13 @@ impl BadgesManager {
             return Ok(credential);
         }
 
-        let credential = self.issue_credential(CredentialInput { award, created_at }).await?;
+        let credential = self
+            .issue_credential(CredentialInput {
+                award,
+                created_at,
+                email_identity: None,
+            })
+            .await?;
         self.credential_cache
             .insert(award.user_badge_id, credential.clone())
             .await;
@@ -142,7 +148,7 @@ impl BadgesManager {
         );
 
         // Assemble the supported opaque-subject credential profile
-        let document = json!({
+        let mut document = json!({
             "@context": [contexts::VC_CONTEXT_URL, contexts::OPEN_BADGES_CONTEXT_URL],
             "id": credential_url,
             "type": ["VerifiableCredential", "OpenBadgeCredential"],
@@ -173,6 +179,12 @@ impl BadgesManager {
                 "statusListCredential": status_list_url
             }
         });
+
+        // Bind the salted owner email identity only for export representations
+        if let Some(email_identity) = &input.email_identity {
+            document["credentialSubject"]["identifier"] =
+                json!([email_identity.identifier_entry()]);
+        }
 
         // Sign the complete credential with the active issuer key
         self.sign_document(document, &issuer_url, input.created_at).await
@@ -260,7 +272,7 @@ impl BadgesManager {
             ]))
             || credential.get("type")
                 != Some(&json!(["VerifiableCredential", "OpenBadgeCredential"]))
-            || contains_identifier(credential)
+            || contains_unsupported_identifier(credential)
         {
             return Err(BadgesManagerError::InvalidCredential);
         }

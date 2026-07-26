@@ -19,7 +19,10 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::{TestRouterBuilder, sample_site_settings},
     router::CACHE_CONTROL_PUBLIC_SHARED,
-    services::{badges::CredentialInput, notifications::MockNotificationsManager},
+    services::{
+        badges::{CredentialInput, EmailIdentity},
+        notifications::MockNotificationsManager,
+    },
     types::badges::{
         BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
         PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
@@ -142,6 +145,7 @@ async fn test_credential_json_ld_response_is_signed_and_shared_cached() {
     assert_eq!(body["issuer"]["type"], json!(["Profile"]));
     assert_eq!(body["proof"].as_array().unwrap().len(), 1);
     assert_eq!(body["proof"][0]["cryptosuite"], "eddsa-rdfc-2022");
+    assert!(!body.to_string().contains("identifier"));
 }
 
 #[tokio::test]
@@ -477,6 +481,7 @@ async fn test_verify_post_returns_uploaded_award() {
         .issue_credential(CredentialInput {
             award: &award,
             created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            email_identity: None,
         })
         .await
         .unwrap();
@@ -527,6 +532,75 @@ async fn test_verify_post_returns_uploaded_award() {
     assert!(body.contains("src=\"/images/badges/test-badge.png\""));
     assert!(body.contains("datetime=\"2024-01-02T03:04:05+00:00\""));
     assert!(body.contains("January 2, 2024"));
+}
+
+#[tokio::test]
+async fn test_verify_post_returns_uploaded_email_bound_award_without_rendering_identity() {
+    // Issue and bake one email-bound export credential with a fixed identity
+    let award = sample_user_badge();
+    let user_badge_id = award.user_badge_id;
+    let server_cfg = badges_server_config();
+    let badges_manager =
+        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+    let identity_salt = "0123456789abcdef0123456789abcdef";
+    let credential = badges_manager
+        .issue_credential(CredentialInput {
+            award: &award,
+            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            email_identity: Some(EmailIdentity {
+                email: "Recipient@Example.Test".to_string(),
+                salt: identity_salt.to_string(),
+            }),
+        })
+        .await
+        .unwrap();
+    let identity_hash = credential["credentialSubject"]["identifier"][0]["identityHash"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let credential = serde_json::to_vec(&credential).unwrap();
+    let png = png::bake(&sample_png(), &credential).unwrap();
+
+    // Setup the matching durable award and verification page settings
+    let mut db = MockDB::new();
+    db.expect_get_public_user_badge()
+        .times(1)
+        .withf(move |id| *id == user_badge_id)
+        .returning(move |_| Ok(Some(award.clone())));
+    db.expect_get_site_settings()
+        .times(1)
+        .return_once(|| Ok(sample_site_settings()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+    let boundary = "BADGE-PNG-VERIFY-BOUNDARY";
+
+    // Submit the exported email-bound PNG as multipart form data
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/badges/verify")
+                .header(
+                    CONTENT_TYPE,
+                    format!("multipart/form-data; boundary={boundary}"),
+                )
+                .body(Body::from(png_multipart(boundary, &png)))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the email-bound export verifies without rendering its identity
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8_lossy(&body);
+    assert!(body.contains("Valid and active"));
+    assert!(!body.contains(&identity_hash));
+    assert!(!body.contains(identity_salt));
+    assert!(!body.to_lowercase().contains("recipient@example.test"));
 }
 
 // Helpers.

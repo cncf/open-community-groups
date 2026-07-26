@@ -180,10 +180,19 @@ responses remain non-cacheable.
 
 ## Credential Privacy and Status
 
-The credential subject is `urn:uuid:{user_badge_id}`. It contains no email address, email hash,
-salt, username, Open Badges `IdentityObject`, or stable cross-award recipient identifier. OCG keeps
-the recipient association internally while the account exists, but an external verifier cannot
-derive an email address from the portable credential.
+The credential subject is `urn:uuid:{user_badge_id}`. The public credential served at
+`/badges/credentials/{id}` contains no email address, email hash, salt, username, Open Badges
+`IdentityObject`, or stable cross-award recipient identifier. OCG keeps the recipient association
+internally while the account exists, but an external verifier cannot derive an email address from
+the public credential.
+
+The owner-only dashboard PNG export binds the credential to its recipient with one hashed Open
+Badges `IdentityObject` at `credentialSubject.identifier`: a SHA-256 hash in `sha256$<hex>` form
+computed over the lowercased account email with a random per-export salt appended. External
+platforms such as Credly use it to match an imported badge to a recipient email without the
+credential carrying the plaintext address. The salt is generated per download, nothing
+identity-related is persisted server-side, and the public credential and its cache stay
+identity-free.
 
 Each group has stable status-list UUIDs with 131,072 entries. OCG allocates indexes randomly, sets
 bits most-significant-bit first, and publishes a gzip plus multibase-base64url encoded list.
@@ -209,7 +218,10 @@ Verification:
 4. binds the credential UUID, issuer, status-list UUID, and index to the durable local award; and
 5. reports the current active or revoked state from that award.
 
-Uploaded credentials cannot trigger arbitrary URL or context requests. A recipient name appears
+Uploaded credentials cannot trigger arbitrary URL or context requests. They may carry at most one
+identifier claim: the hashed email `IdentityObject` that OCG embeds in owner-requested PNG exports,
+at `credentialSubject.identifier`. Any other identifier location or shape is rejected, and
+verification never displays or stores the identity hash or salt. A recipient name appears
 only when the opaque award UUID still resolves to a current local account association.
 
 ## Signing Key Rotation

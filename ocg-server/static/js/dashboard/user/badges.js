@@ -140,7 +140,7 @@ export const downloadBadge = async (link) => {
       title: `Download ${link.dataset.badgeName} badge?`,
       html: `
         <p>This PNG contains the badge artwork and signed Open Badges 3.0 credential data.</p>
-        <p class="mt-3">You can import it into compatible wallets, backpacks, and credential platforms. Anyone with the file can inspect and verify the credential; verification reports its current active or revoked status. The file does not include your email address or username.</p>
+        <p class="mt-3">You can import it into compatible wallets, backpacks, and credential platforms such as Credly. To let those platforms match the badge to your account, the file includes a salted hash of your account email — it does not include your email address or username in plain text. Anyone with the file can inspect and verify the credential; verification reports its current active or revoked status.</p>
         <a class="mt-4 inline-flex font-medium text-primary-600 underline hover:text-primary-700"
            href="/docs#/guides/badges?id=share-and-export-credentials"
            target="_blank"
