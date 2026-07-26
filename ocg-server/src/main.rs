@@ -5,6 +5,8 @@
 
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(clippy::struct_field_names)]
+// Deep ssi/json-ld generic futures in badge verification exceed the default.
+#![recursion_limit = "256"]
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 

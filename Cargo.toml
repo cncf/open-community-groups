@@ -72,6 +72,7 @@ ssi-claims-core = { version = "=0.2.0", default-features = false }
 ssi-data-integrity = { version = "=0.4.0", default-features = false, features = ["ed25519", "w3c"] }
 ssi-json-ld = { version = "=0.3.3", default-features = false }
 ssi-jwk = { version = "=0.4.0", default-features = false }
+ssi-rdf = { version = "=0.1.1", default-features = false }
 ssi-verification-methods = { version = "=0.3.0", default-features = false, features = ["ed25519"] }
 strum = { version = "0.28.0", features = ["derive"] }
 subtle = "2.6"

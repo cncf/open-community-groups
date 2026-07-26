@@ -3890,6 +3890,7 @@ dependencies = [
  "ssi-data-integrity",
  "ssi-json-ld",
  "ssi-jwk",
+ "ssi-rdf",
  "ssi-verification-methods",
  "strum",
  "subtle",

@@ -3,6 +3,7 @@
 mod award_worker;
 mod contexts;
 mod credential;
+mod document;
 mod keys;
 pub(crate) mod png;
 mod status;
@@ -17,8 +18,7 @@ use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use ssi_claims_core::{SignatureEnvironment, VerificationParameters};
 use ssi_data_integrity::{
-    AnyDataIntegrity, AnySignatureOptions, AnySuite, CryptographicSuite, DataIntegrityDocument,
-    ProofOptions,
+    AnyDataIntegrity, AnySignatureOptions, AnySuite, CryptographicSuite, ProofOptions,
 };
 use ssi_verification_methods::{AnyMethod, Multikey, SingleSecretSigner};
 use thiserror::Error;
@@ -27,6 +27,7 @@ use uuid::Uuid;
 use crate::{config::BadgesConfig, types::badges::UserBadge};
 
 use credential::required_string;
+use document::CredentialDocument;
 use status::{STATUS_LIST_ENTRIES, STATUS_LIST_TTL_MS, encode_status_list};
 use verification::{VerifiedCredential, contains_unsupported_identifier, single_proof};
 
@@ -379,7 +380,7 @@ impl BadgesManager {
             "proofPurpose": "assertionMethod"
         }))
         .map_err(|_| BadgesManagerError::SigningFailed)?;
-        let document: DataIntegrityDocument =
+        let document: CredentialDocument =
             serde_json::from_value(document).map_err(|_| BadgesManagerError::InvalidCredential)?;
         let environment = SignatureEnvironment {
             json_ld_loader: contexts::loader()?,
@@ -437,9 +438,8 @@ impl BadgesManager {
         }
 
         // Deserialize the single proof and build the closed verification environment
-        let signed: AnyDataIntegrity<DataIntegrityDocument> =
-            serde_json::from_value(document.clone())
-                .map_err(|_| BadgesManagerError::InvalidCredential)?;
+        let signed: AnyDataIntegrity<CredentialDocument> = serde_json::from_value(document.clone())
+            .map_err(|_| BadgesManagerError::InvalidCredential)?;
         if signed.proofs.len() != 1 {
             return Err(BadgesManagerError::InvalidProof);
         }

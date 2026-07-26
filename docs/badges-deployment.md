@@ -188,8 +188,8 @@ the public credential.
 
 The owner-only dashboard PNG export binds the credential to its recipient with one hashed Open
 Badges `IdentityObject` at `credentialSubject.identifier`: a SHA-256 hash in `sha256$<hex>` form
-computed over the lowercased account email with a random per-export salt appended. External
-platforms such as Credly use it to match an imported badge to a recipient email without the
+computed over the lowercased account email with a random per-export salt appended. Compatible
+external platforms use it to match an imported badge to a recipient email without the
 credential carrying the plaintext address. The salt is generated per download, nothing
 identity-related is persisted server-side, and the public credential and its cache stay
 identity-free.

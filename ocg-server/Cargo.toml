@@ -59,6 +59,7 @@ ssi-claims-core = { workspace = true }
 ssi-data-integrity = { workspace = true }
 ssi-json-ld = { workspace = true }
 ssi-jwk = { workspace = true }
+ssi-rdf = { workspace = true }
 ssi-verification-methods = { workspace = true }
 strum = { workspace = true }
 subtle = { workspace = true }

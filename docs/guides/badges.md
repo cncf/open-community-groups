@@ -189,11 +189,13 @@ subject. They do not contain your email address, email hash, username, or a stab
 shared by your other badge awards.
 
 The exported PNG additionally carries a salted SHA-256 hash of your account email so credential
-platforms can match the badge to your account. The salt is random for every download, so two
-exports do not share a stable identifier and the hash cannot be looked up in precomputed tables.
-A salted hash cannot be reversed into your email address, but someone who already suspects a
-specific address can test it against the file, so share the exported PNG as deliberately as you
-would any credential file. The file never contains your email address or username in plain text.
+platforms can match the badge to your account. The salt is random for every download, so the email
+hash differs between exports and cannot be looked up in precomputed tables. Exports of the same
+award still share the credential's stable URL and subject identifier, so two downloads of the same
+badge can be recognized as the same credential. A salted hash cannot be reversed into your email
+address, but someone who already suspects a specific address can test it against the file, so
+share the exported PNG as deliberately as you would any credential file. The file never contains
+your email address or username in plain text.
 
 OCG keeps the account association internally while your account exists. The verification page can
 show the current recipient name while that internal association remains available.

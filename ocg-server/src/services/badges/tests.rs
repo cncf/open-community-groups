@@ -90,6 +90,12 @@ async fn test_credential_email_identity_binds_salted_hash_and_verifies() {
         }])
     );
 
+    // Check the deterministic proof pins spec-compliant canonicalization
+    assert_eq!(
+        credential["proof"][0]["proofValue"],
+        "z2u6ZagoKivHBHdjEB2qAomUT4EWm8YjsvB7JYDV3TeQ7fx9dgtmfRRjmnBTjeRn5u16yoBYRxUr9ukuk5KrwfnAy"
+    );
+
     // Check no plaintext email leaks into the serialized credential
     assert!(
         !credential

@@ -51,7 +51,7 @@ pub(crate) async fn export(
         .ok_or(HandlerError::NotFound)?;
 
     // Issue the signed credential bound to the owner's account email and bake
-    // it into a bounded PNG so importers such as Credly can match the owner
+    // it into a bounded PNG so compatible importers can match the owner
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
