@@ -170,13 +170,23 @@ describe("dashboard group event update template", () => {
     const template = normalizeWhitespace(await loadTemplate());
 
     expect(template).to.include(
-      '<user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}"',
+      '<user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges award-button-id="event-hosts-award-button"{% endif %}',
+    );
+    expect(template).to.include(
+      '<div class="flex flex-wrap items-center justify-between gap-3"> <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>',
+    );
+    expect(template).to.include(
+      '<button id="event-hosts-award-button" type="button" class="btn-primary-outline" data-badge-award-open disabled>Award badge</button>',
     );
     expect(template).to.include(
       '<speakers-selector id="event-speakers-selector" selected-speakers="{{ event.speakers|json }}" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}"',
     );
     expect(template).to.include("can-award-badges show-award-all");
     expect(template).to.include("Session-level speakers");
+    expect(template).to.include(
+      '<div class="mt-8"> <h3 class="text-base font-semibold text-stone-900">Session-level speakers</h3>',
+    );
+    expect(template).not.to.include('<div class="mt-8 border-t border-stone-200 pt-8">');
     expect(template).to.include(
       '<session-speakers-table id="session-speakers-table" sessions="{{ event.sessions|json }}" event-id="{{ event.event_id }}"',
     );

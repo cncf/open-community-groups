@@ -218,6 +218,9 @@ export const revokeBadge = async (button) => {
     showCancelButton: true,
     confirmButtonText: "Permanently revoke",
     cancelButtonText: "Cancel",
+    ...getCommonAlertOptions(),
+    position: "center",
+    backdrop: true,
     focusCancel: true,
   });
   if (!result.isConfirmed) {

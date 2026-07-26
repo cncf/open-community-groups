@@ -50,4 +50,24 @@ describe("group dashboard badges", () => {
 
     expect(root.querySelector("[data-artwork-file-name]").value).to.equal("content-addressed.png");
   });
+
+  it("gives badge artwork options a comfortable inset", async () => {
+    const response = await fetch("/ocg-server/templates/dashboard/group/badges.html");
+
+    expect(response.ok).to.equal(true);
+    expect(await response.text()).to.include(
+      'class="block rounded-xl border border-stone-200 bg-white p-2.5 transition',
+    );
+  });
+
+  it("uses larger saved artwork cards with an image inset", async () => {
+    const response = await fetch("/ocg-server/templates/dashboard/group/badges_artwork.html");
+
+    expect(response.ok).to.equal(true);
+    const template = await response.text();
+    expect(template).to.include("lg:grid-cols-5 xl:grid-cols-7");
+    expect(template).to.include(
+      'class="relative overflow-hidden rounded-lg border border-stone-200 bg-white p-3"',
+    );
+  });
 });

@@ -21,9 +21,11 @@ export class UserSearchSelector extends LitWrapper {
    * @property {string} label - Label text for the placeholder in search input
    * @property {number} maxUsers - Maximum number of users allowed (0 = unlimited)
    * @property {number} searchDelay - Debounce delay for search in milliseconds
+   * @property {string} awardButtonId - Optional external bulk award button id
    * @property {boolean} _isModalOpen - Internal state for inline search visibility
    */
   static properties = {
+    awardButtonId: { type: String, attribute: "award-button-id" },
     selectedUsers: { type: Array, attribute: "selected-users" },
     fieldName: { type: String, attribute: "field-name" },
     dashboardType: { type: String, attribute: "dashboard-type" },
@@ -42,6 +44,7 @@ export class UserSearchSelector extends LitWrapper {
 
   constructor() {
     super();
+    this.awardButtonId = "";
     this.selectedUsers = [];
     this.fieldName = "";
     this.dashboardType = "group";
@@ -56,6 +59,22 @@ export class UserSearchSelector extends LitWrapper {
     this.displayMode = "chips";
     this.eventId = "";
     this.showAwardAll = false;
+  }
+
+  /**
+   * Synchronizes the optional external bulk award button after relevant updates.
+   * @param {Map<string, unknown>} changedProperties - Updated reactive properties
+   */
+  updated(changedProperties) {
+    if (
+      changedProperties.has("awardButtonId") ||
+      changedProperties.has("awardsDisabled") ||
+      changedProperties.has("canAwardBadges") ||
+      changedProperties.has("eventId") ||
+      changedProperties.has("selectedUsers")
+    ) {
+      this._syncExternalAwardButton();
+    }
   }
 
   /**
@@ -145,10 +164,6 @@ export class UserSearchSelector extends LitWrapper {
 
   /** Renders the selected users as a simple editable table. */
   _renderUserTable() {
-    if (this.selectedUsers.length === 0) {
-      return html`<p class="mt-3 text-sm italic text-stone-400">No hosts added yet.</p>`;
-    }
-
     return html`
       <div class="mt-4 overflow-visible">
         <table class="w-full text-left text-sm text-stone-600" aria-label="Event hosts">
@@ -159,87 +174,112 @@ export class UserSearchSelector extends LitWrapper {
             </tr>
           </thead>
           <tbody>
-            ${repeat(
-              this.selectedUsers,
-              (user) => user.user_id || user.username,
-              (user) => {
-                const displayName = user.name || user.username || "";
-                return html`
-                  <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
-                    <td class="px-4 py-3">
-                      <div class="flex min-w-0 items-center gap-3">
-                        <logo-image
-                          image-url=${user.photo_url || ""}
-                          placeholder=${computeUserInitials(user.name, user.username, 2)}
-                          size="size-8"
-                          font-size="text-xs"
-                          hide-border="true"
-                        ></logo-image>
-                        <div class="min-w-0">
-                          <div class="truncate font-medium text-stone-900">${displayName}</div>
-                          <div class="truncate text-xs text-stone-500">@${user.username || ""}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                      <details data-actions-menu class="group relative inline-block text-left">
-                        <summary
-                          class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
-                          aria-label=${`Open host actions for ${displayName}`}
-                        >
-                          <span class="svg-icon size-4 icon-vertical-dots"></span>
-                        </summary>
-                        <div
-                          class="dropdown absolute z-20 end-0 top-8 w-48 rounded-lg border border-stone-200 bg-white shadow"
-                        >
-                          <ul class="py-2 text-sm text-stone-700" role="menu">
-                            ${
-                              this.canAwardBadges && this.eventId
-                                ? html`<li>
+            ${
+              this.selectedUsers.length === 0
+                ? html`<tr class="border-b border-stone-200 bg-white">
+                    <td class="px-8 py-12 text-center text-stone-500" colspan="2">No hosts added yet.</td>
+                  </tr>`
+                : repeat(
+                    this.selectedUsers,
+                    (user) => user.user_id || user.username,
+                    (user) => {
+                      const displayName = user.name || user.username || "";
+                      return html`
+                        <tr class="border-b border-stone-200 odd:bg-white even:bg-stone-50/50">
+                          <td class="px-4 py-3">
+                            <div class="flex min-w-0 items-center gap-3">
+                              <logo-image
+                                image-url=${user.photo_url || ""}
+                                placeholder=${computeUserInitials(user.name, user.username, 2)}
+                                size="size-8"
+                                font-size="text-xs"
+                                hide-border="true"
+                              ></logo-image>
+                              <div class="min-w-0">
+                                <div class="truncate font-medium text-stone-900">${displayName}</div>
+                                <div class="truncate text-xs text-stone-500">@${user.username || ""}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="px-4 py-3 text-right">
+                            <details data-actions-menu class="group relative inline-block text-left">
+                              <summary
+                                class="btn-actions btn-tertiary flex cursor-pointer list-none items-center justify-center p-2 group-open:bg-stone-50 [&::-webkit-details-marker]:hidden"
+                                aria-label=${`Open host actions for ${displayName}`}
+                              >
+                                <span class="svg-icon size-4 icon-vertical-dots"></span>
+                              </summary>
+                              <div
+                                class="dropdown absolute z-20 end-0 top-8 w-48 rounded-lg border border-stone-200 bg-white shadow"
+                              >
+                                <ul class="py-2 text-sm text-stone-700" role="menu">
+                                  ${
+                                    this.canAwardBadges && this.eventId
+                                      ? html`<li>
+                                          <button
+                                            type="button"
+                                            class="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                            data-badge-award-open
+                                            data-event-id=${this.eventId}
+                                            data-user-ids=${user.user_id}
+                                            role="menuitem"
+                                            title=${
+                                              this.awardsDisabled
+                                                ? "Save contributor changes before awarding badges."
+                                                : ""
+                                            }
+                                            ?disabled=${this.awardsDisabled}
+                                          >
+                                            <span
+                                              class="svg-icon size-4 icon-certificate bg-stone-500"
+                                            ></span>
+                                            <span>Award badge</span>
+                                          </button>
+                                        </li>`
+                                      : ""
+                                  }
+                                  <li>
                                     <button
                                       type="button"
                                       class="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                      data-badge-award-open
-                                      data-event-id=${this.eventId}
-                                      data-user-ids=${user.user_id}
                                       role="menuitem"
-                                      title=${
-                                        this.awardsDisabled
-                                          ? "Save contributor changes before awarding badges."
-                                          : ""
-                                      }
-                                      ?disabled=${this.awardsDisabled}
+                                      ?disabled=${this.disabled}
+                                      @click=${() => this._removeUser(user.username)}
                                     >
-                                      <span class="svg-icon size-4 icon-certificate bg-stone-500"></span>
-                                      <span>Award badge</span>
+                                      <span class="svg-icon size-4 icon-trash bg-stone-500"></span>
+                                      <span>Delete</span>
                                     </button>
-                                  </li>`
-                                : ""
-                            }
-                            <li>
-                              <button
-                                type="button"
-                                class="flex w-full items-center gap-3 px-4 py-2 text-left transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                role="menuitem"
-                                ?disabled=${this.disabled}
-                                @click=${() => this._removeUser(user.username)}
-                              >
-                                <span class="svg-icon size-4 icon-trash bg-stone-500"></span>
-                                <span>Delete</span>
-                              </button>
-                            </li>
-                          </ul>
-                        </div>
-                      </details>
-                    </td>
-                  </tr>
-                `;
-              },
-            )}
+                                  </li>
+                                </ul>
+                              </div>
+                            </details>
+                          </td>
+                        </tr>
+                      `;
+                    },
+                  )
+            }
           </tbody>
         </table>
       </div>
     `;
+  }
+
+  /** Synchronizes recipients and disabled state for an external award button. */
+  _syncExternalAwardButton() {
+    if (!this.awardButtonId) {
+      return;
+    }
+    const awardButton = this.ownerDocument?.getElementById(this.awardButtonId);
+    if (!awardButton) {
+      return;
+    }
+    const userIds = this.selectedUsers.map((user) => user.user_id).filter(Boolean);
+    const awardsUnavailable = !this.canAwardBadges || !this.eventId;
+    awardButton.dataset.eventId = this.eventId;
+    awardButton.dataset.userIds = userIds.join(",");
+    awardButton.disabled = awardsUnavailable || this.awardsDisabled || userIds.length === 0;
+    awardButton.title = this.awardsDisabled ? "Save contributor changes before awarding badges." : "";
   }
 
   _handleUserSelected(event) {

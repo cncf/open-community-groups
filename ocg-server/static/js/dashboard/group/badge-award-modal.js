@@ -1,4 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { confirmAction } from "/static/js/common/alerts.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
@@ -57,12 +58,37 @@ export class BadgeAwardModal extends LitWrapper {
     this._isOpen = false;
   }
 
-  _handleDocumentClick(event) {
+  async _handleDocumentClick(event) {
     const trigger = event.target?.closest?.("[data-badge-award-open]");
     if (!trigger || trigger.disabled) {
       return;
     }
     event.preventDefault();
+    if (trigger.dataset.badgeAwardConfirmPending === "true") {
+      return;
+    }
+    if (trigger.hasAttribute("data-badge-award-confirm-all-speakers")) {
+      trigger.dataset.badgeAwardConfirmPending = "true";
+      let confirmed = false;
+      try {
+        confirmed = await confirmAction({
+          message:
+            "This will award the selected badge to all event speakers, including speakers assigned " +
+            "to individual sessions. Do you want to continue?",
+          confirmText: "Continue",
+          cancelText: "Cancel",
+        });
+      } finally {
+        delete trigger.dataset.badgeAwardConfirmPending;
+      }
+      if (!this.isConnected || !trigger.isConnected) {
+        return;
+      }
+      if (!confirmed) {
+        trigger.focus();
+        return;
+      }
+    }
     trigger.closest("details[open]")?.removeAttribute("open");
     this.open({
       eventId: trigger.dataset.eventId,

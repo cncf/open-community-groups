@@ -8,6 +8,14 @@ import {
   updateListing,
 } from "/static/js/dashboard/user/badges.js";
 
+const loadTemplate = async () => {
+  const response = await fetch("/ocg-server/templates/dashboard/user/badges.html");
+
+  expect(response.ok).to.equal(true);
+
+  return response.text();
+};
+
 const fixture = () => {
   const feedback = document.createElement("div");
   feedback.id = "user-badges-feedback";
@@ -47,6 +55,14 @@ describe("user dashboard badges", () => {
     document.querySelector("[data-user-badges-empty]")?.remove();
     window.fetch = originalFetch;
     window.Swal = originalSwal;
+  });
+
+  it("explains the profile modal badge limit", async () => {
+    const template = (await loadTemplate()).replace(/\s+/g, " ");
+
+    expect(template).to.include(
+      "Your profile modal displays the first 50 visible badges in the order shown here.",
+    );
   });
 
   it("persists arrow-key ordering, updates positions, and announces the new order", async () => {
@@ -192,6 +208,14 @@ describe("user dashboard badges", () => {
 
     expect(calls[0].text).to.include("cannot be undone");
     expect(calls[0].text).to.include("Show on profile");
+    expect(calls[0].buttonsStyling).to.equal(false);
+    expect(calls[0].position).to.equal("center");
+    expect(calls[0].backdrop).to.equal(true);
+    expect(calls[0].focusCancel).to.equal(true);
+    expect(calls[0].customClass.popup).to.equal("ocg-swal-popup");
+    expect(calls[0].customClass.actions).to.equal("ocg-swal-actions");
+    expect(calls[0].customClass.confirmButton).to.equal("btn-primary ocg-swal-button");
+    expect(calls[0].customClass.cancelButton).to.equal("btn-primary-outline ocg-swal-button");
     expect(list.querySelector('[data-user-badge-id="first"]')).to.equal(null);
     expect(list.querySelector("[data-badge-drag-handle]").disabled).to.equal(true);
     expect(feedback.textContent).to.equal("Badge permanently revoked.");

@@ -975,14 +975,23 @@
     <div class="space-y-12">
       {# Hosts Section -#}
       <div class="border-b border-stone-900/10 pb-12">
-        <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="text-xl lg:text-2xl font-medium text-stone-900">Event Hosts</div>
+          {% if can_manage_events && !event.canceled -%}
+            <button id="event-hosts-award-button"
+                    type="button"
+                    class="btn-primary-outline"
+                    data-badge-award-open
+                    disabled>Award badge</button>
+          {% endif -%}
+        </div>
         <div class="mt-5">
           {% if let Some(legacy_hosts) = &event.legacy_hosts -%}
             {% if !legacy_hosts.is_empty() -%}
               {{ dashboard::permission_warning(message = "This event has legacy hosts imported from the previous platform. These hosts cannot be edited.", extra_classes = "mb-6") -}}
             {% endif -%}
           {% endif -%}
-          <user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges show-award-all{% endif %} label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
+          <user-search-selector id="event-hosts-selector" selected-users="{{ event.hosts|json }}" field-name="hosts" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}" {% if can_manage_events && !event.canceled %}can-award-badges award-button-id="event-hosts-award-button"{% endif %} label="host" legend="Search for event organizers or hosts by their username"></user-search-selector>
         </div>
       </div>
       {# End Hosts Section -#}
@@ -997,7 +1006,7 @@
             {% endif -%}
           {% endif -%}
           <speakers-selector id="event-speakers-selector" selected-speakers="{{ event.speakers|json }}" dashboard-type="group" display-mode="table" event-id="{{ event.event_id }}" field-name-prefix="speakers" show-add-button {% if can_manage_events && !event.canceled %}can-award-badges show-award-all{% endif %} label="Speakers" help-text="Add speakers or presenters for this event."></speakers-selector>
-          <div class="mt-8 border-t border-stone-200 pt-8">
+          <div class="mt-8">
             <h3 class="text-base font-semibold text-stone-900">Session-level speakers</h3>
             <p class="mt-1 text-sm text-stone-500">
               Speakers added to individual sessions are listed here. Manage their session assignments

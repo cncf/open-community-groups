@@ -10,6 +10,7 @@ describe("user-search-selector", () => {
   useMountedElementsCleanup("user-search-selector");
 
   afterEach(() => {
+    document.querySelector("[data-test-external-host-award]")?.remove();
     userSearchFieldPrototype.focusInput = originalFocusInput;
   });
 
@@ -30,17 +31,17 @@ describe("user-search-selector", () => {
     expect(focusCalls).to.equal(1);
   });
 
-  it("renders the empty host state as placeholder text", async () => {
+  it("keeps the host table visible with an empty-state row", async () => {
     const element = await mountLitComponent("user-search-selector", {
       displayMode: "table",
     });
-    const emptyState = [...element.querySelectorAll("p")].find(
-      (paragraph) => paragraph.textContent.trim() === "No hosts added yet.",
-    );
+    const table = element.querySelector('table[aria-label="Event hosts"]');
+    const emptyState = table.querySelector("tbody td");
 
-    expect(emptyState).to.not.equal(undefined);
-    expect(emptyState.classList.contains("italic")).to.equal(true);
-    expect(emptyState.classList.contains("text-stone-400")).to.equal(true);
+    expect(table.querySelector("th").textContent.trim()).to.equal("Host");
+    expect(emptyState.textContent.trim()).to.equal("No hosts added yet.");
+    expect(emptyState.getAttribute("colspan")).to.equal("2");
+    expect(emptyState.classList.contains("text-center")).to.equal(true);
   });
 
   it("adds and removes selected users while honoring maxUsers", async () => {
@@ -101,5 +102,30 @@ describe("user-search-selector", () => {
     element.querySelector(".icon-trash")?.closest("button")?.click();
     await element.updateComplete;
     expect(element.selectedUsers).to.deep.equal([]);
+  });
+
+  it("synchronizes an external bulk award button", async () => {
+    const awardButton = document.createElement("button");
+    awardButton.id = "external-host-award";
+    awardButton.dataset.testExternalHostAward = "";
+    awardButton.dataset.badgeAwardOpen = "";
+    awardButton.disabled = true;
+    document.body.append(awardButton);
+    const element = await mountLitComponent("user-search-selector", {
+      awardButtonId: awardButton.id,
+      canAwardBadges: true,
+      eventId: "event-1",
+      selectedUsers: [{ user_id: "7", username: "ada", name: "Ada Lovelace" }],
+    });
+
+    expect(awardButton.disabled).to.equal(false);
+    expect(awardButton.dataset.eventId).to.equal("event-1");
+    expect(awardButton.dataset.userIds).to.equal("7");
+
+    element.awardsDisabled = true;
+    await element.updateComplete;
+
+    expect(awardButton.disabled).to.equal(true);
+    expect(awardButton.title).to.equal("Save contributor changes before awarding badges.");
   });
 });

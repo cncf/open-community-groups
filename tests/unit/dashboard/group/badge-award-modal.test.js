@@ -1,6 +1,7 @@
 import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/dashboard/group/badge-award-modal.js";
+import { mockSwal } from "/tests/unit/test-utils/globals.js";
 import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 const badge = {
@@ -19,13 +20,57 @@ const flush = async (element) => {
 describe("badge-award-modal", () => {
   useMountedElementsCleanup("badge-award-modal");
   let originalFetch;
+  let swal;
 
   beforeEach(() => {
     originalFetch = window.fetch;
+    swal = mockSwal();
   });
 
   afterEach(() => {
+    document.querySelector("[data-test-bulk-speaker-award]")?.remove();
     window.fetch = originalFetch;
+    swal.restore();
+  });
+
+  it("confirms the all-speakers scope before opening the badge picker", async () => {
+    window.fetch = async () =>
+      new Response(JSON.stringify({ badges: [badge], total: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const element = await mountLitComponent("badge-award-modal");
+    const trigger = document.createElement("button");
+    trigger.dataset.testBulkSpeakerAward = "";
+    trigger.dataset.badgeAwardOpen = "";
+    trigger.dataset.badgeAwardConfirmAllSpeakers = "";
+    trigger.dataset.eventId = "event-1";
+    trigger.dataset.userIds = "speaker-1,session-speaker-2";
+    document.body.append(trigger);
+
+    swal.setNextResult({ isConfirmed: false });
+    trigger.click();
+    await waitUntil(() => swal.calls.length === 1, "confirmation should open");
+    await flush(element);
+
+    expect(swal.calls[0]).to.include({
+      cancelButtonText: "Cancel",
+      confirmButtonText: "Continue",
+      icon: "warning",
+      position: "center",
+      showCancelButton: true,
+    });
+    expect(swal.calls[0].text).to.include("all event speakers");
+    expect(swal.calls[0].text).to.include("speakers assigned to individual sessions");
+    expect(element._isOpen).to.equal(false);
+    expect(document.activeElement).to.equal(trigger);
+
+    swal.setNextResult({ isConfirmed: true });
+    trigger.click();
+    await waitUntil(() => element._state === "ready", "badge options should load");
+
+    expect(swal.calls).to.have.length(2);
+    expect(element._isOpen).to.equal(true);
+    expect(element._userIds).to.deep.equal(["speaker-1", "session-speaker-2"]);
   });
 
   it("models loading, ready, selection, submitting, and success states", async () => {

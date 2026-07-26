@@ -243,7 +243,7 @@
                        value="{{ image.file_name }}"
                        required
                        {% if image.file_name.as_str() == image_file_name.as_str() %}checked{% endif %}>
-                <span class="block rounded-xl border border-stone-200 bg-white p-1.5 transition hover:border-primary-300 hover:shadow-sm peer-checked:border-primary-400 peer-checked:ring-2 peer-checked:ring-primary-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2">
+                <span class="block rounded-xl border border-stone-200 bg-white p-2.5 transition hover:border-primary-300 hover:shadow-sm peer-checked:border-primary-400 peer-checked:ring-2 peer-checked:ring-primary-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2">
                   <img class="aspect-square w-full rounded-md object-cover"
                        src="/images/badges/{{ image.file_name }}"
                        alt=""
