@@ -16,8 +16,22 @@ const STATE = Object.freeze({
   ERROR: "error",
 });
 
-/** Shared light-DOM dialog for badge awards to explicit recipients. */
+/**
+ * Renders the shared dialog for awarding a badge to one or more recipients.
+ * @extends LitWrapper
+ */
 export class BadgeAwardModal extends LitWrapper {
+  /**
+   * Reactive state used to render the badge selection and award workflow.
+   * @property {boolean} _allSpeakersAward Whether every event speaker is included
+   * @property {Object[]} _badges Available badge options
+   * @property {string} _error Current user-facing error message
+   * @property {boolean} _isOpen Whether the dialog is open
+   * @property {string} _query Current badge search query
+   * @property {string} _selectedBadgeId Selected badge identifier
+   * @property {string} _state Current workflow state
+   * @property {Object|null} _success Successful award response
+   */
   static properties = {
     _allSpeakersAward: { type: Boolean, state: true },
     _badges: { type: Array, state: true },
@@ -50,11 +64,19 @@ export class BadgeAwardModal extends LitWrapper {
     this._handleDocumentClick = this._handleDocumentClick.bind(this);
   }
 
+  /**
+   * Registers the delegated listener for badge award triggers.
+   * @returns {void}
+   */
   connectedCallback() {
     super.connectedCallback();
     document.addEventListener("click", this._handleDocumentClick);
   }
 
+  /**
+   * Removes listeners and cancels pending work when the component is detached.
+   * @returns {void}
+   */
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener("click", this._handleDocumentClick);
@@ -65,6 +87,12 @@ export class BadgeAwardModal extends LitWrapper {
     this._isOpen = false;
   }
 
+  /**
+   * Opens the dialog for the recipients provided by an award trigger.
+   * @param {MouseEvent} event Delegated document click event
+   * @returns {void}
+   * @private
+   */
   _handleDocumentClick(event) {
     const trigger = event.target?.closest?.("[data-badge-award-open]");
     if (!trigger || trigger.disabled) {
@@ -85,6 +113,15 @@ export class BadgeAwardModal extends LitWrapper {
     });
   }
 
+  /**
+   * Opens the dialog and loads badge options for the supplied recipients.
+   * @param {Object} options Award options
+   * @param {boolean} [options.allSpeakersAward=false] Whether all speakers are included
+   * @param {string} [options.eventId=""] Event associated with the award
+   * @param {HTMLElement|null} [options.trigger] Element that should regain focus
+   * @param {string[]} [options.userIds=[]] Recipient user identifiers
+   * @returns {void}
+   */
   open({ allSpeakersAward = false, eventId = "", trigger, userIds = [] }) {
     const normalizedUserIds = [...new Set(userIds.filter(Boolean))];
     if (normalizedUserIds.length === 0) {
@@ -116,6 +153,12 @@ export class BadgeAwardModal extends LitWrapper {
     this._loadBadges();
   }
 
+  /**
+   * Closes the dialog and cancels pending search and award requests.
+   * @param {Object} [options={}] Close options
+   * @param {boolean} [options.restoreFocus=true] Whether to restore trigger focus
+   * @returns {void}
+   */
   close({ restoreFocus = true } = {}) {
     this._abortController?.abort();
     this._awardAbortController?.abort();
@@ -129,6 +172,12 @@ export class BadgeAwardModal extends LitWrapper {
     }
   }
 
+  /**
+   * Handles native dialog cancellation unless an award is being submitted.
+   * @param {Event} event Dialog cancel event
+   * @returns {void}
+   * @private
+   */
   _cancel(event) {
     event.preventDefault();
     if (this._state === STATE.SUBMITTING) {
@@ -137,6 +186,12 @@ export class BadgeAwardModal extends LitWrapper {
     this.close();
   }
 
+  /**
+   * Closes the dialog when its backdrop receives a click.
+   * @param {MouseEvent} event Dialog click event
+   * @returns {void}
+   * @private
+   */
   _dismissFromBackdrop(event) {
     if (event.target === event.currentTarget && this._state !== STATE.SUBMITTING) {
       event.preventDefault();
@@ -144,6 +199,11 @@ export class BadgeAwardModal extends LitWrapper {
     }
   }
 
+  /**
+   * Loads badge options for the current query and ignores stale responses.
+   * @returns {Promise<void>}
+   * @private
+   */
   async _loadBadges() {
     const requestId = ++this._requestId;
     this._abortController?.abort();
@@ -213,12 +273,23 @@ export class BadgeAwardModal extends LitWrapper {
     );
   }
 
+  /**
+   * Submits the current query immediately.
+   * @param {SubmitEvent} event Badge search form submission
+   * @returns {void}
+   * @private
+   */
   _search(event) {
     event.preventDefault();
     this._searchTimeoutId = clearTimeoutId(this._searchTimeoutId);
     this._loadBadges();
   }
 
+  /**
+   * Awards the selected badge to the current recipients.
+   * @returns {Promise<void>}
+   * @private
+   */
   async _award() {
     if (!this._selectedBadgeId || this._state !== STATE.READY) {
       return;
@@ -264,9 +335,14 @@ export class BadgeAwardModal extends LitWrapper {
     }
   }
 
+  /**
+   * Renders the loading, empty, or selectable badge list state.
+   * @returns {import("/static/vendor/js/lit-all.v3.3.3.min.js").TemplateResult}
+   * @private
+   */
   _renderBadges() {
     if (this._state === STATE.LOADING) {
-      return html`<p class="py-8 text-center text-stone-600" role="status">Loading badges…</p>`;
+      return html`<p class="py-8 text-center text-stone-600" role="status">Loading badges...</p>`;
     }
     if (this._state === STATE.EMPTY) {
       return html`<p class="rounded-lg border border-dashed border-stone-300 p-6 text-center text-stone-600">
@@ -318,6 +394,11 @@ export class BadgeAwardModal extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the summary returned after an award request succeeds.
+   * @returns {import("/static/vendor/js/lit-all.v3.3.3.min.js").TemplateResult}
+   * @private
+   */
   _renderSuccess() {
     const queued = this._success?.queued_count || 0;
     const skipped = this._success?.skipped_count || 0;
@@ -332,6 +413,10 @@ export class BadgeAwardModal extends LitWrapper {
     `;
   }
 
+  /**
+   * Renders the badge award dialog for the current workflow state.
+   * @returns {import("/static/vendor/js/lit-all.v3.3.3.min.js").TemplateResult}
+   */
   render() {
     if (!this._isOpen) {
       return html``;
@@ -467,7 +552,7 @@ export class BadgeAwardModal extends LitWrapper {
                       ?disabled=${!this._selectedBadgeId || this._state !== STATE.READY}
                       @click=${() => this._award()}
                     >
-                      ${submitting ? "Awarding…" : "Award"}
+                      ${submitting ? "Awarding..." : "Award"}
                     </button>`
               }
             </div>

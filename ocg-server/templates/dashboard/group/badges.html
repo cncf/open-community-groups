@@ -140,7 +140,7 @@
                 </div>
                 <dialog id="badge-edit-{{ badge.badge_id }}"
                         class="m-auto w-full max-w-2xl overflow-visible bg-transparent p-4 backdrop:bg-stone-950/35"
-                        aria-labelledby="badge-edit-title-{{ badge.badge_id }}">
+                        aria-labelledby="badge-edit-{{ badge.badge_id }}-title">
                   <div class="modal-panel w-full max-w-2xl">
                     {{ badge_definition_form(id = badge.badge_id.to_string() , name = badge.name, description = badge.description, criteria = badge.criteria, image_file_name = badge.image_file_name.clone(), artwork = artwork, is_edit = true) -}}
                   </div>

@@ -184,7 +184,6 @@ describe("user-info-modal", () => {
             group_id: "00000000-0000-0000-0000-000000000001",
             snapshot: {
               criteria: "Attend",
-              description: "Participant badge",
               image_file_name: "participant.png",
               issuer: {
                 community_id: "00000000-0000-0000-0000-000000000002",
@@ -201,7 +200,6 @@ describe("user-info-modal", () => {
             group_id: "00000000-0000-0000-0000-000000000004",
             snapshot: {
               criteria: "Contribute",
-              description: "Group badge",
               image_file_name: "group.png",
               issuer: {
                 group_id: "00000000-0000-0000-0000-000000000004",
@@ -239,7 +237,6 @@ describe("user-info-modal", () => {
     expect(badgeDetails.classList.contains("group-focus-visible:visible")).to.equal(true);
     expect(badgeDetails.classList.contains("w-72")).to.equal(true);
     expect(badgeDetails.textContent).to.include("Participant");
-    expect(badgeDetails.textContent).to.include("Participant badge");
     expect(badgeDetails.textContent).to.include("Kubernetes Group");
     expect(badgeDetails.textContent).to.include("Cloud Native");
     const groupOnlyDetails = element

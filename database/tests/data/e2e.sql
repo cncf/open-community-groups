@@ -1179,6 +1179,36 @@ insert into images (
 -- Remove the temporary speaker image large object
 \lo_unlink :speakerBadgeImageOid
 
+-- Disposable badge image copied from committed E2E artwork
+insert into images (
+    file_name,
+    content_type,
+    created_by,
+    data
+)
+select
+    'e2e-disposable-badge.png',
+    content_type,
+    created_by,
+    data
+from images
+where file_name = '7744970faed216a0b2d3be30ffef5aeb1bd6b65c5407ccc4f3dd824d132f1656.png';
+
+-- Removable gallery image copied from committed E2E artwork
+insert into images (
+    file_name,
+    content_type,
+    created_by,
+    data
+)
+select
+    'e2e-removable-badge.png',
+    content_type,
+    created_by,
+    data
+from images
+where file_name = 'eba31486952cc567f080e2d52d0280c40e6c99da7dbad42c762d64b2f1ff9a32.png';
+
 -- Host artwork available in the primary group gallery
 insert into badge_artwork (
     badge_artwork_id,
@@ -1198,6 +1228,28 @@ insert into badge_artwork (
 ) values (
     'abababab-abab-abab-abab-ababababab02',
     'eba31486952cc567f080e2d52d0280c40e6c99da7dbad42c762d64b2f1ff9a32.png',
+    '44444444-4444-4444-4444-444444444441'
+);
+
+-- Disposable artwork used by isolated destructive badge scenarios
+insert into badge_artwork (
+    badge_artwork_id,
+    file_name,
+    group_id
+) values (
+    'abababab-abab-abab-abab-ababababab03',
+    'e2e-disposable-badge.png',
+    '44444444-4444-4444-4444-444444444441'
+);
+
+-- Unreferenced artwork used by the removable gallery scenario
+insert into badge_artwork (
+    badge_artwork_id,
+    file_name,
+    group_id
+) values (
+    'abababab-abab-abab-abab-ababababab04',
+    'e2e-removable-badge.png',
     '44444444-4444-4444-4444-444444444441'
 );
 
@@ -1235,6 +1287,40 @@ insert into badge (
     'Speaker'
 );
 
+-- Mentor badge reserved for manager revocation coverage
+insert into badge (
+    badge_id,
+    criteria,
+    description,
+    group_id,
+    image_file_name,
+    name
+) values (
+    'babababa-baba-baba-baba-babababab003',
+    'Mentor another Platform Ops Meetup contributor.',
+    'Recognizes contributors who mentor other group members.',
+    '44444444-4444-4444-4444-444444444441',
+    'e2e-disposable-badge.png',
+    'Mentor'
+);
+
+-- Volunteer badge reserved for self-revocation coverage
+insert into badge (
+    badge_id,
+    criteria,
+    description,
+    group_id,
+    image_file_name,
+    name
+) values (
+    'babababa-baba-baba-baba-babababab004',
+    'Volunteer for a Platform Ops Meetup activity.',
+    'Recognizes contributors who volunteer for the group.',
+    '44444444-4444-4444-4444-444444444441',
+    'e2e-disposable-badge.png',
+    'Volunteer'
+);
+
 -- Status list shared by the primary group's seeded badge awards
 insert into badge_status_list (
     badge_status_list_id,
@@ -1245,7 +1331,7 @@ insert into badge_status_list (
 ) values (
     'cacacaca-caca-caca-caca-cacacacaca01',
     0,
-    6,
+    8,
     1,
     '44444444-4444-4444-4444-444444444441'
 );
@@ -1523,6 +1609,98 @@ insert into user_badge (
     'Award issued in error',
     now() - interval '12 hours',
     '77777777-7777-7777-7777-777777777703',
+    '77777777-7777-7777-7777-777777777706'
+);
+
+-- Active Mentor badge reserved for manager revocation coverage
+insert into user_badge (
+    awarded_at,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+    user_badge_id,
+
+    badge_id,
+    event_id,
+    revocation_reason,
+    revoked_at,
+    revoked_by_user_id,
+    user_id
+) values (
+    now() - interval '6 hours',
+    'cacacaca-caca-caca-caca-cacacacaca01',
+    1,
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    '{
+        "criteria": "Mentor another Platform Ops Meetup contributor.",
+        "description": "Recognizes contributors who mentor other group members.",
+        "image_file_name": "e2e-disposable-badge.png",
+        "issuer": {
+            "community_id": "11111111-1111-1111-1111-111111111111",
+            "community_name": "Platform Engineering Community",
+            "group_id": "44444444-4444-4444-4444-444444444441",
+            "group_name": "Platform Ops Meetup"
+        },
+        "name": "Mentor"
+    }'::jsonb,
+    6,
+    'dadadada-dada-dada-dada-dadadadada07',
+
+    'babababa-baba-baba-baba-babababab003',
+    '55555555-5555-5555-5555-555555555501',
+    null,
+    null,
+    null,
+    '77777777-7777-7777-7777-777777777706'
+);
+
+-- Active Volunteer badge reserved for self-revocation coverage
+insert into user_badge (
+    awarded_at,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+    user_badge_id,
+
+    badge_id,
+    event_id,
+    revocation_reason,
+    revoked_at,
+    revoked_by_user_id,
+    user_id
+) values (
+    now() - interval '4 hours',
+    'cacacaca-caca-caca-caca-cacacacaca01',
+    2,
+    '44444444-4444-4444-4444-444444444441',
+    true,
+    '{
+        "criteria": "Volunteer for a Platform Ops Meetup activity.",
+        "description": "Recognizes contributors who volunteer for the group.",
+        "image_file_name": "e2e-disposable-badge.png",
+        "issuer": {
+            "community_id": "11111111-1111-1111-1111-111111111111",
+            "community_name": "Platform Engineering Community",
+            "group_id": "44444444-4444-4444-4444-444444444441",
+            "group_name": "Platform Ops Meetup"
+        },
+        "name": "Volunteer"
+    }'::jsonb,
+    7,
+    'dadadada-dada-dada-dada-dadadadada08',
+
+    'babababa-baba-baba-baba-babababab004',
+    null,
+    null,
+    null,
+    null,
     '77777777-7777-7777-7777-777777777706'
 );
 

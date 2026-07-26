@@ -68,22 +68,25 @@ test.describe("group dashboard submissions tab", () => {
     await expect(sortBy).toBeVisible();
     await expect(sortBy).toContainText("Stars (high to low)");
     await expect(sortBy).toContainText("Ratings count (high to low)");
+    const submissionsContent = eventsManagerGroupPage.locator(
+      "#submissions-content",
+    );
 
     // Find the not reviewed row.
-    const notReviewedRow = eventsManagerGroupPage.locator("tr", {
+    const notReviewedRow = submissionsContent.locator("tr", {
       hasText: "Platform Reliability Patterns",
     });
     await expect(notReviewedRow).toContainText("Platform");
 
     // Find the information requested row.
-    const informationRequestedRow = eventsManagerGroupPage.locator("tr", {
+    const informationRequestedRow = submissionsContent.locator("tr", {
       hasText: "Observability in Practice",
     });
     await expect(informationRequestedRow).toContainText("Workshop");
     await expect(informationRequestedRow).toContainText("1 rating");
 
     // Find the approved row.
-    const approvedRow = eventsManagerGroupPage.locator("tr", {
+    const approvedRow = submissionsContent.locator("tr", {
       hasText: "Scaling Community Workshops",
     });
     await expect(approvedRow).toContainText("Platform");

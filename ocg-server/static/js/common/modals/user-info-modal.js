@@ -280,9 +280,6 @@ export class UserInfoModal extends LitWrapper {
                     class="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-stone-200 bg-white p-4 text-left opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
                   >
                     <span class="block text-sm font-semibold text-stone-900">${badge.snapshot.name}</span>
-                    <span class="mt-2 block line-clamp-3 text-sm/5 text-stone-600">
-                      ${badge.snapshot.description}
-                    </span>
                     <span class="mt-2 block text-xs font-medium text-stone-500">
                       <span>${badge.snapshot.issuer.group_name}</span>
                       ${
