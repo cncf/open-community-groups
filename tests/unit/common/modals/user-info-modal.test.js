@@ -1,10 +1,7 @@
 import { expect, waitUntil } from "@open-wc/testing";
 
 import "/static/js/common/modals/user-info-modal.js";
-import {
-  mountLitComponent,
-  useMountedElementsCleanup,
-} from "/tests/unit/test-utils/lit.js";
+import { mountLitComponent, useMountedElementsCleanup } from "/tests/unit/test-utils/lit.js";
 
 describe("user-info-modal", () => {
   useMountedElementsCleanup("user-info-modal");
@@ -40,6 +37,7 @@ describe("user-info-modal", () => {
     // The modal renders the user details from the event payload.
     expect(element._isOpen).to.equal(true);
     expect(element.querySelector('[role="dialog"]')).to.not.equal(null);
+    expect(element.querySelector(".modal-panel").classList.contains("max-w-3xl")).to.equal(true);
     expect(element.textContent).to.include("Grace Hopper");
     expect(element.textContent).to.include("Rear Admiral at US Navy");
     expect(document.body.style.overflow).to.equal("hidden");
@@ -82,13 +80,9 @@ describe("user-info-modal", () => {
       },
       { url: "https://github.com/ada", icon: "github", label: "GitHub" },
     ]);
-    expect(
-      element.querySelector('a[href="https://openprofile.dev/profile/ada-lf"]'),
-    ).to.not.equal(null);
+    expect(element.querySelector('a[href="https://openprofile.dev/profile/ada-lf"]')).to.not.equal(null);
     expect(element.querySelector('a[aria-label="Website"]')).to.not.equal(null);
-    expect(element.querySelector('a[aria-label="LinkedIn"]')).to.not.equal(
-      null,
-    );
+    expect(element.querySelector('a[aria-label="LinkedIn"]')).to.not.equal(null);
     expect(element.querySelector('a[aria-label="GitHub"]')).to.not.equal(null);
   });
 
@@ -111,9 +105,7 @@ describe("user-info-modal", () => {
 
     // The rendered text shows the scenario data.
     expect(element.textContent).to.include("Profile not completed");
-    expect(element.textContent).to.include(
-      "This user hasn’t finished setting up their profile yet.",
-    );
+    expect(element.textContent).to.include("This user hasn’t finished setting up their profile yet.");
   });
 
   it("closes from escape and overlay interactions", async () => {
@@ -209,35 +201,35 @@ describe("user-info-modal", () => {
         detail: { name: "Ada", username: "ada" },
       }),
     );
-    await waitUntil(
-      () => element._badgesState === "ready",
-      "profile badges should load",
-    );
+    await waitUntil(() => element._badgesState === "ready", "profile badges should load");
     await element.updateComplete;
 
     expect(requestUrl).to.equal("/communities/cloud-native/users/ada/badges");
-    expect(element.querySelector("#profile-badges-title")).to.not.equal(null);
-    const link = element.querySelector(
-      'a[href="/badges/credentials/00000000-0000-0000-0000-000000000003"]',
-    );
-    expect(link.getAttribute("aria-label")).to.equal(
-      "View Participant badge credential",
-    );
-    expect(link.querySelector("img").getAttribute("alt")).to.equal(
-      "Participant badge artwork",
-    );
+    const badgeSection = element.querySelector("#profile-badges-title").closest("section");
+    expect(badgeSection.classList.contains("border-t")).to.equal(true);
+    const link = element.querySelector('a[href="/badges/credentials/00000000-0000-0000-0000-000000000003"]');
+    expect(link.getAttribute("aria-label")).to.equal("View Participant badge credential");
+    expect(link.querySelector("img").getAttribute("alt")).to.equal("Participant badge artwork");
     expect(link.classList.contains("size-16")).to.equal(true);
     expect(link.classList.contains("sm:size-24")).to.equal(true);
     const badgeDetails = link.querySelector('[role="tooltip"]');
     expect(link.getAttribute("aria-describedby")).to.equal(badgeDetails.id);
-    expect(badgeDetails.classList.contains("group-hover:visible")).to.equal(
-      true,
-    );
-    expect(
-      badgeDetails.classList.contains("group-focus-visible:visible"),
-    ).to.equal(true);
+    expect(badgeDetails.classList.contains("group-hover:visible")).to.equal(true);
+    expect(badgeDetails.classList.contains("group-focus-visible:visible")).to.equal(true);
+    expect(badgeDetails.classList.contains("w-72")).to.equal(true);
     expect(badgeDetails.textContent).to.include("Participant");
+    expect(badgeDetails.textContent).to.include("Participant badge");
     expect(badgeDetails.textContent).to.include("Kubernetes Group");
+    const tooltipPointer = badgeDetails.querySelector('[aria-hidden="true"]');
+    expect(tooltipPointer).to.not.equal(null);
+    expect(tooltipPointer.classList.contains("rotate-45")).to.equal(true);
+
+    element._userData = { ...element._userData, websiteUrl: "https://example.com" };
+    await element.updateComplete;
+
+    expect(
+      element.querySelector("#profile-badges-title").closest("section").classList.contains("border-t"),
+    ).to.equal(false);
 
     window.fetch = originalFetch;
     dashboard.remove();
@@ -248,8 +240,7 @@ describe("user-info-modal", () => {
     const dashboard = document.createElement("div");
     dashboard.dataset.communityName = "cloud-native";
     document.body.append(dashboard);
-    window.fetch = async () =>
-      new Response("[]", { headers: { "Content-Type": "application/json" } });
+    window.fetch = async () => new Response("[]", { headers: { "Content-Type": "application/json" } });
     const element = await mountLitComponent("user-info-modal");
 
     document.dispatchEvent(
@@ -280,15 +271,10 @@ describe("user-info-modal", () => {
         detail: { name: "Ada", username: "ada" },
       }),
     );
-    await waitUntil(
-      () => element._badgesState === "error",
-      "profile badge failure should render",
-    );
+    await waitUntil(() => element._badgesState === "error", "profile badge failure should render");
     await element.updateComplete;
 
-    expect(element.textContent).to.include(
-      "Profile badges are temporarily unavailable",
-    );
+    expect(element.textContent).to.include("Profile badges are temporarily unavailable");
     expect(element.querySelector('[role="status"]')).to.not.equal(null);
 
     window.fetch = originalFetch;
@@ -312,22 +298,12 @@ describe("user-info-modal", () => {
         detail: { name: "Ada", username: "ada" },
       }),
     );
-    await waitUntil(
-      () => Boolean(resolveBadges),
-      "the first profile badge request should start",
-    );
-    document.dispatchEvent(
-      new CustomEvent("open-user-modal", { detail: { name: "Anonymous" } }),
-    );
+    await waitUntil(() => Boolean(resolveBadges), "the first profile badge request should start");
+    document.dispatchEvent(new CustomEvent("open-user-modal", { detail: { name: "Anonymous" } }));
     resolveBadges(
-      new Response(
-        JSON.stringify([
-          { user_badge_id: "stale", snapshot: { name: "Stale" } },
-        ]),
-        {
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
+      new Response(JSON.stringify([{ user_badge_id: "stale", snapshot: { name: "Stale" } }]), {
+        headers: { "Content-Type": "application/json" },
+      }),
     );
     await Promise.resolve();
     await Promise.resolve();

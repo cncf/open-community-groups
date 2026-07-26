@@ -1,6 +1,7 @@
 import { expect } from "@open-wc/testing";
 
 import {
+  downloadBadge,
   initializeBadgeList,
   moveBadge,
   revokeBadge,
@@ -18,6 +19,7 @@ const fixture = () => {
       <button type="button" data-badge-drag-handle draggable="true">Reorder First</button>
       <div data-badge-card></div>
       <input type="checkbox" data-badge-listing data-endpoint="/listing/first" checked>
+      <a href="/badges/first/export" download data-badge-download data-badge-name="First">Download</a>
       <button type="button" data-badge-revoke data-endpoint="/badges/first" data-badge-name="First">Revoke</button>
     </li>
     <li data-user-badge-id="second">
@@ -126,6 +128,50 @@ describe("user dashboard badges", () => {
 
     expect(control.checked).to.equal(true);
     expect(control.disabled).to.equal(false);
+  });
+
+  it("explains baked credentials and downloads after confirmation", async () => {
+    const { list } = fixture();
+    const link = list.querySelector("[data-badge-download]");
+    let alertOptions;
+    let downloadHref;
+    window.Swal = {
+      fire: async (options) => {
+        alertOptions = options;
+        return { isConfirmed: true };
+      },
+    };
+    document.addEventListener(
+      "click",
+      (event) => {
+        if (event.target !== link && event.target instanceof HTMLAnchorElement) {
+          event.preventDefault();
+          downloadHref = event.target.href;
+        }
+      },
+      { capture: true, once: true },
+    );
+
+    await downloadBadge(link);
+
+    expect(alertOptions.title).to.equal("Download First badge?");
+    expect(alertOptions.html).to.include("signed Open Badges 3.0 credential data");
+    expect(alertOptions.html).to.include("does not include your email address or username");
+    expect(alertOptions.confirmButtonText).to.equal("Download PNG");
+    expect(alertOptions.cancelButtonText).to.equal("Cancel");
+    expect(downloadHref).to.equal(link.href);
+    expect(link.dataset.badgeDownloadPending).to.equal(undefined);
+  });
+
+  it("keeps focus on the download link when confirmation is cancelled", async () => {
+    const { list } = fixture();
+    const link = list.querySelector("[data-badge-download]");
+    window.Swal = { fire: async () => ({ isConfirmed: false }) };
+
+    await downloadBadge(link);
+
+    expect(document.activeElement).to.equal(link);
+    expect(link.dataset.badgeDownloadPending).to.equal(undefined);
   });
 
   it("requires irreversible confirmation and removes a revoked badge after success", async () => {

@@ -1,4 +1,4 @@
-import { showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
+import { getCommonAlertOptions, showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
 import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
 
@@ -94,6 +94,51 @@ export const persistOrder = async (list, previousOrder) => {
   } finally {
     delete list.dataset[SAVE_PENDING_KEY];
     syncReorderControls(list);
+  }
+};
+
+/**
+ * Explain the portable credential before downloading its baked PNG.
+ * @param {HTMLAnchorElement} link Badge PNG download link.
+ * @returns {Promise<void>}
+ */
+export const downloadBadge = async (link) => {
+  if (link.dataset.badgeDownloadPending === "true") {
+    return;
+  }
+  link.dataset.badgeDownloadPending = "true";
+  try {
+    const result = await Swal.fire({
+      title: `Download ${link.dataset.badgeName} badge?`,
+      html: `
+        <p>This PNG contains the badge artwork and signed Open Badges 3.0 credential data.</p>
+        <p class="mt-3">You can import it into compatible wallets, backpacks, and credential platforms. Anyone with the file can inspect and verify the credential; verification reports its current active or revoked status. The file does not include your email address or username.</p>
+        <a class="mt-4 inline-flex font-medium text-primary-600 underline hover:text-primary-700"
+           href="/docs#/guides/badges?id=share-and-export-credentials"
+           target="_blank"
+           rel="noopener noreferrer">Read the badge export guide</a>`,
+      icon: "info",
+      showCancelButton: true,
+      confirmButtonText: "Download PNG",
+      cancelButtonText: "Cancel",
+      ...getCommonAlertOptions(),
+      position: "center",
+      backdrop: true,
+    });
+    if (!result.isConfirmed) {
+      link.focus();
+      return;
+    }
+
+    const download = document.createElement("a");
+    download.hidden = true;
+    download.href = link.href;
+    download.download = link.download;
+    document.body.append(download);
+    download.click();
+    download.remove();
+  } finally {
+    delete link.dataset.badgeDownloadPending;
   }
 };
 
@@ -218,6 +263,12 @@ export const initializeBadgeList = (list) => {
   let previousOrder = [];
   syncReorderControls(list);
   list.addEventListener("click", (event) => {
+    const downloadLink = event.target.closest?.("[data-badge-download]");
+    if (downloadLink) {
+      event.preventDefault();
+      downloadBadge(downloadLink);
+      return;
+    }
     const moveButton = event.target.closest?.("[data-badge-move]");
     if (moveButton) {
       moveBadge(moveButton);

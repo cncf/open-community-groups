@@ -249,7 +249,13 @@ export class UserInfoModal extends LitWrapper {
     `;
   }
 
-  _renderBadges() {
+  /**
+   * Renders profile badges with a divider when social links are absent.
+   * @param {boolean} hasSocialLinks - Whether social links precede the badge section
+   * @returns {TemplateResult|string} Badge section, status, or empty string
+   * @private
+   */
+  _renderBadges(hasSocialLinks) {
     if (this._badgesState === "loading") {
       return html`<p class="sr-only" role="status">Loading profile badges</p>`;
     }
@@ -263,7 +269,10 @@ export class UserInfoModal extends LitWrapper {
     }
 
     return html`
-      <section class="mt-6 border-t border-stone-200 pt-6" aria-labelledby="profile-badges-title">
+      <section
+        class=${hasSocialLinks ? "mt-6" : "mt-6 border-t border-stone-200 pt-6"}
+        aria-labelledby="profile-badges-title"
+      >
         <h4
           id="profile-badges-title"
           class="mb-4 text-sm font-semibold uppercase tracking-wide text-stone-500"
@@ -290,12 +299,19 @@ export class UserInfoModal extends LitWrapper {
                   <span
                     id=${`profile-badge-details-${badge.user_badge_id}`}
                     role="tooltip"
-                    class="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-56 rounded-lg border border-stone-200 bg-white p-3 text-left opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
+                    class="pointer-events-none invisible absolute bottom-full left-0 z-20 mb-2 w-72 max-w-[calc(100vw-3rem)] rounded-lg border border-stone-200 bg-white p-4 text-left opacity-0 shadow-lg transition-opacity group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
                   >
                     <span class="block text-sm font-semibold text-stone-900">${badge.snapshot.name}</span>
-                    <span class="mt-1 block text-xs text-stone-600">
+                    <span class="mt-2 block line-clamp-3 text-sm/5 text-stone-600">
+                      ${badge.snapshot.description}
+                    </span>
+                    <span class="mt-2 block text-xs font-medium text-stone-500">
                       ${badge.snapshot.issuer.group_name}
                     </span>
+                    <span
+                      class="absolute top-full left-6 size-3 -translate-y-1/2 rotate-45 border-r border-b border-stone-200 bg-white sm:left-10"
+                      aria-hidden="true"
+                    ></span>
                   </span>
                 </a>
               </li>
@@ -376,7 +392,7 @@ export class UserInfoModal extends LitWrapper {
           @click=${this._closeModal}
         ></div>
 
-        <div class="modal-panel p-4 max-w-2xl">
+        <div class="modal-panel p-4 max-w-3xl">
           <div class="modal-card rounded-lg">
             <div
               class="flex items-center justify-between gap-3 border-b border-stone-200 rounded-t p-5 sm:gap-4 sm:p-6"
@@ -433,7 +449,7 @@ export class UserInfoModal extends LitWrapper {
                   : ""
               }
               ${this._renderProfilePlaceholder(bio, socialLinks)} ${this._renderSocialLinks(socialLinks)}
-              ${this._renderBadges()}
+              ${this._renderBadges(socialLinks.length > 0)}
             </div>
           </div>
         </div>

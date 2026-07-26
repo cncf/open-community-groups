@@ -46,17 +46,52 @@
               <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-semibold text-stone-900"
                     data-badge-position
                     aria-hidden="true">{{ loop.index }}</span>
-              <img class="size-18 shrink-0 object-contain"
+              <img class="size-20 shrink-0 object-contain"
                    src="/images/badges/{{ badge.snapshot.image_file_name }}"
                    alt="{{ badge.snapshot.name }} badge artwork"
                    draggable="false"
-                   width="72"
-                   height="72">
-              <div class="min-w-0">
-                <h2 class="font-semibold text-stone-900">{{ badge.snapshot.name }}</h2>
+                   width="80"
+                   height="80">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-4">
+                  <h2 class="min-w-0 font-semibold text-stone-900">{{ badge.snapshot.name }}</h2>
+                  <div class="flex shrink-0 items-center gap-1"
+                       role="group"
+                       aria-label="{{ badge.snapshot.name }} badge actions">
+                    <a class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
+                       href="/badges/credentials/{{ badge.user_badge_id }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       aria-label="View {{ badge.snapshot.name }} badge credential"
+                       title="View credential">
+                      <span class="svg-icon size-4 icon-eye" aria-hidden="true"></span>
+                    </a>
+                    <a class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
+                       href="/dashboard/user/badges/{{ badge.user_badge_id }}/export"
+                       download
+                       hx-boost="false"
+                       data-badge-download
+                       data-badge-name="{{ badge.snapshot.name }}"
+                       aria-label="Download {{ badge.snapshot.name }} badge as PNG"
+                       title="Download PNG">
+                      <span class="svg-icon size-4 icon-download" aria-hidden="true"></span>
+                    </a>
+                    <button class="btn-tertiary inline-flex items-center justify-center p-2"
+                            type="button"
+                            data-badge-revoke
+                            data-endpoint="/dashboard/user/badges/{{ badge.user_badge_id }}"
+                            data-badge-name="{{ badge.snapshot.name }}"
+                            aria-label="Revoke {{ badge.snapshot.name }} badge"
+                            title="Revoke badge">
+                      <span class="svg-icon size-4 icon-trash" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </div>
                 <p class="mt-1 text-sm/6 text-stone-600">{{ badge.snapshot.description }}</p>
                 <p class="mt-1 text-sm text-stone-500">
                   Issued by <span class="font-medium text-stone-700">{{ badge.snapshot.issuer.group_name }}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{{ badge.snapshot.issuer.community_name }}</span>
                 </p>
                 <label class="mt-3 inline-flex cursor-pointer items-center">
                   <input type="checkbox"
@@ -69,33 +104,6 @@
                   <span class="ms-3 text-sm font-medium text-stone-900">Show on profile</span>
                 </label>
               </div>
-            </div>
-            <div class="flex shrink-0 items-center gap-1 self-end sm:self-start">
-              <a class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
-                 href="/badges/credentials/{{ badge.user_badge_id }}"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 aria-label="View {{ badge.snapshot.name }} badge credential"
-                 title="View credential">
-                <span class="svg-icon size-4 icon-eye" aria-hidden="true"></span>
-              </a>
-              <a class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
-                 href="/dashboard/user/badges/{{ badge.user_badge_id }}/export"
-                 download
-                 hx-boost="false"
-                 aria-label="Download {{ badge.snapshot.name }} badge as PNG"
-                 title="Download PNG">
-                <span class="svg-icon size-4 icon-download" aria-hidden="true"></span>
-              </a>
-              <button class="btn-tertiary inline-flex items-center justify-center p-2"
-                      type="button"
-                      data-badge-revoke
-                      data-endpoint="/dashboard/user/badges/{{ badge.user_badge_id }}"
-                      data-badge-name="{{ badge.snapshot.name }}"
-                      aria-label="Revoke {{ badge.snapshot.name }} badge"
-                      title="Revoke badge">
-                <span class="svg-icon size-4 icon-trash" aria-hidden="true"></span>
-              </button>
             </div>
           </div>
         </li>
