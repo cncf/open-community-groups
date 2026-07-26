@@ -65,6 +65,23 @@ describe("user dashboard badges", () => {
     );
   });
 
+  it("keeps badge card content aligned and formats the issuer", async () => {
+    const template = (await loadTemplate()).replace(/\s+/g, " ");
+
+    expect(template).to.include('class="flex items-start justify-between gap-4"');
+    expect(template).to.include('class="min-w-0 line-clamp-2 font-semibold text-stone-900"');
+    expect(template).to.include(
+      "{{ badge.snapshot.issuer.group_name }} ({{ badge.snapshot.issuer.community_name }})",
+    );
+    expect(template).to.include(
+      'trigger-label="Share {{ badge.snapshot.name }} badge credential"',
+    );
+    expect(template).to.include('trigger-variant="icon"');
+    expect(template).to.include('url="/badges/credentials/{{ badge.user_badge_id }}"');
+    expect(template).to.include('class="mt-3 flex cursor-pointer items-center justify-end"');
+    expect(template).to.not.include('<span aria-hidden="true">·</span>');
+  });
+
   it("shows an icon until badge artwork loads", () => {
     const list = document.createElement("ol");
     list.dataset.badgeOrderList = "";
@@ -279,7 +296,7 @@ describe("user dashboard badges", () => {
       configurable: true,
       value: 10,
     });
-    const dataTransfer = { effectAllowed: "" };
+    const dataTransfer = { dropEffect: "none", effectAllowed: "" };
     const dragEvent = (type, clientY = 0) => {
       const event = new Event(type, { bubbles: true, cancelable: true });
       Object.defineProperty(event, "clientY", { value: clientY });
@@ -291,7 +308,9 @@ describe("user dashboard badges", () => {
     second.dispatchEvent(dragEvent("dragover", 10));
 
     expect(second.querySelector("[data-badge-card]").classList.contains("ring-2")).to.equal(true);
+    expect(dataTransfer.dropEffect).to.equal("move");
 
+    second.dispatchEvent(dragEvent("drop", 10));
     firstHandle.dispatchEvent(dragEvent("dragend"));
     await Promise.resolve();
     await Promise.resolve();
@@ -299,5 +318,40 @@ describe("user dashboard badges", () => {
     expect(bodies[0]).to.deep.equal({ user_badge_ids: ["second", "first"] });
     expect(first.classList.contains("opacity-70")).to.equal(false);
     expect(second.querySelector("[data-badge-card]").classList.contains("ring-2")).to.equal(false);
+  });
+
+  it("restores pointer reordering when a drag is cancelled", async () => {
+    // Render two badges with a mocked successful order endpoint.
+    const { list } = fixture();
+    let requestCount = 0;
+    window.fetch = async () => {
+      requestCount += 1;
+      return new Response(null, { status: 204 });
+    };
+    initializeBadgeList(list);
+
+    // Start moving the first badge over the second, then cancel the drag.
+    const first = list.firstElementChild;
+    const second = list.lastElementChild;
+    const firstHandle = first.querySelector("[data-badge-drag-handle]");
+    first.getBoundingClientRect = () => ({ top: 0 });
+    second.getBoundingClientRect = () => ({ top: 0 });
+    Object.defineProperty(second, "offsetHeight", { configurable: true, value: 10 });
+    const dataTransfer = { dropEffect: "none", effectAllowed: "" };
+    const dragEvent = (type, clientY = 0) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "clientY", { value: clientY });
+      Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+      return event;
+    };
+
+    firstHandle.dispatchEvent(dragEvent("dragstart"));
+    second.dispatchEvent(dragEvent("dragover", 10));
+    firstHandle.dispatchEvent(dragEvent("dragend"));
+    await Promise.resolve();
+
+    // Cancellation restores the initial order without saving a new order.
+    expect([...list.children].map((item) => item.dataset.userBadgeId)).to.deep.equal(["first", "second"]);
+    expect(requestCount).to.equal(0);
   });
 });

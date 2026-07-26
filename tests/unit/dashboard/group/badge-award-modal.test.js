@@ -30,6 +30,34 @@ describe("badge-award-modal", () => {
     window.fetch = originalFetch;
   });
 
+  it("keeps internal reactive properties out of observed attributes", () => {
+    // Read the custom element's reactive property declarations.
+    const properties = customElements.get("badge-award-modal").properties;
+
+    // All underscored internal values are state-only and not reflected as attributes.
+    Object.values(properties).forEach((property) => {
+      expect(property.state).to.equal(true);
+    });
+  });
+
+  it("clamps badge option titles to two lines and omits descriptions", async () => {
+    window.fetch = async () =>
+      new Response(JSON.stringify({ badges: [badge], total: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      });
+    const element = await mountLitComponent("badge-award-modal");
+
+    element.open({ eventId: "event", trigger: document.body, userIds: ["user"] });
+    await waitUntil(() => element._state === "ready", "badge options should load");
+
+    const badgeTitle = element.querySelector(".line-clamp-2");
+    const badgeOptionSurface = element.querySelector('input[name="award-badge"]').nextElementSibling;
+    expect(badgeTitle.textContent.trim()).to.equal(badge.name);
+    expect(badgeTitle.classList.contains("break-words")).to.equal(true);
+    expect(badgeOptionSurface.classList.contains("items-center")).to.equal(true);
+    expect(element.textContent).not.to.include(badge.description);
+  });
+
   it("shows the all-speakers scope in the badge picker without a separate confirmation", async () => {
     window.fetch = async () =>
       new Response(JSON.stringify({ badges: [badge], total: 1 }), {

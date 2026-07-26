@@ -13,6 +13,7 @@ import "/static/vendor/js/sharer.v0.5.4.min.js";
 /**
  * ShareModal displays a Share button that opens a modal with share options.
  * @extends LitWrapper
+ * @property {string} triggerLabel - The accessible label for the share trigger
  * @property {string} triggerVariant - The trigger style variant
  * @property {string} title - The title to share
  * @property {string} url - The URL to share
@@ -24,6 +25,7 @@ export class ShareModal extends LitWrapper {
    */
   static get properties() {
     return {
+      triggerLabel: { type: String, attribute: "trigger-label" },
       triggerVariant: { type: String, attribute: "trigger-variant" },
       title: { type: String },
       url: { type: String },
@@ -33,6 +35,7 @@ export class ShareModal extends LitWrapper {
 
   constructor() {
     super();
+    this.triggerLabel = "Share";
     this.triggerVariant = "button";
     this.title = "";
     this.url = "";
@@ -211,14 +214,28 @@ export class ShareModal extends LitWrapper {
    * @returns {TemplateResult} The share trigger template
    */
   _renderTrigger() {
+    if (this.triggerVariant === "icon") {
+      return html`
+        <button
+          type="button"
+          class="btn-tertiary inline-flex items-center justify-center p-2"
+          aria-label=${this.triggerLabel}
+          @click=${() => this._openModal()}
+          title=${this.triggerLabel}
+        >
+          <span class="svg-icon size-3.5 icon-share" aria-hidden="true"></span>
+        </button>
+      `;
+    }
+
     if (this.triggerVariant === "menu-item") {
       return html`
         <button
           type="button"
           class="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-50"
-          aria-label="Share"
+          aria-label=${this.triggerLabel}
           @click=${() => this._openModal()}
-          title="Share"
+          title=${this.triggerLabel}
         >
           <div class="svg-icon size-4 bg-stone-600 icon-share"></div>
           <span>Share</span>
@@ -230,9 +247,9 @@ export class ShareModal extends LitWrapper {
       <button
         type="button"
         class="group btn-primary-outline flex h-10 w-10 items-center justify-center p-0 md:h-[30px] md:w-auto md:px-4 md:py-2 md:space-x-2"
-        aria-label="Share"
+        aria-label=${this.triggerLabel}
         @click=${() => this._openModal()}
-        title="Share"
+        title=${this.triggerLabel}
       >
         <div class="svg-icon size-3 icon-share"></div>
         <span class="hidden md:inline">Share</span>
@@ -331,14 +348,14 @@ export class ShareModal extends LitWrapper {
                   </span>
                   <button
                     type="button"
-                    class="flex items-center justify-center size-8 rounded
+                    class="flex items-center justify-center size-8 rounded-full
                            hover:bg-stone-200 transition-colors cursor-pointer
                            flex-shrink-0"
                     title="Copy link"
                     aria-label="Copy link"
                     @click=${() => this._handleCopyClick()}
                   >
-                    <div class="svg-icon size-5 bg-stone-600 icon-copy"></div>
+                    <div class="svg-icon size-4 bg-stone-600 icon-copy"></div>
                   </button>
                 </div>
               </div>

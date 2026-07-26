@@ -19,14 +19,14 @@ const STATE = Object.freeze({
 /** Shared light-DOM dialog for badge awards to explicit recipients. */
 export class BadgeAwardModal extends LitWrapper {
   static properties = {
-    _allSpeakersAward: { type: Boolean },
-    _badges: { type: Array },
-    _error: { type: String },
-    _isOpen: { type: Boolean },
-    _query: { type: String },
-    _selectedBadgeId: { type: String },
-    _state: { type: String },
-    _success: { type: Object },
+    _allSpeakersAward: { type: Boolean, state: true },
+    _badges: { type: Array, state: true },
+    _error: { type: String, state: true },
+    _isOpen: { type: Boolean, state: true },
+    _query: { type: String, state: true },
+    _selectedBadgeId: { type: String, state: true },
+    _state: { type: String, state: true },
+    _success: { type: Object, state: true },
   };
 
   constructor() {
@@ -290,7 +290,7 @@ export class BadgeAwardModal extends LitWrapper {
                 }}
               />
               <span
-                class="grid grid-cols-[3.5rem_1fr] gap-3 rounded-xl border border-stone-200 bg-white p-3 pr-12 transition hover:border-primary-300 hover:shadow-sm peer-checked:border-primary-400 peer-checked:ring-2 peer-checked:ring-primary-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"
+                class="grid grid-cols-[3.5rem_1fr] items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 pr-12 transition hover:border-primary-300 hover:shadow-sm peer-checked:border-primary-400 peer-checked:ring-2 peer-checked:ring-primary-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500 peer-focus-visible:ring-offset-2"
               >
                 <img
                   class="size-14 rounded-md object-cover"
@@ -300,8 +300,7 @@ export class BadgeAwardModal extends LitWrapper {
                   height="56"
                 />
                 <span class="min-w-0">
-                  <span class="block font-semibold text-stone-900">${badge.name}</span>
-                  <span class="mt-1 block text-sm text-stone-600">${badge.description}</span>
+                  <span class="line-clamp-2 break-words font-semibold text-stone-900">${badge.name}</span>
                 </span>
               </span>
               <span

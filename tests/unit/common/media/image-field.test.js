@@ -124,6 +124,17 @@ describe("image-field", () => {
     form.remove();
   });
 
+  it("does not give direct-upload-only file inputs an empty name", async () => {
+    // Render an image field that uploads through its component endpoint.
+    const element = await mountLitComponent("image-field", {
+      label: "Banner",
+      name: "banner_image",
+    });
+
+    // Its temporary file picker is not included in parent form submissions.
+    expect(element.querySelector('input[type="file"]').hasAttribute("name")).to.equal(false);
+  });
+
   it("does not show the generic supported formats text for Open Graph images", async () => {
     // Mount an Open Graph image field with explicit format guidance.
     const element = await mountLitComponent("image-field", {

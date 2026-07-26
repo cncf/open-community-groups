@@ -1,6 +1,7 @@
 import { getCommonAlertOptions, showErrorAlert, showSuccessAlert } from "/static/js/common/alerts.js";
 import { initializeOnReadyAndHtmxLoad, markDatasetReady } from "/static/js/common/dom.js";
 import { ocgFetch } from "/static/js/common/fetch.js";
+import "/static/js/common/modals/share-modal.js";
 
 const ARTWORK_IMAGE_SELECTOR = "[data-badge-artwork-image]";
 const CARD_SELECTOR = "[data-badge-card]";
@@ -20,6 +21,7 @@ export const initializeBadgeList = (list) => {
   }
 
   let draggedItem = null;
+  let dropAccepted = false;
   let dropTargetItem = null;
   let previousOrder = [];
   initializeBadgeArtwork(list);
@@ -29,11 +31,6 @@ export const initializeBadgeList = (list) => {
     if (downloadLink) {
       event.preventDefault();
       downloadBadge(downloadLink);
-      return;
-    }
-    const moveButton = event.target.closest?.("[data-badge-move]");
-    if (moveButton) {
-      moveBadge(moveButton);
       return;
     }
     const revokeButton = event.target.closest?.("[data-badge-revoke]");
@@ -64,6 +61,7 @@ export const initializeBadgeList = (list) => {
     }
     const dragHandle = event.target.closest?.(DRAG_HANDLE_SELECTOR);
     draggedItem = dragHandle?.closest("[data-user-badge-id]") || null;
+    dropAccepted = false;
     if (draggedItem) {
       previousOrder = badgeIds(list);
       draggedItem.classList.add("opacity-70");
@@ -76,10 +74,16 @@ export const initializeBadgeList = (list) => {
   });
   list.addEventListener("dragover", (event) => {
     const target = event.target.closest?.("[data-user-badge-id]");
-    if (!draggedItem || !target || target === draggedItem) {
+    if (!draggedItem || !target) {
       return;
     }
     event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    if (target === draggedItem) {
+      return;
+    }
     if (dropTargetItem !== target) {
       dropTargetItem?.querySelector(CARD_SELECTOR)?.classList.remove("ring-2", "ring-primary-300");
       dropTargetItem = target;
@@ -89,14 +93,30 @@ export const initializeBadgeList = (list) => {
     list.insertBefore(draggedItem, before ? target : target.nextElementSibling);
     syncReorderControls(list);
   });
+  list.addEventListener("drop", (event) => {
+    if (!draggedItem) {
+      return;
+    }
+    event.preventDefault();
+    dropAccepted = true;
+  });
   list.addEventListener("dragend", async () => {
     clearDragStyles(list);
     dropTargetItem = null;
     if (!draggedItem || previousOrder.join() === badgeIds(list).join()) {
       draggedItem = null;
+      dropAccepted = false;
+      return;
+    }
+    if (!dropAccepted) {
+      restoreOrder(list, previousOrder);
+      syncReorderControls(list);
+      draggedItem = null;
+      dropAccepted = false;
       return;
     }
     draggedItem = null;
+    dropAccepted = false;
     try {
       await persistOrder(list, previousOrder);
     } catch (error) {
@@ -151,12 +171,12 @@ export const downloadBadge = async (link) => {
 };
 
 /**
- * Move a badge one position with a keyboard or fallback button control.
+ * Move a badge one position with a keyboard reorder control.
  * @param {HTMLElement} control Reorder control inside the badge card.
  * @param {"up"|"down"} direction Direction to move the badge.
  * @returns {Promise<void>}
  */
-export const moveBadge = async (control, direction = control.dataset.badgeMove) => {
+export const moveBadge = async (control, direction) => {
   const item = control.closest("[data-user-badge-id]");
   const list = item?.closest(LIST_SELECTOR);
   if (!item || !list) {
@@ -368,10 +388,6 @@ const syncReorderControls = (list) => {
     if (position) {
       position.textContent = String(index + 1);
     }
-    item.querySelectorAll("[data-badge-move]").forEach((button) => {
-      const atBoundary = button.dataset.badgeMove === "up" ? index === 0 : index === items.length - 1;
-      button.disabled = pending || atBoundary;
-    });
   });
 };
 

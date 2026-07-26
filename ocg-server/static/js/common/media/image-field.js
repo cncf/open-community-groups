@@ -292,14 +292,6 @@ export class ImageField extends LitWrapper {
   }
 
   _handleRemove() {
-    if (this.directUpload) {
-      const input = getElementById(this, this._fileInputId);
-      input.value = "";
-      this._directFileName = "";
-      this.requestUpdate();
-      return;
-    }
-
     if (!this._hasImage || this._isUploading) {
       return;
     }
@@ -338,7 +330,7 @@ export class ImageField extends LitWrapper {
             ${
               this._directFileName
                 ? html`<span> ${this._directFileName}</span>`
-                : html`<span> or drag and drop an exported PNG file</span>`
+                : html`<span> or drag and drop a file</span>`
             }
           </p>
           <input
@@ -431,7 +423,6 @@ export class ImageField extends LitWrapper {
               <input
                 type="file"
                 id=${this._fileInputId}
-                name=${this.directUpload ? this.name : ""}
                 class="hidden"
                 accept=${acceptedFormats}
                 @change=${this._handleFileChange}

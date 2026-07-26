@@ -45,7 +45,7 @@
           <image-field class="block" label="Exported PNG" name="png" image-kind="logo" accepted-formats="image/png" direct-upload hide-remove-button>
           </image-field>
         </div>
-        <button class="btn-primary w-full" type="submit">Verify badge</button>
+        <button class="btn-primary mx-auto block" type="submit">Verify badge</button>
       </form>
 
       <div class="mt-6" aria-live="polite">
@@ -64,7 +64,7 @@
               {% if result.revoked -%}
                 <div class="flex size-5 items-center justify-center rounded-full bg-red-600"
                      aria-hidden="true">
-                  <div class="svg-icon size-3 icon-check bg-white"></div>
+                  <div class="svg-icon size-3 icon-close bg-white"></div>
                 </div>
                 <p class="text-sm font-semibold">Credential revoked</p>
               {% else -%}

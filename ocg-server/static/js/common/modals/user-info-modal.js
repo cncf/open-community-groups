@@ -1,4 +1,5 @@
 import { html } from "/static/vendor/js/lit-all.v3.3.3.min.js";
+import { ocgFetch } from "/static/js/common/fetch.js";
 import { LitWrapper } from "/static/js/common/lit-wrapper.js";
 import { computeUserInitials } from "/static/js/common/users/initials.js";
 import {
@@ -92,7 +93,7 @@ export class UserInfoModal extends LitWrapper {
 
     this._badgesAbortController = new AbortController();
     try {
-      const response = await fetch(`/users/${encodeURIComponent(username)}/badges`, {
+      const response = await ocgFetch(`/users/${encodeURIComponent(username)}/badges`, {
         signal: this._badgesAbortController.signal,
       });
       if (!response.ok) {

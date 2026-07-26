@@ -69,14 +69,14 @@
     </div>
   {% else -%}
     <div class="relative overflow-x-auto">
-      <table class="table-auto w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
+      <table class="table-fixed w-full text-xs lg:text-sm text-left text-stone-500 mb-8"
              role="table"
              aria-label="Badges list">
         {# Table header -#}
         <thead class="text-xs text-stone-700 uppercase bg-stone-100 border-b border-stone-200"
                role="rowgroup">
           <tr>
-            <th scope="col" class="px-3 xl:px-5 py-3">Badge</th>
+            <th scope="col" class="px-3 xl:px-5 py-3 xl:w-[35%]">Badge</th>
             <th scope="col" class="hidden xl:table-cell px-3 xl:px-5 py-3">Description</th>
             <th scope="col" class="px-3 xl:px-5 py-3 w-[112px]">
               <span class="sr-only">Actions</span>
@@ -89,7 +89,7 @@
             {# Badge row -#}
             <tr class="odd:bg-white even:bg-stone-50/50 border-b border-stone-200">
               {# Badge -#}
-              <td class="px-3 xl:px-5 py-4 min-w-[140px] max-w-[220px] xl:max-w-[320px] 2xl:max-w-[420px]">
+              <td class="px-3 xl:px-5 py-4 min-w-[140px]">
                 <div class="flex items-center space-x-4 min-w-0">
                   <img class="size-20 min-w-20 rounded-md object-cover"
                        src="/images/badges/{{ badge.image_file_name }}"
@@ -97,14 +97,14 @@
                        width="80"
                        height="80">
                   <div class="min-w-0">
-                    <div class="font-medium text-stone-900 max-w-full truncate">{{ badge.name }}</div>
+                    <div class="line-clamp-2 break-words font-medium text-stone-900">{{ badge.name }}</div>
                   </div>
                 </div>
               </td>
               {# End badge -#}
 
               {# Description -#}
-              <td class="hidden xl:table-cell px-3 xl:px-5 py-4 max-w-[320px]">
+              <td class="hidden xl:table-cell px-3 xl:px-5 py-4">
                 <div class="line-clamp-2">{{ badge.description }}</div>
               </td>
               {# End description -#}
@@ -182,14 +182,12 @@
         data-success-message="Badge saved."
         data-error-message="The badge could not be saved.">
     <div class="flex items-center justify-between rounded-t border-b border-stone-200 p-4 md:p-5">
-      <h3 id="badge-
-              {% if is_edit %}
-                edit-{{ id }}
-              {% else %}
-                add
-              {% endif %}
-              -title"
-          class="text-xl font-semibold text-stone-900">{% if is_edit %}Edit {{ name }}{% else %}Add badge{% endif %}</h3>
+      {% if is_edit -%}
+        <h3 id="badge-edit-{{ id }}-title"
+            class="text-xl font-semibold text-stone-900">Edit {{ name }}</h3>
+      {% else -%}
+        <h3 id="badge-add-title" class="text-xl font-semibold text-stone-900">Add badge</h3>
+      {% endif -%}
       {{ dashboard::modal_close_button(attrs = "data-badge-dialog-close") -}}
     </div>
     <div class="modal-body space-y-5 p-4 md:px-6 md:py-5">

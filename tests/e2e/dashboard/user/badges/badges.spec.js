@@ -12,9 +12,12 @@ test.describe("user dashboard badges", () => {
     });
     const badgeActions = hostBadge.getByRole("group", { name: "Host badge actions" });
     const badgeArtwork = hostBadge.getByRole("img", { name: "Host badge artwork" });
-    const communityName = hostBadge.getByText("Platform Engineering Community", { exact: true });
-    const viewCredential = hostBadge.getByRole("link", {
-      name: "View Host badge credential",
+    const issuerInformation = hostBadge.getByText(
+      "Issued by Platform Ops Meetup (Platform Engineering Community)",
+      { exact: true },
+    );
+    const shareCredential = hostBadge.getByRole("button", {
+      name: "Share Host badge credential",
     });
     const downloadBadge = hostBadge.getByRole("link", {
       name: "Download Host badge as PNG",
@@ -27,13 +30,22 @@ test.describe("user dashboard badges", () => {
     await expect(badgeActions).toBeVisible();
     await expect(badgeArtwork).toHaveCSS("height", "80px");
     await expect(badgeArtwork).toHaveCSS("width", "80px");
-    await expect(communityName).toBeVisible();
-    await expect(viewCredential).toHaveAttribute("title", "View credential");
-    await expect(viewCredential.locator(".icon-eye")).toBeVisible();
+    await expect(issuerInformation).toBeVisible();
+    await expect(shareCredential).toHaveAttribute(
+      "title",
+      "Share Host badge credential",
+    );
+    await expect(shareCredential.locator(".icon-share")).toBeVisible();
     await expect(downloadBadge).toHaveAttribute("title", "Download PNG");
     await expect(downloadBadge.locator(".icon-download")).toBeVisible();
     await expect(revokeBadge).toHaveAttribute("title", "Revoke badge");
     await expect(revokeBadge.locator(".icon-trash")).toBeVisible();
+
+    await shareCredential.click();
+    const shareDialog = member1Page.getByRole("dialog", { name: "Share" });
+    await expect(shareDialog).toBeVisible();
+    await expect(shareDialog.getByRole("button", { name: "Copy link" })).toBeVisible();
+    await shareDialog.getByRole("button", { name: "Close modal" }).click();
 
     await downloadBadge.click();
     await expect(member1Page.getByRole("heading", { name: "Download Host badge?" })).toBeVisible();
@@ -62,22 +74,23 @@ test.describe("user dashboard badges", () => {
 
       return {
         actionsLeft: actionsBounds.left,
-        actionsVerticalCenter: actionsBounds.top + actionsBounds.height / 2,
+        actionsTop: actionsBounds.top,
         descriptionRight: descriptionBounds.right,
-        titleVerticalCenter: titleBounds.top + titleBounds.height / 2,
+        titleTop: titleBounds.top,
       };
     });
 
-    expect(Math.abs(layout.actionsVerticalCenter - layout.titleVerticalCenter)).toBeLessThanOrEqual(1);
+    expect(Math.abs(layout.actionsTop - layout.titleTop)).toBeLessThanOrEqual(1);
     expect(layout.descriptionRight).toBeGreaterThan(layout.actionsLeft);
   });
 
   test("shows the community as secondary issuer information", async ({ member1Page }) => {
     // Open a seeded credential from the badge dashboard.
     await navigateToPath(member1Page, "/dashboard/user?tab=badges");
-    const credentialPath = await member1Page
-      .getByRole("link", { name: "View Host badge credential" })
-      .getAttribute("href");
+    const hostBadge = member1Page.locator("[data-user-badge-id]").filter({
+      has: member1Page.getByRole("heading", { name: "Host", exact: true }),
+    });
+    const credentialPath = await hostBadge.locator("share-modal").getAttribute("url");
     expect(credentialPath).not.toBeNull();
     await navigateToPath(member1Page, credentialPath);
 

@@ -1,6 +1,6 @@
+import { initializeEventContributors } from "/static/js/dashboard/group/event-contributors.js";
 import { initializeSessionsRemovalWarning } from "/static/js/dashboard/group/event-form-helpers.js";
 import { initializeEventPreview } from "/static/js/dashboard/group/event-preview.js";
-import { initializeEventContributors } from "/static/js/dashboard/group/event-contributors.js";
 import "/static/js/dashboard/group/questions-editor.js";
 import {
   getElementById,

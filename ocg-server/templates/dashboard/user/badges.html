@@ -62,19 +62,16 @@
                      height="80">
               </span>
               <div class="min-w-0 flex-1">
-                <div class="flex items-center justify-between gap-4">
-                  <h2 class="min-w-0 font-semibold text-stone-900">{{ badge.snapshot.name }}</h2>
+                <div class="flex items-start justify-between gap-4">
+                  <h2 class="min-w-0 line-clamp-2 font-semibold text-stone-900">{{ badge.snapshot.name }}</h2>
                   <div class="flex shrink-0 items-center gap-1"
                        role="group"
                        aria-label="{{ badge.snapshot.name }} badge actions">
-                    <a class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
-                       href="/badges/credentials/{{ badge.user_badge_id }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       aria-label="View {{ badge.snapshot.name }} badge credential"
-                       title="View credential">
-                      <span class="svg-icon size-4 icon-eye" aria-hidden="true"></span>
-                    </a>
+                    <share-modal trigger-label="Share {{ badge.snapshot.name }} badge credential"
+                                 trigger-variant="icon"
+                                 title="{{ badge.snapshot.name }} badge"
+                                 url="/badges/credentials/{{ badge.user_badge_id }}">
+                    </share-modal>
                     <a class="btn-tertiary-anchor inline-flex items-center justify-center p-2"
                        href="/dashboard/user/badges/{{ badge.user_badge_id }}/export"
                        download
@@ -97,12 +94,13 @@
                   </div>
                 </div>
                 <p class="mt-1 text-sm/6 text-stone-600">{{ badge.snapshot.description }}</p>
-                <p class="mt-1 text-sm text-stone-500">
-                  Issued by <span class="font-medium text-stone-700">{{ badge.snapshot.issuer.group_name }}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{{ badge.snapshot.issuer.community_name }}</span>
+                <p class="mt-3 text-sm text-stone-500">
+                  Issued by
+                  <span class="font-medium text-stone-700">
+                    {{ badge.snapshot.issuer.group_name }} ({{ badge.snapshot.issuer.community_name }})
+                  </span>
                 </p>
-                <label class="mt-3 inline-flex cursor-pointer items-center">
+                <label class="mt-3 flex cursor-pointer items-center justify-end">
                   <input type="checkbox"
                          class="sr-only peer"
                          data-badge-listing

@@ -60,14 +60,44 @@ describe("group dashboard badges", () => {
     );
   });
 
-  it("uses larger saved artwork cards with an image inset", async () => {
+  it("uses larger saved artwork cards with hover delete controls", async () => {
     const response = await fetch("/ocg-server/templates/dashboard/group/badges_artwork.html");
 
     expect(response.ok).to.equal(true);
     const template = await response.text();
     expect(template).to.include("lg:grid-cols-5 xl:grid-cols-7");
     expect(template).to.include(
-      'class="relative overflow-hidden rounded-lg border border-stone-200 bg-white p-3"',
+      'class="group relative overflow-hidden rounded-lg border border-stone-200 bg-white p-3"',
     );
+    expect(template).to.include(
+      "btn-tertiary absolute right-2 top-2 p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+    );
+    expect(template).to.include('class="svg-icon size-4 icon-trash"');
+  });
+
+  it("uses a compact badge column and wraps badge names to two lines", async () => {
+    const response = await fetch("/ocg-server/templates/dashboard/group/badges.html");
+
+    expect(response.ok).to.equal(true);
+    const template = await response.text();
+
+    expect(template).to.include("table-fixed");
+    expect(template).to.include("xl:w-[35%]");
+    expect(template).to.include('class="line-clamp-2 break-words font-medium text-stone-900"');
+  });
+
+  it("keeps badge dialog heading IDs aligned with their aria labels", async () => {
+    // Load the group badge template that contains both dialog variants.
+    const response = await fetch("/ocg-server/templates/dashboard/group/badges.html");
+
+    // The template remains available to dashboard pages.
+    expect(response.ok).to.equal(true);
+    const template = await response.text();
+
+    // Each dialog label points at a heading ID rendered by its corresponding form.
+    expect(template).to.include('aria-labelledby="badge-edit-title-{{ badge.badge_id }}"');
+    expect(template).to.include('aria-labelledby="badge-add-title"');
+    expect(template).to.include('id="badge-edit-{{ id }}-title"');
+    expect(template).to.include('id="badge-add-title"');
   });
 });
