@@ -19,7 +19,7 @@ use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser},
     services::{
-        badges::{BadgeService, CredentialInput, png},
+        badges::{BadgesManager, CredentialInput, png},
         images::DynImageStorage,
     },
     templates::dashboard::user::badges::ListPage,
@@ -34,7 +34,7 @@ mod tests;
 #[instrument(skip_all, err)]
 pub(crate) async fn export(
     CurrentUser(user): CurrentUser,
-    State(badge_service): State<Arc<BadgeService>>,
+    State(badges_manager): State<Arc<BadgesManager>>,
     State(db): State<DynDB>,
     State(image_storage): State<DynImageStorage>,
     Path(user_badge_id): Path<Uuid>,
@@ -49,8 +49,9 @@ pub(crate) async fn export(
         .get(&award.snapshot.image_file_name)
         .await?
         .ok_or(HandlerError::NotFound)?;
+
     // Issue the signed credential and bake it into a bounded PNG
-    let credential = badge_service
+    let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
             created_at: Utc::now(),
@@ -71,6 +72,7 @@ pub(crate) async fn export(
         ))
         .map_err(|error| HandlerError::Other(error.into()))?,
     );
+
     Ok((headers, png).into_response())
 }
 
@@ -95,6 +97,7 @@ pub(crate) async fn revoke(
 ) -> Result<StatusCode, HandlerError> {
     // Permanently revoke the active owned credential
     db.revoke_user_badge(user.user_id, user_badge_id).await?;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -109,6 +112,7 @@ pub(crate) async fn update_listing(
     // Persist profile visibility only for an active owned credential
     db.update_user_badge_listing(user.user_id, user_badge_id, input.is_listed)
         .await?;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -122,6 +126,7 @@ pub(crate) async fn update_order(
     // Persist the complete active order atomically
     db.update_user_badges_order(user.user_id, &input.user_badge_ids)
         .await?;
+
     Ok(StatusCode::NO_CONTENT)
 }
 

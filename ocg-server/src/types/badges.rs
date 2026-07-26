@@ -1,15 +1,23 @@
 //! Badge definitions, awards, and public credential database contracts.
 
+use std::{fmt, str::FromStr};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::{DeserializeFromStr, SerializeDisplay};
 use uuid::Uuid;
 
 /// Maximum badge criteria length accepted at persistence boundaries.
 pub(crate) const BADGE_CRITERIA_MAX_CHARS: usize = 10_000;
+
 /// Maximum badge description length accepted at persistence boundaries.
 pub(crate) const BADGE_DESCRIPTION_MAX_CHARS: usize = 10_000;
+
 /// Maximum badge name length accepted at persistence boundaries.
 pub(crate) const BADGE_NAME_MAX_CHARS: usize = 200;
+
+/// Stable filter value that selects direct group awards.
+const GROUP_AWARD_SOURCE_VALUE: &str = "group";
 
 /// Result counts returned by a bulk badge award operation.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
@@ -30,12 +38,12 @@ pub(crate) struct AwardedBadgesFilters {
 
     /// Badge definition filter.
     pub badge_id: Option<Uuid>,
-    /// Event source filter.
-    pub event_id: Option<Uuid>,
     /// Inclusive earliest award timestamp.
     pub from: Option<DateTime<Utc>>,
     /// Recipient or badge search text.
     pub query: Option<String>,
+    /// Award source filter.
+    pub source: Option<BadgeAwardSourceFilter>,
     /// Active or revoked status filter.
     pub status: Option<String>,
     /// Exclusive latest award timestamp.
@@ -87,13 +95,53 @@ pub(crate) struct BadgeAwardInput {
     pub event_id: Option<Uuid>,
 }
 
-/// Event source represented in group award history.
+/// Award source represented in group award history.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct BadgeAwardSource {
-    /// Event identifier.
-    pub event_id: Uuid,
-    /// Event name.
+    /// Source display name.
     pub name: String,
+
+    /// Source event identifier, absent for direct group awards.
+    pub event_id: Option<Uuid>,
+}
+
+impl BadgeAwardSource {
+    /// Returns the filter value that selects this source.
+    pub(crate) fn filter(&self) -> BadgeAwardSourceFilter {
+        match self.event_id {
+            Some(event_id) => BadgeAwardSourceFilter::Event(event_id),
+            None => BadgeAwardSourceFilter::Group,
+        }
+    }
+}
+
+/// Award source filter accepted by group award history.
+#[derive(Clone, Copy, Debug, DeserializeFromStr, Eq, PartialEq, SerializeDisplay)]
+pub(crate) enum BadgeAwardSourceFilter {
+    /// Awards issued through a specific event.
+    Event(Uuid),
+    /// Direct group awards without an event source.
+    Group,
+}
+
+impl fmt::Display for BadgeAwardSourceFilter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BadgeAwardSourceFilter::Event(event_id) => write!(f, "{event_id}"),
+            BadgeAwardSourceFilter::Group => f.write_str(GROUP_AWARD_SOURCE_VALUE),
+        }
+    }
+}
+
+impl FromStr for BadgeAwardSourceFilter {
+    type Err = uuid::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == GROUP_AWARD_SOURCE_VALUE {
+            return Ok(BadgeAwardSourceFilter::Group);
+        }
+        Ok(BadgeAwardSourceFilter::Event(Uuid::from_str(s)?))
+    }
 }
 
 /// Search and pagination filters for group badge definitions.
@@ -166,7 +214,7 @@ pub(crate) struct GroupAwardedBadges {
     pub awards: Vec<UserBadge>,
     /// Distinct current definitions represented across the complete history.
     pub badges: Vec<BadgeAwardDefinition>,
-    /// Distinct event sources across the complete group history.
+    /// Distinct award sources across the complete group history.
     pub sources: Vec<BadgeAwardSource>,
     /// Total number of matching history rows.
     pub total: usize,

@@ -579,6 +579,8 @@ impl fmt::Debug for OidcProviderConfig {
     }
 }
 
+// Helpers.
+
 /// Validate a stable badge verification key identifier.
 fn validate_badge_key_id(key_id: &str) -> Result<()> {
     // Check length, allowed characters, and identifier boundaries

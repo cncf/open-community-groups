@@ -9,7 +9,9 @@ use uuid::Uuid;
 use crate::{
     templates::dashboard,
     types::{
-        badges::{BadgeArtwork, GroupAwardedBadges, GroupBadges},
+        badges::{
+            BadgeArtwork, BadgeAwardSource, BadgeAwardSourceFilter, GroupAwardedBadges, GroupBadges,
+        },
         pagination::{self, Pagination, ToRawQuery},
     },
     validation::{MAX_LEN_DATE, MAX_LEN_M, MAX_LEN_S, MAX_PAGINATION_LIMIT, trimmed_non_empty_opt},
@@ -44,12 +46,19 @@ pub(crate) struct AwardsPage {
 
     /// Selected badge-definition filter.
     pub badge_id: Option<Uuid>,
-    /// Selected event-source filter.
-    pub event_id: Option<Uuid>,
     /// Number of results per page.
     pub limit: Option<usize>,
     /// Current award-history offset.
     pub offset: Option<usize>,
+    /// Selected award-source filter.
+    pub source: Option<BadgeAwardSourceFilter>,
+}
+
+impl AwardsPage {
+    /// Returns whether an award-source filter option is selected.
+    fn is_source_selected(&self, source: &BadgeAwardSource) -> bool {
+        self.source == Some(source.filter())
+    }
 }
 
 /// Group badge definitions page.
@@ -91,11 +100,6 @@ pub(crate) struct AwardsFilters {
     #[serde(default)]
     #[garde(skip)]
     pub badge_id: Option<Uuid>,
-    /// Event source filter for award history.
-    #[serde_as(as = "NoneAsEmptyString")]
-    #[serde(default)]
-    #[garde(skip)]
-    pub event_id: Option<Uuid>,
     /// Inclusive earliest award date.
     #[serde(default, deserialize_with = "crate::validation::blank_string_as_none")]
     #[garde(length(max = MAX_LEN_DATE))]
@@ -104,6 +108,11 @@ pub(crate) struct AwardsFilters {
     #[serde(default = "dashboard::default_limit")]
     #[garde(range(min = 1, max = MAX_PAGINATION_LIMIT))]
     pub limit: Option<usize>,
+    /// Award source filter for award history.
+    #[serde_as(as = "NoneAsEmptyString")]
+    #[serde(default)]
+    #[garde(skip)]
+    pub source: Option<BadgeAwardSourceFilter>,
     /// Award status filter.
     #[serde(default, deserialize_with = "crate::validation::blank_string_as_none")]
     #[garde(length(max = MAX_LEN_S))]

@@ -24,7 +24,7 @@ describe("dashboard group badge awards template", () => {
     expect(template).not.to.include("data-awards-filter-control");
     expect(template).to.include('dashboard::active_table_filter_badge("Status", "Active")');
     expect(template).to.include('dashboard::active_table_filter_badge("Badge", badge.name)');
-    expect(template).to.include('dashboard::active_table_filter_badge("Source", source.name)');
+    expect(template).to.include('dashboard::active_table_filter_badge("Source", award_source.name)');
     expect(template).to.include('dashboard::active_table_filter_badge("Awarded from", from)');
     expect(template).to.include('dashboard::active_table_filter_badge("Through", to)');
     expect(template).to.include(">Clear all</a>");

@@ -8,7 +8,7 @@ use ssi_verification_methods::{AnyMethod, Multikey, ed25519_dalek::VerifyingKey}
 
 use crate::config::BadgesConfig;
 
-use super::{BadgeServiceError, Result};
+use super::{BadgesManagerError, Result};
 
 /// Site badge keys with retained public verification material.
 #[derive(Clone)]
@@ -17,15 +17,6 @@ pub(super) struct KeySet {
     signing_key: SigningKey,
     /// Public keys retained for credential and status verification.
     verification_keys: HashMap<String, JWK>,
-}
-
-/// Active credential signing key.
-#[derive(Clone)]
-pub(super) struct SigningKey {
-    /// Stable identifier published in the verification method URL.
-    pub(super) key_id: String,
-    /// Validated Ed25519 private key material.
-    pub(super) private_jwk: JWK,
 }
 
 impl KeySet {
@@ -68,9 +59,9 @@ impl KeySet {
         // Load the allowlisted public key material
         let jwk = self
             .public_jwk(key_id)
-            .ok_or(BadgeServiceError::UnknownVerificationMethod)?;
+            .ok_or(BadgesManagerError::UnknownVerificationMethod)?;
         let Params::OKP(params) = &jwk.params else {
-            return Err(BadgeServiceError::InvalidKey);
+            return Err(BadgesManagerError::InvalidKey);
         };
 
         // Validate the public key bytes as an Ed25519 verifying key
@@ -79,14 +70,14 @@ impl KeySet {
             .0
             .as_slice()
             .try_into()
-            .map_err(|_| BadgeServiceError::InvalidKey)?;
+            .map_err(|_| BadgesManagerError::InvalidKey)?;
         let public_key =
-            VerifyingKey::from_bytes(&public_key).map_err(|_| BadgeServiceError::InvalidKey)?;
+            VerifyingKey::from_bytes(&public_key).map_err(|_| BadgesManagerError::InvalidKey)?;
 
         // Build stable verification method and controller URLs
         let key_url = key_url(base_url, key_id)?;
         let controller = UriBuf::new(format!("{base_url}/badges").into_bytes())
-            .map_err(|_| BadgeServiceError::InvalidUrl)?;
+            .map_err(|_| BadgesManagerError::InvalidUrl)?;
 
         // Return the multikey method for the closed resolver
         Ok(Multikey::from_public_key(key_url, controller, &public_key))
@@ -114,8 +105,17 @@ impl KeySet {
     }
 }
 
+/// Active credential signing key.
+#[derive(Clone)]
+pub(super) struct SigningKey {
+    /// Stable identifier published in the verification method URL.
+    pub(super) key_id: String,
+    /// Validated Ed25519 private key material.
+    pub(super) private_jwk: JWK,
+}
+
 /// Build a stable verification method URL.
 pub(super) fn key_url(base_url: &str, key_id: &str) -> Result<IriBuf> {
     IriBuf::new(format!("{base_url}/badges/keys/{key_id}"))
-        .map_err(|_| BadgeServiceError::InvalidUrl)
+        .map_err(|_| BadgesManagerError::InvalidUrl)
 }

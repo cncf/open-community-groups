@@ -9,7 +9,7 @@
         class="text-xl font-medium text-stone-900 lg:text-2xl">Badges Awards</h1>
     <p class="m-0 mt-1 text-sm/6 text-stone-500">Review award history and manage active badge credentials.</p>
   </div>
-  {% let has_active_filters = status != "" || badge_id.is_some() || event_id.is_some() || !from.is_empty() || !to.is_empty() -%}
+  {% let has_active_filters = status != "" || badge_id.is_some() || source.is_some() || !from.is_empty() || !to.is_empty() -%}
   <form id="awards-filters"
         class="mb-4 mt-8 space-y-4"
         method="get"
@@ -72,11 +72,11 @@
       </div>
       <div>
         <label for="award-source" class="form-label">Source</label>
-        <select id="award-source" class="select-primary mt-2" name="event_id">
+        <select id="award-source" class="select-primary mt-2" name="source">
           <option value="">All sources</option>
-          {% for source in awarded_badges.sources -%}
-            <option value="{{ source.event_id }}"
-                    {% if event_id.as_ref() == Some(source.event_id) %}selected{% endif %}>{{ source.name }}</option>
+          {% for award_source in awarded_badges.sources -%}
+            <option value="{{ award_source.filter() }}"
+                    {% if self.is_source_selected(award_source) %}selected{% endif %}>{{ award_source.name }}</option>
           {% endfor -%}
         </select>
       </div>
@@ -113,8 +113,8 @@
             {% if let Some(active_badge_id) = badge_id -%}
               <input type="hidden" name="badge_id" value="{{ active_badge_id }}">
             {% endif -%}
-            {% if let Some(active_event_id) = event_id -%}
-              <input type="hidden" name="event_id" value="{{ active_event_id }}">
+            {% if let Some(active_source) = source -%}
+              <input type="hidden" name="source" value="{{ active_source }}">
             {% endif -%}
             <input type="hidden" name="from" value="{{ from }}">
             <input type="hidden" name="to" value="{{ to }}">
@@ -144,8 +144,8 @@
                 <input type="hidden" name="tab" value="awards">
                 <input type="hidden" name="awards_query" value="{{ query }}">
                 <input type="hidden" name="status" value="{{ status }}">
-                {% if let Some(active_event_id) = event_id -%}
-                  <input type="hidden" name="event_id" value="{{ active_event_id }}">
+                {% if let Some(active_source) = source -%}
+                  <input type="hidden" name="source" value="{{ active_source }}">
                 {% endif -%}
                 <input type="hidden" name="from" value="{{ from }}">
                 <input type="hidden" name="to" value="{{ to }}">
@@ -159,9 +159,9 @@
             {% endif -%}
           {% endfor -%}
         {% endif -%}
-        {% if event_id.is_some() -%}
-          {% for source in awarded_badges.sources -%}
-            {% if event_id.as_ref() == Some(source.event_id) -%}
+        {% if source.is_some() -%}
+          {% for award_source in awarded_badges.sources -%}
+            {% if self.is_source_selected(award_source) -%}
               <form class="inline-flex"
                     method="get"
                     action="/dashboard/group"
@@ -179,7 +179,7 @@
                 {% if let Some(limit) = limit -%}
                   <input type="hidden" name="limit" value="{{ limit }}">
                 {% endif -%}
-                {% call dashboard::active_table_filter_badge("Source", source.name) -%}
+                {% call dashboard::active_table_filter_badge("Source", award_source.name) -%}
                 {{ dashboard::active_table_filter_remove_button(label = "Remove source filter") -}}
                 {% endcall -%}
               </form>
@@ -199,8 +199,8 @@
             {% if let Some(active_badge_id) = badge_id -%}
               <input type="hidden" name="badge_id" value="{{ active_badge_id }}">
             {% endif -%}
-            {% if let Some(active_event_id) = event_id -%}
-              <input type="hidden" name="event_id" value="{{ active_event_id }}">
+            {% if let Some(active_source) = source -%}
+              <input type="hidden" name="source" value="{{ active_source }}">
             {% endif -%}
             <input type="hidden" name="to" value="{{ to }}">
             {% if let Some(limit) = limit -%}
@@ -224,8 +224,8 @@
             {% if let Some(active_badge_id) = badge_id -%}
               <input type="hidden" name="badge_id" value="{{ active_badge_id }}">
             {% endif -%}
-            {% if let Some(active_event_id) = event_id -%}
-              <input type="hidden" name="event_id" value="{{ active_event_id }}">
+            {% if let Some(active_source) = source -%}
+              <input type="hidden" name="source" value="{{ active_source }}">
             {% endif -%}
             <input type="hidden" name="from" value="{{ from }}">
             {% if let Some(limit) = limit -%}

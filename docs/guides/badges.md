@@ -31,8 +31,9 @@ The section has three full-width tabs:
 - [Artwork](/dashboard/group?tab=artwork ':ignore') opens the `Badges Artwork` page for uploading
   reusable PNG, JPEG, or WebP images. Artwork must be exactly 512 by 512 pixels.
 - [Awards](/dashboard/group?tab=awards ':ignore') opens the `Badges Awards` page for searching
-  credential history by recipient or badge and filtering by status, definition, source event, and
-  award date. Revoked awards remain visible to authorized managers.
+  credential history by recipient or badge and filtering by status, definition, source, and award
+  date. The source filter selects a specific event or the `Group` source, which covers awards made
+  without an event. Revoked awards remain visible to authorized managers.
 
 Badge names support up to 200 characters. Descriptions and achievement criteria support up to
 10,000 characters each.
@@ -124,7 +125,8 @@ A later award creates a new credential URL.
 Use this section to manage badges that groups have awarded to you.
 
 Open [User Dashboard -> Badges](/dashboard/user?tab=badges ':ignore'). The tab shows your active
-badges and provides controls for profile listing, ordering, sharing, export, and revocation.
+badges and provides controls for profile listing, ordering, credential viewing and sharing, PNG
+download, and revocation.
 
 ### Profile Listing and Order
 
@@ -135,17 +137,19 @@ is reversible and is the right choice when you only want to hide a badge.
 !> An unlisted badge is not private. Anyone who already has its direct credential URL can still
 open it.
 
-You can reorder badges by dragging them with a pointer or by using `Move up` and `Move down`. Both
-controls save the same profile display order.
+Each badge has a drag handle. You can reorder badges by dragging the handle with a pointer, or by
+focusing the handle and pressing `Arrow Up` or `Arrow Down`. Both controls save the same profile
+display order.
 
 ### Share and Export Credentials
 
-Select `Share` to open the badge's stable public credential page. You can copy the page URL and
-share it directly, or add it to a profile, portfolio, or anywhere else you want to show the
+Select `View credential` to open the badge's stable public credential page. You can copy the page
+URL and share it directly, or add it to a profile, portfolio, or anywhere else you want to show the
 credential. The page displays the badge details, issuing group, award date, and current active or
 revoked state.
 
-Select `Export PNG` to download a portable copy. The exported file is a baked Open Badges 3.0
+Select `Download PNG` to download a portable copy. OCG first explains what the file contains and
+asks for confirmation before the download starts. The exported file is a baked Open Badges 3.0
 credential: it contains both the badge artwork and the signed credential data.
 
 To move the credential into another compatible system, use that system's badge or credential

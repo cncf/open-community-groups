@@ -57,8 +57,9 @@ use crate::{
     types::{
         badges::{
             AwardedBadgesFilters, Badge, BadgeArtwork, BadgeAwardDefinition, BadgeAwardInput,
-            BadgeAwardSource, BadgeFilters, BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList,
-            PublicBadgeSnapshot, PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
+            BadgeAwardSource, BadgeAwardSourceFilter, BadgeFilters, BadgeSnapshot,
+            BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot, PublicBadgeSnapshotIssuer,
+            PublicUserBadge, UserBadge,
         },
         community::CommunityRole,
         event::{EventAttendanceStatus, EventInvitationRequestStatus, EventKind},
@@ -173,6 +174,17 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
             },
         )
         .await?;
+    let group_awards = db
+        .list_awarded_badges(
+            group_id(),
+            &AwardedBadgesFilters {
+                limit: 10,
+                offset: 0,
+                source: Some(BadgeAwardSourceFilter::Group),
+                ..Default::default()
+            },
+        )
+        .await?;
     let active = db
         .get_user_badge(attendee_id(), active_user_badge_id())
         .await?
@@ -218,10 +230,16 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
     );
     assert_eq!(
         awards.sources,
-        vec![BadgeAwardSource {
-            event_id: event_id(),
-            name: "Future Contract Event".to_string(),
-        }]
+        vec![
+            BadgeAwardSource {
+                name: "Group".to_string(),
+                event_id: None,
+            },
+            BadgeAwardSource {
+                name: "Future Contract Event".to_string(),
+                event_id: Some(event_id()),
+            },
+        ]
     );
     assert_eq!(
         awards.awards,
@@ -253,6 +271,11 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
                 user_id: Some(attendee_id()),
             },
         ]
+    );
+    assert_eq!(group_awards.total, 1);
+    assert_eq!(
+        group_awards.awards.first().map(|award| award.user_badge_id),
+        Some(revoked_user_badge_id())
     );
     assert_eq!(
         active,

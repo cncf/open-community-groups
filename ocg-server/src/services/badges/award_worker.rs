@@ -14,22 +14,31 @@ mod tests;
 
 /// Maximum number of queued recipients consumed by one transaction.
 const AWARD_BATCH_SIZE: usize = 25;
+
 /// Maximum credentials admitted across all replicas during one rolling minute.
 const AWARD_RATE_LIMIT_PER_MINUTE: usize = 500;
+
 /// Completed job summary retention period.
 const COMPLETED_JOB_RETENTION: Duration = Duration::from_hours(30 * 24);
+
 /// Number of consecutive failures allowed before operator intervention is required.
 const MAX_FAILURES: usize = 10;
+
 /// Number of workers that recover stale claims and clean completed summaries.
 const NUM_AWARD_RECOVERY_WORKERS: usize = 1;
+
 /// Number of deliberately low-concurrency award workers.
 const NUM_AWARD_WORKERS: usize = 1;
+
 /// Pause after a worker iteration fails.
 const PAUSE_ON_ERROR: Duration = Duration::from_secs(10);
+
 /// Pause when no badge award work is available.
 const PAUSE_ON_NONE: Duration = Duration::from_secs(15);
+
 /// Interval between recovery and cleanup attempts.
 const PAUSE_ON_RECOVERY: Duration = Duration::from_mins(1);
+
 /// Time after which an interrupted processing claim may be recovered.
 const PROCESSING_TIMEOUT: Duration = Duration::from_mins(15);
 

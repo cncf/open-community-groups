@@ -39,7 +39,7 @@ use crate::{
         badges, community, event, group, images, meetings, payments, site,
     },
     services::{
-        badges::BadgeService, images::DynImageStorage, notifications::DynNotificationsManager,
+        badges::BadgesManager, images::DynImageStorage, notifications::DynNotificationsManager,
         payments::DynPaymentsManager,
     },
 };
@@ -112,8 +112,8 @@ struct StaticFile;
 pub(crate) struct State {
     /// Activity tracker handle.
     pub activity_tracker: DynActivityTracker,
-    /// Open Badges credential service.
-    pub badge_service: Arc<BadgeService>,
+    /// Open Badges credential manager.
+    pub badges_manager: Arc<BadgesManager>,
     /// Database handle.
     pub db: DynDB,
     /// Image storage provider handle.
@@ -158,14 +158,16 @@ pub(crate) async fn setup(
     // Check whether a payments provider is configured
     let payments_enabled = payments_cfg.is_some();
 
-    // Setup router state
+    // Get badges configuration
     let badges_config = server_cfg
         .badges
         .as_ref()
         .expect("server badge configuration to be validated before router setup");
+
+    // Setup router state
     let state = State {
         activity_tracker,
-        badge_service: Arc::new(BadgeService::new(&server_cfg.base_url, badges_config)),
+        badges_manager: Arc::new(BadgesManager::new(&server_cfg.base_url, badges_config)),
         db: db.clone(),
         image_storage,
         meetings_cfg,

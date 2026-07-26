@@ -120,6 +120,8 @@ pub(crate) async fn badges_page(
     Ok((headers, Html(template.render()?)))
 }
 
+// JSON handlers.
+
 /// Return searchable badge definitions for the shared award modal.
 #[instrument(skip_all, err)]
 pub(crate) async fn options(
@@ -159,7 +161,10 @@ pub(crate) async fn add(
 ) -> Result<impl IntoResponse, HandlerError> {
     // Validate route-safe inputs before the audited database mutation
     validate_badge_input(&input)?;
+
+    // Create the badge definition
     db.add_badge(user.user_id, community_id, group_id, &input).await?;
+
     Ok((
         StatusCode::CREATED,
         [("HX-Trigger", "refresh-group-dashboard-table")],
@@ -188,8 +193,11 @@ pub(crate) async fn add_artwork(
         .await?
         .ok_or_else(|| HandlerError::Deserialization("badge artwork was not found".to_string()))?;
     validate_badge_artwork(file_name, &image)?;
+
+    // Register the artwork in the group's gallery
     db.add_badge_artwork(user.user_id, community_id, group_id, file_name)
         .await?;
+
     Ok((
         StatusCode::CREATED,
         [("HX-Trigger", "refresh-group-dashboard-table")],
@@ -225,6 +233,7 @@ pub(crate) async fn award(
             },
         )
         .await?;
+
     Ok((StatusCode::CREATED, Json(outcome)))
 }
 
@@ -427,9 +436,9 @@ pub(crate) async fn prepare_awards_page(
         limit,
         offset,
         badge_id: filters.badge_id,
-        event_id: filters.event_id,
         from: from_filter,
         query: filters.awards_query.clone(),
+        source: filters.source,
         status: filters.status.clone(),
         to: to_filter,
     };
@@ -455,9 +464,9 @@ pub(crate) async fn prepare_awards_page(
         to,
 
         badge_id: filters.badge_id,
-        event_id: filters.event_id,
         limit: filters.limit,
         offset: filters.awards_offset,
+        source: filters.source,
     };
 
     Ok((filters, template))

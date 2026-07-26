@@ -22,7 +22,7 @@ use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_IMMUTABLE, CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
-    services::badges::{BadgeService, BadgeServiceError, png, rfc3339},
+    services::badges::{BadgesManager, BadgesManagerError, png, rfc3339},
     templates::badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
 };
 
@@ -31,11 +31,14 @@ mod tests;
 
 /// Request headers used to vary cached credential responses.
 const CREDENTIAL_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch, accept";
+
 /// User-facing message returned for invalid badge submissions.
 const INVALID_VERIFICATION_MESSAGE: &str =
     "This badge could not be verified as an OCG-issued credential.";
+
 /// Cache policy for signed status list credentials.
 const STATUS_LIST_CACHE_CONTROL: &str = "public, max-age=600";
+
 /// Default and maximum number of badges returned by one public profile request.
 const USER_PROFILE_BADGES_LIMIT: usize = 50;
 
@@ -44,7 +47,7 @@ const USER_PROFILE_BADGES_LIMIT: usize = 50;
 /// Serve the public credential page or signed JSON-LD representation.
 #[instrument(skip_all, err)]
 pub(crate) async fn credential(
-    State(badge_service): State<Arc<BadgeService>>,
+    State(badges_manager): State<Arc<BadgesManager>>,
     State(db): State<DynDB>,
     Path(user_badge_id): Path<Uuid>,
     headers: HeaderMap,
@@ -56,11 +59,12 @@ pub(crate) async fn credential(
         .await?
         .ok_or(HandlerError::NotFound)?;
 
+    // Serve the signed JSON-LD credential when the client asks for it
     if accepts_credential(&headers) {
         // Reuse the immutable signature and shed excess cold-signing load
-        let credential = match badge_service.cached_credential(&award, Utc::now()).await {
+        let credential = match badges_manager.cached_credential(&award, Utc::now()).await {
             Ok(credential) => credential,
-            Err(BadgeServiceError::Busy) => {
+            Err(BadgesManagerError::Busy) => {
                 return Ok((
                     StatusCode::SERVICE_UNAVAILABLE,
                     [(CACHE_CONTROL, CACHE_CONTROL_NO_STORE), (RETRY_AFTER, "1")],
@@ -92,18 +96,29 @@ pub(crate) async fn credential(
     Ok((cache_headers, Html(page.render()?)).into_response())
 }
 
+/// Render the public badge verification form.
+#[instrument(skip_all, err)]
+pub(crate) async fn verify_page(
+    State(db): State<DynDB>,
+    uri: Uri,
+) -> Result<impl IntoResponse, HandlerError> {
+    render_verify_page(&db, uri.path(), None, None).await
+}
+
+// JSON handlers.
+
 /// Publish a stable group issuer profile.
 #[instrument(skip_all)]
 pub(crate) async fn issuer(
-    State(badge_service): State<Arc<BadgeService>>,
+    State(badges_manager): State<Arc<BadgesManager>>,
     Path(group_id): Path<Uuid>,
 ) -> impl IntoResponse {
     // Publish every retained assertion method on the stable issuer profile
-    let assertion_methods = badge_service
+    let assertion_methods = badges_manager
         .verification_key_ids()
         .into_iter()
         .filter_map(|key_id| {
-            badge_service
+            badges_manager
                 .verification_method(key_id)
                 .ok()?
                 .get("id")?
@@ -114,7 +129,7 @@ pub(crate) async fn issuer(
     (
         PUBLIC_SHARED_CACHE_HEADERS,
         Json(json!({
-            "id": badge_service.issuer_url(group_id),
+            "id": badges_manager.issuer_url(group_id),
             "type": "Profile",
             "name": format!("Open Community Groups issuer {group_id}"),
             "assertionMethod": assertion_methods
@@ -125,7 +140,7 @@ pub(crate) async fn issuer(
 /// Publish a signed revocation-only Bitstring Status List credential.
 #[instrument(skip_all, err)]
 pub(crate) async fn status_list(
-    State(badge_service): State<Arc<BadgeService>>,
+    State(badges_manager): State<Arc<BadgesManager>>,
     State(db): State<DynDB>,
     Path(badge_status_list_id): Path<Uuid>,
 ) -> Result<Response, HandlerError> {
@@ -134,7 +149,7 @@ pub(crate) async fn status_list(
         .get_badge_status_list(badge_status_list_id)
         .await?
         .ok_or(HandlerError::NotFound)?;
-    let credential = badge_service
+    let credential = badges_manager
         .cached_status_list(
             status.badge_status_list_id,
             status.group_id,
@@ -179,22 +194,13 @@ pub(crate) async fn user_profile_badges(
 /// Publish one allowlisted Ed25519 Multikey verification method.
 #[instrument(skip_all)]
 pub(crate) async fn verification_key(
-    State(badge_service): State<Arc<BadgeService>>,
+    State(badges_manager): State<Arc<BadgesManager>>,
     Path(key_id): Path<String>,
 ) -> Response {
-    match badge_service.verification_method(&key_id) {
+    match badges_manager.verification_method(&key_id) {
         Ok(method) => ([(CACHE_CONTROL, CACHE_CONTROL_IMMUTABLE)], Json(method)).into_response(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
-}
-
-/// Render the public badge verification form.
-#[instrument(skip_all, err)]
-pub(crate) async fn verify_page(
-    State(db): State<DynDB>,
-    uri: Uri,
-) -> Result<impl IntoResponse, HandlerError> {
-    render_verify_page(&db, uri.path(), None, None).await
 }
 
 // Actions handlers.
@@ -202,7 +208,7 @@ pub(crate) async fn verify_page(
 /// Verify one ID, credential URL, or bounded Open Badges PNG.
 #[instrument(skip_all, err)]
 pub(crate) async fn verify(
-    State(badge_service): State<Arc<BadgeService>>,
+    State(badges_manager): State<Arc<BadgesManager>>,
     State(db): State<DynDB>,
     uri: Uri,
     mut multipart: Multipart,
@@ -238,7 +244,7 @@ pub(crate) async fn verify(
 
     // Verify the local credential and preserve operational error classes
     let result = verify_submission(
-        &badge_service,
+        &badges_manager,
         &db,
         credential_reference.as_deref(),
         png_bytes.as_deref(),
@@ -304,9 +310,9 @@ fn accepts_credential(headers: &HeaderMap) -> bool {
 }
 
 /// Classify proof/profile failures without hiding server configuration faults.
-fn map_verification_validation_error(error: BadgeServiceError) -> VerificationError {
+fn map_verification_validation_error(error: BadgesManagerError) -> VerificationError {
     match error {
-        error @ (BadgeServiceError::InvalidContext | BadgeServiceError::InvalidKey) => {
+        error @ (BadgesManagerError::InvalidContext | BadgesManagerError::InvalidKey) => {
             VerificationError::Internal(error.into())
         }
         _ => VerificationError::Invalid,
@@ -342,7 +348,7 @@ async fn render_verify_page(
 
 /// Resolve and verify one supported form submission without arbitrary dereferencing.
 async fn verify_submission(
-    badge_service: &BadgeService,
+    badges_manager: &BadgesManager,
     db: &DynDB,
     credential_reference: Option<&str>,
     png_bytes: Option<&[u8]>,
@@ -352,7 +358,7 @@ async fn verify_submission(
         let credential = png::extract(png_bytes).map_err(|_| VerificationError::Invalid)?;
         let credential =
             serde_json::from_slice::<Value>(&credential).map_err(|_| VerificationError::Invalid)?;
-        let verified = badge_service
+        let verified = badges_manager
             .verify_credential(&credential)
             .await
             .map_err(map_verification_validation_error)?;
@@ -385,7 +391,7 @@ async fn verify_submission(
         .filter(|reference| !reference.is_empty())
         .ok_or(VerificationError::Invalid)?;
     let user_badge_id = Uuid::parse_str(reference)
-        .or_else(|_| badge_service.parse_credential_url(reference))
+        .or_else(|_| badges_manager.parse_credential_url(reference))
         .map_err(|_| VerificationError::Invalid)?;
     let award = db
         .get_public_user_badge(user_badge_id)
@@ -395,7 +401,7 @@ async fn verify_submission(
 
     Ok(VerifiedBadgeView {
         description: award.snapshot.description,
-        issuer: badge_service.issuer_url(award.group_id),
+        issuer: badges_manager.issuer_url(award.group_id),
         name: award.snapshot.name,
         revoked: award.revoked_at.is_some(),
         valid_from: rfc3339(award.awarded_at),

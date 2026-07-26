@@ -10,8 +10,12 @@ returns json as $$
                 nullif(btrim(p_filters->>'query'), '') as query_value,
 
                 nullif(p_filters->>'badge_id', '')::uuid as badge_id_value,
-                nullif(p_filters->>'event_id', '')::uuid as event_id_value,
+                case
+                    when nullif(p_filters->>'source', '') is distinct from 'group' then
+                        nullif(p_filters->>'source', '')::uuid
+                end as event_id_value,
                 nullif(p_filters->>'from', '')::timestamptz as from_value,
+                coalesce(p_filters->>'source' = 'group', false) as group_source_value,
                 nullif(p_filters->>'status', '') as status_value,
                 nullif(p_filters->>'to', '')::timestamptz as to_value
         ),
@@ -45,6 +49,7 @@ returns json as $$
             and (f.badge_id_value is null or ub.badge_id = f.badge_id_value)
             and (f.event_id_value is null or ub.event_id = f.event_id_value)
             and (f.from_value is null or ub.awarded_at >= f.from_value)
+            and (not f.group_source_value or ub.event_id is null)
             and (f.to_value is null or ub.awarded_at < f.to_value)
             and (
                 f.status_value is null
@@ -93,12 +98,21 @@ returns json as $$
         ),
         'sources', coalesce(
             (
-                select json_agg(row_to_json(source) order by source.name, source.event_id)
+                -- Direct group source first, then event sources by name
+                select json_agg(row_to_json(source) order by source.event_id is not null, source.name, source.event_id)
                 from (
-                    select distinct e.event_id, e.name
+                    select distinct e.name, e.event_id
                     from user_badge ub
                     join event e on e.event_id = ub.event_id
                     where ub.group_id = p_group_id
+                    union all
+                    select 'Group' as name, null::uuid as event_id
+                    where exists (
+                        select 1
+                        from user_badge ub
+                        where ub.group_id = p_group_id
+                        and ub.event_id is null
+                    )
                 ) source
             ),
             '[]'::json

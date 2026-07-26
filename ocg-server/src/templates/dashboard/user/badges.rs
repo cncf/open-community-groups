@@ -4,6 +4,8 @@ use askama::Template;
 
 use crate::types::badges::UserBadge;
 
+// Pages templates.
+
 /// Active user badges dashboard pane.
 #[derive(Debug, Clone, Template, serde::Serialize, serde::Deserialize)]
 #[template(path = "dashboard/user/badges.html")]

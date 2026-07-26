@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(6);
+select plan(9);
 
 -- ============================================================================
 -- VARIABLES
@@ -130,10 +130,16 @@ select is(
             'badge_id', :'badgeID'::uuid,
             'name', 'Renamed History Badge'
         )),
-        'sources', jsonb_build_array(jsonb_build_object(
-            'event_id', :'eventID'::uuid,
-            'name', 'History Event'
-        )),
+        'sources', jsonb_build_array(
+            jsonb_build_object(
+                'name', 'Group',
+                'event_id', null
+            ),
+            jsonb_build_object(
+                'name', 'History Event',
+                'event_id', :'eventID'::uuid
+            )
+        ),
         'total', 1
     ),
     'Should filter active history'
@@ -168,10 +174,16 @@ select is(
             'badge_id', :'badgeID'::uuid,
             'name', 'Renamed History Badge'
         )),
-        'sources', jsonb_build_array(jsonb_build_object(
-            'event_id', :'eventID'::uuid,
-            'name', 'History Event'
-        )),
+        'sources', jsonb_build_array(
+            jsonb_build_object(
+                'name', 'Group',
+                'event_id', null
+            ),
+            jsonb_build_object(
+                'name', 'History Event',
+                'event_id', :'eventID'::uuid
+            )
+        ),
         'total', 1
     ),
     'Should filter revoked history'
@@ -229,10 +241,16 @@ select is(
             'badge_id', :'badgeID'::uuid,
             'name', 'Renamed History Badge'
         )),
-        'sources', jsonb_build_array(jsonb_build_object(
-            'event_id', :'eventID'::uuid,
-            'name', 'History Event'
-        )),
+        'sources', jsonb_build_array(
+            jsonb_build_object(
+                'name', 'Group',
+                'event_id', null
+            ),
+            jsonb_build_object(
+                'name', 'History Event',
+                'event_id', :'eventID'::uuid
+            )
+        ),
         'total', 2
     ),
     'Should list active and revoked history'
@@ -245,11 +263,34 @@ select is(
     'Should return complete badge-filter options outside pagination'
 );
 
--- Should return complete event-source options outside pagination
+-- Should return complete source options outside pagination
 select is(
     list_awarded_badges(:'groupID', '{"limit":1}')::jsonb->'sources',
-    jsonb_build_array(jsonb_build_object('event_id', :'eventID'::uuid, 'name', 'History Event')),
-    'Should return complete event-source options outside pagination'
+    jsonb_build_array(
+        jsonb_build_object('name', 'Group', 'event_id', null),
+        jsonb_build_object('name', 'History Event', 'event_id', :'eventID'::uuid)
+    ),
+    'Should return complete source options outside pagination'
+);
+
+-- Should filter history by event source
+select is(
+    list_awarded_badges(:'groupID', format('{"source":"%s"}', :'eventID')::jsonb)::jsonb->'total',
+    '1'::jsonb,
+    'Should filter history by event source'
+);
+select is(
+    list_awarded_badges(:'groupID', format('{"source":"%s"}', :'eventID')::jsonb)::jsonb
+        ->'awards'->0->>'user_badge_id',
+    :'userBadgeActiveID',
+    'Should return the event-sourced award for the event source filter'
+);
+
+-- Should filter direct group awards
+select is(
+    list_awarded_badges(:'groupID', '{"source":"group"}')::jsonb->'awards'->0->>'user_badge_id',
+    :'userBadgeRevokedID',
+    'Should filter direct group awards'
 );
 
 -- Should search recipient and badge names
@@ -281,10 +322,16 @@ select is(
             'badge_id', :'badgeID'::uuid,
             'name', 'Renamed History Badge'
         )),
-        'sources', jsonb_build_array(jsonb_build_object(
-            'event_id', :'eventID'::uuid,
-            'name', 'History Event'
-        )),
+        'sources', jsonb_build_array(
+            jsonb_build_object(
+                'name', 'Group',
+                'event_id', null
+            ),
+            jsonb_build_object(
+                'name', 'History Event',
+                'event_id', :'eventID'::uuid
+            )
+        ),
         'total', 1
     ),
     'Should search recipient and badge names'

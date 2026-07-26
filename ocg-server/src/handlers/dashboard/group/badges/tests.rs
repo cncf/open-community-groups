@@ -20,7 +20,10 @@ use crate::{
         notifications::MockNotificationsManager,
     },
     types::{
-        badges::{AwardBadgeOutcome, BadgeAwardInput, BadgeInput, GroupAwardedBadges, GroupBadges},
+        badges::{
+            AwardBadgeOutcome, BadgeAwardInput, BadgeAwardSourceFilter, BadgeInput,
+            GroupAwardedBadges, GroupBadges,
+        },
         permissions::GroupPermission,
     },
 };
@@ -1201,9 +1204,9 @@ async fn test_awards_page_builds_navigation() {
                 && filters.limit == 25
                 && filters.offset == 50
                 && filters.badge_id == Some(badge_id)
-                && filters.event_id == Some(event_id)
                 && filters.from.as_ref() == Some(&expected_from)
                 && filters.query.as_deref() == Some("alice")
+                && filters.source == Some(BadgeAwardSourceFilter::Event(event_id))
                 && filters.status.as_deref() == Some("active")
                 && filters.to.as_ref() == Some(&expected_to)
         })
@@ -1223,7 +1226,7 @@ async fn test_awards_page_builds_navigation() {
             Request::builder()
                 .uri(format!(
                     "/dashboard/group/awards?awards_offset=50&awards_query=alice&badge_id={badge_id}\
-                     &event_id={event_id}&from=2026-01-01&limit=25&status=active&to=2026-01-31"
+                     &from=2026-01-01&limit=25&source={event_id}&status=active&to=2026-01-31"
                 ))
                 .header(COOKIE, format!("id={session_id}"))
                 .body(Body::empty())
@@ -1251,6 +1254,48 @@ async fn test_awards_page_builds_navigation() {
     assert!(body.contains("href=\"/dashboard/group?tab=awards"));
     assert!(body.contains("hx-get=\"/dashboard/group/awards?"));
     assert!(body.contains(">Badges Awards</h1>"));
+}
+
+#[tokio::test]
+async fn test_awards_page_filters_direct_group_awards() {
+    // Setup an authorized group session expecting the group source filter
+    let community_id = Uuid::new_v4();
+    let group_id = Uuid::new_v4();
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let mut db = MockDB::new();
+    expect_authenticated_group_session(&mut db, session_id, user_id, community_id, group_id);
+    expect_group_permission(
+        &mut db,
+        community_id,
+        group_id,
+        user_id,
+        GroupPermission::BadgesWrite,
+    );
+    db.expect_list_awarded_badges()
+        .times(1)
+        .withf(move |id, filters| {
+            *id == group_id && filters.source == Some(BadgeAwardSourceFilter::Group)
+        })
+        .return_once(|_, _| Ok(GroupAwardedBadges::default()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .build()
+        .await;
+
+    // Request award history filtered to direct group awards
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri("/dashboard/group/awards?source=group")
+                .header(COOKIE, format!("id={session_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check the group sentinel reaches the award-history query
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[tokio::test]

@@ -1482,7 +1482,7 @@ pub(crate) fn test_state_with_server_cfg(
     let badges_config = server_cfg.badges.as_ref().unwrap_or(&TEST_BADGES_CONFIG);
     router::State {
         activity_tracker: Arc::new(crate::activity_tracker::MockActivityTracker::new()),
-        badge_service: Arc::new(crate::services::badges::BadgeService::new(
+        badges_manager: Arc::new(crate::services::badges::BadgesManager::new(
             &server_cfg.base_url,
             badges_config,
         )),

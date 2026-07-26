@@ -34,7 +34,15 @@ async fn test_page_analytics_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, false, 1);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -112,7 +120,15 @@ async fn test_page_badge_tabs_require_management_permission() {
 
     // Require every protected tab to stop before loading its page data
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, false, 3);
+    db.expect_user_has_group_permission()
+        .times(3)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(false));
     db.expect_get_session()
         .times(3)
         .withf(move |id| *id == session_id)
@@ -182,8 +198,24 @@ async fn test_page_events_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 1);
-    expect_events_permission(&mut db, community_id, group_id, user_id, true, 1);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -267,7 +299,15 @@ async fn test_page_logs_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 1);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -346,7 +386,15 @@ async fn test_page_members_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 1);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -437,7 +485,15 @@ async fn test_page_settings_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 1);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -537,7 +593,15 @@ async fn test_page_sponsors_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 1);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -628,7 +692,15 @@ async fn test_page_team_tab_success() {
 
     // Setup database mock
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 2);
+    db.expect_user_has_group_permission()
+        .times(2)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -717,8 +789,24 @@ async fn test_page_refunds_tab_success() {
 
     // Setup dashboard context, permissions, and refund list expectations
     let mut db = MockDB::new();
-    expect_badge_permission(&mut db, community_id, group_id, user_id, true, 1);
-    expect_events_permission(&mut db, community_id, group_id, user_id, true, 1);
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::BadgesWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
+    db.expect_user_has_group_permission()
+        .times(1)
+        .withf(move |cid, gid, uid, permission| {
+            *cid == community_id
+                && *gid == group_id
+                && *uid == user_id
+                && permission == GroupPermission::EventsWrite
+        })
+        .returning(|_, _, _, _| Ok(true));
     db.expect_get_session()
         .times(1)
         .withf(move |id| *id == session_id)
@@ -769,44 +857,4 @@ async fn test_page_refunds_tab_success() {
 
     // Check the full dashboard renders the refund operations tab
     assert_html_response(&parts, &bytes, StatusCode::OK);
-}
-
-// Helpers.
-
-fn expect_badge_permission(
-    db: &mut MockDB,
-    community_id: Uuid,
-    group_id: Uuid,
-    user_id: Uuid,
-    allowed: bool,
-    expected_calls: usize,
-) {
-    db.expect_user_has_group_permission()
-        .times(expected_calls)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::BadgesWrite
-        })
-        .returning(move |_, _, _, _| Ok(allowed));
-}
-
-fn expect_events_permission(
-    db: &mut MockDB,
-    community_id: Uuid,
-    group_id: Uuid,
-    user_id: Uuid,
-    allowed: bool,
-    expected_calls: usize,
-) {
-    db.expect_user_has_group_permission()
-        .times(expected_calls)
-        .withf(move |cid, gid, uid, permission| {
-            *cid == community_id
-                && *gid == group_id
-                && *uid == user_id
-                && permission == GroupPermission::EventsWrite
-        })
-        .returning(move |_, _, _, _| Ok(allowed));
 }

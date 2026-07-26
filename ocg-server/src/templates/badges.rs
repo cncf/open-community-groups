@@ -7,6 +7,8 @@ use crate::{
     types::{badges::UserBadge, site::SiteSettings},
 };
 
+// Pages and sections templates.
+
 /// Public credential page.
 #[derive(Debug, Clone, Template)]
 #[template(path = "badges/credential.html")]

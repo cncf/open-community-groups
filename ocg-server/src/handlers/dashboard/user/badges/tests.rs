@@ -20,7 +20,7 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::{TestRouterBuilder, assert_empty_response, expect_authenticated_session},
     services::{
-        badges::{BadgeService, png},
+        badges::{BadgesManager, png},
         images::{Image, MockImageStorage},
         notifications::MockNotificationsManager,
     },
@@ -110,7 +110,7 @@ async fn test_export_success() {
     // Setup an authenticated owner, active award, signing key, and valid artwork
     let config = badge_config();
     let base_url = "https://badges.example.test";
-    let verification_service = BadgeService::new(base_url, &config);
+    let verification_manager = BadgesManager::new(base_url, &config);
     let session_id = session::Id::default();
     let user_badge_id = Uuid::new_v4();
     let user_id = Uuid::new_v4();
@@ -167,7 +167,7 @@ async fn test_export_success() {
         &format!("attachment; filename=\"badge-{user_badge_id}.png\"")
     );
     let credential = serde_json::from_slice(&png::extract(&body).unwrap()).unwrap();
-    let verified = verification_service.verify_credential(&credential).await.unwrap();
+    let verified = verification_manager.verify_credential(&credential).await.unwrap();
     assert_eq!(verified.user_badge_id, user_badge_id);
     assert_eq!(verified.status_list_id, badge_status_list_id);
 }
