@@ -1,3 +1,5 @@
+use std::io::Cursor;
+
 use axum::{
     body::{Body, to_bytes},
     http::{
@@ -6,6 +8,7 @@ use axum::{
     },
 };
 use chrono::{TimeZone, Utc};
+use image::{DynamicImage, ImageFormat};
 use serde_json::{Value, json};
 use ssi_jwk::JWK;
 use tower::ServiceExt;
@@ -16,7 +19,7 @@ use crate::{
     db::mock::MockDB,
     handlers::tests::{TestRouterBuilder, sample_site_settings},
     router::CACHE_CONTROL_PUBLIC_SHARED,
-    services::notifications::MockNotificationsManager,
+    services::{badges::CredentialInput, notifications::MockNotificationsManager},
     types::badges::{
         BadgeSnapshot, BadgeSnapshotIssuer, BadgeStatusList, PublicBadgeSnapshot,
         PublicBadgeSnapshotIssuer, PublicUserBadge, UserBadge,
@@ -289,6 +292,7 @@ async fn test_user_profile_badges_returns_public_projection() {
         snapshot: PublicBadgeSnapshot {
             image_file_name: award.snapshot.image_file_name,
             issuer: PublicBadgeSnapshotIssuer {
+                community_name: award.snapshot.issuer.community_name,
                 group_name: award.snapshot.issuer.group_name,
             },
             name: award.snapshot.name,
@@ -472,6 +476,74 @@ async fn test_verify_post_returns_current_local_award() {
     let body = String::from_utf8_lossy(&body);
     assert!(body.contains("Valid and active"));
     assert!(body.contains("Ada"));
+    assert!(body.contains("src=\"/images/badges/test-badge.png\""));
+    assert!(body.contains("alt=\"Test Badge badge artwork\""));
+    assert!(body.contains("datetime=\"2024-01-02T03:04:05+00:00\""));
+    assert!(body.contains("January 2, 2024"));
+}
+
+#[tokio::test]
+async fn test_verify_post_returns_uploaded_award() {
+    // Issue and bake one portable credential using the router's signing key
+    let award = sample_user_badge();
+    let user_badge_id = award.user_badge_id;
+    let server_cfg = badges_server_config();
+    let badges_manager =
+        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+    let credential = badges_manager
+        .issue_credential(CredentialInput {
+            award: &award,
+            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+        })
+        .await
+        .unwrap();
+    let credential = serde_json::to_vec(&credential).unwrap();
+    let png = png::bake(&sample_png(), &credential).unwrap();
+
+    // Setup the matching durable award and verification page settings
+    let mut db = MockDB::new();
+    db.expect_get_public_user_badge()
+        .times(1)
+        .withf(move |id| *id == user_badge_id)
+        .returning(move |_| Ok(Some(award.clone())));
+    db.expect_get_site_settings()
+        .times(1)
+        .return_once(|| Ok(sample_site_settings()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+    let boundary = "BADGE-PNG-VERIFY-BOUNDARY";
+
+    // Submit the exported PNG as multipart form data
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/badges/verify")
+                .header(
+                    CONTENT_TYPE,
+                    format!("multipart/form-data; boundary={boundary}"),
+                )
+                .body(Body::from(png_multipart(boundary, &png)))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check portable verification renders the matched local artwork and award date
+    assert_eq!(parts.status, StatusCode::OK);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        CACHE_CONTROL_NO_STORE
+    );
+    let body = String::from_utf8_lossy(&body);
+    assert!(body.contains("Valid and active"));
+    assert!(body.contains("src=\"/images/badges/test-badge.png\""));
+    assert!(body.contains("datetime=\"2024-01-02T03:04:05+00:00\""));
+    assert!(body.contains("January 2, 2024"));
 }
 
 // Helpers.
@@ -498,6 +570,17 @@ fn credential_multipart(boundary: &str, user_badge_id: Uuid) -> String {
     )
 }
 
+/// Encodes one PNG-upload multipart body.
+fn png_multipart(boundary: &str, png: &[u8]) -> Vec<u8> {
+    let mut body = format!(
+        "--{boundary}\r\nContent-Disposition: form-data; name=\"png\"; filename=\"badge.png\"\r\nContent-Type: image/png\r\n\r\n"
+    )
+    .into_bytes();
+    body.extend_from_slice(png);
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    body
+}
+
 /// Build one deterministic current status-list row.
 fn sample_badge_status_list() -> BadgeStatusList {
     BadgeStatusList {
@@ -505,6 +588,15 @@ fn sample_badge_status_list() -> BadgeStatusList {
         group_id: Uuid::new_v4(),
         revoked_indexes: vec![1],
     }
+}
+
+/// Encodes valid 512×512 PNG artwork.
+fn sample_png() -> Vec<u8> {
+    let mut output = Cursor::new(Vec::new());
+    DynamicImage::new_rgba8(512, 512)
+        .write_to(&mut output, ImageFormat::Png)
+        .unwrap();
+    output.into_inner()
 }
 
 /// Build one active public badge fixture.

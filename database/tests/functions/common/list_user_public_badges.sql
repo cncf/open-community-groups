@@ -80,7 +80,7 @@ insert into user_badge (
         0,
         :'groupID',
         true,
-        '{"image_file_name":"listed.png","issuer":{"group_name":"Profile Group"},"name":"Listed"}',
+        '{"image_file_name":"listed.png","issuer":{"community_name":"Profile Community","group_name":"Profile Group"},"name":"Listed"}',
         1,
         :'userID'
     ),
@@ -90,7 +90,7 @@ insert into user_badge (
         1,
         :'groupID',
         false,
-        '{"image_file_name":"hidden.png","issuer":{"group_name":"Profile Group"},"name":"Hidden"}',
+        '{"image_file_name":"hidden.png","issuer":{"community_name":"Profile Community","group_name":"Profile Group"},"name":"Hidden"}',
         2,
         :'userID'
     );
@@ -105,7 +105,7 @@ insert into user_badge (
     2,
     :'otherGroupID',
     true,
-    '{"image_file_name":"other-listed.png","issuer":{"group_name":"Other Community Group"},"name":"Other Listed"}',
+    '{"image_file_name":"other-listed.png","issuer":{"community_name":"Other Community","group_name":"Other Community Group"},"name":"Other Listed"}',
     1,
     :'userID'
 );
@@ -122,7 +122,10 @@ select
     true,
     jsonb_build_object(
         'image_file_name', format('listed-%s.png', series.value),
-        'issuer', jsonb_build_object('group_name', 'Profile Group'),
+        'issuer', jsonb_build_object(
+            'community_name', 'Profile Community',
+            'group_name', 'Profile Group'
+        ),
         'name', format('Listed %s', series.value)
     ),
     100 + series.value,
@@ -147,7 +150,10 @@ select is(
         jsonb_build_object(
             'snapshot', jsonb_build_object(
                 'image_file_name', 'listed.png',
-                'issuer', jsonb_build_object('group_name', 'Profile Group'),
+                'issuer', jsonb_build_object(
+                    'community_name', 'Profile Community',
+                    'group_name', 'Profile Group'
+                ),
                 'name', 'Listed'
             ),
             'user_badge_id', :'userBadgeListedID'::uuid
@@ -155,7 +161,10 @@ select is(
         jsonb_build_object(
             'snapshot', jsonb_build_object(
                 'image_file_name', 'other-listed.png',
-                'issuer', jsonb_build_object('group_name', 'Other Community Group'),
+                'issuer', jsonb_build_object(
+                    'community_name', 'Other Community',
+                    'group_name', 'Other Community Group'
+                ),
                 'name', 'Other Listed'
             ),
             'user_badge_id', :'userBadgeOtherCommunityID'::uuid
@@ -170,7 +179,10 @@ select is(
     jsonb_build_array(jsonb_build_object(
         'snapshot', jsonb_build_object(
             'image_file_name', 'other-listed.png',
-            'issuer', jsonb_build_object('group_name', 'Other Community Group'),
+            'issuer', jsonb_build_object(
+                'community_name', 'Other Community',
+                'group_name', 'Other Community Group'
+            ),
             'name', 'Other Listed'
         ),
         'user_badge_id', :'userBadgeOtherCommunityID'::uuid
@@ -191,7 +203,10 @@ select is(
     jsonb_build_array(jsonb_build_object(
         'snapshot', jsonb_build_object(
             'image_file_name', 'listed.png',
-            'issuer', jsonb_build_object('group_name', 'Profile Group'),
+            'issuer', jsonb_build_object(
+                'community_name', 'Profile Community',
+                'group_name', 'Profile Group'
+            ),
             'name', 'Listed'
         ),
         'user_badge_id', :'userBadgeListedID'::uuid

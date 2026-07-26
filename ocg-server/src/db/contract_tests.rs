@@ -296,6 +296,7 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
             snapshot: PublicBadgeSnapshot {
                 image_file_name: "contract-badge.png".to_string(),
                 issuer: PublicBadgeSnapshotIssuer {
+                    community_name: "Contract Community".to_string(),
                     group_name: "Contract Group".to_string(),
                 },
                 name: "Contract Participant".to_string(),

@@ -252,6 +252,8 @@ pub(crate) struct PublicBadgeSnapshot {
 /// Minimal immutable issuer fields exposed by public profiles.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct PublicBadgeSnapshotIssuer {
+    /// Issuing community display name.
+    pub community_name: String,
     /// Issuing group display name.
     pub group_name: String,
 }

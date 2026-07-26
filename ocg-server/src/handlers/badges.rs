@@ -22,7 +22,7 @@ use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_IMMUTABLE, CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
-    services::badges::{BadgesManager, BadgesManagerError, png, rfc3339},
+    services::badges::{BadgesManager, BadgesManagerError, png},
     templates::badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
 };
 
@@ -82,7 +82,7 @@ pub(crate) async fn credential(
 
     // Render the browser representation from the same snapshot
     let site_settings = db.get_site_settings().await?;
-    let image_url = format!("/images/badges/{}", award.snapshot.image_file_name);
+    let image_url = badge_image_url(&award.snapshot.image_file_name);
     let revoked = award.revoked_at.is_some();
     let page = CredentialPage {
         award,
@@ -309,6 +309,11 @@ fn accepts_credential(headers: &HeaderMap) -> bool {
         })
 }
 
+/// Builds the public URL for stored badge artwork.
+fn badge_image_url(image_file_name: &str) -> String {
+    format!("/images/badges/{image_file_name}")
+}
+
 /// Classify proof/profile failures without hiding server configuration faults.
 fn map_verification_validation_error(error: BadgesManagerError) -> VerificationError {
     match error {
@@ -376,6 +381,7 @@ async fn verify_submission(
 
         return Ok(VerifiedBadgeView {
             description: verified.description,
+            image_url: badge_image_url(&award.snapshot.image_file_name),
             issuer: verified.issuer,
             name: verified.name,
             revoked: award.revoked_at.is_some(),
@@ -401,10 +407,11 @@ async fn verify_submission(
 
     Ok(VerifiedBadgeView {
         description: award.snapshot.description,
+        image_url: badge_image_url(&award.snapshot.image_file_name),
         issuer: badges_manager.issuer_url(award.group_id),
         name: award.snapshot.name,
         revoked: award.revoked_at.is_some(),
-        valid_from: rfc3339(award.awarded_at),
+        valid_from: award.awarded_at,
 
         recipient_name: recipient_display_name(award.recipient_name, award.recipient_username),
     })

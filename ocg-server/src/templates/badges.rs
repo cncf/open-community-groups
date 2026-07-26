@@ -1,6 +1,7 @@
 //! Templates for public badge credentials and verification.
 
 use askama::Template;
+use chrono::{DateTime, Utc};
 
 use crate::{
     templates::filters,
@@ -37,6 +38,8 @@ impl CredentialPage {
 pub struct VerifiedBadgeView {
     /// Immutable badge description.
     pub description: String,
+    /// Public badge image URL.
+    pub image_url: String,
     /// Stable issuer URL.
     pub issuer: String,
     /// Immutable badge name.
@@ -44,7 +47,7 @@ pub struct VerifiedBadgeView {
     /// Whether the credential is permanently revoked.
     pub revoked: bool,
     /// Credential award timestamp.
-    pub valid_from: String,
+    pub valid_from: DateTime<Utc>,
 
     /// Current local recipient display name, when the account remains associated.
     pub recipient_name: Option<String>,

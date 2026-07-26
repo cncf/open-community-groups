@@ -29,6 +29,7 @@ begin
             'snapshot', json_build_object(
                 'image_file_name', ub.snapshot->>'image_file_name',
                 'issuer', json_build_object(
+                    'community_name', ub.snapshot#>>'{issuer,community_name}',
                     'group_name', ub.snapshot#>>'{issuer,group_name}'
                 ),
                 'name', ub.snapshot->>'name'

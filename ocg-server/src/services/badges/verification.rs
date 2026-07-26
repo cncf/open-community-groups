@@ -1,5 +1,6 @@
 //! OCG badge credential proof and profile verification.
 
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -20,7 +21,7 @@ pub(crate) struct VerifiedCredential {
     /// Opaque local award identifier.
     pub user_badge_id: Uuid,
     /// Credential award timestamp.
-    pub valid_from: String,
+    pub valid_from: DateTime<Utc>,
 }
 
 /// Returns whether an uploaded credential contains a portable identifier claim.

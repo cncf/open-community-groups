@@ -167,9 +167,13 @@ receive the signed JSON-LD credential directly.
 Open [/badges/verify](/badges/verify ':ignore') to verify an OCG credential. You can enter its
 public URL or credential ID, or upload an exported PNG.
 
-Verification checks the signed credential and reports whether it is active or revoked. Credentials
-that were exported or shared before revocation remain available, but verification reports their
-revoked state.
+Verification checks the signed credential and displays its badge artwork, award date, details, and
+current active or revoked state. Credentials that were exported or shared before revocation remain
+available, but verification reports their revoked state.
+
+You are not limited to OCG's own verifier. Because exported files are standard Open Badges 3.0
+credentials, anyone can independently verify them with third-party tools such as
+[verifybadge.org](https://verifybadge.org/) by uploading the exported PNG there.
 
 ### Credential Privacy
 

@@ -83,9 +83,10 @@ async fn test_credential_profile_signs_and_verifies_after_key_rotation() {
     );
     let award = sample_award();
     let verified = rotated.verify_credential(&credential).await.unwrap();
-    assert_eq!(verified.user_badge_id, award.user_badge_id);
     assert_eq!(verified.status_list_id, award.badge_status_list_id);
     assert_eq!(verified.status_list_index, award.status_list_index);
+    assert_eq!(verified.user_badge_id, award.user_badge_id);
+    assert_eq!(verified.valid_from, award.awarded_at);
 }
 
 #[tokio::test]
@@ -243,13 +244,7 @@ async fn test_verify_credential_rejects_invalid_status_entries() {
     // Setup the manager and the valid signed status entry
     let manager = manager(test_jwk(7), vec![]);
     let created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
-    let valid_status = json!({
-        "id": "https://badges.example.test/badges/credentials/00000000-0000-0000-0000-00000000000e#status",
-        "type": "BitstringStatusListEntry",
-        "statusPurpose": "revocation",
-        "statusListIndex": "23",
-        "statusListCredential": "https://badges.example.test/badges/status-lists/00000000-0000-0000-0000-00000000000d"
-    });
+    let valid_status = credential_status();
 
     // Check every unsupported signed status entry field is rejected
     let rejected_entries = [
@@ -289,6 +284,24 @@ async fn test_verify_credential_rejects_invalid_status_entries() {
     assert!(matches!(
         manager.verify_credential(&credential).await,
         Err(BadgesManagerError::InvalidUrl)
+    ));
+}
+
+#[tokio::test]
+async fn test_verify_credential_rejects_invalid_valid_from() {
+    // Sign a credential whose award timestamp is not RFC 3339
+    let manager = manager(test_jwk(7), vec![]);
+    let mut document = credential_document(&credential_status());
+    document["validFrom"] = json!("not-a-timestamp");
+    let credential = manager
+        .sign_document(document, Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap())
+        .await
+        .unwrap();
+
+    // Check a correctly signed malformed timestamp remains an invalid credential
+    assert!(matches!(
+        manager.verify_credential(&credential).await,
+        Err(BadgesManagerError::InvalidCredential)
     ));
 }
 
@@ -434,6 +447,17 @@ fn credential_document(credential_status: &serde_json::Value) -> serde_json::Val
             }
         },
         "credentialStatus": credential_status
+    })
+}
+
+/// Builds the valid credential status entry used by verification tests.
+fn credential_status() -> serde_json::Value {
+    json!({
+        "id": "https://badges.example.test/badges/credentials/00000000-0000-0000-0000-00000000000e#status",
+        "type": "BitstringStatusListEntry",
+        "statusPurpose": "revocation",
+        "statusListIndex": "23",
+        "statusListCredential": "https://badges.example.test/badges/status-lists/00000000-0000-0000-0000-00000000000d"
     })
 }
 

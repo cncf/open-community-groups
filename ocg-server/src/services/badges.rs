@@ -272,6 +272,11 @@ impl BadgesManager {
         let group_id = self.parse_issuer_url(issuer)?;
         self.verify_document(credential, issuer).await?;
 
+        // Parse the signed award timestamp into the application time model
+        let valid_from = DateTime::parse_from_rfc3339(required_string(credential, "/validFrom")?)
+            .map_err(|_| BadgesManagerError::InvalidCredential)?
+            .with_timezone(&Utc);
+
         // Validate the credential's bounded local status-list reference
         let status_url = required_string(credential, "/credentialStatus/statusListCredential")?;
         let status_list_id = self.parse_status_list_url(status_url)?;
@@ -305,7 +310,7 @@ impl BadgesManager {
             status_list_id,
             status_list_index,
             user_badge_id,
-            valid_from: required_string(credential, "/validFrom")?.to_string(),
+            valid_from,
         })
     }
 
