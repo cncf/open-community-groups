@@ -155,9 +155,10 @@ credential: it contains both the badge artwork and the signed credential data.
 The exported credential identifies you as its recipient through a salted SHA-256 hash of your
 account email address, using the Open Badges hashed `IdentityObject` format. Credential platforms
 that already know your email address can confirm the badge belongs to you, but the file itself
-never contains the email address in plain text. Every download uses a fresh random salt and your
-current account email: if your account email changes, download the PNG again to get a credential
-bound to the new address.
+never contains the email address in plain text. Each award keeps a stored identity binding — the
+salt, the email hash, and the time the binding was made — so repeat downloads produce the same
+credential file. If your account email changes, download the PNG again: the award binds to the new
+address with a fresh salt, and the new export supersedes the files downloaded before the change.
 
 To move the credential into another compatible system, use that system's badge or credential
 import flow. Depending on the system, you can:
@@ -176,7 +177,9 @@ public URL or credential ID, or upload an exported PNG.
 
 Verification checks the signed credential and displays its badge artwork, award date, details, and
 current active or revoked state. Credentials that were exported or shared before revocation remain
-available, but verification reports their revoked state.
+available, but verification reports their revoked state. An uploaded PNG whose recipient identity
+no longer matches the award's current binding — for example, one exported before an account email
+change — still verifies as authentic, but the page flags it as superseded by a newer export.
 
 You are not limited to OCG's own verifier. Because exported files are standard Open Badges 3.0
 credentials, anyone can independently verify them with third-party tools such as
@@ -189,13 +192,14 @@ subject. They do not contain your email address, email hash, username, or a stab
 shared by your other badge awards.
 
 The exported PNG additionally carries a salted SHA-256 hash of your account email so credential
-platforms can match the badge to your account. The salt is random for every download, so the email
-hash differs between exports and cannot be looked up in precomputed tables. Exports of the same
-award still share the credential's stable URL and subject identifier, so two downloads of the same
-badge can be recognized as the same credential. A salted hash cannot be reversed into your email
-address, but someone who already suspects a specific address can test it against the file, so
-share the exported PNG as deliberately as you would any credential file. The file never contains
-your email address or username in plain text.
+platforms can match the badge to your account. Each award uses its own stored random salt, so the
+email hash differs between badges and cannot be looked up in precomputed tables, and downloads of
+one award are identical until your account email changes. Exports of the same award also share the
+credential's stable URL and subject identifier, so two downloads of the same badge can be
+recognized as the same credential. A salted hash cannot be reversed into your email address, but
+someone who already suspects a specific address can test it against the file, so share the
+exported PNG as deliberately as you would any credential file. The file never contains your email
+address or username in plain text.
 
 OCG keeps the account association internally while your account exists. The verification page can
 show the current recipient name while that internal association remains available.

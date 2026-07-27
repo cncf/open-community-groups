@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(330);
+select plan(331);
 
 -- ============================================================================
 -- VARIABLES
@@ -322,6 +322,7 @@ select has_function(
     array['uuid', 'text', 'text', 'text', 'uuid']::name[]
 );
 select has_function('recover_stale_badge_award_jobs', array['bigint', 'integer']::name[]);
+select has_function('refresh_user_badge_identity', array['uuid', 'uuid']::name[]);
 select has_function('refund_free_event_purchase', array['uuid']::name[]);
 select has_function('reject_community_team_invitation', array['uuid', 'uuid']::name[]);
 select has_function('reject_event_attendee_invitation', array['uuid', 'uuid']::name[]);

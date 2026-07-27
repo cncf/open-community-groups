@@ -13,7 +13,7 @@ use crate::{
     config::{BadgeSigningKeyConfig, BadgeVerificationKeyConfig, BadgesConfig},
     types::badges::{
         BADGE_CRITERIA_MAX_CHARS, BADGE_DESCRIPTION_MAX_CHARS, BADGE_NAME_MAX_CHARS, BadgeSnapshot,
-        BadgeSnapshotIssuer, UserBadge,
+        BadgeSnapshotIssuer, UserBadge, UserBadgeIdentity,
     },
 };
 
@@ -33,32 +33,58 @@ async fn test_cached_credential_rejects_cold_request_when_signer_is_busy() {
     let _guard = manager.credential_cache.signing_guard().await.unwrap();
 
     // Run one cold request against the busy signer
-    let result = manager
-        .cached_credential(
-            &sample_award(),
-            Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
-        )
-        .await;
+    let result = manager.cached_credential(&sample_award()).await;
 
     // Check the bounded wait fails closed instead of queuing indefinitely
     assert!(matches!(result, Err(BadgesManagerError::Busy)));
 }
 
 #[tokio::test]
-async fn test_credential_cache_reuses_immutable_signed_representation() {
-    // Setup one immutable award and two distinct proof timestamps
+async fn test_cached_export_credential_reuses_binding_and_supersedes_on_rebind() {
+    // Setup one immutable award with a persisted binding and a later rebind
     let manager = manager(test_jwk(7), vec![]);
     let award = sample_award();
-    let first_created_at = Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap();
-    let later_created_at = Utc.with_ymd_and_hms(2024, 2, 4, 4, 5, 6).unwrap();
+    let binding = sample_identity();
+    let rebind = UserBadgeIdentity {
+        identity_bound_at: Utc.with_ymd_and_hms(2024, 3, 4, 5, 6, 7).unwrap(),
+        identity_hash: "1f5c1b4c4459c1197a51122a1e86154bbd1eec1c4bb9e34c7c9e4c4e5f3b2a10"
+            .to_string(),
+        identity_salt: "fedcba9876543210fedcba9876543210".to_string(),
+    };
 
-    // Request the same signed representation twice
-    let first = manager.cached_credential(&award, first_created_at).await.unwrap();
-    let cached = manager.cached_credential(&award, later_created_at).await.unwrap();
+    // Sign the bound export once, then repeat it while the signer is busy
+    let first = manager.cached_export_credential(&award, &binding).await.unwrap();
+    let guard = manager.credential_cache.signing_guard().await.unwrap();
+    let cached = manager.cached_export_credential(&award, &binding).await.unwrap();
+    drop(guard);
+    let rebound = manager.cached_export_credential(&award, &rebind).await.unwrap();
 
-    // Check the second request reuses the first proof instead of signing again
+    // Check repeat downloads reuse one deterministic representation per binding
     assert_eq!(cached, first);
-    assert_eq!(cached["proof"][0]["created"], "2024-02-03T04:05:06.000Z");
+    assert_eq!(first["proof"][0]["created"], "2024-02-03T04:05:06.000Z");
+
+    // Check a rebind supersedes earlier exports with a newer bound identity
+    assert_eq!(rebound["proof"][0]["created"], "2024-03-04T05:06:07.000Z");
+    assert_ne!(
+        rebound["credentialSubject"]["identifier"],
+        first["credentialSubject"]["identifier"]
+    );
+}
+
+#[tokio::test]
+async fn test_credential_cache_reuses_immutable_signed_representation() {
+    // Setup one immutable award and sign its public representation once
+    let manager = manager(test_jwk(7), vec![]);
+    let award = sample_award();
+    let first = manager.cached_credential(&award).await.unwrap();
+
+    // Request the same representation again while the signer is busy
+    let _guard = manager.credential_cache.signing_guard().await.unwrap();
+    let cached = manager.cached_credential(&award).await.unwrap();
+
+    // Check the second request reuses the proof pinned to the award time
+    assert_eq!(cached, first);
+    assert_eq!(cached["proof"][0]["created"], "2024-01-02T03:04:05.000Z");
 }
 
 #[tokio::test]
@@ -70,7 +96,8 @@ async fn test_credential_email_identity_binds_salted_hash_and_verifies() {
             award: &sample_award(),
             created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
             email_identity: Some(EmailIdentity {
-                email: "Recipient@Example.Test".to_string(),
+                hash: "fa4e696fed1caae3ce9bda21a14b5d7960f8ef36bf1566164dafb09f4c8ac324"
+                    .to_string(),
                 salt: "0123456789abcdef0123456789abcdef".to_string(),
             }),
         })
@@ -153,7 +180,10 @@ async fn test_maximum_badge_text_fits_png_credential_limit() {
         .issue_credential(CredentialInput {
             award: &award,
             created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
-            email_identity: Some(EmailIdentity::new(&"long-export-recipient".repeat(12))),
+            email_identity: Some(EmailIdentity {
+                hash: "ab".repeat(32),
+                salt: "cd".repeat(16),
+            }),
         })
         .await
         .unwrap();
@@ -604,12 +634,25 @@ fn sample_award() -> UserBadge {
         badge_id: Some(Uuid::from_u128(15)),
         event_id: Some(Uuid::from_u128(16)),
         event_name: Some("Fixture Event".to_string()),
+        identity_bound_at: None,
+        identity_hash: None,
+        identity_salt: None,
         recipient_name: Some("Credential Recipient".to_string()),
         recipient_username: Some("contract-user".to_string()),
         revocation_reason: None,
         revoked_at: None,
         revoked_by_user_id: None,
         user_id: Some(Uuid::from_u128(17)),
+    }
+}
+
+/// Build the deterministic persisted identity binding used by export tests.
+fn sample_identity() -> UserBadgeIdentity {
+    UserBadgeIdentity {
+        identity_bound_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+        identity_hash: "fa4e696fed1caae3ce9bda21a14b5d7960f8ef36bf1566164dafb09f4c8ac324"
+            .to_string(),
+        identity_salt: "0123456789abcdef0123456789abcdef".to_string(),
     }
 }
 

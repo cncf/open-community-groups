@@ -418,6 +418,73 @@ async fn test_verify_page_is_never_cached() {
 }
 
 #[tokio::test]
+async fn test_verify_post_flags_stale_email_bound_award_as_superseded() {
+    // Issue and bake one export credential bound to a superseded identity
+    let mut award = sample_user_badge();
+    award.identity_bound_at = Some(Utc.with_ymd_and_hms(2024, 3, 4, 5, 6, 7).unwrap());
+    award.identity_hash =
+        Some("1f5c1b4c4459c1197a51122a1e86154bbd1eec1c4bb9e34c7c9e4c4e5f3b2a10".to_string());
+    award.identity_salt = Some("fedcba9876543210fedcba9876543210".to_string());
+    let user_badge_id = award.user_badge_id;
+    let server_cfg = badges_server_config();
+    let badges_manager =
+        BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
+    let credential = badges_manager
+        .issue_credential(CredentialInput {
+            award: &award,
+            created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+            email_identity: Some(EmailIdentity {
+                hash: "fa4e696fed1caae3ce9bda21a14b5d7960f8ef36bf1566164dafb09f4c8ac324"
+                    .to_string(),
+                salt: "0123456789abcdef0123456789abcdef".to_string(),
+            }),
+        })
+        .await
+        .unwrap();
+    let credential = serde_json::to_vec(&credential).unwrap();
+    let png = png::bake(&sample_png(), &credential).unwrap();
+
+    // Setup the rebound durable award and verification page settings
+    let mut db = MockDB::new();
+    db.expect_get_public_user_badge()
+        .times(1)
+        .withf(move |id| *id == user_badge_id)
+        .returning(move |_| Ok(Some(award.clone())));
+    db.expect_get_site_settings()
+        .times(1)
+        .return_once(|| Ok(sample_site_settings()));
+    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
+        .with_server_cfg(server_cfg)
+        .build()
+        .await;
+    let boundary = "BADGE-PNG-VERIFY-BOUNDARY";
+
+    // Submit the stale exported PNG as multipart form data
+    let response = router
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/badges/verify")
+                .header(
+                    CONTENT_TYPE,
+                    format!("multipart/form-data; boundary={boundary}"),
+                )
+                .body(Body::from(png_multipart(boundary, &png)))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check the stale export still verifies but is flagged as superseded
+    assert_eq!(parts.status, StatusCode::OK);
+    let body = String::from_utf8_lossy(&body);
+    assert!(body.contains("Authentic but superseded by a newer export"));
+    assert!(!body.contains("Valid and active"));
+}
+
+#[tokio::test]
 async fn test_verify_post_returns_current_local_award() {
     // Setup one resolvable current award
     let award = sample_user_badge();
@@ -536,28 +603,28 @@ async fn test_verify_post_returns_uploaded_award() {
 
 #[tokio::test]
 async fn test_verify_post_returns_uploaded_email_bound_award_without_rendering_identity() {
-    // Issue and bake one email-bound export credential with a fixed identity
-    let award = sample_user_badge();
+    // Issue and bake one email-bound export credential matching the stored binding
+    let identity_hash = "fa4e696fed1caae3ce9bda21a14b5d7960f8ef36bf1566164dafb09f4c8ac324";
+    let identity_salt = "0123456789abcdef0123456789abcdef";
+    let mut award = sample_user_badge();
+    award.identity_bound_at = Some(Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap());
+    award.identity_hash = Some(identity_hash.to_string());
+    award.identity_salt = Some(identity_salt.to_string());
     let user_badge_id = award.user_badge_id;
     let server_cfg = badges_server_config();
     let badges_manager =
         BadgesManager::new(&server_cfg.base_url, server_cfg.badges.as_ref().unwrap());
-    let identity_salt = "0123456789abcdef0123456789abcdef";
     let credential = badges_manager
         .issue_credential(CredentialInput {
             award: &award,
             created_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
             email_identity: Some(EmailIdentity {
-                email: "Recipient@Example.Test".to_string(),
+                hash: identity_hash.to_string(),
                 salt: identity_salt.to_string(),
             }),
         })
         .await
         .unwrap();
-    let identity_hash = credential["credentialSubject"]["identifier"][0]["identityHash"]
-        .as_str()
-        .unwrap()
-        .to_string();
     let credential = serde_json::to_vec(&credential).unwrap();
     let png = png::bake(&sample_png(), &credential).unwrap();
 
@@ -594,11 +661,12 @@ async fn test_verify_post_returns_uploaded_email_bound_award_without_rendering_i
     let (parts, body) = response.into_parts();
     let body = to_bytes(body, usize::MAX).await.unwrap();
 
-    // Check the email-bound export verifies without rendering its identity
+    // Check the current email-bound export verifies without rendering its identity
     assert_eq!(parts.status, StatusCode::OK);
     let body = String::from_utf8_lossy(&body);
     assert!(body.contains("Valid and active"));
-    assert!(!body.contains(&identity_hash));
+    assert!(!body.contains("superseded"));
+    assert!(!body.contains(identity_hash));
     assert!(!body.contains(identity_salt));
     assert!(!body.to_lowercase().contains("recipient@example.test"));
 }
@@ -683,6 +751,9 @@ fn sample_user_badge() -> UserBadge {
         badge_id: Some(Uuid::new_v4()),
         event_id: Some(Uuid::new_v4()),
         event_name: Some("Test Event".to_string()),
+        identity_bound_at: None,
+        identity_hash: None,
+        identity_salt: None,
         recipient_name: Some("Ada".to_string()),
         recipient_username: Some("ada".to_string()),
         revocation_reason: None,

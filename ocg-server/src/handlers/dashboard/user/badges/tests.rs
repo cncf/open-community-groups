@@ -8,7 +8,7 @@ use axum::{
     },
 };
 use axum_login::tower_sessions::session;
-use chrono::DateTime;
+use chrono::{DateTime, TimeZone, Utc};
 use image::{DynamicImage, ImageFormat};
 use serde_json::json;
 use ssi_jwk::JWK;
@@ -24,7 +24,7 @@ use crate::{
         images::{Image, MockImageStorage},
         notifications::MockNotificationsManager,
     },
-    types::badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge},
+    types::badges::{BadgeSnapshot, BadgeSnapshotIssuer, UserBadge, UserBadgeIdentity},
     util::compute_hash,
 };
 
@@ -117,12 +117,25 @@ async fn test_export_success() {
     let user_id = Uuid::new_v4();
     let award = sample_active_user_badge(user_badge_id, user_id);
     let badge_status_list_id = award.badge_status_list_id;
+    let identity_salt = "0123456789abcdef0123456789abcdef";
+    let identity_hash = compute_hash(format!("user@example.test{identity_salt}").as_bytes());
+    let bound_hash = identity_hash.clone();
     let mut db = MockDB::new();
     expect_authenticated_session(&mut db, session_id, user_id);
     db.expect_get_user_badge()
         .times(1)
         .withf(move |owner_id, badge_id| *owner_id == user_id && *badge_id == user_badge_id)
         .return_once(move |_, _| Ok(Some(award)));
+    db.expect_refresh_user_badge_identity()
+        .times(1)
+        .withf(move |owner_id, badge_id| *owner_id == user_id && *badge_id == user_badge_id)
+        .return_once(move |_, _| {
+            Ok(UserBadgeIdentity {
+                identity_bound_at: Utc.with_ymd_and_hms(2024, 2, 3, 4, 5, 6).unwrap(),
+                identity_hash: bound_hash,
+                identity_salt: identity_salt.to_string(),
+            })
+        });
     let mut storage = MockImageStorage::new();
     storage
         .expect_get()
@@ -172,20 +185,23 @@ async fn test_export_success() {
     assert_eq!(verified.user_badge_id, user_badge_id);
     assert_eq!(verified.status_list_id, badge_status_list_id);
 
-    // Check the credential binds a salted hash of the owner's account email
+    // Check the credential embeds the persisted salted email identity binding
+    // pinned to the binding time
     let identifier = credential["credentialSubject"]["identifier"].as_array().unwrap();
     assert_eq!(identifier.len(), 1);
     let entry = &identifier[0];
-    let salt = entry["salt"].as_str().unwrap();
-    let expected_hash = format!(
-        "sha256${}",
-        compute_hash(format!("user@example.test{salt}").as_bytes())
-    );
     assert_eq!(entry["type"], json!("IdentityObject"));
     assert_eq!(entry["hashed"], json!(true));
-    assert_eq!(entry["identityHash"], json!(expected_hash));
+    assert_eq!(
+        entry["identityHash"],
+        json!(format!("sha256${identity_hash}"))
+    );
     assert_eq!(entry["identityType"], json!("emailAddress"));
-    assert_eq!(salt.len(), 32);
+    assert_eq!(entry["salt"], json!(identity_salt));
+    assert_eq!(
+        credential["proof"][0]["created"],
+        "2024-02-03T04:05:06.000Z"
+    );
     assert!(!credential.to_string().contains("user@example.test"));
 }
 
@@ -421,6 +437,9 @@ fn sample_user_badge(user_badge_id: Uuid, user_id: Uuid) -> UserBadge {
         badge_id: Some(Uuid::new_v4()),
         event_id: None,
         event_name: None,
+        identity_bound_at: None,
+        identity_hash: None,
+        identity_salt: None,
         recipient_name: None,
         recipient_username: None,
         revocation_reason: Some("user revoked badge".to_string()),

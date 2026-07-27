@@ -5,7 +5,7 @@
 -- ============================================================================
 
 begin;
-select plan(94);
+select plan(95);
 
 -- ============================================================================
 -- VARIABLES
@@ -49,6 +49,7 @@ select has_check('badge_status_list', 'badge_status_list_allocation_stride_chk')
 
 -- Test: badge awards should preserve issuance, status, and revocation invariants
 select has_check('user_badge', 'user_badge_active_user_chk');
+select has_check('user_badge', 'user_badge_identity_chk');
 select col_has_check('user_badge', 'display_order');
 select col_has_check('user_badge', 'revocation_reason');
 select col_has_check('user_badge', 'snapshot');

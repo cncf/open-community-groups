@@ -208,6 +208,10 @@ create table user_badge (
 
     badge_id uuid,
     event_id uuid,
+    -- Persists the recipient email identity binding used by credential exports.
+    identity_bound_at timestamptz,
+    identity_hash text,
+    identity_salt text,
     revocation_reason text check (revocation_reason is null or btrim(revocation_reason) <> ''),
     revoked_at timestamptz,
     revoked_by_user_id uuid references "user" on delete set null,
@@ -226,6 +230,18 @@ create table user_badge (
         event_id,
         group_id
     ) references event (event_id, group_id) on delete set null (event_id),
+    constraint user_badge_identity_chk check (
+        (
+            identity_bound_at is null
+            and identity_hash is null
+            and identity_salt is null
+        )
+        or (
+            identity_bound_at is not null
+            and identity_hash ~ '^[0-9a-f]{64}$'
+            and identity_salt ~ '^[0-9a-f]{32}$'
+        )
+    ),
     constraint user_badge_status_list_index_key unique (
         badge_status_list_id,
         status_list_index

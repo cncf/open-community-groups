@@ -1521,6 +1521,59 @@ values (
     '00000000-0000-0000-0000-00000000c042'
 );
 
+-- Dedicated subgroup status list backing the identity rebind mutation contract
+insert into badge_status_list (
+    badge_status_list_id,
+    created_at,
+    group_id
+) values (
+    '00000000-0000-0000-0000-00000000c0b8',
+    '2024-01-11 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c022'
+);
+
+-- Dedicated award with a stale identity binding mutated only by the Rust
+-- identity rebind contract test; the seeded hash covers a previous email
+insert into user_badge (
+    awarded_at,
+    badge_status_list_id,
+    display_order,
+    group_id,
+    is_listed,
+    snapshot,
+    status_list_index,
+    user_badge_id,
+
+    identity_bound_at,
+    identity_hash,
+    identity_salt,
+    user_id
+) values (
+    '2024-01-12 10:00:00+00',
+    '00000000-0000-0000-0000-00000000c0b8',
+    0,
+    '00000000-0000-0000-0000-00000000c022',
+    false,
+    '{
+        "criteria": "Attend the contract event",
+        "description": "Recognizes contract event participation",
+        "image_file_name": "contract-badge.png",
+        "issuer": {
+            "community_id": "00000000-0000-0000-0000-00000000c001",
+            "community_name": "Contract Community",
+            "group_id": "00000000-0000-0000-0000-00000000c022",
+            "group_name": "Contract Subgroup"
+        },
+        "name": "Contract Participant"
+    }'::jsonb,
+    3,
+    '00000000-0000-0000-0000-00000000c0b9',
+    '2024-01-12 11:00:00+00',
+    encode(digest('organizer.old@example.com' || '0123456789abcdef0123456789abcdef', 'sha256'), 'hex'),
+    '0123456789abcdef0123456789abcdef',
+    '00000000-0000-0000-0000-00000000c041'
+);
+
 -- ============================================================================
 -- PAGE VIEWS
 -- ============================================================================

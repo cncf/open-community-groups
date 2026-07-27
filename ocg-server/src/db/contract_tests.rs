@@ -69,6 +69,7 @@ use crate::{
         search::{SearchEventsFilters, SearchGroupsFilters},
         user::UserProvider,
     },
+    util::compute_hash,
 };
 
 #[tokio::test]
@@ -263,6 +264,9 @@ async fn db_contracts_badge_json_deserializes() -> Result<()> {
                 badge_id: Some(badge_id()),
                 event_id: None,
                 event_name: None,
+                identity_bound_at: None,
+                identity_hash: None,
+                identity_salt: None,
                 recipient_name: Some("Contract Attendee".to_string()),
                 recipient_username: Some("contract-attendee".to_string()),
                 revocation_reason: Some("contract revocation".to_string()),
@@ -1916,6 +1920,43 @@ async fn db_contracts_reconcile_event_purchase_for_checkout_session_deserializes
 
 #[tokio::test]
 #[ignore = "requires the contract test database"]
+async fn db_contracts_refresh_user_badge_identity_deserializes() -> Result<()> {
+    let db = contract_tests_db()?;
+
+    // Rebind the stale seeded identity, repeat the current binding, and read
+    // the persisted award through its production wrapper
+    let rebound = db
+        .refresh_user_badge_identity(organizer_id(), rebind_user_badge_id())
+        .await?;
+    let repeated = db
+        .refresh_user_badge_identity(organizer_id(), rebind_user_badge_id())
+        .await?;
+    let award = db
+        .get_user_badge(organizer_id(), rebind_user_badge_id())
+        .await?
+        .context("rebind contract badge should exist")?;
+
+    // Check the database digest matches the Rust hash of the owner email and salt
+    let expected_hash =
+        compute_hash(format!("organizer.contract@example.com{}", rebound.identity_salt).as_bytes());
+    assert_eq!(rebound.identity_hash, expected_hash);
+    assert_ne!(rebound.identity_salt, "0123456789abcdef0123456789abcdef");
+    assert_eq!(rebound.identity_salt.len(), 32);
+    assert!(rebound.identity_bound_at > DateTime::from_timestamp(1_705_057_200, 0).unwrap());
+
+    // Check the binding stays stable until the owner email changes again
+    assert_eq!(repeated, rebound);
+
+    // Check the award JSON exposes the persisted identity binding fields
+    assert_eq!(award.identity_bound_at, Some(rebound.identity_bound_at));
+    assert_eq!(award.identity_hash, Some(rebound.identity_hash));
+    assert_eq!(award.identity_salt, Some(rebound.identity_salt));
+
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore = "requires the contract test database"]
 async fn db_contracts_reject_event_refund_request_deserializes() -> Result<()> {
     let db = contract_tests_db()?;
     let purchase = db
@@ -2226,6 +2267,7 @@ const ORGANIZER_ID: &str = "00000000-0000-0000-0000-00000000c041";
 const PAID_TICKET_TYPE_ID: &str = "00000000-0000-0000-0000-00000000c0d1";
 const PAST_EVENT_ID: &str = "00000000-0000-0000-0000-00000000c032";
 const PRE_REGISTERED_ID: &str = "00000000-0000-0000-0000-00000000c044";
+const REBIND_USER_BADGE_ID: &str = "00000000-0000-0000-0000-00000000c0b9";
 const RECONCILE_BUYER_ID: &str = "00000000-0000-0000-0000-00000000c0e3";
 /// Purchase fixture whose provider refund is ready for local finalization.
 const REFUND_APPROVE_PURCHASE_ID: &str = "00000000-0000-0000-0000-00000000c0f6";
@@ -2300,6 +2342,9 @@ fn contract_active_user_badge(
         badge_id: Some(badge_id()),
         event_id: Some(event_id()),
         event_name,
+        identity_bound_at: None,
+        identity_hash: None,
+        identity_salt: None,
         recipient_name,
         recipient_username,
         revocation_reason: None,
@@ -2459,6 +2504,11 @@ fn past_event_id() -> Uuid {
 
 fn pre_registered_id() -> Uuid {
     parse_uuid(PRE_REGISTERED_ID)
+}
+
+/// Returns the award fixture dedicated to the identity rebind contract.
+fn rebind_user_badge_id() -> Uuid {
+    parse_uuid(REBIND_USER_BADGE_ID)
 }
 
 fn reconcile_buyer_id() -> Uuid {

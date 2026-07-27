@@ -284,6 +284,12 @@ pub(crate) struct UserBadge {
     pub event_id: Option<Uuid>,
     /// Award source event name for group history.
     pub event_name: Option<String>,
+    /// Identity binding creation time used as the export proof timestamp.
+    pub identity_bound_at: Option<DateTime<Utc>>,
+    /// Hex-encoded SHA-256 digest of the bound lowercased email and salt.
+    pub identity_hash: Option<String>,
+    /// Salt appended to the bound lowercased email before hashing.
+    pub identity_salt: Option<String>,
     /// Current recipient display name for authorized history and local verification.
     pub recipient_name: Option<String>,
     /// Current recipient username for authorized history and local verification.
@@ -296,4 +302,15 @@ pub(crate) struct UserBadge {
     pub revoked_by_user_id: Option<Uuid>,
     /// Current internal recipient association.
     pub user_id: Option<Uuid>,
+}
+
+/// Persisted recipient email identity binding for one badge award.
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub(crate) struct UserBadgeIdentity {
+    /// Binding creation time used as the export proof timestamp.
+    pub identity_bound_at: DateTime<Utc>,
+    /// Hex-encoded SHA-256 digest of the bound lowercased email and salt.
+    pub identity_hash: String,
+    /// Salt appended to the bound lowercased email before hashing.
+    pub identity_salt: String,
 }

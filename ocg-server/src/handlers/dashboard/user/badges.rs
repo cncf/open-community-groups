@@ -7,10 +7,12 @@ use askama::Template;
 use axum::{
     Json,
     extract::{Path, State},
-    http::{HeaderMap, HeaderValue, StatusCode, header::CONTENT_DISPOSITION, header::CONTENT_TYPE},
+    http::{
+        HeaderMap, HeaderValue, StatusCode, header::CACHE_CONTROL, header::CONTENT_DISPOSITION,
+        header::CONTENT_TYPE, header::RETRY_AFTER,
+    },
     response::{Html, IntoResponse, Response},
 };
-use chrono::Utc;
 use serde::Deserialize;
 use tracing::instrument;
 use uuid::Uuid;
@@ -18,8 +20,9 @@ use uuid::Uuid;
 use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extractors::CurrentUser},
+    router::CACHE_CONTROL_NO_STORE,
     services::{
-        badges::{BadgesManager, CredentialInput, EmailIdentity, png},
+        badges::{BadgesManager, BadgesManagerError, png},
         images::DynImageStorage,
     },
     templates::dashboard::user::badges::ListPage,
@@ -50,16 +53,23 @@ pub(crate) async fn export(
         .await?
         .ok_or(HandlerError::NotFound)?;
 
-    // Issue the signed credential bound to the owner's account email and bake
-    // it into a bounded PNG so compatible importers can match the owner
-    let credential = badges_manager
-        .issue_credential(CredentialInput {
-            award: &award,
-            created_at: Utc::now(),
-            email_identity: Some(EmailIdentity::new(&user.email)),
-        })
-        .await
-        .map_err(|error| HandlerError::Other(error.into()))?;
+    // Bind the award identity to the owner's current account email so a
+    // redownload after an email change supersedes earlier exports
+    let identity = db.refresh_user_badge_identity(user.user_id, user_badge_id).await?;
+
+    // Reuse or issue the deterministic signed export credential bound to the
+    // persisted identity, shedding excess cold-signing load
+    let credential = match badges_manager.cached_export_credential(&award, &identity).await {
+        Ok(credential) => credential,
+        Err(BadgesManagerError::Busy) => {
+            return Ok((
+                StatusCode::SERVICE_UNAVAILABLE,
+                [(CACHE_CONTROL, CACHE_CONTROL_NO_STORE), (RETRY_AFTER, "1")],
+            )
+                .into_response());
+        }
+        Err(error) => return Err(HandlerError::Other(error.into())),
+    };
     let credential = serde_json::to_vec(&credential)?;
     let png =
         png::bake(&source.bytes, &credential).map_err(|error| HandlerError::Other(error.into()))?;

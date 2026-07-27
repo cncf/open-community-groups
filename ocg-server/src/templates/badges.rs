@@ -46,6 +46,8 @@ pub struct VerifiedBadgeView {
     pub name: String,
     /// Whether the credential is permanently revoked.
     pub revoked: bool,
+    /// Whether a newer export supersedes the verified representation.
+    pub superseded: bool,
     /// Credential award timestamp.
     pub valid_from: DateTime<Utc>,
 

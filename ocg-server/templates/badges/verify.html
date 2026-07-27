@@ -58,6 +58,8 @@
             <div class="flex items-center gap-3 px-6 py-4
                         {% if result.revoked %}
                           bg-red-50 text-red-800
+                        {% else if result.superseded %}
+                          bg-amber-50 text-amber-800
                         {% else %}
                           bg-green-50 text-green-800
                         {% endif %}">
@@ -67,6 +69,12 @@
                   <div class="svg-icon size-3 icon-close bg-white"></div>
                 </div>
                 <p class="text-sm font-semibold">Credential revoked</p>
+              {% else if result.superseded -%}
+                <div class="flex size-5 items-center justify-center rounded-full bg-amber-500"
+                     aria-hidden="true">
+                  <div class="svg-icon size-3 icon-warning bg-white"></div>
+                </div>
+                <p class="text-sm font-semibold">Authentic but superseded by a newer export</p>
               {% else -%}
                 <div class="flex size-5 items-center justify-center rounded-full bg-green-600"
                      aria-hidden="true">

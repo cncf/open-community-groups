@@ -206,6 +206,7 @@
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
 {{ template "dashboard-user/list_user_pending_session_proposal_co_speaker_invitations.sql" }}
 {{ template "dashboard-user/list_user_session_proposals.sql" }}
+{{ template "dashboard-user/refresh_user_badge_identity.sql" }}
 {{ template "dashboard-user/reject_community_team_invitation.sql" }}
 {{ template "dashboard-user/reject_event_attendee_invitation.sql" }}
 {{ template "dashboard-user/reject_group_team_invitation.sql" }}

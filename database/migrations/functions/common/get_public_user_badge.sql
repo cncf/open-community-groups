@@ -13,6 +13,9 @@ returns json as $$
 
         'badge_id', ub.badge_id,
         'event_id', ub.event_id,
+        'identity_bound_at', ub.identity_bound_at,
+        'identity_hash', ub.identity_hash,
+        'identity_salt', ub.identity_salt,
         'revocation_reason', ub.revocation_reason,
         'revoked_at', ub.revoked_at,
         'revoked_by_user_id', ub.revoked_by_user_id,

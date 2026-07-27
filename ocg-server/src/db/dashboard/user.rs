@@ -20,7 +20,10 @@ use crate::{
             submissions::{CfsSubmissionsFilters, CfsSubmissionsOutput},
         },
     },
-    types::{badges::UserBadge, questionnaire::QuestionnaireAnswers},
+    types::{
+        badges::{UserBadge, UserBadgeIdentity},
+        questionnaire::QuestionnaireAnswers,
+    },
 };
 
 /// Database trait for user dashboard operations.
@@ -130,6 +133,13 @@ pub(crate) trait DBDashboardUser {
         user_id: Uuid,
         filters: &SessionProposalsFilters,
     ) -> Result<SessionProposalsOutput>;
+
+    /// Ensures an active badge owned by the user carries a current email identity binding.
+    async fn refresh_user_badge_identity(
+        &self,
+        user_id: Uuid,
+        user_badge_id: Uuid,
+    ) -> Result<UserBadgeIdentity>;
 
     /// Rejects a pending community team invitation.
     async fn reject_community_team_invitation(
@@ -446,6 +456,20 @@ where
         self.fetch_json_one(
             "select list_user_session_proposals($1::uuid, $2::jsonb)",
             &[&user_id, &Json(filters)],
+        )
+        .await
+    }
+
+    /// [`DBDashboardUser::refresh_user_badge_identity`].
+    #[instrument(skip(self), err)]
+    async fn refresh_user_badge_identity(
+        &self,
+        user_id: Uuid,
+        user_badge_id: Uuid,
+    ) -> Result<UserBadgeIdentity> {
+        self.fetch_json_one(
+            "select refresh_user_badge_identity($1::uuid, $2::uuid)",
+            &[&user_id, &user_badge_id],
         )
         .await
     }

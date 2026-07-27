@@ -5,12 +5,14 @@
 -- ============================================================================
 
 begin;
-select plan(3);
+select plan(4);
 
 -- ============================================================================
 -- VARIABLES
 -- ============================================================================
 
+\set boundBadgeID 'b2010000-0000-0000-0000-000000000008'
+\set boundSalt '0123456789abcdef0123456789abcdef'
 \set communityID 'b2010000-0000-0000-0000-000000000001'
 \set groupCategoryID 'b2010000-0000-0000-0000-000000000002'
 \set groupID 'b2010000-0000-0000-0000-000000000003'
@@ -60,6 +62,24 @@ insert into user_badge (
     :'userID'
 );
 
+-- Active award bound to the owner's email
+insert into user_badge (
+    user_badge_id, awarded_at, badge_status_list_id, display_order, group_id, snapshot, status_list_index,
+    identity_bound_at, identity_hash, identity_salt, user_id
+) values (
+    :'boundBadgeID',
+    '2026-03-01 00:00:00+00',
+    :'statusListID',
+    1,
+    :'groupID',
+    '{"name":"Badge"}',
+    2,
+    '2026-03-02 00:00:00+00',
+    encode(digest('get-owner@example.test' || :'boundSalt', 'sha256'), 'hex'),
+    :'boundSalt',
+    :'userID'
+);
+
 -- ============================================================================
 -- TESTS
 -- ============================================================================
@@ -80,6 +100,9 @@ select is(
         'badge_id', null,
         'event_id', null,
         'event_name', null,
+        'identity_bound_at', null,
+        'identity_hash', null,
+        'identity_salt', null,
         'recipient_name', null,
         'recipient_username', null,
         'revocation_reason', null,
@@ -95,6 +118,16 @@ select is(get_user_badge(:'otherUserID', :'userBadgeID')::jsonb, null::jsonb, 'S
 
 -- Should not return an unknown badge
 select is(get_user_badge(:'userID', gen_random_uuid())::jsonb, null::jsonb, 'Should not return an unknown badge');
+
+-- Should return the persisted identity binding fields
+select ok(
+    get_user_badge(:'userID', :'boundBadgeID')::jsonb @> jsonb_build_object(
+        'identity_bound_at', '2026-03-02 00:00:00+00'::timestamptz,
+        'identity_hash', encode(digest('get-owner@example.test' || :'boundSalt', 'sha256'), 'hex'),
+        'identity_salt', :'boundSalt'
+    ),
+    'Should return the persisted identity binding fields'
+);
 
 -- ============================================================================
 -- CLEANUP

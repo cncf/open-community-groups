@@ -11,7 +11,7 @@ use tokio::{
 };
 use uuid::Uuid;
 
-use crate::{types::badges::UserBadge, util::compute_hash};
+use crate::types::badges::UserBadge;
 
 use super::{BadgesManagerError, Result};
 
@@ -20,11 +20,17 @@ const CREDENTIAL_CACHE_CAPACITY: usize = 256;
 /// Maximum wait for the bounded signer during a cold credential burst.
 const CREDENTIAL_SIGNING_WAIT: Duration = Duration::from_secs(2);
 
+/// Cache key formed by the award identifier and the export binding salt.
+///
+/// Public opaque representations use `None`; email-bound exports use the
+/// persisted binding salt so rebinding yields a distinct cache entry.
+pub(super) type CredentialCacheKey = (Uuid, Option<String>);
+
 /// Shared size-bounded cache for immutable signed credentials.
 #[derive(Clone)]
 pub(super) struct CredentialCache {
     /// Least-recently-used entries shared by manager clones.
-    entries: Arc<Mutex<LruCache<Uuid, Value>>>,
+    entries: Arc<Mutex<LruCache<CredentialCacheKey, Value>>>,
     /// Serializes cache misses to bound CPU-intensive JSON-LD signing.
     signing_lock: Arc<Mutex<()>>,
 }
@@ -42,14 +48,14 @@ impl CredentialCache {
         }
     }
 
-    /// Returns a cached immutable credential by opaque award identifier.
-    pub(super) async fn get(&self, user_badge_id: Uuid) -> Option<Value> {
-        self.entries.lock().await.cache_get(&user_badge_id).cloned()
+    /// Returns a cached immutable credential by award and binding key.
+    pub(super) async fn get(&self, key: &CredentialCacheKey) -> Option<Value> {
+        self.entries.lock().await.cache_get(key).cloned()
     }
 
     /// Stores an immutable signed credential for subsequent requests.
-    pub(super) async fn insert(&self, user_badge_id: Uuid, credential: Value) {
-        self.entries.lock().await.cache_set(user_badge_id, credential);
+    pub(super) async fn insert(&self, key: CredentialCacheKey, credential: Value) {
+        self.entries.lock().await.cache_set(key, credential);
     }
 
     /// Acquires the bounded signing lock or rejects an overloaded cold request.
@@ -67,37 +73,25 @@ pub(crate) struct CredentialInput<'a> {
     /// Proof creation time.
     pub created_at: DateTime<Utc>,
 
-    /// Salted recipient identity embedded only in owner-requested exports.
+    /// Persisted recipient identity embedded only in owner-requested exports.
     pub email_identity: Option<EmailIdentity>,
 }
 
-/// Salted recipient email identity embedded in owner-requested exports.
+/// Persisted salted recipient email identity embedded in owner-requested exports.
 pub(crate) struct EmailIdentity {
-    /// Recipient account email address.
-    pub email: String,
-    /// Random per-export salt appended to the email before hashing.
+    /// Hex-encoded SHA-256 digest of the bound lowercased email and salt.
+    pub hash: String,
+    /// Salt appended to the bound lowercased email before hashing.
     pub salt: String,
 }
 
 impl EmailIdentity {
-    /// Creates an identity for one export with a fresh random salt.
-    pub(crate) fn new(email: &str) -> Self {
-        Self {
-            email: email.to_string(),
-            salt: Uuid::new_v4().simple().to_string(),
-        }
-    }
-
     /// Builds the hashed Open Badges email identity entry.
     pub(super) fn identifier_entry(&self) -> Value {
-        // Hash the lowercased email with the per-export salt appended
-        let salted = format!("{}{}", self.email.to_lowercase(), self.salt);
-        let identity_hash = format!("sha256${}", compute_hash(salted.as_bytes()));
-
         json!({
             "type": "IdentityObject",
             "hashed": true,
-            "identityHash": identity_hash,
+            "identityHash": format!("sha256${}", self.hash),
             "identityType": "emailAddress",
             "salt": self.salt
         })

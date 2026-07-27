@@ -848,6 +848,11 @@ mock! {
             user_id: Uuid,
             filters: &crate::templates::dashboard::user::session_proposals::SessionProposalsFilters,
         ) -> Result<crate::templates::dashboard::user::session_proposals::SessionProposalsOutput>;
+        async fn refresh_user_badge_identity(
+            &self,
+            user_id: Uuid,
+            user_badge_id: Uuid,
+        ) -> Result<crate::types::badges::UserBadgeIdentity>;
         async fn reject_session_proposal_co_speaker_invitation(
             &self,
             actor_user_id: Uuid,

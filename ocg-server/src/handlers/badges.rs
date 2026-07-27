@@ -62,7 +62,7 @@ pub(crate) async fn credential(
     // Serve the signed JSON-LD credential when the client asks for it
     if accepts_credential(&headers) {
         // Reuse the immutable signature and shed excess cold-signing load
-        let credential = match badges_manager.cached_credential(&award, Utc::now()).await {
+        let credential = match badges_manager.cached_credential(&award).await {
             Ok(credential) => credential,
             Err(BadgesManagerError::Busy) => {
                 return Ok((
@@ -365,12 +365,19 @@ async fn verify_submission(
             return Err(VerificationError::Invalid);
         }
 
+        // Flag exports whose identity no longer matches the durable binding
+        let superseded = verified.email_identity.as_ref().is_some_and(|identity| {
+            award.identity_hash.as_deref() != Some(identity.identity_hash.as_str())
+                || award.identity_salt.as_deref() != Some(identity.salt.as_str())
+        });
+
         return Ok(VerifiedBadgeView {
             description: verified.description,
             image_url: badge_image_url(&award.snapshot.image_file_name),
             issuer: verified.issuer,
             name: verified.name,
             revoked: award.revoked_at.is_some(),
+            superseded,
             valid_from: verified.valid_from,
 
             recipient_name: recipient_display_name(award.recipient_name, award.recipient_username),
@@ -397,6 +404,7 @@ async fn verify_submission(
         issuer: badges_manager.issuer_url(award.group_id),
         name: award.snapshot.name,
         revoked: award.revoked_at.is_some(),
+        superseded: false,
         valid_from: award.awarded_at,
 
         recipient_name: recipient_display_name(award.recipient_name, award.recipient_username),

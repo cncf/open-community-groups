@@ -958,6 +958,9 @@ select columns_are('user_badge', array[
 
     'badge_id',
     'event_id',
+    'identity_bound_at',
+    'identity_hash',
+    'identity_salt',
     'revocation_reason',
     'revoked_at',
     'revoked_by_user_id',

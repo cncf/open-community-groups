@@ -24,12 +24,17 @@ use ssi_verification_methods::{AnyMethod, Multikey, SingleSecretSigner};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::{config::BadgesConfig, types::badges::UserBadge};
+use crate::{
+    config::BadgesConfig,
+    types::badges::{UserBadge, UserBadgeIdentity},
+};
 
-use credential::required_string;
+use credential::{CredentialCacheKey, required_string};
 use document::CredentialDocument;
 use status::{STATUS_LIST_ENTRIES, STATUS_LIST_TTL_MS, encode_status_list};
-use verification::{VerifiedCredential, contains_unsupported_identifier, single_proof};
+use verification::{
+    VerifiedCredential, VerifiedEmailIdentity, contains_unsupported_identifier, single_proof,
+};
 
 pub(crate) use award_worker::start_badge_award_workers;
 pub(crate) use credential::{CredentialInput, EmailIdentity, rfc3339};
@@ -58,34 +63,44 @@ impl BadgesManager {
         }
     }
 
-    /// Return a cached signed credential or issue its immutable representation once.
-    pub(crate) async fn cached_credential(
+    /// Return a cached signed credential or issue its immutable public representation once.
+    ///
+    /// The proof timestamp is pinned to the award time so the opaque public
+    /// representation stays deterministic across processes and restarts.
+    pub(crate) async fn cached_credential(&self, award: &UserBadge) -> Result<Value> {
+        self.cached_signed_credential(
+            (award.user_badge_id, None),
+            CredentialInput {
+                award,
+                created_at: award.awarded_at,
+                email_identity: None,
+            },
+        )
+        .await
+    }
+
+    /// Return a cached signed export credential or issue its bound representation once.
+    ///
+    /// The proof timestamp is pinned to the identity binding time so repeated
+    /// downloads yield one deterministic representation per binding, and a
+    /// rebind after an email change supersedes earlier exports.
+    pub(crate) async fn cached_export_credential(
         &self,
         award: &UserBadge,
-        created_at: DateTime<Utc>,
+        identity: &UserBadgeIdentity,
     ) -> Result<Value> {
-        if let Some(credential) = self.credential_cache.get(award.user_badge_id).await {
-            return Ok(credential);
-        }
-
-        // Bound cold signing concurrency and recheck after any preceding signer finishes
-        let _signing_guard = self.credential_cache.signing_guard().await?;
-        if let Some(credential) = self.credential_cache.get(award.user_badge_id).await {
-            return Ok(credential);
-        }
-
-        let credential = self
-            .issue_credential(CredentialInput {
+        self.cached_signed_credential(
+            (award.user_badge_id, Some(identity.identity_salt.clone())),
+            CredentialInput {
                 award,
-                created_at,
-                email_identity: None,
-            })
-            .await?;
-        self.credential_cache
-            .insert(award.user_badge_id, credential.clone())
-            .await;
-
-        Ok(credential)
+                created_at: identity.identity_bound_at,
+                email_identity: Some(EmailIdentity {
+                    hash: identity.identity_hash.clone(),
+                    salt: identity.identity_salt.clone(),
+                }),
+            },
+        )
+        .await
     }
 
     /// Return a cached signed status list or issue one for changed revocation state.
@@ -331,6 +346,20 @@ impl BadgesManager {
             return Err(BadgesManagerError::InvalidStatusList);
         }
 
+        // Capture the optional exported identity for durable binding comparison
+        let email_identity = credential
+            .pointer("/credentialSubject/identifier/0")
+            .map(|entry| -> Result<VerifiedEmailIdentity> {
+                Ok(VerifiedEmailIdentity {
+                    identity_hash: required_string(entry, "/identityHash")?
+                        .strip_prefix("sha256$")
+                        .ok_or(BadgesManagerError::InvalidCredential)?
+                        .to_string(),
+                    salt: required_string(entry, "/salt")?.to_string(),
+                })
+            })
+            .transpose()?;
+
         // Return the verified fields needed for local persistence binding
         Ok(VerifiedCredential {
             description: required_string(credential, "/credentialSubject/achievement/description")?
@@ -342,7 +371,31 @@ impl BadgesManager {
             status_list_index,
             user_badge_id,
             valid_from,
+
+            email_identity,
         })
+    }
+
+    /// Return a cached signed credential or sign one cold representation for its key.
+    async fn cached_signed_credential(
+        &self,
+        key: CredentialCacheKey,
+        input: CredentialInput<'_>,
+    ) -> Result<Value> {
+        if let Some(credential) = self.credential_cache.get(&key).await {
+            return Ok(credential);
+        }
+
+        // Bound cold signing concurrency and recheck after any preceding signer finishes
+        let _signing_guard = self.credential_cache.signing_guard().await?;
+        if let Some(credential) = self.credential_cache.get(&key).await {
+            return Ok(credential);
+        }
+
+        let credential = self.issue_credential(input).await?;
+        self.credential_cache.insert(key, credential.clone()).await;
+
+        Ok(credential)
     }
 
     /// Parse an exact base-URL-relative endpoint containing one UUID.

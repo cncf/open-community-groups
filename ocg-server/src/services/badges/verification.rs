@@ -24,6 +24,17 @@ pub(crate) struct VerifiedCredential {
     pub user_badge_id: Uuid,
     /// Credential award timestamp.
     pub valid_from: DateTime<Utc>,
+
+    /// Exported hashed email identity carried by the credential, when present.
+    pub email_identity: Option<VerifiedEmailIdentity>,
+}
+
+/// Exported hashed email identity claims carried by a verified credential.
+pub(crate) struct VerifiedEmailIdentity {
+    /// Hex digest extracted from the `sha256$`-prefixed identity hash.
+    pub identity_hash: String,
+    /// Salt appended to the bound lowercased email before hashing.
+    pub salt: String,
 }
 
 /// Returns whether an uploaded credential carries unsupported identifier claims.
