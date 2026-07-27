@@ -1,11 +1,15 @@
 <section class="flex min-h-full min-w-0 grow flex-col"
          aria-labelledby="group-badge-artwork-title"
          data-group-badges>
+  {# Header -#}
   <div>
     <h1 id="group-badge-artwork-title"
         class="text-xl font-medium text-stone-900 lg:text-2xl">Badges Artwork</h1>
     <p class="m-0 mt-1 text-sm/6 text-stone-500">Upload artwork once and reuse it across badges.</p>
   </div>
+  {# End header -#}
+
+  {# Artwork upload -#}
   <div class="mt-10">
     <form class="max-w-4xl"
           hx-post="/dashboard/group/badges/artwork"
@@ -20,6 +24,9 @@
     <input type="hidden" name="file_name" data-artwork-file-name>
   </form>
 </div>
+{# End artwork upload -#}
+
+{# Artwork gallery -#}
 <div class="mt-10 flex items-end justify-between gap-4 border-b border-stone-200 pb-3">
   <div>
     <h2 class="text-lg font-semibold text-stone-900">Saved artwork</h2>
@@ -68,4 +75,5 @@
     {% endfor -%}
   </ul>
 {% endif -%}
+{# End artwork gallery -#}
 </section>

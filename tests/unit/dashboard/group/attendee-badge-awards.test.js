@@ -16,6 +16,7 @@ describe("attendee badge awards", () => {
   });
 
   it("resolves a bypass scope before opening the shared modal", async () => {
+    // Mock the recipient resolver for one seeded event attendee.
     const recipientId = "00000000-0000-0000-0000-000000000001";
     const eventId = "00000000-0000-0000-0000-000000000002";
     const requests = [];
@@ -26,6 +27,7 @@ describe("attendee badge awards", () => {
       });
     };
 
+    // Render and initialize the scoped attendee award trigger.
     const modal = document.createElement("badge-award-modal");
     let openInput;
     modal.open = (input) => {
@@ -42,10 +44,12 @@ describe("attendee badge awards", () => {
     document.body.append(modal, root);
     initializeAttendeeBadgeAwards(root);
 
+    // Open the trigger and wait for the shared award modal.
     const trigger = root.querySelector("button");
     trigger.click();
     await waitUntil(() => Boolean(openInput), "the shared award modal should open");
 
+    // Verify the resolved recipient and event context reach the modal.
     expect(requests).to.deep.equal([
       `/dashboard/group/events/${eventId}/badges/recipients?scope=checked-in-attendees`,
     ]);

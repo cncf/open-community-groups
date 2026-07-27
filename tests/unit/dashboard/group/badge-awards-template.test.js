@@ -12,8 +12,10 @@ const normalizeWhitespace = (value) => value.replace(/\s+/g, " ").trim();
 
 describe("dashboard group badge awards template", () => {
   it("renders always-visible filters with active filter summaries", async () => {
+    // Load and normalize the award history template.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify filters remain visible and expose removable active summaries.
     expect(template).to.include('class="relative w-full max-w-full sm:w-[36rem]"');
     expect(template).to.include(
       'id="awards-advanced-filters" class="grid gap-4 rounded-lg border border-stone-200',
@@ -31,8 +33,10 @@ describe("dashboard group badge awards template", () => {
   });
 
   it("keeps the revoke action disabled for revoked credentials", async () => {
+    // Load and normalize the award history template.
     const template = normalizeWhitespace(await loadTemplate());
 
+    // Verify only active credentials expose the revoke dialog trigger.
     expect(template).to.include('data-badge-dialog-open="badge-revoke-{{ award.user_badge_id }}"');
     expect(template).to.include(
       'disabled aria-label="Revoke credential: {{ award.snapshot.name }} (already revoked)"',

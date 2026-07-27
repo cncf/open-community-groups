@@ -50,12 +50,14 @@ test.describe("user dashboard badges", () => {
     await expect(revokeBadge).toHaveAttribute("title", "Revoke badge");
     await expect(revokeBadge.locator(".icon-trash")).toBeVisible();
 
+    // Open and close the credential share dialog.
     await shareCredential.click();
     const shareDialog = member1Page.getByRole("dialog", { name: "Share" });
     await expect(shareDialog).toBeVisible();
     await expect(shareDialog.getByRole("button", { name: "Copy link" })).toBeVisible();
     await shareDialog.getByRole("button", { name: "Close modal" }).click();
 
+    // Open the protected download confirmation and verify its guidance.
     await downloadBadge.click();
     await expect(member1Page.getByRole("heading", { name: "Download Host badge?" })).toBeVisible();
     await expect(
@@ -68,6 +70,7 @@ test.describe("user dashboard badges", () => {
     );
     await member1Page.getByRole("button", { name: "Cancel" }).click();
 
+    // Measure the card layout after every action returns to its resting state.
     const layout = await hostBadge.evaluate((badge) => {
       const actions = badge.querySelector('[role="group"]');
       const title = badge.querySelector("h2");
@@ -89,6 +92,7 @@ test.describe("user dashboard badges", () => {
       };
     });
 
+    // Verify actions align with the title without constraining description width.
     expect(Math.abs(layout.actionsTop - layout.titleTop)).toBeLessThanOrEqual(1);
     expect(layout.descriptionRight).toBeGreaterThan(layout.actionsLeft);
   });

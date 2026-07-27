@@ -4,11 +4,15 @@
 <section class="flex min-h-full min-w-0 grow flex-col"
          aria-labelledby="group-badge-awards-title"
          data-group-badges>
+  {# Header -#}
   <div>
     <h1 id="group-badge-awards-title"
         class="text-xl font-medium text-stone-900 lg:text-2xl">Badges Awards</h1>
     <p class="m-0 mt-1 text-sm/6 text-stone-500">Review award history and manage active badge credentials.</p>
   </div>
+  {# End header -#}
+
+  {# Filters -#}
   {% let has_active_filters = status != "" || badge_id.is_some() || source.is_some() || !from.is_empty() || !to.is_empty() -%}
   <form id="awards-filters"
         class="mb-4 mt-8 space-y-4"
@@ -98,6 +102,9 @@
       </div>
     </div>
   </form>
+  {# End filters -#}
+
+  {# Active filters and result count -#}
   <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     {% if has_active_filters -%}
       <div class="flex flex-wrap items-center gap-2">
@@ -247,6 +254,9 @@
       {{ pagination::range_display(offset = offset.unwrap_or(0) , count = awarded_badges.awards.len(), total = awarded_badges.total, label = "award") }}
     </div>
   </div>
+  {# End active filters and result count -#}
+
+  {# Awards table -#}
   {% if awarded_badges.awards.is_empty() -%}
     <div class="rounded-lg border border-dashed border-stone-300 p-8 text-center">
       <h2 class="font-semibold">No awards matched</h2>
@@ -408,6 +418,8 @@
       </table>
     </div>
   {% endif -%}
+  {# End awards table -#}
+
   {# Award history pagination -#}
   {% if awarded_badges.total > awarded_badges.awards.len() -%}
     {{ pagination::navigation_links(links = navigation_links, hx_target = "#dashboard-content", hx_indicator = "#dashboard-spinner", spinner_id_prefix = "badge-awards-pagination-") }}

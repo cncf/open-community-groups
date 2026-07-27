@@ -7,6 +7,7 @@ describe("session-speakers-table", () => {
   useMountedElementsCleanup("session-speakers-table");
 
   it("keeps the session speakers table visible with an empty-state row", async () => {
+    // Render the table without session-level speakers.
     const element = await mountLitComponent("session-speakers-table", {
       canAwardBadges: true,
       eventId: "event-1",
@@ -15,6 +16,7 @@ describe("session-speakers-table", () => {
     const table = element.querySelector('table[aria-label="Session-level speakers"]');
     const emptyState = table.querySelector("tbody td");
 
+    // Verify the stable columns and empty-state row.
     expect([...table.querySelectorAll("th")].map((header) => header.textContent.trim())).to.deep.equal([
       "Name",
       "Featured",
@@ -27,6 +29,7 @@ describe("session-speakers-table", () => {
   });
 
   it("deduplicates speakers and lists sessions with their featured state", async () => {
+    // Render one speaker assigned to two sessions with mixed featured states.
     const speaker = { user_id: "21", username: "grace", name: "Grace Hopper" };
     const element = await mountLitComponent("session-speakers-table", {
       canAwardBadges: true,
@@ -40,6 +43,7 @@ describe("session-speakers-table", () => {
     const tableHeaders = [...element.querySelectorAll("th")].map((header) => header.textContent.trim());
     const speakerRows = element.querySelectorAll("tbody tr");
 
+    // Verify the speaker is deduplicated and retains every session relationship.
     expect(tableHeaders).to.deep.equal(["Name", "Featured", "Sessions", "Actions"]);
     expect(speakerRows).to.have.length(1);
     expect(speakerRows[0].children[1].querySelector(".icon-star").classList.contains("size-4")).to.equal(
@@ -48,12 +52,14 @@ describe("session-speakers-table", () => {
     expect(element.textContent).to.include("Closing, Opening");
     expect(element.querySelector("[data-badge-award-open]").dataset.userIds).to.equal("21");
 
+    // Disable awards and verify the row action follows the table state.
     element.awardsDisabled = true;
     await element.updateComplete;
     expect(element.querySelector("[data-badge-award-open]").disabled).to.equal(true);
   });
 
   it("keeps non-featured session speaker cells visually empty", async () => {
+    // Render a speaker that is not featured in any session.
     const element = await mountLitComponent("session-speakers-table", {
       sessions: [
         {
@@ -64,6 +70,7 @@ describe("session-speakers-table", () => {
     });
     const featuredCell = element.querySelector("tbody tr").children[1];
 
+    // Verify assistive text is retained without a visible placeholder glyph.
     expect(featuredCell.textContent.trim()).to.equal("No");
     expect(featuredCell.querySelector(".sr-only")).to.not.equal(null);
     expect(featuredCell.textContent).to.not.include("—");

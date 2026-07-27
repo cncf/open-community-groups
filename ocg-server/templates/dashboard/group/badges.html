@@ -169,6 +169,8 @@
   </dialog>
 </section>
 
+{# Badge definition form -#}
+{# Used by the add and edit badge dialogs. -#}
 {% macro badge_definition_form(id, name, description, criteria, image_file_name, artwork, is_edit) -%}
   <form class="modal-card rounded-lg"
         {% if is_edit -%}
@@ -268,3 +270,4 @@
     </div>
   </form>
 {% endmacro badge_definition_form -%}
+{# End badge definition form -#}

@@ -58,24 +58,26 @@ describe("user dashboard badges", () => {
   });
 
   it("explains the profile modal badge limit", async () => {
+    // Load and normalize the user badge dashboard template.
     const template = (await loadTemplate()).replace(/\s+/g, " ");
 
+    // Verify the profile listing cap is explained to the user.
     expect(template).to.include(
       "Your profile modal displays the first 50 visible badges in the order shown here.",
     );
   });
 
   it("keeps badge card content aligned and formats the issuer", async () => {
+    // Load and normalize the user badge dashboard template.
     const template = (await loadTemplate()).replace(/\s+/g, " ");
 
+    // Verify the card layout, complete issuer label, and action contracts.
     expect(template).to.include('class="flex items-start justify-between gap-4"');
     expect(template).to.include('class="min-w-0 line-clamp-2 font-semibold text-stone-900"');
     expect(template).to.include(
       "{{ badge.snapshot.issuer.group_name }} ({{ badge.snapshot.issuer.community_name }})",
     );
-    expect(template).to.include(
-      'trigger-label="Share {{ badge.snapshot.name }} badge credential"',
-    );
+    expect(template).to.include('trigger-label="Share {{ badge.snapshot.name }} badge credential"');
     expect(template).to.include('trigger-variant="icon"');
     expect(template).to.include('url="/badges/credentials/{{ badge.user_badge_id }}"');
     expect(template).to.include('class="mt-3 flex cursor-pointer items-center justify-end"');
@@ -83,6 +85,7 @@ describe("user dashboard badges", () => {
   });
 
   it("shows an icon until badge artwork loads", () => {
+    // Render one badge with its artwork placeholder and pending image.
     const list = document.createElement("ol");
     list.dataset.badgeOrderList = "";
     list.innerHTML = `
@@ -97,11 +100,13 @@ describe("user dashboard badges", () => {
     Object.defineProperty(image, "complete", { configurable: true, value: false });
     Object.defineProperty(image, "naturalWidth", { configurable: true, value: 0 });
 
+    // Initialize the list and verify the placeholder remains visible.
     initializeBadgeList(list);
 
     expect(list.querySelector("[data-badge-artwork-placeholder] .icon-certificate")).to.not.equal(null);
     expect(image.classList.contains("invisible")).to.equal(true);
 
+    // Complete the image load and verify the artwork replaces its placeholder.
     Object.defineProperty(image, "naturalWidth", { configurable: true, value: 80 });
     image.dispatchEvent(new Event("load"));
 
@@ -110,6 +115,7 @@ describe("user dashboard badges", () => {
   });
 
   it("persists arrow-key ordering, updates positions, and announces the new order", async () => {
+    // Render two badges with a mocked successful order endpoint.
     const { feedback, list } = fixture();
     let requestBody;
     window.fetch = async (_url, options) => {
@@ -118,12 +124,14 @@ describe("user dashboard badges", () => {
     };
     initializeBadgeList(list);
 
+    // Move the first badge down through its keyboard control.
     list
       .querySelector('[data-user-badge-id="first"] [data-badge-drag-handle]')
       .dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowDown" }));
     await Promise.resolve();
     await Promise.resolve();
 
+    // Verify DOM order, positions, payload, and feedback update together.
     expect([...list.children].map((item) => item.dataset.userBadgeId)).to.deep.equal(["second", "first"]);
     expect(
       [...list.querySelectorAll("[data-badge-position]")].map((position) => position.textContent),
@@ -133,11 +141,13 @@ describe("user dashboard badges", () => {
   });
 
   it("restores the previous order after a network failure", async () => {
+    // Render two badges with a failing order endpoint.
     const { list } = fixture();
     window.fetch = async () => {
       throw new TypeError("Network unavailable");
     };
 
+    // Attempt the move and verify the original order is restored.
     await moveBadge(list.querySelector("[data-badge-drag-handle]"), "down");
 
     expect([...list.children].map((item) => item.dataset.userBadgeId)).to.deep.equal(["first", "second"]);
@@ -145,6 +155,7 @@ describe("user dashboard badges", () => {
   });
 
   it("blocks overlapping reorder saves and restores the drag handles", async () => {
+    // Hold the first order request so overlapping moves can be attempted.
     const { list } = fixture();
     let resolveRequest;
     let requestCount = 0;
@@ -157,16 +168,19 @@ describe("user dashboard badges", () => {
     initializeBadgeList(list);
     const dragHandle = list.querySelector("[data-badge-drag-handle]");
 
+    // Start one move and attempt another while its save is pending.
     const firstMove = moveBadge(dragHandle, "down");
     await Promise.resolve();
     await moveBadge(dragHandle, "up");
 
+    // Verify the pending save blocks another request and disables all handles.
     expect(requestCount).to.equal(1);
     expect([...list.children].map((item) => item.dataset.userBadgeId)).to.deep.equal(["second", "first"]);
     expect(
       [...list.querySelectorAll("[data-badge-drag-handle]")].every((handle) => handle.disabled),
     ).to.equal(true);
 
+    // Complete the request and verify every drag handle is restored.
     resolveRequest(new Response(null, { status: 204 }));
     await firstMove;
 
@@ -179,11 +193,13 @@ describe("user dashboard badges", () => {
   });
 
   it("reverts listing controls after a recoverable error", async () => {
+    // Render a listed badge with a failing visibility endpoint.
     const { list } = fixture();
     window.fetch = async () => new Response("failed", { status: 500 });
     const control = list.querySelector("[data-badge-listing]");
     control.checked = false;
 
+    // Attempt the update and verify the checkbox returns to its saved state.
     await updateListing(control);
 
     expect(control.checked).to.equal(true);
@@ -191,6 +207,7 @@ describe("user dashboard badges", () => {
   });
 
   it("explains baked credentials and downloads after confirmation", async () => {
+    // Render a badge download and mock an accepted confirmation.
     const { list } = fixture();
     const link = list.querySelector("[data-badge-download]");
     let alertOptions;
@@ -212,8 +229,10 @@ describe("user dashboard badges", () => {
       { capture: true, once: true },
     );
 
+    // Start the protected download flow.
     await downloadBadge(link);
 
+    // Verify the guidance and resulting download preserve the expected contract.
     expect(alertOptions.title).to.equal("Download First badge?");
     expect(alertOptions.html).to.include("signed Open Badges 3.0 credential data");
     expect(alertOptions.html).to.include("compatible wallets, backpacks, and credential platforms");
@@ -226,10 +245,12 @@ describe("user dashboard badges", () => {
   });
 
   it("keeps focus on the download link when confirmation is cancelled", async () => {
+    // Render a badge download with a cancelled confirmation.
     const { list } = fixture();
     const link = list.querySelector("[data-badge-download]");
     window.Swal = { fire: async () => ({ isConfirmed: false }) };
 
+    // Cancel the download and verify focus and pending state recover.
     await downloadBadge(link);
 
     expect(document.activeElement).to.equal(link);
@@ -237,6 +258,7 @@ describe("user dashboard badges", () => {
   });
 
   it("requires irreversible confirmation and removes a revoked badge after success", async () => {
+    // Render two badges and mock an accepted revocation.
     const { feedback, list } = fixture();
     const calls = [];
     window.Swal = {
@@ -250,8 +272,10 @@ describe("user dashboard badges", () => {
       return new Response(null, { status: 204 });
     };
 
+    // Revoke the first badge through the production confirmation flow.
     await revokeBadge(list.querySelector("[data-badge-revoke]"));
 
+    // Verify destructive guidance, removal, ordering state, and feedback.
     expect(calls[0].text).to.include("cannot be undone");
     expect(calls[0].text).to.include("Show on profile");
     expect(calls[0].buttonsStyling).to.equal(false);
@@ -268,11 +292,13 @@ describe("user dashboard badges", () => {
   });
 
   it("shows the empty state after revoking the final badge", async () => {
+    // Render one remaining badge with a successful revocation endpoint.
     const { list } = fixture();
     list.lastElementChild.remove();
     window.Swal = { fire: async () => ({ isConfirmed: true }) };
     window.fetch = async () => new Response(null, { status: 204 });
 
+    // Revoke the badge and verify the list becomes the empty state.
     await revokeBadge(list.querySelector("[data-badge-revoke]"));
 
     expect(document.querySelector("[data-badge-order-list]")).to.equal(null);
@@ -282,6 +308,7 @@ describe("user dashboard badges", () => {
   });
 
   it("persists pointer reordering through the same order endpoint", async () => {
+    // Render two draggable badges and capture order request bodies.
     const { list } = fixture();
     const bodies = [];
     window.fetch = async (_url, options) => {
@@ -306,12 +333,14 @@ describe("user dashboard badges", () => {
       return event;
     };
 
+    // Drag the first badge over the second and verify the active drop target.
     firstHandle.dispatchEvent(dragEvent("dragstart"));
     second.dispatchEvent(dragEvent("dragover", 10));
 
     expect(second.querySelector("[data-badge-card]").classList.contains("ring-2")).to.equal(true);
     expect(dataTransfer.dropEffect).to.equal("move");
 
+    // Drop the badge and verify the saved order and cleared drag state.
     second.dispatchEvent(dragEvent("drop", 10));
     firstHandle.dispatchEvent(dragEvent("dragend"));
     await Promise.resolve();

@@ -30,17 +30,21 @@ describe("group dashboard badges", () => {
   };
 
   it("opens and closes a badge dialog", () => {
+    // Render the initialized badge controls and locate the revoke dialog.
     const root = fixture();
     const dialog = root.querySelector("#badge-revoke-one");
 
+    // Open the dialog through its declarative trigger.
     root.querySelector('[data-badge-dialog-open="badge-revoke-one"]').click();
     expect(dialog.open).to.equal(true);
 
+    // Close the dialog through its declarative control.
     dialog.querySelector("[data-badge-dialog-close]").click();
     expect(dialog.open).to.equal(false);
   });
 
   it("adds the uploaded badge filename to the declarative artwork form", () => {
+    // Render the artwork form with an uploaded badge image value.
     const root = fixture();
     root.querySelector('image-field[target="badge"]').value = "/images/badges/content-addressed.png";
 
@@ -48,12 +52,15 @@ describe("group dashboard badges", () => {
       .querySelector("[data-artwork-form]")
       .dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
 
+    // Verify submission copies only the stored filename into the hidden field.
     expect(root.querySelector("[data-artwork-file-name]").value).to.equal("content-addressed.png");
   });
 
   it("gives badge artwork options a comfortable inset", async () => {
+    // Load the badge definition template.
     const response = await fetch("/ocg-server/templates/dashboard/group/badges.html");
 
+    // Verify selectable artwork uses the intended inset.
     expect(response.ok).to.equal(true);
     expect(await response.text()).to.include(
       'class="block rounded-xl border border-stone-200 bg-white p-2.5 transition',
@@ -61,8 +68,10 @@ describe("group dashboard badges", () => {
   });
 
   it("uses larger saved artwork cards with hover delete controls", async () => {
+    // Load the saved artwork gallery template.
     const response = await fetch("/ocg-server/templates/dashboard/group/badges_artwork.html");
 
+    // Verify gallery sizing and hover-revealed delete controls.
     expect(response.ok).to.equal(true);
     const template = await response.text();
     expect(template).to.include("lg:grid-cols-5 xl:grid-cols-7");
@@ -76,8 +85,10 @@ describe("group dashboard badges", () => {
   });
 
   it("uses a compact badge column and wraps badge names to two lines", async () => {
+    // Load the badge definition list template.
     const response = await fetch("/ocg-server/templates/dashboard/group/badges.html");
 
+    // Verify the fixed table layout constrains and wraps badge names.
     expect(response.ok).to.equal(true);
     const template = await response.text();
 
@@ -95,7 +106,7 @@ describe("group dashboard badges", () => {
     const template = await response.text();
 
     // Each dialog label points at a heading ID rendered by its corresponding form.
-    expect(template).to.include('aria-labelledby="badge-edit-title-{{ badge.badge_id }}"');
+    expect(template).to.include('aria-labelledby="badge-edit-{{ badge.badge_id }}-title"');
     expect(template).to.include('aria-labelledby="badge-add-title"');
     expect(template).to.include('id="badge-edit-{{ id }}-title"');
     expect(template).to.include('id="badge-add-title"');
