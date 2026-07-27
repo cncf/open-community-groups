@@ -1,18 +1,12 @@
 # Contributing Guide
 
-The Open Community Groups project accepts contributions via [GitHub pull requests](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests). This document outlines the process to help get your contribution accepted.
+While the Open Community Groups project strives to be an open source project, and continues to solicit community feedback and bug reports, the burden of reviewing PRs has actively hindered improvements rather than helped.
 
-## Issues and discussions
+Because this is such a formative time in the project as we expand our features/users, we've decided to close the ability to make pull requests. As the platform stabilizes, and our featureset becomes more complete, we'll revisit this.
 
-Feature requests, bug reports, and support requests all occur through GitHub issues and discussions. If you would like to file an issue, view existing issues, or comment on an issue please engage with issues at <https://github.com/cncf/open-community-groups/issues>. You can create new discussions, view existing ones and comment on them at <https://github.com/cncf/open-community-groups/discussions>.
+In the meantime, the best way to contribute is to continue to use the platform. If you have a cool/fun idea, or run into any sort of problem, [file a GitHub Issue](https://github.com/cncf/open-community-groups/issues).
 
-## Pull Requests
-
-All changes to the source code and documentation are made through [GitHub pull requests](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/about-pull-requests). If you would like to make a change to the source, documentation, or other component in the repository please open a pull request with the change.
-
-If you are unsure if the change will be welcome you may want to file an issue first. The issue can detail the change and you can get feedback from the maintainers prior to starting to make the change.
-
-You can find the existing pull requests at <https://github.com/cncf/open-community-groups/pulls>.
+We appreciate your understanding!
 
 ## Developer Certificate of Origin
 
