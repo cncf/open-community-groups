@@ -74,14 +74,27 @@ impl KeySet {
             IriBuf::new(issuer_url.to_string()).map_err(|_| BadgesManagerError::InvalidUrl)?;
         let mut method = Multikey::from_public_key(placeholder_id, controller, &public_key);
 
-        // Identify the method with the self-contained public-key fragment
+        // Identify the method with its dereferenceable public-key URL
         method.id = IriBuf::new(format!(
-            "{issuer_url}#{}",
+            "{issuer_url}/keys/{}",
             method.public_key.encoded.as_str()
         ))
         .map_err(|_| BadgesManagerError::InvalidUrl)?;
 
         Ok(method)
+    }
+
+    /// Looks up one retained issuer-controlled Multikey by its multibase value.
+    pub(super) fn multikey_by_multibase(
+        &self,
+        issuer_url: &str,
+        key_multibase: &str,
+    ) -> Result<Multikey> {
+        // Match the requested public key against the retained allowlist
+        self.multikeys(issuer_url)?
+            .into_iter()
+            .find(|method| method.public_key.encoded.as_str() == key_multibase)
+            .ok_or(BadgesManagerError::UnknownVerificationMethod)
     }
 
     /// Builds every retained issuer-controlled Multikey in stable key order.

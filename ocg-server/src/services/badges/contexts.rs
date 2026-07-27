@@ -6,8 +6,16 @@ use ssi_json_ld::ContextLoader;
 
 use super::{BadgesManagerError, Result};
 
+/// Controlled Identifiers v1 context URL, published in issuer profiles and
+/// never expanded server-side.
+pub(crate) const CID_CONTEXT_URL: &str = "https://www.w3.org/ns/cid/v1";
+
+/// Multikey v1 context URL, published in key documents and never expanded
+/// server-side.
+pub(crate) const MULTIKEY_CONTEXT_URL: &str = "https://w3id.org/security/multikey/v1";
+
 /// Open Badges 3.0.3 context URL.
-pub(super) const OPEN_BADGES_CONTEXT_URL: &str =
+pub(crate) const OPEN_BADGES_CONTEXT_URL: &str =
     "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json";
 
 /// VC Data Model 2.0 context URL.

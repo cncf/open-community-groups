@@ -177,6 +177,84 @@ async fn test_credential_unknown_award_returns_not_found() {
 }
 
 #[tokio::test]
+async fn test_issuer_key_returns_immutable_multikey_document() {
+    // Setup a public router with one active signing method
+    let group_id = Uuid::new_v4();
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .with_server_cfg(badges_server_config())
+        .build()
+        .await;
+
+    // Resolve the published key from the issuer profile
+    let response = router
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/badges/issuers/{group_id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let profile: Value =
+        serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap()).unwrap();
+    let key_multibase = profile["verificationMethod"][0]["publicKeyMultibase"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Request the dereferenceable standalone key document
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri(format!("/badges/issuers/{group_id}/keys/{key_multibase}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let (parts, body) = response.into_parts();
+    let body: Value = serde_json::from_slice(&to_bytes(body, usize::MAX).await.unwrap()).unwrap();
+
+    // Check the immutable content-addressed Multikey document
+    assert_eq!(parts.status, StatusCode::OK);
+    let issuer_id = format!("https://badges.example.test/badges/issuers/{group_id}");
+    assert_eq!(body["@context"], "https://w3id.org/security/multikey/v1");
+    assert_eq!(body["id"], format!("{issuer_id}/keys/{key_multibase}"));
+    assert_eq!(body["type"], "Multikey");
+    assert_eq!(body["controller"], issuer_id);
+    assert_eq!(body["publicKeyMultibase"], key_multibase);
+    assert_eq!(
+        parts.headers.get(CACHE_CONTROL).unwrap(),
+        "public, max-age=31536000, immutable"
+    );
+}
+
+#[tokio::test]
+async fn test_issuer_key_unknown_multibase_returns_not_found() {
+    // Setup a public router with one active signing method
+    let group_id = Uuid::new_v4();
+    let router = TestRouterBuilder::new(MockDB::new(), MockNotificationsManager::new())
+        .with_server_cfg(badges_server_config())
+        .build()
+        .await;
+
+    // Request a key document outside the retained allowlist
+    let response = router
+        .oneshot(
+            Request::builder()
+                .uri(format!("/badges/issuers/{group_id}/keys/z6MkUnknown"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Check unknown keys are not published
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn test_issuer_returns_stable_public_profile() {
     // Setup a public router with one active signing method
     let group_id = Uuid::new_v4();
@@ -202,6 +280,13 @@ async fn test_issuer_returns_stable_public_profile() {
     assert_eq!(parts.status, StatusCode::OK);
     let issuer_id = format!("https://badges.example.test/badges/issuers/{group_id}");
     let method = &body["verificationMethod"][0];
+    assert_eq!(
+        body["@context"],
+        json!([
+            "https://www.w3.org/ns/cid/v1",
+            "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json"
+        ])
+    );
     assert_eq!(body["id"], issuer_id);
     assert_eq!(body["type"], json!(["Profile"]));
     assert_eq!(body["assertionMethod"][0], method["id"]);
@@ -211,7 +296,7 @@ async fn test_issuer_returns_stable_public_profile() {
     assert_eq!(
         method["id"],
         format!(
-            "{issuer_id}#{}",
+            "{issuer_id}/keys/{}",
             method["publicKeyMultibase"].as_str().unwrap()
         )
     );
@@ -367,32 +452,6 @@ async fn test_user_profile_badges_rejects_page_above_public_cap() {
 
     // Check validation rejects the request before any public-profile reads
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-}
-
-#[tokio::test]
-async fn test_verification_key_route_is_not_mounted() {
-    // Setup a public router with badge signing and not-found page settings
-    let mut db = MockDB::new();
-    db.expect_get_site_settings()
-        .times(1)
-        .return_once(|| Ok(sample_site_settings()));
-    let router = TestRouterBuilder::new(db, MockNotificationsManager::new())
-        .with_server_cfg(badges_server_config())
-        .build()
-        .await;
-
-    // Request the removed standalone verification method route
-    let response = router
-        .oneshot(
-            Request::builder()
-                .uri("/badges/keys/test-key")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    // Check standalone key documents are not part of the public interface
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

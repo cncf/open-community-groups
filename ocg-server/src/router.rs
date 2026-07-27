@@ -261,6 +261,10 @@ pub(crate) async fn setup(
         )
         .route("/badges/issuers/{group_id}", get(badges::issuer))
         .route(
+            "/badges/issuers/{group_id}/keys/{key_multibase}",
+            get(badges::issuer_key),
+        )
+        .route(
             "/badges/status-lists/{badge_status_list_id}",
             get(badges::status_list),
         )

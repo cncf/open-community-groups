@@ -22,7 +22,10 @@ use crate::{
     db::DynDB,
     handlers::{error::HandlerError, extend_public_shared_cache_headers},
     router::{CACHE_CONTROL_NO_STORE, PUBLIC_SHARED_CACHE_HEADERS},
-    services::badges::{BadgesManager, BadgesManagerError, png},
+    services::badges::{
+        BadgesManager, BadgesManagerError, CID_CONTEXT_URL, MULTIKEY_CONTEXT_URL,
+        OPEN_BADGES_CONTEXT_URL, png,
+    },
     templates::badges::{CredentialPage, VerifiedBadgeView, VerifyPage},
 };
 
@@ -35,6 +38,9 @@ const CREDENTIAL_CACHE_VARY: &str = "x-ocg-commit-sha, hx-request, x-ocg-fetch, 
 /// User-facing message returned for invalid badge submissions.
 const INVALID_VERIFICATION_MESSAGE: &str =
     "This badge could not be verified as an OCG-issued credential.";
+
+/// Cache policy for immutable content-addressed issuer key documents.
+const ISSUER_KEY_CACHE_CONTROL: &str = "public, max-age=31536000, immutable";
 
 /// Cache policy for signed status list credentials.
 const STATUS_LIST_CACHE_CONTROL: &str = "public, max-age=600";
@@ -122,15 +128,44 @@ pub(crate) async fn issuer(
         .map(|method| method.id.to_string())
         .collect::<Vec<_>>();
 
-    // Publish the issuer identity, verification methods, and assertion relationship
+    // Publish the issuer as a JSON-LD controller document with its identity,
+    // verification methods, and assertion relationship
     Ok((
         PUBLIC_SHARED_CACHE_HEADERS,
         Json(json!({
+            "@context": [CID_CONTEXT_URL, OPEN_BADGES_CONTEXT_URL],
             "id": badges_manager.issuer_url(group_id),
             "type": ["Profile"],
             "name": BadgesManager::issuer_name(group_id),
             "assertionMethod": assertion_methods,
             "verificationMethod": verification_methods
+        })),
+    ))
+}
+
+/// Publish one retained issuer verification key as a Multikey document.
+#[instrument(skip_all, err)]
+pub(crate) async fn issuer_key(
+    State(badges_manager): State<Arc<BadgesManager>>,
+    Path((group_id, key_multibase)): Path<(Uuid, String)>,
+) -> Result<impl IntoResponse, HandlerError> {
+    // Resolve the retained verification method addressed by this key
+    let method = badges_manager
+        .verification_method(group_id, &key_multibase)
+        .map_err(|error| match error {
+            BadgesManagerError::UnknownVerificationMethod => HandlerError::NotFound,
+            error => HandlerError::Other(error.into()),
+        })?;
+
+    // Publish the immutable content-addressed Multikey document
+    Ok((
+        [(CACHE_CONTROL, ISSUER_KEY_CACHE_CONTROL)],
+        Json(json!({
+            "@context": MULTIKEY_CONTEXT_URL,
+            "id": method.id.as_str(),
+            "type": "Multikey",
+            "controller": method.controller.as_str(),
+            "publicKeyMultibase": method.public_key.encoded.as_str()
         })),
     ))
 }

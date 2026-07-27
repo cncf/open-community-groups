@@ -37,6 +37,7 @@ use verification::{
 };
 
 pub(crate) use award_worker::start_badge_award_workers;
+pub(crate) use contexts::{CID_CONTEXT_URL, MULTIKEY_CONTEXT_URL, OPEN_BADGES_CONTEXT_URL};
 pub(crate) use credential::{CredentialInput, EmailIdentity, rfc3339};
 
 /// Site-wide badge credential manager.
@@ -271,6 +272,16 @@ impl BadgesManager {
             "{}/badges/status-lists/{badge_status_list_id}",
             self.base_url
         )
+    }
+
+    /// Returns one retained issuer-controlled Multikey by its multibase value.
+    pub(crate) fn verification_method(
+        &self,
+        group_id: Uuid,
+        key_multibase: &str,
+    ) -> Result<Multikey> {
+        self.keys
+            .multikey_by_multibase(&self.issuer_url(group_id), key_multibase)
     }
 
     /// Returns every retained Multikey controlled by a group issuer.

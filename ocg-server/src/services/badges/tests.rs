@@ -120,7 +120,7 @@ async fn test_credential_email_identity_binds_salted_hash_and_verifies() {
     // Check the deterministic proof pins spec-compliant canonicalization
     assert_eq!(
         credential["proof"][0]["proofValue"],
-        "z2u6ZagoKivHBHdjEB2qAomUT4EWm8YjsvB7JYDV3TeQ7fx9dgtmfRRjmnBTjeRn5u16yoBYRxUr9ukuk5KrwfnAy"
+        "z24g4Dbd91haFwroqM8amVqC2M6aFfcru1tQWa8aET7TK8cCJCeQ7jULLgf3AgxpQghrJ6hHkZkcNzEp39BLLD4Pp"
     );
 
     // Check no plaintext email leaks into the serialized credential
@@ -272,7 +272,7 @@ async fn test_status_list_profile_uses_required_ttl_and_revocation_purpose() {
             .as_str()
             .unwrap()
             .starts_with(&format!(
-                "https://badges.example.test/badges/issuers/{group_id}#z6Mk"
+                "https://badges.example.test/badges/issuers/{group_id}/keys/z6Mk"
             ))
     );
     assert!(
@@ -437,7 +437,7 @@ async fn test_verify_credential_rejects_unknown_verification_method() {
     // Check a proof key outside the local key namespace is rejected
     let mut foreign_method = signed_credential(&verifier).await;
     foreign_method["proof"][0]["verificationMethod"] = json!(
-        "https://attacker.example.test/badges/issuers/00000000-0000-0000-0000-00000000000c#z6Mkforeign"
+        "https://attacker.example.test/badges/issuers/00000000-0000-0000-0000-00000000000c/keys/z6Mkforeign"
     );
     assert!(matches!(
         verifier.verify_credential(&foreign_method).await,

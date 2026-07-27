@@ -90,6 +90,7 @@ Badge credentials depend on stable public routes:
 ```text
 /badges/credentials/{user_badge_id}
 /badges/issuers/{group_id}
+/badges/issuers/{group_id}/keys/{key_multibase}
 /badges/status-lists/{badge_status_list_id}
 ```
 
@@ -97,10 +98,12 @@ These routes use the configured server base URL and must remain publicly availab
 issued credentials may be presented. Keep the base URL stable and retain every referenced public
 key in badge configuration.
 
-Each issuer profile publishes its active and retained Ed25519 Multikey objects in
-`verificationMethod` and authorizes them through `assertionMethod`. Credential proofs identify the
-signing method as `{issuer_url}#{publicKeyMultibase}`, allowing verifiers to read the key from the
-fragment or resolve the same method through the issuer profile.
+Each issuer profile is served as a JSON-LD controller document. It publishes its active and
+retained Ed25519 Multikey objects in `verificationMethod` and authorizes them through
+`assertionMethod`. Credential proofs identify the signing method as
+`{issuer_url}/keys/{publicKeyMultibase}`, a dereferenceable URL serving that key as a standalone
+Multikey document, so verifiers can resolve the method directly over HTTP or read it from the
+issuer profile.
 
 The credential route serves a browser page by default. A request accepting
 `application/vc+ld+json` receives the signed JSON-LD credential. The user export route transcodes
