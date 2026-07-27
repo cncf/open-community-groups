@@ -479,6 +479,11 @@ pub(super) fn setup_user_dashboard_router() -> Router<State> {
             "/events/{community_name}/{event_id}/registration-answers",
             put(dashboard::user::events::submit_registration_answers),
         )
+        .route("/groups", get(dashboard::user::groups::list_page))
+        .route(
+            "/groups/{community_name}/{group_id}/membership",
+            delete(dashboard::user::groups::leave_group),
+        )
         .route("/invitations", get(dashboard::user::invitations::list_page))
         .route(
             "/invitations/community/{community_id}/accept",

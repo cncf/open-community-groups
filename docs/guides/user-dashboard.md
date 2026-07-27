@@ -2,9 +2,9 @@
 
 # User Dashboard Guide
 
-Think of the User Dashboard as your home base inside OCG. It brings upcoming events, profile,
-badges, invitations, proposal writing, and submission tracking into one place so moving from
-participant to speaker feels smooth.
+Think of the User Dashboard as your home base inside OCG. It brings groups, upcoming events,
+profile, badges, invitations, proposal writing, and submission tracking into one place so moving
+from participant to speaker feels smooth.
 
 For a fast end-to-end walkthrough first, use
 [Quickstart](../getting-started/quickstart.md).
@@ -14,6 +14,7 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 **Sections:**
 
 - [User Dashboard Structure](#user-dashboard-structure)
+- [My Groups](#my-groups)
 - [My Events: Upcoming Participation](#my-events-upcoming-participation)
 - [Profile: Public Identity](#profile-public-identity)
 - [Badges: Portable Credentials](#badges-portable-credentials)
@@ -25,8 +26,9 @@ Path: [/dashboard/user](/dashboard/user ':ignore')
 
 ## User Dashboard Structure
 
-The dashboard is organized into seven areas:
+The dashboard is organized into eight areas:
 
+- [My Groups](/dashboard/user?tab=groups ':ignore')
 - [My Events](/dashboard/user?tab=events ':ignore')
 - [Profile](/dashboard/user?tab=account ':ignore')
 - [Badges](/dashboard/user?tab=badges ':ignore')
@@ -35,8 +37,28 @@ The dashboard is organized into seven areas:
 - [Submissions](/dashboard/user?tab=submissions ':ignore')
 - [Logs](/dashboard/user?tab=logs ':ignore')
 
-Each area supports a different part of your participation in OCG: events, profile, portable
-credentials, access, proposals, submissions, and audit visibility.
+Each area supports a different part of your participation in OCG: groups, events, profile,
+portable credentials, access, proposals, submissions, and audit visibility.
+
+## My Groups
+
+`My Groups` lists active groups where you are a member or an accepted group team member. The
+top-right user menu also links directly to this section.
+
+Each row includes:
+
+- Group name with a direct link to the public group page.
+- Community name.
+- The date your membership or team relationship started.
+- Your role in the group: member, team member, or both.
+- A row actions menu.
+
+Use `Leave group` in the row actions menu to remove your group membership after confirmation.
+The action is disabled when you only belong to the group through a team role because team access
+is managed separately. If you have both relationships, leaving removes the membership while the
+accepted team relationship keeps the group in the list.
+
+Rows are ordered by group name.
 
 ## My Events: Upcoming Participation
 
@@ -236,8 +258,9 @@ unrelated actions performed by other people against your account.
 catch you by surprise.
 
 1. Keep profile current (especially bio, timezone, and links).
-2. Track `My Events` to stay ahead of upcoming commitments.
-3. Clear invitations quickly so role-based access stays accurate.
-4. Build reusable proposals before deadlines.
-5. Submit to events where CFS is open.
-6. Watch `Submissions` and respond fast when information is requested.
+2. Use `My Groups` to return to the communities where you participate.
+3. Track `My Events` to stay ahead of upcoming commitments.
+4. Clear invitations quickly so role-based access stays accurate.
+5. Build reusable proposals before deadlines.
+6. Submit to events where CFS is open.
+7. Watch `Submissions` and respond fast when information is requested.

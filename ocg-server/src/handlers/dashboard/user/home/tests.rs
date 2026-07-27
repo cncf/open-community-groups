@@ -14,7 +14,10 @@ use crate::{
     templates::dashboard::{
         DASHBOARD_PAGINATION_LIMIT,
         audit::AuditLogSort,
-        user::{events::UserEventsOutput, session_proposals::SessionProposalsOutput},
+        user::{
+            events::UserEventsOutput, groups::UserGroupsOutput,
+            session_proposals::SessionProposalsOutput,
+        },
     },
 };
 
@@ -104,6 +107,59 @@ async fn test_page_events_tab_success() {
     let request = Request::builder()
         .method("GET")
         .uri("/dashboard/user?tab=events")
+        .header(COOKIE, format!("id={session_id}"))
+        .body(Body::empty())
+        .unwrap();
+    let response = router.oneshot(request).await.unwrap();
+    let (parts, body) = response.into_parts();
+    let bytes = to_bytes(body, usize::MAX).await.unwrap();
+
+    // Check response matches expectations
+    assert_html_response(&parts, &bytes, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_page_groups_tab_success() {
+    // Setup identifiers and data structures
+    let session_id = session::Id::default();
+    let user_id = Uuid::new_v4();
+    let auth_hash = "hash".to_string();
+    let session_record = sample_session_record(session_id, user_id, &auth_hash, None, None);
+    let groups_output = UserGroupsOutput {
+        groups: vec![],
+        total: 0,
+    };
+
+    // Setup database mock
+    let mut db = MockDB::new();
+    db.expect_get_session()
+        .times(1)
+        .withf(move |id| *id == session_id)
+        .returning(move |_| Ok(Some(session_record.clone())));
+    db.expect_get_user_by_id()
+        .times(1)
+        .withf(move |id| *id == user_id)
+        .returning(move |_| Ok(Some(sample_auth_user(user_id, &auth_hash))));
+    db.expect_list_user_dashboard_groups()
+        .times(1)
+        .withf(move |uid, filters| {
+            *uid == user_id
+                && filters.limit == Some(DASHBOARD_PAGINATION_LIMIT)
+                && filters.offset == Some(0)
+        })
+        .returning(move |_, _| Ok(groups_output.clone()));
+    db.expect_get_site_settings()
+        .times(1)
+        .returning(|| Ok(sample_site_settings()));
+
+    // Setup notifications manager mock
+    let nm = MockNotificationsManager::new();
+
+    // Setup router and send request
+    let router = TestRouterBuilder::new(db, nm).build().await;
+    let request = Request::builder()
+        .method("GET")
+        .uri("/dashboard/user?tab=groups")
         .header(COOKIE, format!("id={session_id}"))
         .body(Body::empty())
         .unwrap();

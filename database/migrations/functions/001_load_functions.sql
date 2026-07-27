@@ -201,6 +201,7 @@
 {{ template "dashboard-user/list_user_badges.sql" }}
 {{ template "dashboard-user/list_user_cfs_submissions.sql" }}
 {{ template "dashboard-user/list_user_community_team_invitations.sql" }}
+{{ template "dashboard-user/list_user_dashboard_groups.sql" }}
 {{ template "dashboard-user/list_user_event_invitations.sql" }}
 {{ template "dashboard-user/list_user_events.sql" }}
 {{ template "dashboard-user/list_user_group_team_invitations.sql" }}
